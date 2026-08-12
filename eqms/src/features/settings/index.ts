@@ -1,0 +1,23 @@
+// Export Settings components
+export { ProfileView } from './user-profile/ProfileView';
+export { UserManagementView } from '../security-authorization/user-management/views/UserManagementView';
+export { AddUserView } from '../security-authorization/user-management/views/AddUserView';
+export { UserProfileView } from '../security-authorization/user-management/views/UserProfileView';
+export { DictionariesView } from './dictionaries/DictionariesView';
+export { ConfigurationView } from './configuration';
+export { EmailTemplatesView } from './email-templates/EmailTemplatesView';
+export { EmailTemplateCreateView } from './email-templates/views/EmailTemplateCreateView';
+export { EmailTemplateEditView } from './email-templates/views/EmailTemplateEditView';
+export { EmailTemplatePreviewView } from './email-templates/views/EmailTemplatePreviewView';
+export { PublishingTemplatesView } from './publishing-templates/PublishingTemplatesView';
+export { PublishingTemplateEditorView } from './publishing-templates/PublishingTemplateEditorView';
+export { ElectronicSignatureSettingsView } from './electronic-signature/ElectronicSignatureSettingsView';
+export { ControlledCopiesPolicyView } from './controlled-copies-policy/ControlledCopiesPolicyView';
+export { NotificationPolicyView } from './notification-policy/NotificationPolicyView';
+export { NotificationPolicyDetailView } from './notification-policy/NotificationPolicyDetailView';
+export { NotificationPolicyCreateView } from './notification-policy/NotificationPolicyCreateView';
+export { DataPrivacyNoticeView } from './user-profile/DataPrivacyNoticeView';
+export { DocumentAdministrationView } from './document-administration/DocumentAdministrationView';
+export { SystemInformationView } from './system-information/SystemInformationView';
+export { ReportConfigurationView } from './report-configuration/ReportConfigurationView';
+export { ReportDefinitionEditView } from './report-configuration/ReportDefinitionEditView';

@@ -1,0 +1,18 @@
+export { PermissionSetsView } from './permission-sets/PermissionSetsView';
+export { PermissionSetDetailView } from './permission-sets/PermissionSetDetailView';
+export { PermissionSetFormView } from './permission-sets/PermissionSetFormView';
+export { WorkflowAuthorizationView } from './lifecycle-policies/views/WorkflowAuthorizationView';
+export { StatePoliciesView } from './lifecycle-policies/views/StatePoliciesView';
+export { LifecyclePoliciesView } from './lifecycle-policies/views/LifecyclePoliciesView';
+export { AuthorizationDiagnosticsView } from './lifecycle-policies/views/AuthorizationDiagnosticsView';
+export { LifecyclePolicyFormView } from './lifecycle-policies/views/LifecyclePolicyFormView';
+export { WorkflowPolicyDuplicateView } from './lifecycle-policies/views/WorkflowPolicyDuplicateView';
+export { WorkflowRolesView } from './lifecycle-policies/views/WorkflowRolesView';
+export { ObjectAccessRulesView } from './object-rules/ObjectAccessRulesView';
+export { ObjectAccessRuleFormView } from './object-rules/ObjectAccessRuleFormView';
+export { SegregationOfDutiesView } from './sod/SegregationOfDutiesView';
+export { SodConstraintFormView } from './sod/SodConstraintFormView';
+export { AccessReviewView } from './access-review/AccessReviewView';
+export { AccessReviewCampaignDetailView } from './access-review/AccessReviewCampaignDetailView';
+export * from './user-management';
+export * from './access-profiles';

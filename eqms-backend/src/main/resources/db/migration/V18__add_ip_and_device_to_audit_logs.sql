@@ -1,0 +1,3 @@
+ALTER TABLE audit_logs
+    ADD COLUMN IF NOT EXISTS ip_address VARCHAR(80),
+    ADD COLUMN IF NOT EXISTS device_name VARCHAR(255);

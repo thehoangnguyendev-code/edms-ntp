@@ -1,0 +1,1 @@
+export { MyTrainingView } from './MyTrainingView';

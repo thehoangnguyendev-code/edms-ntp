@@ -1,0 +1,6 @@
+ALTER TABLE email_templates
+    ADD COLUMN IF NOT EXISTS logo_url TEXT,
+    ADD COLUMN IF NOT EXISTS logo_file_name VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS copyright TEXT,
+    ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255);
+

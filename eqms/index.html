@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+
+  <!-- Viewport Configuration -->
+  <!-- Note: maximum-scale=1 prevents iOS Safari auto-zoom on input focus -->
+  <!-- user-scalable=no is avoided for accessibility, using font-size fix instead -->
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+  <!-- iOS Safari zoom prevention script -->
+  <script>
+    // Reset viewport zoom on page load and navigation
+    (function () {
+      function resetViewport() {
+        var viewport = document.querySelector('meta[name=viewport]');
+        if (viewport) {
+          // Temporarily allow scaling to reset, then lock again
+          viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=yes, viewport-fit=cover';
+          setTimeout(function () {
+            viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+          }, 100);
+        }
+      }
+
+      // Reset on page load
+      if (document.readyState === 'complete') {
+        resetViewport();
+      } else {
+        window.addEventListener('load', resetViewport);
+      }
+
+      // Expose globally for React to call after navigation
+      window.__resetViewportZoom = resetViewport;
+    })();
+  </script>
+
+  <!-- Primary Meta Tags -->
+  <title>Quality Management System</title>
+  <meta name="title" content="Quality Management System" />
+  <script>
+    (function () {
+      try {
+        var titleKey = 'eqms.settings.browser-tab-title';
+        var configKey = 'eqms.settings.system-config';
+        var storedTitle = localStorage.getItem(titleKey);
+        if (storedTitle && storedTitle.trim()) {
+          document.title = storedTitle.trim();
+          var metaTitle = document.querySelector('meta[name="title"]');
+          if (metaTitle) metaTitle.setAttribute('content', storedTitle.trim());
+        } else {
+          var rawConfig = localStorage.getItem(configKey);
+          if (rawConfig) {
+            var parsed = JSON.parse(rawConfig);
+            var displayName = parsed && parsed.general && parsed.general.systemDisplayName;
+            if (displayName && String(displayName).trim()) {
+              document.title = String(displayName).trim();
+              var metaTitleFallback = document.querySelector('meta[name="title"]');
+              if (metaTitleFallback) metaTitleFallback.setAttribute('content', String(displayName).trim());
+            }
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <meta name="description"
+    content="Enterprise Quality Management System for Pharmaceutical Manufacturing. Manage documents, changes, CAPA, deviations, complaints, training, and audit trails." />
+  <meta name="keywords"
+    content="QMS, Quality Management, Pharmaceutical, Document Control, CAPA, GMP, FDA, Compliance" />
+  <meta name="author" content="Quality Management System" />
+
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+  <meta name="msapplication-navbutton-color" content="#059669" />
+
+  <!-- iOS Safari & PWA Configuration -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="EQMS" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Prevent phone number detection -->
+  <meta name="format-detection" content="telephone=no" />
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/x-icon" href="/icons/favicon.ico" />
+
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+  <!-- Microsoft Tiles - using SVG -->
+  <meta name="msapplication-TileColor" content="#059669" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://eqms.ngocthienpharma.com/" />
+  <meta property="og:title" content="Quality Management System" />
+  <meta property="og:description" content="Enterprise Quality Management System for Pharmaceutical Manufacturing" />
+  <meta property="og:image" content="/og-image.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://eqms.ngocthienpharma.com/" />
+  <meta property="twitter:title" content="Quality Management System" />
+  <meta property="twitter:description"
+    content="Enterprise Quality Management System for Pharmaceutical Manufacturing" />
+  <meta property="twitter:image" content="/twitter-image.png" />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            border: "hsl(var(--border))",
+            input: "hsl(var(--input))",
+            ring: "hsl(var(--ring))",
+            background: "hsl(var(--background))",
+            foreground: "hsl(var(--foreground))",
+            primary: {
+              DEFAULT: "#059669", // Emerald-600: Standard for 'Effective/Compliant' status in QMS
+              foreground: "#ffffff",
+            },
+            secondary: {
+              DEFAULT: "#f1f5f9",
+              foreground: "#0f172a",
+            },
+            muted: {
+              DEFAULT: "#f8fafc",
+              foreground: "#64748b",
+            },
+            accent: {
+              DEFAULT: "#f1f5f9",
+              foreground: "#0f172a",
+            },
+          },
+          fontFamily: {
+            sans: ["var(--font-sans)"],
+          },
+          fontSize: {
+            "2xs": ["0.625rem", { lineHeight: "0.875rem" }], // 10px — replaces ad hoc text-[10px]/text-[11px]
+          },
+        },
+      },
+    };
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>

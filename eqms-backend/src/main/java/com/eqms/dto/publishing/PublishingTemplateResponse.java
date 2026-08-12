@@ -1,0 +1,52 @@
+package com.eqms.dto.publishing;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+public record PublishingTemplateResponse(
+        UUID id,
+        String templateName,
+        String documentType,
+        Integer versionNumber,
+        String status,
+        String description,
+        String coverTemplatePath,
+        String bodyTemplatePath,
+        String headerTemplatePath,
+        String footerTemplatePath,
+        String logoTemplatePath,
+        String coverFileName,
+        String bodyFileName,
+        String headerFileName,
+        String footerFileName,
+        String logoFileName,
+        String publishingMode,
+        String coverOrientation,
+        String bodyOrientation,
+        boolean enableHeader,
+        boolean enableFooter,
+        boolean showLogo,
+        boolean showQrCode,
+        boolean showBarcode,
+        boolean showConfidentiality,
+        boolean showElectronicSignatureInformation,
+        String watermarkMode,
+        Integer coverSourcePageFrom,
+        Integer coverSourcePageTo,
+        Integer bodySourcePageFrom,
+        Integer bodySourcePageTo,
+        Integer headerPageFrom,
+        Integer headerPageTo,
+        Integer footerPageFrom,
+        Integer footerPageTo,
+        Integer watermarkPageFrom,
+        Integer watermarkPageTo,
+        Instant createdAt,
+        Instant updatedAt,
+        String createdBy,
+        String updatedBy,
+        Instant publishedAt,
+        String publishedBy,
+        List<PublishingTemplateComponentResponse> components
+) {}

@@ -1,0 +1,36 @@
+package com.eqms.dto.document;
+
+public record RevisionListItemResponse(
+        String id,
+        String documentId,
+        String documentNumber,
+        String documentTitle,
+        String displayLabel,
+        String revisionNumber,
+        String created,
+        String openedBy,
+        String revisionName,
+        String state,
+        String status,
+        String statusCode,
+        StatusResponse statusInfo,
+        String author,
+        String effectiveDate,
+        String validUntil,
+        String documentName,
+        String type,
+        String department,
+        String businessUnit,
+        boolean hasRelatedDocuments,
+        boolean hasCorrelatedDocuments,
+        boolean isTemplate,
+        boolean canEditRevision,
+        boolean canReviewRevision,
+        boolean canApproveRevision,
+        boolean canCompleteTraining,
+        boolean canPublishRevision,
+        boolean canSubmitForReview,
+        java.util.List<DocumentRelationResponse> relatedDocuments,
+        java.util.List<DocumentRelationResponse> correlatedDocuments
+) {
+}

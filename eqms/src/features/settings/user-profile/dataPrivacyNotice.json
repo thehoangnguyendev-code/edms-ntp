@@ -1,0 +1,386 @@
+{
+  "title": "Data Privacy Notice",
+  "intro": {
+    "title": "Your privacy in the Ngoc Thien EQMS",
+    "description": "Last updated: 20 July 2026. This Data Privacy Notice explains, in a transparent and detailed manner, how personal data may be collected, generated, recorded, organized, stored, accessed, used, disclosed, transferred, retained, archived, corrected, restricted, deleted, or otherwise processed when an individual visits, accesses, administers, supports, or uses the electronic quality management system developed by Nguyễn Thế Hoàng (Nguyen The Hoang) for Công ty Cổ phần Thương mại và Dược phẩm Ngọc Thiện (Ngoc Thien Pharmaceutical and Trading Joint Stock Company)."
+  },
+  "sections": [
+    {
+      "id": "summary",
+      "title": "Summary and Commitment to Privacy",
+      "icon": "shield",
+      "paragraphs": [
+        "Công ty Cổ phần Thương mại và Dược phẩm Ngọc Thiện (Ngoc Thien Pharmaceutical and Trading Joint Stock Company) (the \"Company\", \"Ngoc Thien\", \"we\", \"us\", or \"our\") takes the protection of personal data, confidentiality, data integrity, and regulated electronic records seriously. This Data Privacy Notice (the \"Notice\") describes who we are, the categories of personal data that may be processed, the sources from which data may be obtained, the purposes and legal grounds for processing, the persons or organizations with whom data may be shared, the safeguards applied to personal data, the circumstances in which data may be transferred outside Vietnam, the period for which data may be retained, and the rights and responsibilities of data subjects.",
+        "The electronic quality management system referred to in this Notice (the \"EQMS\" or the \"System\") was designed and developed by Nguyễn Thế Hoàng (Nguyen The Hoang) for the Company. The System supports regulated quality and compliance activities, including document control, revision control, controlled copies, training, quality events, deviations, corrective and preventive actions, change control, risk management, electronic signatures, audit trails, notifications, access control, security administration, reporting, archival, and other functions that may be enabled by the Company from time to time.",
+        "For most processing carried out within the Company's operational environment, the Company determines the purposes and means of processing and therefore acts as the personal data controller, personal data controller and processor, or another legally recognized responsible party, depending on the applicable circumstances. Nguyen The Hoang and other authorized system developers, administrators, technical personnel, contractors, or service providers may process personal data only within the scope of their assigned duties, documented instructions, access rights, confidentiality obligations, and applicable law.",
+        "This Notice is intended to be comprehensive, but it does not remove the obligation to provide a more specific notice, obtain consent, conduct an impact assessment, execute a data processing agreement, complete a cross-border transfer dossier, or satisfy another procedural requirement where such action is required for a particular processing activity. Where a specific consent form, employment notice, clinical notice, supplier notice, visitor notice, investigation notice, or contractual privacy clause applies, that more specific document should be read together with this Notice.",
+        "We do not sell personal data. We do not use personal data processed through the internal EQMS for unrelated behavioural advertising. We do not intentionally collect personal data from children through the EQMS, and the System is not designed or offered for use by persons under 18 years of age unless a specific lawful business process expressly requires it and appropriate legal safeguards have been approved in advance."
+      ],
+      "notice": {
+        "title": "Important legal-review statement",
+        "description": "This Notice is a detailed operational privacy notice and is not a substitute for formal advice from qualified Vietnamese legal counsel. Before external publication or formal approval, the Company should confirm all statutory citations, regulatory status, contact details, retention periods, data-transfer arrangements, and descriptions of actual system functionality."
+      }
+    },
+    {
+      "id": "who-we-are",
+      "title": "Who We Are",
+      "icon": "file",
+      "paragraphs": [
+        "Công ty Cổ phần Thương mại và Dược phẩm Ngọc Thiện (Ngoc Thien Pharmaceutical and Trading Joint Stock Company) is a pharmaceutical and trading organization operating in a regulated environment. The Company uses the EQMS to establish accountability, maintain evidence of quality decisions, preserve the integrity of controlled records, assign responsibilities, demonstrate personnel qualification, and support compliance with applicable pharmaceutical, data-integrity, cybersecurity, employment, contractual, and personal-data-protection requirements.",
+        "The EQMS was developed by Nguyễn Thế Hoàng (Nguyen The Hoang) for the Company's authorized business use. References in this Notice to the developer do not mean that the developer independently owns, sells, or determines the purposes of the Company's employee, contractor, supplier, customer, visitor, or quality-system data. Unless a different written agreement or processing arrangement applies, personal data processed in the Company's production environment is controlled by the Company and may be accessed by the developer only when access is authorized and necessary for approved development, maintenance, validation, troubleshooting, security, support, migration, backup, restoration, or incident-response activities.",
+        "The Company may designate one or more functions to coordinate privacy compliance, such as Legal, Compliance, Quality Assurance, Human Resources, Information Technology, Information Security, a Data Protection Officer, or another authorized representative. The identity and contact information of the responsible function should be maintained in an approved internal directory or inserted into the contact section of this Notice before publication."
+      ]
+    },
+    {
+      "id": "scope",
+      "title": "Scope of This Notice",
+      "icon": "file",
+      "paragraphs": [
+        "This Notice applies to personal data processed by the Company in connection with the EQMS and related support activities when we act as a party responsible for determining why and how the data is processed. Depending on the context, it may apply to employees, temporary personnel, interns, consultants, contractors, authorized representatives of suppliers or customers, auditors, inspectors, applicants, visitors, system administrators, external recipients of controlled copies, and other individuals whose information is included in an authorized quality or compliance record.",
+        "This Notice may apply when you access or use the EQMS, receive an account, authenticate to the System, use single sign-on or multifactor authentication, submit or review a controlled document, participate in a workflow, complete training, sign an electronic record, receive a notification, request support, participate in testing or validation, receive a controlled copy, respond to an investigation, attend a Company training session, or communicate with an authorized Company representative about the System.",
+        "This Notice does not automatically govern a third-party website, application, identity provider, cloud service, email platform, office-editing service, social network, or other external service merely because the EQMS contains a link to it or integrates with it. The privacy practices of those third parties are governed by their own notices and contractual obligations. The Company is not responsible for an external service's independent processing except to the extent required by applicable law or agreed in a written contract.",
+        "Where the Company processes data solely on behalf of another organization under a written data-processing arrangement, the other organization may be the data controller and its privacy notice may apply. In that situation, the Company will process personal data according to documented instructions, applicable contractual terms, and legal requirements, and requests from data subjects may need to be directed to the relevant controller."
+      ],
+      "bullets": [
+        "Use of the EQMS web application, mobile-compatible interface, application programming interfaces, administrative consoles, reporting tools, and approved integrations.",
+        "Technical support, user assistance, troubleshooting, validation, qualification, configuration, change management, backup, restoration, disaster recovery, and cybersecurity activities.",
+        "Quality-system workflows, including document authoring, review, approval, training, publication, obsolescence, controlled-copy distribution, deviation, CAPA, change control, risk assessment, audit management, supplier quality, and related activities.",
+        "Communications sent through or in connection with the System, including email, in-application messages, reminders, escalations, alerts, service announcements, and incident notifications.",
+        "Authorized demonstrations, user-acceptance testing, training environments, test environments, or validation environments where personal data is used only when necessary and subject to appropriate controls."
+      ]
+    },
+    {
+      "id": "legal-framework",
+      "title": "Vietnamese Legal Framework and Processing Principles",
+      "icon": "scale",
+      "paragraphs": [
+        "The Company intends to process personal data in accordance with the laws of Vietnam that apply to personal data, privacy, cybersecurity, electronic transactions, employment, pharmaceutical quality records, and regulated electronic systems. The applicable framework may include the Law on Personal Data Protection effective from 01 January 2026, Decree No. 13/2023/ND-CP on personal data protection to the extent it remains applicable, transitional, supplementary, or otherwise relevant, and other implementing legislation, sector-specific rules, official guidance, and legally binding orders that apply to the Company's processing activities.",
+        "The Company has also requested that this Notice refer to Decree No. 356/2025/ND-CP as an instrument governing or guiding personal-data processing in Vietnam. Because the exact title, official text, effective status, and interaction of that cited instrument with Decree No. 13/2023/ND-CP could not be independently verified during preparation of this version, Legal or Compliance must verify the citation against an official Vietnamese legal database before the Notice is formally issued. Until that verification is completed, this reference must not be interpreted as a definitive legal conclusion.",
+        "As a general rule, every activity involving the collection, recording, analysis, storage, use, disclosure, sharing, transfer, combination, access, correction, restriction, deletion, destruction, or other handling of personal data must have a defined and lawful purpose, be limited to data reasonably necessary for that purpose, be communicated transparently to the data subject where required, and be protected by appropriate organizational and technical safeguards.",
+        "Consent will be obtained where consent is the required legal basis. Consent must be voluntary, specific, informed, clear, capable of being demonstrated, and presented in a form that allows the data subject to understand the types of personal data involved, the purposes of processing, the relevant organizations or individuals, and the data subject's rights and obligations. Silence, inactivity, pre-selected options, or failure to object will not be treated as consent where affirmative consent is required.",
+        "Consent is not the only possible lawful ground for processing. Depending on applicable law and the circumstances, processing may also be necessary to perform an employment, service, commercial, or other contract; comply with a legal obligation; protect life, health, or legitimate rights in an emergency; establish, exercise, or defend legal claims; maintain security; perform a task authorized by law; meet pharmaceutical quality and record-retention obligations; or pursue another lawful purpose recognized by applicable legislation.",
+        "Where personal data is transferred outside Vietnam, disclosed to a foreign recipient, stored on infrastructure located outside Vietnam, remotely accessed from another country, or otherwise made available across national borders, the Company will evaluate the transfer and implement the transparency, consent, contractual, impact-assessment, filing, recordkeeping, security, and other safeguards required by applicable Vietnamese law."
+      ],
+      "bullets": [
+        "Lawfulness, fairness, and transparency: processing must be based on an applicable legal ground and described honestly and understandably.",
+        "Purpose limitation: personal data must be processed only for specified, explicit, and lawful purposes, unless a compatible or separately lawful purpose is established.",
+        "Data minimization: only data relevant and reasonably necessary for the approved purpose should be collected or used.",
+        "Accuracy: reasonable steps should be taken to keep personal data accurate, complete, and appropriately updated.",
+        "Storage limitation: identifiable personal data should not be retained longer than necessary, except where law, GxP, audit, investigation, litigation-hold, security, or contractual requirements justify retention.",
+        "Integrity and confidentiality: personal data must be protected against unauthorized or unlawful processing and against accidental loss, destruction, alteration, or damage.",
+        "Accountability: the Company must be able to demonstrate that appropriate governance, procedures, assessments, records, access controls, and security measures are in place."
+      ],
+      "notice": {
+        "title": "Legal citation must be confirmed",
+        "description": "Before this Notice becomes effective, the Company should replace this verification statement with the confirmed official title, scope, date of promulgation, effective date, and status of Decree No. 356/2025/ND-CP, or remove the citation if it is not an applicable legal instrument."
+      }
+    },
+    {
+      "id": "processing-activities",
+      "title": "Processing Activities Covered",
+      "icon": "database",
+      "paragraphs": [
+        "Personal data may be processed throughout the lifecycle of an EQMS account and throughout the lifecycle of the records in which an individual participates. Processing may begin before an account is created, continue during active employment or engagement, and continue after access is disabled where retention is required for traceability, legal compliance, quality assurance, security, audit readiness, or the preservation of regulated evidence.",
+        "The precise processing activities depend on the modules configured by the Company, the individual's role, the workflows in which the individual participates, the records assigned to the individual, the permissions granted, and the infrastructure and third-party services used by the Company. Not every category described in this Notice will apply to every user."
+      ],
+      "bullets": [
+        "Creating, provisioning, updating, suspending, reactivating, and terminating user accounts.",
+        "Authenticating identity, validating passwords or tokens, operating single sign-on, applying multifactor authentication, and managing sessions or trusted devices.",
+        "Assigning roles, groups, departments, business units, document responsibilities, workflow participation, training curricula, and security permissions.",
+        "Recording authorship, co-authorship, review, approval, rejection, electronic signatures, acknowledgements, comments, decisions, completion dates, and workflow timestamps.",
+        "Managing document revisions, controlled templates, cover pages, headers, footers, watermarks, publishing activities, controlled copies, recalls, expiry, obsolescence, and archival.",
+        "Managing quality events such as deviations, CAPA, nonconformances, complaints, changes, risk assessments, audits, inspections, investigations, effectiveness checks, and supplier quality activities.",
+        "Delivering training, recording assignments and completions, calculating due dates, issuing reminders and escalations, evaluating qualification status, and preserving training evidence.",
+        "Generating reports, dashboards, metrics, activity summaries, audit evidence, inspection packages, and exports authorized by the Company.",
+        "Monitoring availability, performance, configuration, capacity, errors, logs, security events, unusual behaviour, and compliance with acceptable-use requirements.",
+        "Providing help desk, technical support, debugging, incident response, validation, migration, backup, restoration, disaster recovery, and continuity services."
+      ]
+    },
+    {
+      "id": "information-provided",
+      "title": "Personal Data You or an Authorized Person Provide",
+      "icon": "database",
+      "paragraphs": [
+        "You, your manager, Human Resources, Quality Assurance, Information Technology, a system administrator, a department administrator, a training coordinator, or another authorized person may provide personal data for the purpose of creating and administering your account, assigning work, documenting qualification, processing a quality event, responding to a support request, or maintaining a complete and accurate regulated record.",
+        "When a free-text field, comment box, attachment, investigation narrative, training response, CAPA record, deviation description, or other open-entry field is available, users must avoid entering personal data that is excessive, irrelevant, unlawfully obtained, discriminatory, defamatory, or unrelated to the approved business purpose. Sensitive personal data should be entered only when specifically required, authorized, and appropriately protected."
+      ],
+      "bullets": [
+        "Identity data, such as full name, preferred name, signature name, employee or contractor identifier, username, photograph, initials, and other identifiers required to distinguish one user from another.",
+        "Professional and organizational data, such as job title, role, department, business unit, location, supervisor, employment category, qualifications, responsibilities, group memberships, and authorization level.",
+        "Business contact data, such as work email address, work telephone number, office location, business address, and approved emergency or support contact details.",
+        "Account data, such as username, password-related information, recovery information, single-sign-on identifier, multifactor-authentication enrolment, security questions where enabled, and account preferences.",
+        "Workflow and quality data, such as document assignments, review comments, approval decisions, rejection reasons, quality-event narratives, investigation findings, CAPA ownership, risk assessments, effectiveness-check results, and controlled-copy receipt details.",
+        "Training and qualification data, such as assigned courses, training curricula, due dates, attendance, scores, attempts, completion records, acknowledgements, certifications, competencies, and qualification status.",
+        "Electronic-signature data, such as signature meaning, signature date and time, associated record, authentication evidence, reason for signing, and confirmation that the signature was applied by the named individual.",
+        "Support and communication data, such as the content of help requests, emails, chats, meeting notes, screenshots, attachments, technical descriptions, and responses provided during troubleshooting or user support.",
+        "Visitor, supplier, customer, auditor, or external-recipient data where relevant to an authorized quality process, such as contact details, organization, purpose of access, controlled-copy delivery details, confidentiality commitments, and communication history.",
+        "Any other personal data that an individual voluntarily provides or that an authorized representative lawfully enters into the System for a documented and approved purpose."
+      ]
+    },
+    {
+      "id": "automatic-information",
+      "title": "Information Collected or Generated Automatically",
+      "icon": "database",
+      "paragraphs": [
+        "The EQMS and its supporting infrastructure may automatically create or collect technical, security, and usage data when a person accesses the System, views a record, downloads or previews an authorized file, applies an electronic signature, changes a setting, completes a workflow step, interacts with an integration, or otherwise uses the service. Some of this information may identify a person directly or become identifiable when combined with account or employment information.",
+        "Automatically generated records are important for cybersecurity, operational support, data integrity, auditability, traceability, validation, incident investigation, and regulated compliance. Because audit trails and security logs may be legally or operationally required, users may not be able to opt out of all such collection while continuing to use the System."
+      ],
+      "bullets": [
+        "Date and time of access, logout, authentication, password change, session expiry, electronic signature, record creation, viewing, downloading, editing, routing, review, approval, rejection, publication, recall, deletion attempt, or administrative action.",
+        "Internet Protocol address, proxy information, device identifier, browser type and version, operating system, screen or interface characteristics, language, time zone, and network information.",
+        "Session identifiers, security tokens, single-sign-on assertions, multifactor-authentication events, failed sign-in attempts, lockout events, trusted-device status, and session-risk indicators.",
+        "Pages, records, files, features, links, modules, and reports accessed; search terms; workflow actions; export requests; time spent; and other interaction or usage information.",
+        "Audit-trail information, including the identity of the actor, action performed, record or object affected, previous value, new value, date and time, reason for change where required, and technical correlation identifiers.",
+        "Application, server, database, storage, email, integration, identity-provider, backup, and security logs used to operate, protect, troubleshoot, validate, and monitor the System.",
+        "Error messages, diagnostic details, performance information, configuration data, crash reports, support telemetry, capacity information, and information about unavailable or degraded services.",
+        "Approximate location inferred from network information where necessary to detect suspicious access, enforce security restrictions, or investigate an incident; the EQMS is not intended to continuously track precise personal location unless expressly configured and lawfully approved."
+      ]
+    },
+    {
+      "id": "other-sources",
+      "title": "Information Obtained from Other Sources",
+      "icon": "users",
+      "paragraphs": [
+        "The Company may receive personal data from internal departments, affiliated organizations, authorized customers or suppliers, identity providers, Microsoft 365 or similar collaboration services, training platforms, human-resources systems, physical-access systems, validation tools, email services, or other approved systems where integration or synchronization is necessary for a documented purpose.",
+        "Information received from another source will be used only in a manner consistent with the purpose for which it was obtained, the notices provided to the data subject, the Company's agreements with the relevant source, and applicable law. The Company should assess the reliability, accuracy, and legal basis of third-party data before relying on it for a significant decision."
+      ],
+      "bullets": [
+        "Human Resources or workforce-management systems for identity, department, job title, manager, start date, end date, employment status, and training eligibility.",
+        "Identity and access-management systems for single sign-on, directory groups, authentication status, user identifiers, and security attributes.",
+        "Managers, process owners, Quality Assurance, Document Control, training coordinators, system owners, and department administrators for assignments, responsibilities, qualifications, and access approvals.",
+        "Customers, suppliers, contractors, external auditors, inspectors, and business partners for authorized contacts, quality records, investigations, complaints, controlled copies, or contractual activities.",
+        "Approved technical services for email delivery, file storage, backup, monitoring, security, analytics, office-document editing, or support, subject to applicable agreements and safeguards.",
+        "Public or official sources where use is lawful and necessary, such as professional registers, government decisions, sanctions lists, or regulatory publications relevant to a compliance obligation."
+      ]
+    },
+    {
+      "id": "sensitive-data",
+      "title": "Sensitive Personal Data and Special Handling",
+      "icon": "lock",
+      "paragraphs": [
+        "Certain personal data may be considered sensitive under Vietnamese law or under the Company's internal classification standards. Examples may include health information, biometric information, financial information, precise location, private-life information, authentication credentials, criminal or disciplinary information, and data revealing characteristics that could create a heightened risk to an individual if misused.",
+        "The EQMS is not intended to function as a general repository for sensitive personal data. Sensitive data may be processed only where it is necessary for an approved quality, safety, employment, legal, security, or compliance purpose; where an appropriate legal basis exists; where required notices or consent have been provided; and where enhanced safeguards, restricted access, confidentiality, and retention controls are applied.",
+        "Users must not upload medical records, identification documents, bank information, biometric templates, personal correspondence, or other high-risk data merely for convenience. Where a quality event concerns an individual's health, injury, performance, alleged misconduct, or other sensitive matter, the record should contain only information necessary to investigate and document the event, and access should be limited to persons with a legitimate need to know."
+      ],
+      "notice": {
+        "title": "Do not enter unnecessary sensitive data",
+        "description": "Open-text fields and attachments can create privacy risk. Users should redact irrelevant personal details and use restricted modules or approved external repositories where the Company has designated a more appropriate location for sensitive information."
+      }
+    },
+    {
+      "id": "purposes",
+      "title": "How and Why We Use Personal Data",
+      "icon": "scale",
+      "paragraphs": [
+        "The Company uses personal data only for legitimate, documented, and authorized purposes connected with employment or engagement, pharmaceutical quality management, regulatory compliance, information security, system administration, support, legal obligations, and the protection of the Company and affected individuals. Personal data will not be repurposed in a manner that is incompatible with the original purpose unless an additional lawful basis and appropriate transparency measures are established.",
+        "Where processing is necessary to operate a regulated quality system, certain data is mandatory. Refusal to provide required identity, role, training, signature, security, or workflow information may prevent the Company from creating an account, assigning regulated work, accepting an electronic signature, demonstrating qualification, or allowing continued access to the System."
+      ],
+      "bullets": [
+        "Provide, operate, maintain, configure, validate, qualify, support, and improve the EQMS and its approved integrations.",
+        "Create and administer accounts, verify identity, apply role-based access, enforce segregation of duties, and prevent unauthorized use.",
+        "Route work to authors, reviewers, approvers, trainers, trainees, investigators, CAPA owners, process owners, Quality Assurance, Document Control, and other authorized participants.",
+        "Record legally and operationally significant actions, including electronic signatures, decisions, acknowledgements, comments, approvals, rejections, changes, and completion of assigned tasks.",
+        "Maintain controlled-document histories, revision histories, audit trails, training records, quality-event evidence, controlled-copy records, and other information required for traceability and inspection readiness.",
+        "Send transactional communications, including assignments, reminders, overdue notices, escalations, security alerts, password-reset messages, approval requests, publication notices, controlled-copy notifications, and service announcements.",
+        "Monitor system performance, diagnose errors, manage capacity, prevent data loss, restore service, verify backups, and support business continuity and disaster recovery.",
+        "Protect the confidentiality, integrity, availability, authenticity, and accountability of the System and its records; detect suspicious activity; investigate incidents; enforce acceptable-use rules; and prevent fraud or abuse.",
+        "Conduct internal audits, external audits, regulatory inspections, management review, quality metrics, trend analysis, root-cause analysis, effectiveness checks, and continuous-improvement activities.",
+        "Respond to lawful requests, court orders, government or regulatory inquiries, employment matters, legal claims, contractual obligations, insurance requirements, or investigations.",
+        "Establish, exercise, or defend the Company's rights and protect the rights, safety, property, systems, and legitimate interests of the Company, its personnel, customers, suppliers, and other affected persons.",
+        "Create aggregated, de-identified, anonymized, or statistical information for system administration, capacity planning, quality improvement, and management reporting where individuals are not reasonably identifiable.",
+        "Evaluate and improve user experience, workflows, forms, notifications, reports, and support processes, provided that monitoring is proportionate and consistent with applicable law and Company policy."
+      ]
+    },
+    {
+      "id": "automated-processing-ai",
+      "title": "Automated Processing, Analytics, and Artificial Intelligence",
+      "icon": "scale",
+      "paragraphs": [
+        "The EQMS may use automated rules to calculate due dates, determine workflow routing, identify overdue training, generate notifications, apply document status transitions, detect duplicate or inconsistent data, enforce validation rules, display dashboards, or identify records that meet configured criteria. These rules support administration and compliance but do not replace the responsibility of authorized personnel to review significant quality or employment decisions.",
+        "The Company may introduce artificial-intelligence or advanced-analytics features for functions such as document search, summarization, classification, metadata extraction, identifying documents approaching expiry, detecting potential inconsistencies, suggesting related records, drafting non-binding text, or assisting with trend analysis. Any such feature must be assessed, authorized, validated where required, and governed by documented controls before production use.",
+        "AI-generated output may be incomplete, inaccurate, outdated, biased, or unsuitable for a regulated decision. Users must independently verify AI-assisted output against authoritative records, approved procedures, applicable regulations, and professional judgment. AI output must not be treated as a final approval, electronic signature, root cause, compliance conclusion, release decision, or legal determination unless an authorized human has reviewed and accepted it through the approved workflow.",
+        "Personal data should not be submitted to an external or public AI service unless the Company has approved the service, assessed the data flow, established a lawful basis, configured appropriate confidentiality and retention protections, and completed any required cross-border transfer or vendor due-diligence process."
+      ],
+      "notice": {
+        "title": "No solely automated significant decisions",
+        "description": "Unless specifically disclosed and lawfully approved, the Company does not use the EQMS to make decisions producing legal or similarly significant effects about an individual solely through automated processing without meaningful human involvement."
+      }
+    },
+    {
+      "id": "sharing",
+      "title": "How We Share Personal Data",
+      "icon": "users",
+      "paragraphs": [
+        "Personal data may be disclosed internally or externally only where the recipient has an authorized purpose, a legitimate need to know, and an appropriate legal, contractual, employment, quality, security, or regulatory basis. Access within the EQMS is generally controlled through user accounts, roles, groups, permissions, workflow participation, department or business-unit scope, record ownership, document responsibility, and administrative controls.",
+        "The fact that a person works for the Company does not automatically entitle that person to view every record. Quality events, investigations, audit evidence, security logs, disciplinary matters, supplier information, controlled documents, and sensitive personal data should be restricted according to least-privilege and need-to-know principles.",
+        "We do not sell personal data. We do not disclose EQMS personal data to data brokers or use it for unrelated targeted advertising. Where a third party processes personal data for the Company, the Company should conduct appropriate due diligence and establish written obligations concerning confidentiality, security, permitted purposes, assistance with data-subject requests, incident notification, deletion or return of data, audit rights, subcontractors, and cross-border transfers."
+      ],
+      "bullets": [
+        "Authorized Company personnel, managers, process owners, Quality Assurance, Document Control, Human Resources, Legal, Compliance, Information Technology, Information Security, Internal Audit, and senior management where access is necessary for their responsibilities.",
+        "System developers and administrators, including Nguyễn Thế Hoàng (Nguyen The Hoang), only where access is authorized and necessary for development, maintenance, support, validation, migration, troubleshooting, security, backup, restoration, or incident response.",
+        "Cloud hosting, data-centre, storage, backup, email, identity, collaboration, office-editing, monitoring, cybersecurity, support, and other service providers acting under contract and documented instructions.",
+        "Professional advisers, auditors, consultants, certification bodies, insurers, external laboratories, contractors, or legal representatives where disclosure is necessary and confidentiality obligations apply.",
+        "Customers, suppliers, business partners, controlled-copy recipients, or other external parties where information is necessary to perform an approved quality, contractual, distribution, complaint, audit, or investigation process.",
+        "Regulators, inspectors, law-enforcement bodies, courts, government authorities, or other competent bodies where disclosure is required or permitted by law, necessary to protect rights or safety, or required for a regulatory inspection or investigation.",
+        "A successor, purchaser, investor, financing party, or adviser in connection with a proposed or completed merger, restructuring, financing, transfer of assets, change of control, or similar transaction, subject to appropriate confidentiality and lawful-use restrictions.",
+        "Any other recipient specifically identified to the data subject where valid consent or another lawful basis supports the disclosure."
+      ]
+    },
+    {
+      "id": "cross-border",
+      "title": "Cross-Border Data Transfers and Remote Access",
+      "icon": "users",
+      "paragraphs": [
+        "A cross-border transfer may occur when personal data is stored on infrastructure outside Vietnam, transmitted to a foreign service provider, accessed remotely by personnel located in another country, included in an overseas support ticket, backed up to a foreign region, or otherwise made available to an organization or individual outside Vietnam.",
+        "Before an applicable cross-border transfer takes place, the Company should identify the categories of data, purposes, destination countries, recipients, systems, retention periods, access arrangements, risks, and security safeguards. The Company should also determine whether consent, notification, contractual terms, a transfer-impact assessment, a personal-data-processing impact assessment, a filing or dossier, regulatory notification, localization measure, or other condition is required.",
+        "Where a foreign recipient or service provider is used, the Company should require the recipient to process data only for authorized purposes; maintain confidentiality; implement appropriate security; restrict onward transfers; notify the Company of incidents; support data-subject requests; delete or return data at the end of the service; and permit appropriate verification of compliance.",
+        "The Company may suspend a transfer, restrict remote access, require data to be stored in Vietnam, change service providers, apply additional encryption, or implement other supplementary measures where a transfer presents an unacceptable risk or where required by law or a competent authority."
+      ],
+      "notice": {
+        "title": "Transparency for international transfers",
+        "description": "Where required by Vietnamese law, the Company will inform data subjects about the foreign recipient, categories of transferred data, purposes, transfer method, potential risks, and available rights, and will obtain consent or satisfy another lawful condition before the transfer."
+      }
+    },
+    {
+      "id": "security",
+      "title": "Security Measures",
+      "icon": "lock",
+      "paragraphs": [
+        "The Company applies administrative, physical, and technical safeguards intended to protect personal data and regulated records against accidental or unlawful destruction, loss, alteration, unauthorized disclosure, unauthorized access, misuse, and other security threats. Safeguards are selected according to the nature, volume, sensitivity, context, purpose, and risk of the processing and may be updated as technology, threats, business requirements, and legal obligations change.",
+        "No information system, network, transmission method, storage platform, or security measure can provide an absolute guarantee of security. Users also have responsibilities, including protecting credentials, using only approved devices and networks, reporting suspicious activity, avoiding unauthorized sharing, and following Company procedures."
+      ],
+      "bullets": [
+        "Role-based access control, least-privilege configuration, segregation of duties, workflow-based authorization, record-level restrictions, and periodic access review.",
+        "Unique user accounts, password controls, multifactor authentication where enabled, single sign-on controls, session timeout, account lockout, device or network restrictions, and controlled account recovery.",
+        "Audit trails, event logs, electronic-signature controls, timestamping, change histories, before-and-after values, reason-for-change fields, and traceability of administrative actions.",
+        "Encryption in transit, secure network protocols, encryption at rest where appropriate, protected backup, secure key or secret management, and restricted database or storage access.",
+        "Secure development, code review, vulnerability management, dependency management, patching, change control, configuration control, testing, validation, and controlled deployment.",
+        "Firewalls, endpoint protection, anti-malware, monitoring, intrusion detection, anomaly detection, rate limiting, secure logging, alerting, and incident-response procedures where applicable.",
+        "Backup, restoration testing, disaster recovery, business continuity, redundancy, integrity verification, and retention of recoverable copies according to approved procedures.",
+        "Physical security for servers, network equipment, backup media, offices, and other facilities containing or providing access to personal data.",
+        "Confidentiality agreements, privacy and security training, documented procedures, vendor due diligence, contractual controls, disciplinary measures, and periodic audits.",
+        "Data minimization, masking, pseudonymization, anonymization, redaction, restricted exports, watermarks, controlled copies, and other protective measures where suitable."
+      ],
+      "notice": {
+        "title": "Your security responsibilities",
+        "description": "Never share your password or authentication token, approve an electronic signature for another person, leave an active session unattended, export data without authorization, bypass access controls, or upload confidential records to an unapproved service. Suspected compromise must be reported immediately through the Company's approved incident channel."
+      }
+    },
+    {
+      "id": "incident-response",
+      "title": "Personal Data Incidents and Breach Response",
+      "icon": "lock",
+      "paragraphs": [
+        "A personal-data incident may include unauthorized access, disclosure, alteration, loss, destruction, encryption by malware, accidental transmission to the wrong recipient, misuse of credentials, improper export, lost media, insecure disposal, or another event affecting the confidentiality, integrity, availability, or lawful processing of personal data.",
+        "The Company will assess reported or detected incidents according to its incident-response, data-integrity, cybersecurity, deviation, CAPA, and legal procedures. The assessment may consider the data involved, number and characteristics of affected individuals, sensitivity, volume, likelihood of misuse, potential harm, containment status, legal obligations, and whether notification to authorities, customers, business partners, or affected individuals is required.",
+        "Where notification is legally required, the Company will aim to provide accurate information within the applicable period, including the nature of the incident, categories of affected data, likely consequences, measures taken or proposed, and contact details for further information. Initial notifications may be supplemented as the investigation develops.",
+        "Employees and authorized users must immediately report suspected incidents, unusual access, misdirected communications, lost devices, exposed passwords, unauthorized downloads, unexpected data changes, malware warnings, or attempts to bypass controls. A user must not conceal, independently investigate beyond authorization, or delete evidence of a suspected incident."
+      ]
+    },
+    {
+      "id": "retention",
+      "title": "Retention, Archival, and Deletion",
+      "icon": "database",
+      "paragraphs": [
+        "The Company retains personal data for no longer than necessary for the purposes described in this Notice, except where a longer period is required or justified by pharmaceutical quality requirements, GxP record-retention rules, employment law, tax or accounting obligations, contractual commitments, audit requirements, cybersecurity needs, limitation periods, litigation holds, regulatory investigations, product or patient safety, business continuity, or another lawful purpose.",
+        "Retention periods may differ by record category. Account profile data may be retained for the period of active access and an appropriate post-termination period. Audit trails, electronic signatures, document histories, training records, quality-event records, controlled-copy histories, and validation evidence may need to be retained for the same period as the associated regulated record or for another period defined in an approved retention schedule.",
+        "Disabling or deleting a user account does not necessarily delete the person's historical authorship, review, approval, signature, assignment, training, or audit-trail records. Removing those records could compromise data integrity, legal evidence, traceability, or regulatory compliance. Where appropriate, the account may be deactivated while historical actions remain preserved and linked to the individual who performed them.",
+        "When retention is no longer required, the Company may securely delete, destroy, anonymize, or irreversibly de-identify data according to approved procedures. Deletion from a live system may not immediately remove data from protected backups; backup copies may remain until the backup cycle expires, provided they are isolated, protected, and not restored except for legitimate continuity or recovery purposes."
+      ],
+      "notice": {
+        "title": "GMP and data-integrity limitation",
+        "description": "A request to erase or alter personal data may be restricted where the information forms part of an audit trail, electronic signature, controlled document, training record, quality investigation, CAPA, regulatory submission, inspection record, or other evidence that the Company is required to preserve. The Company should explain the applicable limitation and may restrict active use while retaining the record."
+      }
+    },
+    {
+      "id": "rights",
+      "title": "Rights of Data Subjects",
+      "icon": "shield",
+      "paragraphs": [
+        "Subject to applicable Vietnamese law, the role of the Company in the relevant processing activity, identity verification, protection of other persons, and lawful limitations, a data subject may have rights concerning personal data processed by or on behalf of the Company. The availability, scope, response period, and exceptions applicable to each right depend on the legal basis and context of the processing.",
+        "The Company will not discriminate or retaliate against an individual for exercising a lawful privacy right. However, the exercise of a right does not exempt a user from legitimate employment, security, quality, legal, or contractual obligations, and the Company may continue processing where another lawful ground applies.",
+        "A request should describe the right being exercised, the relevant system or record, the approximate date range, and sufficient information to locate the data. The Company may ask for additional information where necessary to verify identity, prevent unauthorized disclosure, clarify the request, protect another person's rights, or identify the relevant controller."
+      ],
+      "bullets": [
+        "Right to be informed about the processing, including the categories of data, purposes, recipients, methods, retention, risks, and rights where required.",
+        "Right to give, refuse, or withdraw consent where processing relies on consent, without affecting the lawfulness of processing completed before withdrawal.",
+        "Right to access or obtain information about personal data processed about you, subject to lawful limitations and protection of confidential or third-party information.",
+        "Right to request correction or completion of inaccurate or incomplete personal data.",
+        "Right to request deletion or destruction where the legal conditions are met and no overriding retention obligation applies.",
+        "Right to request restriction, suspension, or cessation of certain processing where recognized by law.",
+        "Right to object to processing in circumstances recognized by applicable law.",
+        "Right to request a copy, transfer, or provision of personal data in an appropriate format where a portability or data-provision right applies.",
+        "Right to complain, report a suspected violation, seek compensation where legally available, or contact a competent authority.",
+        "Right to request information about automated processing and to seek human review where a significant decision is made through automated means and applicable law provides such protection."
+      ],
+      "notice": {
+        "title": "Identity verification and record protection",
+        "description": "To protect personal data and regulated records, the Company may verify the requester's identity, authority, and relationship to the relevant account. The Company may refuse, limit, or defer a request where permitted by law, including where the request would compromise another person's rights, reveal confidential information, interfere with an investigation, undermine system security, or require deletion of a record that must be retained."
+      }
+    },
+    {
+      "id": "user-obligations",
+      "title": "Responsibilities of Users and Data Subjects",
+      "icon": "shield",
+      "paragraphs": [
+        "Privacy and data protection depend on both Company controls and responsible user behaviour. Every authorized user must use the EQMS only for approved business purposes, follow Company policies and procedures, respect the confidentiality of records, and process personal data only within the user's assigned authority.",
+        "Users are responsible for providing accurate information, promptly correcting known inaccuracies through an approved process, and avoiding the inclusion of irrelevant personal data in comments, attachments, screenshots, exports, or free-text fields. Users must not access records out of curiosity, disclose information to unauthorized persons, use another person's account, or attempt to circumvent system controls.",
+        "Where a user receives a controlled copy or exported record containing personal data, the user must protect it against unauthorized use, copying, forwarding, printing, storage, or disposal and must comply with recall, expiry, return, destruction, and confidentiality requirements."
+      ],
+      "bullets": [
+        "Keep credentials confidential and use multifactor authentication or other required safeguards.",
+        "Verify recipients before sending personal data or controlled records.",
+        "Use approved storage, communication, and collaboration channels.",
+        "Report inaccurate data, excessive access, suspicious activity, or privacy incidents promptly.",
+        "Follow clean-desk, screen-lock, physical-security, printing, controlled-copy, and secure-disposal requirements.",
+        "Do not extract, scrape, mass-download, copy, or reuse personal data beyond the assigned business purpose.",
+        "Do not upload Company data to personal email, public cloud storage, public AI tools, messaging applications, or removable media unless expressly authorized.",
+        "Complete privacy, cybersecurity, data-integrity, electronic-signature, and system-use training assigned by the Company."
+      ]
+    },
+    {
+      "id": "children",
+      "title": "Children and Persons Under 18",
+      "icon": "shield",
+      "paragraphs": [
+        "The EQMS is designed for authorized professional and business use and is not directed to or marketed to children. The Company does not knowingly create ordinary EQMS user accounts for persons under 18 years of age unless a lawful and specifically approved employment, internship, training, visitor, clinical, safety, or other process requires limited processing and appropriate safeguards are in place.",
+        "Where the Company becomes aware that personal data of a child has been collected without an appropriate legal basis or required authorization, it will assess the circumstances and take reasonable steps to restrict, correct, delete, or otherwise lawfully handle the data."
+      ]
+    },
+    {
+      "id": "third-party-services",
+      "title": "Third-Party Services and External Links",
+      "icon": "users",
+      "paragraphs": [
+        "The EQMS may integrate with or link to services provided by third parties, such as identity providers, email platforms, Microsoft 365 or Word Online, cloud infrastructure, file storage, backup platforms, electronic-signature components, monitoring services, or support tools. The data exchanged with each service should be limited to what is necessary for the approved integration.",
+        "A third-party service may act as the Company's processor, an independent controller, or another legally recognized party depending on the service and contract. The Company should evaluate privacy, security, hosting location, subcontractors, retention, incident response, audit rights, and cross-border transfer implications before approving a service.",
+        "External links are provided for convenience and do not mean that the Company controls the linked service. Users should review the applicable third-party privacy notice and must not provide Company personal data to a third party unless the transfer is authorized."
+      ]
+    },
+    {
+      "id": "changes",
+      "title": "Changes to This Notice",
+      "icon": "file",
+      "paragraphs": [
+        "The Company may revise this Notice to reflect changes in law, regulatory guidance, Company structure, EQMS functionality, processing activities, data recipients, hosting arrangements, security practices, retention schedules, or contact information. The date shown in the introduction indicates when this version was last updated.",
+        "Where a change is material, the Company may provide additional notice through the EQMS, email, an internal announcement, training, an acknowledgement workflow, or another appropriate channel. Where the law requires new consent or another specific action, the Company will seek that action before the relevant processing begins or continues.",
+        "Previous versions may be retained for accountability, audit, legal, and change-control purposes. Continued use of the EQMS after a notice update does not by itself constitute consent where affirmative consent is legally required."
+      ]
+    },
+    {
+      "id": "contact",
+      "title": "How to Contact Us or Exercise a Privacy Right",
+      "icon": "shield",
+      "paragraphs": [
+        "Questions, concerns, incident reports, and requests concerning personal data should be submitted through the Company's approved privacy, Legal, Compliance, Human Resources, Quality Assurance, Information Technology, Information Security, or service-desk channel. Before this Notice is formally published, the Company should insert the responsible department, physical address, email address, telephone number, service-desk link, and escalation route.",
+        "When submitting a request, provide your full name, work contact information, relationship to the Company, the EQMS account or records involved, the right or concern being raised, and sufficient detail to allow the Company to understand and respond. Do not send passwords, authentication tokens, or unnecessary sensitive data in the request.",
+        "The Company may acknowledge the request, verify identity, clarify scope, consult the relevant record owner or legal function, and respond within the period required by applicable law. Where the Company cannot fully grant a request, it will explain the reason to the extent legally permitted and may identify an available complaint or escalation route.",
+        "For urgent security or personal-data incidents, use the Company's designated incident-reporting channel immediately rather than waiting for an ordinary privacy-request process."
+      ],
+      "notice": {
+        "title": "Publication checklist",
+        "description": "Insert verified contact details; confirm the legal identity and address of the Company; confirm the official Vietnamese legal citations; confirm actual vendors and international transfers; align retention language with approved SOPs; and obtain approval from Legal, Quality Assurance, Information Security, and the System Owner before release."
+      }
+    }
+  ]
+}

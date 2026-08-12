@@ -1,0 +1,17 @@
+.git
+.git_disabled
+.vscode
+.agent
+.agents
+dist
+dist.zip
+build
+coverage
+node_modules
+*.log
+.tmp-*
+*.tmp
+*.swp
+*.swo
+.env
+.env.*

@@ -1,0 +1,29 @@
+package com.eqms.dto.document;
+
+public record RevisionUpgradeImpactItemResponse(
+        String id,
+        String documentNumber,
+        String documentName,
+        String displayLabel,
+        String version,
+        String status,
+        StatusResponse statusInfo,
+        String type,
+        String businessUnit,
+        String department,
+        String author,
+        String openedBy,
+        String created,
+        String effectiveDate,
+        String validUntil,
+        String relationType,
+        boolean hasRelatedDocuments,
+        boolean hasCorrelatedDocuments,
+        boolean isTemplate,
+        String currentEffectiveRevisionId,
+        String currentEffectiveRevisionNumber,
+        String newDraftRevisionNumber,
+        String action,
+        boolean eligible,
+        String disabledReason
+) {}

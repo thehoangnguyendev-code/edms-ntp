@@ -1,0 +1,18 @@
+package com.eqms.enums;
+
+public enum ControlledCopyWorkflowAction {
+    REQUEST_COPY,
+    DISTRIBUTE_BATCH,
+    DISTRIBUTE_COPY,
+    VIEW_COPY,
+    PREVIEW_FILE,
+    DOWNLOAD_FILE,
+    PRINT_COPY,
+    RECALL_BATCH,
+    RECALL_COPY,
+    REPORT_LOST_DAMAGED,
+    REPLACE_LOST_DAMAGED,
+    UPLOAD_EVIDENCE,
+    EXPIRE_COPY,
+    CANCEL_REQUEST
+}

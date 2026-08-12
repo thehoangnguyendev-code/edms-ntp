@@ -1,0 +1,2 @@
+ALTER TABLE IF EXISTS app_users
+    ALTER COLUMN avatar TYPE TEXT;

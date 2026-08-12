@@ -1,0 +1,58 @@
+{
+  "name": "quality-management",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:docker": "vite --host 0.0.0.0 --port 3000 --strictPort --force",
+    "build": "vite build",
+    "postbuild": "node scripts/zip-dist.js",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lexical/code": "^0.42.0",
+    "@lexical/html": "^0.42.0",
+    "@lexical/link": "^0.42.0",
+    "@lexical/list": "^0.42.0",
+    "@lexical/markdown": "^0.42.0",
+    "@lexical/react": "^0.42.0",
+    "@lexical/rich-text": "^0.42.0",
+    "@lexical/selection": "^0.42.0",
+    "@lexical/table": "^0.42.0",
+    "@react-pdf-viewer/core": "^3.12.0",
+    "@react-pdf-viewer/default-layout": "^3.12.0",
+    "@tabler/icons-react": "^3.36.0",
+    "axios": "^1.13.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dompurify": "^3.3.3",
+    "framer-motion": "^12.23.26",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "lexical": "^0.42.0",
+    "lucide-react": "^0.562.0",
+    "motion": "^12.38.0",
+    "pdfjs-dist": "^3.11.174",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-router": "^7.11.0",
+    "react-router-dom": "^7.11.0",
+    "recharts": "^3.6.0",
+    "respinner": "^5.0.0",
+    "tailwind-merge": "^3.5.0"
+  },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom"
+  },
+  "devDependencies": {
+    "@types/dompurify": "^3.0.5",
+    "@types/node": "^22.14.0",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

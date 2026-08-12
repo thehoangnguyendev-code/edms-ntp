@@ -1,0 +1,29 @@
+# This repository intentionally contains only the frontend and backend source folders.
+/*
+!/.gitignore
+!/eqms/
+!/eqms/**
+!/eqms-backend/
+!/eqms-backend/**
+
+# Generated artifacts and local configuration inside the two source trees.
+/eqms/node_modules/
+/eqms/dist/
+/eqms/coverage/
+/eqms/.vite/
+/eqms/.env
+/eqms/.env.local
+/eqms/.env.*.local
+/eqms-backend/target/
+/eqms-backend/storage/
+/eqms-backend/tmp/
+/eqms-backend/logs/
+/eqms-backend/.gitnexus/
+/eqms-backend/.env
+/eqms-backend/.env.*
+!/eqms-backend/.env.example
+/eqms-backend/build-errors.txt
+/eqms-backend/cp.txt
+
+# Local Git metadata retained only as a recoverable backup while this monorepo is created.
+/.local-git-backups/
