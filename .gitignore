@@ -24,6 +24,8 @@
 !/eqms-backend/.env.example
 /eqms-backend/build-errors.txt
 /eqms-backend/cp.txt
+/eqms-backend/classpath.txt
+/eqms-backend/META-INF/
 
 # Local Git metadata retained only as a recoverable backup while this monorepo is created.
 /.local-git-backups/

@@ -9,6 +9,8 @@ tmp/
 logs/
 build-errors.txt
 cp.txt
+classpath.txt
+META-INF/
 .log
 *.log
 *.err
