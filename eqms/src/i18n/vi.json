@@ -78,4 +78,11 @@
     "workspace": { "successTitle": "Đã mở publishing workspace", "successMessage": "Revision {documentNumber} {revisionNumber} đã sẵn sàng để đóng gói review.", "failed": "Mở workspace thất bại", "unavailable": "Không thể mở publishing workspace." }
   }
   ,"revisionList": { "publish": { "successTitle": "Đã publish", "successMessage": "Revision đã được publish thành công.", "failed": "Publish thất bại", "unavailable": "Không thể publish revision." } }
+  ,"revisionDetail": {
+    "controlledCopy": { "unavailableTitle": "Chưa thể yêu cầu controlled copy", "unavailableMessage": "Chỉ có thể Request Controlled Copy khi revision ở trạng thái Effective và document master ở trạng thái Active." },
+    "cancel": { "unavailableTitle": "Chưa thể hủy", "unavailableMessage": "Chỉ có thể Cancel Revision khi revision đang ở trạng thái Draft.", "reasonRequired": "Cần nhập activity summary", "successTitle": "Đã hủy revision", "successMessage": "Revision đã được chuyển sang Closed - Cancelled.", "failed": "Hủy revision thất bại", "unavailable": "Không thể hủy revision." },
+    "regenerate": { "successTitle": "Đã bắt đầu tạo lại", "successMessage": "PDF đang được tạo lại và sẽ tự động cập nhật.", "failed": "Tạo lại thất bại", "unavailable": "Không thể tạo lại PDF." },
+    "publish": { "successTitle": "Đã publish", "successMessage": "Revision đã được publish thành công.", "failed": "Publish thất bại", "unavailable": "Không thể publish revision." },
+    "notes": { "addFailed": "Không thể thêm ghi chú", "saveFailed": "Không thể lưu working note.", "deleteFailed": "Không thể xóa ghi chú", "removeFailed": "Không thể xóa working note." }
+  }
 }

@@ -54,4 +54,11 @@
     "workspace": { "successTitle": "Publishing workspace opened", "successMessage": "Revision {documentNumber} {revisionNumber} is ready for review packaging.", "failed": "Open workspace failed", "unavailable": "Unable to open the publishing workspace." }
   }
   ,"revisionList": { "publish": { "successTitle": "Publish successful", "successMessage": "Revision has been published successfully.", "failed": "Publish failed", "unavailable": "Failed to publish revision." } }
+  ,"revisionDetail": {
+    "controlledCopy": { "unavailableTitle": "Controlled copy request unavailable", "unavailableMessage": "Request Controlled Copy is available only when the revision is Effective and the document master is Active." },
+    "cancel": { "unavailableTitle": "Cancel unavailable", "unavailableMessage": "Cancel Revision is only available while the revision is in Draft.", "reasonRequired": "Activity summary is required", "successTitle": "Revision cancelled", "successMessage": "The revision has been moved to Closed - Cancelled.", "failed": "Cancel failed", "unavailable": "Unable to cancel revision." },
+    "regenerate": { "successTitle": "Regeneration Started", "successMessage": "The PDF is being regenerated and will update automatically.", "failed": "Regenerate Failed", "unavailable": "Failed to regenerate the PDF." },
+    "publish": { "successTitle": "Publish successful", "successMessage": "Revision has been published successfully.", "failed": "Publish failed", "unavailable": "Failed to publish revision." },
+    "notes": { "addFailed": "Unable to add note", "saveFailed": "Working note could not be saved.", "deleteFailed": "Unable to delete note", "removeFailed": "Working note could not be deleted." }
+  }
 }
