@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Locale;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.UUID;
 
@@ -66,7 +68,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             if (!Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(lockKey, "processing", LOCK_TTL))) {
                 response.setStatus(HttpServletResponse.SC_CONFLICT);
                 response.setContentType("application/json");
-                response.getWriter().write("{\"code\":\"IDEMPOTENCY_IN_PROGRESS\",\"message\":\"An identical operation is already being processed.\"}");
+                response.getWriter().write("{\"code\":\"IDEMPOTENCY_IN_PROGRESS\",\"message\":\""
+                        + escapeJson(localizedMessage(request)) + "\"}");
                 return;
             }
             ContentCachingResponseWrapper wrapped = new ContentCachingResponseWrapper(response);
@@ -111,5 +114,22 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     private boolean isProtectedMutation(String uri) {
         return uri != null && (uri.contains("/documents") || uri.contains("/revisions") || uri.contains("/publishing")
                 || uri.contains("/controlled-copies") || uri.contains("/electronic-signature") || uri.contains("/workflow"));
+    }
+
+    private String localizedMessage(HttpServletRequest request) {
+        Locale locale = Locale.ENGLISH;
+        String acceptLanguage = request.getHeader("Accept-Language");
+        if (acceptLanguage != null && acceptLanguage.toLowerCase(Locale.ROOT).startsWith("vi")) {
+            locale = Locale.forLanguageTag("vi");
+        }
+        try {
+            return ResourceBundle.getBundle("messages", locale).getString("errors.idempotency_in_progress");
+        } catch (Exception ignored) {
+            return "An identical operation is already being processed.";
+        }
+    }
+
+    private String escapeJson(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
