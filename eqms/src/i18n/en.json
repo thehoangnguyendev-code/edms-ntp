@@ -53,4 +53,5 @@
     "officeEditor": { "failed": "Unable to open editor", "unavailable": "The Office Online edit link is not available." },
     "workspace": { "successTitle": "Publishing workspace opened", "successMessage": "Revision {documentNumber} {revisionNumber} is ready for review packaging.", "failed": "Open workspace failed", "unavailable": "Unable to open the publishing workspace." }
   }
+  ,"revisionList": { "publish": { "successTitle": "Publish successful", "successMessage": "Revision has been published successfully.", "failed": "Publish failed", "unavailable": "Failed to publish revision." } }
 }

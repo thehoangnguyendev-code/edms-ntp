@@ -77,4 +77,5 @@
     "officeEditor": { "failed": "Không thể mở trình chỉnh sửa", "unavailable": "Không có liên kết chỉnh sửa Office Online." },
     "workspace": { "successTitle": "Đã mở publishing workspace", "successMessage": "Revision {documentNumber} {revisionNumber} đã sẵn sàng để đóng gói review.", "failed": "Mở workspace thất bại", "unavailable": "Không thể mở publishing workspace." }
   }
+  ,"revisionList": { "publish": { "successTitle": "Đã publish", "successMessage": "Revision đã được publish thành công.", "failed": "Publish thất bại", "unavailable": "Không thể publish revision." } }
 }
