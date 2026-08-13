@@ -1,9 +1,44 @@
 {
-  "common": { "save": "Lưu", "cancel": "Hủy", "close": "Đóng", "back": "Quay lại", "search": "Tìm kiếm", "loading": "Đang tải...", "delete": "Xóa", "edit": "Chỉnh sửa" },
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "close": "Đóng",
+    "back": "Quay lại",
+    "search": "Tìm kiếm",
+    "loading": "Đang tải...",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa"
+  },
   "localization": {
     "systemDefaultNotice": "Thiết lập ngôn ngữ hệ thống là mặc định cho tất cả người dùng. Bạn có thể thiết lập riêng cho tài khoản của mình; đặt lại sẽ khôi phục thiết lập hiện hành của quản trị viên.",
-    "preference": "Tùy chọn ngôn ngữ", "useSystemDefaults": "Dùng thiết lập hệ thống", "useSystemDefaultsHelp": "Áp dụng thiết lập ngôn ngữ do quản trị viên cấu hình.",
-    "language": "Ngôn ngữ", "dateTimeFormat": "Định dạng ngày và giờ", "timeZone": "Múi giờ", "numberFormat": "Định dạng số", "applicationFont": "Phông chữ ứng dụng"
+    "preference": "Tùy chọn ngôn ngữ",
+    "useSystemDefaults": "Dùng thiết lập hệ thống",
+    "useSystemDefaultsHelp": "Áp dụng thiết lập ngôn ngữ do quản trị viên cấu hình.",
+    "language": "Ngôn ngữ",
+    "dateTimeFormat": "Định dạng ngày và giờ",
+    "timeZone": "Múi giờ",
+    "numberFormat": "Định dạng số",
+    "applicationFont": "Phông chữ ứng dụng"
   },
-  "errors": { "fallback": "Đã xảy ra lỗi. Vui lòng thử lại.", "unauthorized": "Yêu cầu xác thực.", "forbidden": "Bạn không có quyền thực hiện thao tác này.", "validation": "Dữ liệu gửi lên không hợp lệ.", "badRequest": "Yêu cầu không hợp lệ.", "notFound": "Không tìm thấy tài nguyên được yêu cầu.", "internal": "Đã xảy ra lỗi máy chủ không mong muốn.", "fileTooLarge": "Tệp tải lên quá lớn." }
+  "errors": {
+    "fallback": "Đã xảy ra lỗi. Vui lòng thử lại.",
+    "unauthorized": "Yêu cầu xác thực.",
+    "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+    "validation": "Dữ liệu gửi lên không hợp lệ.",
+    "badRequest": "Yêu cầu không hợp lệ.",
+    "notFound": "Không tìm thấy tài nguyên được yêu cầu.",
+    "internal": "Đã xảy ra lỗi máy chủ không mong muốn.",
+    "fileTooLarge": "Tệp tải lên quá lớn."
+  },
+  "auth": {
+    "errors": { "signInUnavailable": "Không thể đăng nhập. Vui lòng thử lại.", "loginSessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "verificationFailed": "Xác minh thất bại. Vui lòng thử lại.", "resendUnavailable": "Không thể gửi lại mã vào lúc này.", "passwordUpdateUnavailable": "Không thể cập nhật mật khẩu." },
+    "validation": { "usernameRequired": "Cần nhập tên đăng nhập hoặc email", "passwordRequired": "Cần nhập mật khẩu", "passwordTooShort": "Mật khẩu phải có ít nhất {count} ký tự" },
+    "login": { "failed": "Đăng nhập thất bại", "accessDenied": "Truy cập bị từ chối", "accountLocked": "Tài khoản đã bị khóa", "accountDisabled": "Tài khoản đã bị vô hiệu hóa", "accountNotFound": "Không tìm thấy tài khoản", "incorrectPassword": "Mật khẩu không đúng", "invalidCredentials": "Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.", "signingIn": "Đang đăng nhập...", "heading": "Đăng nhập vào tài khoản", "description": "Đăng nhập để truy cập và quản lý hiệu quả các quy trình chất lượng của bạn.", "emailOrUsername": "Email hoặc tên đăng nhập", "emailOrUsernamePlaceholder": "Nhập email hoặc tên đăng nhập", "password": "Mật khẩu", "passwordPlaceholder": "Nhập mật khẩu", "showPassword": "Hiện mật khẩu", "hidePassword": "Ẩn mật khẩu", "forgotPassword": "Quên mật khẩu?", "submit": "Đăng nhập" },
+    "accountNotActive": {
+      "ACCOUNT_PENDING_ACTIVATION": { "title": "Tài khoản chưa được kích hoạt", "message": "Tài khoản của bạn chưa được kích hoạt. Vui lòng liên hệ quản trị viên." },
+      "ACCOUNT_SUSPENDED": { "title": "Tài khoản bị tạm ngưng", "message": "Tài khoản của bạn đã bị tạm ngưng. Vui lòng liên hệ quản trị viên." },
+      "ACCOUNT_INACTIVE": { "title": "Tài khoản bị vô hiệu hóa", "message": "Tài khoản của bạn đang không hoạt động. Vui lòng liên hệ quản trị viên." },
+      "ACCOUNT_TERMINATED": { "title": "Tài khoản đã chấm dứt", "message": "Tài khoản của bạn đã bị chấm dứt. Vui lòng liên hệ quản trị viên." }
+    }
+  }
 }

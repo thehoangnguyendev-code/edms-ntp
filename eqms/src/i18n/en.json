@@ -5,5 +5,16 @@
     "preference": "Localization Preference", "useSystemDefaults": "Use system defaults", "useSystemDefaultsHelp": "Follow the localization configured by your administrator.",
     "language": "Language", "dateTimeFormat": "Date & Time Format", "timeZone": "Time Zone", "numberFormat": "Number Format", "applicationFont": "Application Font"
   },
-  "errors": { "fallback": "Something went wrong. Please try again.", "unauthorized": "Authentication is required.", "forbidden": "You do not have permission to perform this action.", "validation": "The submitted data is invalid.", "badRequest": "The request is invalid.", "notFound": "The requested resource was not found.", "internal": "An unexpected server error occurred.", "fileTooLarge": "The uploaded file is too large." }
+  "errors": { "fallback": "Something went wrong. Please try again.", "unauthorized": "Authentication is required.", "forbidden": "You do not have permission to perform this action.", "validation": "The submitted data is invalid.", "badRequest": "The request is invalid.", "notFound": "The requested resource was not found.", "internal": "An unexpected server error occurred.", "fileTooLarge": "The uploaded file is too large." },
+  "auth": {
+    "errors": { "signInUnavailable": "Unable to sign in. Please try again.", "loginSessionExpired": "Login session has expired. Please sign in again.", "verificationFailed": "Verification failed. Please try again.", "resendUnavailable": "Unable to resend code right now.", "passwordUpdateUnavailable": "Unable to update password." },
+    "validation": { "usernameRequired": "Username or email is required", "passwordRequired": "Password is required", "passwordTooShort": "Password must be at least {count} characters" },
+    "login": { "failed": "Login Failed", "accessDenied": "Access Denied", "accountLocked": "Account Locked", "accountDisabled": "Account Disabled", "accountNotFound": "Account Not Found", "incorrectPassword": "Incorrect Password", "invalidCredentials": "Invalid username or password. Please try again.", "signingIn": "Signing in...", "heading": "Sign In To Your Account", "description": "Sign in with your account to access and manage your quality processes efficiently.", "emailOrUsername": "Email or Username", "emailOrUsernamePlaceholder": "Enter your email or username", "password": "Password", "passwordPlaceholder": "Enter your password", "showPassword": "Show password", "hidePassword": "Hide password", "forgotPassword": "Forgot password?", "submit": "Sign In" },
+    "accountNotActive": {
+      "ACCOUNT_PENDING_ACTIVATION": { "title": "Account Not Activated", "message": "Your account has not been activated yet. Please contact your administrator." },
+      "ACCOUNT_SUSPENDED": { "title": "Account Suspended", "message": "Your account has been suspended. Please contact your administrator." },
+      "ACCOUNT_INACTIVE": { "title": "Account Disabled", "message": "Your account is inactive. Please contact your administrator." },
+      "ACCOUNT_TERMINATED": { "title": "Account Terminated", "message": "Your account has been terminated. Please contact your administrator." }
+    }
+  }
 }

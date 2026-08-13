@@ -14,6 +14,7 @@ import { authTokenStore } from "@/services/authTokenStore";
 import { ROUTES } from "@/app/routes.constants";
 import { dispatchRouteRedirect } from "@/app/navigation/routeRedirect";
 import { readSystemLocalizationSettings } from "@/config/localization";
+import { t } from "@/i18n";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
@@ -24,30 +25,17 @@ export const RATE_LIMITED_EVENT = "eqms:rate-limited";
 // Q7 — the login page reads this after a forced redirect to show WHY the session ended,
 // so a suspended/terminated account isn't confused with an ordinary expired session.
 export const ACCOUNT_NOTICE_STORAGE_KEY = "eqms:account_notice";
-const ACCOUNT_NOT_ACTIVE_MESSAGES: Record<
-  string,
-  { title: string; message: string }
-> = {
-  ACCOUNT_PENDING_ACTIVATION: {
-    title: "Account Not Activated",
-    message:
-      "Your account has not been activated yet. Please contact your administrator.",
-  },
-  ACCOUNT_SUSPENDED: {
-    title: "Account Suspended",
-    message:
-      "Your account has been suspended. Please contact your administrator.",
-  },
-  ACCOUNT_INACTIVE: {
-    title: "Account Disabled",
-    message: "Your account is inactive. Please contact your administrator.",
-  },
-  ACCOUNT_TERMINATED: {
-    title: "Account Terminated",
-    message:
-      "Your account has been terminated. Please contact your administrator.",
-  },
-};
+const ACCOUNT_NOT_ACTIVE_CODES = new Set([
+  "ACCOUNT_PENDING_ACTIVATION",
+  "ACCOUNT_SUSPENDED",
+  "ACCOUNT_INACTIVE",
+  "ACCOUNT_TERMINATED",
+]);
+
+const getAccountNotActiveNotice = (code: string) => ({
+  title: t(`auth.accountNotActive.${code}.title`),
+  message: t(`auth.accountNotActive.${code}.message`),
+});
 const PUBLIC_AUTH_ENDPOINTS = [
   "/auth/login",
   "/auth/refresh",
@@ -375,11 +363,11 @@ apiClient.interceptors.response.use(
             return Promise.reject(error);
           }
 
-          if (responseCode && ACCOUNT_NOT_ACTIVE_MESSAGES[responseCode]) {
+          if (responseCode && ACCOUNT_NOT_ACTIVE_CODES.has(responseCode)) {
             try {
               sessionStorage.setItem(
                 ACCOUNT_NOTICE_STORAGE_KEY,
-                JSON.stringify(ACCOUNT_NOT_ACTIVE_MESSAGES[responseCode]),
+                JSON.stringify(getAccountNotActiveNotice(responseCode)),
               );
             } catch {
               // sessionStorage unavailable — the redirect still happens, only the friendly

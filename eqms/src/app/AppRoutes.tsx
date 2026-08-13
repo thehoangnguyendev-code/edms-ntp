@@ -30,6 +30,7 @@ import { securityRoutes } from './routes/SecurityRoutes';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { navigateBack } from '@/app/navigation/backNavigation';
 import { ROUTE_REDIRECT_EVENT, type RouteRedirectDetail } from '@/app/navigation/routeRedirect';
+import { useTranslation } from '@/i18n';
 
 // ==================== CORE VIEWS ====================
 const DashboardView = lazy(() => import('@/features/dashboard').then(m => ({ default: m.DashboardView })));
@@ -40,6 +41,7 @@ const NotificationsView = lazy(() => import('@/features/notifications').then(m =
 // ==================== MAIN ROUTES ====================
 
 export const AppRoutes: React.FC = () => {
+  const { t } = useTranslation();
   const MFA_CHALLENGE_STORAGE_KEY = 'pending_mfa_challenge';
 
   const resolvePostAuthRoute = (permissions?: string[], maintenanceMode?: boolean) => {
@@ -111,7 +113,7 @@ export const AppRoutes: React.FC = () => {
     if (!result.success) {
       return {
         success: false,
-        error: result.error?.message || 'Unable to sign in. Please try again.',
+        error: result.error?.message || t('auth.errors.signInUnavailable'),
       };
     }
 
@@ -141,7 +143,7 @@ export const AppRoutes: React.FC = () => {
     if (!pendingChallenge?.mfaToken) {
       return {
         success: false,
-        error: 'Login session has expired. Please sign in again.',
+        error: t('auth.errors.loginSessionExpired'),
       };
     }
 
@@ -161,7 +163,7 @@ export const AppRoutes: React.FC = () => {
 
     return {
       success: false,
-      error: result.error?.message || 'Verification failed. Please try again.',
+      error: result.error?.message || t('auth.errors.verificationFailed'),
     };
   };
 
@@ -169,7 +171,7 @@ export const AppRoutes: React.FC = () => {
     if (!pendingChallenge?.mfaToken) {
       return {
         success: false,
-        error: 'Login session has expired. Please sign in again.',
+        error: t('auth.errors.loginSessionExpired'),
       };
     }
 
@@ -179,7 +181,7 @@ export const AppRoutes: React.FC = () => {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unable to resend code right now.',
+        error: error instanceof Error ? error.message : t('auth.errors.resendUnavailable'),
       };
     }
   };
@@ -329,7 +331,7 @@ export const AppRoutes: React.FC = () => {
                 await navigateAfterStateFlush(resolveAuthenticatedLandingRouteForUser(refreshedUser));
                 return { success: true };
               } catch (error) {
-                const message = getApiErrorMessage(error, 'Unable to update password.');
+                const message = getApiErrorMessage(error, t('auth.errors.passwordUpdateUnavailable'));
                 return {
                   success: false,
                   error: message,
