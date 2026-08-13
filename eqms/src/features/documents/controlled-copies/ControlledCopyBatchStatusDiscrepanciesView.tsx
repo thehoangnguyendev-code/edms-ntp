@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/page/EmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { Badge } from "@/components/ui/badge/Badge";
 import { useToast } from "@/components/ui/toast/Toast";
+import { useTranslation } from "@/i18n";
 import { documentApi, type ControlledCopyBatchStatusDiscrepancy } from "@/services/api/documents";
 import { controlledCopyBatchStatusDiscrepancies } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { normalizeControlledCopyStatusLabel } from "./status";
@@ -17,6 +18,7 @@ const PAGE_SIZE = 20;
 export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [rows, setRows] = useState<ControlledCopyBatchStatusDiscrepancy[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -36,7 +38,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
       })
       .catch(() => {
         if (cancelled) return;
-        showToast({ type: "error", message: "Failed to load the batch review list." });
+        showToast({ type: "error", message: t("controlledCopyDiscrepancies.loadFailed") });
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
