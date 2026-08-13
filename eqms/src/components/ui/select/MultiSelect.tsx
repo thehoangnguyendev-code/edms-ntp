@@ -7,7 +7,6 @@ import { InlineLoading } from '../loading/Loading';
 import { Button } from '../button/Button';
 import { Checkbox } from '../checkbox/Checkbox';
 import { Popover } from '../popover/Popover';
-import { useTranslation } from '@/i18n';
 
 export interface MultiSelectOption {
   label: string;
@@ -44,8 +43,8 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   value,
   onChange,
   options,
-  placeholder,
-  searchPlaceholder,
+  placeholder = "Select...",
+  searchPlaceholder = "Search...",
   className,
   triggerClassName,
   enableSearch = true,
@@ -54,15 +53,11 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   rowHeight = 36,
   maxVisibleTags = 2,
   isLoading = false,
-  loadingText,
+  loadingText = "Loading options...",
   onSearch,
   debounceMs = 300,
   minSearchLength = 0,
 }) => {
-  const { t } = useTranslation();
-  const resolvedPlaceholder = placeholder ?? t('select.placeholder');
-  const resolvedSearchPlaceholder = searchPlaceholder ?? t('select.searchPlaceholder');
-  const resolvedLoadingText = loadingText ?? t('select.loadingOptions');
   const selectId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -366,7 +361,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
       >
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
           {selectedOptions.length === 0 ? (
-            <span className="text-slate-400 text-left truncate">{resolvedPlaceholder}</span>
+            <span className="text-slate-400 text-left truncate">{placeholder}</span>
           ) : (
             <>
               {visibleTags.map((option) => (
@@ -425,7 +420,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
               type="button"
               onClick={handleClearAll}
               className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-              aria-label={t('select.clearAll')}
+              aria-label="Clear all selections"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -474,7 +469,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={resolvedSearchPlaceholder}
+                      placeholder={searchPlaceholder}
                       className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-[16px] outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 sm:text-sm"
                       autoComplete="off"
                       autoCorrect="off"
@@ -494,7 +489,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                   <div className="py-8 flex flex-col items-center justify-center gap-2">
                     <InlineLoading size="sm" />
                     <span className="text-sm text-slate-500">
-                      {isSearching ? t('select.searching') : resolvedLoadingText}
+                      {isSearching ? 'Searching...' : loadingText}
                     </span>
                   </div>
                 ) : filteredOptions.length === 0 ? (
@@ -553,7 +548,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                   disabled={filteredOptions.length === 0}
                   className="h-8 px-3"
                 >
-                  {isAllSelected ? t('select.deselectAll') : t('select.selectAll')}
+                  {isAllSelected ? "Deselect all" : "Select all"}
                 </Button>
               </div>
             </motion.div>

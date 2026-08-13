@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/components/ui/utils';
-import { useTranslation } from '@/i18n';
 
 interface SearchInputProps {
   value: string;
@@ -14,11 +13,10 @@ interface SearchInputProps {
 export const SearchInput: React.FC<SearchInputProps> = ({
   value,
   onChange,
-  placeholder,
+  placeholder = 'Search...',
   className,
   autoFocus,
 }) => {
-  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -29,7 +27,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder ?? t('searchInput.placeholder')}
+        placeholder={placeholder}
         autoFocus={autoFocus}
         className="w-full h-9 pl-9 pr-9 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
       />
@@ -38,7 +36,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
           type="button"
           onClick={() => { onChange(''); inputRef.current?.focus(); }}
           className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-          aria-label={t('searchInput.clear')}
+          aria-label="Clear search"
         >
           <X className="h-4 w-4" />
         </button>

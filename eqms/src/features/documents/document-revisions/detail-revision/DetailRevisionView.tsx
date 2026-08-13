@@ -27,7 +27,6 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { usePermissions } from "@/hooks/usePermissions";
 import { hasWorkingNotesEditAccess } from "@/features/documents/document-revisions/shared/workingNotesPermissions";
 
@@ -262,7 +261,6 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     signatureToken: string;
   } | null>(null);
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { user } = usePermissions();
   const [isRegeneratingPdf, setIsRegeneratingPdf] = useState(false);
   const currentRevision = revision;
@@ -522,8 +520,9 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     if (!currentRevision || !canRequestControlledCopy) {
       showToast({
         type: "error",
-        title: t("revisionDetail.controlledCopy.unavailableTitle"),
-        message: t("revisionDetail.controlledCopy.unavailableMessage"),
+        title: "Controlled copy request unavailable",
+        message:
+          "Request Controlled Copy is available only when the revision is Effective and the document master is Active.",
         duration: 3000,
       });
       return;
@@ -548,8 +547,9 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     if (!currentRevision || !canCancelCurrentRevision) {
       showToast({
         type: "error",
-        title: t("revisionDetail.cancel.unavailableTitle"),
-        message: t("revisionDetail.cancel.unavailableMessage"),
+        title: "Cancel unavailable",
+        message:
+          "Cancel Revision is only available while the revision is in Draft.",
         duration: 3000,
       });
       return;
@@ -564,7 +564,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     if (!currentRevision) return;
     const trimmedReason = cancelReason.trim();
     if (!trimmedReason) {
-      setCancelReasonError(t("revisionDetail.cancel.reasonRequired"));
+      setCancelReasonError("Activity summary is required");
       return;
     }
     setShowCancelModal(false);
@@ -602,19 +602,19 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       setCancelReasonError("");
       showToast({
         type: "success",
-        title: t("revisionDetail.cancel.successTitle"),
+        title: "Revision cancelled",
         message:
           updated.message ||
-          t("revisionDetail.cancel.successMessage"),
+          "The revision has been moved to Closed - Cancelled.",
         duration: 3000,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: t("revisionDetail.cancel.failed"),
+        title: "Cancel failed",
         message:
           (error as any)?.response?.data?.error?.message ||
-          t("revisionDetail.cancel.unavailable"),
+          "Unable to cancel revision.",
         duration: 3000,
       });
     } finally {
@@ -645,7 +645,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       const queued = await documentApi.regenerateRevisionSnapshot(currentRevision.id);
       setRevision({ ...queued, signatures: queued.signatures || [] });
       await reloadRevisionPreview(queued);
-      showToast({ type: "success", title: t("revisionDetail.regenerate.successTitle"), message: t("revisionDetail.regenerate.successMessage") });
+      showToast({ type: "success", title: "Regeneration Started", message: "The PDF is being regenerated and will update automatically." });
       pollSnapshotInBackground({
         detail: queued,
         fetchLive: () => documentApi.getRevisionByIdSnapshot(currentRevision.id, { force: true }),
@@ -655,7 +655,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         },
       });
     } catch {
-      showToast({ type: "error", title: t("revisionDetail.regenerate.failed"), message: t("revisionDetail.regenerate.unavailable") });
+      showToast({ type: "error", title: "Regenerate Failed", message: "Failed to regenerate the PDF." });
     } finally {
       setIsRegeneratingPdf(false);
     }
@@ -677,8 +677,8 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       await reloadRevisionPreview(rawDetail);
       showToast({
         type: "success",
-        title: t("revisionDetail.publish.successTitle"),
-        message: t("revisionDetail.publish.successMessage"),
+        title: "Publish successful",
+        message: "Revision has been published successfully.",
       });
 
       // The published PDF regeneration round-trip can take 15-20s (two Microsoft Graph
@@ -708,11 +708,11 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         console.error("Failed to publish revision", error);
         showToast({
           type: "error",
-          title: t("revisionDetail.publish.failed"),
+          title: "Publish failed",
           message:
             responseData?.error?.message ||
             responseData?.message ||
-            t("revisionDetail.publish.unavailable"),
+            "Failed to publish revision.",
         });
       }
     } finally {
@@ -752,10 +752,10 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: t("revisionDetail.notes.addFailed"),
+        title: "Unable to add note",
         message:
           (error as any)?.response?.data?.message ||
-          t("revisionDetail.notes.saveFailed"),
+          "Working note could not be saved.",
         duration: 3000,
       });
     } finally {
@@ -781,10 +781,10 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: t("revisionDetail.notes.deleteFailed"),
+        title: "Unable to delete note",
         message:
           (error as any)?.response?.data?.message ||
-          t("revisionDetail.notes.removeFailed"),
+          "Working note could not be deleted.",
         duration: 3000,
       });
     } finally {

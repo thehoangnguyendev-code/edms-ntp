@@ -58,14 +58,12 @@ import { authApi } from "@/services/api/auth";
 import { settingsApi } from "@/services/api/settings";
 import type { UserActionCapabilitiesResponse } from "@/services/api/settings";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
-import { useTranslation } from "@/i18n";
 
 // --- Main Component ---
 
 export const UserManagementView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const toApiDate = (value: string) => {
     if (!value) return "";
@@ -286,8 +284,8 @@ export const UserManagementView: React.FC = () => {
         await settingsApi.inviteExternalUser(user.id, externalReason.trim());
         showToast({
           type: "success",
-          title: t("userManagement.external.inviteQueuedTitle"),
-          message: t("userManagement.external.inviteQueuedMessage", { email: user.email }),
+          title: "Invitation queued",
+          message: `Microsoft Entra invitation for ${user.email} is being processed.`,
         });
       } else if (action === "disable") {
         await settingsApi.disableMicrosoftAccess(
@@ -296,8 +294,8 @@ export const UserManagementView: React.FC = () => {
         );
         showToast({
           type: "success",
-          title: t("userManagement.external.disableQueuedTitle"),
-          message: t("userManagement.external.requestQueuedMessage", { name: user.fullName }),
+          title: "Microsoft access disable queued",
+          message: `Microsoft Entra request for ${user.fullName} is being processed.`,
         });
       } else if (action === "resend") {
         await settingsApi.resendExternalInvitation(
@@ -306,8 +304,8 @@ export const UserManagementView: React.FC = () => {
         );
         showToast({
           type: "success",
-          title: t("userManagement.external.resendQueuedTitle"),
-          message: t("userManagement.external.requestQueuedMessage", { name: user.email }),
+          title: "Invitation resend queued",
+          message: `Microsoft Entra request for ${user.email} is being processed.`,
         });
       } else if (action === "retry") {
         await settingsApi.retryExternalProvisioning(
@@ -316,15 +314,15 @@ export const UserManagementView: React.FC = () => {
         );
         showToast({
           type: "success",
-          title: t("userManagement.external.retryQueuedTitle"),
-          message: t("userManagement.external.requestQueuedMessage", { name: user.email }),
+          title: "Provisioning retry queued",
+          message: `Microsoft Entra request for ${user.email} is being processed.`,
         });
       } else {
         await settingsApi.removeExternalUser(user.id, externalReason.trim());
         showToast({
           type: "success",
-          title: t("userManagement.external.removeQueuedTitle"),
-          message: t("userManagement.external.requestQueuedMessage", { name: user.email }),
+          title: "External user removal queued",
+          message: `Microsoft Entra request for ${user.email} is being processed.`,
         });
       }
       setExternalReasonModal(null);
@@ -341,9 +339,9 @@ export const UserManagementView: React.FC = () => {
     } catch (error: any) {
       showToast({
         type: "error",
-        title: t("userManagement.external.failedTitle"),
+        title: "External provisioning failed",
         message:
-          error?.response?.data?.message || t("userManagement.external.failedMessage"),
+          error?.response?.data?.message || "Unable to complete the operation.",
       });
     } finally {
       setIsExternalActionLoading(false);
@@ -401,8 +399,8 @@ export const UserManagementView: React.FC = () => {
     await refreshUsers();
     showToast({
       type: "success",
-      title: t("userManagement.forceLogoutTitle"),
-      message: t("userManagement.forceLogoutMessage", { name: forceLogoutModal.userName }),
+      title: "Force Logout",
+      message: `${forceLogoutModal.userName} has been logged out immediately.`,
     });
     setForceLogoutModal({ isOpen: false, userId: "", userName: "" });
   };

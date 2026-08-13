@@ -9,7 +9,6 @@ import { cn } from "@/components/ui/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/api/auth";
 import { electronicSignatureSettingsApi, type ElectronicSignatureMeaning } from "@/services/api/electronicSignatureSettings";
-import { useTranslation } from "@/i18n";
 
 export interface ESignatureModalProps {
   isOpen: boolean;
@@ -76,7 +75,6 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   requiresReason,
   commentRule,
 }) => {
-  const { t } = useTranslation();
   const { user } = useAuth();
   const currentUsername = user?.username || "";
   const currentFullName = user?.fullName || "";
@@ -86,7 +84,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   const titleId = `${modalId}-title`;
 
   const preset = transactionType ? TRANSACTION_PRESETS[transactionType] : null;
-  const actionTitle = propActionTitle || preset?.actionTitle || t('esign.title');
+  const actionTitle = propActionTitle || preset?.actionTitle || "Electronic Signature";
   const changes = propChanges || preset?.changes || [];
   const documentDetails = targetDetails ?? legacyDocumentDetails;
 
@@ -192,16 +190,16 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
     const nextErrors: Partial<Record<'password' | 'reason' | 'comment', string>> = {};
 
     if (reasonRequired && !effectiveReason) {
-      nextErrors.reason = t('esign.reasonRequired');
+      nextErrors.reason = 'A signing reason is required for compliance.';
     }
     if (isOtherSelected && !specifyReason.trim()) {
-      nextErrors.reason = t('esign.specifyReasonRequired');
+      nextErrors.reason = 'Please specify a reason.';
     }
     if (commentRequired && !comment.trim()) {
-      nextErrors.comment = t('esign.commentRequired');
+      nextErrors.comment = 'Comment is required.';
     }
     if (!password) {
-      nextErrors.password = t('esign.passwordRequired');
+      nextErrors.password = 'Password is required to complete the electronic signature.';
     }
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
@@ -232,12 +230,12 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
         responseData?.error?.message ||
         responseData?.message ||
         (error as Error)?.message ||
-        t('esign.verifyFailed');
+        'Unable to verify electronic signature.';
       const normalized = String(message).toLowerCase();
 
       const nextFieldErrors: Partial<Record<'password' | 'reason' | 'comment', string>> = {};
       if (normalized.includes('invalid signature credentials') || normalized.includes('password') || normalized.includes('credential')) {
-        nextFieldErrors.password = t('esign.authenticationFailed');
+        nextFieldErrors.password = 'Electronic signature authentication failed. Please verify your password and try again.';
       } else if (normalized.includes('reason')) {
         nextFieldErrors.reason = message;
       } else {
@@ -254,7 +252,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   };
 
   const totalItems = changes.length + 1;
-  const itemLabel = t('esign.items', { count: totalItems });
+  const itemLabel = totalItems === 1 ? '1 item' : `${totalItems} items`;
 
   // Keep modal visible while submitting even if parent sets isOpen=false
   const shouldShow = isOpen || isSubmitting;
@@ -306,7 +304,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   transition={{ duration: 0.15 }}
                   className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/90 backdrop-blur-sm rounded-none sm:rounded-xl"
                 >
-                  <Loading size="lg" text={t('esign.processing')} />
+                  <Loading size="lg" text="Processing signature..." />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -319,7 +317,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 </div>
                 <div className="min-w-0">
                   <h3 id={titleId} className="text-sm md:text-base font-semibold text-slate-900 leading-tight truncate">
-                    {t('esign.title')}
+                    Electronic Signature
                   </h3>
                   <p className="text-2xs text-slate-500 font-medium">FDA 21 CFR Part 11 and EU-GMP Annex 11 Compliant</p>
                 </div>
@@ -328,7 +326,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 type="button"
                 onClick={isSubmitting ? undefined : onClose}
                 disabled={isSubmitting}
-                aria-label={t('alertModal.closeDialog')}
+                aria-label="Close dialog"
                 className="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <X className="h-4 w-4 text-slate-500" />
@@ -341,13 +339,13 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 {/* Signing context — e-signatures are system-wide, not document-only. */}
                 {documentDetails && (
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5">
-                    <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">{t('esign.signingContext')}</p>
+                    <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">Signing Context</p>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-bold text-slate-900 leading-tight line-clamp-2 break-words">{documentDetails.title || "—"}</p>
                       <span className="shrink-0 text-2xs font-semibold px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded uppercase">{documentDetails.code || "N/A"}</span>
                     </div>
                     {documentDetails.revision && (
-                      <span className="inline-block text-2xs font-medium text-slate-500">{t('esign.reference')}: {documentDetails.revision}</span>
+                      <span className="inline-block text-2xs font-medium text-slate-500">Reference: {documentDetails.revision}</span>
                     )}
                   </div>
                 )}
@@ -355,19 +353,19 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 {/* Signing As */}
                 <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-emerald-700">{t('esign.signingAs')}</span>
-                    <span className="text-2xs font-medium text-emerald-600">{t('esign.identityVerified')}</span>
+                    <span className="text-xs font-semibold text-emerald-700">Signing as</span>
+                    <span className="text-2xs font-medium text-emerald-600">Identity verified</span>
                   </div>
                   <div className="grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
                     {[
-                      { label: t('esign.username'), value: currentUsername },
-                      { label: t('esign.fullName'), value: currentFullName },
-                      { label: t('esign.role'), value: currentRole },
-                      { label: t('esign.department'), value: currentDepartment },
+                      { label: "Username", value: currentUsername },
+                      { label: "Full Name", value: currentFullName },
+                      { label: "Role", value: currentRole },
+                      { label: "Department", value: currentDepartment },
                     ].map(({ label, value }) => (
                       <div key={label}>
                         <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-                        <p className="font-medium text-slate-900 break-words">{value || t('esign.notAvailable')}</p>
+                        <p className="font-medium text-slate-900 break-words">{value || "N/A"}</p>
                       </div>
                     ))}
                   </div>
@@ -376,7 +374,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 {/* Meaning */}
                 {meaningDisplayName && (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 flex items-center gap-2">
-                    <span className="text-2xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">{t('esign.meaning')}</span>
+                    <span className="text-2xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
                     <span className="text-xs font-semibold text-slate-900">{meaningDisplayName}</span>
                   </div>
                 )}
@@ -384,23 +382,23 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 {/* Activity Summary */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs sm:text-sm font-medium text-slate-700">{t('esign.activitySummary')}</span>
-                    <span className="text-2xs font-medium text-slate-400 shrink-0">{t('esign.itemsToSign', { items: itemLabel })}</span>
+                    <span className="text-xs sm:text-sm font-medium text-slate-700">Activity Summary</span>
+                    <span className="text-2xs font-medium text-slate-400 shrink-0">{itemLabel} to sign</span>
                   </div>
                   <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
                     <table className="w-full text-left border-collapse table-fixed">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
-                          <th className="px-3 py-2 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">{t('esign.property')}</th>
-                          <th className="px-3 py-2 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">{t('esign.oldValue')}</th>
-                          <th className="px-3 py-2 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">{t('esign.newValue')}</th>
+                          <th className="px-3 py-2 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">Property</th>
+                          <th className="px-3 py-2 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">Old Value</th>
+                          <th className="px-3 py-2 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">New Value</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr className="border-b border-emerald-100 bg-emerald-50/40">
                           <td className="px-3 py-3 text-xs font-bold text-slate-900">
                             <span aria-hidden="true" className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 align-middle" />
-                            {t('esign.signingAction')}
+                            Signing Action
                           </td>
                           <td className="px-3 py-3 text-xs text-slate-400 italic font-medium">—</td>
                           <td className="px-3 py-3 text-xs font-medium text-emerald-700 break-words">{actionTitle}</td>
@@ -419,7 +417,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={3} className="px-3 py-3 text-2xs text-slate-400 text-center italic">{t('esign.noAdditionalChanges')}</td>
+                            <td colSpan={3} className="px-3 py-3 text-2xs text-slate-400 text-center italic">No additional property changes in this transaction.</td>
                           </tr>
                         )}
                       </tbody>
@@ -432,7 +430,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   {/* Reason */}
                   <div className="space-y-1">
                     <label htmlFor={`${modalId}-reason`} className="text-xs sm:text-sm font-medium text-slate-700">
-                      {t('esign.reason')}
+                      Reason for Electronic Signature
                       {reasonRequired && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
                     </label>
 
@@ -442,7 +440,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                           value={selectedReason}
                           onChange={(val) => { setSelectedReason(val); setSpecifyReason(''); }}
                           options={[
-                            { value: "", label: t('esign.selectReason') },
+                            { value: "", label: "Select a reason..." },
                             ...reasonOptions.map((r) => ({ value: r, label: r })),
                           ]}
                           triggerClassName={fieldErrors.reason ? "border-red-400" : undefined}
@@ -453,7 +451,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                             onChange={(e) => setSpecifyReason(e.target.value)}
                             rows={2}
                             maxLength={500}
-                            placeholder={t('esign.specifyReason')}
+                            placeholder="Specify reason..."
                             className={cn(
                               "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none",
                               fieldErrors.reason ? "border-red-400" : "border-slate-200"
@@ -472,7 +470,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                           "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none",
                           fieldErrors.reason ? "border-red-400" : "border-slate-200"
                         )}
-                        placeholder={t('esign.enterReason')}
+                        placeholder="Enter your reason..."
                       />
                     )}
 
@@ -485,10 +483,10 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   {showComment && (
                     <div className="space-y-1">
                       <label htmlFor={`${modalId}-comment`} className="text-xs sm:text-sm font-medium text-slate-700">
-                        {t('esign.comment')}
+                        Comment
                         {commentRequired
                           ? <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
-                          : <span className="ml-1 text-2xs text-slate-400">({t('esign.optional')})</span>
+                          : <span className="ml-1 text-2xs text-slate-400">(optional)</span>
                         }
                       </label>
                       <textarea
@@ -497,7 +495,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                         onChange={(e) => setComment(e.target.value)}
                         rows={2}
                         maxLength={500}
-                        placeholder={t('esign.addComment')}
+                        placeholder="Add a comment..."
                         className={cn(
                           "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none",
                           fieldErrors.comment ? "border-red-400" : "border-slate-200"
@@ -512,7 +510,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   {/* Password */}
                   <div className="space-y-1">
                     <label htmlFor={`${modalId}-password`} className="text-xs sm:text-sm font-medium text-slate-700">
-                      {t('auth.login.password')} <span className="text-red-500" aria-hidden="true">*</span>
+                      Password <span className="text-red-500" aria-hidden="true">*</span>
                     </label>
                     <input
                       id={`${modalId}-password`}
@@ -527,13 +525,13 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                         "w-full h-9 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm",
                         fieldErrors.password ? "border-red-400" : "border-slate-200"
                       )}
-                      placeholder={t('sessionTimeout.passwordPlaceholder')}
+                      placeholder="Enter your password"
                     />
                     {fieldErrors.password && (
                       <p className="text-xs text-red-600 leading-tight">{fieldErrors.password}</p>
                     )}
                     {isCapsLockOn && !fieldErrors.password && (
-                      <p className="text-xs text-amber-600 leading-tight">{t('esign.capsLockOn')}</p>
+                      <p className="text-xs text-amber-600 leading-tight">Caps Lock is on.</p>
                     )}
                   </div>
 
@@ -549,10 +547,10 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
               {/* Footer */}
               <div className="flex-shrink-0 px-5 py-3 border-t border-slate-200 bg-slate-50/30 flex justify-end gap-2 min-h-[56px]">
                 <Button type="button" size="sm" variant="outline" onClick={onClose} className="min-w-[5rem]">
-                  {t('common.cancel')}
+                  Cancel
                 </Button>
                 <Button type="submit" size="sm" className="min-w-[5rem]" disabled={isSubmitting}>
-                  {t('esign.signConfirm')}
+                  Sign & Confirm
                 </Button>
               </div>
             </form>

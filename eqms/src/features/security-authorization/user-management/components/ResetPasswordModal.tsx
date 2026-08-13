@@ -9,7 +9,6 @@ import { settingsApi } from "@/services/api/settings";
 import { useEffect, useState } from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
-import { useTranslation } from "@/i18n";
 
 interface ResetPasswordModalProps {
     isOpen: boolean;
@@ -27,7 +26,6 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
     onSuccess,
 }) => {
     const { showToast } = useToast();
-    const { t } = useTranslation();
     const { requestSignature, signatureModal } = useSecurityESign();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [generatedPassword, setGeneratedPassword] = useState("");
@@ -72,22 +70,22 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
             showToast({
                 type: "success",
-                title: t("resetPassword.copiedTitle"),
-                message: t("resetPassword.copiedMessage"),
+                title: "Copied!",
+                message: "Password copied to clipboard",
             });
         } catch (err) {
             console.error('Failed to copy password:', err);
             showToast({
                 type: "error",
-                title: t("resetPassword.copyFailedTitle"),
-                message: t("resetPassword.copyFailedMessage"),
+                title: "Copy Failed",
+                message: "Failed to copy password",
             });
         }
     };
 
     const extractApiMessage = (error: unknown): string => {
         if (typeof error !== "object" || error === null) {
-            return t("resetPassword.failedMessage");
+            return "Unable to reset password.";
         }
 
         const candidate = error as {
@@ -110,7 +108,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             candidate.response?.data?.title ||
             candidate.response?.statusText ||
             candidate.message ||
-            t("resetPassword.failedMessage")
+            "Unable to reset password."
         );
     };
 
@@ -119,8 +117,8 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             setResultModal({
                 isOpen: true,
                 type: "error",
-                title: t("resetPassword.failedTitle"),
-                message: t("resetPassword.userIdMissing"),
+                title: "Reset Password Failed",
+                message: "User ID is missing. Please reopen the modal and try again.",
             });
             return;
         }
@@ -146,7 +144,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
             setResultModal({
                 isOpen: true,
                 type: "error",
-                title: t("resetPassword.failedTitle"),
+                title: "Reset Password Failed",
                 message: extractApiMessage(error),
             });
         } finally {
@@ -160,12 +158,12 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                 isOpen={isOpen}
                 onClose={onClose}
                 onConfirm={generatedPassword ? onClose : handleConfirmReset}
-                title={t("resetPassword.title")}
+                title="Reset Password"
                 description={generatedPassword
-                    ? t("resetPassword.generatedDescription", { name: userName })
-                    : t("resetPassword.initialDescription", { name: userName })}
-                confirmText={generatedPassword ? t("common.close") : t("resetPassword.confirm")}
-                cancelText={generatedPassword ? undefined : t("common.cancel")}
+                    ? `Temporary password generated for ${userName}. Copy it now; it will not be displayed again.`
+                    : `The server will generate a temporary password for ${userName}.`}
+                confirmText={generatedPassword ? "Close" : "Confirm Reset"}
+                cancelText={generatedPassword ? undefined : "Cancel"}
                 size="md"
                 isLoading={isSubmitting}
                 showCancel={!generatedPassword}
@@ -174,15 +172,15 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                     <WarningBanner
                         variant="warning"
                         description={generatedPassword
-                            ? t("resetPassword.generatedWarning")
-                            : t("resetPassword.initialWarning")}
+                            ? "Store this temporary password securely. The user must change it on their next login."
+                            : "This action requires an electronic signature and immediately invalidates the user's current password."}
                     />
 
                     {/* New Password */}
                     {generatedPassword ? (
                         <div>
                             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                                {t("resetPassword.temporaryPassword")}
+                                Temporary Password
                             </label>
                             <div className="flex items-center gap-2">
                                 <input
@@ -197,7 +195,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                                     variant="outline"
                                     size="icon-sm"
                                     className="flex h-10 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all duration-200 hover:bg-slate-50"
-                                    title={t("resetPassword.copyPassword")}
+                                    title="Copy Password"
                                 >
                                     <Copy className="h-4 w-4" />
                                 </Button>
@@ -206,7 +204,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                     ) : (
                         <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
                             <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
-                            <span>{t("resetPassword.serverGenerated")}</span>
+                            <span>The temporary password is generated securely by the server after e-signature confirmation.</span>
                         </div>
                     )}
                 </div>
@@ -218,7 +216,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                 type={resultModal.type}
                 title={resultModal.title}
                 description={resultModal.message}
-                confirmText={t("common.close")}
+                confirmText="Close"
                 showCancel={false}
             />
             {signatureModal}

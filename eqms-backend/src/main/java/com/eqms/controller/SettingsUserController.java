@@ -25,12 +25,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import org.springframework.context.i18n.LocaleContextHolder;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.MissingResourceException;
-import java.util.ResourceBundle;
 import java.util.UUID;
 
 @RestController
@@ -364,12 +360,11 @@ public class SettingsUserController {
         microsoftGraphOfficeOnlineService.testConnection(resolved);
         microsoftGraphOfficeOnlineService.testTemporarySharingCapabilities(resolved);
         String sharingMessage = "users".equalsIgnoreCase(resolved.shareLinkScope())
-                ? localizedMessage("settings.office_online_named_user_access")
-                : localizedMessage("settings.office_online_organization_access");
+                ? "Named-user Office Online access is configured. Upload and direct item access were verified; recipient permission delivery is verified when an assigned workflow user opens a revision."
+                : "Organization-scoped Office Online upload and sharing were verified.";
         return ResponseEntity.ok(new OfficeOnlineConnectionTestResponse(
                 true,
-                localizedMessage("settings.office_online_connection_success") + " " + sharingMessage + " "
-                        + localizedMessage("settings.office_online_review_link_note"),
+                "Office Online workspace connection and upload test successful. " + sharingMessage + " Review-link delivery still requires a real assigned user test.",
                 resolved.siteId(),
                 resolved.driveId(),
                 resolved.libraryFolder()
@@ -397,9 +392,9 @@ public class SettingsUserController {
         try {
             microsoftGraphOfficeOnlineService.testConnection(config);
             microsoftGraphOfficeOnlineService.testTemporarySharingCapabilities();
-            return ResponseEntity.ok(new OfficeOnlineHealthResponse("HEALTHY", localizedMessage("settings.office_online_health_healthy"), true, true, true, checkedAt));
+            return ResponseEntity.ok(new OfficeOnlineHealthResponse("HEALTHY", "Graph, SharePoint drive, upload, and item sharing are reachable. Review-link recipient delivery still requires a real user test.", true, true, true, checkedAt));
         } catch (Exception ex) {
-            return ResponseEntity.ok(new OfficeOnlineHealthResponse("UNHEALTHY", localizedMessage("settings.office_online_health_unhealthy"), false, false, false, checkedAt));
+            return ResponseEntity.ok(new OfficeOnlineHealthResponse("UNHEALTHY", ex.getMessage(), false, false, false, checkedAt));
         }
     }
 
@@ -410,11 +405,11 @@ public class SettingsUserController {
         requireConfigurationEdit();
         try {
             fileStorageService.testConnection(request);
-            return ResponseEntity.ok(new StorageConnectionTestResponse(true, localizedMessage("settings.storage_connection_success")));
+            return ResponseEntity.ok(new StorageConnectionTestResponse(true, "Storage connection test successful."));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(new StorageConnectionTestResponse(false, localizedMessage("settings.storage_connection_invalid")));
+            return ResponseEntity.badRequest().body(new StorageConnectionTestResponse(false, e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new StorageConnectionTestResponse(false, localizedMessage("settings.storage_connection_failed")));
+            return ResponseEntity.status(500).body(new StorageConnectionTestResponse(false, "Storage connection test failed: " + e.getMessage()));
         }
     }
 
@@ -425,11 +420,11 @@ public class SettingsUserController {
         requireConfigurationEdit();
         try {
             emailService.testConnection(request);
-            return ResponseEntity.ok(new SmtpConnectionTestResponse(true, localizedMessage("settings.smtp_connection_success")));
+            return ResponseEntity.ok(new SmtpConnectionTestResponse(true, "SMTP connection test successful."));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(new SmtpConnectionTestResponse(false, localizedMessage("settings.smtp_connection_invalid")));
+            return ResponseEntity.badRequest().body(new SmtpConnectionTestResponse(false, e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new SmtpConnectionTestResponse(false, localizedMessage("settings.smtp_connection_failed")));
+            return ResponseEntity.status(500).body(new SmtpConnectionTestResponse(false, "SMTP connection test failed: " + e.getMessage()));
         }
     }
 
@@ -557,18 +552,6 @@ public class SettingsUserController {
         var user = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasPermission(user, "settings.configuration.view")) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to view system configuration");
-        }
-    }
-
-    private String localizedMessage(String key) {
-        Locale requested = LocaleContextHolder.getLocale();
-        Locale supported = "vi".equalsIgnoreCase(requested.getLanguage())
-                ? Locale.forLanguageTag("vi")
-                : Locale.ENGLISH;
-        try {
-            return ResourceBundle.getBundle("messages", supported).getString(key);
-        } catch (MissingResourceException ignored) {
-            return key;
         }
     }
 

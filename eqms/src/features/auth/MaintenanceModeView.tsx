@@ -1,10 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { BrandLogo } from '@/components/branding/BrandLogo';
-import { useTranslation } from '@/i18n';
 
 export const MaintenanceModeView: React.FC = () => {
-  const { t } = useTranslation();
   return (
     <div className="relative isolate flex min-h-screen min-h-dvh w-full flex-col items-center justify-center overflow-hidden bg-[#fefcff] px-6 py-12">
       {/* Background radial gradients matching AuthLayout */}
@@ -25,13 +23,13 @@ export const MaintenanceModeView: React.FC = () => {
       {/* Content Section */}
       <div className="flex w-full max-w-2xl flex-col items-center text-center">
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-          {t('maintenance.headingPrefix')}
+          The EQMS is currently
           <br />
-          {t('maintenance.headingSuffix')}
+          down for maintenance
         </h1>
 
         <p className="mt-6 text-xs sm:text-sm font-medium leading-relaxed text-slate-500 sm:text-base">
-          {t('maintenance.description')}
+          We apologize for any inconveniences caused. Please check back soon.
         </p>
 
         {/* Animated Custom SVG Plug Illustration */}

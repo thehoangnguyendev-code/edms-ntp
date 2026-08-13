@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { cn } from "@/components/ui/utils";
 import { IconChevronUp } from "@tabler/icons-react";
-import { useTranslation } from "@/i18n";
 
 // Easing function: easeInOutQuart
 const easeInOutQuart = (t: number): number =>
@@ -45,7 +44,6 @@ export const ScrollToTop: React.FC<ScrollToTopProps> = ({
   threshold = 300,
   isMobileMenuOpen = false,
 }) => {
-  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -77,7 +75,7 @@ export const ScrollToTop: React.FC<ScrollToTopProps> = ({
   return (
     <button
       onClick={scrollToTop}
-      aria-label={t("scrollToTop.label")}
+      aria-label="Scroll to top"
       className={cn(
         "fixed bottom-20 right-6 z-50 flex items-center justify-center",
         "h-10 w-10 rounded-full bg-emerald-600 text-white border border-emerald-500/50",

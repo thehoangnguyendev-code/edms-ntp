@@ -5,8 +5,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useToast } from "@/components/ui/toast/Toast";
-import { useTranslation } from "@/i18n";
-import { getApiErrorMessage } from "@/utils/apiError";
 import { cn } from "@/components/ui/utils";
 import { securityApi, type AuthorizationEngineDecision } from "@/services/api/security";
 import { settingsApi } from "@/services/api/settings";
@@ -41,7 +39,6 @@ const ACTIONS_BY_RESOURCE_TYPE: Record<string, SelectOption[]> = {
  */
 export const SimulatorTab: React.FC = () => {
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const [actorId, setActorId] = useState("");
   const [actorLabel, setActorLabel] = useState("");
@@ -78,7 +75,7 @@ export const SimulatorTab: React.FC = () => {
       });
       setDecision(result);
     } catch (e: any) {
-      const message = getApiErrorMessage(e, t("simulator.evaluateFailed"));
+      const message = e?.response?.data?.message ?? "Failed to evaluate decision.";
       setError(message);
       showToast({ type: "error", message });
     } finally {

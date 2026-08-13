@@ -13,8 +13,6 @@ import { secureStorage, safeRandomUUID } from "@/utils/security";
 import { authTokenStore } from "@/services/authTokenStore";
 import { ROUTES } from "@/app/routes.constants";
 import { dispatchRouteRedirect } from "@/app/navigation/routeRedirect";
-import { readSystemLocalizationSettings } from "@/config/localization";
-import { t } from "@/i18n";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
@@ -25,17 +23,30 @@ export const RATE_LIMITED_EVENT = "eqms:rate-limited";
 // Q7 — the login page reads this after a forced redirect to show WHY the session ended,
 // so a suspended/terminated account isn't confused with an ordinary expired session.
 export const ACCOUNT_NOTICE_STORAGE_KEY = "eqms:account_notice";
-const ACCOUNT_NOT_ACTIVE_CODES = new Set([
-  "ACCOUNT_PENDING_ACTIVATION",
-  "ACCOUNT_SUSPENDED",
-  "ACCOUNT_INACTIVE",
-  "ACCOUNT_TERMINATED",
-]);
-
-const getAccountNotActiveNotice = (code: string) => ({
-  title: t(`auth.accountNotActive.${code}.title`),
-  message: t(`auth.accountNotActive.${code}.message`),
-});
+const ACCOUNT_NOT_ACTIVE_MESSAGES: Record<
+  string,
+  { title: string; message: string }
+> = {
+  ACCOUNT_PENDING_ACTIVATION: {
+    title: "Account Not Activated",
+    message:
+      "Your account has not been activated yet. Please contact your administrator.",
+  },
+  ACCOUNT_SUSPENDED: {
+    title: "Account Suspended",
+    message:
+      "Your account has been suspended. Please contact your administrator.",
+  },
+  ACCOUNT_INACTIVE: {
+    title: "Account Disabled",
+    message: "Your account is inactive. Please contact your administrator.",
+  },
+  ACCOUNT_TERMINATED: {
+    title: "Account Terminated",
+    message:
+      "Your account has been terminated. Please contact your administrator.",
+  },
+};
 const PUBLIC_AUTH_ENDPOINTS = [
   "/auth/login",
   "/auth/refresh",
@@ -88,32 +99,6 @@ const getResponseErrorCode = (data: unknown): string | undefined => {
   const response = data as { code?: unknown; error?: { code?: unknown } };
   if (typeof response.error?.code === "string") return response.error.code;
   return typeof response.code === "string" ? response.code : undefined;
-};
-
-/**
- * Keep legacy callers compatible with the structured server error contract.
- * New endpoints return `{ error: { code, message } }`, while older screens
- * still read `error.response.data.message` or `error.message`. Mirror the
- * server-localized message onto those legacy locations at the boundary so the
- * selected language is preserved everywhere without changing technical codes.
- */
-const normalizeLocalizedApiError = (error: AxiosError) => {
-  const data = error.response?.data;
-  if (typeof data !== "object" || data === null) return error;
-  const payload = data as { message?: unknown; error?: { message?: unknown } };
-  const nestedMessage = payload.error?.message;
-  const message = typeof nestedMessage === "string" && nestedMessage.trim()
-    ? nestedMessage.trim()
-    : typeof payload.message === "string" && payload.message.trim()
-      ? payload.message.trim()
-      : undefined;
-  if (!message) return error;
-
-  if (typeof payload.message !== "string" || !payload.message.trim()) {
-    payload.message = message;
-  }
-  error.message = message;
-  return error;
 };
 
 const inFlightGetRequests = new Map<string, Promise<AxiosResponse<unknown>>>();
@@ -335,7 +320,6 @@ apiClient.interceptors.request.use(
     }
 
     config.headers["X-Correlation-ID"] = safeRandomUUID();
-    config.headers["Accept-Language"] = readSystemLocalizationSettings().language || "en";
     return config;
   },
   (error) => Promise.reject(error),
@@ -344,7 +328,6 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
-    normalizeLocalizedApiError(error);
     if (error.response) {
       const { status, data } = error.response;
 
@@ -390,11 +373,11 @@ apiClient.interceptors.response.use(
             return Promise.reject(error);
           }
 
-          if (responseCode && ACCOUNT_NOT_ACTIVE_CODES.has(responseCode)) {
+          if (responseCode && ACCOUNT_NOT_ACTIVE_MESSAGES[responseCode]) {
             try {
               sessionStorage.setItem(
                 ACCOUNT_NOTICE_STORAGE_KEY,
-                JSON.stringify(getAccountNotActiveNotice(responseCode)),
+                JSON.stringify(ACCOUNT_NOT_ACTIVE_MESSAGES[responseCode]),
               );
             } catch {
               // sessionStorage unavailable — the redirect still happens, only the friendly

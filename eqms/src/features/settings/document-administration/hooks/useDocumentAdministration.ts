@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { settingsApi } from "@/services/api/settings";
 import type { DocumentAdministrationRule, DocumentAdministrationSettings } from "@/services/api/settings";
 
@@ -41,7 +40,6 @@ const toRules = (settings: DocumentAdministrationSettings): Record<string, boole
  */
 export const useDocumentAdministration = () => {
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
   const [rules, setRules] = useState<Record<string, boolean>>(RULE_DEFAULTS);
@@ -60,11 +58,11 @@ export const useDocumentAdministration = () => {
     try {
       applySnapshot(await settingsApi.getDocumentAdministration());
     } catch {
-      showToast({ type: "error", message: t("documentAdministration.loadFailed") });
+      showToast({ type: "error", message: "Unable to load document revision integrity rules." });
     } finally {
       setIsLoading(false);
     }
-  }, [applySnapshot, showToast, t]);
+  }, [applySnapshot, showToast]);
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -78,7 +76,7 @@ export const useDocumentAdministration = () => {
   }, [applySnapshot, snapshot]);
 
   const saveAdministration = useCallback(async (reason: string, signatureToken: string) => {
-    if (!snapshot) throw new Error(t("documentAdministration.notLoaded"));
+    if (!snapshot) throw new Error("Revision integrity rules have not loaded yet.");
     const response = await settingsApi.updateDocumentAdministration({
       reviewerNoApprove: !!rules["reviewer-no-approve"],
       requireTwoReviewers: !!rules["require-two-reviewers"],
@@ -94,7 +92,7 @@ export const useDocumentAdministration = () => {
     });
     applySnapshot(response);
     return response;
-  }, [applySnapshot, rules, snapshot, t]);
+  }, [applySnapshot, rules, snapshot]);
 
   return {
     isLoading,

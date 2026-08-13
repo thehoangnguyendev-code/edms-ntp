@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { documentApi } from "@/services/api/documents";
 import type { SelectOption } from "@/components/ui/select/Select";
 import type { User } from "@/types";
@@ -45,7 +44,6 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   const [searchParams, setSearchParams] = useSearchParams();
   const requestSeqRef = useRef(0);
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const [searchQuery, setSearchQuery] = useState(() => readString(searchParams, "search"));
   const [statusFilter, setStatusFilter] = useState(() => readString(searchParams, "status", "All"));
@@ -286,7 +284,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
         setDocuments([]);
         setTotalItems(0);
         setTotalPages(1);
-        setError(t("documentTable.loadDocumentsFailed"));
+        setError("Unable to load documents from server.");
       } finally {
         if (!cancelled && seq === requestSeqRef.current) {
           setIsLoading(false);
@@ -391,8 +389,8 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
 
       showToast({
         type: "success",
-        title: t("documentTable.exportCompleteTitle"),
-        message: t("documentTable.exportDocumentsComplete"),
+        title: "Export complete",
+        message: "Documents have been exported successfully.",
       });
     } catch (exportError) {
       if (import.meta.env.DEV) {
@@ -400,8 +398,8 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
       }
       showToast({
         type: "error",
-        title: t("documentTable.exportFailedTitle"),
-        message: t("documentTable.exportDocumentsFailed"),
+        title: "Export failed",
+        message: "Unable to export documents from server.",
       });
     } finally {
       setIsExporting(false);

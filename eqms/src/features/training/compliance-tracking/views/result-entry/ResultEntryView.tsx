@@ -25,7 +25,6 @@ import { AlertModal, AlertModalType } from "@/components/ui/modal/AlertModal";
 import { ESignatureModal } from "@/components/ui/esign-modal";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { useTableDragScroll } from "@/hooks";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -185,7 +184,6 @@ export const ResultEntryView: React.FC = () => {
   const [bulkExamDate, setBulkExamDate] = useState("");
 
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   // Request Change state
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -455,7 +453,7 @@ export const ResultEntryView: React.FC = () => {
 
   const handleRequestChangeTrigger = () => {
     if (!reasonForChange.trim()) {
-      showToast({ type: "error", title: t("trainingResults.validationTitle"), message: t("trainingResults.reasonRequired") });
+      showToast({ type: "error", title: "Validation Error", message: "Please provide a reason for the change." });
       return;
     }
     // Instead of immediate approval, trigger e-signature
@@ -513,8 +511,8 @@ export const ResultEntryView: React.FC = () => {
         setIsLoading(false);
         showToast({
           type: "success",
-          title: t("trainingResults.requestApprovedTitle"),
-          message: t("trainingResults.requestApprovedMessage")
+          title: "Request Approved",
+          message: "The fields have been enabled for modification. All changes will be audited."
         });
       }
     } catch {
@@ -1226,5 +1224,6 @@ export const ResultEntryView: React.FC = () => {
     </div>
   );
 };
+
 
 

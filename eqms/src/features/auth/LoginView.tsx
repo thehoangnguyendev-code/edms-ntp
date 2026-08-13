@@ -11,7 +11,6 @@ import { AuthField, AuthLayout } from "./components";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { ACCOUNT_NOTICE_STORAGE_KEY } from "@/services/api/client";
-import { useTranslation } from "@/i18n";
 
 
 // ============================================================================
@@ -19,6 +18,13 @@ import { useTranslation } from "@/i18n";
 // ============================================================================
 
 const MIN_PASSWORD_LENGTH = 6;
+
+const ERROR_MESSAGES = {
+  USERNAME_REQUIRED: "Username or email is required",
+  PASSWORD_REQUIRED: "Password is required",
+  PASSWORD_TOO_SHORT: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+  INVALID_CREDENTIALS: "Invalid username or password. Please try again.",
+} as const;
 
 // ============================================================================
 // TYPES
@@ -51,20 +57,20 @@ interface FormErrors {
  * @param data - Form data to validate
  * @returns Object containing validation errors (empty strings if no errors)
  */
-const validateLoginForm = (data: FormData, t: (key: string, values?: Record<string, string | number>) => string): FormErrors => {
+const validateLoginForm = (data: FormData): FormErrors => {
   const errors: FormErrors = {
     username: "",
     password: "",
   };
 
   if (!data.username.trim()) {
-    errors.username = t('auth.validation.usernameRequired');
+    errors.username = ERROR_MESSAGES.USERNAME_REQUIRED;
   }
 
   if (!data.password) {
-    errors.password = t('auth.validation.passwordRequired');
+    errors.password = ERROR_MESSAGES.PASSWORD_REQUIRED;
   } else if (data.password.length < MIN_PASSWORD_LENGTH) {
-    errors.password = t('auth.validation.passwordTooShort', { count: MIN_PASSWORD_LENGTH });
+    errors.password = ERROR_MESSAGES.PASSWORD_TOO_SHORT;
   }
 
   return errors;
@@ -79,26 +85,26 @@ const isFormValid = (errors: FormErrors): boolean => {
   return !errors.username && !errors.password;
 };
 
-const getLoginErrorTitle = (errorText: string, t: (key: string) => string): string => {
+const getLoginErrorTitle = (errorText: string): string => {
   const normalized = errorText.toLowerCase();
 
   if (normalized.includes("lock")) {
-    return t('auth.login.accountLocked');
+    return "Account Locked";
   }
 
   if (normalized.includes("inactive") || normalized.includes("administrator")) {
-    return t('auth.login.accountDisabled');
+    return "Account Disabled";
   }
 
   if (normalized.includes("not found")) {
-    return t('auth.login.accountNotFound');
+    return "Account Not Found";
   }
 
   if (normalized.includes("password")) {
-    return t('auth.login.incorrectPassword');
+    return "Incorrect Password";
   }
 
-  return t('auth.login.failed');
+  return "Login Failed";
 };
 
 // ============================================================================
@@ -118,7 +124,6 @@ const getLoginErrorTitle = (errorText: string, t: (key: string) => string): stri
  * ```
  */
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword }) => {
-  const { t } = useTranslation();
   // ========================================================================
   // REFS
   // ========================================================================
@@ -140,7 +145,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [loginErrorModalOpen, setLoginErrorModalOpen] = useState(false);
-  const [loginErrorTitle, setLoginErrorTitle] = useState(t('auth.login.failed'));
+  const [loginErrorTitle, setLoginErrorTitle] = useState("Login Failed");
   const [loginErrorDescription, setLoginErrorDescription] = useState<string | React.ReactNode>("");
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
 
@@ -158,7 +163,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
       try {
         const notice = JSON.parse(rawNotice) as { title?: string; message?: string };
         if (notice.message) {
-          setLoginErrorTitle(notice.title || t('auth.login.accessDenied'));
+          setLoginErrorTitle(notice.title || "Access Denied");
           setLoginErrorDescription(notice.message);
           setLoginErrorModalOpen(true);
         }
@@ -171,7 +176,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
       usernameRef.current?.focus();
     }, 500);
     return () => clearTimeout(timer);
-  }, [t]);
+  }, []);
 
   // ========================================================================
   // EVENT HANDLERS
@@ -210,7 +215,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
       setLoginError("");
 
       // Validate form
-      const validationErrors = validateLoginForm(formData, t);
+      const validationErrors = validateLoginForm(formData);
       setErrors(validationErrors);
 
       if (!isFormValid(validationErrors)) {
@@ -221,7 +226,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
 
       if (!onLogin) {
         setIsLoading(false);
-        setLoginError(t('auth.login.invalidCredentials'));
+        setLoginError(ERROR_MESSAGES.INVALID_CREDENTIALS);
         return;
       }
 
@@ -236,21 +241,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
           return;
         }
 
-        setLoginError(result.error || t('auth.login.invalidCredentials'));
-        const errorText = result.error || t('auth.login.invalidCredentials');
-        setLoginErrorTitle(getLoginErrorTitle(errorText, t));
+        setLoginError(result.error || ERROR_MESSAGES.INVALID_CREDENTIALS);
+        const errorText = result.error || ERROR_MESSAGES.INVALID_CREDENTIALS;
+        setLoginErrorTitle(getLoginErrorTitle(errorText));
         setLoginErrorDescription(errorText);
         setLoginErrorModalOpen(true);
       } catch (error) {
         setIsLoading(false);
-        const errorText = getApiErrorMessage(error, t('auth.login.invalidCredentials'));
+        const errorText = getApiErrorMessage(error, ERROR_MESSAGES.INVALID_CREDENTIALS);
         setLoginError(errorText);
-        setLoginErrorTitle(getLoginErrorTitle(errorText, t));
+        setLoginErrorTitle(getLoginErrorTitle(errorText));
         setLoginErrorDescription(errorText);
         setLoginErrorModalOpen(true);
       }
     },
-    [formData, onLogin, t]
+    [formData, onLogin]
   );
 
   // ========================================================================
@@ -264,11 +269,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
         onClose={() => setLoginErrorModalOpen(false)}
         type="error"
         title={loginErrorTitle}
-        description={loginErrorDescription || t('auth.login.invalidCredentials')}
-        confirmText={t('common.close')}
+        description={loginErrorDescription || ERROR_MESSAGES.INVALID_CREDENTIALS}
+        confirmText="Close"
       />
 
-      {isLoading && <FullPageLoading text={t('auth.login.signingIn')} />}
+      {isLoading && <FullPageLoading text="Signing in..." />}
       <AuthLayout
         left={
           <div className={AUTH_UI.formColumn}>
@@ -278,15 +283,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
 
             <div className={AUTH_UI.headerArea}>
               <div className={AUTH_UI.headingBlock}>
-                <h1 className={AUTH_UI.pageTitle}>{t('auth.login.heading')}</h1>
+                <h1 className={AUTH_UI.pageTitle}>Sign In To Your Account</h1>
                 <p className={AUTH_UI.description}>
-                  {t('auth.login.description')}
+                  Sign in with your account to access and manage your quality processes efficiently.
                 </p>
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate autoComplete="off">
-              <AuthField htmlFor="username" label={t('auth.login.emailOrUsername')} error={errors.username}>
+              <AuthField htmlFor="username" label="Email or Username" error={errors.username}>
                   <input
                     id="username"
                     ref={usernameRef}
@@ -300,14 +305,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                       AUTH_UI.inputFocus,
                       errors.username ? AUTH_UI.inputError : AUTH_UI.inputDefault
                     )}
-                    placeholder={t('auth.login.emailOrUsernamePlaceholder')}
+                    placeholder="Enter your email or username"
                     disabled={isLoading}
                     aria-invalid={!!errors.username}
                     aria-describedby={errors.username ? "username-error" : undefined}
                   />
               </AuthField>
 
-              <AuthField htmlFor="password" label={t('auth.login.password')} error={errors.password}>
+              <AuthField htmlFor="password" label="Password" error={errors.password}>
                 <div className="relative">
                   <input
                     id="password"
@@ -322,7 +327,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                       AUTH_UI.inputFocus,
                       errors.password ? AUTH_UI.inputError : AUTH_UI.inputDefault
                     )}
-                    placeholder={t('auth.login.passwordPlaceholder')}
+                    placeholder="Enter your password"
                     disabled={isLoading}
                     onKeyUp={handleCapsLockCheck}
                     onKeyDown={handleCapsLockCheck}
@@ -340,7 +345,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                       onClick={handleTogglePassword}
                       className="flex items-center p-1 text-slate-400 transition-colors hover:text-slate-600 focus:outline-none focus:text-slate-700"
                       disabled={isLoading}
-                      aria-label={showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                       tabIndex={-1}
                     >
                       {showPassword ? (
@@ -359,9 +364,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                   onClick={handleForgotPasswordClick}
                   className="text-xs font-medium text-emerald-700 transition-colors hover:text-emerald-800 focus:outline-none sm:text-sm"
                   disabled={isLoading}
-                  aria-label={t('auth.login.forgotPassword')}
+                  aria-label="Forgot password"
                 >
-                  {t('auth.login.forgotPassword')}
+                  Forgot password?
                 </button>
               </div>
 
@@ -372,7 +377,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                 disabled={isLoading}
                 aria-busy={isLoading}
               >
-                <span className="tracking-wide">{t('auth.login.submit')}</span>
+                <span className="tracking-wide">Sign In</span>
               </Button>
             </form>
 

@@ -15,7 +15,6 @@ import com.eqms.entity.PublishingWorkspaceJob;
 import com.eqms.entity.RevisionPublishingMetadata;
 import com.eqms.entity.UserAccount;
 import com.eqms.event.PublishingWorkspaceOpenedEvent;
-import com.eqms.i18n.LocalizedMessageResolver;
 import com.eqms.repository.PublishingTemplateRepository;
 import com.eqms.repository.PublishingTemplateComponentRepository;
 import com.eqms.repository.PublishingWorkspaceJobRepository;
@@ -483,42 +482,9 @@ public class PublishingWorkspaceService {
                 availablePreviewComponents(selectedTemplate),
                 job == null ? null : job.getId(),
                 job == null ? null : job.getStatus(),
-                job == null ? null : localizeJobMessage(job),
-                job == null ? null : localizeJobError(job)
+                job == null ? null : job.getMessage(),
+                job == null ? null : job.getErrorMessage()
         );
-    }
-
-    /**
-     * Jobs are persisted once and may be polled later in a different locale.
-     * Translate known lifecycle messages at response time instead of leaking
-     * the original English text stored by older workers.
-     */
-    private String localizeJobMessage(PublishingWorkspaceJob job) {
-        String message = job.getMessage();
-        if (message == null || message.isBlank()) {
-            return message;
-        }
-        String code = switch (message) {
-            case "Publishing job queued" -> "job_queued";
-            case "Publishing workspace preview queued" -> "preview_queued";
-            case "Processing publishing package and electronic signature." -> "job_processing";
-            case "Generating publishing workspace preview." -> "preview_processing";
-            case "Publishing completed successfully." -> "job_completed";
-            case "Publishing workspace preview generated successfully." -> "preview_completed";
-            case "Publishing failed" -> "job_failed";
-            default -> null;
-        };
-        return code == null ? message : LocalizedMessageResolver.resolve("publishing", code, message);
-    }
-
-    private String localizeJobError(PublishingWorkspaceJob job) {
-        String errorMessage = job.getErrorMessage();
-        if (errorMessage == null || errorMessage.isBlank()) {
-            return errorMessage;
-        }
-        return "FAILED".equalsIgnoreCase(job.getStatus())
-                ? LocalizedMessageResolver.resolve("publishing", "job_failed_detail", errorMessage)
-                : errorMessage;
     }
 
     private Integer countPages(String path) {

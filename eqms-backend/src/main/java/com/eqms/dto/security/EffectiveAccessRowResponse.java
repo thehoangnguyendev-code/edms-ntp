@@ -1,7 +1,5 @@
 package com.eqms.dto.security;
 
-import com.eqms.i18n.LocalizedMessageResolver;
-
 /**
  * One row of the EffectiveAccessPanel matrix (Phase 3): a single capability/action evaluated
  * against a single lifecycle status for a given Access Profile.
@@ -36,7 +34,6 @@ public record EffectiveAccessRowResponse(
             String reasonCode, String message, boolean objectAccessRuleEvaluated
     ) {
         return new EffectiveAccessRowResponse(moduleKey, actionCode, actionLabel, requiredPermissionCode,
-                objectType, statusCode, statusLabel, false, reasonCode,
-                LocalizedMessageResolver.resolve("authorization", reasonCode, message), objectAccessRuleEvaluated);
+                objectType, statusCode, statusLabel, false, reasonCode, message, objectAccessRuleEvaluated);
     }
 }

@@ -141,21 +141,6 @@ class AuthTokenFilterTest {
     }
 
     @Test
-    void suspendedUser_withVietnameseAcceptLanguage_receivesVietnameseMessage() throws Exception {
-        stubParsedToken();
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user(UserStatus.Suspended)));
-        when(systemConfigurationService.getSessionTimeoutMinutes()).thenReturn(30);
-        MockHttpServletRequest request = requestWithBearerToken();
-        request.addHeader("Accept-Language", "vi-VN,vi;q=0.9,en;q=0.8");
-
-        MockHttpServletResponse response = runFilter(request);
-
-        assertEquals(401, response.getStatus());
-        assertTrue(response.getContentAsString().contains("Tài khoản của bạn đã bị tạm ngưng"));
-        assertTrue(response.getContentAsString().contains("ACCOUNT_SUSPENDED"));
-    }
-
-    @Test
     void inactiveUser_isDenied401WithInactiveCode() throws Exception {
         stubParsedToken();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user(UserStatus.Inactive)));

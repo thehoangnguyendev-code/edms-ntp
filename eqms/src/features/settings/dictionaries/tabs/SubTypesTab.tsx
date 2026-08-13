@@ -30,7 +30,6 @@ import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { extractApiMessage } from "../utils";
 import type { DocumentSubTypeItem, DocumentTypeItem } from "../types";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
@@ -91,7 +90,6 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
     });
     const [documentTypes, setDocumentTypes] = useState<DocumentTypeItem[]>([]);
     const { showToast } = useToast();
-    const { t } = useTranslation();
 
     const {
       searchQuery,
@@ -202,12 +200,8 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
 
         openResultModal(
           "success",
-          showEditModal
-            ? t("subTypes.updated.title")
-            : t("subTypes.created.title"),
-          showEditModal
-            ? t("subTypes.updated.message", { name: saved.name })
-            : t("subTypes.created.message", { name: saved.name }),
+          showEditModal ? "Sub-Type Updated" : "Sub-Type Created",
+          `Sub-type "${saved.name}" has been ${showEditModal ? "updated" : "created"} successfully.`,
         );
         reload();
         setShowAddModal(false);
@@ -216,14 +210,12 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       } catch (error) {
         openResultModal(
           "error",
-          showEditModal
-            ? t("subTypes.updateFailed.title")
-            : t("subTypes.createFailed.title"),
+          showEditModal ? "Sub-Type Update Failed" : "Sub-Type Create Failed",
           extractApiMessage(
             error,
             showEditModal
-              ? t("subTypes.updateFailed.message")
-              : t("subTypes.createFailed.message"),
+              ? "Unable to update sub-type."
+              : "Unable to create sub-type.",
           ),
         );
         throw error;
@@ -252,20 +244,18 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
         showToast({
           type: "success",
           title: updated.isActive
-            ? t("subTypes.activated.title")
-            : t("subTypes.deactivated.title"),
-          message: updated.isActive
-            ? t("subTypes.activated.message", { name: updated.name })
-            : t("subTypes.deactivated.message", { name: updated.name }),
+            ? "Sub-Type Activated"
+            : "Sub-Type Deactivated",
+          message: `Sub-type "${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
         });
       } catch (error) {
         setShowToggleModal(false);
         showToast({
           type: "error",
-          title: t("subTypes.statusFailed.title"),
+          title: "Sub-Type Status Update Failed",
           message: extractApiMessage(
             error,
-            t("subTypes.statusFailed.message"),
+            "Unable to update sub-type status.",
           ),
         });
       } finally {
@@ -288,16 +278,16 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
         reload();
         showToast({
           type: "success",
-          title: t("subTypes.deleted.title"),
-          message: t("subTypes.deleted.message", { name: selectedItem.name }),
+          title: "Sub-Type Deleted",
+          message: `Sub-type "${selectedItem.name}" has been deleted successfully.`,
         });
         setSelectedItem(null);
       } catch (error) {
         setShowDeleteModal(false);
         showToast({
           type: "error",
-          title: t("subTypes.deleteFailed.title"),
-          message: extractApiMessage(error, t("subTypes.deleteFailed.message")),
+          title: "Sub-Type Delete Failed",
+          message: extractApiMessage(error, "Unable to delete sub-type."),
         });
       } finally {
         setIsSubmitting(false);

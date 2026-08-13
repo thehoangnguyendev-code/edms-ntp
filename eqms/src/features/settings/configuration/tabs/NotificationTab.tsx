@@ -10,7 +10,6 @@ import gmailLogo from '@/assets/images/logo-app/gmail.svg';
 import { settingsApi } from '@/services/api';
 import type { SmtpConnectionTestPayload } from '@/services/api/settings';
 import { notificationApi, type NotificationDeliveryFailure } from '@/services/api/notifications';
-import { useTranslation } from '@/i18n';
 
 interface NotificationTabProps {
   config: NotificationConfig;
@@ -38,7 +37,6 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
   const [isLoadingDeliveryFailures, setIsLoadingDeliveryFailures] = useState(true);
   const [retryingFailureId, setRetryingFailureId] = useState<string | null>(null);
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const loadDeliveryFailures = async (showFailureToast = false) => {
     setIsLoadingDeliveryFailures(true);
@@ -49,8 +47,8 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
       if (showFailureToast) {
         showToast({
           type: 'error',
-          title: t('notificationConfiguration.deliveryFailuresLoadTitle'),
-          message: error?.response?.data?.message || t('notificationConfiguration.deliveryFailuresLoadMessage'),
+          title: 'Unable to load delivery failures',
+          message: error?.response?.data?.message || 'Notification delivery failures could not be loaded.',
         });
       }
     } finally {
@@ -69,16 +67,12 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
     try {
       const updated = await notificationApi.retryDeliveryFailure(failure.id);
       setDeliveryFailures((current) => current.map((item) => item.id === updated.id ? updated : item));
-      showToast({
-        type: 'success',
-        title: t('notificationConfiguration.deliveryRetryQueuedTitle'),
-        message: t('notificationConfiguration.deliveryRetryQueuedMessage', { recipient: failure.recipient }),
-      });
+      showToast({ type: 'success', title: 'Delivery retry queued', message: `Retry requested for ${failure.recipient}.` });
     } catch (error: any) {
       showToast({
         type: 'error',
-        title: t('notificationConfiguration.deliveryRetryFailedTitle'),
-        message: error?.response?.data?.message || t('notificationConfiguration.deliveryRetryFailedMessage'),
+        title: 'Delivery retry failed',
+        message: error?.response?.data?.message || 'The notification could not be retried.',
       });
     } finally {
       setRetryingFailureId(null);
@@ -110,8 +104,8 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
     if (!smtpHost || !smtpPort || !smtpUsername || !smtpPassword || !senderEmail || !senderName) {
       showToast({
         type: 'error',
-        title: t('notificationConfiguration.missingSmtpTitle'),
-        message: t('notificationConfiguration.missingSmtpMessage'),
+        title: 'Missing SMTP Details',
+        message: 'Please fill in SMTP Host, Port, Username, Password, Sender Email, and Sender Name before testing.',
       });
       return;
     }
@@ -132,21 +126,21 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
       if (result.success) {
         showToast({
           type: 'success',
-          title: t('notificationConfiguration.smtpSuccessTitle'),
-          message: result.message || t('notificationConfiguration.smtpSuccessMessage', { email: config.emailConfig.senderEmail }),
+          title: 'SMTP Connection Successful',
+          message: result.message || `Test email sent to ${config.emailConfig.senderEmail}`,
         });
       } else {
         showToast({
           type: 'error',
-          title: t('notificationConfiguration.smtpFailedTitle'),
-          message: result.message || t('notificationConfiguration.smtpFailedMessage'),
+          title: 'SMTP Connection Failed',
+          message: result.message || 'Unable to connect to SMTP server',
         });
       }
     } catch (error: any) {
       showToast({
         type: 'error',
-        title: t('notificationConfiguration.smtpFailedTitle'),
-        message: error.response?.data?.message || error.message || t('notificationConfiguration.smtpFailedMessage'),
+        title: 'SMTP Connection Failed',
+        message: error.response?.data?.message || error.message || 'Unable to connect to SMTP server',
       });
     } finally {
       setTestingSmtp(false);

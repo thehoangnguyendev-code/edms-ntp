@@ -42,7 +42,6 @@ import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { navigateBack } from "@/app/navigation/backNavigation";
 import { publishingTemplateCreate, publishingTemplateEdit } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { publishingTemplatesApi } from "@/services/api/publishingTemplates";
-import { useTranslation } from "@/i18n";
 import type {
   PublishingPlaceholderGroupResponse,
   PublishingPlaceholderStyleConfig,
@@ -256,7 +255,6 @@ export const PublishingTemplateEditorView: React.FC = () => {
   const location = useLocation();
   const { navigateTo, isNavigating } = useNavigateWithLoading();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { id } = useParams<{ id?: string }>();
   const {
     openId: openHeaderMenuId,
@@ -587,8 +585,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         console.error("Failed to load publishing template", error);
         showToast({
           type: "error",
-          title: t("publishingTemplates.loadFailedTitle"),
-          message: t("publishingTemplates.editorLoadFailedMessage"),
+          title: "Load failed",
+          message: "Unable to load publishing template data.",
         });
       } finally {
         if (alive) setIsLoading(false);
@@ -813,8 +811,9 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         setActiveSlot(getFallbackActiveSlot(latestTemplate.components));
         showToast({
           type: "success",
-          title: t("publishingTemplates.modeUpdatedTitle"),
-          message: t("publishingTemplates.modeUpdatedMessage"),
+          title: "Mode updated",
+          message:
+            "Slots outside the selected publishing mode were cleared automatically.",
         });
       } catch (error) {
         console.error(
@@ -825,8 +824,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         lastPublishingModeRef.current = previousMode;
         showToast({
           type: "error",
-          title: t("publishingTemplates.modeUpdateFailedTitle"),
-          message: t("publishingTemplates.modeUpdateFailedMessage"),
+          title: "Mode update failed",
+          message: "Unable to clear incompatible template files.",
         });
       }
     })();
@@ -900,8 +899,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       if (!form.templateName.trim()) {
         showToast({
           type: "warning",
-          title: t("publishingTemplates.templateNameRequiredTitle"),
-          message: t("publishingTemplates.templateNameRequiredMessage"),
+          title: "Template Name required",
+          message: "Template Name is required before saving.",
         });
         return null;
       }
@@ -913,8 +912,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       setTemplate(saved);
       showToast({
         type: "success",
-        title: t("publishingTemplates.savedTitle"),
-        message: t("publishingTemplates.savedMessage"),
+        title: "Saved",
+        message: "Publishing template saved successfully.",
       });
       if (options?.redirectAfterCreate !== false && !isEditMode && saved.id) {
         navigate(ROUTES.SETTINGS.PUBLISHING_TEMPLATES_EDIT(saved.id), {
@@ -927,8 +926,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       console.error("Failed to save publishing template", error);
       showToast({
         type: "error",
-        title: t("publishingTemplates.saveFailedTitle"),
-        message: t("publishingTemplates.saveFailedMessage"),
+        title: "Save failed",
+        message: "Unable to save publishing template.",
       });
       return null;
     } finally {
@@ -954,15 +953,15 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       setTemplate(published);
       showToast({
         type: "success",
-        title: t("publishingTemplates.publishedTitle"),
-        message: t("publishingTemplates.publishedMessage"),
+        title: "Published",
+        message: "Publishing template published successfully.",
       });
     } catch (error) {
       console.error("Failed to publish publishing template", error);
       showToast({
         type: "error",
-        title: t("publishingTemplates.publishFailedTitle"),
-        message: t("publishingTemplates.publishFailedMessage"),
+        title: "Publish failed",
+        message: "Unable to publish template.",
       });
     } finally {
       setIsSaving(false);
@@ -976,16 +975,16 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       await publishingTemplatesApi.deleteTemplate(template.id);
       showToast({
         type: "success",
-        title: t("publishingTemplates.deletedTitle"),
-        message: t("publishingTemplates.deletedMessage"),
+        title: "Deleted",
+        message: "Publishing template deleted.",
       });
       navigateTo(ROUTES.SETTINGS.PUBLISHING_TEMPLATES);
     } catch (error) {
       console.error("Failed to delete publishing template", error);
       showToast({
         type: "error",
-        title: t("publishingTemplates.deleteFailedTitle"),
-        message: t("publishingTemplates.deleteFailedMessage"),
+        title: "Delete failed",
+        message: "Unable to delete publishing template.",
       });
     } finally {
       setIsSaving(false);
@@ -1009,8 +1008,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       });
       showToast({
         type: "success",
-        title: t("publishingTemplates.duplicatedTitle"),
-        message: t("publishingTemplates.duplicatedMessage"),
+        title: "Duplicated",
+        message: "Publishing template duplicated.",
       });
       navigate(ROUTES.SETTINGS.PUBLISHING_TEMPLATES_EDIT(duplicated.id || ""), {
         replace: true,
@@ -1020,8 +1019,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       console.error("Failed to duplicate publishing template", error);
       showToast({
         type: "error",
-        title: t("publishingTemplates.duplicateFailedTitle"),
-        message: t("publishingTemplates.duplicateFailedMessage"),
+        title: "Duplicate failed",
+        message: "Unable to duplicate template.",
       });
     } finally {
       setIsSaving(false);
@@ -1142,8 +1141,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       if (showErrorToast) {
         showToast({
           type: "error",
-          title: t("publishingTemplates.previewFailedTitle"),
-          message: t("publishingTemplates.previewFailedMessage"),
+          title: "Preview failed",
+          message: "Unable to load template preview.",
         });
       }
     } finally {
@@ -1173,8 +1172,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     if (!isDocxFile) {
       showToast({
         type: "error",
-        title: t("publishingTemplates.invalidFileTypeTitle"),
-        message: t("publishingTemplates.invalidFileTypeMessage"),
+        title: "Invalid file type",
+        message: "Only .docx files are allowed for publishing templates.",
       });
       return;
     }
@@ -1214,15 +1213,15 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       );
       showToast({
         type: "success",
-        title: t("publishingTemplates.componentUploadedTitle"),
-        message: t("publishingTemplates.componentUploadedMessage", { layout: layoutLabel(layout), component: componentType }),
+        title: "Uploaded",
+        message: `${layoutLabel(layout)} ${componentType} template uploaded.`,
       });
     } catch (error) {
       console.error("Failed to upload publishing template component", error);
       showToast({
         type: "error",
-        title: t("publishingTemplates.componentUploadFailedTitle"),
-        message: t("publishingTemplates.componentUploadFailedMessage"),
+        title: "Upload failed",
+        message: "Unable to upload template file.",
       });
     } finally {
       setUploadingSlot(null);
@@ -1254,15 +1253,15 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       }
       showToast({
         type: "success",
-        title: t("publishingTemplates.componentDeletedTitle"),
-        message: t("publishingTemplates.componentDeletedMessage", { layout: layoutLabel(layout), component: componentType }),
+        title: "Deleted",
+        message: `${layoutLabel(layout)} ${componentType} template deleted.`,
       });
     } catch (error) {
       console.error("Failed to delete publishing template component", error);
       showToast({
         type: "error",
-        title: t("publishingTemplates.componentDeleteFailedTitle"),
-        message: t("publishingTemplates.componentDeleteFailedMessage"),
+        title: "Delete failed",
+        message: "Unable to delete template file.",
       });
     } finally {
       setDeletingSlot(null);
@@ -1281,8 +1280,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       console.error("Failed to copy placeholder", error);
       showToast({
         type: "error",
-        title: t("publishingTemplates.copyFailedTitle"),
-        message: t("publishingTemplates.copyPlaceholderFailedMessage"),
+        title: "Copy failed",
+        message: "Unable to copy placeholder.",
       });
     }
   };
@@ -1339,10 +1338,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           getSlotStyleSignature(activeSlotMeta.componentType, activeSlotMeta.layout),
         ),
       );
-      showToast({ type: "success", title: t("publishingTemplates.styleSavedTitle"), message: t("publishingTemplates.styleSavedMessage") });
+      showToast({ type: "success", title: "Style saved", message: "Placeholder style updated." });
     } catch (error) {
       console.error("Failed to save placeholder style", error);
-      showToast({ type: "error", title: t("publishingTemplates.styleSaveFailedTitle"), message: t("publishingTemplates.styleSaveFailedMessage") });
+      showToast({ type: "error", title: "Save failed", message: "Unable to save placeholder style." });
     } finally {
       setIsSavingPlaceholderStyle(false);
     }
@@ -1373,10 +1372,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           getSlotStyleSignature(activeSlotMeta.componentType, activeSlotMeta.layout),
         ),
       );
-      showToast({ type: "success", title: t("publishingTemplates.styleClearedTitle"), message: t("publishingTemplates.styleClearedMessage") });
+      showToast({ type: "success", title: "Style cleared", message: "Placeholder style removed." });
     } catch (error) {
       console.error("Failed to delete placeholder style", error);
-      showToast({ type: "error", title: t("publishingTemplates.styleDeleteFailedTitle"), message: t("publishingTemplates.styleDeleteFailedMessage") });
+      showToast({ type: "error", title: "Delete failed", message: "Unable to delete placeholder style." });
     } finally {
       setIsSavingPlaceholderStyle(false);
     }

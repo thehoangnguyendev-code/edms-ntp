@@ -16,7 +16,6 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
-import { useTranslation } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -33,7 +32,6 @@ export const ObjectAccessRuleFormView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias(MANAGE_PERM);
   const { requestSignature, signatureModal } = useSecurityESign();
@@ -62,12 +60,12 @@ export const ObjectAccessRuleFormView: React.FC = () => {
         setResourceType((prev) => prev || o.resourceTypes[0] || "");
       })
       .catch(() => {
-        if (!cancelled) showToast({ type: "error", message: t("objectAccessRules.loadOptionsFailed") });
+        if (!cancelled) showToast({ type: "error", message: "Failed to load rule options" });
       });
     return () => {
       cancelled = true;
     };
-  }, [showToast, t]);
+  }, [showToast]);
 
   useEffect(() => {
     if (!id) return;
@@ -89,7 +87,7 @@ export const ObjectAccessRuleFormView: React.FC = () => {
         setActive(r.active);
       })
       .catch(() => {
-        if (!cancelled) showToast({ type: "error", message: t("objectAccessRules.loadFailed") });
+        if (!cancelled) showToast({ type: "error", message: "Failed to load object access rule" });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -97,7 +95,7 @@ export const ObjectAccessRuleFormView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, showToast, t]);
+  }, [id, showToast]);
 
   const toggleAction = (a: string) =>
     setActions((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
@@ -132,14 +130,14 @@ export const ObjectAccessRuleFormView: React.FC = () => {
     try {
       if (initial) {
         await settingsApi.updateObjectAccessRule(initial.id, payload, sig);
-        showToast({ type: "success", message: t("objectAccessRules.updated") });
+        showToast({ type: "success", message: "Rule updated" });
       } else {
         await settingsApi.createObjectAccessRule(payload, sig);
-        showToast({ type: "success", message: t("objectAccessRules.created") });
+        showToast({ type: "success", message: "Rule created" });
       }
       handleBack();
     } catch (e: any) {
-      showToast({ type: "error", message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("objectAccessRules.saveFailed") });
+      showToast({ type: "error", message: e?.response?.data?.message ?? "Save failed" });
     } finally {
       setSaving(false);
     }

@@ -5,7 +5,6 @@ import { Search, FileText, AlertTriangle, Settings } from 'lucide-react';
 import { cn } from '../../ui/utils';
 import { ICON_MAP } from '@/app/constants';
 import { navigationApi, FlatMenuItem } from '@/services/api';
-import { useTranslation } from '@/i18n';
 
 interface SearchDropdownProps {
   className?: string;
@@ -13,7 +12,6 @@ interface SearchDropdownProps {
 }
 
 export const SearchDropdown: React.FC<SearchDropdownProps> = ({ className, onCloseSidebar }) => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -161,7 +159,7 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({ className, onClo
                 ? "bg-white ring-1 ring-emerald-500 border-emerald-500"
                 : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"
             )}
-            placeholder={t('headerSearch.placeholder')}
+            placeholder="Search features, pages..."
             onFocus={() => setIsSearchFocused(true)}
           />
         </div>
@@ -183,12 +181,12 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({ className, onClo
                 {isLoading ? (
                   <div className="px-3 py-8 text-center flex flex-col items-center justify-center gap-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent" />
-                    <p className="text-xs text-slate-400">{t('headerSearch.searching')}</p>
+                    <p className="text-xs text-slate-400">Searching...</p>
                   </div>
                 ) : filteredNavItems.length > 0 ? (
                   <>
                     <div className="px-3 py-2 text-sm font-medium text-slate-500">
-                      {t('headerSearch.featuresPages')}
+                      Features & Pages
                     </div>
                     {filteredNavItems.map((navItem) => {
                       const rawIcon = navItem.icon;
@@ -215,8 +213,8 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({ className, onClo
                   </>
                 ) : (
                   <div className="px-3 py-8 text-center">
-                    <p className="text-sm text-slate-500">{t('headerSearch.noResults', { query: debouncedQuery })}</p>
-                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">{t('headerSearch.tryDifferent')}</p>
+                    <p className="text-sm text-slate-500">No results found for "{debouncedQuery}"</p>
+                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">Try a different search term</p>
                   </div>
                 )}
               </div>

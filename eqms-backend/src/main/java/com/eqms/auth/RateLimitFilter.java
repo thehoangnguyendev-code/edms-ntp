@@ -15,8 +15,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Locale;
-import java.util.ResourceBundle;
 import java.util.Set;
 
 @Component
@@ -90,8 +88,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(result.retryAfterSeconds()));
             response.setContentType("application/json");
-            response.getWriter().write("{\"code\":\"RATE_LIMITED\",\"message\":\""
-                    + escapeJson(localizedMessage(request)) + "\"}");
+            response.getWriter().write("{\"code\":\"RATE_LIMITED\",\"message\":\"Too many requests. Please try again later.\"}");
             return;
         }
 
@@ -122,23 +119,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private boolean isReadRequest(HttpServletRequest request) {
         return HttpMethod.GET.matches(request.getMethod()) || HttpMethod.HEAD.matches(request.getMethod());
-    }
-
-    private String localizedMessage(HttpServletRequest request) {
-        Locale locale = Locale.ENGLISH;
-        String acceptLanguage = request.getHeader(HttpHeaders.ACCEPT_LANGUAGE);
-        if (acceptLanguage != null && acceptLanguage.toLowerCase(Locale.ROOT).startsWith("vi")) {
-            locale = Locale.forLanguageTag("vi");
-        }
-        try {
-            return ResourceBundle.getBundle("messages", locale).getString("errors.rate_limited");
-        } catch (Exception ignored) {
-            return "Too many requests. Please try again later.";
-        }
-    }
-
-    private String escapeJson(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /**

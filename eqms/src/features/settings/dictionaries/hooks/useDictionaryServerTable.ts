@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 
 export type DictionaryServerPageResponse<T> = {
   data: T[];
@@ -40,7 +39,6 @@ export function useDictionaryServerTable<T>({
   initialItemsPerPage = 10,
 }: UseDictionaryServerTableOptions<T>) {
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(initialItemsPerPage);
@@ -100,7 +98,7 @@ export function useDictionaryServerTable<T>({
         setTotalPages(1);
         showToast({
           type: "error",
-          message: t("dictionary.loadFailed"),
+          message: "Unable to load dictionary data. Please try again.",
         });
       } finally {
         if (!cancelled) {
@@ -125,7 +123,6 @@ export function useDictionaryServerTable<T>({
     refreshToken,
     fetcher,
     showToast,
-    t,
   ]);
 
   return {

@@ -18,7 +18,6 @@ import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { IconPencilMinus } from "@tabler/icons-react";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useTranslation } from "@/i18n";
 
 interface PolicyState {
   distributionSecurity: {
@@ -70,7 +69,6 @@ const sortExpiryLimits = (limits: ControlledCopyExpiryLimit[]) =>
 export const ControlledCopiesPolicyView: React.FC = () => {
   const { navigateTo } = useNavigateWithLoading();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { hasPermissionAlias } = usePermissions();
   const canManagePolicy = hasPermissionAlias('settings.controlled_copy_policy.manage');
@@ -88,7 +86,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
 
   const loadExpiryLimits = () => {
     controlledCopyPolicyApi.listExpiryLimits().then((data) => setExpiryLimits(sortExpiryLimits(data))).catch(() => {
-      showToast({ type: "error", title: t("controlledCopyPolicy.errorTitle"), message: t("controlledCopyPolicy.loadExpiryLimitsFailed") });
+      showToast({ type: "error", title: "Error", message: "Unable to load the Expiry Duration Policy." });
     });
   };
 
@@ -120,7 +118,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   const handleSaveLimit = async () => {
     const days = Number(limitForm.maxDurationDays);
     if (!days || days <= 0) {
-      showToast({ type: "error", title: t("controlledCopyPolicy.errorTitle"), message: t("controlledCopyPolicy.durationPositive") });
+      showToast({ type: "error", title: "Error", message: "Duration (days) must be a positive number." });
       return;
     }
     const sig = await requestSignature(
@@ -143,11 +141,11 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       } else {
         await controlledCopyPolicyApi.createExpiryLimit(payload);
       }
-      showToast({ type: "success", title: t("controlledCopyPolicy.successTitle"), message: t("controlledCopyPolicy.expiryLimitSaved") });
+      showToast({ type: "success", title: "Success", message: "Expiry Duration Policy rule saved." });
       setIsLimitModalOpen(false);
       loadExpiryLimits();
     } catch (err) {
-      showToast({ type: "error", title: t("controlledCopyPolicy.errorTitle"), message: extractApiMessage(err, t("controlledCopyPolicy.expiryLimitSaveFailed")) });
+      showToast({ type: "error", title: "Error", message: extractApiMessage(err, "Failed to save the rule.") });
     } finally {
       setIsSavingLimit(false);
     }
@@ -161,10 +159,10 @@ export const ControlledCopiesPolicyView: React.FC = () => {
     if (!sig) return;
     try {
       await controlledCopyPolicyApi.deleteExpiryLimit(limit.id, sig);
-      showToast({ type: "success", title: t("controlledCopyPolicy.successTitle"), message: t("controlledCopyPolicy.expiryLimitDeleted") });
+      showToast({ type: "success", title: "Success", message: "Rule deleted." });
       loadExpiryLimits();
     } catch (err) {
-      showToast({ type: "error", title: t("controlledCopyPolicy.errorTitle"), message: extractApiMessage(err, t("controlledCopyPolicy.expiryLimitDeleteFailed")) });
+      showToast({ type: "error", title: "Error", message: extractApiMessage(err, "Failed to delete the rule.") });
     }
   };
 
@@ -202,7 +200,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
         });
       })
       .catch(() => {
-        if (active) showToast({ type: "error", title: t("controlledCopyPolicy.errorTitle"), message: t("controlledCopyPolicy.loadFailed") });
+        if (active) showToast({ type: "error", title: "Error", message: "Unable to load Controlled Copies Policy from server." });
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -217,9 +215,9 @@ export const ControlledCopiesPolicyView: React.FC = () => {
         distributionSecurity: policy.distributionSecurity,
         recallLostDamaged: policy.recallLostDamaged,
       }, sig);
-      showToast({ type: "success", title: t("controlledCopyPolicy.successTitle"), message: t("controlledCopyPolicy.saved") });
+      showToast({ type: "success", title: "Success", message: "Controlled Copies Policy saved successfully." });
     } catch (err) {
-      showToast({ type: "error", title: t("controlledCopyPolicy.errorTitle"), message: extractApiMessage(err, t("controlledCopyPolicy.saveFailed")) });
+      showToast({ type: "error", title: "Error", message: extractApiMessage(err, "Failed to save policy. Please try again.") });
     } finally {
       setSaving(false);
     }

@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { t } from "@/i18n";
-import { getApiErrorMessage } from "@/utils/apiError";
 import { settingsApi } from "@/services/api/settings";
 import { dictionaryApi } from "@/services/api";
 import type { User, Certification, EducationItem } from "../types";
@@ -513,7 +511,7 @@ export function useUserProfile(userId: string | undefined) {
       showToast({
         type: "error",
         title: "Certificate Save Failed",
-        message: getApiErrorMessage(error, t("userProfile.operationFailed")),
+        message: String(error),
       });
     }
   };
@@ -531,7 +529,7 @@ export function useUserProfile(userId: string | undefined) {
       showToast({
         type: "error",
         title: "Delete Failed",
-        message: getApiErrorMessage(error, t("userProfile.operationFailed")),
+        message: String(error),
       });
     }
   };
@@ -582,7 +580,7 @@ export function useUserProfile(userId: string | undefined) {
       showToast({
         type: "error",
         title: "Education Save Failed",
-        message: getApiErrorMessage(error, t("userProfile.operationFailed")),
+        message: String(error),
       });
     }
   };
@@ -600,7 +598,7 @@ export function useUserProfile(userId: string | undefined) {
       showToast({
         type: "error",
         title: "Delete Failed",
-        message: getApiErrorMessage(error, t("userProfile.operationFailed")),
+        message: String(error),
       });
     }
   };
@@ -623,7 +621,7 @@ export function useUserProfile(userId: string | undefined) {
       showToast({
         type: "error",
         title: "Suspend Failed",
-        message: getApiErrorMessage(error, t("userProfile.operationFailed")),
+        message: String(error),
       });
     }
   };
@@ -646,7 +644,7 @@ export function useUserProfile(userId: string | undefined) {
       showToast({
         type: "error",
         title: "Terminate Failed",
-        message: getApiErrorMessage(error, t("userProfile.operationFailed")),
+        message: String(error),
       });
     }
   };
@@ -665,7 +663,7 @@ export function useUserProfile(userId: string | undefined) {
       showToast({
         type: "error",
         title: "Reinstate Failed",
-        message: getApiErrorMessage(error, t("userProfile.operationFailed")),
+        message: String(error),
       });
     }
   };
@@ -697,7 +695,7 @@ export function useUserProfile(userId: string | undefined) {
       showToast({
         type: "error",
         title: "Avatar Update Failed",
-        message: getApiErrorMessage(error, t("userProfile.operationFailed")),
+        message: String(error),
       });
     } finally {
       setIsAvatarSaving(false);

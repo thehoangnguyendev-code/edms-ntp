@@ -24,7 +24,6 @@ import { accessReview as accessReviewBreadcrumb } from "@/components/ui/breadcru
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime, formatDateUS } from "@/utils/format";
-import { useTranslation } from "@/i18n";
 
 const statusBadge = (status: AccessReviewCampaignSummary["status"]) =>
   status === "COMPLETED" ? "emerald" : status === "CANCELLED" ? "slate" : "blue";
@@ -44,7 +43,6 @@ export const AccessReviewView: React.FC = () => {
   const navigate = useNavigate();
   useLocalizationPreferences();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canView = hasPermissionAlias("security.access_review.view");
   const canManage = hasPermissionAlias("security.access_review.manage");
@@ -116,11 +114,11 @@ export const AccessReviewView: React.FC = () => {
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: t("accessReview.loadFailed") });
+      showToast({ type: "error", message: "Failed to load access reviews" });
     } finally {
       setLoading(false);
     }
-  }, [canView, currentPage, itemsPerPage, debouncedSearch, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast, t]);
+  }, [canView, currentPage, itemsPerPage, debouncedSearch, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast]);
 
   useEffect(() => {
     if (!canView) return;
@@ -156,7 +154,7 @@ export const AccessReviewView: React.FC = () => {
 
   const createCampaign = async () => {
     if (!campaignName.trim()) {
-      showToast({ type: "error", title: t("accessReview.validationTitle"), message: t("accessReview.campaignNameRequired") });
+      showToast({ type: "error", title: "Validation failed", message: "Campaign name is required" });
       return;
     }
     setCreating(true);
@@ -168,10 +166,10 @@ export const AccessReviewView: React.FC = () => {
         reviewPeriodEnd: ddmmyyyyToIso(reviewPeriodEnd),
       });
       setIsCreateModalOpen(false);
-      showToast({ type: "success", message: t("accessReview.created") });
+      showToast({ type: "success", message: "Access review campaign created" });
       navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${detail.campaign.id}`);
     } catch (e: any) {
-      showToast({ type: "error", message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("accessReview.createFailed") });
+      showToast({ type: "error", message: e?.response?.data?.message ?? "Failed to create campaign" });
     } finally {
       setCreating(false);
     }
@@ -182,11 +180,11 @@ export const AccessReviewView: React.FC = () => {
     setCancelling(true);
     try {
       await settingsApi.cancelAccessReview(cancelTarget.id);
-      showToast({ type: "success", message: t("accessReview.cancelled") });
+      showToast({ type: "success", message: "Campaign cancelled" });
       setCancelTarget(null);
       void load();
     } catch (e: any) {
-      showToast({ type: "error", message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("accessReview.cancelFailed") });
+      showToast({ type: "error", message: e?.response?.data?.message ?? "Failed to cancel campaign" });
     } finally {
       setCancelling(false);
     }

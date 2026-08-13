@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:docker": "vite --host 0.0.0.0 --port 3000 --strictPort --force",
-    "check:i18n": "node scripts/check-i18n.js",
-    "build": "npm run check:i18n && vite build",
+    "build": "vite build",
     "postbuild": "node scripts/zip-dist.js",
     "preview": "vite preview"
   },

@@ -28,7 +28,6 @@ import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/Filter
 import {IconFilter2, IconPencilMinus} from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { extractApiMessage } from "../utils";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -81,7 +80,6 @@ export const PositionsTab = React.forwardRef<
   const [businessUnits, setBusinessUnits] = useState<{ label: string; value: string }[]>([]);
   const [departments, setDepartments] = useState<DepartmentItem[]>([]);
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const {
     searchQuery,
@@ -185,8 +183,8 @@ export const PositionsTab = React.forwardRef<
         reload();
         showToast({
           type: "success",
-        title: updated.isActive ? t("positions.activated.title") : t("positions.deactivated.title"),
-        message: updated.isActive ? t("positions.activated.message", { name: updated.name }) : t("positions.deactivated.message", { name: updated.name }),
+          title: updated.isActive ? "Position Activated" : "Position Deactivated",
+          message: `Position "${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
         });
       })
       .catch((error) => {
@@ -194,8 +192,8 @@ export const PositionsTab = React.forwardRef<
         setShowToggleModal(false);
         showToast({
           type: "error",
-        title: t("positions.statusFailed.title"),
-        message: extractApiMessage(error, t("positions.statusFailed.message")),
+          title: "Position Status Update Failed",
+          message: extractApiMessage(error, "Unable to update position status."),
         });
       });
   };
@@ -208,8 +206,8 @@ export const PositionsTab = React.forwardRef<
         reload();
         showToast({
           type: "success",
-        title: t("positions.deleted.title"),
-        message: t("positions.deleted.message", { name: selectedItem.name }),
+          title: "Position Deleted",
+          message: `Position "${selectedItem.name}" has been deleted successfully.`,
         });
       }
       setShowDeleteModal(false);
@@ -218,8 +216,8 @@ export const PositionsTab = React.forwardRef<
       if (import.meta.env.DEV) console.error("Failed to delete position", error);
       showToast({
         type: "error",
-        title: t("positions.deleteFailed.title"),
-        message: extractApiMessage(error, t("positions.deleteFailed.message")),
+        title: "Position Delete Failed",
+        message: extractApiMessage(error, "Unable to delete position."),
       });
       setShowDeleteModal(false);
     } finally {

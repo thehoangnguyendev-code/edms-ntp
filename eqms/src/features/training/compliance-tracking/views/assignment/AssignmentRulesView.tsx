@@ -31,7 +31,6 @@ import {
   type AssignmentTrigger,
 } from "../../../types/assignment.types";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
-import { useTranslation } from "@/i18n";
 
 // ─── Trigger metadata ──────────────────────────────────────────────────────────
 const TRIGGER_META: Record<AssignmentTrigger, {
@@ -274,7 +273,6 @@ interface PendingToggle {
 export const AssignmentRulesView: React.FC = () => {
   const { navigateTo, isNavigating } = useNavigateWithLoading();
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const [rules, setRules] = useState<AutoAssignmentRule[]>(complianceTrackingRepository.getAutoAssignmentRules());
   const [pendingToggle, setPendingToggle] = useState<PendingToggle | null>(null);
@@ -342,10 +340,10 @@ export const AssignmentRulesView: React.FC = () => {
     setPendingToggle(null);
     showToast({
       type: toActive ? "success" : "warning",
-      title: t(toActive ? "assignmentRules.activatedTitle" : "assignmentRules.deactivatedTitle"),
+      title: toActive ? "Rule Activated" : "Rule Deactivated",
       message: toActive
-        ? t("assignmentRules.activatedMessage")
-        : t("assignmentRules.deactivatedMessage"),
+        ? "Auto-assignment rule is now active. Assignments will be created automatically."
+        : "Auto-assignment rule disabled. No new assignments will be triggered by this rule.",
     });
   };
 
@@ -358,8 +356,8 @@ export const AssignmentRulesView: React.FC = () => {
     setPendingToggle(null);
     showToast({
       type: "success",
-      title: t("assignmentRules.allActivatedTitle"),
-      message: t("assignmentRules.allActivatedMessage"),
+      title: "All Rules Activated",
+      message: "All auto-assignment rules are now active.",
     });
   };
 
@@ -372,8 +370,8 @@ export const AssignmentRulesView: React.FC = () => {
     setPendingToggle(null);
     showToast({
       type: "warning",
-      title: t("assignmentRules.allDisabledTitle"),
-      message: t("assignmentRules.allDisabledMessage"),
+      title: "All Rules Disabled",
+      message: "All auto-assignment rules have been disabled.",
     });
   };
 
@@ -513,6 +511,7 @@ export const AssignmentRulesView: React.FC = () => {
     </div>
   );
 };
+
 
 
 

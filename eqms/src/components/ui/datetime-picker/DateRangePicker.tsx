@@ -5,7 +5,6 @@ import { IconCalendarWeek } from '@tabler/icons-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
 import { Button } from '../button/Button';
-import { useTranslation } from '@/i18n';
 
 export interface DateRangePickerProps {
   /** Label displayed above picker */
@@ -103,7 +102,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   autoApply = false,
   applyLoading = false,
 }) => {
-  const { locale, t } = useTranslation();
   const pickerIdRef = useRef(`date-range-picker-${Math.random().toString(36).slice(2, 11)}`);
   const pickerId = pickerIdRef.current;
   const dialogId = `${pickerId}-dialog`;
@@ -579,25 +577,24 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const s = formatDateDisplay(startDate, includeTime);
     const e = formatDateDisplay(endDate, includeTime);
     if (s && e) return `${s}  →  ${e}`;
-    if (s) return t('dateRange.from', { date: s });
-    if (e) return t('dateRange.to', { date: e });
+    if (s) return `From ${s}`;
+    if (e) return `To ${e}`;
     return placeholder;
-  }, [startDate, endDate, placeholder, includeTime, t]);
+  }, [startDate, endDate, placeholder, includeTime]);
 
-  const monthNames = useMemo(() => Array.from({ length: 12 }, (_, month) =>
-    new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2026, month, 1))), [locale]);
-  const dayNames = locale === 'vi' ? ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   const renderMonthView = () => {
-    const months = Array.from({ length: 12 }, (_, month) =>
-      new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(2026, month, 1)));
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return (
       <div className="p-3">
         <div className="flex items-center justify-between mb-2 px-1">
           <button type="button" onClick={() => setViewMode('calendar')} className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-500 flex items-center justify-center" aria-label="Back to calendar view">
             <ChevronLeft className="h-4 w-4 block shrink-0" />
           </button>
-          <span className="font-semibold text-slate-900 text-sm">{t('dateRange.selectMonth')}</span>
+          <span className="font-semibold text-slate-900 text-sm">Select Month</span>
           <div className="w-6" />
         </div>
         <div className="grid grid-cols-3 gap-1.5">
@@ -910,7 +907,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 includeTime ? "w-[min(360px,calc(100vw-2rem))] lg:w-[520px]" : "w-[min(340px,calc(100vw-2rem))] lg:w-[480px]"
               )}
             >
-              <div className="sr-only" id={dialogTitleId}>{t('dateRange.choose')}</div>
+              <div className="sr-only" id={dialogTitleId}>Choose date range</div>
               <div className="sr-only" aria-live="polite" aria-atomic="true">{liveMessage}</div>
               <div className="flex-1 flex flex-col">
                 {/* Start / Due date inputs */}
@@ -919,7 +916,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     {/* Start */}
                     <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
                       <div className="flex-1 min-w-0">
-                        <label htmlFor={startFieldId} className="text-xs font-medium text-slate-500 mb-1 block">{t('dateRange.startDate')}</label>
+                        <label htmlFor={startFieldId} className="text-xs font-medium text-slate-500 mb-1 block">Start Date</label>
                         <button
                           id={startFieldId}
                           type="button"
@@ -948,7 +945,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     {/* Due/End */}
                     <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
                       <div className="flex-1 min-w-0">
-                        <label htmlFor={endFieldId} className="text-xs font-medium text-slate-500 mb-1 block">{t('dateRange.endDate')}</label>
+                        <label htmlFor={endFieldId} className="text-xs font-medium text-slate-500 mb-1 block">End Date</label>
                         <button
                           id={endFieldId}
                           type="button"
@@ -1000,7 +997,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                         onClick={() => closePopover()}
                         className="h-8 text-xs px-3"
                       >
-                        {t('dateRange.cancel')}
+                        Cancel
                       </Button>
                       <Button
                         size="sm"
@@ -1009,7 +1006,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                         className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-500 disabled:cursor-wait text-white h-8 text-xs px-4 inline-flex items-center gap-2"
                       >
                         {applyLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                        {applyLoading ? t('dateRange.applying') : t('dateRange.apply')}
+                        {applyLoading ? 'Applying...' : 'Apply'}
                       </Button>
                     </div>
                   </div>

@@ -8,7 +8,6 @@ import { useToast } from "@/components/ui/toast";
 import type { User } from "@/types";
 import { settingsApi } from "@/services/api/settings";
 import type { AssignDiff } from "../AccessProfileDetailView";
-import { useTranslation } from "@/i18n";
 
 export const AccessProfileAssignedUsersTab: React.FC<{
   profileId: string;
@@ -18,7 +17,6 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   onChangesChange?: (diff: AssignDiff) => void;
 }> = ({ profileId, reloadKey = 0, canAssign = true, deniedReason, onChangesChange }) => {
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [original, setOriginal] = useState<string[]>([]);
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
@@ -42,12 +40,12 @@ export const AccessProfileAssignedUsersTab: React.FC<{
       setAssignedIds(ids);
       onChangesChange?.({ added: [], removed: [] });
     } catch {
-      showToast({ type: "error", message: t("accessProfileTabs.loadUsersFailed") });
+      showToast({ type: "error", message: "Failed to load users" });
     } finally {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId, showToast, reloadKey, t]);
+  }, [profileId, showToast, reloadKey]);
 
   useEffect(() => { void load(); }, [load]);
 

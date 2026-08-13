@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useTableDragScroll } from "@/hooks";
 import { cn } from "@/components/ui/utils";
@@ -70,7 +69,6 @@ export const PermissionSetDetailView: React.FC = () => {
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const { permissionGroups, isLoading: catalogLoading } = usePermissionCatalog();
 
@@ -87,9 +85,9 @@ export const PermissionSetDetailView: React.FC = () => {
     setLoading(true);
     settingsApi.getPermissionSet(id)
       .then(setPermissionSet)
-      .catch(() => showToast({ type: "error", message: t("permissionSets.loadOneFailed") }))
+      .catch(() => showToast({ type: "error", message: "Failed to load permission set" }))
       .finally(() => setLoading(false));
-  }, [id, showToast, t]);
+  }, [id, showToast]);
 
   React.useEffect(() => {
     if (!id) return;

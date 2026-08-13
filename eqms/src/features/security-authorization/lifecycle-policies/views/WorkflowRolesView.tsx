@@ -36,7 +36,6 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { usePortalDropdown, useTableDragScroll } from "@/hooks";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { formatDateTime } from "@/utils/format";
-import { useTranslation } from "@/i18n";
 
 interface WorkflowRoleCatalogEntry {
   id: string;
@@ -99,7 +98,6 @@ const statusOptions: SelectOption[] = [
 export const WorkflowRolesView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canView = hasPermissionAlias("security.workflow_authorization.view");
   const canManage = hasPermissionAlias(
@@ -173,7 +171,7 @@ export const WorkflowRolesView: React.FC = () => {
       } catch {
         showToast({
           type: "error",
-          message: t("workflowRoles.loadFailed"),
+          message: "Failed to load workflow role catalog",
         });
       } finally {
         setLoading(false);
@@ -192,7 +190,6 @@ export const WorkflowRolesView: React.FC = () => {
       updatedFrom,
       updatedTo,
       typeFilter,
-      t,
     ],
   );
 
@@ -207,10 +204,10 @@ export const WorkflowRolesView: React.FC = () => {
       .catch(() =>
         showToast({
           type: "error",
-          message: t("workflowRoles.loadOptionsFailed"),
+          message: "Failed to load workflow role filter options",
         }),
       );
-  }, [canView, showToast, t]);
+  }, [canView, showToast]);
 
   useEffect(() => {
     if (!canView) return;
@@ -283,7 +280,7 @@ export const WorkflowRolesView: React.FC = () => {
     ) {
       showToast({
         type: "error",
-        message: t("workflowRoles.requiredFields"),
+        message: "Code, Label and Module are required",
       });
       return;
     }
@@ -307,10 +304,10 @@ export const WorkflowRolesView: React.FC = () => {
       };
       if (form.id) {
         await api.put(`/security/workflow-roles/catalog/${form.id}`, payload);
-        showToast({ type: "success", message: t("workflowRoles.updated") });
+        showToast({ type: "success", message: "Workflow role updated" });
       } else {
         await api.post("/security/workflow-roles/catalog", payload);
-        showToast({ type: "success", message: t("workflowRoles.created") });
+        showToast({ type: "success", message: "Workflow role created" });
       }
       setForm(null);
       await loadRoles(1);
@@ -322,7 +319,7 @@ export const WorkflowRolesView: React.FC = () => {
       showToast({
         type: "error",
         message:
-          error?.response?.data?.error?.message ?? error?.response?.data?.message ?? t("workflowRoles.saveFailed"),
+          error?.response?.data?.message || "Failed to save workflow role",
       });
     } finally {
       setSaving(false);

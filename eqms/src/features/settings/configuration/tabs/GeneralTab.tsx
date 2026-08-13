@@ -8,7 +8,6 @@ import { IconAddressBook } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { settingsApi } from '@/services/api/settings';
-import { useTranslation } from '@/i18n';
 
 interface GeneralTabProps {
   config: GeneralConfig;
@@ -76,7 +75,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
   const collapsedSidebarLogoInputRef = React.useRef<HTMLInputElement>(null);
   const faviconInputRef = React.useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const backupSettings = config.backupSettings || {} as any;
   const locale = config.locale || {} as any;
@@ -166,16 +164,12 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
   const selectBrandImage = async (file: File | undefined, key: 'systemLogo' | 'systemSidebarCollapsedLogo' | 'systemFavicon', maxBytes: number) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      showToast({ type: 'error', title: t('systemConfiguration.invalidImageTitle'), message: t('systemConfiguration.invalidImageMessage') });
+      showToast({ type: 'error', title: 'Invalid file', message: 'Please select an image file.' });
       return;
     }
     if (file.size > maxBytes) {
       const label = key === 'systemFavicon' ? 'favicon' : key === 'systemSidebarCollapsedLogo' ? 'collapsed sidebar logo' : 'logo';
-      showToast({
-        type: 'error',
-        title: t('systemConfiguration.imageTooLargeTitle'),
-        message: t('systemConfiguration.imageTooLargeMessage', { label, size: Math.round(maxBytes / 1024) }),
-      });
+      showToast({ type: 'error', title: 'File too large', message: `The ${label} must be smaller than ${Math.round(maxBytes / 1024)} KB.` });
       return;
     }
     const dataUrl = await new Promise<string>((resolve, reject) => {

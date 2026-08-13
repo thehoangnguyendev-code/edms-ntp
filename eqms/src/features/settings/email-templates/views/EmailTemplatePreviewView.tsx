@@ -16,7 +16,6 @@ import { emailTemplateApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { buildSampleVariables } from "../utils/emailTemplateVariables";
-import { useTranslation } from "@/i18n";
 
 export const EmailTemplatePreviewView: React.FC = () => {
   const { navigateTo, isNavigating } = useNavigateWithLoading();
@@ -24,7 +23,6 @@ export const EmailTemplatePreviewView: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const initialTemplate = location.state?.template as EmailTemplate | null | undefined;
 
   const [template, setTemplate] = useState<EmailTemplatePreviewResponse | null>(null);
@@ -128,14 +126,14 @@ export const EmailTemplatePreviewView: React.FC = () => {
       await refreshTemplateAndHistory(previewTemplate.variables || []);
       showToast({
         type: "success",
-        title: t("emailTemplatePreview.publishedTitle"),
-        message: t("emailTemplatePreview.publishedMessage", { name: updated.name }),
+        title: "Template Published",
+        message: `${updated.name} is now Active.`,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: t("emailTemplatePreview.publishFailedTitle"),
-        message: error instanceof Error ? error.message : t("emailTemplatePreview.publishFailedMessage"),
+        title: "Publish Failed",
+        message: error instanceof Error ? error.message : "Unable to publish template.",
       });
     } finally {
       setIsPublishing(false);
@@ -155,14 +153,14 @@ export const EmailTemplatePreviewView: React.FC = () => {
       await refreshTemplateAndHistory(version.variables || []);
       showToast({
         type: "success",
-        title: t("emailTemplatePreview.restoredTitle"),
-        message: t("emailTemplatePreview.restoredMessage", { name: updated.name, version: version.versionNumber }),
+        title: "Version Restored",
+        message: `${updated.name} has been restored to version ${version.versionNumber}.`,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: t("emailTemplatePreview.restoreFailedTitle"),
-        message: error instanceof Error ? error.message : t("emailTemplatePreview.restoreFailedMessage"),
+        title: "Restore Failed",
+        message: error instanceof Error ? error.message : "Unable to restore version.",
       });
     } finally {
       setRestoringVersionId(null);
@@ -178,8 +176,8 @@ export const EmailTemplatePreviewView: React.FC = () => {
     if (!recipient) {
       showToast({
         type: "error",
-        title: t("emailTemplatePreview.missingEmailTitle"),
-        message: t("emailTemplatePreview.missingEmailMessage"),
+        title: "Missing Email",
+        message: "Current user email is not available for test send.",
       });
       return;
     }
@@ -192,14 +190,14 @@ export const EmailTemplatePreviewView: React.FC = () => {
       });
       showToast({
         type: "success",
-        title: t("emailTemplatePreview.testSentTitle"),
-        message: t("emailTemplatePreview.testSentMessage", { recipient }),
+        title: "Test Sent",
+        message: `A test email has been sent to ${recipient}.`,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: t("emailTemplatePreview.testSendFailedTitle"),
-        message: error instanceof Error ? error.message : t("emailTemplatePreview.testSendFailedMessage"),
+        title: "Test Send Failed",
+        message: error instanceof Error ? error.message : "Unable to send test email.",
       });
     } finally {
       setIsSending(false);

@@ -12,7 +12,6 @@ import { authTokenStore } from '@/services/authTokenStore';
 import { setActiveUserId, clearActiveUserId } from '@/services/activeUser';
 import type { AuthResponse, LoginChallengeResponse, MfaMethod, AuthUser } from '@/services/api/auth';
 import { getApiErrorMessage } from '@/utils/apiError';
-import { t, useTranslation } from '@/i18n';
 
 interface AuthContextType {
   user: User | null;
@@ -46,9 +45,9 @@ const createSafeAuthFallback = (): AuthContextType => ({
   user: null,
   loading: false,
   isAuthenticated: false,
-  initiateLogin: async () => ({ success: false, error: new Error(t('auth.errors.signInUnavailable')) }),
-  verifyMFA: async () => ({ success: false, error: new Error(t('auth.errors.signInUnavailable')) }),
-  login: async () => ({ success: false, error: new Error(t('auth.errors.signInUnavailable')) }),
+  initiateLogin: async () => ({ success: false, error: new Error('Unable to sign in. Please try again.') }),
+  verifyMFA: async () => ({ success: false, error: new Error('Unable to sign in. Please try again.') }),
+  login: async () => ({ success: false, error: new Error('Unable to sign in. Please try again.') }),
   logout: async () => undefined,
   updateUser: () => undefined,
   refreshToken: async () => false,
@@ -59,7 +58,6 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const { t } = useTranslation();
   const MAX_PERSISTED_AVATAR_LENGTH = 4096;
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -264,7 +262,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         username: credentials.username,
         error: String(error) 
       });
-      return { success: false, error: new Error(getApiErrorMessage(error, t('auth.errors.signInUnavailable'))) };
+      return { success: false, error: new Error(getApiErrorMessage(error, 'Unable to sign in. Please try again.')) };
     }
   };
 
@@ -295,7 +293,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         method,
         error: String(error),
       });
-      return { success: false, error: new Error(getApiErrorMessage(error, t('auth.errors.signInUnavailable'))) };
+      return { success: false, error: new Error(getApiErrorMessage(error, 'Unable to sign in. Please try again.')) };
     }
   };
 

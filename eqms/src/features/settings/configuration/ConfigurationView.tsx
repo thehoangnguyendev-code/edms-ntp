@@ -23,7 +23,6 @@ import { BROWSER_TAB_TITLE_STORAGE_KEY, SECURITY_CONFIG_STORAGE_KEY } from '@/co
 import { settingsApi } from '@/services/api/settings';
 import { usePermissions } from '@/hooks/usePermissions';
 import { IconDragDrop, IconFileDescription, IconPlugConnected, IconSettings2 } from '@tabler/icons-react';
-import { useTranslation } from '@/i18n';
 
 type TabId = 'general' | 'navigation' | 'security' | 'document' | 'notification' | 'integration' | 'features';
 
@@ -115,7 +114,6 @@ export const ConfigurationView: React.FC = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateBrowserTabTitle = (displayName?: string) => {
@@ -221,14 +219,14 @@ export const ConfigurationView: React.FC = () => {
       setShowSaveModal(false);
       showToast({
         type: "success",
-        title: t('systemConfiguration.savedTitle'),
-        message: t('systemConfiguration.savedMessage'),
+        title: "Changes saved",
+        message: "System configuration has been updated successfully.",
       });
     } catch (error) {
       setShowSaveModal(false);
       showToast({
         type: "error",
-        title: t('systemConfiguration.saveFailedTitle'),
+        title: "Save failed",
         message: extractServerErrorMessage(error),
       });
     }
@@ -249,8 +247,8 @@ export const ConfigurationView: React.FC = () => {
       setShowResetModal(false);
       showToast({
         type: "info",
-        title: t('systemConfiguration.discardedTitle'),
-        message: t('systemConfiguration.discardedMessage'),
+        title: "Changes discarded",
+        message: "Configuration reset to last saved state.",
       });
     }
   };

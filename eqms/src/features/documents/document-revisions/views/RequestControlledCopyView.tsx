@@ -9,7 +9,6 @@ import { MultiSelect } from "@/components/ui/select/MultiSelect";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { NavigationGuardModal } from "@/components/ui/modal/NavigationGuardModal";
 import { useToast } from "@/components/ui/toast/Toast";
-import { useTranslation } from "@/i18n";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { requestControlledCopy } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { FormSection } from "@/components/ui/form";
@@ -112,7 +111,6 @@ export const RequestControlledCopyView: React.FC = () => {
     useNavigateWithLoading();
   const location = useLocation();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { user: currentUser } = usePermissions();
   const navigationState: Partial<ControlledCopyRequestRouteState> =
     (location.state as Partial<ControlledCopyRequestRouteState>) || {};
@@ -665,10 +663,10 @@ export const RequestControlledCopyView: React.FC = () => {
     if (requestBlocked) {
       showToast({
         type: "error",
-        title: t("controlledCopyRequest.unavailable.title"),
+        title: "Request unavailable",
         message:
           requestContext?.message ||
-          t("controlledCopyRequest.unavailable.message"),
+          "Request Controlled Copy is not available for this revision.",
         duration: 4500,
       });
       return;
@@ -688,10 +686,10 @@ export const RequestControlledCopyView: React.FC = () => {
     if (requestBlocked) {
       showToast({
         type: "error",
-        title: t("controlledCopyRequest.unavailable.title"),
+        title: "Request unavailable",
         message:
           requestContext?.message ||
-          t("controlledCopyRequest.unavailable.message"),
+          "Request Controlled Copy is not available for this revision.",
         duration: 4500,
       });
       setShowesignModal(false);
@@ -764,8 +762,8 @@ export const RequestControlledCopyView: React.FC = () => {
       console.error("Failed to request controlled copy", error);
       showToast({
         type: "error",
-        title: t("controlledCopyRequest.failed.title"),
-        message: t("controlledCopyRequest.failed.message"),
+        title: "Request failed",
+        message: "Unable to submit the controlled copy request.",
         duration: 4000,
       });
       setShowesignModal(false);
@@ -775,9 +773,9 @@ export const RequestControlledCopyView: React.FC = () => {
 
     showToast({
       type: "success",
-        title: t("controlledCopyRequest.success.title"),
+      title: "Request Submitted Successfully",
       message:
-        t("controlledCopyRequest.success.message"),
+        "The controlled copy is ready for distribution. You can monitor the status on the All Controlled Copies screen.",
       duration: 5000,
     });
 

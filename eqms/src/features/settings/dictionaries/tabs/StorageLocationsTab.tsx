@@ -27,7 +27,6 @@ import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { extractApiMessage } from "../utils";
 import type { StorageLocationItem } from "../types";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
@@ -69,7 +68,6 @@ export const StorageLocationsTab = React.forwardRef<{ openAddModal: () => void }
     description: "",
   });
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const {
     searchQuery,
@@ -156,15 +154,15 @@ export const StorageLocationsTab = React.forwardRef<{ openAddModal: () => void }
       reload();
       showToast({
         type: "success",
-        title: updated.isActive ? t("storageLocations.activated.title") : t("storageLocations.deactivated.title"),
-        message: updated.isActive ? t("storageLocations.activated.message", { name: updated.name }) : t("storageLocations.deactivated.message", { name: updated.name }),
+        title: updated.isActive ? "Storage Location Activated" : "Storage Location Deactivated",
+        message: `Storage location "${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
       });
     } catch (error) {
       setShowToggleModal(false);
       showToast({
         type: "error",
-        title: t("storageLocations.statusFailed.title"),
-        message: extractApiMessage(error, t("storageLocations.statusFailed.message")),
+        title: "Storage Location Status Update Failed",
+        message: extractApiMessage(error, "Unable to update storage location status."),
       });
     } finally {
       setIsSubmitting(false);
@@ -186,16 +184,16 @@ export const StorageLocationsTab = React.forwardRef<{ openAddModal: () => void }
       reload();
       showToast({
         type: "success",
-        title: t("storageLocations.deleted.title"),
-        message: t("storageLocations.deleted.message", { name: selectedItem.name }),
+        title: "Storage Location Deleted",
+        message: `Storage location "${selectedItem.name}" has been deleted successfully.`,
       });
       setSelectedItem(null);
     } catch (error) {
       setShowDeleteModal(false);
       showToast({
         type: "error",
-        title: t("storageLocations.deleteFailed.title"),
-        message: extractApiMessage(error, t("storageLocations.deleteFailed.message")),
+        title: "Storage Location Delete Failed",
+        message: extractApiMessage(error, "Unable to delete storage location."),
       });
     } finally {
       setIsSubmitting(false);

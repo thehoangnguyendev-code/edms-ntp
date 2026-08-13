@@ -20,7 +20,6 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { AlertModal } from "@/components/ui/modal";
 import { FullPageLoading } from "@/components/ui/loading";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { cn } from "@/components/ui/utils";
 import { useNavigateWithLoading } from "@/hooks";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
@@ -336,7 +335,6 @@ export const AssignTrainingView: React.FC = () => {
   const { navigateTo, isNavigating } = useNavigateWithLoading();
   const [searchParams] = useSearchParams();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const employees = complianceTrackingRepository.getMatrixEmployees();
   const cells = complianceTrackingRepository.getCells();
 
@@ -553,8 +551,8 @@ export const AssignTrainingView: React.FC = () => {
       sessionStorage.removeItem("assignment_selectedCourseId");
       showToast({
         type: "success",
-        title: t("trainingAssignment.createdTitle"),
-        message: t("trainingAssignment.createdMessage", { count: totalAssignees }),
+        title: "Assignment Created",
+        message: `Training assigned to ${totalAssignees} employee${totalAssignees !== 1 ? "s" : ""}. Notifications sent.`,
         duration: 4000,
       });
       navigateTo(ROUTES.TRAINING.TRAINING_MATRIX);
@@ -787,3 +785,4 @@ export const AssignTrainingView: React.FC = () => {
     </div>
   );
 };
+

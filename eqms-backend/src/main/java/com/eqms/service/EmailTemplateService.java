@@ -28,7 +28,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.context.i18n.LocaleContextHolder;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -39,9 +38,6 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Locale;
-import java.util.MissingResourceException;
-import java.util.ResourceBundle;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -376,7 +372,7 @@ public class EmailTemplateService {
                 template.getStatus(),
                 "Test email sent to " + to
         );
-        return new EmailTemplateTestSendResponse(true, localizedMessage("email_template.test_send_success"), template.getId(), template.getName(), to, Instant.now());
+        return new EmailTemplateTestSendResponse(true, "Test email sent successfully.", template.getId(), template.getName(), to, Instant.now());
     }
 
     @Transactional(readOnly = true)
@@ -772,18 +768,6 @@ public class EmailTemplateService {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;");
-    }
-
-    private static String localizedMessage(String key) {
-        Locale requested = LocaleContextHolder.getLocale();
-        Locale supported = "vi".equalsIgnoreCase(requested.getLanguage())
-                ? Locale.forLanguageTag("vi")
-                : Locale.ENGLISH;
-        try {
-            return ResourceBundle.getBundle("messages", supported).getString(key);
-        } catch (MissingResourceException ignored) {
-            return "Test email sent successfully.";
-        }
     }
 
     private static String escapeHtmlAttr(String value) {

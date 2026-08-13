@@ -23,7 +23,6 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
-import { useTranslation } from "@/i18n";
 
 const EFFECT_OPTIONS: SelectOption[] = [
   { label: "All Effects", value: "ALL" },
@@ -39,7 +38,6 @@ const STATUS_OPTIONS: SelectOption[] = [
 export const ObjectAccessRulesView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canViewRules = hasPermissionAlias("security.object_rules.view");
   const canManageRules = hasPermissionAlias("security.object_rules.manage");
@@ -100,11 +98,11 @@ export const ObjectAccessRulesView: React.FC = () => {
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: t("objectAccessRules.loadListFailed") });
+      showToast({ type: "error", message: "Failed to load rules" });
     } finally {
       setLoading(false);
     }
-  }, [canViewRules, currentPage, itemsPerPage, debouncedSearch, resourceTypeFilter, effectFilter, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast, t]);
+  }, [canViewRules, currentPage, itemsPerPage, debouncedSearch, resourceTypeFilter, effectFilter, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -151,11 +149,11 @@ export const ObjectAccessRulesView: React.FC = () => {
     if (!sig) return;
     try {
       await settingsApi.deleteObjectAccessRule(deleteTarget.id, sig);
-      showToast({ type: "success", message: t("objectAccessRules.deleted") });
+      showToast({ type: "success", message: "Rule deleted" });
       setDeleteTarget(null);
       void load();
     } catch (e: any) {
-      showToast({ type: "error", message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("objectAccessRules.deleteFailed") });
+      showToast({ type: "error", message: e?.response?.data?.message ?? "Delete failed" });
     }
   };
 

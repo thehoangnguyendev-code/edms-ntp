@@ -10,7 +10,6 @@ import { AUTH_UI } from "./auth-ui";
 import { AuthBackLink, AuthField, AuthLayout, AuthTopBackButton } from "./components";
 import { authApi } from "@/services/api";
 import { usePasswordPolicy } from "./usePasswordPolicy";
-import { useTranslation } from "@/i18n";
 
 interface ResetPasswordViewProps {
   onBackToLogin?: () => void;
@@ -38,7 +37,6 @@ const checkPasswordStrength = (password: string, policy: ReturnType<typeof usePa
 };
 
 export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLogin }) => {
-  const { t } = useTranslation();
   const passwordPolicy = usePasswordPolicy();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token")?.trim() || "";
@@ -68,7 +66,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
     const validateToken = async () => {
       if (!token) {
         if (!mounted) return;
-        setValidationError(t('authExt.reset.tokenMissing'));
+        setValidationError("Reset token is missing.");
         setValidationLoading(false);
         return;
       }
@@ -78,13 +76,13 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
         if (!mounted) return;
 
         if (!result.valid) {
-          setValidationError(t('authExt.reset.linkInvalid'));
+          setValidationError("Reset link is invalid or has expired.");
         } else {
           setExpiresAt(result.expiresAt);
         }
       } catch (error) {
         if (!mounted) return;
-        setValidationError(getApiErrorMessage(error, t('authExt.reset.validationUnavailable')));
+        setValidationError(getApiErrorMessage(error, "Unable to validate the reset link."));
       } finally {
         if (mounted) {
           setValidationLoading(false);
@@ -97,7 +95,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
     return () => {
       mounted = false;
     };
-  }, [token, t]);
+  }, [token]);
 
   const strength = useMemo(() => checkPasswordStrength(formData.newPassword, passwordPolicy), [formData.newPassword, passwordPolicy]);
 
@@ -114,15 +112,15 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
     };
 
     if (!formData.newPassword) {
-      nextErrors.newPassword = t('authExt.reset.newPasswordRequired');
+      nextErrors.newPassword = "New password is required";
     } else if (!strength.isValid) {
-      nextErrors.newPassword = t('authExt.reset.policyNotMet');
+      nextErrors.newPassword = "Password does not meet the current system password policy.";
     }
 
     if (!formData.confirmPassword) {
-      nextErrors.confirmPassword = t('authExt.reset.confirmRequired');
+      nextErrors.confirmPassword = "Please confirm the new password";
     } else if (formData.confirmPassword !== formData.newPassword) {
-      nextErrors.confirmPassword = t('authExt.reset.passwordsDoNotMatch');
+      nextErrors.confirmPassword = "Passwords do not match";
     }
 
     setErrors(nextErrors);
@@ -146,7 +144,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
         });
         setIsSuccess(true);
       } catch (error) {
-        setSubmitError(getApiErrorMessage(error, t('authExt.reset.submitUnavailable')));
+        setSubmitError(getApiErrorMessage(error, "Unable to reset password."));
       } finally {
         setIsSubmitting(false);
       }
@@ -167,16 +165,16 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
   );
 
   if (validationLoading) {
-    return <FullPageLoading text={t('authExt.reset.validating')} />;
+    return <FullPageLoading text="Validating reset link..." />;
   }
 
   return (
     <>
-      {isSubmitting && <FullPageLoading text={t('authExt.reset.resetting')} />}
+      {isSubmitting && <FullPageLoading text="Resetting password..." />}
       <AuthLayout
         left={
           <div className={AUTH_UI.formColumn}>
-            <AuthTopBackButton onClick={onBackToLogin} label={t('authExt.shared.backToLogin')} disabled={isSubmitting} />
+            <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isSubmitting} />
             <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
               <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
             </div>
@@ -185,39 +183,39 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
               <div className="space-y-6">
                 <div className={AUTH_UI.headerArea}>
                   <div className={AUTH_UI.headingBlock}>
-                    <h1 className={AUTH_UI.pageTitle}>{t('authExt.reset.linkUnavailable')}</h1>
+                    <h1 className={AUTH_UI.pageTitle}>Reset Link Unavailable</h1>
                     <p className={AUTH_UI.description}>{validationError}</p>
                   </div>
                 </div>
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  {t('authExt.reset.newLinkHint')}
+                  Request a new password reset link and use the latest email only.
                 </div>
                 <Button onClick={onBackToLogin} className={AUTH_UI.submitButton}>
-                  {t('authExt.shared.backToLogin')}
+                  Back to Sign In
                 </Button>
               </div>
             ) : isSuccess ? (
               <div className="space-y-6">
                 <div className={AUTH_UI.headerArea}>
                   <div className={AUTH_UI.headingBlock}>
-                    <h1 className={AUTH_UI.pageTitle}>{t('authExt.reset.complete')}</h1>
+                    <h1 className={AUTH_UI.pageTitle}>Password Reset Complete</h1>
                     <p className={AUTH_UI.description}>
-                      {t('authExt.reset.successMessage')}
+                      Your password has been updated successfully. All active sessions were revoked for security.
                     </p>
                   </div>
                 </div>
                 <Button onClick={onBackToLogin} className={AUTH_UI.submitButton}>
-                  {t('authExt.shared.backToLogin')}
+                  Back to Sign In
                 </Button>
               </div>
             ) : (
               <>
                 <div className={AUTH_UI.headerArea}>
                   <div className={AUTH_UI.headingBlock}>
-                    <h1 className={AUTH_UI.pageTitle}>{t('authExt.reset.heading')}</h1>
+                    <h1 className={AUTH_UI.pageTitle}>Reset Your Password</h1>
                     <p className={AUTH_UI.description}>
-                      {t('authExt.reset.description')}
-                      {expiresAt ? ` ${t('authExt.reset.expiresAt', { value: expiresAt })}` : ""}
+                      Choose a new password for your account.
+                      {expiresAt ? ` This link expires at ${expiresAt}.` : ""}
                     </p>
                   </div>
                 </div>
@@ -227,7 +225,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                     <div className="flex gap-3">
                       <ShieldAlert className="h-5 w-5 text-red-600" />
                       <div>
-                        <p className="text-sm font-semibold text-red-900">{t('authExt.reset.failed')}</p>
+                        <p className="text-sm font-semibold text-red-900">Password Reset Failed</p>
                         <p className="mt-0.5 text-sm text-red-700">{submitError}</p>
                       </div>
                     </div>
@@ -235,7 +233,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                 )}
 
                 <form onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate>
-                  <AuthField htmlFor="newPassword" label={t('authExt.reset.newPassword')} required error={errors.newPassword}>
+                  <AuthField htmlFor="newPassword" label="New Password" required error={errors.newPassword}>
                     <div className="relative">
                       <input
                         id="newPassword"
@@ -249,7 +247,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                           errors.newPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault
                         )}
                         disabled={isSubmitting}
-                        placeholder={t('authExt.reset.newPasswordPlaceholder')}
+                        placeholder="Enter new password"
                       />
                       <button
                         type="button"
@@ -262,14 +260,14 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                   </AuthField>
 
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5">
-                    {renderStrengthCheck(t('authExt.reset.minLength', { count: passwordPolicy.passwordMinLength }), strength.hasMinLength)}
-                    {passwordPolicy.requireUppercase && renderStrengthCheck(t('authExt.reset.uppercase'), strength.hasUpper)}
-                    {passwordPolicy.requireLowercase && renderStrengthCheck(t('authExt.reset.lowercase'), strength.hasLower)}
-                    {passwordPolicy.requireNumbers && renderStrengthCheck(t('authExt.reset.number'), strength.hasNumber)}
-                    {passwordPolicy.requireSpecialChars && renderStrengthCheck(t('authExt.reset.specialCharacter'), strength.hasSpecial)}
+                    {renderStrengthCheck(`At least ${passwordPolicy.passwordMinLength} characters`, strength.hasMinLength)}
+                    {passwordPolicy.requireUppercase && renderStrengthCheck("One uppercase letter", strength.hasUpper)}
+                    {passwordPolicy.requireLowercase && renderStrengthCheck("One lowercase letter", strength.hasLower)}
+                    {passwordPolicy.requireNumbers && renderStrengthCheck("One number", strength.hasNumber)}
+                    {passwordPolicy.requireSpecialChars && renderStrengthCheck("One special character", strength.hasSpecial)}
                   </div>
 
-                  <AuthField htmlFor="confirmPassword" label={t('authExt.reset.confirmNewPassword')} required error={errors.confirmPassword}>
+                  <AuthField htmlFor="confirmPassword" label="Confirm New Password" required error={errors.confirmPassword}>
                     <div className="relative">
                       <input
                         id="confirmPassword"
@@ -283,7 +281,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                           errors.confirmPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault
                         )}
                         disabled={isSubmitting}
-                        placeholder={t('authExt.reset.confirmPasswordPlaceholder')}
+                        placeholder="Confirm new password"
                       />
                       <button
                         type="button"
@@ -300,11 +298,11 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                     className={AUTH_UI.submitButton}
                     disabled={isSubmitting || !strength.isValid || formData.confirmPassword !== formData.newPassword}
                   >
-                    {isSubmitting ? <ButtonLoading text={t('authExt.reset.updating')} light /> : t('authExt.reset.submit')}
+                    {isSubmitting ? <ButtonLoading text="Updating Password..." light /> : "Reset Password"}
                   </Button>
 
                   <div className="hidden sm:block">
-                    <AuthBackLink onClick={onBackToLogin} label={t('authExt.shared.backToLogin')} disabled={isSubmitting} />
+                    <AuthBackLink onClick={onBackToLogin} label="Back to Sign In" disabled={isSubmitting} />
                   </div>
                 </form>
               </>

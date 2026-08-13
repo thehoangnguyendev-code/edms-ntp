@@ -5,7 +5,6 @@ import { Select } from '@/components/ui/select/Select';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
-import { useTranslation } from '@/i18n';
 import {
   Eye,
   EyeOff,
@@ -169,7 +168,6 @@ const SettingsCard: React.FC<{
 
 export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange }) => {
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const [showLdapPassword, setShowLdapPassword] = useState(false);
   const [showStorageKey, setShowStorageKey] = useState(false);
   const [showLdapServerUrl, setShowLdapServerUrl] = useState(false);
@@ -192,21 +190,21 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
       if (response.success) {
         showToast({
           type: 'success',
-          title: t('integration.storage.successTitle'),
-          message: response.message || t('integration.storage.successMessage'),
+          title: 'Success',
+          message: response.message || 'Storage connection test successful.',
         });
       } else {
         showToast({
           type: 'error',
-          title: t('integration.storage.failedTitle'),
-          message: response.message || t('integration.storage.failedMessage'),
+          title: 'Error',
+          message: response.message || 'Storage connection test failed.',
         });
       }
     } catch (error) {
       const errorMsg = getErrorMessage(error);
       showToast({
         type: 'error',
-        title: t('integration.connectionFailed'),
+        title: 'Connection Failed',
         message: errorMsg,
       });
     } finally {
@@ -392,9 +390,9 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                 )}
                 <div className="flex-1" />
                 <Button variant="outline" size="sm" onClick={() => {
-                  showToast({ type: 'info', title: t('integration.info'), message: t('integration.ldap.started') });
+                  showToast({ type: 'info', title: 'Info', message: 'LDAP connection test initiated...' });
                   setTimeout(() => {
-                    showToast({ type: 'success', title: t('integration.ldap.successTitle'), message: t('integration.ldap.successMessage', { count: 142 }) });
+                    showToast({ type: 'success', title: 'Success', message: 'LDAP connection successful — 142 users found' });
                   }, 2000);
                 }} className="gap-2 shadow-sm">
                   <Link2 className="h-3.5 w-3.5" />

@@ -27,7 +27,6 @@ import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { extractApiMessage } from "../utils";
 import type { DocumentTypeItem } from "../types";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
@@ -71,7 +70,6 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
     description: "",
   });
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const {
     searchQuery,
@@ -163,15 +161,15 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
       reload();
       showToast({
         type: "success",
-        title: updated.isActive ? t("documentTypes.activated.title") : t("documentTypes.deactivated.title"),
-        message: updated.isActive ? t("documentTypes.activated.message", { name: updated.name }) : t("documentTypes.deactivated.message", { name: updated.name }),
+        title: updated.isActive ? "Document Type Activated" : "Document Type Deactivated",
+        message: `Document type "${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
       });
     } catch (error) {
       setShowToggleModal(false);
       showToast({
         type: "error",
-        title: t("documentTypes.statusFailed.title"),
-        message: extractApiMessage(error, t("documentTypes.statusFailed.message")),
+        title: "Document Type Status Update Failed",
+        message: extractApiMessage(error, "Unable to update document type status."),
       });
     } finally {
       setIsSubmitting(false);
@@ -193,16 +191,16 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
       reload();
       showToast({
         type: "success",
-        title: t("documentTypes.deleted.title"),
-        message: t("documentTypes.deleted.message", { name: selectedItem.name }),
+        title: "Document Type Deleted",
+        message: `Document type "${selectedItem.name}" has been deleted successfully.`,
       });
       setSelectedItem(null);
     } catch (error) {
       setShowDeleteModal(false);
       showToast({
         type: "error",
-        title: t("documentTypes.deleteFailed.title"),
-        message: extractApiMessage(error, t("documentTypes.deleteFailed.message")),
+        title: "Document Type Delete Failed",
+        message: extractApiMessage(error, "Unable to delete document type."),
       });
     } finally {
       setIsSubmitting(false);

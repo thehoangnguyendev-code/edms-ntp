@@ -15,7 +15,6 @@ import { navigateBack } from "@/app/navigation/backNavigation";
 import { lifecyclePoliciesSubPage } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { extractApiError } from "../workflowPolicyUtils";
 import type { WorkflowActionPolicy } from "../types";
-import { useTranslation } from "@/i18n";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -34,7 +33,6 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias(MANAGE_PERM);
   const { requestSignature, signatureModal } = useSecurityESign();
@@ -54,7 +52,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
         if (!cancelled) setPolicy(p);
       })
       .catch(() => {
-        if (!cancelled) showToast({ type: "error", message: t("workflowPolicyDuplicate.loadFailed") });
+        if (!cancelled) showToast({ type: "error", message: "Failed to load source policy" });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -62,7 +60,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, showToast, t]);
+  }, [id, showToast]);
 
   const handleBack = () => navigateBack(navigate, location.state, ROUTES.SECURITY.WORKFLOW_AUTHORIZATION);
 
@@ -76,11 +74,11 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
         changeReason: changeReason || undefined,
         signatureToken: sig.signatureToken,
       });
-      showToast({ type: "success", title: t("workflowPolicyDuplicate.successTitle"), message: t("workflowPolicyDuplicate.successMessage") });
+      showToast({ type: "success", title: "Policy Duplicated", message: "Policy duplicated as inactive." });
       handleBack();
     } catch (err) {
       const { message } = extractApiError(err);
-      showToast({ type: "error", title: t("workflowPolicyDuplicate.saveFailedTitle"), message });
+      showToast({ type: "error", title: "Save Failed", message });
     } finally {
       setSaving(false);
     }

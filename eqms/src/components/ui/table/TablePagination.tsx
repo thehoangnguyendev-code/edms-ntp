@@ -3,7 +3,6 @@ import { Button } from '../button/Button';
 import { Select } from '../select/Select';
 import { cn } from '../utils';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
-import { useTranslation } from '@/i18n';
 
 export interface TablePaginationProps {
   currentPage: number;
@@ -55,7 +54,6 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   showItemsPerPageSelector = true,
   itemsPerPageOptions = DEFAULT_PER_PAGE_OPTIONS,
 }) => {
-  const { t } = useTranslation();
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
@@ -99,13 +97,13 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             <span className="font-medium text-slate-900">{startItem}</span> -{' '}
             <span className="font-medium text-slate-900">{endItem}</span> of{' '}
             <span className="font-medium text-slate-900">{totalItems}</span>
-            <span className="hidden sm:inline"> {t('pagination.results')}</span>
+            <span className="hidden sm:inline"> results</span>
           </div>
         )}
 
         {showItemsPerPageSelector && onItemsPerPageChange && (
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <span className="text-[10px] sm:text-xs md:text-sm text-slate-600 whitespace-nowrap">{t('pagination.show')}:</span>
+            <span className="text-[10px] sm:text-xs md:text-sm text-slate-600 whitespace-nowrap">Show:</span>
             <Select
               value={itemsPerPage}
               onChange={handleItemsPerPageChange}
@@ -125,7 +123,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           <IconChevronLeft className="h-4 w-4" />
         </Button>
         <Button variant="outline" size="sm" className="hidden sm:flex h-7 px-2.5" onClick={goPrev} disabled={currentPage === 1 || isLoading}>
-          {t('pagination.previous')}
+          Previous
         </Button>
 
         {showPageNumbers && (
@@ -160,7 +158,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           <IconChevronRight className="h-4 w-4" />
         </Button>
         <Button variant="outline" size="sm" className="hidden sm:flex h-7 px-2.5" onClick={goNext} disabled={currentPage === totalPages || isLoading}>
-          {t('pagination.next')}
+          Next
         </Button>
       </div>
     </div>

@@ -8,7 +8,6 @@ import {
   type SystemLocalizationSettings,
   writeSystemLocalizationSettings,
 } from '@/config/localization';
-import { setI18nLanguage } from '@/i18n';
 
 const REFRESH_INTERVAL_MS = 30_000;
 
@@ -19,10 +18,7 @@ export const SystemLocalizationLoader = () => {
     const resource = getLocalizationResource(isAuthenticated, user?.id);
     const apply = () => {
       const value = resource.getSnapshot();
-      if (value) {
-        writeSystemLocalizationSettings(value);
-        setI18nLanguage(value.language);
-      }
+      if (value) writeSystemLocalizationSettings(value);
     };
     const unsubscribe = resource.subscribe(apply);
     apply();

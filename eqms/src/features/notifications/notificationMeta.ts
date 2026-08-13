@@ -1,6 +1,5 @@
 import type { NotificationType } from "./types";
 import { AlertTriangle, Bell, CheckCircle, FileText, Lock, MessageCircle, Reply, Settings, ThumbsUp, UserPlus, type LucideIcon } from 'lucide-react';
-import { t } from '@/i18n';
 
 type NotificationTypeMeta = {
   label: string;
@@ -25,10 +24,7 @@ export const getNotificationTypeMeta = (type?: string | null) => {
   return NOTIFICATION_TYPE_META[normalized] ?? NOTIFICATION_TYPE_META.system;
 };
 
-export const getNotificationTypeLabel = (type?: string | null) => {
-  const normalized = (type ?? "system").toLowerCase() as NotificationType;
-  return t(`notificationTypes.${normalized in NOTIFICATION_TYPE_META ? normalized : "system"}`);
-};
+export const getNotificationTypeLabel = (type?: string | null) => getNotificationTypeMeta(type).label;
 export const getNotificationTypeBadgeClassName = (type?: string | null) => getNotificationTypeMeta(type).badgeClassName;
 
 const NOTIFICATION_TYPE_ICONS: Record<NotificationType, LucideIcon> = {

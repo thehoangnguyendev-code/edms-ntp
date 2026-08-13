@@ -22,9 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Locale;
 import java.util.Map;
-import java.util.ResourceBundle;
 
 @Component
 public class AuthTokenFilter extends OncePerRequestFilter {
@@ -101,7 +99,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                         }
 
                         if (session.getStatus() == AuthSession.SessionStatus.LOCKED && !isReauthenticateRequest) {
-                            writeSessionLockedResponse(request, response);
+                            writeSessionLockedResponse(response);
                             return;
                         }
 
@@ -134,7 +132,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                                         "Session locked due to inactivity"
                                 );
                                 if (!isReauthenticateRequest) {
-                                    writeSessionLockedResponse(request, response);
+                                    writeSessionLockedResponse(response);
                                     return;
                                 }
                             }
@@ -153,7 +151,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                         // gate. isReauthenticateRequest is not exempted: an inactive account must
                         // not be able to unlock its own idle-locked session either.
                         if (user == null || user.getStatus() != UserStatus.Active) {
-                            writeAccountNotActiveResponse(request, response, user == null ? null : user.getStatus());
+                            writeAccountNotActiveResponse(response, user == null ? null : user.getStatus());
                             auditTrailService.logSafely(
                                     "SESSION",
                                     user == null ? null : user.getFullName(),
@@ -167,7 +165,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                         }
 
                         if (isPasswordExpired(user) && !isAuthEndpoint(request.getRequestURI())) {
-                            writePasswordExpiredResponse(request, response);
+                            writePasswordExpiredResponse(response);
                             return;
                         }
 
@@ -183,7 +181,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                         // (or SYSTEM_SUPER_ADMIN), never a display role name. `user` is already
                         // resolved and confirmed Active above.
                         if (isMaintenanceBlocked(request.getRequestURI(), claims.principal(), user)) {
-                            writeMaintenanceModeResponse(request, response);
+                            writeMaintenanceModeResponse(response);
                             return;
                         }
 
@@ -210,7 +208,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void writeAccountNotActiveResponse(HttpServletRequest request, HttpServletResponse response, UserStatus status) {
+    private void writeAccountNotActiveResponse(HttpServletResponse response, UserStatus status) {
         if (response.isCommitted()) {
             return;
         }
@@ -227,7 +225,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         try {
             response.getWriter().write(objectMapper.writeValueAsString(Map.of(
                     "code", code,
-                    "message", localizedMessage(request, "errors." + code.toLowerCase())
+                    "message", "Your account is not active. Please contact your administrator."
             )));
             response.flushBuffer();
         } catch (IOException ignored) {
@@ -235,7 +233,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         }
     }
 
-    private void writeSessionLockedResponse(HttpServletRequest request, HttpServletResponse response) {
+    private void writeSessionLockedResponse(HttpServletResponse response) {
         if (response.isCommitted()) {
             return;
         }
@@ -244,7 +242,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         try {
             response.getWriter().write(objectMapper.writeValueAsString(Map.of(
                     "code", "SESSION_LOCKED",
-                    "message", localizedMessage(request, "errors.session_locked")
+                    "message", "Session locked due to inactivity"
             )));
             response.flushBuffer();
         } catch (IOException ignored) {
@@ -252,7 +250,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         }
     }
 
-    private void writePasswordExpiredResponse(HttpServletRequest request, HttpServletResponse response) {
+    private void writePasswordExpiredResponse(HttpServletResponse response) {
         if (response.isCommitted()) {
             return;
         }
@@ -261,7 +259,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         try {
             response.getWriter().write(objectMapper.writeValueAsString(Map.of(
                     "code", "PASSWORD_EXPIRED",
-                    "message", localizedMessage(request, "errors.password_expired")
+                    "message", "Password has expired. Please change your password."
             )));
             response.flushBuffer();
         } catch (IOException ignored) {
@@ -269,7 +267,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         }
     }
 
-    private void writeMfaSetupRequiredResponse(HttpServletRequest request, HttpServletResponse response) {
+    private void writeMfaSetupRequiredResponse(HttpServletResponse response) {
         if (response.isCommitted()) {
             return;
         }
@@ -278,7 +276,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         try {
             response.getWriter().write(objectMapper.writeValueAsString(Map.of(
                     "code", "MFA_SETUP_REQUIRED",
-                    "message", localizedMessage(request, "errors.mfa_setup_required")
+                    "message", "Two-factor authentication is required. Please set up 2FA."
             )));
             response.flushBuffer();
         } catch (IOException ignored) {
@@ -317,7 +315,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         return systemConfigurationService.isPasswordExpired(user);
     }
 
-    private void writeMaintenanceModeResponse(HttpServletRequest request, HttpServletResponse response) {
+    private void writeMaintenanceModeResponse(HttpServletResponse response) {
         if (response.isCommitted()) {
             return;
         }
@@ -326,24 +324,11 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         try {
             response.getWriter().write(objectMapper.writeValueAsString(Map.of(
                     "code", "MAINTENANCE_MODE",
-                    "message", localizedMessage(request, "errors.maintenance_mode")
+                    "message", "System is under maintenance. Please try again later."
             )));
             response.flushBuffer();
         } catch (IOException ignored) {
             // Fall through without extra handling.
-        }
-    }
-
-    private String localizedMessage(HttpServletRequest request, String key) {
-        Locale locale = Locale.ENGLISH;
-        String acceptLanguage = request.getHeader("Accept-Language");
-        if (acceptLanguage != null && acceptLanguage.toLowerCase(Locale.ROOT).startsWith("vi")) {
-            locale = Locale.forLanguageTag("vi");
-        }
-        try {
-            return ResourceBundle.getBundle("messages", locale).getString(key);
-        } catch (Exception ignored) {
-            return ResourceBundle.getBundle("messages", Locale.ENGLISH).getString(key);
         }
     }
 

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { RATE_LIMITED_EVENT } from '@/services/api/client';
 import { useToast } from '@/components/ui/toast/Toast';
-import { useTranslation } from '@/i18n';
 
 const NOTICE_DEBOUNCE_MS = 5_000;
 
@@ -9,7 +8,6 @@ const NOTICE_DEBOUNCE_MS = 5_000;
  *  instead of letting each screen show its own generic "failed to load" message. */
 export const RateLimitNoticeListener = () => {
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const lastShownAt = useRef(0);
 
   useEffect(() => {
@@ -20,20 +18,20 @@ export const RateLimitNoticeListener = () => {
 
       const retryAfterSeconds = (event as CustomEvent<{ retryAfterSeconds?: number }>).detail?.retryAfterSeconds;
       const waitMessage = retryAfterSeconds
-        ? t('rateLimit.waitSeconds', { seconds: retryAfterSeconds })
-        : t('rateLimit.waitMoment');
+        ? `Please wait about ${retryAfterSeconds} second(s) and try again.`
+        : 'Please wait a moment and try again.';
 
       showToast({
         type: 'error',
-        title: t('rateLimit.title'),
-        message: `${t('rateLimit.description')} ${waitMessage}`,
+        title: 'Too many requests',
+        message: `You've made too many requests in a short time. ${waitMessage}`,
         duration: 5000,
       });
     };
 
     window.addEventListener(RATE_LIMITED_EVENT, handleRateLimited);
     return () => window.removeEventListener(RATE_LIMITED_EVENT, handleRateLimited);
-  }, [showToast, t]);
+  }, [showToast]);
 
   return null;
 };

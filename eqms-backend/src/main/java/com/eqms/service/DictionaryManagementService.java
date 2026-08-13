@@ -866,7 +866,8 @@ public class DictionaryManagementService {
     private ResponseStatusException dictionaryInUse(String dictionaryLabel, String dictionaryName) {
         return new ResponseStatusException(
                 HttpStatus.CONFLICT,
-                "DICTIONARY_IN_USE"
+                "%s '%s' is in use and cannot be deleted. Deactivate it instead to preserve regulated history."
+                        .formatted(dictionaryLabel, dictionaryName)
         );
     }
 

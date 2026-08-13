@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { settingsApi, type PermissionCatalogGroup as PermissionCatalogGroupResponse } from "@/services/api/settings";
 import { normalizePermissionDescriptor } from "@/features/settings/permissionDisplay";
 import type { PermissionAction, PermissionGroup, PermissionRiskLevel } from "./permission-types";
@@ -43,7 +42,6 @@ export const mapCatalogGroup = (group: PermissionCatalogGroupResponse): Permissi
 
 export const usePermissionCatalog = (module?: string, search?: string) => {
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -64,8 +62,8 @@ export const usePermissionCatalog = (module?: string, search?: string) => {
           setPermissionGroups([]);
           showToast({
             type: "error",
-            title: t("permissionCatalog.loadFailedTitle"),
-            message: t("permissionCatalog.loadFailedMessage"),
+            title: "Unable to load permissions",
+            message: "Failed to load access profile permissions from server.",
           });
         }
       } finally {
@@ -79,7 +77,7 @@ export const usePermissionCatalog = (module?: string, search?: string) => {
     return () => {
       cancelled = true;
     };
-  }, [module, search, showToast, t]);
+  }, [module, search, showToast]);
 
   const totalPermissions = useMemo(
     () => permissionGroups.reduce((sum, group) => sum + group.permissions.length, 0),

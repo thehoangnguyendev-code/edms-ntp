@@ -10,7 +10,6 @@ import { X, Info, XCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../utils";
 import { IconAlertTriangle, IconCheck, IconX } from "@tabler/icons-react";
-import { useTranslation } from "@/i18n";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -63,18 +62,23 @@ const PROGRESS_COLORS = {
   info: "bg-blue-500",
 };
 
+/** Every toast must have a concise, visible heading. Callers can override this with an action-specific title. */
+const DEFAULT_TITLES: Record<ToastType, string> = {
+  success: "Success",
+  error: "Action failed",
+  warning: "Attention required",
+  info: "Information",
+};
+
+const resolveToastTitle = (toast: Pick<Toast, "type" | "title">) =>
+  toast.title?.trim() || DEFAULT_TITLES[toast.type];
+
 const MAX_TOASTS = 3;
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const resolveToastTitle = useCallback(
-    (toast: Pick<Toast, "type" | "title">) => toast.title?.trim() || t(`toast.${toast.type}`),
-    [t],
-  );
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -95,7 +99,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
         return newToasts;
       });
     },
-    [resolveToastTitle],
+    [],
   );
 
   return (
@@ -127,7 +131,6 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
   toast,
   onRemove,
 }) => {
-  const { t } = useTranslation();
   const [isPaused, setIsPaused] = useState(false);
   const [remaining, setRemaining] = useState(toast.duration ?? 5000);
   const startTime = useRef(Date.now());
@@ -206,11 +209,11 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
         <div className="flex-1 min-w-0 pt-0.5">
           <div className="flex items-start justify-between gap-2">
             <h4 className="mb-0.5 text-sm font-semibold tracking-normal text-slate-900">
-              {toast.title}
+              {resolveToastTitle(toast)}
             </h4>
             <button
               className="shrink-0 -mr-1 p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
-              aria-label={t('common.close')}
+              aria-label="Close"
               onClick={() => onRemove(toast.id)}
             >
               <X className="h-4 w-4" />

@@ -2,7 +2,6 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button/Button';
 import { ButtonLoading } from '@/components/ui/loading/Loading';
-import { useTranslation } from '@/i18n';
 
 interface UnsavedChangesBarProps {
   visible: boolean;
@@ -18,11 +17,10 @@ interface UnsavedChangesBarProps {
 export const UnsavedChangesBar: React.FC<UnsavedChangesBarProps> = ({
   visible,
   saving = false,
-  message,
+  message = 'You have unsaved changes.',
   onSave,
   onDiscard,
 }) => {
-  const { t } = useTranslation();
   if (!visible) return null;
 
   return (
@@ -30,14 +28,14 @@ export const UnsavedChangesBar: React.FC<UnsavedChangesBarProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          {message ?? t('unsavedChanges.message')}
+          {message}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onDiscard} disabled={saving}>
-            {t('unsavedChanges.discard')}
+            Discard
           </Button>
           <Button size="sm" onClick={onSave} disabled={saving}>
-            {saving ? <ButtonLoading text={t('unsavedChanges.saving')} light /> : t('common.save')}
+            {saving ? <ButtonLoading text="Saving..." light /> : 'Save'}
           </Button>
         </div>
       </div>

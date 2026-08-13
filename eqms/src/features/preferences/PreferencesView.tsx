@@ -12,7 +12,6 @@ import { LocalizationTab } from "./components/LocalizationTab";
 import { NotificationSettingsTab } from "./components/NotificationSettingsTab";
 import { SecuritySettingsTab } from "./components/SecuritySettingsTab";
 import { PreferenceTabId } from "./types";
-import { useTranslation } from '@/i18n';
 
 export const PreferencesView: React.FC = () => {
     const navigate = useNavigate();
@@ -26,7 +25,6 @@ export const PreferencesView: React.FC = () => {
     const [activeTab, setActiveTab] = useState<PreferenceTabId>(getTabFromSearchParams);
     const [mobileListView, setMobileListView] = useState<boolean>(() => !searchParams.get('tab'));
     const { showToast } = useToast();
-    const { t } = useTranslation();
     const [isSaving, setIsSaving] = useState(false);
     const [saveHandler, setSaveHandler] = useState<null | (() => Promise<void>)>(null);
     const [resetHandler, setResetHandler] = useState<null | (() => void)>(null);
@@ -54,16 +52,16 @@ export const PreferencesView: React.FC = () => {
         try {
             if (saveHandler) {
                 await saveHandler();
-                showToast({ type: 'success', title: t('preferences.successTitle'), message: t('preferences.updated') });
+                showToast({ type: 'success', title: 'Success', message: 'Preferences updated successfully.' });
                 return;
             }
 
-            showToast({ type: 'success', title: t('preferences.successTitle'), message: t('preferences.updated') });
+            showToast({ type: 'success', title: 'Success', message: 'Preferences updated successfully.' });
         } catch (error) {
             showToast({
                 type: 'error',
-                title: t('preferences.errorTitle'),
-                message: error instanceof Error ? error.message : t('preferences.updateFailed'),
+                title: 'Error',
+                message: error instanceof Error ? error.message : 'Failed to update preferences.',
             });
         } finally {
             setIsSaving(false);
@@ -97,7 +95,7 @@ export const PreferencesView: React.FC = () => {
                             onClick={() => {
                                 if (resetHandler) {
                                     resetHandler();
-                                    showToast({ type: 'success', title: t('preferences.resetTitle'), message: t('preferences.resetLocalization') });
+                                    showToast({ type: 'success', title: 'Reset', message: 'Restored the system localization defaults. Select Save Changes to apply them.' });
                                     return;
                                 }
                                 setResetVersion((value) => value + 1);

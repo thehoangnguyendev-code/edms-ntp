@@ -1,6 +1,5 @@
 package com.eqms.dto.security;
 
-import com.eqms.i18n.LocalizedMessageResolver;
 import com.eqms.enums.RevisionWorkflowAction;
 
 import java.util.UUID;
@@ -37,7 +36,7 @@ public record WorkflowAuthorizationDecision(
             String currentStatus
     ) {
         return new WorkflowAuthorizationDecision(
-                false, reasonCode, LocalizedMessageResolver.resolve("authorization", reasonCode, message), permissionCode, action, revisionId, currentStatus, false, false
+                false, reasonCode, message, permissionCode, action, revisionId, currentStatus, false, false
         );
     }
 }

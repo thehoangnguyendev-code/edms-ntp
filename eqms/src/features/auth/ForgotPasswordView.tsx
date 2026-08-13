@@ -8,11 +8,18 @@ import { BrandLogo } from "@/components/branding/BrandLogo";
 import { AUTH_UI } from "./auth-ui";
 import { AuthBackLink, AuthField, AuthLayout, AuthTopBackButton } from "./components";
 import { getApiErrorMessage } from "@/utils/apiError";
-import { useTranslation } from "@/i18n";
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
 // ============================================================================
+
+const ERROR_MESSAGES = {
+  IDENTIFIER_REQUIRED: "Email or username is required",
+  REASON_REQUIRED: "Please provide a reason for the password reset request",
+  INVALID_EMAIL_FORMAT: "Please enter a valid email address",
+} as const;
+
+const SUCCESS_MESSAGE = "If the account exists and is eligible for self-service recovery, a password reset link has been sent to the registered email address.";
 
 // ============================================================================
 // TYPES
@@ -42,20 +49,20 @@ interface FormErrors {
  * @param data - Form data to validate
  * @returns Object containing validation errors (empty strings if no errors)
  */
-const validateForm = (data: FormData, t: (key: string) => string): FormErrors => {
+const validateForm = (data: FormData): FormErrors => {
   const errors: FormErrors = {
     identifier: "",
     reason: "",
   };
 
   if (!data.identifier.trim()) {
-    errors.identifier = t('authExt.forgot.identifierRequired');
+    errors.identifier = ERROR_MESSAGES.IDENTIFIER_REQUIRED;
   } else if (data.identifier.includes("@") && !isValidEmail(data.identifier)) {
-    errors.identifier = t('authExt.forgot.invalidEmail');
+    errors.identifier = ERROR_MESSAGES.INVALID_EMAIL_FORMAT;
   }
 
   if (!data.reason.trim()) {
-    errors.reason = t('authExt.forgot.reasonRequired');
+    errors.reason = ERROR_MESSAGES.REASON_REQUIRED;
   }
 
   return errors;
@@ -91,7 +98,6 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
   onBackToLogin,
   onRequestSubmit
 }) => {
-  const { t } = useTranslation();
   // ========================================================================
   // STATE
   // ========================================================================
@@ -136,7 +142,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
       setSubmitError("");
 
       // Validate form
-      const validationErrors = validateForm(formData, t);
+      const validationErrors = validateForm(formData);
       setErrors(validationErrors);
 
       if (!isFormValid(validationErrors)) {
@@ -153,12 +159,12 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
         blurActiveInput();
         resetViewportZoom();
       } catch (error) {
-        setSubmitError(getApiErrorMessage(error, t('authExt.forgot.submitUnavailable')));
+        setSubmitError(getApiErrorMessage(error, "Unable to submit password reset request."));
       } finally {
         setIsLoading(false);
       }
     },
-    [formData, onRequestSubmit, t]
+    [formData, onRequestSubmit]
   );
 
   // ========================================================================
@@ -169,7 +175,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
     <AuthLayout
       left={
         <div className={AUTH_UI.formColumn}>
-          <AuthTopBackButton onClick={handleBackToLogin} label={t('authExt.shared.backToLogin')} disabled={isLoading} />
+          <AuthTopBackButton onClick={handleBackToLogin} label="Back to Sign In" disabled={isLoading} />
           <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
             <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
           </div>
@@ -178,8 +184,8 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
             <div className="space-y-6 sm:space-y-5" role="status" aria-live="polite">
               <div className={AUTH_UI.headerArea}>
                 <div className={AUTH_UI.headingBlock}>
-                  <h1 className={AUTH_UI.pageTitle}>{t('authExt.forgot.requestSent')}</h1>
-                  <p className={AUTH_UI.description}>{t('authExt.forgot.successMessage')}</p>
+                  <h1 className={AUTH_UI.pageTitle}>Request Sent</h1>
+                  <p className={AUTH_UI.description}>{SUCCESS_MESSAGE}</p>
                 </div>
               </div>
 
@@ -189,19 +195,19 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                   size="default"
                   className={cn(AUTH_UI.submitButton, "sm:h-12")}
                 >
-                  {t('authExt.shared.backToLogin')}
+                  Back to Sign In
                 </Button>
 
-                <p className="text-[11px] text-slate-500 sm:text-xs">{t('authExt.forgot.backHint')}</p>
+                <p className="text-[11px] text-slate-500 sm:text-xs">Click "Back to Sign In" to return to the login screen.</p>
               </div>
             </div>
           ) : (
             <>
               <div className={AUTH_UI.headerArea}>
                 <div className={AUTH_UI.headingBlock}>
-                  <h1 className={AUTH_UI.pageTitle}>{t('authExt.forgot.heading')}</h1>
+                  <h1 className={AUTH_UI.pageTitle}>Forgot Password</h1>
                   <p className={AUTH_UI.description}>
-                    {t('authExt.forgot.description')}
+                    Enter your username or email. If the account is eligible, the system will send a password reset link to the registered email address.
                   </p>
                 </div>
               </div>
@@ -214,7 +220,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
 
               <form onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate>
 
-              <AuthField htmlFor="identifier" label={t('authExt.shared.emailOrUsername')} required error={errors.identifier}>
+              <AuthField htmlFor="identifier" label="Email or Username" required error={errors.identifier}>
                 <input
                   id="identifier"
                   name="identifier"
@@ -227,14 +233,14 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                     AUTH_UI.inputFocus,
                     errors.identifier ? AUTH_UI.inputError : AUTH_UI.inputDefault
                   )}
-                  placeholder={t('authExt.shared.emailOrUsernamePlaceholder')}
+                  placeholder="Enter your email or username"
                   disabled={isLoading}
                   aria-invalid={!!errors.identifier}
                   aria-describedby={errors.identifier ? "identifier-error" : undefined}
                 />
               </AuthField>
 
-              <AuthField htmlFor="reason" label={t('authExt.forgot.reasonLabel')} required error={errors.reason}>
+              <AuthField htmlFor="reason" label="Reason for Request" required error={errors.reason}>
                 <textarea
                   id="reason"
                   name="reason"
@@ -246,7 +252,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                     AUTH_UI.inputFocus,
                     errors.reason ? AUTH_UI.inputError : AUTH_UI.inputDefault
                   )}
-                  placeholder={t('authExt.forgot.reasonPlaceholder')}
+                  placeholder="Provide a short reason for the reset request"
                   disabled={isLoading}
                   aria-invalid={!!errors.reason}
                   aria-describedby={errors.reason ? "reason-error" : undefined}
@@ -260,11 +266,11 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                 disabled={isLoading}
                 aria-busy={isLoading}
               >
-                {isLoading ? <ButtonLoading text={t('authExt.forgot.submitting')} light /> : t('authExt.forgot.submit')}
+                {isLoading ? <ButtonLoading text="Submitting Request..." light /> : "Send Reset Link"}
               </Button>
 
               <div className="hidden sm:block">
-                <AuthBackLink onClick={handleBackToLogin} label={t('authExt.shared.backToLogin')} disabled={isLoading} />
+                <AuthBackLink onClick={handleBackToLogin} label="Back to Sign In" disabled={isLoading} />
               </div>
             </form>
           </>

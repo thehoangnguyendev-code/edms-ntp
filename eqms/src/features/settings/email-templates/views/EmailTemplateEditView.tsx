@@ -19,7 +19,6 @@ import { emailTemplateEdit } from "@/components/ui/breadcrumb/breadcrumbs.config
 import { EMAIL_TEMPLATE_TYPES, EMAIL_VARIABLES } from "../constants";
 import { useEmailTemplatesList } from "../hooks/useEmailTemplatesList";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import type { EmailTemplate, EmailTemplatePayload, EmailTemplatePreviewResponse, EmailTemplateType, EmailTemplateStatus } from "../types";
 import { emailTemplateApi } from "@/services/api";
 import { buildSampleVariables, extractEmailTemplateVariables } from "../utils/emailTemplateVariables";
@@ -103,7 +102,6 @@ export const EmailTemplateEditView: React.FC = () => {
   const location = useLocation();
   const { updateEmailTemplate, deleteEmailTemplate } = useEmailTemplatesList({ autoFetch: false });
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const [formData, setFormData] = useState<EmailTemplateFormData>({
     name: "",
@@ -230,8 +228,8 @@ export const EmailTemplateEditView: React.FC = () => {
         setIsSubmitting(false);
         showToast({
           type: "info",
-          title: t("emailTemplateEdit.noChanges.title"),
-          message: t("emailTemplateEdit.noChanges.message"),
+          title: "No changes",
+          message: "Nothing changed, so there is nothing to save.",
         });
         return;
       }

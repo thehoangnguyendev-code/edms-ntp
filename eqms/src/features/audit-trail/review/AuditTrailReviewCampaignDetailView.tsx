@@ -42,7 +42,6 @@ import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
 import { formatDateTime, formatDateUS } from "@/utils/format";
 import { auditTrailReviewCampaignDetail as breadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
-import { useTranslation } from "@/i18n";
 
 const DECISION_OPTIONS = [
   { label: "All Decisions", value: "ALL" },
@@ -157,7 +156,6 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias("audit.review.manage");
   const { requestSignature, signatureModal } = useSecurityESign();
@@ -222,7 +220,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
       showToast({
         type: "error",
         message:
-          error?.response?.data?.message ?? t("auditTrailReview.loadItemsFailed"),
+          error?.response?.data?.message ?? "Failed to load review items",
       });
     } finally {
       setItemsLoading(false);
@@ -236,7 +234,6 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
     showToast,
     sortBy,
     sortDirection,
-    t,
   ]);
 
   useEffect(() => {
@@ -244,12 +241,12 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
       try {
         await loadCampaign();
       } catch {
-        showToast({ type: "error", message: t("auditTrailReview.loadCampaignFailed") });
+        showToast({ type: "error", message: "Failed to load campaign" });
       } finally {
         setInitialLoading(false);
       }
     })();
-  }, [loadCampaign, showToast, t]);
+  }, [loadCampaign, showToast]);
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
@@ -294,7 +291,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
     } catch (error: any) {
       showToast({
         type: "error",
-        message: error?.response?.data?.message ?? t("auditTrailReview.recordDecisionFailed"),
+        message: error?.response?.data?.message ?? "Failed to record decision",
       });
     } finally {
       setDecisionSaving(false);
@@ -315,13 +312,13 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
       });
       showToast({
         type: "success",
-        message: t("auditTrailReview.completedAndSigned"),
+        message: "Audit trail review completed and signed",
       });
       await loadCampaign();
     } catch (error: any) {
       showToast({
         type: "error",
-        message: error?.response?.data?.message ?? t("auditTrailReview.completeFailed"),
+        message: error?.response?.data?.message ?? "Failed to complete review",
       });
     } finally {
       setCompleting(false);
@@ -331,13 +328,13 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
     if (!campaign) return;
     try {
       await auditTrailApi.cancelReviewCampaign(campaign.id);
-      showToast({ type: "success", message: t("auditTrailReview.cancelled") });
+      showToast({ type: "success", message: "Campaign cancelled" });
       setCancelConfirmOpen(false);
       await loadCampaign();
     } catch (error: any) {
       showToast({
         type: "error",
-        message: error?.response?.data?.message ?? t("auditTrailReview.cancelFailed"),
+        message: error?.response?.data?.message ?? "Failed to cancel campaign",
       });
     }
   };

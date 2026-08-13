@@ -55,7 +55,7 @@ public class SecurityEligibleUsersController {
             @RequestParam(required = false) String search
     ) {
         if (!StringUtils.hasText(permissionCode)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PERMISSION_CODE_REQUIRED");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "permissionCode is required");
         }
         String normalizedPermissionCode = permissionCode.trim();
         String normalizedSearch = StringUtils.hasText(search) ? search.trim().toLowerCase() : null;

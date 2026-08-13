@@ -9,7 +9,6 @@ import { settingsApi, type AccessProfileResponse } from "@/services/api/settings
 import { useSecurityESign } from "../../shared/useSecurityESign";
 import { useSodAccessProfileCheck } from "../../shared/useSodAccessProfileCheck";
 import { SodViolationPanel } from "../../shared/SodViolationPanel";
-import { useTranslation } from "@/i18n";
 
 interface Props {
   isOpen: boolean;
@@ -29,7 +28,6 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
   onSaved,
 }) => {
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,7 +44,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
       .listAllAccessProfiles()
       .then(setAllProfiles)
       .catch(() =>
-        showToast({ type: "error", message: t("userAccessProfiles.loadFailed") }),
+        showToast({ type: "error", message: "Failed to load access profiles" }),
       )
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -136,18 +134,18 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
       if (failed.length > 0) {
         showToast({
           type: "error",
-          title: t("userAccessProfiles.partialFailedTitle"),
-          message: t("userAccessProfiles.partialFailedMessage", { applied: applied.length, failed: failed.length }),
+          title: "Some changes failed to apply",
+          message: `${applied.length} change(s) applied, ${failed.length} failed. The list below now reflects the actual server state.`,
         });
       } else {
-        showToast({ type: "success", message: t("userAccessProfiles.updated") });
+        showToast({ type: "success", message: "Access profiles updated" });
       }
       onSaved();
       onClose();
     } finally {
       setSaving(false);
     }
-  }, [isDirty, hasBlockingViolation, requestSignature, added, removed, userId, showToast, onSaved, onClose, t]);
+  }, [isDirty, hasBlockingViolation, requestSignature, added, removed, userId, showToast, onSaved, onClose]);
 
   return (
     <>

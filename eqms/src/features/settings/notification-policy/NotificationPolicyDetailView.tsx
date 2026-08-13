@@ -27,7 +27,6 @@ import { RecipientsTab } from './tabs/RecipientsTab';
 import { DeliveryTab } from './tabs/DeliveryTab';
 import { ContentTab } from './tabs/ContentTab';
 import { PreviewHistoryTab } from './tabs/PreviewHistoryTab';
-import { useTranslation } from '@/i18n';
 
 const TABS: TabItem[] = [
   { id: 'general', label: 'General' },
@@ -55,7 +54,6 @@ export const NotificationPolicyDetailView: React.FC<NotificationPolicyDetailView
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias('settings.notification_policy.manage');
   const isEdit = mode === 'edit';
@@ -96,7 +94,7 @@ export const NotificationPolicyDetailView: React.FC<NotificationPolicyDetailView
         setContent(toTemplateValue(data.activeTemplates[0]));
       })
       .catch(() => {
-        showToast({ type: 'error', title: t('notificationPolicy.loadFailedTitle'), message: t('notificationPolicy.detailLoadFailedMessage') });
+        showToast({ type: 'error', title: 'Failed to load', message: 'Unable to load this notification policy.' });
       })
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,13 +145,13 @@ export const NotificationPolicyDetailView: React.FC<NotificationPolicyDetailView
         escalationRecipientRules,
       });
 
-      showToast({ type: 'success', title: t('notificationPolicy.savedTitle'), message: t('notificationPolicy.savedMessage') });
+      showToast({ type: 'success', title: 'Saved', message: 'Notification policy updated successfully.' });
       loadDetail();
     } catch (error: any) {
       showToast({
         type: 'error',
-        title: t('notificationPolicy.saveFailedTitle'),
-        message: error?.response?.data?.message || error?.response?.data?.error?.message || t('notificationPolicy.saveFailedMessage'),
+        title: 'Save failed',
+        message: error?.response?.data?.message || error?.response?.data?.error?.message || 'Unable to save changes.',
       });
     } finally {
       setIsSaving(false);
@@ -171,7 +169,7 @@ export const NotificationPolicyDetailView: React.FC<NotificationPolicyDetailView
         setPreviewResult({ title: result.renderedTitle, summary: result.renderedSummary });
       })
       .catch(() => {
-        showToast({ type: 'error', title: t('notificationPolicy.previewFailedTitle'), message: t('notificationPolicy.previewFailedMessage') });
+        showToast({ type: 'error', title: 'Preview failed', message: 'Unable to render the preview.' });
       });
   }, [content, eventCode, showToast]);
 
@@ -191,10 +189,10 @@ export const NotificationPolicyDetailView: React.FC<NotificationPolicyDetailView
   const handleRestore = async (versionId: string) => {
     try {
       await notificationPolicyApi.restoreVersion(eventCode, versionId);
-      showToast({ type: 'success', title: t('notificationPolicy.restoredTitle'), message: t('notificationPolicy.restoredMessage') });
+      showToast({ type: 'success', title: 'Restored', message: 'Content restored from a previous version.' });
       loadDetail();
     } catch {
-      showToast({ type: 'error', title: t('notificationPolicy.restoreFailedTitle'), message: t('notificationPolicy.restoreFailedMessage') });
+      showToast({ type: 'error', title: 'Restore failed', message: 'Unable to restore this version.' });
     }
   };
 

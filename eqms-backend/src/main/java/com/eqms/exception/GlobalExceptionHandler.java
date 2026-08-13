@@ -3,7 +3,6 @@ package com.eqms.exception;
 import com.eqms.auth.UnauthorizedException;
 import com.eqms.exception.RevisionWorkspaceBatchValidationException;
 import com.eqms.exception.RevisionWorkspaceValidationIssue;
-import com.eqms.i18n.LocalizedMessageResolver;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -28,25 +27,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-    private static final Set<String> DOMAIN_VALIDATION_CODES = Set.of(
-            "REVIEW_NOT_REQUIRED",
-            "EXACTLY_ONE_REVIEWER_REQUIRED",
-            "MULTIPLE_REVIEWERS_REQUIRED",
-            "AT_LEAST_ONE_REVIEWER_REQUIRED",
-            "TEST_EMAIL_SEND_FAILED"
-    );
-    private static final Set<String> RESPONSE_STATUS_DOMAIN_CODES = Set.of(
-            "ACCESS_PROFILE_CONFIGURATION_CONFLICT",
-            "DICTIONARY_IN_USE",
-            "PERMISSION_CODE_REQUIRED"
-    );
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
@@ -80,11 +66,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ApiErrorResponse> handleUnauthorized(UnauthorizedException exception) {
-        String code = resolveUnauthorizedCode(exception.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                code,
+                                "UNAUTHORIZED",
                                 exception.getMessage() == null ? "Authentication required" : exception.getMessage(),
                                 List.of()
                         )
@@ -96,14 +81,11 @@ public class GlobalExceptionHandler {
         HttpStatus status = exception instanceof ResponseStatusException responseStatusException
                 ? HttpStatus.valueOf(responseStatusException.getStatusCode().value())
                 : HttpStatus.NOT_FOUND;
-        String code = exception instanceof ResponseStatusException responseStatusException
-                ? resolveResponseStatusCode(responseStatusException, status)
-                : "RESOURCE_NOT_FOUND";
 
         return ResponseEntity.status(status)
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                code,
+                                "RESOURCE_NOT_FOUND",
                                 exception.getMessage() == null ? "Resource not found" : exception.getMessage(),
                                 List.of()
                         )
@@ -112,11 +94,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleBadRequest(IllegalArgumentException exception) {
-        String code = resolveDomainValidationCode(exception);
         return ResponseEntity.badRequest()
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                code == null ? "BAD_REQUEST" : code,
+                                "BAD_REQUEST",
                                 exception.getMessage(),
                                 List.of()
                         )
@@ -149,13 +130,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException exception) {
-        String code = resolveDomainValidationCode(exception);
-        if (code != null) {
-            return ResponseEntity.badRequest()
-                    .body(new ApiErrorResponse(
-                            new ApiErrorResponse.ErrorBody(code, exception.getMessage(), List.of())
-                    ));
-        }
         log.error("IllegalStateException while processing request", exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiErrorResponse(
@@ -323,27 +297,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler(AuthorizationDeniedException.class)
-    public ResponseEntity<ApiErrorResponse> handleAuthorizationDenied(AuthorizationDeniedException exception) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiErrorResponse(new ApiErrorResponse.ErrorBody(
-                        exception.getReasonCode(), exception.getMessage(), List.of())));
-    }
-
-    @ExceptionHandler(FileAccessDeniedException.class)
-    public ResponseEntity<ApiErrorResponse> handleFileAccessDenied(FileAccessDeniedException exception) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiErrorResponse(new ApiErrorResponse.ErrorBody(
-                        exception.getReasonCode(), exception.getMessage(), List.of())));
-    }
-
-    @ExceptionHandler(ControlledCopyAuthorizationException.class)
-    public ResponseEntity<ApiErrorResponse> handleControlledCopyAuthorization(ControlledCopyAuthorizationException exception) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiErrorResponse(new ApiErrorResponse.ErrorBody(
-                        exception.getReasonCode(), exception.getMessage(), List.of())));
-    }
-
     // The class-level javadoc on WorkflowAuthorizationDeniedException already documented this as
     // mapping to 403 WORKFLOW_ACCESS_DENIED, but the handler was never actually added -- it fell
     // through to the generic Exception handler below, surfacing as a vague 500 "Unexpected server
@@ -355,32 +308,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                exception.getReasonCode() == null ? "WORKFLOW_ACCESS_DENIED" : exception.getReasonCode(),
+                                "WORKFLOW_ACCESS_DENIED",
                                 exception.getMessage() == null ? "Access denied" : exception.getMessage(),
                                 List.of()
                         )
                 ));
-    }
-
-    @ExceptionHandler(WorkflowActionValidationException.class)
-    public ResponseEntity<ApiErrorResponse> handleWorkflowActionValidation(WorkflowActionValidationException exception) {
-        return ResponseEntity.status(exception.getHttpStatus())
-                .body(new ApiErrorResponse(new ApiErrorResponse.ErrorBody(
-                        exception.getErrorCode(), exception.getMessage(), List.of())));
-    }
-
-    @ExceptionHandler(WorkflowPolicyException.class)
-    public ResponseEntity<ApiErrorResponse> handleWorkflowPolicy(WorkflowPolicyException exception) {
-        return ResponseEntity.status(exception.getHttpStatus())
-                .body(new ApiErrorResponse(new ApiErrorResponse.ErrorBody(
-                        exception.getErrorCode(), exception.getMessage(), List.of())));
-    }
-
-    @ExceptionHandler(OfficeOnlineReviewLinkException.class)
-    public ResponseEntity<ApiErrorResponse> handleOfficeOnlineReviewLink(OfficeOnlineReviewLinkException exception) {
-        return ResponseEntity.status(exception.getHttpStatus())
-                .body(new ApiErrorResponse(new ApiErrorResponse.ErrorBody(
-                        exception.getErrorCode(), exception.getMessage(), List.of())));
     }
 
     @ExceptionHandler(Exception.class)
@@ -397,101 +329,12 @@ public class GlobalExceptionHandler {
     }
 
     private ApiErrorResponse.ErrorDetail toDetail(FieldError fieldError) {
-        return new ApiErrorResponse.ErrorDetail(
-                fieldError.getField(),
-                LocalizedMessageResolver.resolveValidation(fieldError.getCode(), fieldError.getDefaultMessage())
-        );
-    }
-
-    /**
-     * A few document/revision workflow invariants intentionally use a stable
-     * technical code followed by diagnostic text. Preserve that code for API
-     * clients and let ApiErrorResponse resolve the human message from the
-     * selected request locale. All other exceptions keep their existing
-     * generic error behavior.
-     */
-    private String resolveDomainValidationCode(RuntimeException exception) {
-        String message = exception == null ? null : exception.getMessage();
-        if (message == null) {
-            return null;
-        }
-        int separatorIndex = message.indexOf(':');
-        if (separatorIndex <= 0) {
-            return null;
-        }
-        String candidate = message.substring(0, separatorIndex).trim();
-        return DOMAIN_VALIDATION_CODES.contains(candidate) ? candidate : null;
-    }
-
-    /**
-     * Authentication failures predate the structured API-error contract and are
-     * emitted by several services as human-readable text. Preserve their
-     * existing HTTP status while mapping known, user-facing cases to stable
-     * English codes so ErrorBody can select the request locale safely.
-     */
-    private String resolveUnauthorizedCode(String message) {
-        if (message == null || message.isBlank()) {
-            return "UNAUTHORIZED";
-        }
-        if (message.startsWith("Account is locked")) return "ACCOUNT_LOCKED";
-        if (message.startsWith("Account is locked after")) return "ACCOUNT_LOCKED";
-        if (message.startsWith("Password is incorrect")) return "PASSWORD_INCORRECT";
-        return switch (message) {
-            case "Authentication required" -> "UNAUTHORIZED";
-            case "MFA challenge expired" -> "MFA_CHALLENGE_EXPIRED";
-            case "Invalid verification code" -> "INVALID_VERIFICATION_CODE";
-            case "Refresh token is missing" -> "REFRESH_TOKEN_MISSING";
-            case "Refresh token expired or revoked" -> "REFRESH_TOKEN_EXPIRED";
-            case "Session is not locked" -> "SESSION_NOT_LOCKED";
-            case "Session revoked" -> "SESSION_REVOKED";
-            case "Session expired" -> "SESSION_EXPIRED";
-            case "Session locked" -> "SESSION_LOCKED";
-            case "Current password is invalid" -> "CURRENT_PASSWORD_INVALID";
-            case "Reset token expired" -> "RESET_TOKEN_EXPIRED";
-            case "Password verification failed" -> "PASSWORD_VERIFICATION_FAILED";
-            case "Session does not belong to current user" -> "SESSION_NOT_OWNED";
-            case "Electronic signature must belong to the current user" -> "ESIGNATURE_OWNER_MISMATCH";
-            case "Signature token does not belong to current user" -> "SIGNATURE_TOKEN_NOT_OWNED";
-            case "Education does not belong to current user" -> "EDUCATION_NOT_OWNED";
-            case "Certification does not belong to current user" -> "CERTIFICATION_NOT_OWNED";
-            case "Authenticated user required for security change signature" -> "SECURITY_ESIGN_AUTH_REQUIRED";
-            default -> "UNAUTHORIZED";
-        };
-    }
-
-    /** Maps direct HTTP exceptions to stable, localizable API error codes. */
-    private String errorCodeFor(HttpStatus status) {
-        return switch (status) {
-            case BAD_REQUEST -> "BAD_REQUEST";
-            case UNAUTHORIZED -> "UNAUTHORIZED";
-            case FORBIDDEN -> "FORBIDDEN";
-            case NOT_FOUND -> "RESOURCE_NOT_FOUND";
-            case METHOD_NOT_ALLOWED -> "METHOD_NOT_ALLOWED";
-            case CONFLICT -> "CONFLICT";
-            case PAYLOAD_TOO_LARGE -> "PAYLOAD_TOO_LARGE";
-            case UNSUPPORTED_MEDIA_TYPE -> "UNSUPPORTED_MEDIA_TYPE";
-            case UNPROCESSABLE_ENTITY -> "VALIDATION_ERROR";
-            default -> "BAD_REQUEST";
-        };
-    }
-
-    /** Keeps domain-specific HTTP failures stable while localizing their message by request locale. */
-    private String resolveResponseStatusCode(ResponseStatusException exception, HttpStatus status) {
-        String reason = exception.getReason();
-        return reason != null && RESPONSE_STATUS_DOMAIN_CODES.contains(reason)
-                ? reason
-                : errorCodeFor(status);
+        return new ApiErrorResponse.ErrorDetail(fieldError.getField(), fieldError.getDefaultMessage());
     }
 
     private ApiErrorResponse.ErrorDetail toDetail(ConstraintViolation<?> violation) {
         String path = violation.getPropertyPath() == null ? null : violation.getPropertyPath().toString();
-        String constraint = violation.getConstraintDescriptor() == null
-                ? null
-                : violation.getConstraintDescriptor().getAnnotation().annotationType().getSimpleName();
-        return new ApiErrorResponse.ErrorDetail(
-                path,
-                LocalizedMessageResolver.resolveValidation(constraint, violation.getMessage())
-        );
+        return new ApiErrorResponse.ErrorDetail(path, violation.getMessage());
     }
 
     private ApiErrorResponse.ErrorDetail toDetail(RevisionWorkspaceValidationIssue issue) {

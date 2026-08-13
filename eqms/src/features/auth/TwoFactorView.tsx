@@ -10,7 +10,6 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { AUTH_UI } from "./auth-ui";
 import { AuthBackLink, AuthLayout, AuthTopBackButton } from "./components";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
-import { useTranslation } from "@/i18n";
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -50,7 +49,6 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
   availableMethods = ['email', 'app'],
   rememberDeviceAllowed = true,
 }) => {
-  const { t } = useTranslation();
   // ========================================================================
   // STATE
   // ========================================================================
@@ -96,7 +94,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
       if (!result.success) {
         setResendTimer(0);
         setCanResend(true);
-        setError(result.error || t('authExt.twoFactor.sendUnavailable'));
+        setError(result.error || 'Unable to send email verification code.');
         setErrorModalOpen(true);
         return;
       }
@@ -105,12 +103,12 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
     } catch {
       setResendTimer(0);
       setCanResend(true);
-      setError(t('authExt.twoFactor.sendUnavailable'));
+      setError('Unable to send email verification code. Please try again.');
       setErrorModalOpen(true);
     } finally {
       setIsSendingEmail(false);
     }
-  }, [isSendingEmail, onResend, t]);
+  }, [isSendingEmail, onResend]);
 
   // ========================================================================
   // EFFECTS
@@ -213,19 +211,19 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
       const code = otp.join("");
 
       if (code.length < OTP_LENGTH) {
-        setError(t('authExt.twoFactor.enterAllDigits'));
+        setError("Please enter all 6 digits");
         setErrorModalOpen(true);
         return;
       }
 
       if (!method) {
-        setError(t('authExt.twoFactor.chooseMethod'));
+        setError("Please choose a verification method first");
         setErrorModalOpen(true);
         return;
       }
 
       if (!onVerify) {
-        setError(t('authExt.twoFactor.handlerUnavailable'));
+        setError("Verification handler is not configured");
         return;
       }
 
@@ -248,12 +246,12 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
         return;
       }
 
-      setError(result.error || t('authExt.twoFactor.invalidCode'));
+      setError(result.error || "Invalid verification code. Please try again.");
       setErrorModalOpen(true);
       setOtp(new Array(OTP_LENGTH).fill(""));
       inputRefs.current[0]?.focus();
     },
-    [method, onVerify, otp, rememberDevice, t]
+    [method, onVerify, otp, rememberDevice]
   );
 
   const emailMethodEnabled = availableMethods.includes('email');
@@ -269,16 +267,16 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
         isOpen={errorModalOpen}
         onClose={() => setErrorModalOpen(false)}
         type="error"
-        title={t('authExt.twoFactor.failed')}
+        title="Verification Failed"
         description={error}
-        confirmText={t('common.close')}
+        confirmText="Close"
       />
 
-      {isLoading && <FullPageLoading text={t('authExt.twoFactor.verifying')} />}
+      {isLoading && <FullPageLoading text="Verifying code..." />}
       <AuthLayout
         left={
           <div className={AUTH_UI.formColumn}>
-            <AuthTopBackButton onClick={onBackToLogin} label={t('authExt.shared.backToLogin')} disabled={isLoading} />
+            <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
             <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
               <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
             </div>
@@ -296,9 +294,9 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                   >
                     <div className={AUTH_UI.headerArea}>
                       <div className={AUTH_UI.headingBlock}>
-                        <h1 className={AUTH_UI.pageTitle}>{t('authExt.twoFactor.heading')}</h1>
+                        <h1 className={AUTH_UI.pageTitle}>Verify Your Identity</h1>
                         <p className={AUTH_UI.description}>
-                          {t('authExt.twoFactor.selectMethod')} <span className="font-semibold text-slate-700">{username}</span>.
+                          Select a verification method for account <span className="font-semibold text-slate-700">{username}</span>.
                         </p>
                       </div>
                     </div>
@@ -315,11 +313,11 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                             <IconMailOpened size={26} stroke={1.5} className="h-[26px] w-[26px] sm:h-[30px] sm:w-[30px]" />
                           </span>
                           <div>
-                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">{t('authExt.twoFactor.emailAuthentication')}</p>
-                            <p className="text-xs text-slate-500">{t('authExt.twoFactor.receiveCode')} {email}</p>
+                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">Email Authentication</p>
+                            <p className="text-xs text-slate-500">Receive the code at {email}</p>
                           </div>
                         </div>
-                        {!emailMethodEnabled && <span className="text-xs font-medium text-slate-400">{t('authExt.twoFactor.unavailable')}</span>}
+                        {!emailMethodEnabled && <span className="text-xs font-medium text-slate-400">Unavailable</span>}
                       </button>
 
                       <button
@@ -333,16 +331,16 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                             <IconQrcode size={26} stroke={1.5} className="h-[26px] w-[26px] sm:h-[30px] sm:w-[30px]" />
                           </span>
                           <div>
-                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">{t('authExt.twoFactor.authenticatorApp')}</p>
-                            <p className="text-xs text-slate-500">{t('authExt.twoFactor.useAppCode')}</p>
+                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">Authenticator App</p>
+                            <p className="text-xs text-slate-500">Use code from your authenticator app</p>
                           </div>
                         </div>
-                        {!appMethodEnabled && <span className="text-xs font-medium text-slate-400">{t('authExt.twoFactor.unavailable')}</span>}
+                        {!appMethodEnabled && <span className="text-xs font-medium text-slate-400">Unavailable</span>}
                       </button>
                     </div>
 
                     <div className="hidden sm:block">
-                      <AuthBackLink onClick={onBackToLogin} label={t('authExt.shared.backToLogin')} />
+                      <AuthBackLink onClick={onBackToLogin} label="Back to Sign In" />
                     </div>
                   </motion.div>
                 ) : (
@@ -357,14 +355,14 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                   >
                     <div className={cn(AUTH_UI.headerArea, "mb-1 sm:mb-1")}>
                       <div className={AUTH_UI.headingBlock}>
-                        <h1 className={AUTH_UI.pageTitle}>{t('authExt.twoFactor.enterCode')}</h1>
+                        <h1 className={AUTH_UI.pageTitle}>Enter Verification Code</h1>
                         <p className={AUTH_UI.description}>
                           {method === "email" ? (
                             <>
-                              {t('authExt.twoFactor.enterEmailCode')} <span className="font-semibold text-slate-700">{maskEmail(email)}</span>.
+                              Enter the 6-digit code sent to <span className="font-semibold text-slate-700">{maskEmail(email)}</span>.
                             </>
                           ) : (
-                            <>{t('authExt.twoFactor.enterAppCode')}</>
+                            <>Enter the 6-digit code from your authenticator app.</>
                           )}
                         </p>
                       </div>
@@ -409,7 +407,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                             onChange={(e) => handleOtpChange(index, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(index, e)}
                             disabled={isLoading}
-                            aria-label={`${t('authExt.twoFactor.codeDigit')} ${index + 1}`}
+                            aria-label={`Verification code digit ${index + 1}`}
                             className={cn(
                               "otp-input h-16 w-full rounded-[12px] border text-center font-bold outline-none leading-normal transition-all",
                               "focus:ring-1 focus:ring-emerald-600",
@@ -428,14 +426,14 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                       className={cn(AUTH_UI.submitButton, "mt-4")}
                       disabled={isLoading || otp.join("").length < OTP_LENGTH}
                     >
-                      {t('authExt.twoFactor.verifyAccount')}
+                      Verify Account
                     </Button>
 
                     <Checkbox
                       id="rememberDevice"
                       checked={rememberDevice}
                       onChange={setRememberDevice}
-                      label={rememberDeviceAllowed ? t('authExt.twoFactor.rememberDevice') : t('authExt.twoFactor.rememberDeviceDisabled')}
+                      label={rememberDeviceAllowed ? "Remember this device for 8 hours" : "Remember this device disabled by policy"}
                       labelClassName="text-xs text-slate-600 sm:text-sm"
                       disabled={isLoading || !rememberDeviceAllowed}
                     />
@@ -456,7 +454,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                             className={cn(isSendingEmail ? "animate-spin opacity-80" : "opacity-100")}
                             style={isSendingEmail ? { animationDuration: "1s" } : {}}
                           />
-                          {isSendingEmail ? t('authExt.twoFactor.sendingCode') : canResend ? t('authExt.twoFactor.resendCode') : t('authExt.twoFactor.resendIn', { seconds: resendTimer })}
+                          {isSendingEmail ? "Sending code..." : canResend ? "Resend Code" : `Resend in ${resendTimer}s`}
                         </button>
                       )}
 
@@ -466,7 +464,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                           setOtp(new Array(OTP_LENGTH).fill(""));
                           setError("");
                         }}
-                        label={t('authExt.twoFactor.changeMethod')}
+                        label="Change verification method"
                         disabled={isLoading}
                       />
                     </div>

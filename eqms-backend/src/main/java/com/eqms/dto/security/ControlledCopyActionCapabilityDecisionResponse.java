@@ -1,7 +1,5 @@
 package com.eqms.dto.security;
 
-import com.eqms.i18n.LocalizedMessageResolver;
-
 public record ControlledCopyActionCapabilityDecisionResponse(
         boolean allowed,
         String reasonCode,
@@ -41,7 +39,7 @@ public record ControlledCopyActionCapabilityDecisionResponse(
         return new ControlledCopyActionCapabilityDecisionResponse(
                 false,
                 reasonCode,
-                LocalizedMessageResolver.resolve("authorization", reasonCode, message),
+                message,
                 requiredPermissionCode,
                 requiredPermissionCode,
                 actionCode,

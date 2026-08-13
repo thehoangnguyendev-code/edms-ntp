@@ -28,7 +28,6 @@ import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/Filter
 import {IconFilter2, IconPencilMinus} from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { extractApiMessage } from "../utils";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -65,7 +64,6 @@ export const DepartmentsTab = React.forwardRef<
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [businessUnits, setBusinessUnits] = useState<{ label: string; value: string }[]>([]);
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const {
     searchQuery,
@@ -152,8 +150,8 @@ export const DepartmentsTab = React.forwardRef<
         reload();
         showToast({
           type: "success",
-        title: updated.isActive ? t("departments.activated.title") : t("departments.deactivated.title"),
-        message: updated.isActive ? t("departments.activated.message", { name: updated.name }) : t("departments.deactivated.message", { name: updated.name }),
+          title: updated.isActive ? "Department Activated" : "Department Deactivated",
+          message: `Department "${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
         });
       })
       .catch((error) => {
@@ -161,8 +159,8 @@ export const DepartmentsTab = React.forwardRef<
         setShowToggleModal(false);
         showToast({
           type: "error",
-        title: t("departments.statusFailed.title"),
-        message: extractApiMessage(error, t("departments.statusFailed.message")),
+          title: "Department Status Update Failed",
+          message: extractApiMessage(error, "Unable to update department status."),
         });
       });
   };
@@ -175,8 +173,8 @@ export const DepartmentsTab = React.forwardRef<
         reload();
         showToast({
           type: "success",
-        title: t("departments.deleted.title"),
-        message: t("departments.deleted.message", { name: selectedItem.name }),
+          title: "Department Deleted",
+          message: `Department "${selectedItem.name}" has been deleted successfully.`,
         });
       }
       setShowDeleteModal(false);
@@ -185,8 +183,8 @@ export const DepartmentsTab = React.forwardRef<
       if (import.meta.env.DEV) console.error("Failed to delete department", error);
       showToast({
         type: "error",
-        title: t("departments.deleteFailed.title"),
-        message: extractApiMessage(error, t("departments.deleteFailed.message")),
+        title: "Department Delete Failed",
+        message: extractApiMessage(error, "Unable to delete department."),
       });
       setShowDeleteModal(false);
     } finally {

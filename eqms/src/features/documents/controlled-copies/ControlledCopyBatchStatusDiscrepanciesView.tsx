@@ -7,7 +7,6 @@ import { EmptyState } from "@/components/ui/page/EmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { Badge } from "@/components/ui/badge/Badge";
 import { useToast } from "@/components/ui/toast/Toast";
-import { useTranslation } from "@/i18n";
 import { documentApi, type ControlledCopyBatchStatusDiscrepancy } from "@/services/api/documents";
 import { controlledCopyBatchStatusDiscrepancies } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { normalizeControlledCopyStatusLabel } from "./status";
@@ -18,7 +17,6 @@ const PAGE_SIZE = 20;
 export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { locale, t } = useTranslation();
   const [rows, setRows] = useState<ControlledCopyBatchStatusDiscrepancy[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -38,7 +36,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
       })
       .catch(() => {
         if (cancelled) return;
-        showToast({ type: "error", message: t("controlledCopyDiscrepancies.loadFailed") });
+        showToast({ type: "error", message: "Failed to load the batch review list." });
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -50,7 +48,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
 
   const formatDateTime = (value: string) => {
     try {
-      return new Date(value).toLocaleString(locale === "vi" ? "vi-VN" : "en-US");
+      return new Date(value).toLocaleString("en-US");
     } catch {
       return value;
     }
@@ -59,7 +57,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6 w-full flex-1">
       <PageHeader
-        title={t("controlledCopyDiscrepancies.title")}
+        title="Needs Review: Batch / Copy Status Mismatch"
         breadcrumbItems={controlledCopyBatchStatusDiscrepancies(navigate)}
       />
 
@@ -76,8 +74,8 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
             <SectionLoading minHeight="40vh" />
           ) : rows.length === 0 ? (
             <EmptyState
-              title={t("controlledCopyDiscrepancies.emptyTitle")}
-              description={t("controlledCopyDiscrepancies.emptyDescription")}
+              title="No status mismatches to review"
+              description="All active batches currently match the status of their member copies."
             />
           ) : (
             <>
@@ -85,12 +83,12 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-slate-500">
-                      <th className="py-2 pr-4 font-medium">{t("controlledCopyDiscrepancies.columns.batchNumber")}</th>
-                      <th className="py-2 pr-4 font-medium">{t("controlledCopyDiscrepancies.columns.document")}</th>
-                      <th className="py-2 pr-4 font-medium">{t("controlledCopyDiscrepancies.columns.storedStatus")}</th>
-                      <th className="py-2 pr-4 font-medium">{t("controlledCopyDiscrepancies.columns.expectedStatus")}</th>
-                      <th className="py-2 pr-4 font-medium">{t("controlledCopyDiscrepancies.columns.detectedAt")}</th>
-                      <th className="py-2 pr-4 font-medium">{t("controlledCopyDiscrepancies.columns.lastChecked")}</th>
+                      <th className="py-2 pr-4 font-medium">Batch Number</th>
+                      <th className="py-2 pr-4 font-medium">Document</th>
+                      <th className="py-2 pr-4 font-medium">Stored Status</th>
+                      <th className="py-2 pr-4 font-medium">Expected Status (from copies)</th>
+                      <th className="py-2 pr-4 font-medium">Detected At</th>
+                      <th className="py-2 pr-4 font-medium">Last Checked</th>
                     </tr>
                   </thead>
                   <tbody>

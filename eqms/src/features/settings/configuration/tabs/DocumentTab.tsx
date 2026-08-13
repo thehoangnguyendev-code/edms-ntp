@@ -9,7 +9,6 @@ import { FormModal } from '@/components/ui/modal/FormModal';
 import { Select } from '@/components/ui/select/Select';
 import { settingsApi } from '@/services/api/settings';
 import { DocumentConfig, OfficeOnlineStorageConfig } from '../types';
-import { useTranslation } from '@/i18n';
 
 interface DocumentTabProps {
   documentConfig: DocumentConfig;
@@ -378,7 +377,6 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
   onOfficeOnlineValidationChange,
 }) => {
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const [isTestingOfficeOnline, setIsTestingOfficeOnline] = useState(false);
   const [officeOnlineErrors, setOfficeOnlineErrors] = useState<Record<string, string>>({});
   const [showTenantId, setShowTenantId] = useState(false);
@@ -459,8 +457,8 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
     if (Object.keys(officeOnlineErrors).length > 0) {
       showToast({
         type: 'error',
-        title: t('systemConfiguration.officeOnlineValidationTitle'),
-        message: t('systemConfiguration.officeOnlineValidationMessage'),
+        title: 'Validation error',
+        message: 'Please fix the Office Online configuration errors before testing the connection.',
       });
       return;
     }
@@ -482,11 +480,11 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
 
       showToast({
         type: 'success',
-        title: t('systemConfiguration.officeOnlineSuccessTitle'),
+        title: 'Connection successful',
         message: result.message,
       });
     } catch (error) {
-      let message = t('systemConfiguration.officeOnlineFailedMessage');
+      let message = 'Unable to connect to the Office Online workspace.';
       if (error && typeof error === 'object') {
         const response = (error as { response?: { data?: any } }).response;
         const data = response?.data;
@@ -503,7 +501,7 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
 
       showToast({
         type: 'error',
-        title: t('systemConfiguration.officeOnlineFailedTitle'),
+        title: 'Connection failed',
         message,
       });
     } finally {

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { documentApi } from "@/services/api/documents";
 import type { SelectOption } from "@/components/ui/select/Select";
 import type { User } from "@/types";
@@ -45,7 +44,6 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
   const [searchParams, setSearchParams] = useSearchParams();
   const requestSeqRef = useRef(0);
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const [searchQuery, setSearchQuery] = useState(() => readString(searchParams, "search"));
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | "All">(
@@ -331,7 +329,7 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
         setRevisions([]);
         setTotalItems(0);
         setTotalPages(1);
-        setError(t("documentTable.loadRevisionsFailed"));
+        setError("Unable to load revisions from server.");
       } finally {
         if (!cancelled && seq === requestSeqRef.current) {
           setIsLoading(false);
@@ -448,8 +446,8 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
       }
       showToast({
         type: "error",
-        title: t("documentTable.exportFailedTitle"),
-        message: t("documentTable.exportRevisionsFailed"),
+        title: "Export failed",
+        message: "Unable to export revisions.",
       });
     } finally {
       setIsExporting(false);

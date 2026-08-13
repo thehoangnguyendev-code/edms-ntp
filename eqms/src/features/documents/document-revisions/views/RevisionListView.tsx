@@ -27,7 +27,6 @@ import { buildRevisionDetailSnapshotState } from "@/features/documents/shared/de
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { useToast } from "@/components/ui/toast";
-import { useTranslation } from "@/i18n";
 import { formatRevisionDocumentDisplayLabel } from "@/features/documents/shared/documentDisplay";
 import { getStatusBadgeColor } from "@/utils/status";
 import {
@@ -71,7 +70,6 @@ export const RevisionListView: React.FC = () => {
   const location = useLocation();
   const { navigateTo, navigateToPrepared, isNavigating: isRouteNavigating } = useNavigateWithLoading();
   const { showToast } = useToast();
-  const { t } = useTranslation();
 
   const [columns, setColumns] = useState<TableColumn[]>(() => [...DEFAULT_COLUMNS]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
@@ -276,8 +274,8 @@ export const RevisionListView: React.FC = () => {
       console.error("Failed to publish revision", error);
       showToast({
         type: "error",
-        title: t("revisionList.publish.failed"),
-        message: (error as any)?.response?.data?.message || t("revisionList.publish.unavailable"),
+        title: "Publish failed",
+        message: (error as any)?.response?.data?.message || "Failed to publish revision.",
       });
       setSelectedRevisionForPublish(null);
       setIsNavigating(false);
@@ -294,8 +292,8 @@ export const RevisionListView: React.FC = () => {
       await documentApi.publishRevision(revisionId, params);
       showToast({
         type: "success",
-        title: t("revisionList.publish.successTitle"),
-        message: t("revisionList.publish.successMessage"),
+        title: "Publish successful",
+        message: "Revision has been published successfully.",
       });
       await Promise.resolve(reload());
       setSelectedRevisionForPublish(null);
@@ -315,8 +313,8 @@ export const RevisionListView: React.FC = () => {
         console.error("Failed to publish revision", error);
         showToast({
           type: "error",
-          title: t("revisionList.publish.failed"),
-          message: responseData?.error?.message || responseData?.message || t("revisionList.publish.unavailable"),
+          title: "Publish failed",
+          message: responseData?.error?.message || responseData?.message || "Failed to publish revision.",
         });
         setSelectedRevisionForPublish(null);
         setIsNavigating(false);

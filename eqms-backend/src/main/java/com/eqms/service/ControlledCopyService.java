@@ -74,7 +74,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.context.i18n.LocaleContextHolder;
 
 import java.io.IOException;
 import java.io.ByteArrayInputStream;
@@ -99,9 +98,6 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Locale;
-import java.util.MissingResourceException;
-import java.util.ResourceBundle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -472,7 +468,7 @@ public class ControlledCopyService {
                 && permissionEvaluationService.hasPermission(currentUser, "documents.workspace.manage");
         String message = canRequest
                 ? null
-                : localizedMessage("controlled_copy.request_unavailable");
+                : "Request Controlled Copy requires permission and is available only when the document is Active and the latest revision is Effective.";
 
         return new ControlledCopyRequestContextResponse(
                 document.getId() == null ? null : document.getId().toString(),
@@ -919,18 +915,6 @@ public class ControlledCopyService {
                 pageResult.getContent().stream().map(batch -> toBatchSummaryResponse(batch, false)).toList(),
                 new PaginationResponse(safePage, safeLimit, (int) pageResult.getTotalElements(), pageResult.getTotalPages())
         );
-    }
-
-    private String localizedMessage(String key) {
-        Locale requested = LocaleContextHolder.getLocale();
-        Locale supported = "vi".equalsIgnoreCase(requested.getLanguage())
-                ? Locale.forLanguageTag("vi")
-                : Locale.ENGLISH;
-        try {
-            return ResourceBundle.getBundle("messages", supported).getString(key);
-        } catch (MissingResourceException ignored) {
-            return "Request Controlled Copy requires permission and is available only when the document is Active and the latest revision is Effective.";
-        }
     }
 
     /** SQL mirror of {@link DocumentAuthorizationService#canAccessControlledCopy(UserAccount, DocumentRevisionRecord)}

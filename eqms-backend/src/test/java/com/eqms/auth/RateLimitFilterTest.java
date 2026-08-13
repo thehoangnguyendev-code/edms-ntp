@@ -43,24 +43,6 @@ class RateLimitFilterTest {
         assertEquals(429, blocked.getStatus());
     }
 
-    @Test
-    void returnsVietnameseRateLimitMessageWhenRequested() throws Exception {
-        RateLimitFilter filter = new RateLimitFilter(new RateLimiterService(100, 60, 1, 60), false);
-        MockHttpServletRequest first = new MockHttpServletRequest("POST", "/api/auth/login");
-        first.setRemoteAddr("192.0.2.3");
-        filter.doFilter(first, new MockHttpServletResponse(), (ignoredRequest, ignoredResponse) -> { });
-
-        MockHttpServletRequest blockedRequest = new MockHttpServletRequest("POST", "/api/auth/login");
-        blockedRequest.setRemoteAddr("192.0.2.3");
-        blockedRequest.addHeader("Accept-Language", "vi-VN,vi;q=0.9");
-        MockHttpServletResponse blocked = new MockHttpServletResponse();
-        filter.doFilter(blockedRequest, blocked, (ignoredRequest, ignoredResponse) -> { });
-
-        assertEquals(429, blocked.getStatus());
-        assertTrue(blocked.getContentAsString().contains("Quá nhiều yêu cầu"));
-        assertTrue(blocked.getContentAsString().contains("RATE_LIMITED"));
-    }
-
     private MockHttpServletResponse filterLogin(RateLimitFilter filter, AtomicInteger downstreamCalls) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
         request.setRemoteAddr("192.0.2.1");
