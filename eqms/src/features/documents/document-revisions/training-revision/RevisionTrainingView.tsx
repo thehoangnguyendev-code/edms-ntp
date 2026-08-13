@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button/Button";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import { revisionTraining } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { OriginalDocumentTab } from "@/features/documents/document-revisions/workspace-tabs";
 import { ROUTES } from "@/app/routes.constants";
@@ -98,6 +99,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     workspaceState?: RevisionWorkspaceState | null;
   } | undefined;
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [document, setDocument] = useState<any>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(true);
@@ -315,8 +317,8 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
       setTrainingSubmitValidationToken((prev) => prev + 1);
       showToast({
         type: "error",
-        title: "Training information is incomplete",
-        message: errs.trainingPlannedDate || "Please correct the training information before signing.",
+        title: t("revisionTraining.incomplete.title"),
+        message: errs.trainingPlannedDate || t("revisionTraining.incomplete.message"),
         duration: 3000,
       });
       return;
@@ -354,8 +356,8 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
 
       showToast({
         type: "success",
-        title: "Training Completed",
-        message: `Revision ${refreshed.documentNumber} ${refreshed.revisionNumber} training has been completed successfully.`,
+        title: t("revisionTraining.completed.title"),
+        message: t("revisionTraining.completed.message", { documentNumber: refreshed.documentNumber, revisionNumber: refreshed.revisionNumber }),
         duration: 3000
       });
 
@@ -384,12 +386,12 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
       console.error("Failed to complete training action", error);
       showToast({
         type: "error",
-        title: "Training failed",
+        title: t("revisionTraining.failed.title"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
           (error as Error)?.message ||
-          "Failed to complete training action.",
+          t("revisionTraining.failed.message"),
         duration: 3000,
       });
       throw error;
@@ -414,8 +416,8 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to add note",
-        message: (error as any)?.response?.data?.message || "Working note could not be saved.",
+        title: t("revisionTraining.notes.addFailed"),
+        message: (error as any)?.response?.data?.message || t("revisionTraining.notes.saveFailed"),
         duration: 3000,
       });
     } finally {
@@ -439,8 +441,8 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to delete note",
-        message: (error as any)?.response?.data?.message || "Working note could not be deleted.",
+        title: t("revisionTraining.notes.deleteFailed"),
+        message: (error as any)?.response?.data?.message || t("revisionTraining.notes.removeFailed"),
         duration: 3000,
       });
     } finally {

@@ -90,4 +90,10 @@
     "failed": { "title": "Yêu cầu thất bại", "message": "Không thể gửi yêu cầu controlled copy." },
     "success": { "title": "Đã gửi yêu cầu", "message": "Controlled copy đã sẵn sàng để phân phối. Bạn có thể theo dõi trạng thái tại màn hình All Controlled Copies." }
   }
+  ,"revisionTraining": {
+    "incomplete": { "title": "Thiếu thông tin training", "message": "Hãy điều chỉnh thông tin training trước khi ký." },
+    "completed": { "title": "Đã hoàn tất training", "message": "Training cho revision {documentNumber} {revisionNumber} đã hoàn tất thành công." },
+    "failed": { "title": "Training thất bại", "message": "Không thể hoàn tất thao tác training." },
+    "notes": { "addFailed": "Không thể thêm ghi chú", "saveFailed": "Không thể lưu working note.", "deleteFailed": "Không thể xóa ghi chú", "removeFailed": "Không thể xóa working note." }
+  }
 }

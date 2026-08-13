@@ -66,4 +66,10 @@
     "failed": { "title": "Request failed", "message": "Unable to submit the controlled copy request." },
     "success": { "title": "Request Submitted Successfully", "message": "The controlled copy is ready for distribution. You can monitor the status on the All Controlled Copies screen." }
   }
+  ,"revisionTraining": {
+    "incomplete": { "title": "Training information is incomplete", "message": "Please correct the training information before signing." },
+    "completed": { "title": "Training Completed", "message": "Revision {documentNumber} {revisionNumber} training has been completed successfully." },
+    "failed": { "title": "Training failed", "message": "Failed to complete training action." },
+    "notes": { "addFailed": "Unable to add note", "saveFailed": "Working note could not be saved.", "deleteFailed": "Unable to delete note", "removeFailed": "Working note could not be deleted." }
+  }
 }
