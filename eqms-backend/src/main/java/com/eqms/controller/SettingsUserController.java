@@ -364,11 +364,12 @@ public class SettingsUserController {
         microsoftGraphOfficeOnlineService.testConnection(resolved);
         microsoftGraphOfficeOnlineService.testTemporarySharingCapabilities(resolved);
         String sharingMessage = "users".equalsIgnoreCase(resolved.shareLinkScope())
-                ? "Named-user Office Online access is configured. Upload and direct item access were verified; recipient permission delivery is verified when an assigned workflow user opens a revision."
-                : "Organization-scoped Office Online upload and sharing were verified.";
+                ? localizedMessage("settings.office_online_named_user_access")
+                : localizedMessage("settings.office_online_organization_access");
         return ResponseEntity.ok(new OfficeOnlineConnectionTestResponse(
                 true,
-                "Office Online workspace connection and upload test successful. " + sharingMessage + " Review-link delivery still requires a real assigned user test.",
+                localizedMessage("settings.office_online_connection_success") + " " + sharingMessage + " "
+                        + localizedMessage("settings.office_online_review_link_note"),
                 resolved.siteId(),
                 resolved.driveId(),
                 resolved.libraryFolder()
