@@ -27,12 +27,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final Set<String> DOMAIN_VALIDATION_CODES = Set.of(
+            "REVIEW_NOT_REQUIRED",
+            "EXACTLY_ONE_REVIEWER_REQUIRED",
+            "MULTIPLE_REVIEWERS_REQUIRED",
+            "AT_LEAST_ONE_REVIEWER_REQUIRED"
+    );
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
@@ -94,10 +101,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleBadRequest(IllegalArgumentException exception) {
+        String code = resolveDomainValidationCode(exception);
         return ResponseEntity.badRequest()
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                "BAD_REQUEST",
+                                code == null ? "BAD_REQUEST" : code,
                                 exception.getMessage(),
                                 List.of()
                         )
@@ -130,6 +138,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException exception) {
+        String code = resolveDomainValidationCode(exception);
+        if (code != null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiErrorResponse(
+                            new ApiErrorResponse.ErrorBody(code, exception.getMessage(), List.of())
+                    ));
+        }
         log.error("IllegalStateException while processing request", exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiErrorResponse(
@@ -330,6 +345,26 @@ public class GlobalExceptionHandler {
 
     private ApiErrorResponse.ErrorDetail toDetail(FieldError fieldError) {
         return new ApiErrorResponse.ErrorDetail(fieldError.getField(), fieldError.getDefaultMessage());
+    }
+
+    /**
+     * A few document/revision workflow invariants intentionally use a stable
+     * technical code followed by diagnostic text. Preserve that code for API
+     * clients and let ApiErrorResponse resolve the human message from the
+     * selected request locale. All other exceptions keep their existing
+     * generic error behavior.
+     */
+    private String resolveDomainValidationCode(RuntimeException exception) {
+        String message = exception == null ? null : exception.getMessage();
+        if (message == null) {
+            return null;
+        }
+        int separatorIndex = message.indexOf(':');
+        if (separatorIndex <= 0) {
+            return null;
+        }
+        String candidate = message.substring(0, separatorIndex).trim();
+        return DOMAIN_VALIDATION_CODES.contains(candidate) ? candidate : null;
     }
 
     private ApiErrorResponse.ErrorDetail toDetail(ConstraintViolation<?> violation) {
