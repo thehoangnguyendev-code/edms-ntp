@@ -170,7 +170,7 @@ public class EmailTemplateController {
             }
             return ResponseEntity.ok(service.recordTestSend(id, request.to()));
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to send test email: " + e.getMessage(), e);
+            throw new IllegalArgumentException("TEST_EMAIL_SEND_FAILED: unable to send test email", e);
         }
     }
 

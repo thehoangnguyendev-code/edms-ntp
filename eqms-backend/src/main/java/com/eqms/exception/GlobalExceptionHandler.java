@@ -38,7 +38,8 @@ public class GlobalExceptionHandler {
             "REVIEW_NOT_REQUIRED",
             "EXACTLY_ONE_REVIEWER_REQUIRED",
             "MULTIPLE_REVIEWERS_REQUIRED",
-            "AT_LEAST_ONE_REVIEWER_REQUIRED"
+            "AT_LEAST_ONE_REVIEWER_REQUIRED",
+            "TEST_EMAIL_SEND_FAILED"
     );
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
