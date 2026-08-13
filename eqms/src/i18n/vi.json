@@ -1,0 +1,9 @@
+{
+  "common": { "save": "Lưu", "cancel": "Hủy", "close": "Đóng", "back": "Quay lại", "search": "Tìm kiếm", "loading": "Đang tải...", "delete": "Xóa", "edit": "Chỉnh sửa" },
+  "localization": {
+    "systemDefaultNotice": "Thiết lập ngôn ngữ hệ thống là mặc định cho tất cả người dùng. Bạn có thể thiết lập riêng cho tài khoản của mình; đặt lại sẽ khôi phục thiết lập hiện hành của quản trị viên.",
+    "preference": "Tùy chọn ngôn ngữ", "useSystemDefaults": "Dùng thiết lập hệ thống", "useSystemDefaultsHelp": "Áp dụng thiết lập ngôn ngữ do quản trị viên cấu hình.",
+    "language": "Ngôn ngữ", "dateTimeFormat": "Định dạng ngày và giờ", "timeZone": "Múi giờ", "numberFormat": "Định dạng số", "applicationFont": "Phông chữ ứng dụng"
+  },
+  "errors": { "fallback": "Đã xảy ra lỗi. Vui lòng thử lại.", "unauthorized": "Yêu cầu xác thực.", "forbidden": "Bạn không có quyền thực hiện thao tác này.", "validation": "Dữ liệu gửi lên không hợp lệ.", "badRequest": "Yêu cầu không hợp lệ.", "notFound": "Không tìm thấy tài nguyên được yêu cầu.", "internal": "Đã xảy ra lỗi máy chủ không mong muốn.", "fileTooLarge": "Tệp tải lên quá lớn." }
+}

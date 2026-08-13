@@ -1,0 +1,9 @@
+{
+  "common": { "save": "Save", "cancel": "Cancel", "close": "Close", "back": "Back", "search": "Search", "loading": "Loading...", "delete": "Delete", "edit": "Edit" },
+  "localization": {
+    "systemDefaultNotice": "System localization is the default for all users. You may override it for your own account; resetting restores the administrator's current values.",
+    "preference": "Localization Preference", "useSystemDefaults": "Use system defaults", "useSystemDefaultsHelp": "Follow the localization configured by your administrator.",
+    "language": "Language", "dateTimeFormat": "Date & Time Format", "timeZone": "Time Zone", "numberFormat": "Number Format", "applicationFont": "Application Font"
+  },
+  "errors": { "fallback": "Something went wrong. Please try again.", "unauthorized": "Authentication is required.", "forbidden": "You do not have permission to perform this action.", "validation": "The submitted data is invalid.", "badRequest": "The request is invalid.", "notFound": "The requested resource was not found.", "internal": "An unexpected server error occurred.", "fileTooLarge": "The uploaded file is too large." }
+}

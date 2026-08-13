@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Pattern;
 
 public record UpdateLocalizationPreferenceRequest(
         boolean useSystemDefaults,
-        String language,
+        @Pattern(regexp = "^(en|vi)$", message = "Unsupported application language") String language,
         String dateTimeFormat,
         String timeZone,
         String numberFormat,

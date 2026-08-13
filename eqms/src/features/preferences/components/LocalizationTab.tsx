@@ -11,18 +11,23 @@ import {
   writeSystemLocalizationSettings,
   type SystemLocalizationSettings,
 } from '@/config/localization';
+import { setI18nLanguage, useTranslation } from '@/i18n';
 
 interface LocalizationTabProps {
   onRegisterSaveHandler?: ((handler: (() => Promise<void>) | null) => void);
   onRegisterResetHandler?: ((handler: (() => void) | null) => void);
 }
 
-const LANGUAGES = [{ value: 'en', label: 'English' }, { value: 'vi', label: 'Vietnamese (Tiếng Việt)' }, { value: 'ja', label: 'Japanese (日本語)' }, { value: 'ko', label: 'Korean (한국어)' }, { value: 'zh-CN', label: 'Chinese Simplified (简体中文)' }, { value: 'fr', label: 'French (Français)' }, { value: 'de', label: 'German (Deutsch)' }, { value: 'es', label: 'Spanish (Español)' }];
+const LANGUAGES = [
+  { value: 'en', label: 'English' },
+  { value: 'vi', label: 'Vietnamese (Tiếng Việt)' },
+];
 const DATE_TIME_FORMATS = ['DD/MM/YYYY HH:mm:ss', 'DD/MM/YYYY HH:mm', 'MM/DD/YYYY HH:mm:ss', 'MM/DD/YYYY HH:mm', 'YYYY-MM-DD HH:mm:ss', 'YYYY-MM-DD HH:mm', 'DD-MMM-YYYY HH:mm:ss', 'DD-MMM-YYYY HH:mm', 'MMMM DD, YYYY HH:mm:ss', 'MMMM DD, YYYY HH:mm'].map(value => ({ value, label: value }));
 const NUMBER_FORMATS = [{ value: 'en-US', label: '1,234.56 (US/UK)' }, { value: 'de-DE', label: '1.234,56 (EU)' }, { value: 'fr-FR', label: '1 234,56 (FR)' }, { value: 'ja-JP', label: '1,234.56 (JP)' }];
 const TIME_ZONES = ['Asia/Ho_Chi_Minh', 'UTC', 'Asia/Tokyo', 'Asia/Seoul', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Los_Angeles'].map(value => ({ value, label: value.replace('_', ' ') }));
 
 export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSaveHandler, onRegisterResetHandler }) => {
+  const { t } = useTranslation();
   const [system, setSystem] = useState<SystemLocalizationSettings>(readSystemLocalizationSettings);
   const [preferences, setPreferences] = useState<UserLocalizationPreferences>({ useSystemDefaults: true });
   const [loading, setLoading] = useState(true);
@@ -40,6 +45,7 @@ export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSave
     setPreferences(saved);
     const next = saved.useSystemDefaults ? system : { ...system, ...saved };
     writeSystemLocalizationSettings(next);
+    setI18nLanguage(next.language);
   }, [preferences, system]);
 
   useEffect(() => { onRegisterSaveHandler?.(saveChanges); return () => onRegisterSaveHandler?.(null); }, [onRegisterSaveHandler, saveChanges]);
@@ -50,18 +56,18 @@ export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSave
   }, [onRegisterResetHandler]);
 
   return <div className="p-1 animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
-    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">System localization is the default for all users. You may override it for your own account; resetting restores the administrator’s current values.</div>
-    <FormSection title="Localization Preference" icon={<Globe className="h-4 w-4" />}>
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">{t('localization.systemDefaultNotice')}</div>
+    <FormSection title={t('localization.preference')} icon={<Globe className="h-4 w-4" />}>
       <div className="space-y-5">
-        <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-4 py-3"><div><p className="text-sm font-medium text-slate-900">Use system defaults</p><p className="text-xs text-slate-500">Follow the localization configured by your administrator.</p></div><Switch checked={preferences.useSystemDefaults} onChange={(checked) => setPreferences(checked ? { useSystemDefaults: true } : { ...effective, useSystemDefaults: false })} disabled={loading} /></div>
+        <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-4 py-3"><div><p className="text-sm font-medium text-slate-900">{t('localization.useSystemDefaults')}</p><p className="text-xs text-slate-500">{t('localization.useSystemDefaultsHelp')}</p></div><Switch checked={preferences.useSystemDefaults} onChange={(checked) => setPreferences(checked ? { useSystemDefaults: true } : { ...effective, useSystemDefaults: false })} disabled={loading} /></div>
         {!preferences.useSystemDefaults && <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Select label="Language" value={effective.language} options={LANGUAGES} onChange={value => setValue('language', value)} />
-          <Select label="Date & Time Format" value={effective.dateTimeFormat} options={DATE_TIME_FORMATS} onChange={value => setValue('dateTimeFormat', value)} />
-          <Select label="Time Zone" value={effective.timeZone} options={TIME_ZONES} onChange={value => setValue('timeZone', value)} />
-          <Select label="Number Format" value={effective.numberFormat} options={NUMBER_FORMATS} onChange={value => setValue('numberFormat', value)} />
-          <Select label="Application Font" value={effective.fontFamily} options={[...APPLICATION_FONT_OPTIONS]} onChange={value => setValue('fontFamily', String(value) as SystemLocalizationSettings['fontFamily'])} />
+          <Select label={t('localization.language')} value={effective.language} options={LANGUAGES} onChange={value => setValue('language', value)} />
+          <Select label={t('localization.dateTimeFormat')} value={effective.dateTimeFormat} options={DATE_TIME_FORMATS} onChange={value => setValue('dateTimeFormat', value)} />
+          <Select label={t('localization.timeZone')} value={effective.timeZone} options={TIME_ZONES} onChange={value => setValue('timeZone', value)} />
+          <Select label={t('localization.numberFormat')} value={effective.numberFormat} options={NUMBER_FORMATS} onChange={value => setValue('numberFormat', value)} />
+          <Select label={t('localization.applicationFont')} value={effective.fontFamily} options={[...APPLICATION_FONT_OPTIONS]} onChange={value => setValue('fontFamily', String(value) as SystemLocalizationSettings['fontFamily'])} />
         </div>}
-        {preferences.useSystemDefaults && <div className="grid grid-cols-1 gap-3 text-sm text-slate-600 md:grid-cols-2"><p>Language: <strong>{system.language}</strong></p><p>Date & time: <strong>{system.dateTimeFormat}</strong></p><p>Time zone: <strong>{system.timeZone}</strong></p><p>Number: <strong>{new Intl.NumberFormat(system.numberFormat).format(1234567.89)}</strong></p><p className="flex items-center gap-1.5"><Type className="h-3.5 w-3.5" />Font: <strong>{APPLICATION_FONT_OPTIONS.find(option => option.value === system.fontFamily)?.label || 'Inter'}</strong></p></div>}
+        {preferences.useSystemDefaults && <div className="grid grid-cols-1 gap-3 text-sm text-slate-600 md:grid-cols-2"><p>{t('localization.language')}: <strong>{system.language}</strong></p><p>{t('localization.dateTimeFormat')}: <strong>{system.dateTimeFormat}</strong></p><p>{t('localization.timeZone')}: <strong>{system.timeZone}</strong></p><p>{t('localization.numberFormat')}: <strong>{new Intl.NumberFormat(system.numberFormat).format(1234567.89)}</strong></p><p className="flex items-center gap-1.5"><Type className="h-3.5 w-3.5" />{t('localization.applicationFont')}: <strong>{APPLICATION_FONT_OPTIONS.find(option => option.value === system.fontFamily)?.label || 'Inter'}</strong></p></div>}
       </div>
     </FormSection>
   </div>;

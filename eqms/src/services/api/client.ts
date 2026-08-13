@@ -13,6 +13,7 @@ import { secureStorage, safeRandomUUID } from "@/utils/security";
 import { authTokenStore } from "@/services/authTokenStore";
 import { ROUTES } from "@/app/routes.constants";
 import { dispatchRouteRedirect } from "@/app/navigation/routeRedirect";
+import { readSystemLocalizationSettings } from "@/config/localization";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
@@ -320,6 +321,7 @@ apiClient.interceptors.request.use(
     }
 
     config.headers["X-Correlation-ID"] = safeRandomUUID();
+    config.headers["Accept-Language"] = readSystemLocalizationSettings().language || "en";
     return config;
   },
   (error) => Promise.reject(error),
