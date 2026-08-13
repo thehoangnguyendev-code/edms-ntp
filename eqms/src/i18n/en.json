@@ -72,4 +72,10 @@
     "failed": { "title": "Training failed", "message": "Failed to complete training action." },
     "notes": { "addFailed": "Unable to add note", "saveFailed": "Working note could not be saved.", "deleteFailed": "Unable to delete note", "removeFailed": "Working note could not be deleted." }
   }
+  ,"controlledCopies": {
+    "load": { "failedTitle": "Error", "failedMessage": "Failed to load controlled copies" },
+    "distribution": { "failedTitle": "Distribution failed", "failedMessage": "Unable to distribute the controlled copy." },
+    "reissue": { "successTitle": "Replacement Copy Reissued", "successMessage": "New controlled copy {number} created (Ready for Distribution) for the same recipient.", "failedTitle": "Reissue failed", "failedMessage": "Unable to reissue a replacement controlled copy." },
+    "recall": { "failedTitle": "Recall failed", "failedMessage": "Unable to recall the controlled copy." }
+  }
 }

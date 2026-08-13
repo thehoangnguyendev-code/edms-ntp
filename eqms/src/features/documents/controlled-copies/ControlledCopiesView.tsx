@@ -29,6 +29,7 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { formatDateUS, formatDateTimeParts } from "@/utils/format";
 import { useToast } from "@/components/ui/toast/Toast";
+import { useTranslation } from "@/i18n";
 import type { ControlledCopy, TableColumn } from "./types";
 import {IconArrowBackUp, IconFilter2, IconInfoCircle, IconShare3, IconShredder} from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -292,6 +293,7 @@ interface ControlledCopiesViewProps {
 export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ viewType: propViewType = "all" }) => {
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canReviewBatchDiscrepancies = hasPermissionAlias('documents.admin.view');
 
@@ -401,8 +403,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
           setError(err?.message || "Failed to load controlled copies");
           showToast({
             type: "error",
-            title: "Error",
-            message: "Failed to load controlled copies",
+            title: t("controlledCopies.load.failedTitle"),
+            message: t("controlledCopies.load.failedMessage"),
           });
         }
       } finally {
@@ -1183,10 +1185,10 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       }
       showToast({
         type: "error",
-        title: "Distribution failed",
+        title: t("controlledCopies.distribution.failedTitle"),
         message: (error as any)?.response?.data?.message
           ?? (error as any)?.response?.data?.error?.message
-          ?? "Unable to distribute the controlled copy.",
+          ?? t("controlledCopies.distribution.failedMessage"),
         duration: 3500,
       });
     } finally {
@@ -1246,8 +1248,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       setRefreshToken(Date.now());
       showToast({
         type: "success",
-        title: "Replacement Copy Reissued",
-        message: `New controlled copy ${created?.controlledCopyNumber || ""} created (Ready for Distribution) for the same recipient.`,
+        title: t("controlledCopies.reissue.successTitle"),
+        message: t("controlledCopies.reissue.successMessage", { number: created?.controlledCopyNumber || "" }),
         duration: 4500,
       });
     } catch (error) {
@@ -1256,8 +1258,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         (error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message;
       showToast({
         type: "error",
-        title: "Reissue failed",
-        message: backendMessage || "Unable to reissue a replacement controlled copy.",
+        title: t("controlledCopies.reissue.failedTitle"),
+        message: backendMessage || t("controlledCopies.reissue.failedMessage"),
         duration: 3500,
       });
     } finally {
@@ -1351,10 +1353,10 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       }
       showToast({
         type: "error",
-        title: "Recall failed",
+          title: t("controlledCopies.recall.failedTitle"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
-          ?? "Unable to recall the controlled copy.",
+          ?? t("controlledCopies.recall.failedMessage"),
         duration: 3500,
       });
     } finally {

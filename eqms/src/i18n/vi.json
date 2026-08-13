@@ -96,4 +96,10 @@
     "failed": { "title": "Training thất bại", "message": "Không thể hoàn tất thao tác training." },
     "notes": { "addFailed": "Không thể thêm ghi chú", "saveFailed": "Không thể lưu working note.", "deleteFailed": "Không thể xóa ghi chú", "removeFailed": "Không thể xóa working note." }
   }
+  ,"controlledCopies": {
+    "load": { "failedTitle": "Lỗi", "failedMessage": "Không thể tải danh sách controlled copy" },
+    "distribution": { "failedTitle": "Phân phối thất bại", "failedMessage": "Không thể phân phối controlled copy." },
+    "reissue": { "successTitle": "Đã phát hành bản thay thế", "successMessage": "Đã tạo controlled copy {number} mới (Ready for Distribution) cho cùng người nhận.", "failedTitle": "Phát hành lại thất bại", "failedMessage": "Không thể phát hành lại controlled copy thay thế." },
+    "recall": { "failedTitle": "Thu hồi thất bại", "failedMessage": "Không thể thu hồi controlled copy." }
+  }
 }
