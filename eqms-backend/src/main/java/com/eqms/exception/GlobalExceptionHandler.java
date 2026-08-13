@@ -89,11 +89,14 @@ public class GlobalExceptionHandler {
         HttpStatus status = exception instanceof ResponseStatusException responseStatusException
                 ? HttpStatus.valueOf(responseStatusException.getStatusCode().value())
                 : HttpStatus.NOT_FOUND;
+        String code = exception instanceof ResponseStatusException
+                ? errorCodeFor(status)
+                : "RESOURCE_NOT_FOUND";
 
         return ResponseEntity.status(status)
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                "RESOURCE_NOT_FOUND",
+                                code,
                                 exception.getMessage() == null ? "Resource not found" : exception.getMessage(),
                                 List.of()
                         )
@@ -366,6 +369,22 @@ public class GlobalExceptionHandler {
         }
         String candidate = message.substring(0, separatorIndex).trim();
         return DOMAIN_VALIDATION_CODES.contains(candidate) ? candidate : null;
+    }
+
+    /** Maps direct HTTP exceptions to stable, localizable API error codes. */
+    private String errorCodeFor(HttpStatus status) {
+        return switch (status) {
+            case BAD_REQUEST -> "BAD_REQUEST";
+            case UNAUTHORIZED -> "UNAUTHORIZED";
+            case FORBIDDEN -> "FORBIDDEN";
+            case NOT_FOUND -> "RESOURCE_NOT_FOUND";
+            case METHOD_NOT_ALLOWED -> "METHOD_NOT_ALLOWED";
+            case CONFLICT -> "CONFLICT";
+            case PAYLOAD_TOO_LARGE -> "PAYLOAD_TOO_LARGE";
+            case UNSUPPORTED_MEDIA_TYPE -> "UNSUPPORTED_MEDIA_TYPE";
+            case UNPROCESSABLE_ENTITY -> "VALIDATION_ERROR";
+            default -> "BAD_REQUEST";
+        };
     }
 
     private ApiErrorResponse.ErrorDetail toDetail(ConstraintViolation<?> violation) {
