@@ -397,9 +397,9 @@ public class SettingsUserController {
         try {
             microsoftGraphOfficeOnlineService.testConnection(config);
             microsoftGraphOfficeOnlineService.testTemporarySharingCapabilities();
-            return ResponseEntity.ok(new OfficeOnlineHealthResponse("HEALTHY", "Graph, SharePoint drive, upload, and item sharing are reachable. Review-link recipient delivery still requires a real user test.", true, true, true, checkedAt));
+            return ResponseEntity.ok(new OfficeOnlineHealthResponse("HEALTHY", localizedMessage("settings.office_online_health_healthy"), true, true, true, checkedAt));
         } catch (Exception ex) {
-            return ResponseEntity.ok(new OfficeOnlineHealthResponse("UNHEALTHY", ex.getMessage(), false, false, false, checkedAt));
+            return ResponseEntity.ok(new OfficeOnlineHealthResponse("UNHEALTHY", localizedMessage("settings.office_online_health_unhealthy"), false, false, false, checkedAt));
         }
     }
 
