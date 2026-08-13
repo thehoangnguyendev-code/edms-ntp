@@ -78,4 +78,5 @@
     "reissue": { "successTitle": "Replacement Copy Reissued", "successMessage": "New controlled copy {number} created (Ready for Distribution) for the same recipient.", "failedTitle": "Reissue failed", "failedMessage": "Unable to reissue a replacement controlled copy." },
     "recall": { "failedTitle": "Recall failed", "failedMessage": "Unable to recall the controlled copy." }
   }
+  ,"controlledCopyDestroy": { "actionUnavailable": { "title": "Action not available", "singleCopy": "Report Lost/Damaged is only available for a single controlled copy record." }, "loadFailed": { "title": "Unable to load controlled copy", "message": "Controlled copy information could not be loaded from the server." }, "success": { "title": "Controlled Copy Destroyed", "message": "Controlled copy {number} has been marked as destroyed." }, "failed": { "title": "Destruction Failed", "message": "Failed to mark controlled copy as destroyed. Please try again." } }
 }

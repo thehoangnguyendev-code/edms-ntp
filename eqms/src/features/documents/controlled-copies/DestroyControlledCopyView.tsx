@@ -16,6 +16,7 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { useToast } from "@/components/ui/toast/Toast";
+import { useTranslation } from "@/i18n";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FormSection } from "@/components/ui/form";
@@ -75,6 +76,7 @@ export const DestroyControlledCopyView: React.FC = () => {
   const navigate = useNavigate();
   const locationState = location.state as ControlledCopyRouteState | undefined;
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   // Get destruction type from URL params or navigation state
   const [destructionType, setDestructionType] = useState<"Lost" | "Damaged">("Damaged");
@@ -149,8 +151,8 @@ export const DestroyControlledCopyView: React.FC = () => {
         if (isControlledCopyBatchRow(mappedCopy)) {
           showToast({
             type: "error",
-            title: "Action not available",
-            message: "Report Lost/Damaged is only available for a single controlled copy record.",
+            title: t("controlledCopyDestroy.actionUnavailable.title"),
+            message: t("controlledCopyDestroy.actionUnavailable.singleCopy"),
             duration: 4000,
           });
           navigate(location.state?.from || ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL, { replace: true });
@@ -170,8 +172,8 @@ export const DestroyControlledCopyView: React.FC = () => {
         }
         showToast({
           type: "error",
-          title: "Unable to load controlled copy",
-          message: "Controlled copy information could not be loaded from the server.",
+          title: t("controlledCopyDestroy.loadFailed.title"),
+          message: t("controlledCopyDestroy.loadFailed.message"),
           duration: 3500,
         });
       } finally {
@@ -346,8 +348,8 @@ export const DestroyControlledCopyView: React.FC = () => {
 
       showToast({
         type: "success",
-        title: "Controlled Copy Destroyed",
-        message: `Controlled copy ${controlledCopy.controlNumber} has been marked as destroyed.`,
+        title: t("controlledCopyDestroy.success.title"),
+        message: t("controlledCopyDestroy.success.message", { number: controlledCopy.controlNumber }),
         duration: 3500,
       });
 
@@ -362,7 +364,7 @@ export const DestroyControlledCopyView: React.FC = () => {
           setUploadProgress(0);
           showToast({
             type: "error",
-            title: "Action not available",
+            title: t("controlledCopyDestroy.actionUnavailable.title"),
             message: getControlledCopyActionDeniedReason(reportLostDamagedDecision),
             duration: 3500,
           });
@@ -376,12 +378,12 @@ export const DestroyControlledCopyView: React.FC = () => {
         (error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message;
       showToast({
         type: "error",
-        title: "Destruction Failed",
+        title: t("controlledCopyDestroy.failed.title"),
         message:
           backendMessage ||
           (error instanceof Error && error.message
             ? error.message
-            : "Failed to mark controlled copy as destroyed. Please try again."),
+            : t("controlledCopyDestroy.failed.message")),
         duration: 3500,
       });
       return;
