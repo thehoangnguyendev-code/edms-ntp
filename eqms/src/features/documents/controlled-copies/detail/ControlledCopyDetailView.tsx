@@ -7,6 +7,7 @@ import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowSteppe
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { useToast } from "@/components/ui/toast/Toast";
+import { useTranslation } from "@/i18n";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import { documentApi } from "@/services/api/documents";
@@ -135,6 +136,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   const [activeTab, setActiveTab] = useState<TabType>(urlTab || initialTab);
   const [isNavigating, setIsNavigating] = useState(false);
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const {
     capabilities: copyCapabilities,
     loading: isCopyCapabilityLoading,
@@ -631,8 +633,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         if (!mounted) return;
         showToast({
           type: "error",
-          title: "Unable to load controlled copy",
-          message: "Controlled copy detail could not be loaded from the server.",
+          title: t("controlledCopyDetail.loadFailed.title"),
+          message: t("controlledCopyDetail.loadFailed.message"),
           duration: 3500,
         });
       } finally {
@@ -935,8 +937,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       }) as ControlledCopy;
       showToast({
         type: "success",
-        title: "Replacement Copy Reissued",
-        message: `New controlled copy ${created?.controlledCopyNumber || ""} created (Ready for Distribution) for the same recipient.`,
+        title: t("controlledCopyDetail.reissue.successTitle"),
+        message: t("controlledCopyDetail.reissue.successMessage", { number: created?.controlledCopyNumber || "" }),
         duration: 4500,
       });
       await refreshDetailCapabilities();
@@ -950,8 +952,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         (error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message;
       showToast({
         type: "error",
-        title: "Reissue failed",
-        message: backendMessage || "Unable to reissue a replacement controlled copy.",
+        title: t("controlledCopyDetail.reissue.failedTitle"),
+        message: backendMessage || t("controlledCopyDetail.reissue.failedMessage"),
         duration: 3500,
       });
     } finally {

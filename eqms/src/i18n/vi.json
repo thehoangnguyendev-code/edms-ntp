@@ -103,4 +103,5 @@
     "recall": { "failedTitle": "Thu hồi thất bại", "failedMessage": "Không thể thu hồi controlled copy." }
   }
   ,"controlledCopyDestroy": { "actionUnavailable": { "title": "Thao tác không khả dụng", "singleCopy": "Chỉ có thể Report Lost/Damaged cho một bản controlled copy riêng lẻ." }, "loadFailed": { "title": "Không thể tải controlled copy", "message": "Không thể tải thông tin controlled copy từ server." }, "success": { "title": "Đã hủy controlled copy", "message": "Controlled copy {number} đã được đánh dấu là destroyed." }, "failed": { "title": "Hủy thất bại", "message": "Không thể đánh dấu controlled copy là destroyed. Vui lòng thử lại." } }
+  ,"controlledCopyDetail": { "loadFailed": { "title": "Không thể tải controlled copy", "message": "Không thể tải chi tiết controlled copy từ server." }, "reissue": { "successTitle": "Đã phát hành bản thay thế", "successMessage": "Đã tạo controlled copy {number} mới (Ready for Distribution) cho cùng người nhận.", "failedTitle": "Phát hành lại thất bại", "failedMessage": "Không thể phát hành lại controlled copy thay thế." } }
 }
