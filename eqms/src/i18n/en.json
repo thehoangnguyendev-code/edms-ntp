@@ -30,4 +30,11 @@
   ,"emptyState": { "noResults": "No Results Found", "noResultsDescription": "We couldn't find any items matching your filters. Try adjusting your search criteria." }
   ,"rateLimit": { "title": "Too many requests", "description": "You've made too many requests in a short time.", "waitSeconds": "Please wait about {seconds} second(s) and try again.", "waitMoment": "Please wait a moment and try again." }
   ,"toast": { "success": "Success", "error": "Action failed", "warning": "Attention required", "info": "Information" }
+  ,"documentCreation": {
+    "cancelled": { "title": "Document Cancelled", "message": "The document has been moved to Closed - Cancelled status.", "failed": "Cancel failed", "unavailable": "Unable to cancel the document." },
+    "readOnly": { "title": "Document metadata is read-only", "message": "Only a user with document workspace management permission can save Document Master metadata." },
+    "saved": { "title": "Document Saved", "noChanges": "No changes detected. Document is already up-to-date.", "updated": "Document Updated", "updatedMessage": "Draft information has been updated.", "createdMessage": "Document draft has been created successfully.", "failed": "Save failed", "unavailable": "Unable to save the document draft." },
+    "obsolete": { "unavailableTitle": "Obsolete unavailable", "unavailableMessage": "Obsolete is only available when the document is Active, has a current Effective Revision, and has no revision in progress.", "notSavedTitle": "Document not saved", "notSavedMessage": "Save the document before marking it obsolete.", "successTitle": "Document obsoleted", "successMessage": "The document has been marked as obsolete.", "failedTitle": "Unable to obsolete document", "failedMessage": "The document could not be marked as obsolete." },
+    "upload": { "failed": "Upload failed", "saveFirst": "Please save the document draft before uploading a revision.", "fileTooLarge": "Selected file exceeds the maximum allowed size of {size} MB.", "unauthorizedTitle": "Unauthorized", "unauthorizedMessage": "Only the assigned document author can upload the revision file.", "successTitle": "Revision created", "successMessage": "The first revision has been created for this document.", "unavailable": "Unable to create the revision." }
+  }
 }

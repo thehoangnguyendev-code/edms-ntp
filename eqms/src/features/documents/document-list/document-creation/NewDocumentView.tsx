@@ -14,6 +14,7 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { UploadRevisionModal } from "./UploadRevisionModal";
 import { formatDocumentTypeLookupLabel, matchesDocumentTypeLabel } from "@/features/documents/shared/documentTypeDisplay";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import { useNavigateWithLoading } from "@/hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDocumentPermissions } from "@/features/documents/shared/useDocumentPermissions";
@@ -383,6 +384,7 @@ export const NewDocumentView: React.FC = () => {
   const location = useLocation();
   const { id: routeDocumentId } = useParams<{ id?: string }>();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const {
     canAdministerDocumentWorkspace,
@@ -1252,9 +1254,12 @@ export const NewDocumentView: React.FC = () => {
     return [{ label: "-- None --", value: "" }, ...mapped, { label: currentValue, value: currentValue }];
   }, [documentTypeLookupOptions, formData.subType, formData.type, subTypeLookupOptions]);
 
-  const reviewRequirement = useMemo<"NONE" | "SINGLE" | "MULTIPLE">(() => {
+  const reviewRequirement = useMemo<"NONE" | "SINGLE" | "MULTIPLE" | "FLEXIBLE">(() => {
     const selected = subTypeLookupOptions.find((item) => item.value === formData.subType || item.label === formData.subType);
-    return selected?.reviewRequirement ?? "SINGLE";
+    // A blank Sub-type means the user selected "None", not the dictionary's
+    // NONE rule. The server treats it as FLEXIBLE: at least one Reviewer is
+    // required, without forcing an exact reviewer count.
+    return selected?.reviewRequirement ?? "FLEXIBLE";
   }, [formData.subType, subTypeLookupOptions]);
 
   useEffect(() => {
@@ -1408,17 +1413,17 @@ export const NewDocumentView: React.FC = () => {
       setCancelActivitySummary("");
       showToast({
         type: "success",
-        title: "Document Cancelled",
-        message: "The document has been moved to Closed - Cancelled status.",
+        title: t("documentCreation.cancelled.title"),
+        message: t("documentCreation.cancelled.message"),
         duration: 3000,
       });
       navigateTo(ROUTES.DOCUMENTS.ALL);
     } catch (error) {
       console.error("Error cancelling document:", error);
-      const message = extractApiMessage(error, "Unable to cancel the document.");
+      const message = extractApiMessage(error, t("documentCreation.cancelled.unavailable"));
       showToast({
         type: "error",
-        title: "Cancel failed",
+        title: t("documentCreation.cancelled.failed"),
         message,
         duration: 3000,
       });
@@ -1446,8 +1451,8 @@ export const NewDocumentView: React.FC = () => {
     if (documentId && !canAdministerDocumentWorkspace) {
       showToast({
         type: "warning",
-        title: "Document metadata is read-only",
-        message: "Only a user with document workspace management permission can save Document Master metadata.",
+        title: t("documentCreation.readOnly.title"),
+        message: t("documentCreation.readOnly.message"),
         duration: 3500,
       });
       return false;
@@ -1510,8 +1515,8 @@ export const NewDocumentView: React.FC = () => {
         setIsSaving(false);
         showToast({
           type: "success",
-          title: "Document Saved",
-          message: "No changes detected. Document is already up-to-date.",
+          title: t("documentCreation.saved.title"),
+          message: t("documentCreation.saved.noChanges"),
           duration: 3000,
         });
         if (action === "next-step") {
@@ -1596,10 +1601,10 @@ export const NewDocumentView: React.FC = () => {
       setIsSaving(false);
       showToast({
         type: "success",
-        title: isSaved ? "Document Updated" : "Document Saved",
+        title: isSaved ? t("documentCreation.saved.updated") : t("documentCreation.saved.title"),
         message: isSaved
-          ? "Draft information has been updated."
-          : "Document draft has been created successfully.",
+          ? t("documentCreation.saved.updatedMessage")
+          : t("documentCreation.saved.createdMessage"),
         duration: 3000,
       });
       return true;
@@ -1607,8 +1612,8 @@ export const NewDocumentView: React.FC = () => {
       console.error("Error saving document:", error);
       showToast({
         type: "error",
-        title: "Save failed",
-        message: extractApiMessage(error, "Unable to save the document draft."),
+        title: t("documentCreation.saved.failed"),
+        message: extractApiMessage(error, t("documentCreation.saved.unavailable")),
         duration: 3000,
       });
       setIsSaving(false);
@@ -1632,8 +1637,8 @@ export const NewDocumentView: React.FC = () => {
     if (!canObsoleteCurrentDocument) {
       showToast({
         type: "warning",
-        title: "Obsolete unavailable",
-        message: "Obsolete is only available when the document is Active, has a current Effective Revision, and has no revision in progress.",
+        title: t("documentCreation.obsolete.unavailableTitle"),
+        message: t("documentCreation.obsolete.unavailableMessage"),
         duration: 3000,
       });
       return;
@@ -1642,8 +1647,8 @@ export const NewDocumentView: React.FC = () => {
     if (!documentId) {
       showToast({
         type: "warning",
-        title: "Document not saved",
-        message: "Save the document before marking it obsolete.",
+        title: t("documentCreation.obsolete.notSavedTitle"),
+        message: t("documentCreation.obsolete.notSavedMessage"),
         duration: 3000,
       });
       return;
@@ -1661,15 +1666,15 @@ export const NewDocumentView: React.FC = () => {
       setIsObsoleteModalOpen(false);
       showToast({
         type: "success",
-        title: "Document obsoleted",
-        message: "The document has been marked as obsolete.",
+        title: t("documentCreation.obsolete.successTitle"),
+        message: t("documentCreation.obsolete.successMessage"),
         duration: 3000,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to obsolete document",
-        message: extractApiMessage(error, "The document could not be marked as obsolete."),
+        title: t("documentCreation.obsolete.failedTitle"),
+        message: extractApiMessage(error, t("documentCreation.obsolete.failedMessage")),
         duration: 3000,
       });
     } finally {
@@ -1735,8 +1740,8 @@ export const NewDocumentView: React.FC = () => {
     if (!documentId) {
       showToast({
         type: "error",
-        title: "Upload failed",
-        message: "Please save the document draft before uploading a revision.",
+        title: t("documentCreation.upload.failed"),
+        message: t("documentCreation.upload.saveFirst"),
         duration: 3000,
       });
       return;
@@ -1745,8 +1750,8 @@ export const NewDocumentView: React.FC = () => {
     if (file && file.size > maxRevisionFileSizeMB * 1024 * 1024) {
       showToast({
         type: "error",
-        title: "Upload failed",
-        message: `Selected file exceeds the maximum allowed size of ${maxRevisionFileSizeMB} MB.`,
+        title: t("documentCreation.upload.failed"),
+        message: t("documentCreation.upload.fileTooLarge", { size: maxRevisionFileSizeMB }),
         duration: 3000,
       });
       return;
@@ -1755,8 +1760,8 @@ export const NewDocumentView: React.FC = () => {
     if (!canCurrentUserUploadRevision) {
       showToast({
         type: "error",
-        title: "Unauthorized",
-        message: "Only the assigned document author can upload the revision file.",
+        title: t("documentCreation.upload.unauthorizedTitle"),
+        message: t("documentCreation.upload.unauthorizedMessage"),
         duration: 3000,
       });
       return;
@@ -1809,16 +1814,16 @@ export const NewDocumentView: React.FC = () => {
 
       showToast({
         type: "success",
-        title: "Revision created",
-        message: "The first revision has been created for this document.",
+        title: t("documentCreation.upload.successTitle"),
+        message: t("documentCreation.upload.successMessage"),
         duration: 3000,
       });
     } catch (error) {
       console.error("Error creating revision:", error);
-      const message = extractApiMessage(error, "Unable to create the revision.");
+      const message = extractApiMessage(error, t("documentCreation.upload.unavailable"));
       showToast({
         type: "error",
-        title: "Upload failed",
+        title: t("documentCreation.upload.failed"),
         message,
         duration: 3000,
       });
