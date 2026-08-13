@@ -85,4 +85,9 @@
     "publish": { "successTitle": "Đã publish", "successMessage": "Revision đã được publish thành công.", "failed": "Publish thất bại", "unavailable": "Không thể publish revision." },
     "notes": { "addFailed": "Không thể thêm ghi chú", "saveFailed": "Không thể lưu working note.", "deleteFailed": "Không thể xóa ghi chú", "removeFailed": "Không thể xóa working note." }
   }
+  ,"controlledCopyRequest": {
+    "unavailable": { "title": "Chưa thể yêu cầu", "message": "Không thể Request Controlled Copy cho revision này." },
+    "failed": { "title": "Yêu cầu thất bại", "message": "Không thể gửi yêu cầu controlled copy." },
+    "success": { "title": "Đã gửi yêu cầu", "message": "Controlled copy đã sẵn sàng để phân phối. Bạn có thể theo dõi trạng thái tại màn hình All Controlled Copies." }
+  }
 }

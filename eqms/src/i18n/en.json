@@ -61,4 +61,9 @@
     "publish": { "successTitle": "Publish successful", "successMessage": "Revision has been published successfully.", "failed": "Publish failed", "unavailable": "Failed to publish revision." },
     "notes": { "addFailed": "Unable to add note", "saveFailed": "Working note could not be saved.", "deleteFailed": "Unable to delete note", "removeFailed": "Working note could not be deleted." }
   }
+  ,"controlledCopyRequest": {
+    "unavailable": { "title": "Request unavailable", "message": "Request Controlled Copy is not available for this revision." },
+    "failed": { "title": "Request failed", "message": "Unable to submit the controlled copy request." },
+    "success": { "title": "Request Submitted Successfully", "message": "The controlled copy is ready for distribution. You can monitor the status on the All Controlled Copies screen." }
+  }
 }
