@@ -28,6 +28,7 @@ import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/Filter
 import {IconFilter2, IconPencilMinus} from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import { extractApiMessage } from "../utils";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -59,6 +60,7 @@ export const BusinessUnitsTab = React.forwardRef<
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [departmentItems, setDepartmentItems] = useState<DepartmentItem[]>([]);
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const {
     searchQuery,
@@ -155,8 +157,8 @@ export const BusinessUnitsTab = React.forwardRef<
         reload();
         showToast({
           type: "success",
-          title: updated.isActive ? "Business Unit Activated" : "Business Unit Deactivated",
-          message: `Business Unit "${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
+        title: updated.isActive ? t("businessUnits.activated.title") : t("businessUnits.deactivated.title"),
+        message: updated.isActive ? t("businessUnits.activated.message", { name: updated.name }) : t("businessUnits.deactivated.message", { name: updated.name }),
         });
       })
       .catch((error) => {
@@ -164,8 +166,8 @@ export const BusinessUnitsTab = React.forwardRef<
         setShowToggleModal(false);
         showToast({
           type: "error",
-          title: "Business Unit Status Update Failed",
-          message: extractApiMessage(error, "Unable to update business unit status."),
+        title: t("businessUnits.statusFailed.title"),
+        message: extractApiMessage(error, t("businessUnits.statusFailed.message")),
         });
       })
       .finally(() => setIsSubmitting(false));
@@ -179,8 +181,8 @@ export const BusinessUnitsTab = React.forwardRef<
         reload();
         showToast({
           type: "success",
-          title: "Business Unit Deleted",
-          message: `Business Unit "${selectedItem.name}" has been deleted successfully.`,
+        title: t("businessUnits.deleted.title"),
+        message: t("businessUnits.deleted.message", { name: selectedItem.name }),
         });
       }
       setShowDeleteModal(false);
@@ -189,8 +191,8 @@ export const BusinessUnitsTab = React.forwardRef<
       if (import.meta.env.DEV) console.error("Failed to delete business unit", error);
       showToast({
         type: "error",
-        title: "Business Unit Delete Failed",
-        message: extractApiMessage(error, "Unable to delete business unit."),
+        title: t("businessUnits.deleteFailed.title"),
+        message: extractApiMessage(error, t("businessUnits.deleteFailed.message")),
       });
       setShowDeleteModal(false);
     } finally {
