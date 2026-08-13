@@ -30,6 +30,7 @@ import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import { extractApiMessage } from "../utils";
 import type { DocumentSubTypeItem, DocumentTypeItem } from "../types";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
@@ -90,6 +91,7 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
     });
     const [documentTypes, setDocumentTypes] = useState<DocumentTypeItem[]>([]);
     const { showToast } = useToast();
+    const { t } = useTranslation();
 
     const {
       searchQuery,
@@ -244,18 +246,20 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
         showToast({
           type: "success",
           title: updated.isActive
-            ? "Sub-Type Activated"
-            : "Sub-Type Deactivated",
-          message: `Sub-type "${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
+            ? t("subTypes.activated.title")
+            : t("subTypes.deactivated.title"),
+          message: updated.isActive
+            ? t("subTypes.activated.message", { name: updated.name })
+            : t("subTypes.deactivated.message", { name: updated.name }),
         });
       } catch (error) {
         setShowToggleModal(false);
         showToast({
           type: "error",
-          title: "Sub-Type Status Update Failed",
+          title: t("subTypes.statusFailed.title"),
           message: extractApiMessage(
             error,
-            "Unable to update sub-type status.",
+            t("subTypes.statusFailed.message"),
           ),
         });
       } finally {
@@ -278,16 +282,16 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
         reload();
         showToast({
           type: "success",
-          title: "Sub-Type Deleted",
-          message: `Sub-type "${selectedItem.name}" has been deleted successfully.`,
+          title: t("subTypes.deleted.title"),
+          message: t("subTypes.deleted.message", { name: selectedItem.name }),
         });
         setSelectedItem(null);
       } catch (error) {
         setShowDeleteModal(false);
         showToast({
           type: "error",
-          title: "Sub-Type Delete Failed",
-          message: extractApiMessage(error, "Unable to delete sub-type."),
+          title: t("subTypes.deleteFailed.title"),
+          message: extractApiMessage(error, t("subTypes.deleteFailed.message")),
         });
       } finally {
         setIsSubmitting(false);
