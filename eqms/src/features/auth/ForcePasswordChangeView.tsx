@@ -10,16 +10,11 @@ import { AUTH_UI } from "./auth-ui";
 import { AuthField, AuthLayout, AuthBackLink, AuthTopBackButton } from "./components";
 import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { usePasswordPolicy } from "./usePasswordPolicy";
+import { useTranslation } from "@/i18n";
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
 // ============================================================================
-
-const ERROR_MESSAGES = {
-  NEW_PASSWORD_REQUIRED: "New password is required",
-  PASSWORDS_MUST_MATCH: "Passwords do not match",
-  STRENGTH_REQUIREMENTS: "Password does not meet security requirements",
-} as const;
 
 // ============================================================================
 // TYPES
@@ -87,6 +82,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
   username = "User",
   passwordChangeReason,
 }) => {
+  const { t } = useTranslation();
   const passwordPolicy = usePasswordPolicy();
   // ========================================================================
   // STATE
@@ -115,24 +111,24 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
   const strength = checkPasswordStrength(formData.newPassword, passwordPolicy);
   const passwordChangeContext = {
     FIRST_LOGIN: {
-      title: "Create Your Password",
-      description: <>Hi <span className="font-semibold text-slate-700">{username}</span>, replace the temporary password issued for your new account.</>,
+      title: t('authExt.forcePassword.firstLoginTitle'),
+      description: <>{t('authExt.forcePassword.firstLoginDescription')} <span className="font-semibold text-slate-700">{username}</span>.</>,
     },
     ADMIN_RESET: {
-      title: "Reset Your Password",
-      description: "An administrator reset your password. Create a new personal password to continue.",
+      title: t('authExt.forcePassword.adminResetTitle'),
+      description: t('authExt.forcePassword.adminResetDescription'),
     },
     PASSWORD_EXPIRED: {
-      title: "Password Update Required",
-      description: "Your password has expired under the organization’s security policy. Create a new password to continue.",
+      title: t('authExt.forcePassword.updateRequiredTitle'),
+      description: t('authExt.forcePassword.expiredDescription'),
     },
     SECURITY_INCIDENT: {
-      title: "Secure Your Account",
-      description: "A security event requires you to replace your password before continuing.",
+      title: t('authExt.forcePassword.secureAccountTitle'),
+      description: t('authExt.forcePassword.securityIncidentDescription'),
     },
     LEGACY_REQUIRED: {
-      title: "Password Update Required",
-      description: "Create a new password to continue securely.",
+      title: t('authExt.forcePassword.updateRequiredTitle'),
+      description: t('authExt.forcePassword.legacyDescription'),
     },
   }[passwordChangeReason || 'LEGACY_REQUIRED'];
 
@@ -166,19 +162,19 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
     };
 
     if (!formData.currentPassword) {
-      newErrors.currentPassword = "Current password is required";
+      newErrors.currentPassword = t('authExt.forcePassword.currentPasswordRequired');
     }
 
     if (!formData.newPassword) {
-      newErrors.newPassword = ERROR_MESSAGES.NEW_PASSWORD_REQUIRED;
+      newErrors.newPassword = t('authExt.forcePassword.newPasswordRequired');
     } else if (formData.newPassword.length < passwordPolicy.passwordMinLength) {
-      newErrors.newPassword = `Password must be at least ${passwordPolicy.passwordMinLength} characters`;
+      newErrors.newPassword = t('authExt.forcePassword.minLength', { count: passwordPolicy.passwordMinLength });
     } else if (!strength.isValid) {
-      newErrors.newPassword = ERROR_MESSAGES.STRENGTH_REQUIREMENTS;
+      newErrors.newPassword = t('authExt.forcePassword.policyNotMet');
     }
 
     if (formData.confirmPassword !== formData.newPassword) {
-      newErrors.confirmPassword = ERROR_MESSAGES.PASSWORDS_MUST_MATCH;
+      newErrors.confirmPassword = t('authExt.forcePassword.passwordsDoNotMatch');
     }
 
     setErrors(newErrors);
@@ -196,7 +192,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
 
       if (!onSubmit) {
         setIsLoading(false);
-        setSubmitError("Submission handler not configured");
+        setSubmitError(t('authExt.forcePassword.handlerUnavailable'));
         return;
       }
 
@@ -214,9 +210,9 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
         return;
       }
 
-      setSubmitError(result.error || "Failed to update password. Please try again.");
+      setSubmitError(result.error || t('authExt.forcePassword.updateFailed'));
     },
-    [formData, onSubmit, strength]
+    [formData, onSubmit, strength, t]
   );
 
   // ========================================================================
@@ -228,7 +224,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
       type="button"
       onClick={() => togglePasswordVisibility(field)}
       className="flex items-center p-1 text-slate-400 transition-colors hover:text-slate-600 focus:outline-none"
-      aria-label={showPasswords[field] ? "Hide password" : "Show password"}
+      aria-label={showPasswords[field] ? t('auth.login.hidePassword') : t('auth.login.showPassword')}
       tabIndex={-1}
     >
       {showPasswords[field] ? (
@@ -245,11 +241,11 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
 
   return (
     <>
-      {isLoading && <FullPageLoading text="Updating credentials..." />}
+      {isLoading && <FullPageLoading text={t('authExt.forcePassword.updating')} />}
       <AuthLayout
         left={
           <div className={AUTH_UI.formColumn}>
-            <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
+            <AuthTopBackButton onClick={onBackToLogin} label={t('authExt.shared.backToLogin')} disabled={isLoading} />
             <div className="mb-6 flex items-center gap-3 text-slate-900 sm:mb-10 lg:mb-12">
               <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
             </div>
@@ -268,7 +264,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 <div className="flex gap-3">
                   <ShieldAlert className="h-5 w-5 text-red-600" />
                   <div>
-                    <p className="text-sm font-semibold text-red-900">Security Update Failed</p>
+                    <p className="text-sm font-semibold text-red-900">{t('authExt.forcePassword.securityUpdateFailed')}</p>
                     <p className="mt-0.5 text-sm text-red-700">{submitError}</p>
                   </div>
                 </div>
@@ -277,7 +273,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
 
             <form onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate>
 
-              <AuthField htmlFor="currentPassword" label="Current Password" required={true} error={errors.currentPassword}>
+              <AuthField htmlFor="currentPassword" label={t('authExt.forcePassword.currentPassword')} required={true} error={errors.currentPassword}>
                 <div className="relative">
                   <input
                     id="currentPassword"
@@ -286,7 +282,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     onChange={(e) => handleInputChange("currentPassword", e.target.value)}
                     className={cn(AUTH_UI.inputBase, "pr-12", AUTH_UI.inputFocus, errors.currentPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault)}
                     disabled={isLoading}
-                    placeholder='Enter Current Password'
+                    placeholder={t('authExt.forcePassword.currentPasswordPlaceholder')}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                     <PasswordIcon field="current" />
@@ -296,7 +292,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
 
               <AuthField
                 htmlFor="newPassword"
-                label="New Password"
+                label={t('authExt.reset.newPassword')}
                 required={true}
                 error={errors.newPassword}
               >
@@ -312,11 +308,11 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     onKeyDown={handleCapsLockCheck}
                     onFocus={() => setFocusedField("new")}
                     onBlur={() => setFocusedField(null)}
-                    placeholder='Enter New Password'
+                    placeholder={t('authExt.reset.newPasswordPlaceholder')}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                     {isCapsLockOn && focusedField === "new" && (
-                      <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
+                      <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title={t('authExt.forcePassword.capsLockOn')}>
                         <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" />
                       </div>
                     )}
@@ -351,18 +347,18 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     ))}
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5">
-                    <StrengthCheck label={`At least ${passwordPolicy.passwordMinLength} characters`} checked={strength.hasMinLength} />
-                    {passwordPolicy.requireUppercase && <StrengthCheck label="One uppercase letter" checked={strength.hasUpper} />}
-                    {passwordPolicy.requireLowercase && <StrengthCheck label="One lowercase letter" checked={strength.hasLower} />}
-                    {passwordPolicy.requireNumbers && <StrengthCheck label="One number" checked={strength.hasNumber} />}
-                    {passwordPolicy.requireSpecialChars && <StrengthCheck label="One special character" checked={strength.hasSpecial} />}
+                    <StrengthCheck label={t('authExt.forcePassword.minLength', { count: passwordPolicy.passwordMinLength })} checked={strength.hasMinLength} />
+                    {passwordPolicy.requireUppercase && <StrengthCheck label={t('authExt.reset.uppercase')} checked={strength.hasUpper} />}
+                    {passwordPolicy.requireLowercase && <StrengthCheck label={t('authExt.reset.lowercase')} checked={strength.hasLower} />}
+                    {passwordPolicy.requireNumbers && <StrengthCheck label={t('authExt.reset.number')} checked={strength.hasNumber} />}
+                    {passwordPolicy.requireSpecialChars && <StrengthCheck label={t('authExt.reset.specialCharacter')} checked={strength.hasSpecial} />}
                   </div>
                 </div>
               </AuthField>
 
               <AuthField
                 htmlFor="confirmPassword"
-                label="Confirm New Password"
+                label={t('authExt.reset.confirmNewPassword')}
                 required={true}
                 error={errors.confirmPassword}
               >
@@ -378,11 +374,11 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     onKeyDown={handleCapsLockCheck}
                     onFocus={() => setFocusedField("confirm")}
                     onBlur={() => setFocusedField(null)}
-                    placeholder='Confirm New Password'
+                    placeholder={t('authExt.reset.confirmPasswordPlaceholder')}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                     {isCapsLockOn && focusedField === "confirm" && (
-                      <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
+                      <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title={t('authExt.forcePassword.capsLockOn')}>
                         <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" />
                       </div>
                     )}
@@ -391,7 +387,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 </div>
                 {formData.confirmPassword && formData.confirmPassword !== formData.newPassword && (
                   <p className="mt-1.5 text-[11px] font-medium text-red-500 animate-in fade-in slide-in-from-top-1 duration-200">
-                    Passwords do not match yet
+                    {t('authExt.forcePassword.passwordsDoNotMatchYet')}
                   </p>
                 )}
               </AuthField>
@@ -401,11 +397,11 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 className={cn(AUTH_UI.submitButton, "mt-2")}
                 disabled={isLoading || !strength.isValid || formData.newPassword !== formData.confirmPassword || !formData.currentPassword}
               >
-                Continue
+                {t('authExt.forcePassword.continue')}
               </Button>
 
               <div className="hidden sm:block">
-                <AuthBackLink onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
+                <AuthBackLink onClick={onBackToLogin} label={t('authExt.shared.backToLogin')} disabled={isLoading} />
               </div>
             </form>
           </div>
