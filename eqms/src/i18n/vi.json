@@ -61,4 +61,20 @@
     "obsolete": { "unavailableTitle": "Chưa thể ngừng hiệu lực", "unavailableMessage": "Chỉ có thể ngừng hiệu lực khi tài liệu ở trạng thái Active, có Effective Revision hiện tại và không có revision đang xử lý.", "notSavedTitle": "Tài liệu chưa được lưu", "notSavedMessage": "Hãy lưu tài liệu trước khi đánh dấu ngừng hiệu lực.", "successTitle": "Đã ngừng hiệu lực tài liệu", "successMessage": "Tài liệu đã được đánh dấu ngừng hiệu lực.", "failedTitle": "Không thể ngừng hiệu lực tài liệu", "failedMessage": "Không thể đánh dấu tài liệu là ngừng hiệu lực." },
     "upload": { "failed": "Tải lên thất bại", "saveFirst": "Hãy lưu bản nháp tài liệu trước khi tải lên revision.", "fileTooLarge": "Tệp đã chọn vượt quá dung lượng tối đa {size} MB.", "unauthorizedTitle": "Không được phép", "unauthorizedMessage": "Chỉ Author được chỉ định cho tài liệu mới có thể tải lên tệp revision.", "successTitle": "Đã tạo revision", "successMessage": "Revision đầu tiên của tài liệu đã được tạo.", "unavailable": "Không thể tạo revision." }
   }
+  ,"revisionCreate": {
+    "tryAgain": "Vui lòng thử lại.",
+    "comments": { "resolveFailed": "Không thể xử lý comment", "replyFailed": "Không thể gửi phản hồi", "deleteFailed": "Không thể xóa comment" },
+    "fileReplaced": { "title": "Đã thay tệp", "message": "Tệp revision đã được cập nhật.", "failed": "Không thể thay tệp revision." },
+    "completedByAuthor": { "title": "Author đã hoàn tất chỉnh sửa", "message": "Revision đã sẵn sàng để submit for review." },
+    "notReady": { "title": "Revision chưa sẵn sàng", "notes": "Hãy tải lên tệp revision trước khi thêm working note.", "workspace": "Hãy tải lên tệp revision trước khi mở publishing workspace." },
+    "notCreated": { "title": "Revision chưa được tạo", "save": "Hãy tải lên tệp revision trước khi lưu.", "completeEditing": "Hãy tải lên tệp revision trước khi hoàn tất chỉnh sửa." },
+    "notes": { "addFailed": "Không thể thêm ghi chú", "saveFailed": "Không thể lưu working note.", "deleteFailed": "Không thể xóa ghi chú", "removeFailed": "Không thể xóa working note." },
+    "upload": { "failed": "Tải lên thất bại", "sourceMissing": "Thiếu tài liệu nguồn nên không thể tạo revision.", "successTitle": "Đã tải lên revision", "successMessage": "Tệp revision đã được tạo thành công.", "unavailable": "Không thể tải lên tệp revision.", "cannotUpload": "Không thể tải lên", "parentMissing": "Thiếu thông tin tài liệu cha." },
+    "saved": { "title": "Đã lưu bản nháp", "message": "Bản nháp revision đã được lưu thành công.", "failed": "Lưu thất bại", "unavailable": "Không thể lưu bản nháp revision." },
+    "completeEditing": { "successTitle": "Đã hoàn tất chỉnh sửa", "successMessage": "Revision hiện đã khóa để chuẩn bị publishing workspace.", "failed": "Hoàn tất chỉnh sửa thất bại", "unavailable": "Không thể hoàn tất chỉnh sửa revision này." },
+    "submit": { "successTitle": "Đã gửi duyệt", "successMessage": "Revision đã được gửi và đang chờ review.", "failed": "Gửi review thất bại", "unavailable": "Không thể gửi revision để review." },
+    "officeSync": { "successTitle": "Đã đồng bộ", "successMessage": "Tệp revision đã được tải lên Office Online.", "failed": "Đồng bộ thất bại", "unavailable": "Không thể tải revision lên Office Online." },
+    "officeEditor": { "failed": "Không thể mở trình chỉnh sửa", "unavailable": "Không có liên kết chỉnh sửa Office Online." },
+    "workspace": { "successTitle": "Đã mở publishing workspace", "successMessage": "Revision {documentNumber} {revisionNumber} đã sẵn sàng để đóng gói review.", "failed": "Mở workspace thất bại", "unavailable": "Không thể mở publishing workspace." }
+  }
 }

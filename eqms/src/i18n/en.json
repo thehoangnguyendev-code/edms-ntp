@@ -37,4 +37,20 @@
     "obsolete": { "unavailableTitle": "Obsolete unavailable", "unavailableMessage": "Obsolete is only available when the document is Active, has a current Effective Revision, and has no revision in progress.", "notSavedTitle": "Document not saved", "notSavedMessage": "Save the document before marking it obsolete.", "successTitle": "Document obsoleted", "successMessage": "The document has been marked as obsolete.", "failedTitle": "Unable to obsolete document", "failedMessage": "The document could not be marked as obsolete." },
     "upload": { "failed": "Upload failed", "saveFirst": "Please save the document draft before uploading a revision.", "fileTooLarge": "Selected file exceeds the maximum allowed size of {size} MB.", "unauthorizedTitle": "Unauthorized", "unauthorizedMessage": "Only the assigned document author can upload the revision file.", "successTitle": "Revision created", "successMessage": "The first revision has been created for this document.", "unavailable": "Unable to create the revision." }
   }
+  ,"revisionCreate": {
+    "tryAgain": "Please try again.",
+    "comments": { "resolveFailed": "Unable to resolve comment", "replyFailed": "Unable to send reply", "deleteFailed": "Unable to delete comment" },
+    "fileReplaced": { "title": "File replaced", "message": "The revision file has been updated.", "failed": "Unable to replace the revision file." },
+    "completedByAuthor": { "title": "Author completed editing", "message": "The revision is ready to submit for review." },
+    "notReady": { "title": "Revision not ready", "notes": "Upload the revision file first before adding working notes.", "workspace": "Upload the revision file before opening the publishing workspace." },
+    "notCreated": { "title": "Revision not created", "save": "Please upload the revision file first before saving.", "completeEditing": "Please upload the revision file first before completing editing." },
+    "notes": { "addFailed": "Unable to add note", "saveFailed": "Working note could not be saved.", "deleteFailed": "Unable to delete note", "removeFailed": "Working note could not be deleted." },
+    "upload": { "failed": "Upload failed", "sourceMissing": "The source document is missing, so the revision cannot be created.", "successTitle": "Revision uploaded", "successMessage": "The revision file has been created successfully.", "unavailable": "Unable to upload the revision file.", "cannotUpload": "Cannot upload", "parentMissing": "The parent document information is missing." },
+    "saved": { "title": "Draft saved", "message": "Revision draft has been saved successfully.", "failed": "Save failed", "unavailable": "Unable to save the revision draft." },
+    "completeEditing": { "successTitle": "Editing completed", "successMessage": "The revision is now locked for publishing workspace preparation.", "failed": "Complete editing failed", "unavailable": "Unable to complete editing for this revision." },
+    "submit": { "successTitle": "Submitted for review", "successMessage": "The revision has been submitted and is now pending review.", "failed": "Submit for review failed", "unavailable": "Unable to submit the revision for review." },
+    "officeSync": { "successTitle": "Synced successfully", "successMessage": "The revision file has been uploaded to Office Online.", "failed": "Sync failed", "unavailable": "Unable to upload the revision to Office Online." },
+    "officeEditor": { "failed": "Unable to open editor", "unavailable": "The Office Online edit link is not available." },
+    "workspace": { "successTitle": "Publishing workspace opened", "successMessage": "Revision {documentNumber} {revisionNumber} is ready for review packaging.", "failed": "Open workspace failed", "unavailable": "Unable to open the publishing workspace." }
+  }
 }

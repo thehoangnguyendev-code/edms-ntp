@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button/Button";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import { useNavigateWithLoading } from "@/hooks";
 import { useDocumentPermissions } from "@/features/documents/shared/useDocumentPermissions";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
@@ -406,6 +407,7 @@ const RevisionCreateViewContent: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { navigateTo } = useNavigateWithLoading();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { user, canUseDocumentTemplate } = useDocumentPermissions();
 
   const locationState = useMemo<RevisionCreateLocationState | null>(() => {
@@ -680,7 +682,7 @@ const RevisionCreateViewContent: React.FC = () => {
       await documentApi.resolveRevisionReviewComment(revisionDisplay.id, commentId, resolutionNote);
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to resolve comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: t("revisionCreate.comments.resolveFailed"), message: (error as any)?.response?.data?.message || t("revisionCreate.tryAgain"), duration: 3000 });
     }
   };
 
@@ -696,7 +698,7 @@ const RevisionCreateViewContent: React.FC = () => {
       }
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to send reply", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: t("revisionCreate.comments.replyFailed"), message: (error as any)?.response?.data?.message || t("revisionCreate.tryAgain"), duration: 3000 });
     }
   };
 
@@ -706,7 +708,7 @@ const RevisionCreateViewContent: React.FC = () => {
       await documentApi.deleteRevisionReviewComment(revisionDisplay.id, commentId, reason);
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to delete comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: t("revisionCreate.comments.deleteFailed"), message: (error as any)?.response?.data?.message || t("revisionCreate.tryAgain"), duration: 3000 });
     }
   };
   const handleEditReviewComment = async (commentId: string, content: string) => { if (revisionDisplay?.id) { await documentApi.updateRevisionReviewComment(revisionDisplay.id, commentId, content); await loadReviewComments(); } };
@@ -871,15 +873,15 @@ const RevisionCreateViewContent: React.FC = () => {
       await loadReviewComments();
       showToast({
         type: "success",
-        title: "File replaced",
-        message: "The revision file has been updated.",
+        title: t("revisionCreate.fileReplaced.title"),
+        message: t("revisionCreate.fileReplaced.message"),
         duration: 3000,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: "Upload failed",
-        message: (error as any)?.response?.data?.message || "Unable to replace the revision file.",
+        title: t("revisionCreate.upload.failed"),
+        message: (error as any)?.response?.data?.message || t("revisionCreate.fileReplaced.failed"),
         duration: 3000,
       });
     } finally {
@@ -1164,8 +1166,8 @@ const RevisionCreateViewContent: React.FC = () => {
         if (live.editingStatus === "COMPLETED" || live.sourceLocked) {
           showToast({
             type: "success",
-            title: "Author completed editing",
-            message: "The revision is ready to submit for review.",
+            title: t("revisionCreate.completedByAuthor.title"),
+            message: t("revisionCreate.completedByAuthor.message"),
             duration: 4000,
           });
         }
@@ -1245,8 +1247,8 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!revisionDisplay?.id) {
       showToast({
         type: "warning",
-        title: "Revision not ready",
-        message: "Upload the revision file first before adding working notes.",
+        title: t("revisionCreate.notReady.title"),
+        message: t("revisionCreate.notReady.notes"),
       });
       return;
     }
@@ -1260,10 +1262,10 @@ const RevisionCreateViewContent: React.FC = () => {
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to add note",
+        title: t("revisionCreate.notes.addFailed"),
         message:
           (error as any)?.response?.data?.message ||
-          "Working note could not be saved.",
+          t("revisionCreate.notes.saveFailed"),
         duration: 3000,
       });
     }
@@ -1278,10 +1280,10 @@ const RevisionCreateViewContent: React.FC = () => {
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to delete note",
+        title: t("revisionCreate.notes.deleteFailed"),
         message:
           (error as any)?.response?.data?.message ||
-          "Working note could not be deleted.",
+          t("revisionCreate.notes.removeFailed"),
         duration: 3000,
       });
     }
@@ -1297,9 +1299,9 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!parentDocumentId) {
       showToast({
         type: "error",
-        title: "Upload failed",
+        title: t("revisionCreate.upload.failed"),
         message:
-          "The source document is missing, so the revision cannot be created.",
+          t("revisionCreate.upload.sourceMissing"),
       });
       return;
     }
@@ -1346,8 +1348,8 @@ const RevisionCreateViewContent: React.FC = () => {
 
       showToast({
         type: "success",
-        title: "Revision uploaded",
-        message: "The revision file has been created successfully.",
+        title: t("revisionCreate.upload.successTitle"),
+        message: t("revisionCreate.upload.successMessage"),
         duration: 3000,
       });
       setShowUploadModal(false);
@@ -1355,11 +1357,11 @@ const RevisionCreateViewContent: React.FC = () => {
       console.error("Failed to upload revision", error);
       showToast({
         type: "error",
-        title: "Upload failed",
+        title: t("revisionCreate.upload.failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
-          "Unable to upload the revision file.",
+          t("revisionCreate.upload.unavailable"),
         duration: 3000,
       });
     } finally {
@@ -1371,8 +1373,8 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!revisionDisplay?.id) {
       showToast({
         type: "warning",
-        title: "Revision not created",
-        message: "Please upload the revision file first before saving.",
+        title: t("revisionCreate.notCreated.title"),
+        message: t("revisionCreate.notCreated.save"),
       });
       return;
     }
@@ -1382,19 +1384,19 @@ const RevisionCreateViewContent: React.FC = () => {
       await persistRevision(revisionDisplay.id);
       showToast({
         type: "success",
-        title: "Draft saved",
-        message: "Revision draft has been saved successfully.",
+        title: t("revisionCreate.saved.title"),
+        message: t("revisionCreate.saved.message"),
         duration: 3000,
       });
     } catch (error) {
       console.error("Failed to save revision draft", error);
       showToast({
         type: "error",
-        title: "Save failed",
+        title: t("revisionCreate.saved.failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
-          "Unable to save the revision draft.",
+          t("revisionCreate.saved.unavailable"),
         duration: 3000,
       });
     } finally {
@@ -1410,9 +1412,9 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!revisionDisplay?.id) {
       showToast({
         type: "warning",
-        title: "Revision not created",
+        title: t("revisionCreate.notCreated.title"),
         message:
-          "Please upload the revision file first before completing editing.",
+          t("revisionCreate.notCreated.completeEditing"),
       });
       return;
     }
@@ -1431,9 +1433,9 @@ const RevisionCreateViewContent: React.FC = () => {
       setOfficeOnlineDebugInfo(null);
       showToast({
         type: "success",
-        title: "Editing completed",
+        title: t("revisionCreate.completeEditing.successTitle"),
         message:
-          "The revision is now locked for publishing workspace preparation.",
+          t("revisionCreate.completeEditing.successMessage"),
         duration: 3000,
       });
       setShowCompleteEditingModal(false);
@@ -1447,11 +1449,11 @@ const RevisionCreateViewContent: React.FC = () => {
       console.error("Failed to complete editing", error);
       showToast({
         type: "error",
-        title: "Complete editing failed",
+        title: t("revisionCreate.completeEditing.failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
-          "Unable to complete editing for this revision.",
+          t("revisionCreate.completeEditing.unavailable"),
         duration: 3000,
       });
     } finally {
@@ -1472,8 +1474,8 @@ const RevisionCreateViewContent: React.FC = () => {
       setShowSubmitForReviewModal(false);
       showToast({
         type: "success",
-        title: "Submitted for review",
-        message: "The revision has been submitted and is now pending review.",
+        title: t("revisionCreate.submit.successTitle"),
+        message: t("revisionCreate.submit.successMessage"),
         duration: 3000,
       });
 
@@ -1498,11 +1500,11 @@ const RevisionCreateViewContent: React.FC = () => {
       console.error("Failed to submit revision for review", error);
       showToast({
         type: "error",
-        title: "Submit for review failed",
+        title: t("revisionCreate.submit.failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
-          "Unable to submit the revision for review.",
+          t("revisionCreate.submit.unavailable"),
         duration: 3000,
       });
     } finally {
@@ -1522,19 +1524,19 @@ const RevisionCreateViewContent: React.FC = () => {
       setOfficeOnlineEditUrl(null);
       showToast({
         type: "success",
-        title: "Synced successfully",
-        message: "The revision file has been uploaded to Office Online.",
+        title: t("revisionCreate.officeSync.successTitle"),
+        message: t("revisionCreate.officeSync.successMessage"),
         duration: 3000,
       });
     } catch (error) {
       console.error("Failed to sync revision to Office Online", error);
       showToast({
         type: "error",
-        title: "Sync failed",
+        title: t("revisionCreate.officeSync.failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
-          "Unable to upload the revision to Office Online.",
+          t("revisionCreate.officeSync.unavailable"),
         duration: 3000,
       });
     } finally {
@@ -1578,11 +1580,11 @@ const RevisionCreateViewContent: React.FC = () => {
       console.error("Failed to open Office Online edit link", error);
       showToast({
         type: "error",
-        title: "Unable to open editor",
+        title: t("revisionCreate.officeEditor.failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
-          "The Office Online edit link is not available.",
+          t("revisionCreate.officeEditor.unavailable"),
         duration: 3000,
       });
     } finally {
@@ -1594,9 +1596,9 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!revisionDisplay?.id) {
       showToast({
         type: "warning",
-        title: "Revision not ready",
+        title: t("revisionCreate.notReady.title"),
         message:
-          "Upload the revision file before opening the publishing workspace.",
+          t("revisionCreate.notReady.workspace"),
       });
       return;
     }
@@ -1622,8 +1624,8 @@ const RevisionCreateViewContent: React.FC = () => {
 
       showToast({
         type: "success",
-        title: "Publishing workspace opened",
-        message: `Revision ${displayValue(nextRevision.documentNumber)} ${displayValue(nextRevision.revisionNumber)} is ready for review packaging.`,
+        title: t("revisionCreate.workspace.successTitle"),
+        message: t("revisionCreate.workspace.successMessage", { documentNumber: displayValue(nextRevision.documentNumber), revisionNumber: displayValue(nextRevision.revisionNumber) }),
         duration: 3000,
       });
 
@@ -1693,11 +1695,11 @@ const RevisionCreateViewContent: React.FC = () => {
       console.error("Failed to open publishing workspace", error);
       showToast({
         type: "error",
-        title: "Open workspace failed",
+        title: t("revisionCreate.workspace.failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
-          "Unable to open the publishing workspace.",
+          t("revisionCreate.workspace.unavailable"),
         duration: 3000,
       });
     } finally {
@@ -1709,8 +1711,8 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!parentDocumentId) {
       showToast({
         type: "error",
-        title: "Cannot upload",
-        message: "The parent document information is missing.",
+        title: t("revisionCreate.upload.cannotUpload"),
+        message: t("revisionCreate.upload.parentMissing"),
       });
       return;
     }
