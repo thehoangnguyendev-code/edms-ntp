@@ -27,6 +27,7 @@ import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
 import { usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import { extractApiMessage } from "../utils";
 import type { RetentionPolicyItem } from "../types";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
@@ -69,6 +70,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
     description: "",
   });
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const {
     searchQuery,
@@ -156,15 +158,15 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
       reload();
       showToast({
         type: "success",
-        title: updated.isActive ? "Retention Policy Activated" : "Retention Policy Deactivated",
-        message: `Retention policy "${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
+        title: updated.isActive ? t("retentionPolicies.activated.title") : t("retentionPolicies.deactivated.title"),
+        message: updated.isActive ? t("retentionPolicies.activated.message", { name: updated.name }) : t("retentionPolicies.deactivated.message", { name: updated.name }),
       });
     } catch (error) {
       setShowToggleModal(false);
       showToast({
         type: "error",
-        title: "Retention Policy Status Update Failed",
-        message: extractApiMessage(error, "Unable to update retention policy status."),
+        title: t("retentionPolicies.statusFailed.title"),
+        message: extractApiMessage(error, t("retentionPolicies.statusFailed.message")),
       });
     } finally {
       setIsSubmitting(false);
@@ -186,16 +188,16 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
       reload();
       showToast({
         type: "success",
-        title: "Retention Policy Deleted",
-        message: `Retention policy "${selectedItem.name}" has been deleted successfully.`,
+        title: t("retentionPolicies.deleted.title"),
+        message: t("retentionPolicies.deleted.message", { name: selectedItem.name }),
       });
       setSelectedItem(null);
     } catch (error) {
       setShowDeleteModal(false);
       showToast({
         type: "error",
-        title: "Retention Policy Delete Failed",
-        message: extractApiMessage(error, "Unable to delete retention policy."),
+        title: t("retentionPolicies.deleteFailed.title"),
+        message: extractApiMessage(error, t("retentionPolicies.deleteFailed.message")),
       });
     } finally {
       setIsSubmitting(false);
