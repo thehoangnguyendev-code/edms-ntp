@@ -32,6 +32,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { workflowActionPolicyApi } from "@/services/api/workflowActionPolicy";
 import { WorkflowPolicyEffectiveLookup } from "../components/WorkflowPolicyEffectiveLookup";
 import { extractApiError } from "../workflowPolicyUtils";
+import { useTranslation } from "@/i18n";
 import type {
   WorkflowActionPolicy,
   WorkflowActionPolicyOptions,
@@ -52,6 +53,7 @@ export const WorkflowAuthorizationView = React.forwardRef<WorkflowAuthorizationV
   ({ embedded = false }, ref) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { hasPermissionAlias } = usePermissions();
   const canView = hasPermissionAlias(VIEW_PERM);
@@ -141,11 +143,11 @@ export const WorkflowAuthorizationView = React.forwardRef<WorkflowAuthorizationV
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", title: "Load Failed", message: "Failed to load policies." });
+      showToast({ type: "error", title: t("workflowAuthorization.loadFailedTitle"), message: t("workflowAuthorization.loadFailed") });
     } finally {
       setLoading(false);
     }
-  }, [canView, currentPage, itemsPerPage, debouncedSearch, workflowFilter, actionFilter, statusFilter, docTypeFilter, activeFilter, systemFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast]);
+  }, [canView, currentPage, itemsPerPage, debouncedSearch, workflowFilter, actionFilter, statusFilter, docTypeFilter, activeFilter, systemFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast, t]);
 
   useEffect(() => { void loadOptions(); }, [loadOptions]);
   useEffect(() => { void loadData(); }, [loadData]);
@@ -212,10 +214,10 @@ export const WorkflowAuthorizationView = React.forwardRef<WorkflowAuthorizationV
     setActionLoading(true);
     try {
       await workflowActionPolicyApi.activatePolicy(activateTarget.id, sig);
-      showToast({ type: "success", title: "Activated", message: "Policy activated." });
+      showToast({ type: "success", title: t("workflowAuthorization.activatedTitle"), message: t("workflowAuthorization.activated") });
       void loadData();
     } catch (err) {
-      showToast({ type: "error", title: "Failed", message: extractApiError(err).message });
+      showToast({ type: "error", title: t("workflowAuthorization.failedTitle"), message: extractApiError(err).message });
     } finally {
       setActionLoading(false);
       setActivateTarget(null);
@@ -229,10 +231,10 @@ export const WorkflowAuthorizationView = React.forwardRef<WorkflowAuthorizationV
     setActionLoading(true);
     try {
       await workflowActionPolicyApi.deactivatePolicy(deactivateTarget.id, sig);
-      showToast({ type: "success", title: "Deactivated", message: "Policy deactivated." });
+      showToast({ type: "success", title: t("workflowAuthorization.deactivatedTitle"), message: t("workflowAuthorization.deactivated") });
       void loadData();
     } catch (err) {
-      showToast({ type: "error", title: "Failed", message: extractApiError(err).message });
+      showToast({ type: "error", title: t("workflowAuthorization.failedTitle"), message: extractApiError(err).message });
     } finally {
       setActionLoading(false);
       setDeactivateTarget(null);
@@ -246,10 +248,10 @@ export const WorkflowAuthorizationView = React.forwardRef<WorkflowAuthorizationV
     setActionLoading(true);
     try {
       await workflowActionPolicyApi.resetToDefault(resetTarget.id, sig);
-      showToast({ type: "success", title: "Reset", message: "Policy reset to system default." });
+      showToast({ type: "success", title: t("workflowAuthorization.resetTitle"), message: t("workflowAuthorization.reset") });
       void loadData();
     } catch (err) {
-      showToast({ type: "error", title: "Failed", message: extractApiError(err).message });
+      showToast({ type: "error", title: t("workflowAuthorization.failedTitle"), message: extractApiError(err).message });
     } finally {
       setActionLoading(false);
       setResetTarget(null);

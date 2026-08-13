@@ -24,6 +24,7 @@ import { useLocalizationPreferences, usePortalDropdown } from "@/hooks";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { formatDateTime, formatDateUS } from "@/utils/format";
 import { IconCheck, IconCircleMinus, IconPencilMinus } from "@tabler/icons-react";
+import { useTranslation } from "@/i18n";
 
 const DECISIONS: {
   value: AccessReviewItem["decision"];
@@ -123,6 +124,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
   useLocalizationPreferences();
   const { id } = useParams<{ id: string }>();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias("security.access_review.manage");
   const { requestSignature, signatureModal } = useSecurityESign();
@@ -162,11 +164,11 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
       setItemTotal(page.pagination?.total ?? 0);
       setItemTotalPages(page.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load campaign" });
+      showToast({ type: "error", message: t("accessReview.detailLoadFailed") });
     } finally {
       setLoading(false);
     }
-  }, [id, itemPage, itemPageSize, showToast]);
+  }, [id, itemPage, itemPageSize, showToast, t]);
 
   useEffect(() => {
     void load();
@@ -198,7 +200,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
     } catch (e: any) {
       showToast({
         type: "error",
-        message: e?.response?.data?.message ?? "Failed to record decision",
+        message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("accessReview.recordDecisionFailed"),
       });
     } finally {
       setDecisionSaving(false);
@@ -220,14 +222,14 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
       );
       showToast({
         type: "success",
-        message: "Access review completed and signed",
+        message: t("accessReview.completed"),
       });
       setDetail(updated);
       await load();
     } catch (e: any) {
       showToast({
         type: "error",
-        message: e?.response?.data?.message ?? "Failed to complete review",
+        message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("accessReview.completeFailed"),
       });
     } finally {
       setCompleting(false);
@@ -239,12 +241,12 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
     try {
       setDetail(await settingsApi.cancelAccessReview(detail.campaign.id));
       await load();
-      showToast({ type: "success", message: "Campaign cancelled" });
+      showToast({ type: "success", message: t("accessReview.cancelled") });
       setCancelConfirmOpen(false);
     } catch (e: any) {
       showToast({
         type: "error",
-        message: e?.response?.data?.message ?? "Failed to cancel",
+        message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("accessReview.cancelFailed"),
       });
     }
   };

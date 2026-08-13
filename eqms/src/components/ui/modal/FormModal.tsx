@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../button/Button';
 import { cn } from '../utils';
 import { ButtonLoading } from '../loading/Loading';
+import { useTranslation } from '@/i18n';
 
 export interface FormModalProps {
   isOpen: boolean;
@@ -40,8 +41,8 @@ export const FormModal: React.FC<FormModalProps> = ({
   title,
   description,
   children,
-  confirmText = 'Save',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   isLoading = false,
   confirmDisabled = false,
   showCancel = true,
@@ -51,6 +52,9 @@ export const FormModal: React.FC<FormModalProps> = ({
   size = 'xl',
   className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedConfirmText = confirmText ?? t('common.save');
+  const resolvedCancelText = cancelText ?? t('common.cancel');
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -186,7 +190,7 @@ export const FormModal: React.FC<FormModalProps> = ({
                   type="button"
                   onClick={onClose}
                   className="flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                  aria-label="Close"
+                  aria-label={t('common.close')}
                 >
                   <X className="h-4 w-4 text-slate-500" />
                 </button>
@@ -208,7 +212,7 @@ export const FormModal: React.FC<FormModalProps> = ({
                 <div className="flex justify-end gap-2 sm:gap-3">
                   {showCancel && (
                     <Button size="sm" variant="outline" onClick={onClose} disabled={isLoading}>
-                      {cancelText}
+                      {resolvedCancelText}
                     </Button>
                   )}
                   <Button
@@ -217,7 +221,7 @@ export const FormModal: React.FC<FormModalProps> = ({
                     onClick={onConfirm || onClose}
                     disabled={isLoading || confirmDisabled}
                   >
-                    {isLoading ? <ButtonLoading text="Processing..." light={confirmVariant === 'default' || confirmVariant === 'destructive'} /> : confirmText}
+                    {isLoading ? <ButtonLoading text={t('alertModal.processing')} light={confirmVariant === 'default' || confirmVariant === 'destructive'} /> : resolvedConfirmText}
                   </Button>
                 </div>
               </div>

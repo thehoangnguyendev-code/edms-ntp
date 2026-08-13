@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 
 type ActiveWorkflowConfig = {
   assignedIds: string[];
@@ -29,6 +30,7 @@ export const useDocumentAdministrationActions = ({
   handleRemoveSelected,
 }: UseDocumentAdministrationActionsParams) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [showResetModal, setShowResetModal] = useState(false);
   const [showESignModal, setShowESignModal] = useState(false);
 
@@ -47,8 +49,8 @@ export const useDocumentAdministrationActions = ({
       setIsEditing(false);
       showToast({
         type: "info",
-        title: "Changes discarded",
-        message: "Document administration configuration has been reset.",
+        title: t("documentAdministration.resetTitle"),
+        message: t("documentAdministration.resetMessage"),
       });
     } catch (error) {
       if (import.meta.env.DEV) {
@@ -56,8 +58,8 @@ export const useDocumentAdministrationActions = ({
       }
       showToast({
         type: "error",
-        title: "Reset failed",
-        message: "Unable to reset document administration from server.",
+        title: t("documentAdministration.resetFailedTitle"),
+        message: t("documentAdministration.resetFailedMessage"),
       });
     }
   };
@@ -69,8 +71,8 @@ export const useDocumentAdministrationActions = ({
       setIsEditing(false);
       showToast({
         type: "success",
-        title: "Configuration Saved & Signed",
-        message: "Document administration settings have been saved.",
+        title: t("documentAdministration.savedTitle"),
+        message: t("documentAdministration.savedMessage"),
       });
     } catch (error) {
       if (import.meta.env.DEV) {
@@ -78,8 +80,8 @@ export const useDocumentAdministrationActions = ({
       }
       showToast({
         type: "error",
-        title: "Save failed",
-        message: "Unable to save document administration to server.",
+        title: t("documentAdministration.saveFailedTitle"),
+        message: t("documentAdministration.saveFailedMessage"),
       });
     }
   };

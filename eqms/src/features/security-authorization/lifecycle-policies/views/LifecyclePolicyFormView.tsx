@@ -49,6 +49,7 @@ import type {
   WorkflowActionPolicyPreviewResponse,
 } from "../types";
 import { IconHierarchy, IconSection } from "@tabler/icons-react";
+import { useTranslation } from "@/i18n";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -1089,6 +1090,7 @@ const CapabilityPolicyForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias(
     "security.workflow_authorization.manage",
@@ -1138,7 +1140,7 @@ const CapabilityPolicyForm: React.FC = () => {
       })
       .catch(() => {
         if (!cancelled)
-          showToast({ type: "error", message: "Failed to load state policy" });
+          showToast({ type: "error", message: t("statePolicies.detailLoadFailed") });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -1146,7 +1148,7 @@ const CapabilityPolicyForm: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, showToast]);
+  }, [id, showToast, t]);
 
   const handleBack = () =>
     navigateBack(
@@ -1159,8 +1161,8 @@ const CapabilityPolicyForm: React.FC = () => {
     if (!capabilityCode || !actorScope) {
       showToast({
         type: "error",
-        title: "Validation failed",
-        message: "Capability and actor scope are required",
+        title: t("statePolicies.validationTitle"),
+        message: t("statePolicies.capabilityAndScopeRequired"),
       });
       return;
     }
@@ -1187,16 +1189,16 @@ const CapabilityPolicyForm: React.FC = () => {
     try {
       if (initial) {
         await lifecycleStatePolicyApi.update(initial.id, payload);
-        showToast({ type: "success", message: "State policy updated" });
+        showToast({ type: "success", message: t("statePolicies.updated") });
       } else {
         await lifecycleStatePolicyApi.create(payload);
-        showToast({ type: "success", message: "State policy created" });
+        showToast({ type: "success", message: t("statePolicies.created") });
       }
       handleBack();
     } catch (e: any) {
       showToast({
         type: "error",
-        message: e?.response?.data?.message ?? "Save failed",
+        message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("statePolicies.saveFailed"),
       });
     } finally {
       setSaving(false);

@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { usePortalDropdown } from "@/hooks";
 import { userProfile as userProfileBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
@@ -33,6 +35,7 @@ import { subscribeNotificationRealtime } from "@/features/notifications/notifica
 type ExternalAction = "invite" | "disable" | "resend" | "retry" | "remove";
 
 export const UserProfileView: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { userId } = useParams<{ userId: string }>();
@@ -145,23 +148,23 @@ export const UserProfileView: React.FC = () => {
       switch (externalReasonModal) {
         case "invite":
           await settingsApi.inviteExternalUser(userId, reasonText);
-          showToast({ type: "success", title: "Invitation queued", message: `Microsoft Entra invitation for ${user.email} is being processed.` });
+          showToast({ type: "success", title: t("userManagement.external.inviteQueuedTitle"), message: t("userManagement.external.inviteQueuedMessage", { email: user.email }) });
           break;
         case "resend":
           await settingsApi.resendExternalInvitation(userId, reasonText);
-          showToast({ type: "success", title: "Invitation resend queued", message: `Microsoft Entra request for ${user.email} is being processed.` });
+          showToast({ type: "success", title: t("userManagement.external.resendQueuedTitle"), message: t("userManagement.external.requestQueuedMessage", { name: user.email }) });
           break;
         case "disable":
           await settingsApi.disableMicrosoftAccess(userId, reasonText);
-          showToast({ type: "success", title: "Microsoft access disable queued", message: `Microsoft Entra request for ${user.fullName} is being processed.` });
+          showToast({ type: "success", title: t("userManagement.external.disableQueuedTitle"), message: t("userManagement.external.requestQueuedMessage", { name: user.fullName }) });
           break;
         case "retry":
           await settingsApi.retryExternalProvisioning(userId, reasonText);
-          showToast({ type: "success", title: "Provisioning retry queued", message: `Microsoft Entra request for ${user.email} is being processed.` });
+          showToast({ type: "success", title: t("userManagement.external.retryQueuedTitle"), message: t("userManagement.external.requestQueuedMessage", { name: user.email }) });
           break;
         case "remove":
           await settingsApi.removeExternalUser(userId, reasonText);
-          showToast({ type: "success", title: "External user removal queued", message: `Microsoft Entra request for ${user.email} is being processed.` });
+          showToast({ type: "success", title: t("userManagement.external.removeQueuedTitle"), message: t("userManagement.external.requestQueuedMessage", { name: user.email }) });
           break;
       }
       setExternalReasonModal(null);
@@ -170,8 +173,8 @@ export const UserProfileView: React.FC = () => {
     } catch (error: any) {
       showToast({
         type: "error",
-        title: "External provisioning failed",
-        message: error?.response?.data?.message || "Unable to complete the operation.",
+        title: t("userManagement.external.failedTitle"),
+        message: getApiErrorMessage(error, t("userManagement.external.failedMessage")),
       });
     } finally {
       setIsExternalActionLoading(false);

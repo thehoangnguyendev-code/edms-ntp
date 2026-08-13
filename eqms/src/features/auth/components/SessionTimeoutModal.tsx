@@ -10,6 +10,7 @@ import { settingsApi } from "@/services/api/settings";
 import { ROUTES } from "@/app/routes.constants";
 import { secureStorage } from "@/utils/security";
 import { authTokenStore } from "@/services/authTokenStore";
+import { useTranslation } from "@/i18n";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { SECURITY_CONFIG_STORAGE_KEY } from "@/config/security";
@@ -37,6 +38,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   username,
   logout,
 }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -47,7 +49,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [error, setError] = useState("");
 
-  const timeoutLabel = useMemo(() => `${timeoutMinutes} minute${timeoutMinutes === 1 ? "" : "s"}`, [timeoutMinutes]);
+  const timeoutLabel = useMemo(() => t('sessionTimeout.minutes', { count: timeoutMinutes }), [t, timeoutMinutes]);
 
   const loadSecurityConfig = async () => {
     try {
@@ -144,7 +146,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password.trim()) {
-      setError("Password is required");
+      setError(t('sessionTimeout.passwordRequired'));
       return;
     }
 
@@ -180,7 +182,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
           (err as any).response?.data?.message || (err as any).response?.data?.error?.message
         : undefined;
       const rawMessage = err instanceof Error && err.message.trim() ? err.message : "";
-      const message = responseMessage || rawMessage || "Incorrect password. Please try again.";
+      const message = responseMessage || rawMessage || t('sessionTimeout.incorrectPassword');
 
       // Keep the locked session modal open for invalid credentials so the user
       // can retry without losing the page they were working on. The server
@@ -194,7 +196,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
         normalizedMessage.includes("invalid password") ||
         normalizedMessage.includes("authentication failed");
       if (invalidCredentials) {
-        setError(responseMessage || "Password is incorrect. Please try again.");
+        setError(responseMessage || t('sessionTimeout.incorrectPassword'));
         return;
       }
 
@@ -226,19 +228,19 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
             className="relative w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/5"
           >
             <div className="flex flex-col items-center border-b border-slate-100 p-5 text-center">
-              <h2 className="text-md md:text-lg font-semibold text-slate-900">Session Timeout</h2>
+              <h2 className="text-md md:text-lg font-semibold text-slate-900">{t('sessionTimeout.title')}</h2>
               <p className="mt-1 text-xs md:text-sm text-slate-500">
-                Session expired due to inactivity. Please enter your password to continue.
+                {t('sessionTimeout.description')}
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="p-4 md:p-5 pt-6">
               <div className="mb-6 rounded-lg bg-emerald-50 p-4">
                 <p className="text-sm text-emerald-800">
-                  Locked user: <span className="font-bold">{user?.fullName || user?.username || username || "Unknown"}</span>
+                  {t('sessionTimeout.lockedUser')}: <span className="font-bold">{user?.fullName || user?.username || username || t('sessionTimeout.unknownUser')}</span>
                 </p>
                 <p className="text-xs text-emerald-700 mt-1">
-                  Configured system timeout: <span className="font-semibold">{timeoutLabel}</span>
+                  {t('sessionTimeout.configuredTimeout')}: <span className="font-semibold">{timeoutLabel}</span>
                 </p>
               </div>
 
@@ -251,7 +253,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
               <div className="space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Password
+                    {t('auth.login.password')}
                   </label>
                   <div className="relative">
                     <input
@@ -262,7 +264,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                         setError("");
                       }}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3 pr-10 text-sm outline-none transition-all focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
-                      placeholder="Enter your password"
+                      placeholder={t('sessionTimeout.passwordPlaceholder')}
                       autoFocus
                     />
                     <button
@@ -283,7 +285,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                     onClick={handleLogout}
                     disabled={isLoading || isLoggingOut}
                   >
-                    Sign Out
+                    {t('sessionTimeout.signOut')}
                   </Button>
                   <Button
                     type="submit"
@@ -291,7 +293,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                     className="flex-1"
                     disabled={isLoading || !password.trim()}
                   >
-                    {isLoading ? <ButtonLoading text="Verifying..." light /> : "Unlock"}
+                    {isLoading ? <ButtonLoading text={t('sessionTimeout.verifying')} light /> : t('sessionTimeout.unlock')}
                   </Button>
                 </div>
               </div>
@@ -304,7 +306,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
 
   return (
     <>
-      {isLoggingOut && <FullPageLoading text="Signing out..." />}
+      {isLoggingOut && <FullPageLoading text={t('sessionTimeout.signingOut')} />}
       {createPortal(modalContent, document.body)}
     </>
   );

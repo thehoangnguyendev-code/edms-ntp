@@ -26,6 +26,7 @@ import { api } from "@/services/api/client";
 import type { PermissionSetResponse } from "@/services/api/settings";
 import type { User } from "@/types";
 import { IconArrowsShuffle, IconCircles } from "@tabler/icons-react";
+import { useTranslation } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -68,6 +69,7 @@ type PermissionMode = "existing" | "custom";
 export const RoleSetupWizardView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
 
   const [step, setStep] = useState(0);
@@ -133,10 +135,10 @@ export const RoleSetupWizardView: React.FC = () => {
         setUserDepartmentOptions(filters.departments.map((item) => ({ label: item.label, value: item.value })));
       })
       .catch(() => {
-        if (active) showToast({ type: "error", title: "Load Failed", message: "Failed to load user filter options." });
+        if (active) showToast({ type: "error", title: t("roleSetup.loadFailedTitle"), message: t("roleSetup.loadUserFiltersFailed") });
       });
     return () => { active = false; };
-  }, [showToast]);
+  }, [showToast, t]);
 
   useEffect(() => {
     let active = true;
@@ -144,10 +146,10 @@ export const RoleSetupWizardView: React.FC = () => {
     settingsApi
       .listPermissionSetsPaged({ page: 1, limit: 100, search: debouncedSetSearch.trim() || undefined, status: "ACTIVE", sortBy: "name", sortDir: "asc" })
       .then((result) => { if (active) setExistingSets(result.data ?? []); })
-      .catch(() => { if (active) showToast({ type: "error", message: "Failed to load permission sets" }); })
+      .catch(() => { if (active) showToast({ type: "error", message: t("accessProfileTabs.loadPermissionSetsFailed") }); })
       .finally(() => { if (active) setSetsLoading(false); });
     return () => { active = false; };
-  }, [debouncedSetSearch, showToast]);
+  }, [debouncedSetSearch, showToast, t]);
 
   useEffect(() => {
     let active = true;
@@ -157,10 +159,10 @@ export const RoleSetupWizardView: React.FC = () => {
         params: { page: 1, limit: 100, search: debouncedRoleSearch.trim() || undefined, status: "ACTIVE", sortBy: "displayOrder", sortDir: "asc" },
       })
       .then((result) => { if (active) setWorkflowRoles(result.data.data ?? []); })
-      .catch(() => { if (active) showToast({ type: "error", message: "Failed to load workflow roles" }); })
+      .catch(() => { if (active) showToast({ type: "error", message: t("accessProfileTabs.loadWorkflowRolesFailed") }); })
       .finally(() => { if (active) setRolesLoading(false); });
     return () => { active = false; };
-  }, [debouncedRoleSearch, showToast]);
+  }, [debouncedRoleSearch, showToast, t]);
 
   useEffect(() => {
     let active = true;
@@ -177,10 +179,10 @@ export const RoleSetupWizardView: React.FC = () => {
         sortDirection: "asc",
       })
       .then((result) => { if (active) setAllUsers(result.data ?? []); })
-      .catch(() => { if (active) showToast({ type: "error", message: "Failed to load users" }); })
+      .catch(() => { if (active) showToast({ type: "error", message: t("accessProfileTabs.loadUsersFailed") }); })
       .finally(() => { if (active) setUsersLoading(false); });
     return () => { active = false; };
-  }, [debouncedUserSearch, showToast, userBusinessUnitFilter, userDepartmentFilter]);
+  }, [debouncedUserSearch, showToast, t, userBusinessUnitFilter, userDepartmentFilter]);
 
   const toggleUser = (user: User) => {
     setSelectedUserIds((prev) => {
@@ -278,17 +280,17 @@ export const RoleSetupWizardView: React.FC = () => {
       );
       showToast({
         type: "success",
-        title: "Access Profile created",
+        title: t("roleSetup.createdTitle"),
         message: selectedUserIds.size > 0
-          ? `"${profile.name}" is ready and assigned to ${selectedUserIds.size} user(s).`
-          : `"${profile.name}" is ready — assign users from the profile's Assigned Users tab whenever needed.`,
+          ? t("roleSetup.createdWithUsers", { name: profile.name, count: selectedUserIds.size })
+          : t("roleSetup.createdWithoutUsers", { name: profile.name }),
       });
       navigate(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`);
     } catch (e: any) {
       showToast({
         type: "error",
-        title: "Access Profile creation failed",
-        message: e?.response?.data?.message ?? "Unexpected error — nothing was created.",
+        title: t("roleSetup.createFailedTitle"),
+        message: e?.response?.data?.message ?? t("roleSetup.createFailedMessage"),
       });
     } finally {
       setCreating(false);

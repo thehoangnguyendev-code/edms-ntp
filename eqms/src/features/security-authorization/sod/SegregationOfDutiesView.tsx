@@ -29,11 +29,13 @@ import { useSecurityESign } from "@/features/security-authorization/shared/useSe
 import { DocumentWorkflowRulesPanel } from "./DocumentWorkflowRulesPanel";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
+import { useTranslation } from "@/i18n";
 
 // ─── Violations Panel ─────────────────────────────────────────────────────────
 
 const ViolationsPanel: React.FC = () => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [violations, setViolations] = useState<SodViolationResponse[] | null>(null);
   const [scanning, setScanning] = useState(false);
 
@@ -42,7 +44,7 @@ const ViolationsPanel: React.FC = () => {
     try {
       setViolations(await settingsApi.getSodViolations());
     } catch {
-      showToast({ type: "error", message: "Scan failed" });
+      showToast({ type: "error", message: t("sod.scanFailed") });
     } finally {
       setScanning(false);
     }
@@ -131,6 +133,7 @@ const SOD_TABS: TabItem[] = [
 export const SegregationOfDutiesView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canViewSod = hasPermissionAlias("security.sod.view");
   const canManageSod = hasPermissionAlias("security.sod.manage");
@@ -170,9 +173,9 @@ export const SegregationOfDutiesView: React.FC = () => {
       await saveAdministration(data.reason, data.signatureToken);
       setShowDocRulesESignModal(false);
       setIsEditingDocRules(false);
-      showToast({ type: "success", message: "Document revision integrity rules updated." });
+      showToast({ type: "success", message: t("sod.documentRulesUpdated") });
     } catch (error: any) {
-      showToast({ type: "error", message: error?.response?.data?.message ?? "Unable to update revision integrity rules." });
+      showToast({ type: "error", message: error?.response?.data?.error?.message ?? error?.response?.data?.message ?? t("sod.documentRulesUpdateFailed") });
     }
   };
   const docRulesSignatureChanges = docWorkflowRuleDefinitions.map((rule) => ({
@@ -235,11 +238,11 @@ export const SegregationOfDutiesView: React.FC = () => {
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load SoD constraints" });
+      showToast({ type: "error", message: t("sod.loadFailed") });
     } finally {
       setLoading(false);
     }
-  }, [canViewSod, currentPage, itemsPerPage, debouncedSearch, severityFilter, typeFilter, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast]);
+  }, [canViewSod, currentPage, itemsPerPage, debouncedSearch, severityFilter, typeFilter, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast, t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -286,11 +289,11 @@ export const SegregationOfDutiesView: React.FC = () => {
     if (!sig) return;
     try {
       await settingsApi.deleteSodConstraint(deleteTarget.id, sig);
-      showToast({ type: "success", message: "Constraint deleted" });
+      showToast({ type: "success", message: t("sod.deleted") });
       setDeleteTarget(null);
       void load();
     } catch (e: any) {
-      showToast({ type: "error", message: e?.response?.data?.message ?? "Delete failed" });
+      showToast({ type: "error", message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("sod.deleteFailed") });
     }
   };
 

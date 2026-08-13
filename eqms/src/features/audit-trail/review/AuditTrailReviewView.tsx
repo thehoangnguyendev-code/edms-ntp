@@ -37,6 +37,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateUS } from "@/utils/format";
 import { auditTrailReview as auditTrailReviewBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
+import { useTranslation } from "@/i18n";
 
 const STATUS_OPTIONS = [
   { label: "All Statuses", value: "ALL" },
@@ -113,6 +114,7 @@ const SortHeader: React.FC<{
 export const AuditTrailReviewView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canView = hasPermissionAlias("audit.review.view");
   const canManage = hasPermissionAlias("audit.review.manage");
@@ -167,7 +169,7 @@ export const AuditTrailReviewView: React.FC = () => {
       setTotalPages(1);
       showToast({
         type: "error",
-        message: "Failed to load audit trail review campaigns",
+        message: t("auditTrailReview.loadFailed"),
       });
     } finally {
       setLoading(false);
@@ -219,8 +221,8 @@ export const AuditTrailReviewView: React.FC = () => {
     if (!campaignName.trim() || !startIso || !endIso) {
       showToast({
         type: "error",
-        title: "Validation failed",
-        message: "Name and review period are required",
+        title: t("auditTrailReview.validationTitle"),
+        message: t("auditTrailReview.nameAndPeriodRequired"),
       });
       return;
     }
@@ -235,13 +237,13 @@ export const AuditTrailReviewView: React.FC = () => {
       setIsCreateModalOpen(false);
       showToast({
         type: "success",
-        message: "Audit trail review campaign created",
+        message: t("auditTrailReview.created"),
       });
       navigate(`${ROUTES.AUDIT_TRAIL_REVIEW}/${detail.campaign.id}`);
     } catch (error: any) {
       showToast({
         type: "error",
-        message: error?.response?.data?.message ?? "Failed to create campaign",
+        message: error?.response?.data?.message ?? t("auditTrailReview.createFailed"),
       });
     } finally {
       setCreating(false);
@@ -253,13 +255,13 @@ export const AuditTrailReviewView: React.FC = () => {
     setCancelling(true);
     try {
       await auditTrailApi.cancelReviewCampaign(cancelTarget.id);
-      showToast({ type: "success", message: "Campaign cancelled" });
+      showToast({ type: "success", message: t("auditTrailReview.cancelled") });
       setCancelTarget(null);
       void load();
     } catch (error: any) {
       showToast({
         type: "error",
-        message: error?.response?.data?.message ?? "Failed to cancel campaign",
+        message: error?.response?.data?.message ?? t("auditTrailReview.cancelFailed"),
       });
     } finally {
       setCancelling(false);
@@ -269,7 +271,7 @@ export const AuditTrailReviewView: React.FC = () => {
   return (
     <div className="flex w-full flex-1 flex-col space-y-6">
       <PageHeader
-        title="Audit Trail Review"
+        title={t("auditTrailReview.title")}
         breadcrumbItems={auditTrailReviewBreadcrumb(navigate)}
         actions={
           canManage ? (
@@ -279,7 +281,7 @@ export const AuditTrailReviewView: React.FC = () => {
               onClick={openCreateModal}
             >
               <Plus className="h-4 w-4" />
-              New Campaign
+              {t("auditTrailReview.newCampaign")}
             </Button>
           ) : undefined
         }
@@ -633,9 +635,9 @@ export const AuditTrailReviewView: React.FC = () => {
           if (!creating) setIsCreateModalOpen(false);
         }}
         onConfirm={() => void createCampaign()}
-        title="New Audit Trail Review Campaign"
+        title={t("auditTrailReview.newCampaign")}
         description="Snapshots every audit trail entry created within the review period (EU-GMP Annex 11 §9)."
-        confirmText="Create Campaign"
+        confirmText={t("auditTrailReview.createCampaign")}
         isLoading={creating}
         confirmDisabled={
           !campaignName.trim() || !reviewPeriodStart || !reviewPeriodEnd
@@ -695,14 +697,14 @@ export const AuditTrailReviewView: React.FC = () => {
         }}
         onConfirm={() => void cancelCampaign()}
         type="warning"
-        title="Cancel Audit Trail Review Campaign"
+        title={t("auditTrailReview.cancelCampaign")}
         description={
           cancelTarget
-            ? `Are you sure you want to cancel "${cancelTarget.name}"? This action cannot be undone.`
+            ? t("auditTrailReview.cancelConfirm", { name: cancelTarget.name })
             : ""
         }
-        confirmText="Cancel Campaign"
-        cancelText="Back"
+        confirmText={t("auditTrailReview.cancelCampaign")}
+        cancelText={t("common.back")}
         showCancel
         isLoading={cancelling}
       />

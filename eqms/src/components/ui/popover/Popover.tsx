@@ -8,6 +8,7 @@ import React, {
 import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
 import { cn } from '../utils';
+import { useTranslation } from '@/i18n';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const GAP = 8;           // px gap between trigger and popover
@@ -113,6 +114,7 @@ export const Popover: React.FC<PopoverProps> = ({
   contentClassName,
   placement = 'bottom',
 }) => {
+  const { t } = useTranslation();
   const [mounted, setMounted]       = useState(false);    // DOM presence
   const [visible, setVisible]       = useState(false);    // CSS opacity / transform
   const [computed, setComputed]     = useState<ComputedPosition | null>(null);
@@ -212,7 +214,7 @@ export const Popover: React.FC<PopoverProps> = ({
         type="button"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={handleToggle}
-        aria-label={triggerAriaLabel || title || 'Open popover'}
+        aria-label={triggerAriaLabel || title || t('popover.open')}
         aria-expanded={mounted}
         className={cn(
           'inline-flex items-center justify-center rounded-lg transition-colors',

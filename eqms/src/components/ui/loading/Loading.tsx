@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { DashLoading } from 'respinner';
 import { cn } from '../utils';
+import { useTranslation } from '@/i18n';
 
 interface LoadingProps {
   size?: 'xs' | 'sm' | 'default' | 'lg' | 'xl';
@@ -55,9 +56,10 @@ export const InlineLoading: React.FC<Omit<LoadingProps, 'fullPage' | 'text'>> = 
   <Loading {...props} size={props.size || 'xs'} />
 );
 
-export const FullPageLoading: React.FC<Omit<LoadingProps, 'fullPage'>> = (props) => (
-  <Loading {...props} fullPage text={props.text || 'Loading...'} />
-);
+export const FullPageLoading: React.FC<Omit<LoadingProps, 'fullPage'>> = (props) => {
+  const { t } = useTranslation();
+  return <Loading {...props} fullPage text={props.text || t('common.loading')} />;
+};
 
 const buttonLoadingSizeMap = {
   xs: { spinner: 16, text: 'text-xs' },
@@ -67,16 +69,17 @@ const buttonLoadingSizeMap = {
 } as const;
 
 export const ButtonLoading: React.FC<{ text?: string; light?: boolean; size?: keyof typeof buttonLoadingSizeMap }> = ({
-  text = 'Loading...',
+  text,
   light = false,
   size = 'default',
 }) => {
+  const { t } = useTranslation();
   const config = buttonLoadingSizeMap[size];
 
   return (
     <div className="flex items-center justify-center gap-2">
       <DashLoading color={light ? '#ffffff' : '#059669'} size={config.spinner} />
-      <span className={config.text}>{text}</span>
+      <span className={config.text}>{text ?? t('common.loading')}</span>
     </div>
   );
 };
@@ -85,8 +88,11 @@ export const SectionLoading: React.FC<{
   text?: string;
   minHeight?: string;
   className?: string;
-}> = ({ text = 'Loading...', minHeight = '200px', className }) => (
-  <div className={cn("flex flex-col items-center justify-center w-full", className)} style={{ minHeight }}>
-    <Loading text={text} size="default" />
-  </div>
-);
+}> = ({ text, minHeight = '200px', className }) => {
+  const { t } = useTranslation();
+  return (
+    <div className={cn("flex flex-col items-center justify-center w-full", className)} style={{ minHeight }}>
+      <Loading text={text ?? t('common.loading')} size="default" />
+    </div>
+  );
+};

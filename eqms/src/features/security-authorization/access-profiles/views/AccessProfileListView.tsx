@@ -28,6 +28,7 @@ import { settingsApi, type AccessProfileCapabilitiesResponse, type AccessProfile
 import { ROUTES } from "@/app/routes.constants";
 import { accessProfiles as accessProfilesBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { formatDateTime } from "@/utils/format";
+import { useTranslation } from "@/i18n";
 
 // ── Action Dropdown ────────────────────────────────────────────────────────────
 
@@ -160,6 +161,7 @@ const TABLE_COLS: { id: SortKey | "no" | "workflowRoles" | "action"; label: stri
 
 export const AccessProfileListView: React.FC = () => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { navigateTo, isNavigating } = useNavigateWithLoading();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
@@ -224,11 +226,11 @@ export const AccessProfileListView: React.FC = () => {
       setTotalItems(res.totalElements ?? 0);
       setTotalPages(res.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load access profiles" });
+      showToast({ type: "error", message: t("accessProfiles.loadFailed") });
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, debouncedSearch, typeFilter, statusFilter, createdFromDate, createdToDate, updatedFromDate, updatedToDate, showToast]);
+  }, [currentPage, itemsPerPage, debouncedSearch, typeFilter, statusFilter, createdFromDate, createdToDate, updatedFromDate, updatedToDate, showToast, t]);
 
   useEffect(() => { void fetchProfiles(); }, [fetchProfiles]);
   useEffect(() => {
@@ -264,11 +266,11 @@ export const AccessProfileListView: React.FC = () => {
     if (!sig) return;
     try {
       await settingsApi.deleteAccessProfile(deleteModal.profile.id, sig);
-      showToast({ type: "success", message: "Access profile deleted" });
+      showToast({ type: "success", message: t("accessProfiles.deleted") });
       setDeleteModal({ open: false, profile: null });
       void fetchProfiles();
     } catch {
-      showToast({ type: "error", message: "Failed to delete access profile" });
+      showToast({ type: "error", message: t("accessProfiles.deleteFailed") });
     }
   };
 
@@ -278,11 +280,11 @@ export const AccessProfileListView: React.FC = () => {
     if (!sig) return;
     try {
       await settingsApi.duplicateAccessProfile(duplicateModal.profile.id, name, sig);
-      showToast({ type: "success", message: "Access profile duplicated" });
+      showToast({ type: "success", message: t("accessProfiles.duplicated") });
       setDuplicateModal({ open: false, profile: null });
       void fetchProfiles();
     } catch {
-      showToast({ type: "error", message: "Failed to duplicate access profile" });
+      showToast({ type: "error", message: t("accessProfiles.duplicateFailed") });
     }
   };
 
@@ -293,10 +295,10 @@ export const AccessProfileListView: React.FC = () => {
       await settingsApi.toggleAccessProfileStatus(profile.id, sig);
       const caps = await settingsApi.getAccessProfileCapabilities(profile.id);
       setCapabilityByProfileId((prev) => ({ ...prev, [profile.id]: caps }));
-      showToast({ type: "success", message: `Access profile ${profile.active ? "disabled" : "enabled"}` });
+      showToast({ type: "success", message: t(profile.active ? "accessProfiles.deactivated" : "accessProfiles.activated") });
       void fetchProfiles();
     } catch {
-      showToast({ type: "error", message: "Failed to update status" });
+      showToast({ type: "error", message: t("accessProfiles.statusFailed") });
     }
   };
 

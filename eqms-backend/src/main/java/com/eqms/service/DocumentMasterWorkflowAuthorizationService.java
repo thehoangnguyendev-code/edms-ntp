@@ -3,6 +3,7 @@ package com.eqms.service;
 import com.eqms.entity.DocumentRecord;
 import com.eqms.entity.UserAccount;
 import com.eqms.exception.AuthorizationDeniedException;
+import com.eqms.i18n.LocalizedMessageResolver;
 import com.eqms.service.authorization.AuthorizationEngineService;
 import com.eqms.service.authorization.AuthorizationRequest;
 import org.slf4j.Logger;
@@ -80,7 +81,8 @@ public class DocumentMasterWorkflowAuthorizationService {
         }
 
         static Decision deny(String reasonCode, String message, String requiredPermissionCode) {
-            return new Decision(false, reasonCode, message, requiredPermissionCode);
+            return new Decision(false, reasonCode,
+                    LocalizedMessageResolver.resolve("authorization", reasonCode, message), requiredPermissionCode);
         }
     }
 }

@@ -26,6 +26,7 @@ import { useSecurityESign } from "@/features/security-authorization/shared/useSe
 import { useSodAccessProfileCheck } from "@/features/security-authorization/shared/useSodAccessProfileCheck";
 import { SodViolationPanel } from "@/features/security-authorization/shared/SodViolationPanel";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useTranslation } from "@/i18n";
 
 type LookupOption = { label: string; value: string };
 type DictionaryBusinessUnit = { name: string; isActive?: boolean };
@@ -96,6 +97,7 @@ const dedupeLookupOptions = (options: LookupOption[]) => {
 export const AddUserView: React.FC = () => {
  const navigate = useNavigate();
  const { showToast } = useToast();
+ const { t } = useTranslation();
  const { requestSignature, signatureModal } = useSecurityESign();
  const { hasPermission } = usePermissions();
  const canInviteExternal = hasPermission("users.invite_external");
@@ -222,8 +224,8 @@ export const AddUserView: React.FC = () => {
     } else {
      showToast({
       type: "error",
-      title: "Unable to Load User Options",
-      message: "User lookup options could not be loaded. Please refresh before creating a user.",
+      title: t("addUser.loadOptionsTitle"),
+      message: t("addUser.loadOptionsMessage"),
      });
     }
 
@@ -235,8 +237,8 @@ export const AddUserView: React.FC = () => {
     } else {
      showToast({
       type: "error",
-      title: "Unable to Load Access Profiles",
-      message: "Access Profiles could not be loaded. Please refresh before creating a user.",
+      title: t("addUser.loadProfilesTitle"),
+      message: t("addUser.loadProfilesMessage"),
      });
     }
 
@@ -424,8 +426,8 @@ export const AddUserView: React.FC = () => {
  } catch (error: any) {
  showToast({
  type: "error",
- title: "Error",
- message: error?.response?.data?.message || "Failed to regenerate password",
+ title: t("addUser.errorTitle"),
+ message: error?.response?.data?.message || t("addUser.regeneratePasswordFailed"),
  });
  } finally {
  setIsRegeneratingPassword(false);
@@ -434,11 +436,11 @@ export const AddUserView: React.FC = () => {
 
  const handleSubmit = async () => {
  if (!validateForm()) {
- showToast({ type: "error", title: "Error", message: "Please fix all errors before submitting" });
+ showToast({ type: "error", title: t("addUser.errorTitle"), message: t("addUser.fixErrors") });
  return;
  }
  if (hasBlockingSodViolation) {
- showToast({ type: "error", title: "Segregation of Duties Conflict", message: "Resolve the blocked Access Profile conflict before creating this user." });
+ showToast({ type: "error", title: t("addUser.sodConflictTitle"), message: t("addUser.sodConflictMessage") });
  return;
  }
 
@@ -463,8 +465,8 @@ export const AddUserView: React.FC = () => {
   setExistingUsers((prev) => [created.user, ...prev]);
   showToast({
    type: "success",
-   title: "Success",
-   message: `User ${created.user.fullName} created successfully`,
+   title: t("addUser.createdTitle"),
+   message: t("addUser.createdMessage", { name: created.user.fullName }),
   });
  } catch (error: any) {
    if (error.response?.data?.body) {
@@ -475,7 +477,7 @@ export const AddUserView: React.FC = () => {
       newErrors[detail.field] = detail.message;
      });
      setFormErrors((prev) => ({ ...prev, ...newErrors }));
-     showToast({ type: "error", title: "Validation Failed", message: "Please fix the highlighted fields" });
+     showToast({ type: "error", title: t("addUser.validationTitle"), message: t("addUser.fixHighlighted") });
      return;
     } else if (body.code === "BAD_REQUEST") {
      const msg = body.message || "Bad Request";
@@ -488,7 +490,7 @@ export const AddUserView: React.FC = () => {
      } else {
       setApiErrorModal({ isOpen: true, title: "Create Failed", message: msg });
      }
-     showToast({ type: "error", title: "Validation Failed", message: "Please fix the highlighted fields" });
+     showToast({ type: "error", title: t("addUser.validationTitle"), message: t("addUser.fixHighlighted") });
      return;
     }
    }

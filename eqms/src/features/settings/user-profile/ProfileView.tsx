@@ -16,6 +16,7 @@ import { authApi } from '@/services/api/auth';
 import { resolveProfilePermissionState } from './profilePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAvatarFileWithinLimit, isSupportedAvatarFile, readFileAsDataUrl } from '@/utils/avatar';
+import { useTranslation } from '@/i18n';
 
 interface ProfileViewProps {
     onBack?: () => void;
@@ -26,6 +27,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     const { user: authUser, updateUser: updateAuthUser } = useAuth();
     const [activeTab, setActiveTab] = useState('account');
     const { showToast } = useToast();
+    const { t } = useTranslation();
     const [avatarPreview, setAvatarPreview] = useState<string>('');
     const [originalAvatarPreview, setOriginalAvatarPreview] = useState<string>('');
     const [hasAvatarChanged, setHasAvatarChanged] = useState(false);
@@ -127,7 +129,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             }
             setPermissions(resolveProfilePermissionState(user.permissions || []));
         } catch (error) {
-            showToast({ type: 'error', title: 'Error', message: 'Failed to load user profile.' });
+            showToast({ type: 'error', title: t('userProfile.errorTitle'), message: t('userProfile.loadFailed') });
         } finally {
             setIsLoadingProfile(false);
         }
@@ -143,11 +145,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
 
     const handleAvatarChange = async (file: File) => {
         if (!isSupportedAvatarFile(file)) {
-            showToast({ type: 'error', title: 'Error', message: 'Only .png or .jpg files are accepted.' });
+            showToast({ type: 'error', title: t('userProfile.errorTitle'), message: t('userProfile.avatarFileTypeInvalid') });
             return;
         }
         if (!isAvatarFileWithinLimit(file)) {
-            showToast({ type: 'error', title: 'Error', message: 'File size exceeds 5MB limit.' });
+            showToast({ type: 'error', title: t('userProfile.errorTitle'), message: t('userProfile.avatarTooLarge') });
             return;
         }
 
@@ -158,7 +160,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         } catch (error) {
             setAvatarPreview(originalAvatarPreview);
             setHasAvatarChanged(false);
-            showToast({ type: 'error', title: 'Error', message: 'Failed to update avatar.' });
+            showToast({ type: 'error', title: t('userProfile.errorTitle'), message: t('userProfile.avatarUpdateFailed') });
         }
     };
 
@@ -276,7 +278,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             await savePasswordChanges();
             await saveProfileChanges();
 
-            showToast({ type: 'success', title: 'Success', message: 'Changes saved successfully.' });
+            showToast({ type: 'success', title: t('userProfile.successTitle'), message: t('userProfile.saved') });
             
             await loadProfile();
 
@@ -288,7 +290,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             setEditingFields({ email: false, phone: false });
         } catch (error) {
             console.error('Failed to save profile changes', error);
-            showToast({ type: 'error', title: 'Error', message: 'Failed to save changes. Please try again.' });
+            showToast({ type: 'error', title: t('userProfile.errorTitle'), message: t('userProfile.saveFailed') });
         } finally {
             setIsNavigating(false);
         }

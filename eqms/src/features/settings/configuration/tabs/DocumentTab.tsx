@@ -9,6 +9,7 @@ import { FormModal } from '@/components/ui/modal/FormModal';
 import { Select } from '@/components/ui/select/Select';
 import { settingsApi } from '@/services/api/settings';
 import { DocumentConfig, OfficeOnlineStorageConfig } from '../types';
+import { useTranslation } from '@/i18n';
 
 interface DocumentTabProps {
   documentConfig: DocumentConfig;
@@ -377,6 +378,7 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
   onOfficeOnlineValidationChange,
 }) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [isTestingOfficeOnline, setIsTestingOfficeOnline] = useState(false);
   const [officeOnlineErrors, setOfficeOnlineErrors] = useState<Record<string, string>>({});
   const [showTenantId, setShowTenantId] = useState(false);
@@ -457,8 +459,8 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
     if (Object.keys(officeOnlineErrors).length > 0) {
       showToast({
         type: 'error',
-        title: 'Validation error',
-        message: 'Please fix the Office Online configuration errors before testing the connection.',
+        title: t('systemConfiguration.officeOnlineValidationTitle'),
+        message: t('systemConfiguration.officeOnlineValidationMessage'),
       });
       return;
     }
@@ -480,11 +482,11 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
 
       showToast({
         type: 'success',
-        title: 'Connection successful',
+        title: t('systemConfiguration.officeOnlineSuccessTitle'),
         message: result.message,
       });
     } catch (error) {
-      let message = 'Unable to connect to the Office Online workspace.';
+      let message = t('systemConfiguration.officeOnlineFailedMessage');
       if (error && typeof error === 'object') {
         const response = (error as { response?: { data?: any } }).response;
         const data = response?.data;
@@ -501,7 +503,7 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
 
       showToast({
         type: 'error',
-        title: 'Connection failed',
+        title: t('systemConfiguration.officeOnlineFailedTitle'),
         message,
       });
     } finally {

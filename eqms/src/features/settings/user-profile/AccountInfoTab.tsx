@@ -9,6 +9,7 @@ import { IconAddressBook, IconPencilMinus } from '@tabler/icons-react';
 import { type ProfilePermissionState } from './profilePermissions';
 import { AvatarCropModal } from './AvatarCropModal';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { useTranslation } from '@/i18n';
 
 interface AccountInfoTabProps {
     formData: {
@@ -53,6 +54,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { showToast } = useToast();
+    const { t } = useTranslation();
 
     // Crop modal state
     const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -68,12 +70,12 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
         if (file) {
             // Validate file size (5MB)
             if (file.size > 5 * 1024 * 1024) {
-                showToast({ type: 'error', title: 'Error', message: 'File size exceeds 5MB limit.' });
+                showToast({ type: 'error', title: t('userProfile.errorTitle'), message: t('userProfile.avatarTooLarge') });
                 return;
             }
             // Validate file type
             if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
-                showToast({ type: 'error', title: 'Error', message: 'Only .png or .jpg files are accepted.' });
+                showToast({ type: 'error', title: t('userProfile.errorTitle'), message: t('userProfile.avatarFileTypeInvalid') });
                 return;
             }
 

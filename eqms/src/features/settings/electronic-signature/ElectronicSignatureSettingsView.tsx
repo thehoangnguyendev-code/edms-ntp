@@ -20,6 +20,7 @@ import {
   electronicSignatureSettingsApi,
 } from "@/services/api/electronicSignatureSettings";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useTranslation } from "@/i18n";
 
 const defaultSettings: ElectronicSignatureSettings = {
   requirePasswordBeforeSigning: true,
@@ -100,6 +101,7 @@ const AllowedReasonsEditor: React.FC<{ reasons: string[]; onChange: (reasons: st
 export const ElectronicSignatureSettingsView: React.FC = () => {
   const { navigateTo } = useNavigateWithLoading();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { hasPermissionAlias } = usePermissions();
   const canManageConfiguration = hasPermissionAlias('settings.configuration.manage') || hasPermissionAlias('settings.configuration.edit');
@@ -134,7 +136,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
         // 429 already surfaces its own clear notice via RateLimitNoticeListener.
         if (active && error?.response?.status !== 429)
           showToast({
-            message: "Unable to load E-Sign Config from server.",
+            message: t("electronicSignatureSettings.loadFailed"),
             type: "error",
           });
       })
@@ -144,7 +146,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [showToast]);
+  }, [showToast, t]);
 
   const update = <K extends keyof ElectronicSignatureSettings>(
     key: K,
@@ -204,17 +206,17 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
       setSettings(normalized);
       setSavedSettings(normalized);
       showToast({
-        title: "Settings Saved",
-        message: "Electronic signature settings saved successfully.",
+        title: t("electronicSignatureSettings.savedTitle"),
+        message: t("electronicSignatureSettings.savedMessage"),
         type: "success",
       });
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         (err instanceof Error ? err.message : null) ||
-        "Failed to save settings. Please try again.";
+        t("electronicSignatureSettings.saveFailedMessage");
       showToast({
-        title: "Save Failed",
+        title: t("electronicSignatureSettings.saveFailedTitle"),
         message: msg,
         type: "error",
       });

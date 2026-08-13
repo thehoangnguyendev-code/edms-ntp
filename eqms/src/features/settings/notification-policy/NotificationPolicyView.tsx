@@ -33,6 +33,7 @@ import { AlertModal } from "@/components/ui/modal";
 import { DropdownMenuItem } from "@/components/ui/dropdown/DropdownMenuItem";
 import { PortalDropdownMenu } from "@/components/ui/dropdown/PortalDropdownMenu";
 import { useToast } from "@/components/ui/toast/Toast";
+import { useTranslation } from "@/i18n";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableDragScroll, usePortalDropdown, useDebounce } from "@/hooks";
 import { cn } from "@/components/ui/utils";
@@ -105,6 +106,7 @@ const getOptionClassName = (isActive: boolean) =>
 export const NotificationPolicyView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias("settings.notification_policy.manage");
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
@@ -163,8 +165,8 @@ export const NotificationPolicyView: React.FC = () => {
         if (active)
           showToast({
             type: "error",
-            title: "Failed to load",
-            message: "Unable to load the Notification In-app catalog.",
+            title: t("notificationPolicy.loadFailedTitle"),
+            message: t("notificationPolicy.loadFailedMessage"),
           });
       })
       .finally(() => {
@@ -193,19 +195,19 @@ export const NotificationPolicyView: React.FC = () => {
       await notificationPolicyApi.remove(deleteTarget.eventCode);
       showToast({
         type: "success",
-        title: "Deleted",
-        message: `"${deleteTarget.name}" was deleted.`,
+        title: t("notificationPolicy.deletedTitle"),
+        message: t("notificationPolicy.deletedMessage", { name: deleteTarget.name }),
       });
       setDeleteTarget(null);
       setRefreshToken((t) => t + 1);
     } catch (error: any) {
       showToast({
         type: "error",
-        title: "Delete failed",
+        title: t("notificationPolicy.deleteFailedTitle"),
         message:
           error?.response?.data?.message ||
           error?.response?.data?.error?.message ||
-          "Unable to delete this event.",
+          t("notificationPolicy.deleteFailedMessage"),
       });
     } finally {
       setIsDeleting(false);

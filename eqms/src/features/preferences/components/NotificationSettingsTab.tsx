@@ -7,6 +7,7 @@ import { FormSection } from '@/components/ui/form/FormSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { notificationApi } from '@/services/api/notifications';
 import { useToast } from '@/components/ui/toast';
+import { useTranslation } from '@/i18n';
 
 const MODULE_OPTIONS = [
   {
@@ -96,6 +97,7 @@ const readModulePreferences = (value: unknown): Record<ModulePreferenceKey, bool
 export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = ({ onRegisterSaveHandler }) => {
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const primaryEmail = user?.email?.trim() || '';
   const persistedEmailNotificationsEnabled = user?.emailNotificationsEnabled !== false;
@@ -150,13 +152,21 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
 
   const toggleBrowserPush = async () => {
     if (!browserPushSupported) {
-      showToast({ type: 'error', title: 'Browser notifications unavailable', message: 'This browser does not support notification permissions.' });
+      showToast({
+        type: 'error',
+        title: t('notificationPreferences.browserUnavailableTitle'),
+        message: t('notificationPreferences.browserUnavailableMessage'),
+      });
       return;
     }
     if (!channelPush) {
       const permission = await window.Notification.requestPermission();
       if (permission !== 'granted') {
-        showToast({ type: 'error', title: 'Permission not granted', message: 'Allow browser notifications to enable this channel.' });
+        showToast({
+          type: 'error',
+          title: t('notificationPreferences.permissionDeniedTitle'),
+          message: t('notificationPreferences.permissionDeniedMessage'),
+        });
         return;
       }
     }

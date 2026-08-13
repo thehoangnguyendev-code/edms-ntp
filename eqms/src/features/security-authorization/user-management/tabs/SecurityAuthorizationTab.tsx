@@ -28,6 +28,7 @@ import { IconCheck, IconPencilMinus } from "@tabler/icons-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditAccessProfilesModal } from "../components/EditAccessProfilesModal";
+import { useTranslation } from "@/i18n";
 
 interface Props {
   user: User;
@@ -36,6 +37,7 @@ interface Props {
 export const SecurityAuthorizationTab: React.FC<Props> = ({ user }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -65,13 +67,13 @@ export const SecurityAuthorizationTab: React.FC<Props> = ({ user }) => {
         type: "error",
         message:
           error?.response?.status === 403
-            ? "You do not have permission to view this user's authorization."
-            : "Failed to load authorization summary.",
+            ? t("userAuthorization.permissionDenied")
+            : t("userAuthorization.loadFailed"),
       });
     } finally {
       setLoading(false);
     }
-  }, [showToast, user.id]);
+  }, [showToast, t, user.id]);
 
   useEffect(() => {
     void load();

@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select/Select";
 import { courseObsoleteImpactAssessment } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { useNavigateWithLoading } from "@/hooks";
 import { useToast } from "@/components/ui/toast/Toast";
+import { useTranslation } from "@/i18n";
 import { MOCK_COURSES, MOCK_TRAININGS } from "../mockData";
 import { IconChecklist, IconPointerBolt } from "@tabler/icons-react";
 import { navigateBack } from "@/app/navigation/backNavigation";
@@ -64,6 +65,7 @@ export const ObsoleteImpactAssessmentView: React.FC = () => {
   const location = useLocation();
   const { navigateTo, isNavigating } = useNavigateWithLoading();
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const [replacementCourse, setReplacementCourse] = useState("");
   const [sunsetDate, setSunsetDate] = useState("");
@@ -224,8 +226,8 @@ export const ObsoleteImpactAssessmentView: React.FC = () => {
 
     showToast({
       type: "success",
-      title: "Impact Assessment Completed",
-      message: `Impact assessment for ${course.trainingId} passed. Reason: ${reason}. You can continue obsolete workflow (mock).`,
+      title: t("courseImpact.completedTitle"),
+      message: t("courseImpact.completedMessage", { id: course.trainingId, reason }),
       duration: 3500,
     });
 

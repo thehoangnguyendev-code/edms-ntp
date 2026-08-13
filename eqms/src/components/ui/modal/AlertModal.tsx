@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../button/Button";
 import { cn } from "../utils";
 import { ButtonLoading } from "../loading/Loading";
+import { useTranslation } from "@/i18n";
 
 export type AlertModalType = "success" | "error" | "warning" | "info" | "confirm";
 
@@ -29,10 +30,11 @@ export const AlertModal: React.FC<AlertModalProps> = ({
   description,
   type = "info",
   confirmText,
-  cancelText = 'Cancel',
+  cancelText,
   isLoading = false,
   showCancel,
 }) => {
+  const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -96,19 +98,19 @@ export const AlertModal: React.FC<AlertModalProps> = ({
 
   const config = {
     success: {
-      defaultConfirmText: "OK",
+      defaultConfirmText: t("alertModal.ok"),
     },
     error: {
-      defaultConfirmText: "Close",
+      defaultConfirmText: t("common.close"),
     },
     warning: {
-      defaultConfirmText: "Confirm",
+      defaultConfirmText: t("alertModal.confirm"),
     },
     info: {
-      defaultConfirmText: "OK",
+      defaultConfirmText: t("alertModal.ok"),
     },
     confirm: {
-      defaultConfirmText: "Confirm",
+      defaultConfirmText: t("alertModal.confirm"),
     },
   };
 
@@ -123,6 +125,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
       : type === "confirm" || type === "warning";
 
   const finalConfirmText = confirmText || currentConfig.defaultConfirmText;
+  const finalCancelText = cancelText || t("common.cancel");
 
   // Custom button styles based on type
   const getConfirmButtonClass = () => {
@@ -201,7 +204,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                   type="button"
                   onClick={onClose}
                   className="flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                  aria-label="Close dialog"
+                  aria-label={t("alertModal.closeDialog")}
                 >
                   <X className="h-4 w-4 text-slate-500" />
                 </button>
@@ -216,7 +219,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                   onClick={onClose}
                   disabled={isLoading}
                 >
-                  {cancelText}
+                  {finalCancelText}
                 </Button>
               )}
 
@@ -228,7 +231,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
               >
                 {isLoading ? (
                   <ButtonLoading
-                    text="Processing..."
+                    text={t("alertModal.processing")}
                     light
                   />
                 ) : (

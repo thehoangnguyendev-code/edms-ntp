@@ -32,6 +32,7 @@ import { useToast } from "@/components/ui/toast";
 import { hasWorkingNotesEditAccess } from "@/features/documents/document-revisions/shared/workingNotesPermissions";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { useTranslation } from "@/i18n";
 import { buildRevisionDetailSnapshotState, isRevisionDetailSnapshotPreload, refreshDetailAfterSnapshot, isSnapshotGenerating, pollSnapshotInBackground } from "@/features/documents/shared/detailSnapshotHelpers";
 import { buildRevisionDetailNavigationState } from "@/features/documents/shared/navigationContext";
 import { ROUTES } from "@/app/routes.constants";
@@ -78,6 +79,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     workspaceState?: RevisionWorkspaceState | null;
   } | undefined;
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [document, setDocument] = useState<any>(null);
   const [revisionFile, setRevisionFile] = useState<File | null>(null);
   const [previewStatus, setPreviewStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -294,7 +296,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       }
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to add comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: t("revisionReview.commentAddFailed"), message: (error as any)?.response?.data?.message || t("common.tryAgain"), duration: 3000 });
     }
   };
 
@@ -304,7 +306,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       await documentApi.resolveRevisionReviewComment(revisionId, commentId, resolutionNote);
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to resolve comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: t("revisionReview.commentResolveFailed"), message: (error as any)?.response?.data?.message || t("common.tryAgain"), duration: 3000 });
     }
   };
 
@@ -320,7 +322,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       }
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to send reply", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: t("revisionReview.commentReplyFailed"), message: (error as any)?.response?.data?.message || t("common.tryAgain"), duration: 3000 });
     }
   };
 
@@ -330,7 +332,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       await documentApi.deleteRevisionReviewComment(revisionId, commentId, reason);
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to delete comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: t("revisionReview.commentDeleteFailed"), message: (error as any)?.response?.data?.message || t("common.tryAgain"), duration: 3000 });
     }
   };
   const handleEditReviewComment = async (commentId: string, content: string) => { if (revisionId) { await documentApi.updateRevisionReviewComment(revisionId, commentId, content); await loadReviewComments(); } };
@@ -359,8 +361,8 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     if (!reviewWindow) {
       showToast({
         type: "error",
-        title: "Unable to open Word Online",
-        message: "Your browser blocked the new tab. Allow pop-ups for EQMS and try again.",
+        title: t("revisionReview.wordOnlineOpenFailed"),
+        message: t("revisionReview.popupBlocked"),
       });
       return;
     }
@@ -373,10 +375,10 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       }
       reviewWindow.opener = null;
       reviewWindow.location.replace(link.url);
-      showToast({ type: "success", title: "Word Online review opened", message: "Sign in with your registered e-mail address to review and comment." });
+      showToast({ type: "success", title: t("revisionReview.wordOnlineOpened"), message: t("revisionReview.wordOnlineOpenedMessage") });
     } catch (error) {
       reviewWindow.close();
-      showToast({ type: "error", title: "Word Online review unavailable", message: getApiErrorMessage(error, "Unable to open the named review session.") });
+      showToast({ type: "error", title: t("revisionReview.wordOnlineUnavailable"), message: getApiErrorMessage(error, t("revisionReview.wordOnlineSessionFailed")) });
     } finally {
       setIsOpeningWordReview(false);
     }
@@ -434,14 +436,14 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       void loadReviewComments();
       const revisionLabel =
         [refreshed.documentNumber, refreshed.revisionNumber].filter(Boolean).join(" ") ||
-        "the revision";
+        t("revisionReview.revisionFallback");
       showToast({
         type: eSignAction === "approve" ? "success" : "warning",
-        title: eSignAction === "approve" ? "Review Completed" : "Review Rejected",
+        title: eSignAction === "approve" ? t("revisionReview.completedTitle") : t("revisionReview.rejectedTitle"),
         message:
           eSignAction === "approve"
-            ? `Revision ${revisionLabel} has been reviewed successfully.`
-            : `Revision ${revisionLabel} has been rejected and returned to Draft.`,
+            ? t("revisionReview.completedMessage", { revision: revisionLabel })
+            : t("revisionReview.rejectedMessage", { revision: revisionLabel }),
         duration: 3000,
       });
       window.sessionStorage.setItem("eqms.documents.revisions.refresh", String(Date.now()));
@@ -460,12 +462,12 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       console.error("Failed to complete review action", error);
       showToast({
         type: "error",
-        title: eSignAction === "approve" ? "Review failed" : "Reject failed",
+        title: eSignAction === "approve" ? t("revisionReview.completeFailedTitle") : t("revisionReview.rejectFailedTitle"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
           (error as Error)?.message ||
-          "Failed to complete review action.",
+          t("revisionReview.completeFailedMessage"),
         duration: 3000,
       });
       setPreviewStatus("error");
@@ -473,7 +475,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
         (error as any)?.response?.data?.error?.message ||
         (error as any)?.response?.data?.message ||
         (error as Error)?.message ||
-        "Failed to complete review action."
+        t("revisionReview.completeFailedMessage")
       );
       throw error;
     } finally {
@@ -497,8 +499,8 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to add note",
-        message: (error as any)?.response?.data?.message || "Working note could not be saved.",
+        title: t("revisionReview.noteAddFailed"),
+        message: (error as any)?.response?.data?.message || t("revisionReview.noteSaveFailed"),
         duration: 3000,
       });
     } finally {
@@ -522,8 +524,8 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to delete note",
-        message: (error as any)?.response?.data?.message || "Working note could not be deleted.",
+        title: t("revisionReview.noteDeleteFailed"),
+        message: (error as any)?.response?.data?.message || t("revisionReview.noteRemoveFailed"),
         duration: 3000,
       });
     } finally {
@@ -547,9 +549,9 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
         reviewFlowType: "parallel",
         currentReviewerIndex: 0,
       });
-      showToast({ type: "info", title: "Snapshot queued", message: "Review snapshot is being regenerated.", duration: 3000 });
+      showToast({ type: "info", title: t("revisionReview.snapshotQueuedTitle"), message: t("revisionReview.snapshotQueuedMessage"), duration: 3000 });
     } catch {
-      showToast({ type: "error", title: "Failed", message: "Could not queue snapshot regeneration.", duration: 3000 });
+      showToast({ type: "error", title: t("revisionReview.snapshotFailedTitle"), message: t("revisionReview.snapshotFailedMessage"), duration: 3000 });
     } finally {
       setIsRegeneratingSnapshot(false);
     }

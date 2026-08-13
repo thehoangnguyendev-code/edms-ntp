@@ -6,6 +6,7 @@ import { settingsApi } from "@/services/api/settings";
 import type { PermissionSetResponse } from "@/services/api/settings";
 import { PermissionSplitExplorer } from "@/features/security-authorization/shared/explorer/PermissionSplitExplorer";
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
+import { useTranslation } from "@/i18n";
 
 /**
  * Module-accurate permission matrix for a role. Shows the UNION of everything the
@@ -23,6 +24,7 @@ export const AccessProfilePermissionsTab: React.FC<{
   onManagedChange?: (codes: string[], dirty: boolean) => void;
 }> = ({ profileId, profileCode, reloadKey = 0, canEdit = true, deniedReason, onManagedChange }) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { permissionGroups, isLoading: catalogLoading } = usePermissionCatalog();
   const [allSets, setAllSets] = useState<PermissionSetResponse[]>([]);
   const [attachedIds, setAttachedIds] = useState<Set<string>>(new Set());
@@ -49,11 +51,11 @@ export const AccessProfilePermissionsTab: React.FC<{
         setDirectCodes(new Set(direct));
         onManagedChange?.([...direct], false);
       })
-      .catch(() => showToast({ type: "error", message: "Failed to load Access Profile permissions" }))
+      .catch(() => showToast({ type: "error", message: t("accessProfileTabs.loadPermissionsFailed") }))
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId, reloadKey, showToast]);
+  }, [profileId, reloadKey, showToast, t]);
 
   // Codes granted through attached shared sets: shown checked but locked here.
   const { lockedCodes, lockedNotes } = useMemo(() => {

@@ -5,6 +5,7 @@ import { IconCalendarWeek } from '@tabler/icons-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
 import { Button } from '../button/Button';
+import { useTranslation } from '@/i18n';
 
 /**
  * DateTimePicker component with calendar interface
@@ -67,11 +68,21 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   label,
   value,
   onChange,
-  placeholder = "Select date",
+  placeholder,
   disabled = false,
   showTime = false,
   error,
 }) => {
+  const { locale, t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('dateTime.placeholder');
+  const monthNames = Array.from({ length: 12 }, (_, month) =>
+    new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2026, month, 1)));
+  const monthAbbr = Array.from({ length: 12 }, (_, month) =>
+    new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(2026, month, 1)));
+  const dayNames = Array.from({ length: 7 }, (_, day) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2026, 7, 2 + day)));
+  const dayFull = Array.from({ length: 7 }, (_, day) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(new Date(2026, 7, 2 + day)));
   const pickerIdRef = useRef(`date-time-picker-${Math.random().toString(36).slice(2, 11)}`);
   const pickerId = pickerIdRef.current;
   const [isOpen, setIsOpen] = useState(false);
@@ -214,7 +225,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   // ── Screen reader: announce month/year on calendar navigation ────────────────
   useEffect(() => {
     if (isOpen && viewMode === 'calendar') {
-      setLiveAnnouncement(`${MONTH_NAMES[viewDate.getMonth()]} ${viewDate.getFullYear()}`);
+      setLiveAnnouncement(`${monthNames[viewDate.getMonth()]} ${viewDate.getFullYear()}`);
     }
   }, [viewDate, isOpen, viewMode]);
 
@@ -344,23 +355,23 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         <button
           type="button"
           onClick={() => setViewMode('calendar')}
-          aria-label="Back to calendar"
+          aria-label={t('dateTime.backToCalendar')}
           className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
         >
           <ChevronLeft className="h-4 w-4 block shrink-0" />
         </button>
         <span className="font-semibold text-slate-900 text-sm" id={`${pickerId}-month-heading`}>
-          Select Month
+          {t('dateRange.selectMonth')}
         </span>
         <div className="w-9" />
       </div>
       <div className="grid grid-cols-3 gap-1.5" role="group" aria-labelledby={`${pickerId}-month-heading`}>
-        {MONTH_ABBR.map((m, idx) => (
+        {monthAbbr.map((m, idx) => (
           <button
             key={m}
             type="button"
             onClick={() => handleMonthSelect(idx)}
-            aria-label={MONTH_NAMES[idx]}
+            aria-label={monthNames[idx]}
             aria-pressed={viewDate.getMonth() === idx}
             className={cn(
               "h-10 rounded-lg text-xs font-medium hover:bg-slate-100 transition-colors",
@@ -385,7 +396,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <button
             type="button"
             onClick={() => navigateYearRange('prev')}
-            aria-label="Previous 12 years"
+            aria-label={t('dateTime.previousYears')}
             className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
             <ChevronLeft className="h-4 w-4 block shrink-0" />
@@ -396,7 +407,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <button
             type="button"
             onClick={() => navigateYearRange('next')}
-            aria-label="Next 12 years"
+            aria-label={t('dateTime.nextYears')}
             className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
             <ChevronRight className="h-4 w-4 block shrink-0" />
@@ -449,7 +460,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         today.getMonth() === month &&
         today.getFullYear() === year;
       const isFocusTarget = focusedDay === day;
-      const fullLabel = new Intl.DateTimeFormat('en-US', {
+      const fullLabel = new Intl.DateTimeFormat(locale, {
         month: 'long', day: 'numeric', year: 'numeric',
       }).format(new Date(year, month, day));
 
@@ -484,7 +495,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <button
             type="button"
             onClick={() => navigateMonth('prev')}
-            aria-label="Previous month"
+            aria-label={t('dateTime.previousMonth')}
             className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
             <ChevronLeft className="h-4 w-4 block shrink-0" />
@@ -494,15 +505,15 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('month')}
-              aria-label={`Select month, currently ${MONTH_NAMES[month]}`}
+              aria-label={t('dateTime.selectMonthCurrent', { month: monthNames[month] })}
               className="font-semibold text-slate-900 text-sm hover:bg-slate-100 px-1.5 py-0.5 rounded transition-colors"
             >
-              {MONTH_NAMES[month]}
+              {monthNames[month]}
             </button>
             <button
               type="button"
               onClick={() => setViewMode('year')}
-              aria-label={`Select year, currently ${year}`}
+              aria-label={t('dateTime.selectYearCurrent', { year })}
               className="font-semibold text-slate-900 text-sm hover:bg-slate-100 px-1.5 py-0.5 rounded transition-colors"
             >
               {year}
@@ -512,7 +523,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <button
             type="button"
             onClick={() => navigateMonth('next')}
-            aria-label="Next month"
+            aria-label={t('dateTime.nextMonth')}
             className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
             <ChevronRight className="h-4 w-4 block shrink-0" />
@@ -521,11 +532,11 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
 
         {/* Day-of-week headers */}
         <div className="grid grid-cols-7 mb-1">
-          {DAY_NAMES.map((d, i) => (
+          {dayNames.map((d, i) => (
             <div
               key={i}
               role="columnheader"
-              aria-label={DAY_FULL[i]}
+              aria-label={dayFull[i]}
               className="h-6 flex items-center justify-center text-xs font-medium text-slate-400"
             >
               {d}
@@ -537,7 +548,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         <div
           ref={gridRef}
           role="grid"
-          aria-label={`${MONTH_NAMES[month]} ${year}`}
+          aria-label={`${monthNames[month]} ${year}`}
           aria-multiselectable="false"
           className="grid grid-cols-7 gap-y-0.5"
           onKeyDown={handleGridKeyDown}
@@ -611,9 +622,9 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   };
 
   const formatDisplayValue = () => {
-    if (!value) return placeholder;
+    if (!value) return resolvedPlaceholder;
     const d = parseDate(value);
-    if (!d) return placeholder;
+    if (!d) return resolvedPlaceholder;
 
     let formatted = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     if (showTime) {
@@ -687,7 +698,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
               ref={popoverRef}
               role="dialog"
               aria-modal="true"
-              aria-label="Choose date"
+              aria-label={t('dateTime.chooseDate')}
               tabIndex={-1}
               initial={{ opacity: 0, y: popoverStyle.top === 'auto' ? 10 : -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -707,7 +718,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
                     onClick={handleClear}
                     className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
                   >
-                    Clear
+                    {t('dateTime.clear')}
                   </Button>
                   <div className="flex gap-2">
                     <Button
@@ -715,7 +726,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
                       size="sm"
                       onClick={closeAndReturn}
                     >
-                      Cancel
+                      {t('dateRange.cancel')}
                     </Button>
                     <Button
                       size="sm"
@@ -723,7 +734,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
                       className="bg-emerald-600 hover:bg-emerald-700 text-white"
                       disabled={!selectedDate}
                     >
-                      Apply
+                      {t('dateRange.apply')}
                     </Button>
                   </div>
                 </div>

@@ -90,6 +90,32 @@ const getResponseErrorCode = (data: unknown): string | undefined => {
   return typeof response.code === "string" ? response.code : undefined;
 };
 
+/**
+ * Keep legacy callers compatible with the structured server error contract.
+ * New endpoints return `{ error: { code, message } }`, while older screens
+ * still read `error.response.data.message` or `error.message`. Mirror the
+ * server-localized message onto those legacy locations at the boundary so the
+ * selected language is preserved everywhere without changing technical codes.
+ */
+const normalizeLocalizedApiError = (error: AxiosError) => {
+  const data = error.response?.data;
+  if (typeof data !== "object" || data === null) return error;
+  const payload = data as { message?: unknown; error?: { message?: unknown } };
+  const nestedMessage = payload.error?.message;
+  const message = typeof nestedMessage === "string" && nestedMessage.trim()
+    ? nestedMessage.trim()
+    : typeof payload.message === "string" && payload.message.trim()
+      ? payload.message.trim()
+      : undefined;
+  if (!message) return error;
+
+  if (typeof payload.message !== "string" || !payload.message.trim()) {
+    payload.message = message;
+  }
+  error.message = message;
+  return error;
+};
+
 const inFlightGetRequests = new Map<string, Promise<AxiosResponse<unknown>>>();
 const inFlightMutationRequests = new Map<
   string,
@@ -318,6 +344,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
+    normalizeLocalizedApiError(error);
     if (error.response) {
       const { status, data } = error.response;
 

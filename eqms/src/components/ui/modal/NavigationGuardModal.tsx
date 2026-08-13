@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "../button/Button";
 import { ButtonLoading } from "../loading/Loading";
 import { cn } from "../utils";
+import { useTranslation } from "@/i18n";
 
 interface NavigationGuardModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
   secondaryActionLabel,
   isLoading = false,
 }) => {
+  const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -128,19 +130,19 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                     id="navigation-guard-modal-title"
                     className="text-base font-semibold text-slate-900"
                   >
-                    {title || (mode === "discard" ? "Discard unsaved changes?" : "Leave without saving?")}
+                    {title || (mode === "discard" ? t("navigationGuard.discardTitle") : t("navigationGuard.leaveTitle"))}
                   </h3>
                   <p className="text-sm leading-relaxed text-slate-600">
                     {mode === "discard"
-                      ? "Your edits are not saved yet."
-                      : "You have unsaved changes on this page."}
+                      ? t("navigationGuard.discardSummary")
+                      : t("navigationGuard.leaveSummary")}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={onClose}
                   className="flex-shrink-0 rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
-                  aria-label="Close dialog"
+                  aria-label={t("alertModal.closeDialog")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -154,42 +156,41 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                 ) : mode === "discard" ? (
                   <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
                     <p>
-                      If you continue, any unsaved changes in{" "}
-                      <span className="font-semibold text-slate-900">{currentPageTitle || "this form"}</span> will be lost.
+                      {t("navigationGuard.discardWarningPrefix")} {" "}
+                      <span className="font-semibold text-slate-900">{currentPageTitle || t("navigationGuard.thisForm")}</span> {t("navigationGuard.discardWarningSuffix")}
                     </p>
                     <p className="mt-3 text-xs leading-relaxed text-slate-500">
-                      This action cannot be undone.
+                      {t("navigationGuard.cannotUndo")}
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <p>
-                      If you leave <span className="font-semibold text-slate-900">{currentPageTitle || "this page"}</span>, any
-                      unsaved progress may be lost.
+                      {t("navigationGuard.leaveWarningPrefix")} <span className="font-semibold text-slate-900">{currentPageTitle || t("navigationGuard.thisPage")}</span>{t("navigationGuard.leaveWarningSuffix")}
                     </p>
 
                     <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Current page
+                            {t("navigationGuard.currentPage")}
                           </div>
                           <div className="mt-1 font-medium text-slate-900">
-                            {currentPageTitle || "This page"}
+                            {currentPageTitle || t("navigationGuard.thisPage")}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Next Page
+                            {t("navigationGuard.nextPage")}
                           </div>
                           <div className="mt-1 font-medium text-amber-700">
-                            {destinationLabel || "Another page"}
+                            {destinationLabel || t("navigationGuard.anotherPage")}
                           </div>
                         </div>
                       </div>
 
                       <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                        Your unsaved changes will not be recovered if you continue.
+                        {t("navigationGuard.progressNotRecovered")}
                       </p>
                     </div>
                   </div>
@@ -205,7 +206,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                 disabled={isLoading}
                 className="min-w-[120px]"
               >
-                {secondaryActionLabel || (mode === "discard" ? "Keep editing" : "Stay on page")}
+                {secondaryActionLabel || (mode === "discard" ? t("navigationGuard.keepEditing") : t("navigationGuard.stayOnPage"))}
               </Button>
               <Button
                 size="sm"
@@ -217,9 +218,9 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                 )}
               >
                 {isLoading ? (
-                  <ButtonLoading text="Processing..." light />
+                  <ButtonLoading text={t("alertModal.processing")} light />
                 ) : (
-                  primaryActionLabel || (mode === "discard" ? "Discard changes" : "Leave anyway")
+                  primaryActionLabel || (mode === "discard" ? t("navigationGuard.discardChanges") : t("navigationGuard.leaveAnyway"))
                 )}
               </Button>
             </div>

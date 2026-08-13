@@ -28,6 +28,7 @@ import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { localizationApi } from "@/services/api/localization";
 import { readSystemLocalizationSettings, writeSystemLocalizationSettings } from "@/config/localization";
 import { useToast } from "@/components/ui/toast/Toast";
+import { setI18nLanguage, useTranslation } from "@/i18n";
 
 // Constants
 const BASE_PADDING = 12;
@@ -186,6 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
     const { showToast } = useToast();
+    const { t } = useTranslation();
     const [language, setLanguage] = useState(() => readSystemLocalizationSettings().language === "vi" ? "vi" : "en");
     const [authorizedNavigationIds, setAuthorizedNavigationIds] = useState<Set<string> | null>(null);
     const [navigationLabels, setNavigationLabels] = useState<Map<string, string>>(new Map());
@@ -203,6 +205,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
       const previous = readSystemLocalizationSettings();
       setLanguage(nextLanguage);
       writeSystemLocalizationSettings({ ...previous, language: nextLanguage });
+      setI18nLanguage(nextLanguage);
 
       if (!user) return;
 
@@ -216,16 +219,18 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           numberFormat: preferences.numberFormat ?? previous.numberFormat,
         });
         writeSystemLocalizationSettings({ ...previous, ...saved, language: nextLanguage });
+        setI18nLanguage(nextLanguage);
       } catch (error) {
         setLanguage(previous.language === "vi" ? "vi" : "en");
         writeSystemLocalizationSettings(previous);
+        setI18nLanguage(previous.language);
         showToast({
           type: "error",
-          title: "Language change failed",
-          message: "Unable to save your language preference. Please try again.",
+          title: t("localization.languageChangeFailed.title"),
+          message: t("localization.languageChangeFailed.message"),
         });
       }
-    }, [showToast, user]);
+    }, [showToast, t, user]);
 
     useEffect(() => {
       let cancelled = false;

@@ -8,6 +8,7 @@ import { formatDateTime } from "@/utils/format";
 import { cn } from "@/components/ui/utils";
 import type { AuditTrailRecord } from "../types";
 import { formatAuditActionLabel } from "../utils/actionBadge";
+import { useTranslation } from "@/i18n";
 
 interface AuditExportModalProps {
   isOpen: boolean;
@@ -22,11 +23,12 @@ export const AuditExportModal: React.FC<AuditExportModalProps> = ({ isOpen, onCl
   const [showESign, setShowESign] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const exportOptions: { format: ExportFormat; label: string; desc: string; icon: React.ReactNode }[] = [
-    { format: "json", label: "Export as JSON", desc: "Structured data format", icon: <FileJson className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "json" ? "text-emerald-600" : "text-slate-500")} /> },
-    { format: "pdf", label: "Export as PDF", desc: "Printable document format", icon: <FileText className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "pdf" ? "text-emerald-600" : "text-slate-500")} /> },
-    { format: "txt", label: "Export as TXT", desc: "Plain text format", icon: <FileType className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "txt" ? "text-emerald-600" : "text-slate-500")} /> },
+    { format: "json", label: t("auditExport.json"), desc: t("auditExport.structuredData"), icon: <FileJson className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "json" ? "text-emerald-600" : "text-slate-500")} /> },
+    { format: "pdf", label: t("auditExport.pdf"), desc: t("auditExport.printableDocument"), icon: <FileText className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "pdf" ? "text-emerald-600" : "text-slate-500")} /> },
+    { format: "txt", label: t("auditExport.txt"), desc: t("auditExport.plainText"), icon: <FileType className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "txt" ? "text-emerald-600" : "text-slate-500")} /> },
   ];
 
   const doExport = async (format: ExportFormat) => {
@@ -35,18 +37,18 @@ export const AuditExportModal: React.FC<AuditExportModalProps> = ({ isOpen, onCl
       try {
         const pdf = new jsPDF();
         const content = [
-          "Audit Trail Record",
+          t("auditExport.record"),
           "",
-          `Timestamp: ${formatDateTime(record.timestamp)}`,
-          `User: ${record.user?.fullName || record.fullName || "Not recorded"}`,
-          `Module: ${record.module || "Not recorded"}`,
-          `Action: ${formatAuditActionLabel(record.action)}`,
-          `Entity: ${record.entityLabel || record.entityName || "Not recorded"}`,
-          `Description: ${record.description || "Not recorded"}`,
-          `Severity: ${record.severity || "Not recorded"}`,
-          `IP Address: ${record.ipAddress || "Not recorded"}`,
+          `${t("auditExport.timestamp")}: ${formatDateTime(record.timestamp)}`,
+          `${t("auditExport.user")}: ${record.user?.fullName || record.fullName || t("auditExport.notRecorded")}`,
+          `${t("auditExport.module")}: ${record.module || t("auditExport.notRecorded")}`,
+          `${t("auditExport.action")}: ${formatAuditActionLabel(record.action)}`,
+          `${t("auditExport.entity")}: ${record.entityLabel || record.entityName || t("auditExport.notRecorded")}`,
+          `${t("auditExport.description")}: ${record.description || t("auditExport.notRecorded")}`,
+          `${t("auditExport.severity")}: ${record.severity || t("auditExport.notRecorded")}`,
+          `${t("auditExport.ipAddress")}: ${record.ipAddress || t("auditExport.notRecorded")}`,
           ...(record.changes?.length
-            ? ["", "Changes:", ...record.changes.map((change) => `- ${change.field}: ${change.oldValue ?? ""} -> ${change.newValue ?? ""}`)]
+            ? ["", `${t("auditExport.changes")}:`, ...record.changes.map((change) => `- ${change.field}: ${change.oldValue ?? ""} -> ${change.newValue ?? ""}`)]
             : []),
         ].join("\n");
         pdf.setFontSize(11);
@@ -55,8 +57,8 @@ export const AuditExportModal: React.FC<AuditExportModalProps> = ({ isOpen, onCl
       } catch (error) {
         showToast({
           type: "error",
-          title: "Export failed",
-          message: error instanceof Error ? error.message : "Could not export audit record as PDF.",
+          title: t("auditExport.failedTitle"),
+          message: error instanceof Error ? error.message : t("auditExport.pdfFailed"),
           duration: 3500,
         });
       } finally {
@@ -119,12 +121,12 @@ ${record.metadata && Object.keys(record.metadata).length ? `\nMetadata:\n${Objec
       <FormModal
         isOpen={isOpen}
         onClose={handleClose}
-        title="Export Audit Record"
-        description={<>Select export format for audit record <span className="font-medium text-slate-700">{record.entityLabel || record.entityName || formatAuditActionLabel(record.action)}</span></>}
+        title={t("auditExport.title")}
+        description={<>{t("auditExport.selectFormat")} <span className="font-medium text-slate-700">{record.entityLabel || record.entityName || formatAuditActionLabel(record.action)}</span></>}
         size="md"
         showCancel
-        cancelText="Close"
-        confirmText="Confirm"
+        cancelText={t("common.close")}
+        confirmText={t("auditExport.confirm")}
         confirmDisabled={!selectedFormat || isExporting}
         onConfirm={handleConfirm}
       >

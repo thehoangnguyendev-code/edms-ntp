@@ -23,6 +23,7 @@ import { IconBrandTelegram, IconFilter2, IconPencilMinus, IconShare2, IconShare3
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { publishingTemplates as publishingTemplatesBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useTranslation } from "@/i18n";
 
 type SortConfig = {
   key: string;
@@ -98,6 +99,7 @@ export const PublishingTemplatesView: React.FC = () => {
     || hasPermissionAlias('settings.configuration.edit')
     || hasPermissionAlias('settings.configuration.manage');
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const requestSeqRef = useRef(0);
@@ -170,8 +172,8 @@ export const PublishingTemplatesView: React.FC = () => {
       setTemplates([]);
       setTotalItems(0);
       setTotalPages(1);
-      const message = extractApiMessage(error, "Unable to load publishing templates from server.");
-      showToast({ type: "error", title: "Load failed", message });
+      const message = extractApiMessage(error, t("publishingTemplates.loadFailedMessage"));
+      showToast({ type: "error", title: t("publishingTemplates.loadFailedTitle"), message });
     } finally {
       if (requestId === requestSeqRef.current) {
         setIsLoading(false);
@@ -192,10 +194,10 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.duplicateTemplate(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Duplicated", message: "Publishing template duplicated." });
+      showToast({ type: "success", title: t("publishingTemplates.duplicatedTitle"), message: t("publishingTemplates.duplicatedMessage") });
     } catch (error) {
       console.error("Failed to duplicate publishing template", error);
-      showToast({ type: "error", title: "Duplicate failed", message: "Unable to duplicate publishing template." });
+      showToast({ type: "error", title: t("publishingTemplates.duplicateFailedTitle"), message: t("publishingTemplates.duplicateFailedMessage") });
     } finally {
       setIsSaving(false);
     }
@@ -206,10 +208,10 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.toggleStatus(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Status updated", message: "Publishing template status updated." });
+      showToast({ type: "success", title: t("publishingTemplates.statusUpdatedTitle"), message: t("publishingTemplates.statusUpdatedMessage") });
     } catch (error) {
       console.error("Failed to toggle publishing template status", error);
-      showToast({ type: "error", title: "Update failed", message: "Unable to update publishing template status." });
+      showToast({ type: "error", title: t("publishingTemplates.statusUpdateFailedTitle"), message: t("publishingTemplates.statusUpdateFailedMessage") });
     } finally {
       setIsSaving(false);
     }
@@ -220,10 +222,10 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.deleteTemplate(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Deleted", message: "Publishing template deleted." });
+      showToast({ type: "success", title: t("publishingTemplates.deletedTitle"), message: t("publishingTemplates.deletedMessage") });
     } catch (error) {
       console.error("Failed to delete publishing template", error);
-      showToast({ type: "error", title: "Delete failed", message: "Unable to delete publishing template." });
+      showToast({ type: "error", title: t("publishingTemplates.deleteFailedTitle"), message: t("publishingTemplates.deleteFailedMessage") });
     } finally {
       setIsSaving(false);
       setDeleteTarget(null);
@@ -235,10 +237,10 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.publishTemplate(id, "Publishing template published from admin screen");
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Published", message: "Publishing template published." });
+      showToast({ type: "success", title: t("publishingTemplates.publishedTitle"), message: t("publishingTemplates.publishedMessage") });
     } catch (error) {
       console.error("Failed to publish publishing template", error);
-      showToast({ type: "error", title: "Publish failed", message: "Unable to publish publishing template." });
+      showToast({ type: "error", title: t("publishingTemplates.publishFailedTitle"), message: t("publishingTemplates.publishFailedMessage") });
     } finally {
       setIsSaving(false);
     }

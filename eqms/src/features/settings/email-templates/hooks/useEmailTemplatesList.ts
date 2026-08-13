@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import { useDebounce } from "@/hooks";
 import { formatDateNumeric } from "@/utils/format";
 import { emailTemplateApi } from "@/services/api";
@@ -73,6 +74,7 @@ const downloadCsv = (csv: string, fileName: string) => {
 export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
   const autoFetch = options?.autoFetch ?? true;
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const requestSeqRef = useRef(0);
 
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
@@ -136,7 +138,7 @@ export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
       setEmailTemplates([]);
       setTotalItems(0);
       setTotalPages(1);
-      showToast({ type: "error", title: "Load Failed", message: "Unable to load email templates from backend" });
+      showToast({ type: "error", title: t("emailTemplates.loadFailedTitle"), message: t("emailTemplates.loadFailedMessage") });
     } finally {
       if (requestId === requestSeqRef.current) {
         setIsLoading(false);
@@ -154,6 +156,7 @@ export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
     typeFilter,
     updatedFrom,
     updatedTo,
+    t,
   ]);
 
   useEffect(() => {
@@ -180,10 +183,10 @@ export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
     try {
       const newTemplate = await emailTemplateApi.createEmailTemplate(payload);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Template Created", message: `${payload.name} has been created successfully` });
+      showToast({ type: "success", title: t("emailTemplates.createdTitle"), message: t("emailTemplates.createdMessage", { name: payload.name }) });
       return newTemplate;
     } catch (error) {
-      showToast({ type: "error", title: "Create Failed", message: "Unable to create email template" });
+      showToast({ type: "error", title: t("emailTemplates.createFailedTitle"), message: t("emailTemplates.createFailedMessage") });
       throw error;
     }
   };
@@ -192,10 +195,10 @@ export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
     try {
       const updated = await emailTemplateApi.updateEmailTemplate(id, payload);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Template Updated", message: "Email template has been updated successfully" });
+      showToast({ type: "success", title: t("emailTemplates.updatedTitle"), message: t("emailTemplates.updatedMessage") });
       return updated;
     } catch (error) {
-      showToast({ type: "error", title: "Update Failed", message: "Unable to update email template" });
+      showToast({ type: "error", title: t("emailTemplates.updateFailedTitle"), message: t("emailTemplates.updateFailedMessage") });
       throw error;
     }
   };
@@ -204,9 +207,9 @@ export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
     try {
       await emailTemplateApi.deleteEmailTemplate(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Template Deleted", message: `${templateName} has been deleted successfully` });
+      showToast({ type: "success", title: t("emailTemplates.deletedTitle"), message: t("emailTemplates.deletedMessage", { name: templateName }) });
     } catch (error) {
-      showToast({ type: "error", title: "Delete Failed", message: "Unable to delete email template" });
+      showToast({ type: "error", title: t("emailTemplates.deleteFailedTitle"), message: t("emailTemplates.deleteFailedMessage") });
       throw error;
     }
   };
@@ -215,10 +218,10 @@ export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
     try {
       const duplicatedTemplate = await emailTemplateApi.duplicateEmailTemplate(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Template Duplicated", message: `${duplicatedTemplate.name} has been created successfully` });
+      showToast({ type: "success", title: t("emailTemplates.duplicatedTitle"), message: t("emailTemplates.duplicatedMessage", { name: duplicatedTemplate.name }) });
       return duplicatedTemplate;
     } catch (error) {
-      showToast({ type: "error", title: "Duplicate Failed", message: "Unable to duplicate email template" });
+      showToast({ type: "error", title: t("emailTemplates.duplicateFailedTitle"), message: t("emailTemplates.duplicateFailedMessage") });
       throw error;
     }
   };
@@ -227,10 +230,10 @@ export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
     try {
       const updated = await emailTemplateApi.toggleTemplateStatus(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Status Updated", message: "Template status has been updated successfully" });
+      showToast({ type: "success", title: t("emailTemplates.statusUpdatedTitle"), message: t("emailTemplates.statusUpdatedMessage") });
       return updated;
     } catch (error) {
-      showToast({ type: "error", title: "Update Failed", message: "Unable to update template status" });
+      showToast({ type: "error", title: t("emailTemplates.statusUpdateFailedTitle"), message: t("emailTemplates.statusUpdateFailedMessage") });
       throw error;
     }
   };
@@ -255,7 +258,7 @@ export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
       downloadCsv(buildCsv(rows), "email-templates.csv");
       return rows;
     } catch (error) {
-      showToast({ type: "error", title: "Export Failed", message: "Unable to export email templates" });
+      showToast({ type: "error", title: t("emailTemplates.exportFailedTitle"), message: t("emailTemplates.exportFailedMessage") });
       throw error;
     } finally {
       setIsExporting(false);
@@ -271,6 +274,7 @@ export function useEmailTemplatesList(options?: { autoFetch?: boolean }) {
     typeFilter,
     updatedFrom,
     updatedTo,
+    t,
   ]);
 
   const clearFilters = () => {

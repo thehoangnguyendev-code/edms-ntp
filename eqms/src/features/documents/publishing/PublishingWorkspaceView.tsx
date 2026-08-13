@@ -25,6 +25,7 @@ import { buildPreviewVersionCacheBuster, replaceObjectUrlPreview, revokeObjectUr
 import { cn } from "@/components/ui/utils";
 import { BORDER_RADIUS, COLORS, COMPONENT_PRESETS, PADDING, SHADOW, TYPOGRAPHY } from "@/config/ui-standards";
 import { IconBookmark, IconFileOrientation, IconFileTypePdf } from "@tabler/icons-react";
+import { useTranslation } from "@/i18n";
 
 const extractApiMessage = (error: unknown, fallback: string): string => {
   if (typeof error === "object" && error !== null) {
@@ -111,6 +112,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
   const location = useLocation();
   const { navigateTo } = useNavigateWithLoading();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
   const collapseTransition = useMemo(
     () => (shouldReduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 90, damping: 16 }),
@@ -448,7 +450,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         }
       } catch (error) {
         console.error("Failed to load publishing workspace", error);
-        showToast({ type: "error", title: "Publishing Workspace", message: extractApiMessage(error, "Couldn't load workspace.") });
+        showToast({ type: "error", title: t("publishingWorkspace.title"), message: extractApiMessage(error, t("publishingWorkspace.loadFailed")) });
       } finally {
         if (alive) {
           setPreviewLoading(false);
@@ -546,14 +548,14 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       } catch (error) {
         console.error("Failed to load publishing workspace preview", error);
         if (alive) {
-          showToast({ type: "error", title: "Publishing Workspace", message: "Couldn't load preview PDF." });
+          showToast({ type: "error", title: t("publishingWorkspace.title"), message: t("publishingWorkspace.previewLoadFailed") });
         }
       }
     })();
     return () => {
       alive = false;
     };
-  }, [revisionId, previewUrl, showToast, workspace?.previewReady]);
+  }, [revisionId, previewUrl, showToast, t, workspace?.previewReady]);
 
   useEffect(() => {
     let alive = true;
@@ -716,7 +718,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
   const handleGeneratePreview = async () => {
     const rangeError = validatePageRangeDraft();
     if (rangeError) {
-      showToast({ type: "error", title: "Publishing Range", message: rangeError });
+      showToast({ type: "error", title: t("publishingWorkspace.rangeTitle"), message: rangeError });
       return;
     }
     setPreviewRefreshLoading(true);
@@ -740,7 +742,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       setPreviewUrl((current) => replaceObjectUrlPreview(current, blob));
     } catch (error) {
       console.error("Failed to generate publishing preview", error);
-      showToast({ type: "error", title: "Publishing Preview", message: extractApiMessage(error, "Couldn't generate preview.") });
+      showToast({ type: "error", title: t("publishingWorkspace.previewTitle"), message: extractApiMessage(error, t("publishingWorkspace.previewGenerateFailed")) });
     } finally {
       setSaving(false);
       setSavingAction(null);
@@ -751,7 +753,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
   const handlePublishConfirm = async (signature: { reason: string; signatureToken?: string }) => {
     const rangeError = validatePageRangeDraft();
     if (rangeError) {
-      showToast({ type: "error", title: "Publishing Range", message: rangeError });
+      showToast({ type: "error", title: t("publishingWorkspace.rangeTitle"), message: rangeError });
       return;
     }
     setSaving(true);
@@ -802,7 +804,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         }
       }
 
-      showToast({ type: "success", title: "Revision Published", message: "Revision has been published to Effective successfully." });
+      showToast({ type: "success", title: t("publishingWorkspace.publishedTitle"), message: t("publishingWorkspace.publishedMessage") });
       const refreshed = await documentApi.getRevisionByIdSnapshot(revisionId, { force: true });
       navigateTo(ROUTES.DOCUMENTS.REVISIONS.DETAIL(revisionId), {
         state: buildRevisionDetailNavigationState({
@@ -844,7 +846,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       });
     } catch (error) {
       console.error("Failed to publish revision", error);
-      showToast({ type: "error", title: "Publish Revision", message: extractApiMessage(error, "Couldn't publish revision.") });
+      showToast({ type: "error", title: t("publishingWorkspace.publishTitle"), message: extractApiMessage(error, t("publishingWorkspace.publishFailed")) });
     } finally {
       setSaving(false);
       setSavingAction(null);

@@ -52,6 +52,7 @@ import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { FilterOptionButton } from "@/components/ui/filter/FilterOptionButton";
 import { IconFilter2 } from "@tabler/icons-react";
+import { useTranslation } from "@/i18n";
 
 // Helper functions
 const getTypeIcon = (type: NotificationType) => {
@@ -160,6 +161,7 @@ const NotificationActionsDropdown: React.FC<{
   onDelete,
   onView,
 }) => {
+  const { t } = useTranslation();
   return (
     <PortalDropdownMenu isOpen={isOpen} onClose={onClose} position={position} minWidth={160}>
       <div className="py-1">
@@ -173,7 +175,7 @@ const NotificationActionsDropdown: React.FC<{
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
           >
             <Eye className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">Mark as Read</span>
+            <span className="font-medium">{t('notificationsUi.markAsRead')}</span>
           </button>
         )}
         <button
@@ -185,7 +187,7 @@ const NotificationActionsDropdown: React.FC<{
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
         >
           <Trash2 className="h-4 w-4 flex-shrink-0" />
-          <span className="font-medium">Delete</span>
+          <span className="font-medium">{t('common.delete')}</span>
         </button>
       </div>
     </PortalDropdownMenu>
@@ -211,6 +213,7 @@ const NotificationRow: React.FC<{
   isSelected,
   onToggleSelect,
 }) => {
+    const { t } = useTranslation();
     const Icon = getNotificationTypeIcon(notification.type);
     const colors = getNotificationTypeIconStyles(notification.type);
     const tdClass = "py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap";
@@ -229,10 +232,10 @@ const NotificationRow: React.FC<{
         return `${currentName} • ${current}${totalLabel}`;
       }
       if (current) {
-        return `Reviewer ${current}${totalLabel}`;
+        return `${t('notificationsUi.reviewer')} ${current}${totalLabel}`;
       }
       if (nextName) {
-        return `Next: ${nextName}${next ? ` • ${next}` : ""}`;
+        return `${t('notificationsUi.next')}: ${nextName}${next ? ` • ${next}` : ""}`;
       }
       return "";
     })();
@@ -255,13 +258,13 @@ const NotificationRow: React.FC<{
             checked={isSelected}
             onChange={() => onToggleSelect(notification.id)}
             className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-            aria-label="Select notification"
+            aria-label={t('notificationsUi.selectNotification')}
           />
         </td>
 
         <td className={cn("py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap", "text-center text-slate-500 w-14 relative")}>
           {notification.status === "unread" && (
-            <div className="absolute inset-y-0 left-0 w-1 bg-emerald-500" title="Unread" />
+            <div className="absolute inset-y-0 left-0 w-1 bg-emerald-500" title={t('notificationsUi.unread')} />
           )}
           {index}
         </td>
@@ -331,7 +334,7 @@ const NotificationRow: React.FC<{
 
         <td className={tdClass}>
           <Badge color={getPriorityColor(notification.priority)} size="sm" className="capitalize">
-            {notification.priority}
+            {t(`notificationsUi.${notification.priority}`)}
           </Badge>
         </td>
 
@@ -347,7 +350,7 @@ const NotificationRow: React.FC<{
             ref={getRef(notification.id)}
             onClick={(e) => onToggle(notification.id, e)}
             className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-            aria-label="More actions"
+            aria-label={t('actionDropdown.moreActions')}
           >
             <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
           </button>
@@ -362,24 +365,25 @@ const EmptyState: React.FC<{
   hasActiveFilters?: boolean;
   onClearFilters?: () => void;
 }> = ({ type, hasActiveFilters, onClearFilters }) => {
+  const { t } = useTranslation();
   const messages = {
     all: {
-      title: "No notifications",
+      title: t('notificationsUi.noNotifications'),
       description: hasActiveFilters
-        ? "We couldn't find any notifications matching your filters. Try adjusting your search criteria or clear filters."
-        : "You're all caught up!",
+        ? t('notificationsUi.noNotificationsFiltered')
+        : t('notificationsUi.allCaughtUp'),
     },
     "for-me": {
-      title: "No personal notifications",
+      title: t('notificationsUi.noPersonalNotifications'),
       description: hasActiveFilters
-        ? "We couldn't find any personal notifications matching your filters."
-        : "You don't have any personal notifications yet.",
+        ? t('notificationsUi.noPersonalNotificationsFiltered')
+        : t('notificationsUi.noPersonalNotificationsDescription'),
     },
     system: {
-      title: "No system notifications",
+      title: t('notificationsUi.noSystemNotifications'),
       description: hasActiveFilters
-        ? "We couldn't find any system notifications matching your filters."
-        : "There are no system notifications at this time.",
+        ? t('notificationsUi.noSystemNotificationsFiltered')
+        : t('notificationsUi.noSystemNotificationsDescription'),
     },
   };
 
@@ -396,6 +400,7 @@ const EmptyState: React.FC<{
 export const NotificationsView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
   const {
@@ -458,9 +463,9 @@ export const NotificationsView: React.FC = () => {
   }, [notificationSummary]);
 
   const NOTIFICATION_TABS: TabItem[] = [
-    { id: "all", label: "All Notifications", count: counts.all },
-    { id: "for-me", label: "For Me", count: counts.forMe },
-    { id: "system", label: "Systems", count: counts.system },
+    { id: "all", label: t('notificationsUi.allNotifications'), count: counts.all },
+    { id: "for-me", label: t('notificationsUi.forMe'), count: counts.forMe },
+    { id: "system", label: t('notificationsUi.system'), count: counts.system },
   ];
 
   const activeScope = activeTab === "for-me" ? "personal" : activeTab === "system" ? "system" : "all";
@@ -525,7 +530,7 @@ export const NotificationsView: React.FC = () => {
         return;
       }
       console.error("Failed to load notifications", error);
-      showToast({ type: "error", title: "Failed to load notifications", message: "Please try refreshing the page." });
+      showToast({ type: "error", title: t("notifications.loadFailedTitle"), message: t("notifications.refreshPage") });
       setNotifications([]);
     } finally {
       if (requestId !== requestSeqRef.current) {
@@ -601,7 +606,7 @@ export const NotificationsView: React.FC = () => {
       })
       .catch((error) => {
         console.error("Failed to mark notification as read", error);
-        showToast({ type: "error", title: "Failed to mark as read", message: "Please try again." });
+        showToast({ type: "error", title: t("notifications.markReadFailedTitle"), message: t("common.tryAgain") });
       });
   };
 
@@ -614,7 +619,7 @@ export const NotificationsView: React.FC = () => {
       })
       .catch((error) => {
         console.error("Failed to mark all as read", error);
-        showToast({ type: "error", title: "Failed to mark all as read", message: "Please try again." });
+        showToast({ type: "error", title: t("notifications.markAllReadFailedTitle"), message: t("common.tryAgain") });
       })
       .finally(() => setIsMarkAllModalOpen(false));
   };
@@ -628,7 +633,7 @@ export const NotificationsView: React.FC = () => {
       })
       .catch((error) => {
         console.error("Failed to delete notification", error);
-        showToast({ type: "error", title: "Failed to delete notification", message: "Please try again." });
+        showToast({ type: "error", title: t("notifications.deleteFailedTitle"), message: t("common.tryAgain") });
       });
   };
 
@@ -657,7 +662,7 @@ export const NotificationsView: React.FC = () => {
       await loadNotifications(true);
     } catch (error) {
       console.error("Failed to mark selected notifications as read", error);
-      showToast({ type: "error", title: "Failed to mark selected as read", message: "Please try again." });
+      showToast({ type: "error", title: t("notifications.markSelectedReadFailedTitle"), message: t("common.tryAgain") });
     } finally {
       setIsBulkActionLoading(false);
     }
@@ -673,7 +678,7 @@ export const NotificationsView: React.FC = () => {
       await loadNotifications(true);
     } catch (error) {
       console.error("Failed to delete selected notifications", error);
-      showToast({ type: "error", title: "Failed to delete selected", message: "Please try again." });
+      showToast({ type: "error", title: t("notifications.deleteSelectedFailedTitle"), message: t("common.tryAgain") });
     } finally {
       setIsBulkActionLoading(false);
     }
@@ -688,7 +693,7 @@ export const NotificationsView: React.FC = () => {
       await loadNotifications(true);
     } catch (error) {
       console.error("Failed to clear read notifications", error);
-      showToast({ type: "error", title: "Failed to clear read notifications", message: "Please try again." });
+      showToast({ type: "error", title: t("notifications.clearReadFailedTitle"), message: t("common.tryAgain") });
     } finally {
       setIsBulkActionLoading(false);
     }
@@ -738,7 +743,7 @@ export const NotificationsView: React.FC = () => {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to export notifications", error);
-      showToast({ type: "error", title: "Failed to export notifications", message: "Please try again." });
+      showToast({ type: "error", title: t("notifications.exportFailedTitle"), message: t("common.tryAgain") });
     } finally {
       setIsExporting(false);
     }
@@ -781,7 +786,7 @@ export const NotificationsView: React.FC = () => {
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {/* Header: Title + Action Button */}
       <PageHeader
-        title="Notifications"
+        title={t('notificationsUi.title')}
         breadcrumbItems={notificationsBreadcrumb(navigate)}
         actions={
           <>
@@ -793,7 +798,7 @@ export const NotificationsView: React.FC = () => {
               className="whitespace-nowrap gap-2"
             >
               <Download className="h-4 w-4" />
-              {isExporting ? "Exporting..." : "Export"}
+              {isExporting ? t('notificationsUi.exporting') : t('notificationsUi.export')}
             </Button>
             <Button
               variant="outline"
@@ -803,7 +808,7 @@ export const NotificationsView: React.FC = () => {
               className="whitespace-nowrap gap-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
             >
               <CheckCheck className="h-4 w-4" />
-              <span className="inline">Mark all as read</span>
+              <span className="inline">{t('notificationsUi.markAllRead')}</span>
             </Button>
             <Button
               variant="outline"
@@ -813,7 +818,7 @@ export const NotificationsView: React.FC = () => {
               className="whitespace-nowrap gap-2"
             >
               <Trash2 className="h-4 w-4" />
-              <span className="inline">Clear read</span>
+              <span className="inline">{t('notificationsUi.clearRead')}</span>
             </Button>
           </>
         }
@@ -822,7 +827,7 @@ export const NotificationsView: React.FC = () => {
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
           <span className="text-xs md:text-sm font-medium text-emerald-800">
-            {selectedIds.size} selected
+            {t('notificationsUi.selectedCount', { count: selectedIds.size })}
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -833,7 +838,7 @@ export const NotificationsView: React.FC = () => {
               className="whitespace-nowrap gap-2"
             >
               <CheckCheck className="h-4 w-4" />
-              Mark as read
+              {t('notificationsUi.markAsRead')}
             </Button>
             <Button
               variant="outline"
@@ -843,7 +848,7 @@ export const NotificationsView: React.FC = () => {
               className="whitespace-nowrap gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
             >
               <Trash2 className="h-4 w-4" />
-              Delete
+              {t('common.delete')}
             </Button>
             <Button
               variant="ghost"
@@ -851,7 +856,7 @@ export const NotificationsView: React.FC = () => {
               onClick={() => setSelectedIds(new Set())}
               disabled={isBulkActionLoading}
             >
-              Clear selection
+              {t('notificationsUi.clearSelection')}
             </Button>
           </div>
         </div>
@@ -872,7 +877,7 @@ export const NotificationsView: React.FC = () => {
         <div className="px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 block">{t('common.search')}</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -880,7 +885,7 @@ export const NotificationsView: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search notifications..."
+                    placeholder={t('notificationsUi.searchPlaceholder')}
                     value={search}
                     onChange={(e) => {
                       setSearch(e.target.value);
@@ -906,7 +911,7 @@ export const NotificationsView: React.FC = () => {
                   className="whitespace-nowrap gap-2"
                 >
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {t('notificationsUi.filters')}
                 </Button>
               </div>
             </div>
@@ -914,7 +919,7 @@ export const NotificationsView: React.FC = () => {
             <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 block transition-colors px-0.5 mb-1.5">
-                  Search
+                  {t('common.search')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
@@ -922,7 +927,7 @@ export const NotificationsView: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search notifications..."
+                    placeholder={t('notificationsUi.searchPlaceholder')}
                     value={search}
                     onChange={(e) => {
                       setSearch(e.target.value);
@@ -943,59 +948,59 @@ export const NotificationsView: React.FC = () => {
 
               <div className="w-full">
                 <Select
-                  label="Status"
+                  label={t('notificationsUi.status')}
                   value={statusFilter}
                   onChange={(val) => {
                     setStatusFilter(val as string);
                     setCurrentPage(1);
                   }}
                   options={[
-                    { label: "All Status", value: "all" },
-                    { label: "Unread Only", value: "unread" },
-                    { label: "Read Only", value: "read" },
+                    { label: t('notificationsUi.allStatus'), value: "all" },
+                    { label: t('notificationsUi.unreadOnly'), value: "unread" },
+                    { label: t('notificationsUi.readOnly'), value: "read" },
                   ]}
                 />
               </div>
               <div className="w-full">
                 <Select
-                  label="Module"
+                  label={t('notificationsUi.module')}
                   value={module}
                   onChange={(val) => {
                     setModule(val as string);
                     setCurrentPage(1);
                   }}
                   options={[
-                    { label: "All Modules", value: "all" },
-                    { label: "Document", value: "Document" },
-                    { label: "Deviation", value: "Deviation" },
+                    { label: t('notificationsUi.allModules'), value: "all" },
+                    { label: t('notificationTypes.document-update'), value: "Document" },
+                    { label: t('notificationTypes.deviation-assignment'), value: "Deviation" },
                     { label: "CAPA", value: "CAPA" },
-                    { label: "Training", value: "Training" },
-                    { label: "Change Control", value: "Change Control" },
+                    { label: t('notificationTypes.training-completion'), value: "Training" },
+                    { label: t('notificationsUi.changeControl'), value: "Change Control" },
                   ]}
                 />
               </div>
 
               <div className="w-full">
                 <Select
-                  label="Priority"
+                  label={t('notificationsUi.priority')}
                   value={priority}
                   onChange={(val) => {
                     setPriority(val as string);
                     setCurrentPage(1);
                   }}
                   options={[
-                    { label: "All Priorities", value: "all" },
-                    { label: "Critical", value: "critical" },
-                    { label: "High", value: "high" },
-                    { label: "Medium", value: "medium" },
-                    { label: "Low", value: "low" },
+                    { label: t('notificationsUi.allPriorities'), value: "all" },
+                    { label: t('notificationsUi.critical'), value: "critical" },
+                    { label: t('notificationsUi.high'), value: "high" },
+                    { label: t('notificationsUi.medium'), value: "medium" },
+                    { label: t('notificationsUi.low'), value: "low" },
                   ]}
                 />
               </div>
 
               <div className="w-full">
                 <DateRangePicker
-                  label="Time Range"
+                  label={t('notificationsUi.timeRange')}
                   startDate={dateFrom}
                   endDate={dateTo}
                   onStartDateChange={(val) => {
@@ -1006,7 +1011,7 @@ export const NotificationsView: React.FC = () => {
                     setDateTo(val);
                     setCurrentPage(1);
                   }}
-                  placeholder="Select date range"
+                  placeholder={t('notificationsUi.selectDateRange')}
                 />
               </div>
               <div className="w-full flex justify-start">
@@ -1016,7 +1021,7 @@ export const NotificationsView: React.FC = () => {
                   onClick={handleClearFilters}
                   className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap"
                 >
-                  Clear Filters
+                  {t('notificationsUi.clearFilters')}
                 </Button>
               </div>
             </div>
@@ -1048,18 +1053,18 @@ export const NotificationsView: React.FC = () => {
                         checked={notifications.length > 0 && selectedIds.size === notifications.length}
                         onChange={toggleSelectAll}
                         className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                        aria-label="Select all notifications"
+                        aria-label={t('notificationsUi.selectAll')}
                       />
                     </th>
                     <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-14 text-center">
-                      No.
+                      {t('notificationsUi.number')}
                     </th>
                     {[
-                      { label: "Notification", id: "title", sortable: true },
-                      { label: "Module", id: "module", sortable: true },
-                      { label: "Related Item", id: "relatedItem", sortable: true },
-                      { label: "Priority", id: "priority", sortable: true },
-                      { label: "Time", id: "createdAt", sortable: true }
+                      { label: t('notificationsUi.notification'), id: "title", sortable: true },
+                      { label: t('notificationsUi.module'), id: "module", sortable: true },
+                      { label: t('notificationsUi.relatedItem'), id: "relatedItem", sortable: true },
+                      { label: t('notificationsUi.priority'), id: "priority", sortable: true },
+                      { label: t('notificationsUi.time'), id: "createdAt", sortable: true }
                     ].map((col, idx) => {
                       const isSorted = sortConfig.key === col.id;
                       const canSort = col.sortable;
@@ -1085,7 +1090,7 @@ export const NotificationsView: React.FC = () => {
                       );
                     })}
                     <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider text-center whitespace-nowrap border-b-2 border-slate-200 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
-                      Action
+                      {t('notificationsUi.action')}
                     </th>
                   </tr>
                 </thead>
@@ -1163,10 +1168,10 @@ export const NotificationsView: React.FC = () => {
         isOpen={isMarkAllModalOpen}
         onClose={() => setIsMarkAllModalOpen(false)}
         onConfirm={handleMarkAllAsRead}
-        title="Mark All as Read"
-        description="Are you sure you want to mark all unread notifications as read? This action cannot be undone."
+        title={t('notificationsUi.markAllRead')}
+        description={t('notificationsUi.markAllReadConfirm')}
         type="confirm"
-        confirmText="Confirm"
+        confirmText={t('alertModal.confirm')}
         showCancel
       />
 
@@ -1180,15 +1185,15 @@ export const NotificationsView: React.FC = () => {
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Status"
+          label={t('notificationsUi.status')}
           isExpanded={expandedSections.has("status")}
           onToggle={() => toggleSection("status")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Status", value: "all" },
-              { label: "Unread Only", value: "unread" },
-              { label: "Read Only", value: "read" },
+              { label: t('notificationsUi.allStatus'), value: "all" },
+              { label: t('notificationsUi.unreadOnly'), value: "unread" },
+              { label: t('notificationsUi.readOnly'), value: "read" },
             ].map((opt) => (
               <FilterOptionButton
                 key={opt.value}
@@ -1201,18 +1206,18 @@ export const NotificationsView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Module"
+          label={t('notificationsUi.module')}
           isExpanded={expandedSections.has("module")}
           onToggle={() => toggleSection("module")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Modules", value: "all" },
-              { label: "Document", value: "Document" },
-              { label: "Deviation", value: "Deviation" },
+              { label: t('notificationsUi.allModules'), value: "all" },
+              { label: t('notificationTypes.document-update'), value: "Document" },
+              { label: t('notificationTypes.deviation-assignment'), value: "Deviation" },
               { label: "CAPA", value: "CAPA" },
-              { label: "Training", value: "Training" },
-              { label: "Change Control", value: "Change Control" },
+              { label: t('notificationTypes.training-completion'), value: "Training" },
+              { label: t('notificationsUi.changeControl'), value: "Change Control" },
             ].map((opt) => (
               <FilterOptionButton
                 key={opt.value}
@@ -1225,17 +1230,17 @@ export const NotificationsView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Priority"
+          label={t('notificationsUi.priority')}
           isExpanded={expandedSections.has("priority")}
           onToggle={() => toggleSection("priority")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Priorities", value: "all" },
-              { label: "Critical", value: "critical" },
-              { label: "High", value: "high" },
-              { label: "Medium", value: "medium" },
-              { label: "Low", value: "low" },
+              { label: t('notificationsUi.allPriorities'), value: "all" },
+              { label: t('notificationsUi.critical'), value: "critical" },
+              { label: t('notificationsUi.high'), value: "high" },
+              { label: t('notificationsUi.medium'), value: "medium" },
+              { label: t('notificationsUi.low'), value: "low" },
             ].map((opt) => (
               <FilterOptionButton
                 key={opt.value}
@@ -1248,7 +1253,7 @@ export const NotificationsView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Time Range"
+          label={t('notificationsUi.timeRange')}
           isExpanded={expandedSections.has("time")}
           onToggle={() => toggleSection("time")}
         >
@@ -1265,7 +1270,7 @@ export const NotificationsView: React.FC = () => {
                 setDateTo(val);
                 setCurrentPage(1);
               }}
-              placeholder="Select date range"
+              placeholder={t('notificationsUi.selectDateRange')}
             />
           </div>
         </FilterAccordionItem>

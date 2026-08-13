@@ -17,6 +17,7 @@ import { useSecurityESign } from "@/features/security-authorization/shared/useSe
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
 import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
+import { useTranslation } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -33,6 +34,7 @@ export const SodConstraintFormView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias(MANAGE_PERM);
   const { requestSignature, signatureModal } = useSecurityESign();
@@ -72,7 +74,7 @@ export const SodConstraintFormView: React.FC = () => {
         setActive(c.active);
       })
       .catch(() => {
-        if (!cancelled) showToast({ type: "error", message: "Failed to load SoD constraint" });
+        if (!cancelled) showToast({ type: "error", message: t("sodConstraint.loadFailed") });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -80,7 +82,7 @@ export const SodConstraintFormView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, showToast]);
+  }, [id, showToast, t]);
 
   const handleBack = () => navigateBack(navigate, location.state, ROUTES.SECURITY.SOD);
 
@@ -88,15 +90,15 @@ export const SodConstraintFormView: React.FC = () => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Name is required" });
+      showToast({ type: "error", title: t("sodConstraint.validationTitle"), message: t("sodConstraint.nameRequired") });
       return;
     }
     if (!codeA.trim() || !codeB.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Both permission codes are required" });
+      showToast({ type: "error", title: t("sodConstraint.validationTitle"), message: t("sodConstraint.permissionCodesRequired") });
       return;
     }
     if (codeA.trim() === codeB.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Permission codes must be different" });
+      showToast({ type: "error", title: t("sodConstraint.validationTitle"), message: t("sodConstraint.permissionCodesDifferent") });
       return;
     }
     const sig = await requestSignature(isEdit ? "Update SoD Constraint" : "Create SoD Constraint", "SoD Rule Change");
@@ -113,14 +115,14 @@ export const SodConstraintFormView: React.FC = () => {
     try {
       if (initial) {
         await settingsApi.updateSodConstraint(initial.id, payload, sig);
-        showToast({ type: "success", message: "Constraint updated" });
+        showToast({ type: "success", message: t("sodConstraint.updated") });
       } else {
         await settingsApi.createSodConstraint(payload, sig);
-        showToast({ type: "success", message: "Constraint created" });
+        showToast({ type: "success", message: t("sodConstraint.created") });
       }
       handleBack();
     } catch (e: any) {
-      showToast({ type: "error", message: e?.response?.data?.message ?? "Save failed" });
+      showToast({ type: "error", message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("sodConstraint.saveFailed") });
     } finally {
       setSaving(false);
     }

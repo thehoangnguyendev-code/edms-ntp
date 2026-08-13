@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { settingsApi } from "@/services/api/settings";
 import { dictionaryApi } from "@/services/api";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
@@ -137,6 +139,7 @@ const buildQueryParams = (state: {
 
 export function useUserList() {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestSeqRef = useRef(0);
   const urlState = useMemo(() => parseQueryState(searchParams), [searchParams]);
@@ -193,11 +196,11 @@ export function useUserList() {
       if (import.meta.env.DEV) console.error("Failed to load user lookups", error);
       showToast({
         type: "error",
-        title: "Load Failed",
-        message: "Unable to load filter data from server.",
+        title: t("userManagement.loadFailedTitle"),
+        message: t("userManagement.loadFiltersFailed"),
       });
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const fetchUsers = useCallback(async (silent = false) => {
     const requestSeq = ++requestSeqRef.current;
@@ -239,8 +242,8 @@ export function useUserList() {
       if (!silent) {
         showToast({
           type: "error",
-          title: "Load Failed",
-          message: "Unable to load users from server.",
+          title: t("userManagement.loadFailedTitle"),
+          message: t("userManagement.loadUsersFailed"),
         });
         setUsers([]);
         setTotalItems(0);
@@ -272,6 +275,7 @@ export function useUserList() {
     sortConfig.direction,
     showTerminated,
     showToast,
+    t,
   ]);
 
   useEffect(() => {
@@ -519,11 +523,11 @@ export function useUserList() {
 
       showToast({
         type: "success",
-        title: "Export Successful",
-        message: `Exported ${totalItems} users to CSV`,
+        title: t("userManagement.exportSuccessTitle"),
+        message: t("userManagement.exportSuccessMessage", { count: totalItems }),
       });
     } catch (error) {
-      showToast({ type: "error", title: "Export Failed", message: String(error) });
+      showToast({ type: "error", title: t("userManagement.exportFailedTitle"), message: getApiErrorMessage(error, t("userManagement.exportFailedMessage")) });
     }
   };
 
@@ -531,9 +535,9 @@ export function useUserList() {
     try {
       await settingsApi.suspendUser(userId, { reason, suspendedUntil, signatureToken });
       await fetchUsers();
-      showToast({ type: "warning", title: "User Suspended", message: `${userName} has been suspended.` });
+      showToast({ type: "warning", title: t("userManagement.suspendedTitle"), message: t("userManagement.suspendedMessage", { name: userName }) });
     } catch (error) {
-      showToast({ type: "error", title: "Suspend Failed", message: String(error) });
+      showToast({ type: "error", title: t("userManagement.suspendFailedTitle"), message: getApiErrorMessage(error, t("userManagement.suspendFailedMessage")) });
     }
   };
 
@@ -541,9 +545,9 @@ export function useUserList() {
     try {
       await settingsApi.terminateUser(userId, { reason, terminationDate, signatureToken });
       await fetchUsers();
-      showToast({ type: "error", title: "Employee Terminated", message: `${userName} has been terminated.` });
+      showToast({ type: "error", title: t("userManagement.terminatedTitle"), message: t("userManagement.terminatedMessage", { name: userName }) });
     } catch (error) {
-      showToast({ type: "error", title: "Terminate Failed", message: String(error) });
+      showToast({ type: "error", title: t("userManagement.terminateFailedTitle"), message: getApiErrorMessage(error, t("userManagement.terminateFailedMessage")) });
     }
   };
 
@@ -551,9 +555,9 @@ export function useUserList() {
     try {
       await settingsApi.reinstateUser(userId);
       await fetchUsers();
-      showToast({ type: "success", title: "User Reinstated", message: `${userName} has been reinstated as Active.` });
+      showToast({ type: "success", title: t("userManagement.reinstatedTitle"), message: t("userManagement.reinstatedMessage", { name: userName }) });
     } catch (error) {
-      showToast({ type: "error", title: "Reinstate Failed", message: String(error) });
+      showToast({ type: "error", title: t("userManagement.reinstateFailedTitle"), message: getApiErrorMessage(error, t("userManagement.reinstateFailedMessage")) });
     }
   };
 

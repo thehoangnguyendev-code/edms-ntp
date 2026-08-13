@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { MoreVertical } from 'lucide-react';
 import { SmartDropdown, DropdownItem, DropdownDivider } from './SmartDropdown';
 import { cn } from '../utils';
+import { useTranslation } from '@/i18n';
 
 /**
  * ActionDropdown - Table row action menu component
@@ -78,6 +79,7 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
   triggerIcon,
   minWidth = 180,
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -112,7 +114,7 @@ export const ActionDropdown: React.FC<ActionDropdownProps> = ({
           disabled && 'bg-slate-100 text-slate-400 cursor-not-allowed hover:bg-slate-100',
           triggerClassName
         )}
-        aria-label="More actions"
+        aria-label={t('actionDropdown.moreActions')}
         aria-haspopup="true"
         aria-expanded={isOpen}
       >

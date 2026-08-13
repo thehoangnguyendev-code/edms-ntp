@@ -296,7 +296,7 @@ export const DestroyControlledCopyView: React.FC = () => {
     if (!reportLostDamagedDecision?.allowed) {
       showToast({
         type: "error",
-        title: "Action not available",
+        title: t("controlledCopyDestroy.actionUnavailable.title"),
         message: getControlledCopyActionDeniedReason(reportLostDamagedDecision),
         duration: 3500,
       });

@@ -14,6 +14,8 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { useTableDragScroll, usePortalDropdown, useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast/Toast";
+import { useTranslation } from "@/i18n";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { cn } from "@/components/ui/utils";
@@ -53,6 +55,7 @@ export const PermissionSetsView: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"sets" | "catalog">("sets");
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { hasPermissionAlias } = usePermissions();
   const canViewPermissionSets = hasPermissionAlias("security.permission_sets.view");
@@ -130,7 +133,7 @@ export const PermissionSetsView: React.FC = () => {
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load permission sets" });
+      showToast({ type: "error", message: t("permissionSets.loadFailed") });
     } finally {
       setLoading(false);
       setInitialLoaded(true);
@@ -182,18 +185,18 @@ export const PermissionSetsView: React.FC = () => {
 
   const handleDelete = async (ps: PermissionSetResponse) => {
     if (ps.system) {
-      showToast({ type: "error", message: "System permission sets cannot be deleted" });
+      showToast({ type: "error", message: t("permissionSets.systemCannotDelete") });
       return;
     }
     const sig = await requestSignature(`Delete Permission Set "${ps.name}"`, "Permission Set Change");
     if (!sig) return;
     try {
       await settingsApi.deletePermissionSet(ps.id, sig);
-      showToast({ type: "success", message: "Permission set deleted" });
+      showToast({ type: "success", message: t("permissionSets.deleted") });
       setDeleteTarget(null);
       void load();
     } catch (error: any) {
-      showToast({ type: "error", message: error?.response?.data?.message ?? "Delete failed" });
+      showToast({ type: "error", message: error?.response?.data?.message ?? t("permissionSets.deleteFailed") });
     }
   };
 
@@ -209,10 +212,10 @@ export const PermissionSetsView: React.FC = () => {
       }, sig);
       const caps = await settingsApi.getPermissionSetCapabilities(ps.id);
       setCapabilityBySetId((prev) => ({ ...prev, [ps.id]: caps }));
-      showToast({ type: "success", message: `Permission set ${ps.active ? "deactivated" : "activated"}` });
+      showToast({ type: "success", message: t(ps.active ? "permissionSets.deactivated" : "permissionSets.activated") });
       void load();
     } catch {
-      showToast({ type: "error", message: "Failed to update status" });
+      showToast({ type: "error", message: t("permissionSets.statusUpdateFailed") });
     }
   };
 
@@ -221,7 +224,7 @@ export const PermissionSetsView: React.FC = () => {
       const all = await settingsApi.listPermissionSets();
       downloadJson(`permission-sets-${new Date().toISOString().split("T")[0]}.json`, all);
     } catch {
-      showToast({ type: "error", message: "Export failed" });
+      showToast({ type: "error", message: t("permissionSets.exportFailed") });
     }
   };
 
@@ -261,10 +264,10 @@ export const PermissionSetsView: React.FC = () => {
           permissionCodes: Array.isArray(item.permissionCodes) ? item.permissionCodes : [],
         });
       }
-      showToast({ type: "success", message: "Permission sets imported" });
+      showToast({ type: "success", message: t("permissionSets.imported") });
       void load();
-    } catch (error: any) {
-      showToast({ type: "error", message: error?.message ?? "Import failed" });
+    } catch (error: unknown) {
+      showToast({ type: "error", message: getApiErrorMessage(error, t("permissionSets.importFailed")) });
     } finally {
       if (importInputRef.current) importInputRef.current.value = "";
     }

@@ -202,8 +202,12 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
 
         openResultModal(
           "success",
-          showEditModal ? "Sub-Type Updated" : "Sub-Type Created",
-          `Sub-type "${saved.name}" has been ${showEditModal ? "updated" : "created"} successfully.`,
+          showEditModal
+            ? t("subTypes.updated.title")
+            : t("subTypes.created.title"),
+          showEditModal
+            ? t("subTypes.updated.message", { name: saved.name })
+            : t("subTypes.created.message", { name: saved.name }),
         );
         reload();
         setShowAddModal(false);
@@ -212,12 +216,14 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       } catch (error) {
         openResultModal(
           "error",
-          showEditModal ? "Sub-Type Update Failed" : "Sub-Type Create Failed",
+          showEditModal
+            ? t("subTypes.updateFailed.title")
+            : t("subTypes.createFailed.title"),
           extractApiMessage(
             error,
             showEditModal
-              ? "Unable to update sub-type."
-              : "Unable to create sub-type.",
+              ? t("subTypes.updateFailed.message")
+              : t("subTypes.createFailed.message"),
           ),
         );
         throw error;

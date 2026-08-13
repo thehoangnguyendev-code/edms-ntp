@@ -1,5 +1,7 @@
 package com.eqms.exception;
 
+import com.eqms.i18n.LocalizedMessageResolver;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -35,9 +37,24 @@ public record ApiErrorResponse(
                         ? Locale.forLanguageTag("vi")
                         : Locale.ENGLISH;
                 ResourceBundle bundle = ResourceBundle.getBundle("messages", supportedLocale);
-                return bundle.containsKey(key) ? bundle.getString(key) : fallbackMessage;
+                if (bundle.containsKey(key)) {
+                    return bundle.getString(key);
+                }
+                String authorizationMessage = LocalizedMessageResolver.resolve("authorization", code, null);
+                if (authorizationMessage != null) {
+                    return authorizationMessage;
+                }
+                // Older service methods may still throw an exception with an
+                // unregistered technical code. Do not expose an English
+                // fallback to a Vietnamese user; the stable `code` remains in
+                // the response for diagnostics and clients can handle it.
+                return "vi".equalsIgnoreCase(supportedLocale.getLanguage())
+                        ? "Không thể xử lý yêu cầu. Vui lòng kiểm tra dữ liệu và thử lại."
+                        : fallbackMessage;
             } catch (MissingResourceException ignored) {
-                return fallbackMessage;
+                return "vi".equalsIgnoreCase(LocaleContextHolder.getLocale().getLanguage())
+                        ? "Không thể xử lý yêu cầu. Vui lòng kiểm tra dữ liệu và thử lại."
+                        : fallbackMessage;
             }
         }
     }

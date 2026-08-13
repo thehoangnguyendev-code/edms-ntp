@@ -1,4 +1,5 @@
 import { readSystemLocalizationSettings } from '@/config/localization';
+import { t } from '@/i18n';
 
 /**
  * Renders an hours/minutes(/seconds) triple honoring the current user's Regional Formats
@@ -92,7 +93,7 @@ export function formatDate(date: string | Date, format: 'short' | 'long' | 'full
   const dateObj = typeof date === 'string' ? parseAnyDate(date) : date;
 
   if (isNaN(dateObj.getTime())) {
-    return 'Invalid Date';
+    return t('common.invalidDate');
   }
 
   const parts = getSystemDateParts(dateObj);
@@ -102,16 +103,27 @@ export function formatDate(date: string | Date, format: 'short' | 'long' | 'full
     return formatDateSegment(parts.day, parts.month, year);
   }
 
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const monthLong = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const { language, timeZone } = readSystemLocalizationSettings();
+  const normalizedTimeZone = timeZone === 'UTC+7' || timeZone === 'GMT+7'
+    ? 'Asia/Ho_Chi_Minh'
+    : timeZone || 'Asia/Ho_Chi_Minh';
 
   if (format === 'long') {
-    return `${parts.day} ${monthNames[parts.month - 1]} ${year}`;
+    return new Intl.DateTimeFormat(language || 'en', {
+      timeZone: normalizedTimeZone,
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(dateObj);
   }
 
-  // full format
-  return `${weekdays[dateObj.getDay()]}, ${parts.day} ${monthLong[parts.month - 1]} ${year}`;
+  return new Intl.DateTimeFormat(language || 'en', {
+    timeZone: normalizedTimeZone,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(dateObj);
 }
 
 /**
@@ -199,12 +211,14 @@ export function formatRelativeTime(dateString: string | Date): string {
   const diffMonth = Math.floor(diffDay / 30);
   const diffYear = Math.floor(diffDay / 365);
   
-  if (diffSec < 60) return "just now";
-  if (diffMin < 60) return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
-  if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
-  if (diffDay < 30) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
-  if (diffMonth < 12) return `${diffMonth} month${diffMonth > 1 ? 's' : ''} ago`;
-  return `${diffYear} year${diffYear > 1 ? 's' : ''} ago`;
+  if (diffSec < 60) return t('dateTime.justNow');
+  const language = readSystemLocalizationSettings().language || 'en';
+  const relative = new Intl.RelativeTimeFormat(language, { numeric: 'auto' });
+  if (diffMin < 60) return relative.format(-diffMin, 'minute');
+  if (diffHour < 24) return relative.format(-diffHour, 'hour');
+  if (diffDay < 30) return relative.format(-diffDay, 'day');
+  if (diffMonth < 12) return relative.format(-diffMonth, 'month');
+  return relative.format(-diffYear, 'year');
 }
 
 /**
@@ -271,13 +285,14 @@ export function isOverdue(dueDate: string | Date): boolean {
  * Format file size
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return `0 ${t('dateTime.bytes')}`;
 
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = [t('dateTime.bytes'), 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const language = readSystemLocalizationSettings().numberFormat || 'en-US';
+  return new Intl.NumberFormat(language, { maximumFractionDigits: 2 }).format(bytes / Math.pow(k, i)) + ' ' + sizes[i];
 }
 
 /**

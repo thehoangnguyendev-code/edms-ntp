@@ -8,6 +8,7 @@ import { FormSection } from "@/components/ui/form/FormSection";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import { PermissionSplitExplorer } from "@/features/security-authorization/shared/explorer/PermissionSplitExplorer";
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
@@ -28,6 +29,7 @@ export const PermissionSetFormView: React.FC = () => {
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
   const isEdit = Boolean(id);
 
@@ -56,9 +58,9 @@ export const PermissionSetFormView: React.FC = () => {
         setActive(ps.active);
         setSelectedCodes(new Set(ps.permissionCodes));
       })
-      .catch(() => showToast({ type: "error", message: "Failed to load permission set" }))
+      .catch(() => showToast({ type: "error", message: t("permissionSets.loadOneFailed") }))
       .finally(() => setLoadingSource(false));
-  }, [id, isEdit, showToast]);
+  }, [id, isEdit, showToast, t]);
 
   const handleBack = () => navigateBack(navigate, location.state, ROUTES.SECURITY.PERMISSION_SETS);
 
@@ -73,11 +75,11 @@ export const PermissionSetFormView: React.FC = () => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Name is required" });
+      showToast({ type: "error", title: t("permissionSets.validationTitle"), message: t("permissionSets.nameRequired") });
       return;
     }
     if (selectedCodes.size === 0) {
-      showToast({ type: "error", title: "Validation failed", message: "Select at least one permission" });
+      showToast({ type: "error", title: t("permissionSets.validationTitle"), message: t("permissionSets.permissionRequired") });
       return;
     }
     const sig = await requestSignature(isEdit ? "Update Permission Set" : "Create Permission Set", "Permission Set Change");
@@ -93,15 +95,15 @@ export const PermissionSetFormView: React.FC = () => {
       };
       if (isEdit && id) {
         await settingsApi.updatePermissionSet(id, payload, sig);
-        showToast({ type: "success", message: "Permission set updated" });
+        showToast({ type: "success", message: t("permissionSets.updated") });
         navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${id}`);
       } else {
         const created = await settingsApi.createPermissionSet(payload, sig);
-        showToast({ type: "success", message: "Permission set created" });
+        showToast({ type: "success", message: t("permissionSets.created") });
         navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${created.id}`);
       }
     } catch (e: any) {
-      showToast({ type: "error", message: e?.response?.data?.message ?? "Save failed" });
+      showToast({ type: "error", message: e?.response?.data?.message ?? t("permissionSets.saveFailed") });
     } finally {
       setSaving(false);
     }

@@ -737,7 +737,7 @@ public class AccessProfileService {
         if (req.expectedUpdatedAt() != null && profile.getUpdatedAt() != null
                 && !req.expectedUpdatedAt().equals(profile.getUpdatedAt())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "This role was modified by another administrator. Reload to see the latest configuration.");
+                    "ACCESS_PROFILE_CONFIGURATION_CONFLICT");
         }
 
         List<AuditTrailChangeResponse> changes = new ArrayList<>();

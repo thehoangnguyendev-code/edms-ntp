@@ -29,6 +29,7 @@ import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrail
 import { parseScopeCount } from "./tabs/accessProfileDetailShared";
 import { AccessProfilePermissionSetDrawer } from "./tabs/AccessProfilePermissionSetDrawer";
 import { accessProfileDetail as accessProfileDetailBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
+import { useTranslation } from "@/i18n";
 
 type TabId = "general" | "permissions" | "permission-sets" | "workflow" | "effective-access" | "users" | "audit";
 
@@ -57,6 +58,7 @@ export const AccessProfileDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
 
   const isNew = !id || location.pathname.endsWith("/new");
@@ -104,9 +106,9 @@ export const AccessProfileDetailView: React.FC = () => {
           active: p.active,
         });
       })
-      .catch(() => showToast({ type: "error", message: "Failed to load profile" }))
+      .catch(() => showToast({ type: "error", message: t("accessProfiles.detailLoadFailed") }))
       .finally(() => setLoading(false));
-  }, [id, isNew, showToast]);
+  }, [id, isNew, showToast, t]);
 
   const can = (action: string) => Boolean(capabilities?.actions?.[action]?.allowed);
   const reason = (action: string) => capabilities?.actions?.[action]?.reason || "Action is not currently allowed";
@@ -165,7 +167,7 @@ export const AccessProfileDetailView: React.FC = () => {
 
   const performSave = async () => {
     if (!draft.name.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Name is required" });
+      showToast({ type: "error", title: t("accessProfiles.validationTitle"), message: t("accessProfiles.nameRequired") });
       return;
     }
     const sig = await requestSignature(isNew ? "Create Access Profile" : "Update Access Profile", "Access Profile Change");
@@ -181,7 +183,7 @@ export const AccessProfileDetailView: React.FC = () => {
       };
       if (isNew) {
         const created = await settingsApi.createAccessProfile(payload, sig);
-        showToast({ type: "success", message: "Access profile created" });
+        showToast({ type: "success", message: t("accessProfiles.created") });
         navigate(`${ROUTES.SECURITY.ACCESS_PROFILES}/${created.id}`, { replace: true });
         return;
       }
@@ -222,12 +224,12 @@ export const AccessProfileDetailView: React.FC = () => {
       setManagedDraft(null);
       setReloadKey((k) => k + 1);
       setIsEditing(false);
-      showToast({ type: "success", message: "Access profile updated" });
+      showToast({ type: "success", message: t("accessProfiles.updated") });
     } catch (e: any) {
       if (e?.response?.status === 409) {
         setConflictModal(true);
       } else {
-        showToast({ type: "error", message: e?.response?.data?.message ?? e?.response?.data?.error?.message ?? "Failed to save access profile" });
+        showToast({ type: "error", message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("accessProfiles.saveFailed") });
       }
     } finally {
       setIsSaving(false);
@@ -236,7 +238,7 @@ export const AccessProfileDetailView: React.FC = () => {
 
   const handleSave = () => {
     if (!draft.name.trim()) {
-      showToast({ type: "error", title: "Validation failed", message: "Name is required" });
+      showToast({ type: "error", title: t("accessProfiles.validationTitle"), message: t("accessProfiles.nameRequired") });
       return;
     }
     if (!isNew && impactItems.length > 0) {
@@ -265,9 +267,9 @@ export const AccessProfileDetailView: React.FC = () => {
       setChanges(EMPTY_CHANGES);
       setManagedDraft(null);
       setReloadKey((k) => k + 1);
-      showToast({ type: "info", message: "Loaded the latest configuration — please re-apply your changes." });
+      showToast({ type: "info", message: t("accessProfiles.reloadedLatest") });
     } catch {
-      showToast({ type: "error", message: "Failed to reload profile" });
+      showToast({ type: "error", message: t("accessProfiles.reloadFailed") });
     }
   };
 
@@ -276,10 +278,10 @@ export const AccessProfileDetailView: React.FC = () => {
     if (!sig) return;
     try {
       await settingsApi.deleteAccessProfile(id!, sig);
-      showToast({ type: "success", message: "Access profile deleted" });
+      showToast({ type: "success", message: t("accessProfiles.deleted") });
       navigate(ROUTES.SECURITY.ACCESS_PROFILES);
     } catch {
-      showToast({ type: "error", message: "Failed to delete access profile" });
+      showToast({ type: "error", message: t("accessProfiles.deleteFailed") });
     }
     setDeleteModal(false);
   };
@@ -293,9 +295,9 @@ export const AccessProfileDetailView: React.FC = () => {
       const caps = await settingsApi.getAccessProfileCapabilities(id!);
       setProfile(updated);
       setCapabilities(caps);
-      showToast({ type: "success", message: `Profile ${updated.active ? "enabled" : "disabled"}` });
+      showToast({ type: "success", message: t(updated.active ? "accessProfiles.activated" : "accessProfiles.deactivated") });
     } catch {
-      showToast({ type: "error", message: "Failed to update status" });
+      showToast({ type: "error", message: t("accessProfiles.statusFailed") });
     }
   };
 

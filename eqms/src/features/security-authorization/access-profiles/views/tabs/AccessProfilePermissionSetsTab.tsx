@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/toast";
 import { ROUTES } from "@/app/routes.constants";
 import { settingsApi, type PermissionCatalogGroup, type PermissionSetSummary, type PermissionSetResponse } from "@/services/api/settings";
 import type { AssignDiff } from "../AccessProfileDetailView";
+import { useTranslation } from "@/i18n";
 
 export const PermissionSetsTab: React.FC<{
   profileId: string;
@@ -20,6 +21,7 @@ export const PermissionSetsTab: React.FC<{
 }> = ({ profileId, reloadKey = 0, canAssign = true, deniedReason, onOpenDrawer, onChangesChange }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [allSets, setAllSets] = useState<PermissionSetResponse[]>([]);
   const [originalIds, setOriginalIds] = useState<string[]>([]);
   const [assignedIdsState, setAssignedIdsState] = useState<string[]>([]);
@@ -45,12 +47,12 @@ export const PermissionSetsTab: React.FC<{
       setAssignedIdsState(ids);
       onChangesChange?.({ added: [], removed: [] });
     } catch {
-      showToast({ type: "error", message: "Failed to load permission sets" });
+      showToast({ type: "error", message: t("accessProfileTabs.loadPermissionSetsFailed") });
     } finally {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId, showToast, reloadKey]);
+  }, [profileId, showToast, reloadKey, t]);
 
   useEffect(() => { void load(); }, [load]);
 

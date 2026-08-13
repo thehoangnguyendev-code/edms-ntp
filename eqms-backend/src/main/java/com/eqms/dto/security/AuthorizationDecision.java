@@ -1,5 +1,7 @@
 package com.eqms.dto.security;
 
+import com.eqms.i18n.LocalizedMessageResolver;
+
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,7 +23,8 @@ public record AuthorizationDecision(
 
     public static AuthorizationDecision denied(String reasonCode, String message, String permissionCode,
                                                 String objectType, UUID objectId) {
-        return new AuthorizationDecision(false, reasonCode, message, permissionCode, objectType, objectId,
+        return new AuthorizationDecision(false, reasonCode,
+                LocalizedMessageResolver.resolve("authorization", reasonCode, message), permissionCode, objectType, objectId,
                 false, false, Set.of());
     }
 }

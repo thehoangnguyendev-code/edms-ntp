@@ -1,5 +1,7 @@
 package com.eqms.dto.security;
 
+import com.eqms.i18n.LocalizedMessageResolver;
+
 public record RevisionActionCapabilityDecisionResponse(
         boolean allowed,
         String reasonCode,
@@ -16,6 +18,7 @@ public record RevisionActionCapabilityDecisionResponse(
             String message,
             String permissionCode
     ) {
-        return new RevisionActionCapabilityDecisionResponse(false, reasonCode, message, permissionCode, permissionCode);
+        return new RevisionActionCapabilityDecisionResponse(false, reasonCode,
+                LocalizedMessageResolver.resolve("authorization", reasonCode, message), permissionCode, permissionCode);
     }
 }

@@ -8,6 +8,7 @@ import { settingsApi } from "@/services/api/settings";
 import { api } from "@/services/api/client";
 import { WorkflowRoleDrawer, type WorkflowRolePreview } from "./accessProfileDetailShared";
 import type { AssignDiff } from "../AccessProfileDetailView";
+import { useTranslation } from "@/i18n";
 
 /** Uses the persistent workflow-role catalog and workflow policies; no frontend role list exists. */
 export const WorkflowTab: React.FC<{
@@ -18,6 +19,7 @@ export const WorkflowTab: React.FC<{
   onChangesChange?: (diff: AssignDiff) => void;
 }> = ({ profileId, reloadKey = 0, canAssign = true, deniedReason, onChangesChange }) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [original, setOriginal] = useState<string[]>([]);
   const [assigned, setAssigned] = useState<string[]>([]);
   const [roles, setRoles] = useState<WorkflowRolePreview[]>([]);
@@ -38,12 +40,12 @@ export const WorkflowTab: React.FC<{
         setRoles(workflowRoles.data);
         onChangesChange?.({ added: [], removed: [] });
       })
-      .catch(() => active && showToast({ type: "error", message: "Failed to load workflow roles" }))
+      .catch(() => active && showToast({ type: "error", message: t("accessProfileTabs.loadWorkflowRolesFailed") }))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
     // The callback belongs to the parent save coordinator and is intentionally invoked after a reload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId, reloadKey, showToast]);
+  }, [profileId, reloadKey, showToast, t]);
 
   if (loading) return <SectionLoading />;
 

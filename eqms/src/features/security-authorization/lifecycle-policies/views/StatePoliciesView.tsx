@@ -22,6 +22,7 @@ import { workflowAuthorization as workflowAuthorizationBreadcrumb } from "@/comp
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { ROUTES } from "@/app/routes.constants";
+import { useTranslation } from "@/i18n";
 
 const BASE_PATH = `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/state-policies`;
 
@@ -39,6 +40,7 @@ const ACTIVE_OPTIONS: SelectOption[] = [
 export const StatePoliciesView: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canView = hasPermissionAlias("security.workflow_authorization.view");
   const canManage = hasPermissionAlias("security.workflow_authorization.manage");
@@ -99,11 +101,11 @@ export const StatePoliciesView: React.FC<{ embedded?: boolean }> = ({ embedded =
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load state policies" });
+      showToast({ type: "error", message: t("statePolicies.loadFailed") });
     } finally {
       setLoading(false);
     }
-  }, [canView, currentPage, itemsPerPage, debouncedSearch, capabilityFilter, scopeFilter, typeFilter, activeFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast]);
+  }, [canView, currentPage, itemsPerPage, debouncedSearch, capabilityFilter, scopeFilter, typeFilter, activeFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast, t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -150,11 +152,11 @@ export const StatePoliciesView: React.FC<{ embedded?: boolean }> = ({ embedded =
     if (!sig) return;
     try {
       await lifecycleStatePolicyApi.remove(deleteTarget.id, sig);
-      showToast({ type: "success", message: "State policy deleted" });
+      showToast({ type: "success", message: t("statePolicies.deleted") });
       setDeleteTarget(null);
       void load();
     } catch (e: any) {
-      showToast({ type: "error", message: e?.response?.data?.message ?? "Delete failed" });
+      showToast({ type: "error", message: e?.response?.data?.error?.message ?? e?.response?.data?.message ?? t("statePolicies.deleteFailed") });
     }
   };
 

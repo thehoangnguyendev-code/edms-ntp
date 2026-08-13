@@ -1,5 +1,6 @@
 package com.eqms.dto.security;
 
+import com.eqms.i18n.LocalizedMessageResolver;
 import com.eqms.enums.FileAccessAction;
 import com.eqms.enums.FileObjectType;
 
@@ -24,6 +25,7 @@ public record FileAccessDecision(
     public static FileAccessDecision denied(
             String reasonCode, String message, String permissionCode,
             FileAccessAction action, FileObjectType objectType, UUID objectId) {
-        return new FileAccessDecision(false, reasonCode, message, permissionCode, action, objectType, objectId, false);
+        return new FileAccessDecision(false, reasonCode,
+                LocalizedMessageResolver.resolve("authorization", reasonCode, message), permissionCode, action, objectType, objectId, false);
     }
 }

@@ -4,6 +4,7 @@ import { ChevronDown, Check, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
 import { InlineLoading } from '../loading/Loading';
+import { useTranslation } from '@/i18n';
 
 export interface SelectOption {
   label: string;
@@ -47,8 +48,8 @@ export const Select: React.FC<SelectProps> = ({
   onChange,
   options,
   groups,
-  placeholder = "Select...",
-  searchPlaceholder = "Search...",
+  placeholder,
+  searchPlaceholder,
   className,
   triggerClassName,
   enableSearch = true,
@@ -56,11 +57,15 @@ export const Select: React.FC<SelectProps> = ({
   maxVisibleRows = 5,
   rowHeight = 40,
   isLoading = false,
-  loadingText = "Loading options...",
+  loadingText,
   onSearch,
   debounceMs = 300,
   minSearchLength = 0,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.placeholder');
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('select.searchPlaceholder');
+  const resolvedLoadingText = loadingText ?? t('select.loadingOptions');
   const selectId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -356,7 +361,7 @@ export const Select: React.FC<SelectProps> = ({
           "min-w-0 flex-1 truncate text-left",
           selectedOption ? (disabled ? "text-slate-600 font-medium" : "text-slate-700 font-medium") : "text-slate-400",
         )}>
-          {selectedOption ? selectedOption.label : placeholder}
+          {selectedOption ? selectedOption.label : resolvedPlaceholder}
         </span>
         <ChevronDown
           className={cn(
@@ -399,7 +404,7 @@ export const Select: React.FC<SelectProps> = ({
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={searchPlaceholder}
+                      placeholder={resolvedSearchPlaceholder}
                       className="w-full h-9 pl-9 pr-3 text-[16px] sm:text-sm bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       autoComplete="off"
                       autoCorrect="off"
@@ -419,7 +424,7 @@ export const Select: React.FC<SelectProps> = ({
                   <div className="py-8 flex flex-col items-center justify-center gap-2">
                     <InlineLoading size="sm" />
                     <span className="text-sm text-slate-500">
-                      {isSearching ? 'Searching...' : loadingText}
+                      {isSearching ? t('select.searching') : resolvedLoadingText}
                     </span>
                   </div>
                 ) : filteredOptions.length === 0 ? (

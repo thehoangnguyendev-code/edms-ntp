@@ -26,6 +26,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { ArrowRight } from "lucide-react";
 import { settingsApi } from "@/services/api/settings";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import {
   ReviewersTab as EditableReviewersTab,
   ApproversTab as EditableApproversTab,
@@ -211,6 +212,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   } | null>(null);
   const [isBackLoading, setIsBackLoading] = useState(false);
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [document, setDocument] = useState<DetailDocumentModel>(() => ({
     ...createEmptyDocumentDetail(),
     coAuthorNames: [],
@@ -720,9 +722,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     if (!canRequestControlledCopy) {
       showToast({
         type: "error",
-        title: "Controlled copy request unavailable",
-        message:
-          "Request Controlled Copy is available only when the document is Active and the latest revision is Effective.",
+        title: t("documentDetail.controlledCopyUnavailable.title"),
+        message: t("documentDetail.controlledCopyUnavailable.message"),
         duration: 3000,
       });
       return;
@@ -977,9 +978,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       // shown on both fields.
       showToast({
         type: "error",
-        title: "Missing required field",
-        message:
-          "Periodic Review Cycle (Months) and Periodic Review Notification (Days) cannot be empty.",
+        title: t("documentDetail.periodicReview.requiredTitle"),
+        message: t("documentDetail.periodicReview.requiredMessage"),
         duration: 3500,
       });
       return;
@@ -987,8 +987,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     if (isGeneralConfigurationUnchanged()) {
       showToast({
         type: "info",
-        title: "No changes to save",
-        message: "The existing next-revision configuration remains unchanged.",
+        title: t("documentDetail.noChanges.title"),
+        message: t("documentDetail.noChanges.message"),
         duration: 2500,
       });
       return;
@@ -1037,15 +1037,15 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       setIsEditModeActive(false);
       showToast({
         type: "success",
-        title: "Next revision configuration saved",
-        message: "Your changes have been saved.",
+        title: t("documentDetail.configurationSaved.title"),
+        message: t("documentDetail.configurationSaved.message"),
         duration: 3000,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to save configuration",
-        message: (error as any)?.response?.data?.message || "Please try again.",
+        title: t("documentDetail.configurationSaveFailed.title"),
+        message: (error as any)?.response?.data?.error?.message ?? (error as any)?.response?.data?.message ?? t("documentDetail.configurationSaveFailed.message"),
         duration: 4000,
       });
     } finally {
@@ -1086,10 +1086,11 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to upload revision",
+        title: t("documentDetail.uploadRevisionFailed.title"),
         message:
-          (error as any)?.response?.data?.message ||
-          "Failed to create the Draft revision from the selected file.",
+          (error as any)?.response?.data?.error?.message ??
+          (error as any)?.response?.data?.message ??
+          t("documentDetail.uploadRevisionFailed.message"),
         duration: 3500,
       });
     } finally {
@@ -1101,9 +1102,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     if (!canObsoleteCurrentDocument) {
       showToast({
         type: "error",
-        title: "Obsolete unavailable",
-        message:
-          "Obsolete is only available when the document is Active, has a current Effective Revision, and has no revision in progress.",
+        title: t("documentDetail.obsoleteUnavailable.title"),
+        message: t("documentDetail.obsoleteUnavailable.message"),
         duration: 3000,
       });
       return;
@@ -1141,17 +1141,17 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       setShowObsoleteModal(false);
       showToast({
         type: "success",
-        title: "Document obsoleted",
-        message: "The document has been marked as obsoleted.",
+        title: t("documentDetail.obsoleted.title"),
+        message: t("documentDetail.obsoleted.message"),
         duration: 3000,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to obsolete document",
+        title: t("documentDetail.obsoleteFailed.title"),
         message:
           (error as any)?.response?.data?.error?.message ||
-          "The document could not be marked as obsoleted.",
+          t("documentDetail.obsoleteFailed.message"),
         duration: 3000,
       });
     } finally {
@@ -1192,10 +1192,10 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       console.error("Failed to publish revision", error);
       showToast({
         type: "error",
-        title: "Publish failed",
+        title: t("documentDetail.publishFailed.title"),
         message:
           (error as any)?.response?.data?.message ||
-          "Failed to publish revision.",
+          t("documentDetail.publishFailed.message"),
       });
     }
   };
@@ -1252,8 +1252,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
 
       showToast({
         type: "success",
-        title: "Document Published",
-        message: `Revision ${detail.documentNumber} ${detail.revisionNumber} has been published and is now Effective.`,
+        title: t("documentDetail.published.title"),
+        message: t("documentDetail.published.message", { documentNumber: detail.documentNumber, revisionNumber: detail.revisionNumber }),
         duration: 3000,
       });
     } catch (error) {
@@ -1274,11 +1274,11 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         console.error("Failed to publish document revision", error);
         showToast({
           type: "error",
-          title: "Publish failed",
+          title: t("documentDetail.publishFailed.title"),
           message:
             responseData?.error?.message ||
             responseData?.message ||
-            "Failed to publish revision.",
+            t("documentDetail.publishFailed.message"),
           duration: 3500,
         });
         setIsNavigating(false);
@@ -1334,16 +1334,16 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       .then(() => {
         showToast({
           type: "success",
-          title: "Link copied",
-          message: "Document detail link has been copied to the clipboard.",
+          title: t("documentDetail.linkCopied.title"),
+          message: t("documentDetail.linkCopied.message"),
           duration: 2500,
         });
       })
       .catch(() => {
         showToast({
           type: "error",
-          title: "Copy failed",
-          message: "Unable to copy the document link.",
+          title: t("documentDetail.linkCopyFailed.title"),
+          message: t("documentDetail.linkCopyFailed.message"),
           duration: 2500,
         });
       });

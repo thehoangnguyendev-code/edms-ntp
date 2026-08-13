@@ -32,6 +32,7 @@ import type { DocumentViewType, DocumentListItem } from "./types";
 import type { SelectOption } from "@/components/ui/select/Select";
 import { mapRevisionSummaryFromApi } from "@/features/documents/shared/statusMapping";
 import { getStatusBadgeColor } from "@/utils/status";
+import { useTranslation } from "@/i18n";
 
 interface DocumentsViewProps {
   viewType: DocumentViewType;
@@ -106,6 +107,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
   const { user } = useAuth();
   const { canCreateDocumentShell } = useDocumentPermissions();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
@@ -343,8 +345,8 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
     if (!canRequestControlledCopyFromDocument(doc)) {
       showToast({
         type: "error",
-        title: "Request unavailable",
-        message: "Request Controlled Copy is only available when the document has an Effective revision.",
+        title: t("documentList.controlledCopyUnavailableTitle"),
+        message: t("documentList.controlledCopyUnavailableMessage"),
         duration: 3000,
       });
       return;

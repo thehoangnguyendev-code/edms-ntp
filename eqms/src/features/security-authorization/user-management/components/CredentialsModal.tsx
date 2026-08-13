@@ -6,6 +6,7 @@ import { cn } from "@/components/ui/utils";
 import { useToast } from "@/components/ui/toast";
 import { IconRefresh } from "@tabler/icons-react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { useTranslation } from "@/i18n";
 
 interface CredentialsModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
   isRegeneratingPassword = false,
 }) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   return (
     <FormModal
@@ -148,15 +150,15 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
 
               showToast({
                 type: "success",
-                title: "Copied!",
-                message: "All credentials copied to clipboard",
+                title: t("credentials.copiedTitle"),
+                message: t("credentials.allCopied"),
               });
             } catch (err) {
               console.error("Failed to copy credentials:", err);
               showToast({
                 type: "error",
-                title: "Copy Failed",
-                message: "Failed to copy credentials to clipboard",
+                title: t("credentials.copyFailedTitle"),
+                message: t("credentials.allCopyFailed"),
               });
             }
           }}
@@ -177,6 +179,7 @@ const CopyButton: React.FC<{
   showToast: ReturnType<typeof useToast>["showToast"];
 }> = ({ text, label, showToast }) => {
   const [copied, setCopied] = React.useState(false);
+  const { t } = useTranslation();
 
   const handleCopy = async () => {
     try {
@@ -204,15 +207,15 @@ const CopyButton: React.FC<{
       setTimeout(() => setCopied(false), 2000);
       showToast({
         type: "success",
-        title: "Copied!",
-        message: `${label} copied to clipboard`,
+        title: t("credentials.copiedTitle"),
+        message: t("credentials.copiedField", { label }),
       });
     } catch (err) {
       console.error("Failed to copy text:", err);
       showToast({
         type: "error",
-        title: "Copy Failed",
-        message: `Failed to copy ${label.toLowerCase()}`,
+        title: t("credentials.copyFailedTitle"),
+        message: t("credentials.copyFieldFailed", { label }),
       });
     }
   };

@@ -4,6 +4,7 @@ import { Clock, ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
 import { Button } from '../button/Button';
+import { useTranslation } from '@/i18n';
 
 export interface TimePickerProps {
   /** Label displayed above picker */
@@ -22,9 +23,10 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   label,
   value,
   onChange,
-  placeholder = "Select time",
+  placeholder,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const pickerIdRef = useRef(`time-picker-${Math.random().toString(36).slice(2, 11)}`);
   const pickerId = pickerIdRef.current;
   const [isOpen, setIsOpen] = useState(false);
@@ -189,7 +191,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
         <div className="flex items-center gap-2 min-w-0 truncate">
           <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
           <span className={cn("truncate", !value ? "text-slate-400" : (disabled ? "text-slate-600" : "text-slate-700"))}>
-            {value || placeholder}
+            {value || placeholder || t('timePicker.placeholder')}
           </span>
         </div>
         <ChevronDown className={cn(
@@ -250,14 +252,14 @@ export const TimePicker: React.FC<TimePickerProps> = ({
                   onClick={handleClear}
                   className="text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 h-8"
                 >
-                  Clear
+                  {t('dateTime.clear')}
                 </Button>
                 <Button
                   size="sm"
                   onClick={handleApply}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-4 text-xs"
                 >
-                  Set Time
+                  {t('timePicker.setTime')}
                 </Button>
               </div>
             </motion.div>

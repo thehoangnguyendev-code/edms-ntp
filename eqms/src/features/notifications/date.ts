@@ -1,4 +1,6 @@
-const pad2 = (value: number) => value.toString().padStart(2, '0');
+import { getI18nLanguage, t } from '@/i18n';
+
+const getLocale = () => getI18nLanguage() === 'vi' ? 'vi-VN' : 'en-US';
 
 const parseNotificationDate = (value?: string | null): Date | null => {
   if (!value) {
@@ -35,14 +37,14 @@ const parseNotificationDate = (value?: string | null): Date | null => {
   return null;
 };
 
-const formatClockTime = (date: Date) => `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+const formatClockTime = (date: Date) => new Intl.DateTimeFormat(getLocale(), { hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
 
-const formatShortDate = (date: Date) => `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}`;
+const formatShortDate = (date: Date) => new Intl.DateTimeFormat(getLocale(), { day: '2-digit', month: '2-digit' }).format(date);
 
 export const formatNotificationDateTime = (value?: string | null): string => {
   const date = parseNotificationDate(value);
   if (!date) return '-';
-  return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+  return new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short', timeStyle: 'medium' }).format(date);
 };
 
 export const formatNotificationRelativeTime = (value?: string | null): string => {
@@ -57,10 +59,10 @@ export const formatNotificationRelativeTime = (value?: string | null): string =>
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return t('notificationTime.justNow');
+  if (diffMins < 60) return t('notificationTime.minutesAgo', { count: diffMins });
+  if (diffHours < 24) return t('notificationTime.hoursAgo', { count: diffHours });
+  if (diffDays < 7) return t('notificationTime.daysAgo', { count: diffDays });
   return formatShortDate(date);
 };
 
@@ -77,9 +79,9 @@ export const formatNotificationRelativeTimeWithClock = (value?: string | null): 
   const diffDays = Math.floor(diffMs / 86400000);
   const clock = formatClockTime(date);
 
-  if (diffMins < 1) return `Just now • ${clock}`;
-  if (diffMins < 60) return `${diffMins}m ago • ${clock}`;
-  if (diffHours < 24) return `${diffHours}h ago • ${clock}`;
-  if (diffDays < 7) return `${diffDays}d ago • ${clock}`;
+  if (diffMins < 1) return `${t('notificationTime.justNow')} • ${clock}`;
+  if (diffMins < 60) return `${t('notificationTime.minutesAgo', { count: diffMins })} • ${clock}`;
+  if (diffHours < 24) return `${t('notificationTime.hoursAgo', { count: diffHours })} • ${clock}`;
+  if (diffDays < 7) return `${t('notificationTime.daysAgo', { count: diffDays })} • ${clock}`;
   return `${formatShortDate(date)} • ${clock}`;
 };

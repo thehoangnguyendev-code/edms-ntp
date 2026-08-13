@@ -1,5 +1,6 @@
 package com.eqms.dto.security;
 
+import com.eqms.i18n.LocalizedMessageResolver;
 import com.eqms.enums.ControlledCopyWorkflowAction;
 
 public record ControlledCopyAuthorizationDecision(
@@ -28,6 +29,7 @@ public record ControlledCopyAuthorizationDecision(
             String message,
             String requiredPermissionCode
     ) {
-        return new ControlledCopyAuthorizationDecision(false, reasonCode, message, requiredPermissionCode, action, objectType, status);
+        return new ControlledCopyAuthorizationDecision(false, reasonCode,
+                LocalizedMessageResolver.resolve("authorization", reasonCode, message), requiredPermissionCode, action, objectType, status);
     }
 }

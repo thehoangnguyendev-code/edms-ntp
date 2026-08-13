@@ -14,6 +14,7 @@ import { notificationPolicyApi, type ComplianceGroup } from '@/services/api/noti
 import { ROUTES } from '@/app/routes.constants';
 import { notificationPolicy as notificationPolicyBreadcrumb } from '@/components/ui/breadcrumb/breadcrumbs/settings';
 import { MODULE_PRESETS, buildEventCode, buildVariables, type EventPreset } from './eventPresets';
+import { useTranslation } from '@/i18n';
 
 const labelClass = 'text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block';
 const inputClass =
@@ -56,6 +57,7 @@ const CREATE_TABS: TabItem[] = [
 export const NotificationPolicyCreateView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias('settings.notification_policy.manage');
 
@@ -103,7 +105,7 @@ export const NotificationPolicyCreateView: React.FC = () => {
     const value = customVariableInput.trim();
     if (!value) return;
     if (!VARIABLE_PATTERN.test(value)) {
-      showToast({ type: 'error', title: 'Invalid variable', message: 'Variable names may only contain letters, digits and underscores.' });
+      showToast({ type: 'error', title: t('notificationPolicy.invalidVariableTitle'), message: t('notificationPolicy.invalidVariableMessage') });
       return;
     }
     if (!variables.includes(value)) setVariables((prev) => [...prev, value]);
@@ -116,11 +118,11 @@ export const NotificationPolicyCreateView: React.FC = () => {
 
   const handleSave = async () => {
     if (!code.trim() || !name.trim() || !module) {
-      showToast({ type: 'error', title: 'Validation failed', message: 'Event code, name and module are required.' });
+      showToast({ type: 'error', title: t('notificationPolicy.validationTitle'), message: t('notificationPolicy.requiredFields') });
       return;
     }
     if (mandatory && !mandatoryReason.trim()) {
-      showToast({ type: 'error', title: 'Validation failed', message: 'A GMP-mandatory event requires a reason.' });
+      showToast({ type: 'error', title: t('notificationPolicy.validationTitle'), message: t('notificationPolicy.mandatoryReasonRequired') });
       return;
     }
     setIsSaving(true);
@@ -139,13 +141,13 @@ export const NotificationPolicyCreateView: React.FC = () => {
         mandatory,
         mandatoryReason: mandatory ? mandatoryReason.trim() : null,
       });
-      showToast({ type: 'success', title: 'Created', message: 'Notification event created. Configure its recipients and content next.' });
+      showToast({ type: 'success', title: t('notificationPolicy.createdTitle'), message: t('notificationPolicy.createdMessage') });
       navigate(`${ROUTES.SETTINGS.NOTIFICATION_POLICY}/${created.eventCode}/edit?tab=recipients`);
     } catch (error: any) {
       showToast({
         type: 'error',
-        title: 'Create failed',
-        message: error?.response?.data?.message || error?.response?.data?.error?.message || 'Unable to create this event.',
+        title: t('notificationPolicy.createFailedTitle'),
+        message: error?.response?.data?.message || error?.response?.data?.error?.message || t('notificationPolicy.createFailedMessage'),
       });
     } finally {
       setIsSaving(false);

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { useToast } from "@/components/ui/toast";
+import { useTranslation } from "@/i18n";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { settingsApi } from "@/services/api";
 import type { PermissionSetResponse } from "@/services/api/settings";
@@ -21,6 +22,7 @@ interface PermissionSetCloneModalProps {
 
 export const PermissionSetCloneModal: React.FC<PermissionSetCloneModalProps> = ({ isOpen, source, onClose, onCloned }) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { requestSignature, signatureModal } = useSecurityESign();
   const [name, setName] = useState(`${source.name} Copy`);
   const [description, setDescription] = useState(source.description ?? "");
@@ -29,7 +31,7 @@ export const PermissionSetCloneModal: React.FC<PermissionSetCloneModalProps> = (
 
   const handleSave = async () => {
     if (!name.trim()) {
-      showToast({ type: "error", message: "Name is required" });
+      showToast({ type: "error", message: t("permissionSets.nameRequired") });
       return;
     }
     const sig = await requestSignature("Clone Permission Set", "Permission Set Change");
@@ -45,11 +47,11 @@ export const PermissionSetCloneModal: React.FC<PermissionSetCloneModalProps> = (
         },
         sig,
       );
-      showToast({ type: "success", message: "Permission set cloned successfully" });
+      showToast({ type: "success", message: t("permissionSets.cloned") });
       onCloned(result);
       onClose();
     } catch (err: any) {
-      showToast({ type: "error", message: err?.response?.data?.message ?? "Clone failed" });
+      showToast({ type: "error", message: err?.response?.data?.message ?? t("permissionSets.cloneFailed") });
     } finally {
       setSaving(false);
     }

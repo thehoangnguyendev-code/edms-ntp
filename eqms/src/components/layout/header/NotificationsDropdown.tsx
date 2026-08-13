@@ -18,6 +18,7 @@ import { emitNotificationsChanged, subscribeNotificationsChanged } from '@/featu
 import { useNotificationRealtime } from '@/features/notifications/notificationRealtime';
 import { getNotificationTypeIcon, getNotificationTypeIconStyles, getNotificationTypeLabel } from '@/features/notifications/notificationMeta';
 import { createEmptyNotificationSummaryCounts, type NotificationSummaryCounts } from '@/features/notifications/types';
+import { useTranslation } from '@/i18n';
 
 interface NotificationsDropdownProps {
   isOpen: boolean;
@@ -238,6 +239,7 @@ const MobileNotificationsScreen: React.FC<{
   onOpenSettings: () => void;
   refreshSignal?: number;
 }> = ({ onClose, onViewAll, onOpenSettings, refreshSignal }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [mobileNotifications, setMobileNotifications] = useState<DropdownNotification[]>([]);
@@ -280,10 +282,10 @@ const MobileNotificationsScreen: React.FC<{
   }, [refreshSignal]);
 
   const MOBILE_FILTERS: TabItem[] = [
-    { id: 'all', label: 'All', count: counts.all },
-    { id: 'unread', label: 'Unread', count: counts.unread },
-    { id: 'me', label: 'For Me', count: counts.personal },
-    { id: 'system', label: 'System', count: counts.system },
+    { id: 'all', label: t('notificationsDropdown.all'), count: counts.all },
+    { id: 'unread', label: t('notificationsDropdown.unread'), count: counts.unread },
+    { id: 'me', label: t('notificationsDropdown.forMe'), count: counts.personal },
+    { id: 'system', label: t('notificationsDropdown.system'), count: counts.system },
   ];
 
   const filteredNotifications = mobileNotifications.filter(n => {
@@ -335,14 +337,14 @@ const MobileNotificationsScreen: React.FC<{
               type="button"
               onClick={onClose}
               className="text-slate-600 hover:text-slate-900 transition-colors flex items-center justify-center"
-              aria-label="Back"
+              aria-label={t('common.back')}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="min-w-0">
-              <h3 className="text-base font-semibold text-slate-900">Notifications</h3>
+              <h3 className="text-base font-semibold text-slate-900">{t('notificationsDropdown.title')}</h3>
               <p className="text-xs text-slate-500">
-                {counts.unread} unread of {counts.all} total
+                {t('notificationsDropdown.unreadOfTotal', { unread: counts.unread, total: counts.all })}
               </p>
             </div>
           </div>
@@ -353,7 +355,7 @@ const MobileNotificationsScreen: React.FC<{
             disabled={counts.unread === 0}
           >
             <CheckCheck className="h-4 w-4 text-emerald-600" />
-            <span>Mark all read</span>
+            <span>{t('notificationsDropdown.markAllRead')}</span>
           </button>
         </div>
 
@@ -393,8 +395,8 @@ const MobileNotificationsScreen: React.FC<{
               <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
                 <Bell className="h-8 w-8 text-slate-400" />
               </div>
-              <p className="text-base font-medium text-slate-900">No notifications</p>
-              <p className="text-sm text-slate-500 mt-1">You're all caught up!</p>
+              <p className="text-base font-medium text-slate-900">{t('notificationsDropdown.noNotifications')}</p>
+              <p className="text-sm text-slate-500 mt-1">{t('notificationsDropdown.allCaughtUp')}</p>
               <div className="mt-5 flex gap-2">
                 <Button
                   variant="outline"
@@ -402,7 +404,7 @@ const MobileNotificationsScreen: React.FC<{
                   onClick={onOpenSettings}
                   className="rounded-lg"
                 >
-                  Settings
+                  {t('notificationsDropdown.settings')}
                 </Button>
                 <Button
                   size="sm"
@@ -412,7 +414,7 @@ const MobileNotificationsScreen: React.FC<{
                   }}
                   className="rounded-lg"
                 >
-                  Open Center
+                  {t('notificationsDropdown.openCenter')}
                 </Button>
               </div>
             </div>
@@ -444,7 +446,7 @@ const MobileNotificationsScreen: React.FC<{
               onClick={onOpenSettings}
               className="h-10 rounded-xl"
             >
-              Settings
+              {t('notificationsDropdown.settings')}
             </Button>
             <Button
               size="sm"
@@ -454,7 +456,7 @@ const MobileNotificationsScreen: React.FC<{
               }}
               className="h-10 rounded-xl"
             >
-              Open Center
+              {t('notificationsDropdown.openCenter')}
             </Button>
           </div>
         </div>
@@ -473,6 +475,7 @@ const DesktopDropdown: React.FC<{
   onOpenSettings: () => void;
   refreshSignal?: number;
 }> = ({ isOpen, onClose, buttonRef, onViewAll, onOpenSettings, refreshSignal }) => {
+  const { t } = useTranslation();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
@@ -535,9 +538,9 @@ const DesktopDropdown: React.FC<{
   }, [isOpen, refreshSignal]);
 
   const DROPDOWN_TABS: TabItem[] = [
-    { id: 'all', label: 'All', count: counts.all },
-    { id: 'me', label: 'For Me', count: counts.personal },
-    { id: 'system', label: 'System', count: counts.system },
+    { id: 'all', label: t('notificationsDropdown.all'), count: counts.all },
+    { id: 'me', label: t('notificationsDropdown.forMe'), count: counts.personal },
+    { id: 'system', label: t('notificationsDropdown.system'), count: counts.system },
   ];
 
   const filteredNotifications = notifications.filter(n => {
@@ -589,13 +592,13 @@ const DesktopDropdown: React.FC<{
       >
         {/* Header */}
           <div className="flex items-center justify-between px-5 py-2">
-          <h3 className="text-base font-bold text-slate-900 tracking-tight">Notifications</h3>
+          <h3 className="text-base font-bold text-slate-900 tracking-tight">{t('notificationsDropdown.title')}</h3>
           <div className="flex items-center gap-1">
             <button
               type="button"
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors"
               onClick={onOpenSettings}
-              title="Notification settings"
+              title={t('notificationsDropdown.settings')}
             >
               <IconSettings2 className="h-4 w-4" />
             </button>
@@ -619,7 +622,7 @@ const DesktopDropdown: React.FC<{
         <div className="max-h-[420px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300 bg-white min-h-[300px]">
           {filteredNotifications.length === 0 ? (
             <div className="py-20 text-center">
-              <p className="text-sm text-slate-400">No notifications here</p>
+              <p className="text-sm text-slate-400">{t('notificationsDropdown.noNotificationsHere')}</p>
             </div>
           ) : (
             filteredNotifications.map((notification, index) => (
@@ -645,7 +648,7 @@ const DesktopDropdown: React.FC<{
             className="text-[13px] font-semibold text-slate-900 hover:text-emerald-600 underline underline-offset-4 decoration-slate-300 hover:decoration-emerald-500 transition-colors"
             onClick={handleMarkAllRead}
           >
-            Mark All as Read
+            {t('notificationsDropdown.markAllRead')}
           </button>
           <Button
             variant="outline"
@@ -656,7 +659,7 @@ const DesktopDropdown: React.FC<{
             }}
             className="h-9 px-4 rounded-lg text-xs font-medium border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all font-semibold"
           >
-            Open Notification Center
+            {t('notificationsDropdown.openNotificationCenter')}
           </Button>
         </div>
       </motion.div>
@@ -666,10 +669,10 @@ const DesktopDropdown: React.FC<{
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={onConfirmMarkRead}
-        title="Mark All as Read"
-        description="Are you sure you want to mark all notifications as read? This cannot be undone."
+        title={t('notificationsDropdown.markAllRead')}
+        description={t('notificationsDropdown.markAllReadConfirm')}
         type="confirm"
-        confirmText="Yes, Mark All"
+        confirmText={t('notificationsDropdown.confirmMarkAll')}
       />
     </div>,
     document.body
@@ -680,6 +683,7 @@ const DesktopDropdown: React.FC<{
 
 
 export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ isOpen, onClose, onToggle }) => {
+  const { t } = useTranslation();
   const notificationRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -775,8 +779,8 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
           {unreadCount > 0 && (
             <span
               className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white shadow-sm animate-pulse"
-              aria-label={`${unreadCount} unread notifications`}
-              title={`${unreadCount} unread notifications`}
+              aria-label={t('notificationsDropdown.unreadCount', { count: unreadCount })}
+              title={t('notificationsDropdown.unreadCount', { count: unreadCount })}
             />
           )}
           </span>
@@ -813,7 +817,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
         </AnimatePresence>
       )}
 
-      {isNavigatingSettings && <FullPageLoading text="Loading..." />}
+      {isNavigatingSettings && <FullPageLoading text={t('common.loading')} />}
     </>
   );
 };

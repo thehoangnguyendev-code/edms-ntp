@@ -31,6 +31,7 @@ import {
   type AssignmentTrigger,
 } from "../../../types/assignment.types";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
+import { useTranslation } from "@/i18n";
 
 // ─── Trigger metadata ──────────────────────────────────────────────────────────
 const TRIGGER_META: Record<AssignmentTrigger, {
@@ -273,6 +274,7 @@ interface PendingToggle {
 export const AssignmentRulesView: React.FC = () => {
   const { navigateTo, isNavigating } = useNavigateWithLoading();
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const [rules, setRules] = useState<AutoAssignmentRule[]>(complianceTrackingRepository.getAutoAssignmentRules());
   const [pendingToggle, setPendingToggle] = useState<PendingToggle | null>(null);
@@ -340,10 +342,10 @@ export const AssignmentRulesView: React.FC = () => {
     setPendingToggle(null);
     showToast({
       type: toActive ? "success" : "warning",
-      title: toActive ? "Rule Activated" : "Rule Deactivated",
+      title: t(toActive ? "assignmentRules.activatedTitle" : "assignmentRules.deactivatedTitle"),
       message: toActive
-        ? "Auto-assignment rule is now active. Assignments will be created automatically."
-        : "Auto-assignment rule disabled. No new assignments will be triggered by this rule.",
+        ? t("assignmentRules.activatedMessage")
+        : t("assignmentRules.deactivatedMessage"),
     });
   };
 
@@ -356,8 +358,8 @@ export const AssignmentRulesView: React.FC = () => {
     setPendingToggle(null);
     showToast({
       type: "success",
-      title: "All Rules Activated",
-      message: "All auto-assignment rules are now active.",
+      title: t("assignmentRules.allActivatedTitle"),
+      message: t("assignmentRules.allActivatedMessage"),
     });
   };
 
@@ -370,8 +372,8 @@ export const AssignmentRulesView: React.FC = () => {
     setPendingToggle(null);
     showToast({
       type: "warning",
-      title: "All Rules Disabled",
-      message: "All auto-assignment rules have been disabled.",
+      title: t("assignmentRules.allDisabledTitle"),
+      message: t("assignmentRules.allDisabledMessage"),
     });
   };
 
@@ -511,7 +513,6 @@ export const AssignmentRulesView: React.FC = () => {
     </div>
   );
 };
-
 
 
 

@@ -5,6 +5,7 @@ import { cn } from "@/components/ui/utils";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useTranslation } from "@/i18n";
 
 // ─── FilterAccordionItem ──────────────────────────────────────────────
 interface FilterAccordionItemProps {
@@ -22,6 +23,7 @@ export const FilterAccordionItem: React.FC<FilterAccordionItemProps> = ({
   children,
   disabled,
 }) => {
+  const { t } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
   const transitionConfig = useMemo(
     () =>
@@ -49,7 +51,7 @@ export const FilterAccordionItem: React.FC<FilterAccordionItemProps> = ({
             {label}
           </span>
           {disabled && (
-            <Badge size="xs" color="slate">Read Only</Badge>
+            <Badge size="xs" color="slate">{t("filter.readOnly")}</Badge>
           )}
         </div>
         <motion.div
@@ -109,12 +111,16 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   onClose,
   onClear,
   onApply,
-  title = "Filter Options",
+  title,
   subTitle,
   children,
-  clearLabel = "Clear All",
-  applyLabel = "Show Results",
+  clearLabel,
+  applyLabel,
 }) => {
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t("filter.options");
+  const resolvedClearLabel = clearLabel ?? t("filter.clearAll");
+  const resolvedApplyLabel = applyLabel ?? t("filter.showResults");
   const [isClosing, setIsClosing] = useState(false);
   const [drawerHeight, setDrawerHeight] = useState(85); // vh
   const [isDragging, setIsDragging] = useState(false);
@@ -224,7 +230,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
         <div className="px-4 py-1 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="min-w-0">
-              <h2 className="text-sm font-bold text-slate-900 leading-tight">{title}</h2>
+              <h2 className="text-sm font-bold text-slate-900 leading-tight">{resolvedTitle}</h2>
               {subTitle && <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider">{subTitle}</p>}
             </div>
           </div>
@@ -251,14 +257,14 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
               handleClose();
             }}
           >
-            {clearLabel}
+            {resolvedClearLabel}
           </Button>
           <Button
             variant="default"
             className="flex-1 h-10"
             onClick={onApply}
           >
-            {applyLabel}
+            {resolvedApplyLabel}
           </Button>
         </div>
       </div>

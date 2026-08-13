@@ -5,6 +5,7 @@ import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { Badge } from "@/components/ui/badge/Badge";
 import { workflowActionPolicyApi } from "@/services/api/workflowActionPolicy";
 import { useToast } from "@/components/ui/toast/Toast";
+import { useTranslation } from "@/i18n";
 import { extractApiError } from "../workflowPolicyUtils";
 import type { WorkflowActionPolicyEffectiveResponse, WorkflowActionPolicyOptions } from "../types";
 
@@ -20,6 +21,7 @@ export const WorkflowPolicyEffectiveLookup: React.FC<WorkflowPolicyEffectiveLook
   options,
 }) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [moduleKey, setModuleKey] = useState("");
   const [workflowKey, setWorkflowKey] = useState("");
   const [objectType, setObjectType] = useState("");
@@ -80,7 +82,7 @@ export const WorkflowPolicyEffectiveLookup: React.FC<WorkflowPolicyEffectiveLook
 
   const handleLookup = async () => {
     if (!moduleKey || !workflowKey || !objectType || !actionCode || !fromStatus) {
-      showToast({ type: "warning", title: "Incomplete", message: "Fill in all required fields." });
+      showToast({ type: "warning", title: t("workflowPolicyLookup.incompleteTitle"), message: t("workflowPolicyLookup.incompleteMessage") });
       return;
     }
     setLoading(true);
@@ -96,7 +98,7 @@ export const WorkflowPolicyEffectiveLookup: React.FC<WorkflowPolicyEffectiveLook
       setResult(res);
     } catch (err) {
       const { message } = extractApiError(err);
-      showToast({ type: "error", title: "Lookup Failed", message });
+      showToast({ type: "error", title: t("workflowPolicyLookup.failedTitle"), message });
     } finally {
       setLoading(false);
     }
