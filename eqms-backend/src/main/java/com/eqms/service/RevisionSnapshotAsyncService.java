@@ -34,7 +34,7 @@ public class RevisionSnapshotAsyncService {
     private final UserAccountRepository userAccountRepository;
     private final RevisionSnapshotHistoryRepository revisionSnapshotHistoryRepository;
 
-    @Async
+    @Async("fileProcessingExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onRevisionSnapshotRequested(RevisionSnapshotEvent event) {

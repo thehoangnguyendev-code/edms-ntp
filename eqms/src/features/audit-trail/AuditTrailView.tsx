@@ -34,6 +34,7 @@ import { auditTrailApi } from "@/services/api/auditTrail";
 import { USER_MANAGEMENT_ROUTES } from "@/features/security-authorization/user-management/constants";
 import { AuditTrailDetailView } from "./AuditTrailDetailView";
 import { AuditExportModal } from "./components/AuditExportModal";
+import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import {
   getAuditActionBadgeClass,
   formatAuditActionLabel,
@@ -234,6 +235,7 @@ export const AuditTrailView: React.FC = () => {
   const [exportingRecord, setExportingRecord] =
     useState<AuditTrailRecord | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isBulkExportESignOpen, setIsBulkExportESignOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [userOptions, setUserOptions] = useState<
     { label: string; value: string }[]
@@ -451,31 +453,7 @@ export const AuditTrailView: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => {
-              try {
-                const blob = await auditTrailApi.exportAuditTrail({
-                  searchQuery: debouncedSearchQuery,
-                  action: actionFilter as any,
-                  user: userFilter,
-                  eSignatureOnly:
-                    eSignatureFilter === "All"
-                      ? undefined
-                      : eSignatureFilter === "Yes",
-                  dateFrom,
-                  dateTo,
-                  sortBy: sortConfig.key,
-                  sortDirection: sortConfig.direction,
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-              } catch {
-                // Best effort export button.
-              }
-            }}
+            onClick={() => setIsBulkExportESignOpen(true)}
           >
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -918,6 +896,38 @@ export const AuditTrailView: React.FC = () => {
           record={exportingRecord}
         />
       )}
+
+      <ESignatureModal
+        isOpen={isBulkExportESignOpen}
+        onClose={() => setIsBulkExportESignOpen(false)}
+        onConfirm={async (data: { reason: string; signatureToken?: string }) => {
+          const blob = await auditTrailApi.exportAuditTrail({
+            searchQuery: debouncedSearchQuery,
+            action: actionFilter as any,
+            user: userFilter,
+            eSignatureOnly:
+              eSignatureFilter === "All"
+                ? undefined
+                : eSignatureFilter === "Yes",
+            dateFrom,
+            dateTo,
+            sortBy: sortConfig.key,
+            sortDirection: sortConfig.direction,
+            reason: data.reason,
+            signatureToken: data.signatureToken,
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+          setIsBulkExportESignOpen(false);
+        }}
+        actionTitle="Export Audit Trail Records"
+        meaningDisplayName="Audit Record Exported"
+        meaningCode="AUDIT_RECORD_EXPORTED"
+      />
 
       <FilterDrawer
         isOpen={isFilterDrawerOpen}

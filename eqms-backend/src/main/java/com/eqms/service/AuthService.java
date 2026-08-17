@@ -20,6 +20,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
@@ -688,14 +690,14 @@ public class AuthService {
         }
         String resetLink = baseUrl + "/reset-password?token=" + rawToken;
 
-        emailService.sendEmail(
+        runAfterCommit(() -> emailService.sendEmail(
                 user.getEmail(),
                 "Password Reset Link",
                 buildCommonEmailVariables(user, Map.of(
                         "resetLink", resetLink,
                         "resetPasswordUrl", resetLink
                 ))
-        );
+        ));
     }
 
     @Transactional
@@ -809,14 +811,14 @@ public class AuthService {
         factor.setEnabled(false);
         mfaFactorRepository.save(factor);
 
-        emailService.sendEmail(
+        runAfterCommit(() -> emailService.sendEmail(
                 user.getEmail(),
                 "MFA OTP Login Code",
                 buildCommonEmailVariables(user, Map.of(
                         "otpCode", activationCode,
                         "expiresIn", String.valueOf(loginChallengeTtlMinutes)
                 ))
-        );
+        ));
         auditService.log("mfa_setup_started", user, auditDetails("method", method), null, null);
         trailService.logAs(
                 user,
@@ -989,14 +991,14 @@ public class AuthService {
         challenge.setOtpExpiresAt(Instant.now().plusSeconds(loginChallengeTtlMinutes * 60));
         auditService.log("login_otp_resent", challenge.getUser(), auditDetails("method", "email"), null, null);
 
-        emailService.sendEmail(
+        runAfterCommit(() -> emailService.sendEmail(
                 challenge.getUser().getEmail(),
                 "MFA OTP Login Code",
                 buildCommonEmailVariables(challenge.getUser(), Map.of(
                         "otpCode", rawOtp,
                         "expiresIn", String.valueOf(loginChallengeTtlMinutes)
                 ))
-        );
+        ));
 
         return new SendEmailOtpResponse(loginChallengeTtlMinutes * 60, 60);
     }
@@ -1438,6 +1440,28 @@ public class AuthService {
             }
         }
         return details;
+    }
+
+    /**
+     * Defers a Runnable (an SMTP send, in every current caller) until the current @Transactional
+     * method's transaction actually commits, instead of running it inline while the transaction
+     * -- and the Hikari connection backing it -- is still open. A synchronous SMTP call inside an
+     * open transaction was holding a DB connection idle for the full duration of the mail send;
+     * at 500-concurrent-user scale that's real pressure on a pool sized for actual query work.
+     * Falls back to running immediately when there is no active transaction (e.g. a unit test
+     * calling the service method directly) so behavior outside a real transaction is unchanged.
+     */
+    private void runAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
     }
 
     private Map<String, String> buildCommonEmailVariables(UserAccount user, Map<String, String> variables) {

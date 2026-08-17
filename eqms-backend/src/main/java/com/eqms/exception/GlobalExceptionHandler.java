@@ -7,6 +7,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -178,6 +179,22 @@ public class GlobalExceptionHandler {
                                 "RELATED_DOCUMENTS_NOT_EFFECTIVE",
                                 exception.getMessage(),
                                 exception.getDetails()
+                        )
+                ));
+    }
+
+    // Thrown by Hibernate/Spring Data when a save's @Version check fails -- another request
+    // modified this same Document/Revision/ControlledCopy between this request's read and write.
+    // 409 (not 500) because this is an expected, recoverable concurrency conflict: the client
+    // should reload the current state and retry, not treat it as a server fault.
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(
+                        new ApiErrorResponse.ErrorBody(
+                                "CONCURRENT_MODIFICATION",
+                                "This record was changed by another user in the meantime. Reload and try again.",
+                                List.of()
                         )
                 ));
     }

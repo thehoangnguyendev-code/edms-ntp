@@ -385,7 +385,26 @@ public class ReportPlatformService {
         List<String> fields=requestedFields==null || requestedFields.isEmpty()?List.of("documentNumber","documentName","status","department","businessUnit"):requestedFields;
         Map<String,String> labels=Map.of("documentNumber","Document Number","documentName","Document Title","status","Status","department","Department","businessUnit","Business Unit","effectiveDate","Effective Date");
         List<List<String>> rows=new ArrayList<>(); List<String> sourceIds = new ArrayList<>(); rows.add(fields.stream().map(labels::get).toList());
-        documents.findAll().stream().filter(document -> documentAuthorization.canViewDocument(requester, document)).limit(Math.max(1, maxRows)).forEach(document -> { rows.add(fields.stream().map(field -> documentField(document,field)).toList()); sourceIds.add(document.getId().toString()); });
+        int limit = Math.max(1, maxRows);
+        // Was documents.findAll().stream()... -- materialized the ENTIRE documents table into
+        // memory on every report render regardless of maxRows. Permission filtering happens in
+        // Java (documentAuthorization.canViewDocument), not SQL, so this can't become a single
+        // WHERE-clause query without changing what "viewable" means here -- instead, page through
+        // the table in bounded chunks and stop as soon as `limit` matching rows are found, which
+        // produces the identical selection or set of documents scanned in the same table order.
+        int pageSize = 200;
+        int pageNumber = 0;
+        org.springframework.data.domain.Page<DocumentRecord> page;
+        do {
+            page = documents.findAll(org.springframework.data.domain.PageRequest.of(pageNumber, pageSize));
+            for (DocumentRecord document : page.getContent()) {
+                if (!documentAuthorization.canViewDocument(requester, document)) continue;
+                rows.add(fields.stream().map(field -> documentField(document, field)).toList());
+                sourceIds.add(document.getId().toString());
+                if (sourceIds.size() >= limit) break;
+            }
+            pageNumber++;
+        } while (sourceIds.size() < limit && page.hasNext());
         return new RenderedReport(rows, sourceIds);
     }
     private String documentField(DocumentRecord document, String field) { return switch(field) { case "documentNumber" -> value(document.getDocumentNumber()); case "documentName" -> value(document.getDocumentName()); case "status" -> value(document.getStatus().getLabel()); case "department" -> value(document.getDepartment().getName()); case "businessUnit" -> value(document.getBusinessUnit().getName()); case "effectiveDate" -> value(document.getEffectiveDate()); default -> throw new IllegalArgumentException("REPORT_FIELD_NOT_ALLOWED"); }; }

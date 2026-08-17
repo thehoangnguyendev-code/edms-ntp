@@ -24,10 +24,6 @@ import { resolvePermissionAliasCodes } from "@/features/settings/permissionCatal
 import { notificationApi } from "@/services/api/notifications";
 import { subscribeNotificationsChanged } from "@/features/notifications/events";
 import { IconPointFilled } from "@tabler/icons-react";
-import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
-import { localizationApi } from "@/services/api/localization";
-import { readSystemLocalizationSettings, writeSystemLocalizationSettings } from "@/config/localization";
-import { useToast } from "@/components/ui/toast/Toast";
 
 // Constants
 const BASE_PADDING = 12;
@@ -36,11 +32,6 @@ const MENU_WIDTH = 300;
 const MENU_GAP = 8;
 const SAFE_PADDING = 8;
 const MAX_MENU_HEIGHT = 400;
-const LANGUAGE_TABS: readonly TabItem[] = [
-  { id: "en", label: "English" },
-  { id: "vi", label: "Tiếng Việt" },
-];
-
 // The server is the primary navigation authority. This local fallback deliberately
 // evaluates permission codes only: an Access Profile's display name can change
 // without changing which navigation nodes a user can see.
@@ -185,47 +176,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
     });
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
-    const { showToast } = useToast();
-    const [language, setLanguage] = useState(() => readSystemLocalizationSettings().language === "vi" ? "vi" : "en");
     const [authorizedNavigationIds, setAuthorizedNavigationIds] = useState<Set<string> | null>(null);
     const [navigationLabels, setNavigationLabels] = useState<Map<string, string>>(new Map());
     const location = useLocation();
     const navigate = useNavigate();
-
-    useEffect(() => {
-      const syncLanguage = () => setLanguage(readSystemLocalizationSettings().language === "vi" ? "vi" : "en");
-      window.addEventListener("eqms:localization-updated", syncLanguage);
-      return () => window.removeEventListener("eqms:localization-updated", syncLanguage);
-    }, []);
-
-    const handleLanguageChange = useCallback(async (nextLanguage: string) => {
-      if (nextLanguage !== "en" && nextLanguage !== "vi") return;
-      const previous = readSystemLocalizationSettings();
-      setLanguage(nextLanguage);
-      writeSystemLocalizationSettings({ ...previous, language: nextLanguage });
-
-      if (!user) return;
-
-      try {
-        const preferences = await localizationApi.getMine();
-        const saved = await localizationApi.updateMine({
-          useSystemDefaults: false,
-          language: nextLanguage,
-          dateTimeFormat: preferences.dateTimeFormat ?? previous.dateTimeFormat,
-          timeZone: preferences.timeZone ?? previous.timeZone,
-          numberFormat: preferences.numberFormat ?? previous.numberFormat,
-        });
-        writeSystemLocalizationSettings({ ...previous, ...saved, language: nextLanguage });
-      } catch (error) {
-        setLanguage(previous.language === "vi" ? "vi" : "en");
-        writeSystemLocalizationSettings(previous);
-        showToast({
-          type: "error",
-          title: "Language change failed",
-          message: "Unable to save your language preference. Please try again.",
-        });
-      }
-    }, [showToast, user]);
 
     useEffect(() => {
       let cancelled = false;
@@ -1289,22 +1243,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               aria-hidden="true"
             />
           </div>
-
-          {!isCollapsed && (
-            <div className="mt-auto shrink-0 bg-white px-3 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] md:pb-4">
-              <TabNav
-                tabs={LANGUAGE_TABS}
-                activeTab={language}
-                onChange={(tabId) => void handleLanguageChange(tabId)}
-                variant="pill"
-                fullWidth
-                ariaLabel="Language"
-                layoutId="sidebar-language"
-                tabIdPrefix="sidebar-language"
-                panelIdPrefix="sidebar-language-panel"
-              />
-            </div>
-          )}
 
         </aside>
 

@@ -2070,6 +2070,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         documentType={document.type}
         documentSubType={document.subType ?? undefined}
         canUseTemplate={canUseDocumentTemplate}
+        isSubmitting={isRevisionUploadLoading}
       />
 
       <ESignatureModal
@@ -2080,6 +2081,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         }}
         onConfirm={handleObsoleteConfirm}
         actionTitle="Obsolete Document"
+        meaningDisplayName="Obsoleted"
+        meaningCode="OBSOLETED"
         targetDetails={{
           code: document.documentNumber,
           title: document.documentName,

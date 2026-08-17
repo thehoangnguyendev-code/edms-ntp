@@ -1291,7 +1291,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     setIsRecallESignModalOpen(true);
   };
 
-  const handleRecallESignConfirm = async (data: { username: string; password: string; reason: string; comment?: string; signatureToken?: string }) => {
+  const handleRecallESignConfirm = async (data: { username: string; password: string; reason: string; signatureToken?: string }) => {
     if (!selectedCopyForRecall || !recallValues) {
       setIsRecallESignModalOpen(false);
       return;
@@ -1310,14 +1310,14 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
             recalledBy: data.username,
             recallReason: recallValues.recallReason,
             recallDate: recallValues.recallDate,
-            comment: data.comment,
+            comment: data.reason,
             signatureToken: data.signatureToken as string,
           })
         : await documentApi.recallControlledCopy(batchId, {
             recalledBy: data.username,
             recallReason: recallValues.recallReason,
             recallDate: recallValues.recallDate,
-            comment: data.comment,
+            comment: data.reason,
             signatureToken: data.signatureToken as string,
           });
       applyControlledCopyUpdate((isBatch ? updated : updated) as ControlledCopy);
@@ -1970,6 +1970,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         onClose={handleCancelModalClose}
         onConfirm={handleESignConfirm}
         transactionType="cancel-distribution"
+        meaningDisplayName="Controlled Copy Distribution Cancelled"
+        meaningCode="CONTROLLED_COPY_DISTRIBUTION_CANCELLED"
         targetDetails={{
           code: selectedCopyForCancel?.controlledCopyNumber || "N/A",
           title: selectedCopyForCancel?.name || "N/A",
@@ -1986,6 +1988,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         }}
         onConfirm={handleDistributeESignConfirm}
         transactionType="distribute"
+        meaningDisplayName="Controlled Copy Distributed"
+        meaningCode="CONTROLLED_COPY_DISTRIBUTED"
         targetDetails={{
           code: selectedCopyForDistribute?.controlledCopyNumber || "N/A",
           title: selectedCopyForDistribute?.name || "N/A",
@@ -2015,6 +2019,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         }}
         onConfirm={handleRecallESignConfirm}
         transactionType="recall-distribution"
+        meaningDisplayName="Controlled Copy Recalled"
+        meaningCode="CONTROLLED_COPY_RECALLED"
         targetDetails={{
           code: selectedCopyForRecall?.controlledCopyNumber || "N/A",
           title: selectedCopyForRecall?.name || "N/A",
@@ -2040,6 +2046,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         }}
         onConfirm={handleReissueConfirm}
         actionTitle="Reissue Replacement Controlled Copy"
+        meaningDisplayName="Controlled Copy Reissued"
+        meaningCode="CONTROLLED_COPY_REISSUED"
         targetDetails={{
           code: selectedCopyForReissue?.controlledCopyNumber || "N/A",
           title: selectedCopyForReissue?.name || "N/A",

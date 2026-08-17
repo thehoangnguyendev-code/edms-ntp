@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Pencil, Plus, TimerReset, Trash2, Truck } from "lucide-react";
+import { ClipboardList, Plus, TimerReset, Trash2, Truck } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { controlledCopiesPolicy as controlledCopiesPolicyBreadcrumbs } from "@/c
 import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
 import { controlledCopyPolicyApi } from "@/services/api";
 import { dictionaryApi } from "@/services/api/dictionary";
-import type { ControlledCopyExpiryLimit } from "@/services/api/controlledCopyPolicy";
+import type { ControlledCopyDcoEligibleUser, ControlledCopyExpiryDurationUnit, ControlledCopyExpiryLimit } from "@/services/api/controlledCopyPolicy";
 import type { DepartmentItem, DocumentTypeItem } from "@/features/settings/dictionaries/types";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
@@ -28,8 +28,14 @@ interface PolicyState {
     watermarkDistributedDate: boolean; watermarkExpiryDate: boolean;
   };
   recallLostDamaged: {
-    allowManualRecall: boolean; allowReportLost: boolean; allowReportDamaged: boolean;
+    allowManualRecall: boolean; allowReportLostDamaged: boolean;
     allowReplacementForLostDamaged: boolean;
+  };
+  delivery: {
+    redirectDeliveryToDco: boolean;
+    dcoRecipientUserId: string;
+    /** From the server: false when the assigned user no longer holds the DCO permission. Display-only. */
+    dcoRecipientEligible: boolean;
   };
 }
 
@@ -41,10 +47,22 @@ const defaultPolicy: PolicyState = {
     watermarkDistributedDate: true, watermarkExpiryDate: true,
   },
   recallLostDamaged: {
-    allowManualRecall: true, allowReportLost: true, allowReportDamaged: true,
+    allowManualRecall: true, allowReportLostDamaged: true,
     allowReplacementForLostDamaged: true,
   },
+  delivery: {
+    redirectDeliveryToDco: false,
+    dcoRecipientUserId: "",
+    dcoRecipientEligible: true,
+  },
 };
+
+const DURATION_UNIT_OPTIONS: { label: string; value: ControlledCopyExpiryDurationUnit; example: string }[] = [
+  { label: "Hours", value: "HOURS", example: "e.g. 24 Hours → expires 1 day after distribution" },
+  { label: "Days", value: "DAYS", example: "e.g. 30 Days → expires 1 month after distribution" },
+  { label: "Weeks", value: "WEEKS", example: "e.g. 2 Weeks → expires 14 days after distribution" },
+  { label: "Months", value: "MONTHS", example: "e.g. 6 Months → expires half a year after distribution" },
+];
 
 const SwitchRow: React.FC<{
   label: string;
@@ -76,12 +94,17 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [policy, setPolicy] = useState<PolicyState>(defaultPolicy);
 
+  const [dcoUsers, setDcoUsers] = useState<ControlledCopyDcoEligibleUser[]>([]);
+  const [dcoUsersLoaded, setDcoUsersLoaded] = useState(false);
+
   const [expiryLimits, setExpiryLimits] = useState<ControlledCopyExpiryLimit[]>([]);
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeItem[]>([]);
   const [departments, setDepartments] = useState<DepartmentItem[]>([]);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [editingLimit, setEditingLimit] = useState<ControlledCopyExpiryLimit | null>(null);
-  const [limitForm, setLimitForm] = useState({ documentTypeId: "", departmentId: "", maxDurationDays: "", description: "", active: true });
+  const [limitForm, setLimitForm] = useState<{ documentTypeId: string; departmentId: string; durationValue: string; durationUnit: ControlledCopyExpiryDurationUnit; active: boolean }>({
+    documentTypeId: "", departmentId: "", durationValue: "", durationUnit: "DAYS", active: true,
+  });
   const [isSavingLimit, setIsSavingLimit] = useState(false);
 
   const loadExpiryLimits = () => {
@@ -94,12 +117,16 @@ export const ControlledCopiesPolicyView: React.FC = () => {
     loadExpiryLimits();
     dictionaryApi.getDocumentTypes().then(setDocumentTypes).catch(() => {});
     dictionaryApi.getDepartments().then(setDepartments).catch(() => {});
+    controlledCopyPolicyApi.getDcoEligibleUsers()
+      .then((users) => setDcoUsers(users))
+      .catch(() => {})
+      .finally(() => setDcoUsersLoaded(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const openAddLimitModal = () => {
     setEditingLimit(null);
-    setLimitForm({ documentTypeId: "", departmentId: "", maxDurationDays: "", description: "", active: true });
+    setLimitForm({ documentTypeId: "", departmentId: "", durationValue: "", durationUnit: "DAYS", active: true });
     setIsLimitModalOpen(true);
   };
 
@@ -108,17 +135,17 @@ export const ControlledCopiesPolicyView: React.FC = () => {
     setLimitForm({
       documentTypeId: limit.documentTypeId || "",
       departmentId: limit.departmentId || "",
-      maxDurationDays: String(limit.maxDurationDays),
-      description: limit.description || "",
+      durationValue: String(limit.durationValue),
+      durationUnit: limit.durationUnit || "DAYS",
       active: limit.active,
     });
     setIsLimitModalOpen(true);
   };
 
   const handleSaveLimit = async () => {
-    const days = Number(limitForm.maxDurationDays);
-    if (!days || days <= 0) {
-      showToast({ type: "error", title: "Error", message: "Duration (days) must be a positive number." });
+    const durationValue = Number(limitForm.durationValue);
+    if (!durationValue || durationValue <= 0) {
+      showToast({ type: "error", title: "Error", message: "Duration must be a positive number." });
       return;
     }
     const sig = await requestSignature(
@@ -131,9 +158,9 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       const payload = {
         documentTypeId: editingLimit?.isSystem ? null : (limitForm.documentTypeId || null),
         departmentId: editingLimit?.isSystem ? null : (limitForm.departmentId || null),
-        maxDurationDays: days,
+        durationValue,
+        durationUnit: limitForm.durationUnit,
         active: limitForm.active,
-        description: limitForm.description || null,
         ...sig,
       };
       if (editingLimit) {
@@ -152,7 +179,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   };
 
   const handleDeleteLimit = async (limit: ControlledCopyExpiryLimit) => {
-    if (!window.confirm(`Delete the expiry rule "${limit.description || (limit.documentTypeName || "Any document type") + " / " + (limit.departmentName || "Any department")}"?`)) {
+    if (!window.confirm(`Delete the expiry rule "${(limit.documentTypeName || "Any document type") + " / " + (limit.departmentName || "Any department")}"?`)) {
       return;
     }
     const sig = await requestSignature("Delete Controlled Copy Expiry Rule", "Security Configuration Change");
@@ -193,9 +220,13 @@ export const ControlledCopiesPolicyView: React.FC = () => {
           },
           recallLostDamaged: {
             allowManualRecall: data.recallLostDamaged?.allowManualRecall ?? defaultPolicy.recallLostDamaged.allowManualRecall,
-            allowReportLost: data.recallLostDamaged?.allowReportLost ?? defaultPolicy.recallLostDamaged.allowReportLost,
-            allowReportDamaged: data.recallLostDamaged?.allowReportDamaged ?? defaultPolicy.recallLostDamaged.allowReportDamaged,
+            allowReportLostDamaged: data.recallLostDamaged?.allowReportLostDamaged ?? defaultPolicy.recallLostDamaged.allowReportLostDamaged,
             allowReplacementForLostDamaged: data.recallLostDamaged?.allowReplacementForLostDamaged ?? defaultPolicy.recallLostDamaged.allowReplacementForLostDamaged,
+          },
+          delivery: {
+            redirectDeliveryToDco: data.delivery?.redirectDeliveryToDco ?? defaultPolicy.delivery.redirectDeliveryToDco,
+            dcoRecipientUserId: data.delivery?.dcoRecipientUserId || "",
+            dcoRecipientEligible: data.delivery?.dcoRecipientEligible ?? true,
           },
         });
       })
@@ -207,6 +238,10 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   }, [showToast]);
 
   const handleSave = async () => {
+    if (policy.delivery.redirectDeliveryToDco && !policy.delivery.dcoRecipientUserId) {
+      showToast({ type: "error", title: "Error", message: "Select a DCO recipient before enabling delivery redirection." });
+      return;
+    }
     const sig = await requestSignature("Update Controlled Copies Policy", "Security Configuration Change");
     if (!sig) return;
     setSaving(true);
@@ -214,6 +249,10 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       await controlledCopyPolicyApi.savePolicy({
         distributionSecurity: policy.distributionSecurity,
         recallLostDamaged: policy.recallLostDamaged,
+        delivery: {
+          redirectDeliveryToDco: policy.delivery.redirectDeliveryToDco,
+          dcoRecipientUserId: policy.delivery.dcoRecipientUserId || null,
+        },
       }, sig);
       showToast({ type: "success", title: "Success", message: "Controlled Copies Policy saved successfully." });
     } catch (err) {
@@ -227,8 +266,12 @@ export const ControlledCopiesPolicyView: React.FC = () => {
     setPolicy((p) => ({ ...p, distributionSecurity: { ...p.distributionSecurity, [key]: value } }));
   const setRecall = <K extends keyof PolicyState["recallLostDamaged"]>(key: K, value: boolean) =>
     setPolicy((p) => ({ ...p, recallLostDamaged: { ...p.recallLostDamaged, [key]: value } }));
+  const setDelivery = <K extends keyof PolicyState["delivery"]>(key: K, value: PolicyState["delivery"][K]) =>
+    setPolicy((p) => ({ ...p, delivery: { ...p.delivery, [key]: value } }));
 
   if (loading) return <FullPageLoading />;
+
+  const selectedDurationUnit = DURATION_UNIT_OPTIONS.find((u) => u.value === limitForm.durationUnit) || DURATION_UNIT_OPTIONS[1];
 
   return (
     <div className="flex flex-col gap-4 md:gap-5">
@@ -253,28 +296,15 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
         {/* Recall / Lost / Damaged */}
-        <FormSection title="Recall / Lost / Damaged" icon={<ClipboardList className="h-4 w-4" />}>
+        <FormSection
+          title="Recall / Lost / Damaged"
+          description="What can happen to a copy after it has already been distributed."
+          icon={<ClipboardList className="h-4 w-4" />}
+        >
           <div className="divide-y divide-slate-100">
-            {false && <>
-            <SwitchRow
-              label="Auto-Recall on New Revision"
-              checked
-              onChange={() => {}}
-              disabled
-              note="Mandatory per GMP data-integrity rules — always on and cannot be disabled."
-            />
-            <SwitchRow
-              label="Auto-Recall on Obsolete"
-              checked
-              onChange={() => {}}
-              disabled
-              note="Mandatory per GMP data-integrity rules — always on and cannot be disabled."
-            />
-            </>}
-            <SwitchRow label="Allow Manual Recall" checked={policy.recallLostDamaged.allowManualRecall} onChange={(v) => setRecall("allowManualRecall", v)} disabled={!canManagePolicy} />
-            <SwitchRow label="Allow Report Lost" checked={policy.recallLostDamaged.allowReportLost} onChange={(v) => setRecall("allowReportLost", v)} disabled={!canManagePolicy} />
-            <SwitchRow label="Allow Report Damaged" checked={policy.recallLostDamaged.allowReportDamaged} onChange={(v) => setRecall("allowReportDamaged", v)} disabled={!canManagePolicy} />
-            <SwitchRow label="Allow Replacement" checked={policy.recallLostDamaged.allowReplacementForLostDamaged} onChange={(v) => setRecall("allowReplacementForLostDamaged", v)} disabled={!canManagePolicy} />
+            <SwitchRow label="Allow Manual Recall" checked={policy.recallLostDamaged.allowManualRecall} onChange={(v) => setRecall("allowManualRecall", v)} disabled={!canManagePolicy} note="Lets a Document Controller pull back a distributed copy, e.g. after a new revision is published." />
+            <SwitchRow label="Allow Report Lost/Damaged" checked={policy.recallLostDamaged.allowReportLostDamaged} onChange={(v) => setRecall("allowReportLostDamaged", v)} disabled={!canManagePolicy} note="Lets a recipient report their copy as lost or damaged (evidence required for damaged)." />
+            <SwitchRow label="Allow Replacement" checked={policy.recallLostDamaged.allowReplacementForLostDamaged} onChange={(v) => setRecall("allowReplacementForLostDamaged", v)} disabled={!canManagePolicy} note="Lets a new copy be issued to replace one reported lost or damaged." />
           </div>
         </FormSection>
 
@@ -283,6 +313,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
             type/department rows overriding it when more specific. */}
         <FormSection
           title="Expiry Duration Policy"
+          description="How long a distributed copy stays valid before it auto-expires."
           icon={<TimerReset className="h-4 w-4" />}
           headerRight={
             canManagePolicy ? (
@@ -300,8 +331,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                   <tr>
                     <th className="text-left px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Document Type</th>
                     <th className="text-left px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Department</th>
-                    <th className="text-left px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration (Days)</th>
-                    <th className="text-left px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Description</th>
+                    <th className="text-left px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration</th>
                     <th className="text-right px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -316,8 +346,9 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                         )}
                       </td>
                       <td className="px-3 py-2 text-slate-700">{limit.isSystem ? "Any" : (limit.departmentName || "Any")}</td>
-                      <td className="px-3 py-2 text-slate-700 font-medium">{limit.maxDurationDays}</td>
-                      <td className="px-3 py-2 text-slate-500">{limit.description || "-"}</td>
+                      <td className="px-3 py-2 text-slate-700 font-medium">
+                        {limit.durationValue} {DURATION_UNIT_OPTIONS.find((u) => u.value === limit.durationUnit)?.label || limit.durationUnit}
+                      </td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
                         {canManagePolicy && (
                           <button
@@ -349,7 +380,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
         </FormSection>
 
         {/* Distribution & Security — full width */}
-        <FormSection className="md:col-span-2" title="Distribution & Security" icon={<Truck className="h-4 w-4" />}>
+        <FormSection className="md:col-span-2" title="Distribution & Security" description="How controlled copies are shared and what recipients can do with them." icon={<Truck className="h-4 w-4" />}>
           <p className="mb-4 max-w-3xl text-xs leading-5 text-slate-500">
             Control how controlled copies are shared and which actions recipients can perform. Changes are applied after saving and enforced by the server.
           </p>
@@ -404,6 +435,47 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                 )}
               </div>
             </div>
+
+            <div className="rounded-xl border border-sky-200 bg-sky-50/40 p-3 sm:p-4 xl:col-span-2">
+              <div className="mb-2 border-b border-sky-200 pb-3">
+                <h3 className="text-sm font-semibold text-slate-800">DCO Delivery Routing</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  For recipients without a computer or phone (e.g. factory floor workers). When enabled, the requester only gets an email confirming their copy was distributed — no link. Instead, a user holding the "Receive Controlled Copies as DCO" permission receives the printable file: a direct link for a single distribution, or one email with all copies attached as a ZIP for a batch, so they can print and hand them out. Grant this permission via Access Profiles / Permission Sets first — any role can hold it, it is not tied to a fixed "DCO" role name.
+                </p>
+              </div>
+
+              {dcoUsersLoaded && dcoUsers.length === 0 && (
+                <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-2xs text-amber-800">
+                  No user currently holds the "Receive Controlled Copies as DCO" permission. Grant it to at least one user (Access Profiles / Permission Sets) before enabling this option.
+                </p>
+              )}
+
+              <div className="divide-y divide-sky-100">
+                <SwitchRow
+                  label="Redirect delivery to DCO"
+                  checked={policy.delivery.redirectDeliveryToDco}
+                  onChange={(v) => setDelivery("redirectDeliveryToDco", v)}
+                  disabled={!canManagePolicy || (dcoUsersLoaded && dcoUsers.length === 0)}
+                />
+              </div>
+              {policy.delivery.redirectDeliveryToDco && (
+                <div className="mt-3 space-y-2">
+                  <Select
+                    label="DCO Recipient"
+                    placeholder="Select the user who will receive controlled copies"
+                    options={dcoUsers.map((u) => ({ label: u.email ? `${u.fullName} (${u.email})` : u.fullName, value: u.id }))}
+                    value={policy.delivery.dcoRecipientUserId}
+                    onChange={(v) => setDelivery("dcoRecipientUserId", String(v))}
+                    disabled={!canManagePolicy}
+                  />
+                  {policy.delivery.dcoRecipientUserId && !policy.delivery.dcoRecipientEligible && (
+                    <p className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-2xs text-rose-700">
+                      This user no longer holds the "Receive Controlled Copies as DCO" permission (revoked, or account inactive). Until fixed, distributions fall back to normal (non-redirected) delivery and the issue is logged — select a different eligible user, or re-grant the permission.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </FormSection>
 
@@ -420,7 +492,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
         <div className="space-y-3">
           {editingLimit?.isSystem ? (
             <p className="text-2xs text-slate-500 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
-              The Global Default applies to Any document type / Any department and cannot be scoped — only its duration/description can be edited.
+              The Global Default applies to Any document type / Any department and cannot be scoped — only its duration can be edited.
             </p>
           ) : (
             <>
@@ -438,31 +510,31 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               />
             </>
           )}
-          <div>
-            <label className="text-xs sm:text-sm text-slate-700 mb-1.5 block">Duration (days)</label>
-            <input
-              type="number"
-              min={1}
-              value={limitForm.maxDurationDays}
-              onChange={(e) => setLimitForm((f) => ({ ...f, maxDurationDays: e.target.value }))}
-              className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs sm:text-sm text-slate-700 mb-1.5 block">Duration</label>
+              <input
+                type="number"
+                min={1}
+                value={limitForm.durationValue}
+                onChange={(e) => setLimitForm((f) => ({ ...f, durationValue: e.target.value }))}
+                className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+            <Select
+              label="Unit"
+              options={DURATION_UNIT_OPTIONS.map((u) => ({ label: u.label, value: u.value }))}
+              value={limitForm.durationUnit}
+              onChange={(v) => setLimitForm((f) => ({ ...f, durationUnit: v as ControlledCopyExpiryDurationUnit }))}
             />
           </div>
+          <p className="text-2xs text-slate-400">{selectedDurationUnit.example}</p>
           <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
             <div>
               <p className="text-xs sm:text-sm text-slate-700">Active</p>
               <p className="text-2xs text-slate-400">Inactive rules are retained but not used to calculate expiry.</p>
             </div>
             <Switch checked={limitForm.active} onChange={(active) => setLimitForm((f) => ({ ...f, active }))} size="sm" disabled={Boolean(editingLimit?.isSystem)} />
-          </div>
-          <div>
-            <label className="text-xs sm:text-sm text-slate-700 mb-1.5 block">Description (optional)</label>
-            <textarea
-              value={limitForm.description}
-              onChange={(e) => setLimitForm((f) => ({ ...f, description: e.target.value }))}
-              rows={3}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-            />
           </div>
         </div>
       </FormModal>

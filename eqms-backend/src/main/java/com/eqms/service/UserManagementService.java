@@ -99,6 +99,9 @@ public class UserManagementService {
     private final FileStorageService fileStorageService;
     private final NotificationDispatcher notificationDispatcher;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private ElectronicSignatureService electronicSignatureService;
+
     public UserManagementService(
             UserAccountRepository userRepository,
             UserEducationRepository educationRepository,
@@ -482,6 +485,7 @@ public class UserManagementService {
         if (request.date() != null) {
             comment += " until " + request.date();
         }
+        electronicSignatureService.createEntitySignature("UserAccount", user.getId(), user.getFullName(), actor, request.signatureToken(), "USER_SUSPENDED", reason, null, oldStatus, UserStatus.Suspended.name());
         auditTrailService.log(
                 "USER",
                 user.getFullName(),
@@ -514,6 +518,7 @@ public class UserManagementService {
         ), clientIp(httpRequest), userAgent(httpRequest));
 
         String comment = "Terminated user: " + reason + " on " + terminationDate;
+        electronicSignatureService.createEntitySignature("UserAccount", user.getId(), user.getFullName(), actor, request.signatureToken(), "USER_TERMINATED", reason, null, oldStatus, UserStatus.Terminated.name());
         auditTrailService.log(
                 "USER",
                 user.getFullName(),
@@ -663,6 +668,7 @@ public class UserManagementService {
 
         String oldStatus = user.getStatus() != null ? user.getStatus().name() : null;
         revokeAllSessions(user.getId());
+        electronicSignatureService.createEntitySignature("UserAccount", user.getId(), user.getFullName(), actor, request.signatureToken(), "USER_FORCE_LOGOUT", request.reason(), null, oldStatus, "REVOKED");
 
         auditService.log("user_force_logout", user, auditDetails(
                 "reason", request.reason(),

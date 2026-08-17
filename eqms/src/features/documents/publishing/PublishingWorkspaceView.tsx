@@ -893,6 +893,8 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         onClose={() => setShowPublishModal(false)}
         onConfirm={handlePublishConfirm}
         actionTitle="Publish Revision to Effective"
+        meaningDisplayName="Published"
+        meaningCode="PUBLISHED"
         changes={[
           { action: "Update Status", oldValue: "Ready for Publishing", newValue: "Effective", category: "status" },
         ]}

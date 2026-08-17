@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, ShieldAlert, ShieldCheck } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button/Button";
 import { ButtonLoading, FullPageLoading } from "@/components/ui/loading/Loading";
 import { cn } from "@/components/ui/utils";
@@ -22,7 +23,17 @@ const checkPasswordStrength = (password: string, policy: ReturnType<typeof usePa
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
 
+  const activeChecks = [
+    hasMinLength,
+    ...(policy.requireUppercase ? [hasUpper] : []),
+    ...(policy.requireLowercase ? [hasLower] : []),
+    ...(policy.requireNumbers ? [hasNumber] : []),
+    ...(policy.requireSpecialChars ? [hasSpecial] : []),
+  ];
+
   return {
+    score: activeChecks.filter(Boolean).length,
+    maxScore: activeChecks.length,
     hasMinLength,
     hasSpecial,
     hasNumber,
@@ -259,12 +270,38 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                     </div>
                   </AuthField>
 
+                  <div className="mt-3 space-y-2.5">
+                  <div className="flex h-1.5 w-full gap-1.5 overflow-hidden rounded-full bg-slate-100">
+                    {[...Array(strength.maxScore)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        initial={false}
+                        animate={{
+                          backgroundColor: i < strength.score
+                            ? strength.score / strength.maxScore <= 0.25 ? "#ef4444" // red-500
+                              : strength.score / strength.maxScore <= 0.5 ? "#fb923c" // orange-400
+                                : strength.score / strength.maxScore <= 0.75 ? "#facc15" // yellow-400
+                                  : "#10b981" // emerald-500
+                            : "#f1f5f9", // slate-100
+                          scaleX: i < strength.score ? 1 : 0
+                        }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 25,
+                          delay: i * 0.05
+                        }}
+                        className="h-full flex-1 origin-left"
+                      />
+                    ))}
+                  </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5">
                     {renderStrengthCheck(`At least ${passwordPolicy.passwordMinLength} characters`, strength.hasMinLength)}
                     {passwordPolicy.requireUppercase && renderStrengthCheck("One uppercase letter", strength.hasUpper)}
                     {passwordPolicy.requireLowercase && renderStrengthCheck("One lowercase letter", strength.hasLower)}
                     {passwordPolicy.requireNumbers && renderStrengthCheck("One number", strength.hasNumber)}
                     {passwordPolicy.requireSpecialChars && renderStrengthCheck("One special character", strength.hasSpecial)}
+                  </div>
                   </div>
 
                   <AuthField htmlFor="confirmPassword" label="Confirm New Password" required error={errors.confirmPassword}>

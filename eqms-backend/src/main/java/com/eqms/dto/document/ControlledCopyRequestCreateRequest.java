@@ -25,6 +25,7 @@ public record ControlledCopyRequestCreateRequest(
         @Size(max = 2000) String reason,
         Integer quantity,
         @Size(max = 10000) String signature,
+        @Size(max = 10000) String signatureToken,
         List<ControlledCopyRecipientRequest> recipients
 ) {
     public record ControlledCopyRecipientRequest(

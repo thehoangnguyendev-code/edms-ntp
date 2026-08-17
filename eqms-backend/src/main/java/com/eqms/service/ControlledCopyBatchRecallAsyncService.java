@@ -49,7 +49,7 @@ public class ControlledCopyBatchRecallAsyncService {
         this.itemRepository = itemRepository;
     }
 
-    @Async
+    @Async("controlledCopyBatchExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBatchRecalled(ControlledCopyBatchRecalledEvent event) {
         List<ControlledCopyDistributionJobItem> items = event.jobId() == null ? List.of() : itemRepository.findAllByJob_IdOrderByIdAsc(event.jobId());
@@ -82,7 +82,7 @@ public class ControlledCopyBatchRecallAsyncService {
      * Re-runs only the FAILED items of the most recent recall job for a batch. A no-op if there
      * is no job or no failed items, so it is safe to call speculatively.
      */
-    @Async
+    @Async("controlledCopyBatchExecutor")
     public void retryFailedItems(UUID batchId, UUID issuerUserId, String recallReason, Instant recalledAt) {
         if (batchId == null) {
             return;

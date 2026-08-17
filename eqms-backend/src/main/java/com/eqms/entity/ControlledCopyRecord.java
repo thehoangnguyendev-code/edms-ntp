@@ -1,5 +1,6 @@
 package com.eqms.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -9,6 +10,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,6 +24,14 @@ public class ControlledCopyRecord {
 
     @Id
     private UUID id;
+
+    // Optimistic locking -- see DocumentRecord.lockVersion for rationale. Deliberately does NOT
+    // protect consumeDownload/consumePrint in ControlledCopyRepository -- those are atomic
+    // conditional bulk UPDATEs (WHERE downloadCount < 1) that don't need it; they already can't
+    // race each other by construction.
+    @Version
+    @Column(name = "lock_version", nullable = false)
+    private long lockVersion;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "document_id", nullable = false)
@@ -98,6 +110,10 @@ public class ControlledCopyRecord {
 
     @Column(name = "controlled_copy_checksum", length = 128)
     private String controlledCopyChecksum;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "custom_placeholder_values", columnDefinition = "jsonb")
+    private JsonNode customPlaceholderValues;
 
     @Column(nullable = false, length = 40)
     private String status;
@@ -259,6 +275,7 @@ public class ControlledCopyRecord {
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
+    public long getLockVersion() { return lockVersion; }
     public DocumentRecord getDocument() { return document; }
     public void setDocument(DocumentRecord document) { this.document = document; }
     public DocumentRevisionRecord getRevision() { return revision; }
@@ -309,6 +326,8 @@ public class ControlledCopyRecord {
     public void setControlledCopyStorageVersionId(String controlledCopyStorageVersionId) { this.controlledCopyStorageVersionId = controlledCopyStorageVersionId; }
     public String getControlledCopyChecksum() { return controlledCopyChecksum; }
     public void setControlledCopyChecksum(String controlledCopyChecksum) { this.controlledCopyChecksum = controlledCopyChecksum; }
+    public JsonNode getCustomPlaceholderValues() { return customPlaceholderValues; }
+    public void setCustomPlaceholderValues(JsonNode customPlaceholderValues) { this.customPlaceholderValues = customPlaceholderValues; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getStatusCode() { return statusCode; }

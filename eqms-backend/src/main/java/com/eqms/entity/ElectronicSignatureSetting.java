@@ -19,21 +19,6 @@ public class ElectronicSignatureSetting {
     @Id
     private UUID id = DEFAULT_ID;
 
-    @Column(name = "require_password_before_signing", nullable = false)
-    private boolean requirePasswordBeforeSigning = true;
-
-    @Column(name = "require_reason", nullable = false)
-    private boolean requireReason = true;
-
-    @Column(name = "comment_rule", nullable = false, length = 20)
-    private String commentRule = "OPTIONAL";
-
-    @Column(name = "allowed_auth_method", nullable = false, length = 40)
-    private String allowedAuthMethod = "PASSWORD";
-
-    @Column(name = "show_audit_trail_summary", nullable = false)
-    private boolean showAuditTrailSummary = true;
-
     @Column(name = "signature_timestamp_format", length = 40)
     private String signatureTimestampFormat;
 
@@ -65,16 +50,6 @@ public class ElectronicSignatureSetting {
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public boolean isRequirePasswordBeforeSigning() { return requirePasswordBeforeSigning; }
-    public void setRequirePasswordBeforeSigning(boolean requirePasswordBeforeSigning) { this.requirePasswordBeforeSigning = requirePasswordBeforeSigning; }
-    public boolean isRequireReason() { return requireReason; }
-    public void setRequireReason(boolean requireReason) { this.requireReason = requireReason; }
-    public String getCommentRule() { return commentRule; }
-    public void setCommentRule(String commentRule) { this.commentRule = commentRule; }
-    public String getAllowedAuthMethod() { return allowedAuthMethod; }
-    public void setAllowedAuthMethod(String allowedAuthMethod) { this.allowedAuthMethod = allowedAuthMethod; }
-    public boolean isShowAuditTrailSummary() { return showAuditTrailSummary; }
-    public void setShowAuditTrailSummary(boolean showAuditTrailSummary) { this.showAuditTrailSummary = showAuditTrailSummary; }
     public String getSignatureTimestampFormat() { return signatureTimestampFormat; }
     public void setSignatureTimestampFormat(String signatureTimestampFormat) { this.signatureTimestampFormat = signatureTimestampFormat; }
     public String getSignatureTimezone() { return signatureTimezone; }

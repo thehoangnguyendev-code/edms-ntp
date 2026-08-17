@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertCircle, PenTool } from 'lucide-react';
 import { Button } from '../button/Button';
-import { Select } from '../select';
 import { Loading } from '../loading/Loading';
 import { cn } from "@/components/ui/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,14 +33,11 @@ export interface ESignatureModalProps {
     revision?: string;
   };
   transactionType?: 'distribute' | 'cancel-distribution' | 'recall-distribution';
-  /** Meaning display name shown as readonly — e.g. "Approved" */
+  /** Fallback meaning display name shown as readonly — e.g. "Approved". Overridden by the
+   * admin-configured display name fetched via `meaningCode`, if any. */
   meaningDisplayName?: string;
-  /** Predefined allowed reasons. If omitted, they are loaded from the configured meaning. */
-  allowedReasons?: string[];
-  /** Whether reason is required */
-  requiresReason?: boolean;
-  /** HIDDEN | OPTIONAL | REQUIRED */
-  commentRule?: 'HIDDEN' | 'OPTIONAL' | 'REQUIRED';
+  /** Stable system code (e.g. "APPROVED") used to fetch the admin-configured display name. */
+  meaningCode?: string;
 }
 
 const TRANSACTION_PRESETS = {
@@ -59,8 +55,6 @@ const TRANSACTION_PRESETS = {
   }
 };
 
-const OTHER_REASON = "Other";
-
 export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   isOpen,
   onClose,
@@ -71,9 +65,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   documentDetails: legacyDocumentDetails,
   transactionType,
   meaningDisplayName,
-  allowedReasons,
-  requiresReason,
-  commentRule,
+  meaningCode,
 }) => {
   const { user } = useAuth();
   const currentUsername = user?.username || "";
@@ -90,47 +82,29 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
 
   const [password, setPassword] = useState('');
   const [meaningPolicy, setMeaningPolicy] = useState<ElectronicSignatureMeaning | null>(null);
-  const [selectedReason, setSelectedReason] = useState('');
-  const [specifyReason, setSpecifyReason] = useState('');
   const [freeReason, setFreeReason] = useState('');
-  const [comment, setComment] = useState('');
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
   const [formError, setFormError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<'password' | 'reason' | 'comment', string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<'password' | 'reason', string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !meaningDisplayName) return;
+    if (!isOpen || !meaningCode) return;
     let cancelled = false;
     setMeaningPolicy(null);
-    const code = meaningDisplayName.trim().toLowerCase().replace(/\s+/g, '_');
-    electronicSignatureSettingsApi.getMeaningPolicy(code).then((policy) => {
+    electronicSignatureSettingsApi.getMeaningPolicy(meaningCode).then((policy) => {
       if (!cancelled) setMeaningPolicy(policy || null);
     }).catch(() => {
       if (!cancelled) setMeaningPolicy(null);
     });
     return () => { cancelled = true; };
-  }, [isOpen, meaningDisplayName]);
+  }, [isOpen, meaningCode]);
 
-  const effectiveAllowedReasons = Array.isArray(allowedReasons)
-    ? allowedReasons
-    : meaningPolicy?.allowedReasons || [];
-  const hasAllowedReasons = effectiveAllowedReasons.length > 0;
-  // Do not offer an arbitrary “Other” value when the server has a restricted list;
-  // every submitted reason must be accepted by the configured meaning policy.
-  const reasonOptions = hasAllowedReasons ? effectiveAllowedReasons : [];
-  const effectiveCommentRule = commentRule ?? meaningPolicy?.commentRule ?? 'HIDDEN';
-  const showComment = effectiveCommentRule === 'OPTIONAL' || effectiveCommentRule === 'REQUIRED';
-  const commentRequired = effectiveCommentRule === 'REQUIRED';
-  const reasonRequired = requiresReason ?? meaningPolicy?.requiresReason ?? true;
-
-  const isOtherSelected = !hasAllowedReasons && selectedReason === OTHER_REASON;
-  const effectiveReason = hasAllowedReasons
-    ? (isOtherSelected ? specifyReason.trim() : selectedReason)
-    : freeReason.trim();
+  const effectiveMeaningDisplayName = meaningPolicy?.displayName || meaningDisplayName;
+  const effectiveReason = freeReason.trim();
 
   useEffect(() => {
     if (isOpen) {
@@ -159,10 +133,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setPassword('');
-      setSelectedReason('');
-      setSpecifyReason('');
       setFreeReason('');
-      setComment('');
       setIsCapsLockOn(false);
       setFormError('');
       setFieldErrors({});
@@ -187,16 +158,10 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
     setFieldErrors({});
     if (isSubmitting) return;
 
-    const nextErrors: Partial<Record<'password' | 'reason' | 'comment', string>> = {};
+    const nextErrors: Partial<Record<'password' | 'reason', string>> = {};
 
-    if (reasonRequired && !effectiveReason) {
+    if (!effectiveReason) {
       nextErrors.reason = 'A signing reason is required for compliance.';
-    }
-    if (isOtherSelected && !specifyReason.trim()) {
-      nextErrors.reason = 'Please specify a reason.';
-    }
-    if (commentRequired && !comment.trim()) {
-      nextErrors.comment = 'Comment is required.';
     }
     if (!password) {
       nextErrors.password = 'Password is required to complete the electronic signature.';
@@ -213,15 +178,11 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
         username: currentUsername.trim(),
         password,
         reason: effectiveReason,
-        comment: comment.trim() || undefined,
         signatureToken: verification.signatureToken,
         timestamp: verification.timestamp,
       });
       setPassword('');
-      setSelectedReason('');
-      setSpecifyReason('');
       setFreeReason('');
-      setComment('');
       setFormError('');
       setFieldErrors({});
     } catch (error) {
@@ -233,7 +194,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
         'Unable to verify electronic signature.';
       const normalized = String(message).toLowerCase();
 
-      const nextFieldErrors: Partial<Record<'password' | 'reason' | 'comment', string>> = {};
+      const nextFieldErrors: Partial<Record<'password' | 'reason', string>> = {};
       if (normalized.includes('invalid signature credentials') || normalized.includes('password') || normalized.includes('credential')) {
         nextFieldErrors.password = 'Electronic signature authentication failed. Please verify your password and try again.';
       } else if (normalized.includes('reason')) {
@@ -372,10 +333,10 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 </div>
 
                 {/* Meaning */}
-                {meaningDisplayName && (
+                {effectiveMeaningDisplayName && (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 flex items-center gap-2">
                     <span className="text-2xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
-                    <span className="text-xs font-semibold text-slate-900">{meaningDisplayName}</span>
+                    <span className="text-xs font-semibold text-slate-900">{effectiveMeaningDisplayName}</span>
                   </div>
                 )}
 
@@ -431,81 +392,26 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   <div className="space-y-1">
                     <label htmlFor={`${modalId}-reason`} className="text-xs sm:text-sm font-medium text-slate-700">
                       Reason for Electronic Signature
-                      {reasonRequired && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
+                      <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
                     </label>
 
-                    {hasAllowedReasons ? (
-                      <div className="space-y-1.5">
-                        <Select
-                          value={selectedReason}
-                          onChange={(val) => { setSelectedReason(val); setSpecifyReason(''); }}
-                          options={[
-                            { value: "", label: "Select a reason..." },
-                            ...reasonOptions.map((r) => ({ value: r, label: r })),
-                          ]}
-                          triggerClassName={fieldErrors.reason ? "border-red-400" : undefined}
-                        />
-                        {isOtherSelected && (
-                          <textarea
-                            value={specifyReason}
-                            onChange={(e) => setSpecifyReason(e.target.value)}
-                            rows={2}
-                            maxLength={500}
-                            placeholder="Specify reason..."
-                            className={cn(
-                              "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none",
-                              fieldErrors.reason ? "border-red-400" : "border-slate-200"
-                            )}
-                          />
-                        )}
-                      </div>
-                    ) : (
-                      <textarea
-                        id={`${modalId}-reason`}
-                        value={freeReason}
-                        onChange={(e) => setFreeReason(e.target.value)}
-                        rows={2}
-                        maxLength={500}
-                        className={cn(
-                          "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none",
-                          fieldErrors.reason ? "border-red-400" : "border-slate-200"
-                        )}
-                        placeholder="Enter your reason..."
-                      />
-                    )}
+                    <textarea
+                      id={`${modalId}-reason`}
+                      value={freeReason}
+                      onChange={(e) => setFreeReason(e.target.value)}
+                      rows={2}
+                      maxLength={500}
+                      className={cn(
+                        "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none",
+                        fieldErrors.reason ? "border-red-400" : "border-slate-200"
+                      )}
+                      placeholder="Enter your reason..."
+                    />
 
                     {fieldErrors.reason && (
                       <p className="text-xs text-red-600 leading-tight">{fieldErrors.reason}</p>
                     )}
                   </div>
-
-                  {/* Comment */}
-                  {showComment && (
-                    <div className="space-y-1">
-                      <label htmlFor={`${modalId}-comment`} className="text-xs sm:text-sm font-medium text-slate-700">
-                        Comment
-                        {commentRequired
-                          ? <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
-                          : <span className="ml-1 text-2xs text-slate-400">(optional)</span>
-                        }
-                      </label>
-                      <textarea
-                        id={`${modalId}-comment`}
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        rows={2}
-                        maxLength={500}
-                        placeholder="Add a comment..."
-                        className={cn(
-                          "w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none",
-                          fieldErrors.comment ? "border-red-400" : "border-slate-200"
-                        )}
-                      />
-                      {fieldErrors.comment && (
-                        <p className="text-xs text-red-600 leading-tight">{fieldErrors.comment}</p>
-                      )}
-                    </div>
-                  )}
 
                   {/* Password */}
                   <div className="space-y-1">

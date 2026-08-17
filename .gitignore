@@ -1,11 +1,3 @@
-# This repository intentionally contains only the frontend and backend source folders.
-/*
-!/.gitignore
-!/eqms/
-!/eqms/**
-!/eqms-backend/
-!/eqms-backend/**
-
 # Generated artifacts and local configuration inside the two source trees.
 /eqms/node_modules/
 /eqms/dist/
@@ -29,3 +21,23 @@
 
 # Local Git metadata retained only as a recoverable backup while this monorepo is created.
 /.local-git-backups/
+
+# Local/generated content at root - not part of the tracked repo
+/.tmp-home/
+/.scratch_docx/
+/backups/
+/io/
+/load-tests/
+/logs/
+/.env
+
+# Editor/tooling local config - not shared with the team
+/.claude/
+/.vscode/
+
+# Build artifacts
+/HashGen.class
+
+# Contains live secrets (SMTP password, Azure client secret) - never commit
+/update_config.sql
+/update_msgraph.sql

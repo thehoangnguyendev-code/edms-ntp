@@ -131,11 +131,15 @@ public class PublishingTemplateService {
     @Transactional
     public PublishingTemplateResponse createTemplate(PublishingTemplateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
+        String nextStatus = normalizeTemplateStatus(request.status());
+        if (isLiveStatus(nextStatus)) {
+            throw new IllegalArgumentException("Use Publish Template to activate a template — it cannot be created directly as Active.");
+        }
         PublishingTemplate template = new PublishingTemplate();
         template.setTemplateName(normalizeName(request.templateName()));
         template.setDocumentType(normalizeOptional(request.documentType()));
         template.setDescription(normalizeOptional(request.description()));
-        template.setStatus(normalizeTemplateStatus(request.status()));
+        template.setStatus(nextStatus);
         template.setPublishingMode(normalizePublishingMode(request.publishingMode()));
         template.setCoverOrientation(normalizeOrientation(request.coverOrientation()));
         template.setBodyOrientation(normalizeOrientation(request.bodyOrientation()));
@@ -152,10 +156,18 @@ public class PublishingTemplateService {
     public PublishingTemplateResponse updateTemplate(UUID id, PublishingTemplateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate template = requireTemplate(id);
+        String nextStatus = normalizeTemplateStatus(request.status());
+        // Save Changes may move a template OUT of Active (deactivate) or leave it unchanged, but
+        // never INTO Active — that transition must go through Publish Template, which creates a
+        // version snapshot, bumps the version number, and writes an audit trail entry. Without
+        // this guard, the Status dropdown here let anyone flip a template live with none of that.
+        if (isLiveStatus(nextStatus) && !isLiveStatus(template.getStatus())) {
+            throw new IllegalArgumentException("Use Publish Template to activate a template — Save Changes cannot activate it directly.");
+        }
         template.setTemplateName(normalizeName(request.templateName()));
         template.setDocumentType(normalizeOptional(request.documentType()));
         template.setDescription(normalizeOptional(request.description()));
-        template.setStatus(normalizeTemplateStatus(request.status()));
+        template.setStatus(nextStatus);
         template.setPublishingMode(normalizePublishingMode(request.publishingMode()));
         template.setCoverOrientation(normalizeOrientation(request.coverOrientation()));
         template.setBodyOrientation(normalizeOrientation(request.bodyOrientation()));
@@ -173,7 +185,7 @@ public class PublishingTemplateService {
         duplicate.setTemplateName(uniqueTemplateName(source.getTemplateName() + " Copy"));
         duplicate.setDocumentType(source.getDocumentType());
         duplicate.setVersionNumber(1);
-        duplicate.setStatus("DRAFT");
+        duplicate.setStatus("INACTIVE");
         duplicate.setDescription(source.getDescription());
         duplicate.setCoverTemplatePath(source.getCoverTemplatePath());
         duplicate.setBodyTemplatePath(source.getBodyTemplatePath());
@@ -219,7 +231,12 @@ public class PublishingTemplateService {
     public PublishingTemplateResponse toggleStatus(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate template = requireTemplate(id);
-        template.setStatus("ACTIVE".equalsIgnoreCase(template.getStatus()) ? "INACTIVE" : "ACTIVE");
+        if (isLiveStatus(template.getStatus())) {
+            template.setStatus("INACTIVE");
+        } else {
+            // Activating must go through Publish Template, which versions/audits the change.
+            throw new IllegalArgumentException("Use Publish Template to activate a template — status cannot be toggled directly to Active.");
+        }
         template.setUpdatedBy(currentUser.getFullName());
         templateRepository.save(template);
         return toResponse(template);
@@ -475,7 +492,11 @@ public class PublishingTemplateService {
 
     private String normalizeTemplateStatus(String value) {
         String normalized = normalizeOptional(value);
-        return StringUtils.hasText(normalized) ? normalized.toUpperCase(Locale.ROOT) : "DRAFT";
+        return StringUtils.hasText(normalized) ? normalized.toUpperCase(Locale.ROOT) : "INACTIVE";
+    }
+
+    private boolean isLiveStatus(String status) {
+        return "ACTIVE".equalsIgnoreCase(status) || "PUBLISHED".equalsIgnoreCase(status);
     }
 
     private String normalizePublishingMode(String value) {

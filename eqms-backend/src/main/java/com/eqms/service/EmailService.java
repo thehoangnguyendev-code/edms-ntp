@@ -207,6 +207,47 @@ public class EmailService {
     }
 
     /**
+     * Same as {@link #sendTemplateEmail} but with a single binary attachment (e.g. a ZIP of
+     * controlled copy PDFs for the DCO-redirected batch delivery flow).
+     */
+    public boolean sendTemplateEmailWithAttachment(String to, EmailTemplate template, Map<String, String> variables, String attachmentFileName, byte[] attachmentBytes) throws Exception {
+        SystemConfiguration config = systemConfigurationService.requireConfiguration();
+        JsonNode notifications = config.getNotificationsConfig();
+        if (notifications == null || !notifications.path("enableEmailNotifications").asBoolean(false)) {
+            logger.info("Email notifications are disabled. Skipping dispatch of '{}' to {}", template.getName(), to);
+            return false;
+        }
+
+        JsonNode emailConfig = notifications.path("emailConfig");
+        if (emailConfig.isMissingNode() || emailConfig.path("smtpHost").asText("").isBlank()) {
+            logger.warn("SMTP host is not configured. Skipping dispatch of '{}' to {}", template.getName(), to);
+            return false;
+        }
+
+        String populatedSubject = emailTemplateService.renderTemplateText(template.getSubject(), variables);
+        String populatedBody = emailTemplateService.renderTemplateContent(template, variables);
+
+        JavaMailSender mailSender = getMailSender(emailConfig);
+        String senderEmail = emailConfig.path("senderEmail").asText("noreply@example.com");
+        String senderName = emailConfig.path("senderName").asText("EQMS Notification");
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        helper.setTo(to);
+        helper.setSubject(populatedSubject);
+        helper.setText(populatedBody, true);
+        helper.setFrom(senderEmail, senderName);
+        if (attachmentBytes != null && attachmentBytes.length > 0 && StringUtils.hasText(attachmentFileName)) {
+            helper.addAttachment(attachmentFileName, new org.springframework.core.io.ByteArrayResource(attachmentBytes));
+        }
+        mailSender.send(message);
+
+        emailTemplateService.incrementUsage(template);
+        logger.info("Email '{}' with attachment successfully sent to {}", template.getName(), to);
+        return true;
+    }
+
+    /**
      * Test the SMTP connection using custom settings (for config testing).
      */
     public void testConnection(SmtpConnectionTestRequest request) throws Exception {

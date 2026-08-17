@@ -810,7 +810,7 @@ public class ControlledCopyAuthorizationService {
             String objectType,
             String currentStatus
     ) {
-        if (policy != null && !policy.isAllowReportLost() && !policy.isAllowReportDamaged()) {
+        if (policy != null && !policy.isAllowReportLostDamaged()) {
             return ControlledCopyAuthorizationDecision.denied(
                     ControlledCopyWorkflowAction.REPORT_LOST_DAMAGED, objectType, currentStatus,
                     "REPORT_LOST_DAMAGED_DISABLED_BY_POLICY", "Reporting lost or damaged copies is disabled by the Controlled Copies Policy.", resolveRequiredPermissionCode(ControlledCopyWorkflowAction.REPORT_LOST_DAMAGED));

@@ -106,6 +106,8 @@ export const SuspendModal: React.FC<SuspendModalProps> = ({
         onClose={() => setESignOpen(false)}
         onConfirm={(data) => handleESignConfirm(data.signatureToken)}
         actionTitle={`Suspend User: ${userName}`}
+        meaningDisplayName="User Suspended"
+        meaningCode="USER_SUSPENDED"
       />
     </>
   );

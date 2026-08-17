@@ -3,9 +3,9 @@ package com.eqms.dto.controlledcopypolicy;
 public record ControlledCopyExpiryLimitRequest(
         String documentTypeId,
         String departmentId,
-        Integer maxDurationDays,
+        Integer durationValue,
+        String durationUnit,
         Boolean active,
-        String description,
         String signatureToken,
         String reason
 ) {}

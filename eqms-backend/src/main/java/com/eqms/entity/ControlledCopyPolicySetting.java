@@ -57,14 +57,19 @@ public class ControlledCopyPolicySetting {
     @Column(name = "allow_manual_recall", nullable = false)
     private boolean allowManualRecall = true;
 
-    @Column(name = "allow_report_lost", nullable = false)
-    private boolean allowReportLost = true;
-
-    @Column(name = "allow_report_damaged", nullable = false)
-    private boolean allowReportDamaged = true;
+    @Column(name = "allow_report_lost_damaged", nullable = false)
+    private boolean allowReportLostDamaged = true;
 
     @Column(name = "allow_replacement_for_lost_damaged", nullable = false)
     private boolean allowReplacementForLostDamaged = true;
+
+    // Delivery routing: when enabled, the designated DCO receives the printable link/attachment
+    // instead of the original requester(s) — for recipients without a computer/phone to view it.
+    @Column(name = "redirect_delivery_to_dco", nullable = false)
+    private boolean redirectDeliveryToDco = false;
+
+    @Column(name = "dco_recipient_user_id")
+    private UUID dcoRecipientUserId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -111,12 +116,14 @@ public class ControlledCopyPolicySetting {
     public void setWatermarkExpiryDate(boolean watermarkExpiryDate) { this.watermarkExpiryDate = watermarkExpiryDate; }
     public boolean isAllowManualRecall() { return allowManualRecall; }
     public void setAllowManualRecall(boolean allowManualRecall) { this.allowManualRecall = allowManualRecall; }
-    public boolean isAllowReportLost() { return allowReportLost; }
-    public void setAllowReportLost(boolean allowReportLost) { this.allowReportLost = allowReportLost; }
-    public boolean isAllowReportDamaged() { return allowReportDamaged; }
-    public void setAllowReportDamaged(boolean allowReportDamaged) { this.allowReportDamaged = allowReportDamaged; }
+    public boolean isAllowReportLostDamaged() { return allowReportLostDamaged; }
+    public void setAllowReportLostDamaged(boolean allowReportLostDamaged) { this.allowReportLostDamaged = allowReportLostDamaged; }
     public boolean isAllowReplacementForLostDamaged() { return allowReplacementForLostDamaged; }
     public void setAllowReplacementForLostDamaged(boolean allowReplacementForLostDamaged) { this.allowReplacementForLostDamaged = allowReplacementForLostDamaged; }
+    public boolean isRedirectDeliveryToDco() { return redirectDeliveryToDco; }
+    public void setRedirectDeliveryToDco(boolean redirectDeliveryToDco) { this.redirectDeliveryToDco = redirectDeliveryToDco; }
+    public UUID getDcoRecipientUserId() { return dcoRecipientUserId; }
+    public void setDcoRecipientUserId(UUID dcoRecipientUserId) { this.dcoRecipientUserId = dcoRecipientUserId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

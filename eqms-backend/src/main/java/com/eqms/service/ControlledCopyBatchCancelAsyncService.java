@@ -47,7 +47,7 @@ public class ControlledCopyBatchCancelAsyncService {
         this.itemRepository = itemRepository;
     }
 
-    @Async
+    @Async("controlledCopyBatchExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBatchCancelled(ControlledCopyBatchCancelledEvent event) {
         List<ControlledCopyDistributionJobItem> items = event.jobId() == null ? List.of() : itemRepository.findAllByJob_IdOrderByIdAsc(event.jobId());
@@ -82,7 +82,7 @@ public class ControlledCopyBatchCancelAsyncService {
      * will fail again on retry unless something else (e.g. a Recall) changed that copy's status
      * in the meantime — this is expected, not a bug.
      */
-    @Async
+    @Async("controlledCopyBatchExecutor")
     public void retryFailedItems(UUID batchId, UUID issuerUserId, String cancellationReason) {
         if (batchId == null) {
             return;

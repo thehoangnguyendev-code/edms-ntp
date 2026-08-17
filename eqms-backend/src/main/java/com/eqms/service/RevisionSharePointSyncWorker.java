@@ -28,7 +28,7 @@ public class RevisionSharePointSyncWorker {
         this.microsoftGraphStorageService = microsoftGraphStorageService;
     }
 
-    @Async
+    @Async("integrationExecutor")
     @Transactional
     public void syncRevisionAsync(UUID revisionId) {
         if (revisionId == null) {

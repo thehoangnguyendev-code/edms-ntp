@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
-import { ClipboardList, Clock3, Eye, KeyRound, MousePointerClick, PenTool, ShieldCheck } from "lucide-react";
+import { ClipboardList, Clock3, Eye, MousePointerClick, PenTool, Search } from "lucide-react";
 import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
+import { useDebounce } from "@/hooks";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { electronicSignatureSettings as electronicSignatureSettingsBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { Button } from "@/components/ui/button/Button";
-import { Checkbox } from "@/components/ui/checkbox/Checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
@@ -16,31 +15,17 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { cn } from "@/components/ui/utils";
 import { COMPONENT_PRESETS } from "@/config/ui-standards";
 import {
+  ElectronicSignatureMeaning,
   ElectronicSignatureSettings,
   electronicSignatureSettingsApi,
 } from "@/services/api/electronicSignatureSettings";
 import { usePermissions } from "@/hooks/usePermissions";
 
 const defaultSettings: ElectronicSignatureSettings = {
-  requirePasswordBeforeSigning: true,
-  requireReason: true,
-  commentRule: "OPTIONAL",
-  allowedAuthMethod: "PASSWORD",
-  showAuditTrailSummary: true,
   signatureTimestampFormat: "dd-MMM-uuuu HH:mm:ss",
   signatureTimezone: "Asia/Ho_Chi_Minh",
   meanings: [],
 };
-
-const COMMENT_RULE_OPTIONS = [
-  { value: "OPTIONAL", label: "Optional" },
-  { value: "REQUIRED", label: "Required" },
-  { value: "HIDDEN", label: "Hidden" },
-];
-
-const AUTH_METHOD_OPTIONS = [
-  { value: "PASSWORD", label: "Password" },
-];
 
 const TIMESTAMP_FORMAT_OPTIONS = [
   { value: "dd-MMM-uuuu HH:mm:ss", label: "17-Jul-2026 15:30:45" },
@@ -56,46 +41,6 @@ const TIMEZONE_OPTIONS = [
   { value: "Asia/Tokyo", label: "Japan (UTC+9)" },
   { value: "Europe/London", label: "United Kingdom" },
 ];
-
-const AllowedReasonsEditor: React.FC<{ reasons: string[]; onChange: (reasons: string[]) => void }> = ({ reasons, onChange }) => {
-  const [draft, setDraft] = useState("");
-
-  const add = () => {
-    const trimmed = draft.trim();
-    if (!trimmed || reasons.includes(trimmed)) return;
-    onChange([...reasons, trimmed]);
-    setDraft("");
-  };
-
-  const remove = (idx: number) => onChange(reasons.filter((_, i) => i !== idx));
-
-  return (
-    <div className="space-y-1.5">
-      {reasons.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {reasons.map((r, i) => (
-            <span key={i} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-2xs font-medium text-emerald-700">
-              {r}
-              <button type="button" onClick={() => remove(i)} className="ml-0.5 text-emerald-400 hover:text-red-500 leading-none">&times;</button>
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-1.5">
-        <input
-          className="flex-1 min-w-0 h-9 rounded-lg border border-slate-200 px-2.5 text-xs sm:text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          placeholder="Add reason..."
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-        />
-        <Button type="button" size="sm" variant="default" onClick={add} disabled={!draft.trim()}>
-          Add
-        </Button>
-      </div>
-    </div>
-  );
-};
 
 export const ElectronicSignatureSettingsView: React.FC = () => {
   const { navigateTo } = useNavigateWithLoading();
@@ -113,6 +58,10 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
   const [timestampPreview, setTimestampPreview] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
+  const [meaningSearch, setMeaningSearch] = useState("");
+  const debouncedMeaningSearch = useDebounce(meaningSearch, 400);
+  const [meaningSearchResults, setMeaningSearchResults] = useState<ElectronicSignatureMeaning[] | null>(null);
+  const [meaningSearchLoading, setMeaningSearchLoading] = useState(false);
 
   const breadcrumbItems = useMemo(
     () => electronicSignatureSettingsBreadcrumbs(navigateTo),
@@ -145,6 +94,45 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
       active = false;
     };
   }, [showToast]);
+
+  useEffect(() => {
+    const trimmed = debouncedMeaningSearch.trim();
+    if (!trimmed) {
+      setMeaningSearchResults(null);
+      setMeaningSearchLoading(false);
+      return;
+    }
+    let active = true;
+    setMeaningSearchLoading(true);
+    electronicSignatureSettingsApi
+      .searchMeanings(trimmed)
+      .then((results) => {
+        if (active) setMeaningSearchResults(results);
+      })
+      .catch(() => {
+        if (active) setMeaningSearchResults([]);
+      })
+      .finally(() => {
+        if (active) setMeaningSearchLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [debouncedMeaningSearch]);
+
+  // Server-side search result rows still reflect the last-saved displayName; overlay any
+  // unsaved local edit (keyed by code, stable across search/no-search) so typing in a row and
+  // then searching doesn't visually discard what the admin just typed but hasn't saved yet.
+  const displayedMeanings = useMemo(() => {
+    const base = meaningSearchResults === null ? settings.meanings : meaningSearchResults;
+    const localByCode = new Map(settings.meanings.map((m) => [m.code, m]));
+    return base.map((m) => localByCode.get(m.code) ?? m);
+  }, [meaningSearchResults, settings.meanings]);
+
+  const updateMeaning = (code: string, patch: Partial<ElectronicSignatureMeaning>) => {
+    const next = settings.meanings.map((m) => (m.code === code ? { ...m, ...patch } : m));
+    update("meanings", next);
+  };
 
   const update = <K extends keyof ElectronicSignatureSettings>(
     key: K,
@@ -269,18 +257,14 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
             <div className="space-y-2 text-sm text-slate-700">
               <div className="flex gap-2">
                 <span className="shrink-0 font-semibold text-emerald-600">1</span>
-                <span>Edit the <strong>Signature Meaning Configuration</strong> table.</span>
+                <span>Edit the <strong>Signature Meaning Configuration</strong> table to rename the label shown for each system-defined signing action.</span>
               </div>
               <div className="flex gap-2">
                 <span className="shrink-0 font-semibold text-emerald-600">2</span>
-                <span>Set the workflow step code, display name, allowed reasons, and comment rule.</span>
+                <span>Every signature always requires a password and a free-text reason — this is not configurable per GMP/21 CFR Part 11.</span>
               </div>
               <div className="flex gap-2">
                 <span className="shrink-0 font-semibold text-emerald-600">3</span>
-                <span>Use <strong>Re-authentication Rule</strong> to define password, reason, and comment behavior.</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="shrink-0 font-semibold text-emerald-600">4</span>
                 <span>Click <strong>Save Changes</strong>. The modal reloads the latest settings automatically.</span>
               </div>
             </div>
@@ -358,74 +342,19 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
             icon={<ClipboardList className="h-4 w-4" />}
           >
             <p className="mb-3 text-xs sm:text-sm text-slate-600">
-              Meaning codes define the workflow purpose for each signature step.
-              These meanings are reused by any module that calls the electronic
-              signature service.
+              One row per system-defined signing action. <strong>Code</strong> is fixed by the
+              application and cannot be changed; <strong>Display Name</strong> is the only editable
+              field and controls the label shown to the signer in the signing modal.
             </p>
-            <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Example values for each field
-              </div>
-              <div className="grid gap-3 lg:grid-cols-2">
-                {[
-                  {
-                    field: "Code",
-                    example: "PREPARED",
-                    note: "Use an all-caps technical code. This is what the workflow and backend read.",
-                  },
-                  {
-                    field: "Display Name",
-                    example: "Prepared",
-                    note: "This is the readable label shown in the signing modal.",
-                  },
-                  {
-                    field: "Description",
-                    example: "User confirms the document has been prepared and is ready for review.",
-                    note: "Optional helper text for admin and audit clarity.",
-                  },
-                  {
-                    field: "Allowed Reasons",
-                    example: "Document Preparation, Draft Finalization",
-                    note: "Only fill this when the step should present predefined reasons in the modal.",
-                  },
-                  {
-                    field: "Require Reason",
-                    example: "Checked",
-                    note: "Turn on when the signer must select or type a reason before confirming.",
-                  },
-                  {
-                    field: "Comment Rule",
-                    example: "OPTIONAL",
-                    note: "Use HIDDEN, OPTIONAL, or REQUIRED depending on whether comment is shown.",
-                  },
-                  {
-                    field: "Active",
-                    example: "Checked",
-                    note: "Disable unused meanings so they no longer appear in the modal.",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.field}
-                    className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm font-semibold text-slate-900">
-                        {item.field}
-                      </div>
-                      <Badge color="emerald" size="xs" variant="outline">
-                        Example
-                      </Badge>
-                    </div>
-                    <div className="mt-2 text-xs leading-5 text-slate-600">
-                      <span className="font-semibold text-slate-800">Value:</span>{" "}
-                      <span className="font-medium text-emerald-700">{item.example}</span>
-                    </div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">
-                      {item.note}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="relative mb-3">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={meaningSearch}
+                onChange={(e) => setMeaningSearch(e.target.value)}
+                placeholder="Search by code or display name..."
+                className="w-full h-9 rounded-lg border border-slate-200 pl-9 pr-3 text-xs sm:text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
             </div>
             {settings.meanings.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
@@ -433,168 +362,81 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
               </div>
             ) : (
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                {/* Header lives in its own non-scrolling table, so the scrollbar below applies
+                    only to the body rows, not the header row. Fixed layout + matching colgroup
+                    widths keep the two tables' columns aligned. */}
+                <table className="w-full table-fixed">
+                  <colgroup>
+                    <col className="w-2/5" />
+                    <col className="w-3/5" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      {[
+                        { label: "Code", hint: "System-defined code the workflow reads (e.g. PREPARED). Not shown to the signer, cannot be edited." },
+                        { label: "Display Name", hint: "Readable label shown in the signing modal (e.g. Prepared)." },
+                      ].map((col) => (
+                        <th
+                          key={col.label}
+                          title={col.hint}
+                          className="bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-help text-left"
+                        >
+                          {col.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                </table>
                 <div
                   ref={scrollerRef as React.RefObject<HTMLDivElement>}
                   className={cn(
-                    "overflow-x-auto",
+                    "max-h-[380px] overflow-y-auto overflow-x-auto",
                     isDragging ? "cursor-grabbing select-none" : "cursor-grab",
                   )}
                   {...dragEvents}
                 >
-                  <table className="min-w-full">
-                    <thead>
-                      <tr>
-                        {["Code", "Display Name", "Description", "Allowed Reasons", "Require Reason", "Comment Rule", "Active"].map((h, i) => (
-                          <th
-                            key={h}
-                            className={cn(
-                              "bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap",
-                              i >= 4 ? "text-center" : "text-left",
-                            )}
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
+                  <table className="w-full table-fixed">
+                    <colgroup>
+                      <col className="w-2/5" />
+                      <col className="w-3/5" />
+                    </colgroup>
                     <tbody className="divide-y divide-slate-200 bg-white">
-                      {settings.meanings.map((meaning, index) => {
-                        const updateMeaning = (patch: Partial<typeof meaning>) => {
-                          const next = [...settings.meanings];
-                          next[index] = { ...meaning, ...patch };
-                          update("meanings", next);
-                        };
-                        return (
+                      {meaningSearchLoading ? (
+                        <tr>
+                          <td colSpan={2} className="px-4 py-6 text-center text-sm text-slate-400">
+                            Searching...
+                          </td>
+                        </tr>
+                      ) : displayedMeanings.length === 0 ? (
+                        <tr>
+                          <td colSpan={2} className="px-4 py-6 text-center text-sm text-slate-400">
+                            No signature meanings match "{meaningSearch}".
+                          </td>
+                        </tr>
+                      ) : (
+                        displayedMeanings.map((meaning) => (
                           <tr key={meaning.code} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900 align-middle">
+                            <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900 align-middle truncate">
                               {meaning.code}
                             </td>
                             <td className="py-3 px-4 align-middle">
                               <input
                                 className="w-full min-w-[100px] h-9 rounded-lg border border-slate-200 px-2.5 text-xs sm:text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                 value={meaning.displayName}
-                                onChange={(e) => updateMeaning({ displayName: e.target.value })}
+                                onChange={(e) => updateMeaning(meaning.code, { displayName: e.target.value })}
                               />
-                            </td>
-                            <td className="py-3 px-4 align-middle">
-                              <input
-                                className="w-full min-w-[120px] h-9 rounded-lg border border-slate-200 px-2.5 text-xs sm:text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                value={meaning.description || ""}
-                                onChange={(e) => updateMeaning({ description: e.target.value })}
-                              />
-                            </td>
-                            <td className="py-3 px-4 min-w-[220px] align-top">
-                              <AllowedReasonsEditor
-                                reasons={meaning.allowedReasons || []}
-                                onChange={(reasons) => updateMeaning({ allowedReasons: reasons })}
-                              />
-                            </td>
-                            <td className="py-3 px-4 align-middle">
-                              <div className="flex items-center justify-center">
-                                <Checkbox
-                                  checked={Boolean(meaning.requiresReason)}
-                                  onChange={(checked) => updateMeaning({ requiresReason: checked })}
-                                />
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 align-middle">
-                              <Select
-                                value={meaning.commentRule || "OPTIONAL"}
-                                onChange={(val) => updateMeaning({ commentRule: val as typeof meaning.commentRule })}
-                                options={COMMENT_RULE_OPTIONS}
-                              />
-                            </td>
-                            <td className="py-3 px-4 align-middle">
-                              <div className="flex items-center justify-center">
-                                <Checkbox
-                                  checked={Boolean(meaning.active)}
-                                  onChange={(checked) => updateMeaning({ active: checked })}
-                                />
-                              </div>
                             </td>
                           </tr>
-                        );
-                      })}
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
-          </FormSection>
-
-          <FormSection
-            title="Re-authentication Rule"
-            icon={<KeyRound className="h-4 w-4" />}
-          >
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <div className="space-y-3">
-                <Checkbox
-                  checked={settings.requirePasswordBeforeSigning}
-                  onChange={(checked) =>
-                    update("requirePasswordBeforeSigning", checked)
-                  }
-                  label="Require password before signing"
-                />
-                <Checkbox
-                  checked={settings.requireReason}
-                  onChange={(checked) => update("requireReason", checked)}
-                  label="Require reason"
-                />
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <label
-                    className={cn(COMPONENT_PRESETS.formLabel, "mb-1.5 block")}
-                  >
-                    Comment Rule
-                  </label>
-                  <Select
-                    value={settings.commentRule}
-                    onChange={(val) =>
-                      update(
-                        "commentRule",
-                        val as ElectronicSignatureSettings["commentRule"],
-                      )
-                    }
-                    options={COMMENT_RULE_OPTIONS}
-                  />
-                </div>
-                <div>
-                  <label
-                    className={cn(COMPONENT_PRESETS.formLabel, "mb-1.5 block")}
-                  >
-                    Allowed Auth Method
-                  </label>
-                  <Select
-                    value={settings.allowedAuthMethod}
-                    onChange={(val) =>
-                      update(
-                        "allowedAuthMethod",
-                        val as ElectronicSignatureSettings["allowedAuthMethod"],
-                      )
-                    }
-                    options={AUTH_METHOD_OPTIONS}
-                  />
-                </div>
-              </div>
-            </div>
-          </FormSection>
-
-          <FormSection
-            title="Audit Trail Display Rule"
-            icon={<ShieldCheck className="h-4 w-4" />}
-          >
-            <div className="space-y-3">
-              <Checkbox
-                checked={settings.showAuditTrailSummary}
-                onChange={(checked) => update("showAuditTrailSummary", checked)}
-                label="Show audit trail summary beside signature display records"
-              />
-              <p className="text-sm text-slate-600">
-                Technical fields such as IP address, user agent, auth method,
-                and checksum are stored in audit trail and can remain hidden
-                from the cover display.
-              </p>
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs sm:text-sm leading-5 text-slate-600">
+              A password and a free-text reason are always required to complete any electronic
+              signature — per GMP/21 CFR Part 11 there is no alternative, so this isn't configurable.
             </div>
           </FormSection>
         </div>

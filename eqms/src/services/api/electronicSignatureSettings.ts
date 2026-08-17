@@ -4,20 +4,9 @@ export interface ElectronicSignatureMeaning {
   id?: string;
   code: string;
   displayName: string;
-  description?: string;
-  requiresReason: boolean;
-  requiresComment: boolean;
-  active: boolean;
-  commentRule: 'HIDDEN' | 'OPTIONAL' | 'REQUIRED';
-  allowedReasons: string[];
 }
 
 export interface ElectronicSignatureSettings {
-  requirePasswordBeforeSigning: boolean;
-  requireReason: boolean;
-  commentRule: 'OPTIONAL' | 'REQUIRED' | 'HIDDEN';
-  allowedAuthMethod: 'PASSWORD';
-  showAuditTrailSummary: boolean;
   signatureTimestampFormat: 'dd-MMM-uuuu HH:mm:ss' | 'dd/MM/uuuu HH:mm:ss' | 'uuuu-MM-dd HH:mm:ss' | 'MM/dd/uuuu hh:mm:ss a' | 'dd-MMM-uuuu HH:mm' | 'dd/MM/uuuu HH:mm' | 'uuuu-MM-dd HH:mm' | 'MM/dd/uuuu hh:mm a';
   signatureTimezone: string;
   timestampFormatEffectiveFrom?: string;
@@ -69,6 +58,12 @@ export const electronicSignatureSettingsApi = {
   },
   getMeaningPolicy: async (code: string) => {
     const response = await api.get<ElectronicSignatureMeaning>(`/electronic-signature/meanings/${encodeURIComponent(code)}`);
+    return response.data;
+  },
+  searchMeanings: async (search: string) => {
+    const response = await api.get<ElectronicSignatureMeaning[]>('/settings/electronic-signature/meanings', {
+      params: search ? { search } : undefined,
+    });
     return response.data;
   },
   saveSettings: async (payload: ElectronicSignatureSettings, sig?: { signatureToken: string; reason?: string }) => {

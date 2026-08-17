@@ -80,6 +80,8 @@ export type GetAuditTrailParams = Omit<Partial<AuditTrailFilters>, 'module'> & {
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
   module?: string;
+  reason?: string;
+  signatureToken?: string;
 };
 
 export const auditTrailApi = {

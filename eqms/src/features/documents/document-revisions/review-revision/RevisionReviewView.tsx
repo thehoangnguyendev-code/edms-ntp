@@ -748,6 +748,8 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
               ? "Complete Review"
               : "Reject"
           }
+          meaningDisplayName={eSignAction === "approve" ? "Reviewed" : "Rejected"}
+          meaningCode={eSignAction === "approve" ? "REVIEWED" : "REJECTED"}
           changes={[{
             action: "Update Status",
             oldValue: "Pending Review",

@@ -1129,6 +1129,8 @@ export const UserManagementView: React.FC = () => {
         }
         onConfirm={confirmForceLogout}
         actionTitle={`Log out immediately: ${forceLogoutModal.userName}`}
+        meaningDisplayName="User Force Logout"
+        meaningCode="USER_FORCE_LOGOUT"
       />
 
       {isNavigating && <FullPageLoading text="Loading..." />}

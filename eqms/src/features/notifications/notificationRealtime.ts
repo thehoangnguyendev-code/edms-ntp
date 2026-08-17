@@ -102,9 +102,11 @@ const connectStream = async () => {
     const decoder = new TextDecoder();
     let buffer = '';
 
+    let closedCleanly = false;
     while (activeCount > 0) {
       const { done, value } = await reader.read();
       if (done) {
+        closedCleanly = true;
         break;
       }
 
@@ -122,6 +124,12 @@ const connectStream = async () => {
         }
         delimiterIndex = buffer.indexOf('\n\n');
       }
+    }
+    // The server bounds each SSE connection's lifetime (see NotificationRealtimeService) and
+    // closes it cleanly (no error) once that's reached, so a clean close must still reconnect —
+    // otherwise real-time notifications would silently stop after the server-side timeout elapses.
+    if (closedCleanly && activeCount > 0 && !abortController?.signal.aborted) {
+      scheduleReconnect();
     }
   } catch (error) {
     if (activeCount > 0 && !abortController?.signal.aborted) {

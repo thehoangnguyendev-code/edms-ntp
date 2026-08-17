@@ -113,6 +113,8 @@ export const TerminateModal: React.FC<TerminateModalProps> = ({
         onClose={() => setESignOpen(false)}
         onConfirm={(data) => handleESignConfirm(data.signatureToken)}
         actionTitle={`Terminate Employee: ${userName}`}
+        meaningDisplayName="User Terminated"
+        meaningCode="USER_TERMINATED"
       />
     </>
   );

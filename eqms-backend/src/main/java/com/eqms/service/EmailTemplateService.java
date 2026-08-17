@@ -61,6 +61,12 @@ public class EmailTemplateService {
     private final CurrentUserService currentUserService;
     private final AuditTrailService auditTrailService;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.auth.TokenService tokenService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private ElectronicSignatureService electronicSignatureService;
+
     public EmailTemplateService(
             EmailTemplateRepository repository,
             EmailTemplateVersionRepository versionRepository,
@@ -150,9 +156,21 @@ public class EmailTemplateService {
                 .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + name));
     }
 
+    private void requireValidTemplateSignature(UserAccount currentUser, String signatureToken) {
+        if (!StringUtils.hasText(signatureToken)) {
+            throw new IllegalArgumentException("Electronic signature is required to save an email template");
+        }
+        var parsedSignature = tokenService.parseSignatureToken(signatureToken)
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Electronic signature is invalid or expired"));
+        if (!parsedSignature.principal().userId().equals(currentUser.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Electronic signature must belong to the current user");
+        }
+    }
+
     @Transactional
     public EmailTemplateResponse createTemplate(EmailTemplateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
+        requireValidTemplateSignature(currentUser, request.signatureToken());
         EmailTemplate template = new EmailTemplate();
         template.setName(request.name());
         template.setType(normalizeTemplateType(request.type()));
@@ -172,6 +190,7 @@ public class EmailTemplateService {
         EmailTemplate saved = repository.save(template);
         createVersionSnapshot(saved, "Created template", currentUser, null, null);
         String reason = request.reason();
+        electronicSignatureService.createEntitySignature("EmailTemplate", saved.getId(), saved.getName(), currentUser, request.signatureToken(), "EMAIL_TEMPLATE_CREATED", reason, null, null, saved.getStatus());
         auditTrailService.logAs(
                 currentUser,
                 "EMAIL_TEMPLATE",
@@ -190,6 +209,7 @@ public class EmailTemplateService {
     @Transactional
     public EmailTemplateResponse updateTemplate(UUID id, EmailTemplateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
+        requireValidTemplateSignature(currentUser, request.signatureToken());
         EmailTemplate template = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
 
@@ -210,6 +230,7 @@ public class EmailTemplateService {
 
         EmailTemplate saved = repository.save(template);
         createVersionSnapshot(saved, "Updated template", currentUser, null, null);
+        electronicSignatureService.createEntitySignature("EmailTemplate", saved.getId(), saved.getName(), currentUser, request.signatureToken(), "EMAIL_TEMPLATE_UPDATED", request.reason(), null, previousStatus, saved.getStatus());
         auditTrailService.logAs(
                 currentUser,
                 "EMAIL_TEMPLATE",

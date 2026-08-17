@@ -803,6 +803,8 @@ export const RevisionListView: React.FC = () => {
         }}
         onConfirm={handlePublishConfirm}
         actionTitle="Publish Document"
+        meaningDisplayName="Published"
+        meaningCode="PUBLISHED"
         changes={[
           {
             action: "Update Status",

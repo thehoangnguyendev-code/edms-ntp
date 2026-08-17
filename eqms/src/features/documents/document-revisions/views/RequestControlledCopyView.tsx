@@ -682,6 +682,7 @@ export const RequestControlledCopyView: React.FC = () => {
     username?: string;
     password?: string;
     reason: string;
+    signatureToken?: string;
   }) => {
     if (requestBlocked) {
       showToast({
@@ -757,6 +758,7 @@ export const RequestControlledCopyView: React.FC = () => {
         purpose: request.reason,
         copies: selectedRecipientCount,
         quantity: selectedRecipientCount,
+        signatureToken: data.signatureToken,
       });
     } catch (error) {
       console.error("Failed to request controlled copy", error);
@@ -1415,6 +1417,8 @@ export const RequestControlledCopyView: React.FC = () => {
         onClose={() => setShowesignModal(false)}
         onConfirm={handleESignConfirm}
         actionTitle="Confirm Controlled Copy Request"
+        meaningDisplayName="Controlled Copy Requested"
+        meaningCode="CONTROLLED_COPY_REQUESTED"
       />
 
       {/* Cancel Confirmation Modal */}

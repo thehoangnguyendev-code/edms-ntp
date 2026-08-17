@@ -148,6 +148,62 @@ public class EmailNotificationService {
         }
     }
 
+    /**
+     * Sends the one aggregated "batch distributed" email to the DCO with a ZIP attachment,
+     * when the Controlled Copies Policy redirects delivery to the DCO. Distinct from {@link
+     * #sendControlledCopyNotification} because it needs the attachment overload of EmailService.
+     */
+    public void sendControlledCopyBatchZipToDco(UserAccount dco, UserAccount actor, Map<String, String> variables, String attachmentFileName, byte[] attachmentBytes) {
+        if (dco == null || !StringUtils.hasText(dco.getEmail())) {
+            log.warn("Cannot send controlled copy batch ZIP: no DCO recipient email configured.");
+            return;
+        }
+        String normalizedType = EmailTemplateTypeUtils.CONTROLLED_COPY_BATCH_DISTRIBUTION_DCO_ZIP;
+        EmailTemplate template = templateRepository
+                .findTopByTypeIgnoreCaseAndStatusIgnoreCaseOrderByUpdatedDateDesc(normalizedType, "Active")
+                .orElse(null);
+        if (template == null) {
+            log.warn("No active email template found for type '{}'. Skipping DCO batch ZIP notification.", normalizedType);
+            return;
+        }
+        Map<String, String> payload = buildUserVariables(dco, actor, variables);
+        try {
+            EmailService emailService = emailServiceProvider.getIfAvailable();
+            if (emailService == null) {
+                log.warn("EmailService is not available. Skipping DCO batch ZIP notification to {}", dco.getEmail());
+                return;
+            }
+            boolean sent = emailService.sendTemplateEmailWithAttachment(dco.getEmail(), template, payload, attachmentFileName, attachmentBytes);
+            if (!sent) {
+                recordDeliveryFailure(dco.getEmail(), normalizedType, "CONTROLLED_COPY",
+                        new IllegalStateException("Email provider rejected delivery or is not configured"), payload);
+            }
+        } catch (Exception ex) {
+            recordDeliveryFailure(dco.getEmail(), normalizedType, "CONTROLLED_COPY", ex, payload);
+            log.warn("Failed to send DCO batch ZIP notification to {}: {}", dco.getEmail(), ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Records a visible, non-silent failure when Controlled Copies Policy says delivery should be
+     * redirected to the DCO but that couldn't happen (misconfigured -- no permission, inactive
+     * account, deleted user, etc.) -- distinct from a real email/SMTP send failure (channel=
+     * "CONFIG"), so an admin browsing the delivery-failures screen can tell "this policy is
+     * broken" apart from "SMTP rejected this send". The distribute/batch action itself still
+     * falls back to normal (non-redirected) delivery so nothing is silently lost.
+     */
+    public void recordControlledCopyDcoMisconfiguration(String context, String reasonMessage) {
+        log.warn("Controlled Copies Policy DCO delivery redirect is misconfigured ({}): {}", context, reasonMessage);
+        recordDeliveryFailure(
+                StringUtils.hasText(context) ? context : "controlled-copy-dco",
+                "controlled-copy-dco-misconfigured",
+                "CONTROLLED_COPY",
+                "CONFIG",
+                new IllegalStateException(reasonMessage),
+                Map.of()
+        );
+    }
+
     public void sendPreferenceNotification(UserAccount recipient, Map<String, String> variables) {
         sendToRecipients("preference-notification", recipient == null ? List.of() : List.of(recipient), variables, "PREFERENCES");
     }

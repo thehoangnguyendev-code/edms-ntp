@@ -1,0 +1,99 @@
+# GMP deployment override. Apply only with a controlled environment file:
+# docker compose --env-file .env.gmp -f docker-compose.yml -f docker-compose.gmp.yml up -d
+#
+# This intentionally refuses known development credentials and requires Flyway validation.
+#
+# Resource limits below are conservative starting defaults for a ~500-concurrent-user deployment
+# on an otherwise-unspecified host -- override every *_CPU_LIMIT/*_MEM_LIMIT via .env.gmp once the
+# actual production host's CPU/RAM is known; these are safe floors, not a substitute for real
+# capacity planning against the target hardware.
+services:
+  postgres:
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required for GMP deployment}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required for GMP deployment}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required for GMP deployment}
+    deploy:
+      resources:
+        limits:
+          cpus: "${POSTGRES_CPU_LIMIT:-2}"
+          memory: ${POSTGRES_MEM_LIMIT:-2g}
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: "${REDIS_CPU_LIMIT:-1}"
+          memory: ${REDIS_MEM_LIMIT:-512m}
+
+  minio:
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required for GMP deployment}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required for GMP deployment}
+    deploy:
+      resources:
+        limits:
+          cpus: "${MINIO_CPU_LIMIT:-1}"
+          memory: ${MINIO_MEM_LIMIT:-1g}
+
+  clamav:
+    deploy:
+      resources:
+        limits:
+          cpus: "${CLAMAV_CPU_LIMIT:-1}"
+          memory: ${CLAMAV_MEM_LIMIT:-1.5g}
+
+  backend:
+    environment:
+      APP_SECURITY_STRICT_SECRETS: "true"
+      APP_AUTH_JWT_SECRET: ${APP_AUTH_JWT_SECRET:?APP_AUTH_JWT_SECRET is required for GMP deployment}
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "true"
+      APP_SECURITY_LEGACY_ROLE_FALLBACK_ENABLED: "false"
+      APP_SECURITY_COMPATIBILITY_ALIASES_ENABLED: "false"
+      APP_SECURITY_PARTICIPANT_VISIBILITY_STRICT: "true"
+      APP_SECURITY_LIFECYCLE_POLICY_ENABLED: "true"
+      # The nginx service below sets X-Forwarded-* -- trust it only because it's the actual proxy
+      # in front of the backend in this deployment; never enable this without a real proxy present.
+      APP_RATE_LIMIT_TRUST_FORWARDED_HEADERS: "true"
+    deploy:
+      resources:
+        limits:
+          cpus: "${BACKEND_CPU_LIMIT:-2}"
+          memory: ${BACKEND_MEM_LIMIT:-2g}
+
+  frontend:
+    deploy:
+      resources:
+        limits:
+          cpus: "${FRONTEND_CPU_LIMIT:-0.5}"
+          memory: ${FRONTEND_MEM_LIMIT:-512m}
+
+  # Reverse proxy: the app's direct entry point in a GMP deployment. Frontend/backend container
+  # ports stay bound (see docker-compose.yml) for operator/debugging access on the docker host
+  # itself, but real client traffic should go through this service (port 80, add 443 once TLS
+  # certs are provisioned -- see nginx/nginx.conf).
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: eqms-nginx
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    deploy:
+      resources:
+        limits:
+          cpus: "${NGINX_CPU_LIMIT:-1}"
+          memory: ${NGINX_MEM_LIMIT:-256m}

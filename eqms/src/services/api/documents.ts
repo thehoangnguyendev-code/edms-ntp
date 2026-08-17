@@ -1856,6 +1856,7 @@ export const documentApi = {
       location?: string;
       quantity: number;
     }>;
+    signatureToken?: string;
   }) => {
     const response = await api.post(CONTROLLED_COPIES_ENDPOINT, data);
     return response.data;
@@ -1864,7 +1865,7 @@ export const documentApi = {
   /** POST /controlled-copies/:id/distribute */
   distribute: async (
     id: string,
-    data: { distributedTo: string; distributedAt: string; location: string; comment: string; signatureToken: string }
+    data: { distributedTo: string; distributedAt: string; location: string; comment: string; signatureToken: string; customPlaceholderValues?: Record<string, string> }
   ) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/${id}/distribute`, data);
     return response.data;
@@ -1873,7 +1874,7 @@ export const documentApi = {
   /** POST /controlled-copies/batches/:batchId/distribute */
   distributeControlledCopyBatch: async (
     batchId: string,
-    data: { distributedTo: string; distributedAt: string; location: string; comment: string; signatureToken: string }
+    data: { distributedTo: string; distributedAt: string; location: string; comment: string; signatureToken: string; customPlaceholderValues?: Record<string, string> }
   ) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/batches/${batchId}/distribute`, data);
     return response.data as ControlledCopyDistributionBatch;

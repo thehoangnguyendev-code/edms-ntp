@@ -1894,6 +1894,7 @@ const RevisionCreateViewContent: React.FC = () => {
         )}
         documentSubType={generalForm.subType}
         canUseTemplate={canUseDocumentTemplate}
+        isSubmitting={isSaving}
       />
       <ESignatureModal
         isOpen={showCompleteEditingModal}
@@ -1901,6 +1902,7 @@ const RevisionCreateViewContent: React.FC = () => {
         onConfirm={(signature) => handleCompleteEditing(signature)}
         actionTitle="Complete Editing"
         meaningDisplayName="Prepared"
+        meaningCode="PREPARED"
       />
       <ESignatureModal
         isOpen={showSubmitForReviewModal}
@@ -1908,6 +1910,7 @@ const RevisionCreateViewContent: React.FC = () => {
         onConfirm={(signature) => handleSubmitForReview(signature)}
         actionTitle="Submit for Review"
         meaningDisplayName="Submitted for Review"
+        meaningCode="SUBMITTED_FOR_REVIEW"
       />
 
       <div className="flex flex-col gap-4">

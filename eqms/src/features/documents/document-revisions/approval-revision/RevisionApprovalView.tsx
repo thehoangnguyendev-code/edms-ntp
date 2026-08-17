@@ -700,6 +700,8 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
                     onClose={() => setshowesignModal(false)}
                     onConfirm={handleESignConfirm}
                     actionTitle={eSignAction === 'approve' ? 'Complete Approve' : 'Reject'}
+                    meaningDisplayName={eSignAction === 'approve' ? 'Approved' : 'Rejected'}
+                    meaningCode={eSignAction === 'approve' ? 'APPROVED' : 'REJECTED'}
                     changes={[{
                         action: "Update Status",
                         oldValue: "Pending Approval",

@@ -128,11 +128,11 @@ export const EmailTemplateCreateView: React.FC = () => {
     setShowSaveConfirm(true);
   };
 
-  const handleESignConfirm = async (reason: string) => {
+  const handleESignConfirm = async (data: { reason: string; signatureToken?: string }) => {
     setShowESign(false);
     setIsSubmitting(true);
     try {
-      await createEmailTemplate({ ...formData, reason });
+      await createEmailTemplate({ ...formData, reason: data.reason, signatureToken: data.signatureToken });
       setUnsavedChanges(false);
       navigateTo("/settings/email-templates");
     } catch (error) {
@@ -412,8 +412,10 @@ export const EmailTemplateCreateView: React.FC = () => {
       <ESignatureModal
         isOpen={showESign}
         onClose={() => setShowESign(false)}
-        onConfirm={(data) => handleESignConfirm(data.reason)}
+        onConfirm={handleESignConfirm}
         actionTitle="Create Email Template"
+        meaningDisplayName="Email Template Created"
+        meaningCode="EMAIL_TEMPLATE_CREATED"
       />
 
       {/* Cancel Confirmation Modal */}

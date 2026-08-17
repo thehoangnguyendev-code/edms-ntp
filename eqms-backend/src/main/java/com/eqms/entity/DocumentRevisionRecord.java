@@ -11,6 +11,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Version;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -22,6 +23,11 @@ public class DocumentRevisionRecord {
 
     @Id
     private UUID id;
+
+    // Optimistic locking -- see DocumentRecord.lockVersion for rationale.
+    @Version
+    @Column(name = "lock_version", nullable = false)
+    private long lockVersion;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "document_id", nullable = false)
@@ -308,6 +314,10 @@ public class DocumentRevisionRecord {
 
     public UUID getId() {
         return id;
+    }
+
+    public long getLockVersion() {
+        return lockVersion;
     }
 
     public void setId(UUID id) {

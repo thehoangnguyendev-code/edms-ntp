@@ -69,6 +69,7 @@ export interface EmailTemplatePayload {
   description?: string;
   /** Electronic-signature reason captured when creating the template (audit trail). */
   reason?: string;
+  signatureToken?: string;
 }
 
 export interface EmailTemplateListParams {

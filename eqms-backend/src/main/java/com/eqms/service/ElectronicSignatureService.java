@@ -45,6 +45,9 @@ import java.util.Comparator;
 public class ElectronicSignatureService {
 
     private static final DateTimeFormatter SIGNATURE_ID_YEAR = DateTimeFormatter.ofPattern("yyyy").withZone(ZoneId.systemDefault());
+    // Electronic signatures are intentionally password-only (never configurable) -- login
+    // MFA/SSO remains an account security feature, but is not an alternative signing mechanism.
+    private static final String AUTHENTICATION_METHOD = "PASSWORD";
     private final ElectronicSignatureRepository signatureRepository;
     private final ElectronicSignatureSettingRepository settingRepository;
     private final ElectronicSignatureMeaningRepository meaningRepository;
@@ -84,20 +87,15 @@ public class ElectronicSignatureService {
     public ElectronicSignatureSettingsResponse saveSettings(ElectronicSignatureSettingsRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         ElectronicSignatureSetting setting = requireSetting();
-        String previousAuthMethod = setting.getAllowedAuthMethod();
-        boolean previousRequirePassword = setting.isRequirePasswordBeforeSigning();
-        boolean previousRequireReason = setting.isRequireReason();
-        String previousCommentRule = setting.getCommentRule();
-        boolean previousShowAuditTrailSummary = setting.isShowAuditTrailSummary();
         String previousTimestampFormat = setting.getSignatureTimestampFormat();
         String previousTimezone = setting.getSignatureTimezone();
-        List<ElectronicSignatureMeaning> previousMeanings = meaningRepository.findAllByOrderBySortOrderAscDisplayNameAsc();
+        List<ElectronicSignatureMeaning> previousMeanings = meaningRepository.findAllByOrderByCodeAsc();
         applySettings(setting, request);
         settingRepository.save(setting);
         if (request != null && request.meanings() != null) {
             saveMeanings(request.meanings());
         }
-        List<ElectronicSignatureMeaning> currentMeanings = meaningRepository.findAllByOrderBySortOrderAscDisplayNameAsc();
+        List<ElectronicSignatureMeaning> currentMeanings = meaningRepository.findAllByOrderByCodeAsc();
         auditTrailService.logAs(
                 currentUser,
                 "ELECTRONIC_SIGNATURE_SETTINGS",
@@ -108,11 +106,6 @@ public class ElectronicSignatureService {
                 null,
                 "Updated electronic signature settings.",
                 List.of(
-                        change("Require Password Before Signing", String.valueOf(previousRequirePassword), String.valueOf(setting.isRequirePasswordBeforeSigning())),
-                        change("Require Reason", String.valueOf(previousRequireReason), String.valueOf(setting.isRequireReason())),
-                        change("Comment Rule", safeText(previousCommentRule), safeText(setting.getCommentRule())),
-                        change("Allowed Auth Method", safeText(previousAuthMethod), safeText(setting.getAllowedAuthMethod())),
-                        change("Show Audit Trail Summary", String.valueOf(previousShowAuditTrailSummary), String.valueOf(setting.isShowAuditTrailSummary())),
                         change("Signature Timestamp Format", safeText(previousTimestampFormat), safeText(setting.getSignatureTimestampFormat())),
                         change("Signature Timezone", safeText(previousTimezone), safeText(setting.getSignatureTimezone())),
                         change("Meaning Count", String.valueOf(previousMeanings.size()), String.valueOf(currentMeanings.size())),
@@ -140,8 +133,7 @@ public class ElectronicSignatureService {
         }
         ElectronicSignatureSetting setting = requireSetting();
         String normalizedMeaning = normalizeMeaning(meaning);
-        ElectronicSignatureMeaning meaningConfig = meaningRepository.findByCodeIgnoreCase(normalizedMeaning).orElse(null);
-        validateSigningRules(setting, meaningConfig, signatureToken, user, reason, comment);
+        validateSigningRules(signatureToken, user, reason);
 
         ElectronicSignature signature = new ElectronicSignature();
         signature.setEntityType("revisions");
@@ -160,7 +152,7 @@ public class ElectronicSignatureService {
         signature.setSignedAt(Instant.now());
         signature.setTimezone(displayTimezone(setting));
         signature.setTimestampDisplay(signatureRendererService.formatTimestampSnapshot(signature.getSignedAt(), setting));
-        signature.setAuthenticationMethod(setting.getAllowedAuthMethod());
+        signature.setAuthenticationMethod(AUTHENTICATION_METHOD);
         signature.setSignatureId(nextSignatureId());
         signature.setVerificationId("VERIFY-" + UUID.randomUUID());
         signature.setIpAddress(currentIpAddress());
@@ -224,8 +216,7 @@ public class ElectronicSignatureService {
         }
         ElectronicSignatureSetting setting = requireSetting();
         String normalizedMeaning = normalizeMeaning(meaning);
-        ElectronicSignatureMeaning meaningConfig = meaningRepository.findByCodeIgnoreCase(normalizedMeaning).orElse(null);
-        validateSigningRules(setting, meaningConfig, signatureToken, user, reason, comment);
+        validateSigningRules(signatureToken, user, reason);
 
         ElectronicSignature signature = new ElectronicSignature();
         signature.setEntityType(entityType);
@@ -242,7 +233,7 @@ public class ElectronicSignatureService {
         signature.setSignedAt(Instant.now());
         signature.setTimezone(displayTimezone(setting));
         signature.setTimestampDisplay(signatureRendererService.formatTimestampSnapshot(signature.getSignedAt(), setting));
-        signature.setAuthenticationMethod(setting.getAllowedAuthMethod());
+        signature.setAuthenticationMethod(AUTHENTICATION_METHOD);
         signature.setSignatureId(nextSignatureId());
         signature.setVerificationId("VERIFY-" + UUID.randomUUID());
         signature.setIpAddress(currentIpAddress());
@@ -376,6 +367,13 @@ public class ElectronicSignatureService {
             }
             if (signature != null) {
                 values.put(key, signatureRendererService.renderTextBlock(signature, requireSetting()));
+            } else if (isStageSkipped(revision, meaning)) {
+                // No participant is configured for this stage at all (e.g. the document
+                // subtype skips review entirely) -- distinct from "not signed yet", which
+                // renders a Pending block via the synthetic-signature path above. Without this,
+                // the placeholder would fall back to its raw template-preview label text (e.g.
+                // "Reviewed signature block"), which reads like a broken/unrendered placeholder.
+                values.put(key, stageLabel(meaning) + " Not Required\n(Skipped per document subtype configuration)");
             }
         }
         return values;
@@ -430,24 +428,22 @@ public class ElectronicSignatureService {
         return "DETAILED_TABLE";
     }
 
-    private void validateSigningRules(ElectronicSignatureSetting setting, ElectronicSignatureMeaning meaning, String signatureToken, UserAccount user, String reason, String comment) {
+    @Transactional(readOnly = true)
+    public List<ElectronicSignatureMeaningResponse> searchMeanings(String search) {
+        List<ElectronicSignatureMeaning> results = StringUtils.hasText(search)
+                ? meaningRepository.findByCodeContainingIgnoreCaseOrDisplayNameContainingIgnoreCaseOrderByCodeAsc(search.trim(), search.trim())
+                : meaningRepository.findAllByOrderByCodeAsc();
+        return results.stream().map(this::toMeaningResponse).toList();
+    }
+
+    private void validateSigningRules(String signatureToken, UserAccount user, String reason) {
         var parsed = tokenService.parseSignatureToken(signatureToken)
                 .orElseThrow(() -> new UnauthorizedException("Electronic signature is invalid or expired"));
         if (!parsed.principal().userId().equals(user.getId())) {
             throw new UnauthorizedException("Electronic signature must belong to the current user");
         }
-        boolean reasonRequired = setting.isRequireReason() || (meaning != null && meaning.isRequiresReason());
-        if (reasonRequired && !StringUtils.hasText(reason)) {
+        if (!StringUtils.hasText(reason)) {
             throw new IllegalArgumentException("Signing reason is required");
-        }
-        if (meaning != null && meaning.getAllowedReasons() != null && !meaning.getAllowedReasons().isEmpty()
-                && StringUtils.hasText(reason)
-                && meaning.getAllowedReasons().stream().noneMatch(item -> item.equalsIgnoreCase(reason.trim()))) {
-            throw new IllegalArgumentException("Signing reason is not allowed for this signature meaning");
-        }
-        boolean commentRequired = "REQUIRED".equalsIgnoreCase(setting.getCommentRule()) || (meaning != null && meaning.isRequiresComment());
-        if (commentRequired && !StringUtils.hasText(comment)) {
-            throw new IllegalArgumentException("Signing comment is required");
         }
     }
 
@@ -458,13 +454,6 @@ public class ElectronicSignatureService {
 
     private void applySettings(ElectronicSignatureSetting setting, ElectronicSignatureSettingsRequest request) {
         if (request == null) return;
-        if (request.requirePasswordBeforeSigning() != null) setting.setRequirePasswordBeforeSigning(request.requirePasswordBeforeSigning());
-        if (request.requireReason() != null) setting.setRequireReason(request.requireReason());
-        if (StringUtils.hasText(request.commentRule())) setting.setCommentRule(normalizeCommentRule(request.commentRule()));
-        // Electronic signatures are intentionally password-only. Login MFA/SSO remains
-        // an account security feature, but is not an alternative signing mechanism.
-        setting.setAllowedAuthMethod("PASSWORD");
-        if (request.showAuditTrailSummary() != null) setting.setShowAuditTrailSummary(request.showAuditTrailSummary());
         if (StringUtils.hasText(request.signatureTimestampFormat())) {
             setting.setSignatureTimestampFormat(signatureRendererService.normalizeTimestampFormat(request.signatureTimestampFormat()));
         }
@@ -478,40 +467,23 @@ public class ElectronicSignatureService {
     }
 
     private void saveMeanings(List<ElectronicSignatureMeaningRequest> requests) {
-        int order = 10;
         for (ElectronicSignatureMeaningRequest item : requests) {
             if (item == null || !StringUtils.hasText(item.code())) continue;
-            ElectronicSignatureMeaning meaning = meaningRepository.findByCodeIgnoreCase(item.code()).orElseGet(ElectronicSignatureMeaning::new);
-            meaning.setCode(normalizeMeaning(item.code()));
-            meaning.setDisplayName(StringUtils.hasText(item.displayName()) ? item.displayName().trim() : meaning.getCode());
-            meaning.setDescription(item.description());
-            meaning.setRequiresReason(item.requiresReason() == null || item.requiresReason());
-            if (StringUtils.hasText(item.commentRule())) {
-                meaning.setCommentRule(normalizeCommentRule(item.commentRule()));
-            } else if (item.requiresComment() != null) {
-                meaning.setCommentRule(Boolean.TRUE.equals(item.requiresComment()) ? "REQUIRED" : "OPTIONAL");
-            }
-            if (item.allowedReasons() != null) {
-                meaning.setAllowedReasons(item.allowedReasons().stream().filter(StringUtils::hasText).toList());
-            }
-            meaning.setActive(item.active() == null || item.active());
-            meaning.setSortOrder(order);
-            meaningRepository.save(meaning);
-            order += 10;
+            meaningRepository.findByCodeIgnoreCase(item.code()).ifPresent(meaning -> {
+                if (StringUtils.hasText(item.displayName())) {
+                    meaning.setDisplayName(item.displayName().trim());
+                    meaningRepository.save(meaning);
+                }
+            });
         }
     }
 
     private ElectronicSignatureSettingsResponse toSettingsResponse(ElectronicSignatureSetting setting, String previewBlock) {
         return new ElectronicSignatureSettingsResponse(
-                setting.isRequirePasswordBeforeSigning(),
-                setting.isRequireReason(),
-                setting.getCommentRule(),
-                setting.getAllowedAuthMethod(),
-                setting.isShowAuditTrailSummary(),
                 StringUtils.hasText(setting.getSignatureTimestampFormat()) ? setting.getSignatureTimestampFormat() : "dd-MMM-uuuu HH:mm:ss",
                 StringUtils.hasText(setting.getSignatureTimezone()) ? setting.getSignatureTimezone() : "Asia/Ho_Chi_Minh",
                 setting.getTimestampFormatEffectiveFrom(),
-                meaningRepository.findAllByOrderBySortOrderAscDisplayNameAsc().stream().map(this::toMeaningResponse).toList(),
+                meaningRepository.findAllByOrderByCodeAsc().stream().map(this::toMeaningResponse).toList(),
                 previewBlock
         );
     }
@@ -520,13 +492,7 @@ public class ElectronicSignatureService {
         return new ElectronicSignatureMeaningResponse(
                 meaning.getId(),
                 meaning.getCode(),
-                meaning.getDisplayName(),
-                meaning.getDescription(),
-                meaning.isRequiresReason(),
-                meaning.isRequiresComment(),
-                meaning.isActive(),
-                meaning.getCommentRule(),
-                meaning.getAllowedReasons()
+                meaning.getDisplayName()
         );
     }
 
@@ -803,6 +769,25 @@ public class ElectronicSignatureService {
         return "SIGNED";
     }
 
+    /** True only when the stage genuinely has zero configured participants (e.g. the document
+     * subtype skips review entirely) -- not merely "no one has acted yet". */
+    private boolean isStageSkipped(RevisionDetailResponse revision, String meaning) {
+        if (revision == null) return false;
+        if ("REVIEWED".equalsIgnoreCase(meaning)) {
+            return revision.reviewers() == null || revision.reviewers().isEmpty();
+        }
+        if ("APPROVED".equalsIgnoreCase(meaning)) {
+            return revision.approvers() == null || revision.approvers().isEmpty();
+        }
+        return false;
+    }
+
+    private String stageLabel(String meaning) {
+        if ("REVIEWED".equalsIgnoreCase(meaning)) return "Review";
+        if ("APPROVED".equalsIgnoreCase(meaning)) return "Approval";
+        return "Signature";
+    }
+
     private DocumentParticipantResponse firstParticipantForMeaning(RevisionDetailResponse revision, String meaning) {
         if (revision == null || !StringUtils.hasText(meaning)) {
             return null;
@@ -906,15 +891,6 @@ public class ElectronicSignatureService {
         return StringUtils.hasText(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
     }
 
-
-    private String normalizeCommentRule(String value) {
-        String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : "OPTIONAL";
-        return List.of("OPTIONAL", "REQUIRED", "HIDDEN").contains(normalized) ? normalized : "OPTIONAL";
-    }
-
-    private String normalizeAuthMethod(String value) {
-        return "PASSWORD";
-    }
 
     private String displayTimezone(ElectronicSignatureSetting setting) {
         return StringUtils.hasText(setting.getSignatureTimezone()) ? setting.getSignatureTimezone() : "Asia/Ho_Chi_Minh";

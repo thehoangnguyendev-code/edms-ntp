@@ -6,8 +6,8 @@ public record ControlledCopyExpiryLimitResponse(
         String documentTypeName,
         String departmentId,
         String departmentName,
-        int maxDurationDays,
+        int durationValue,
+        String durationUnit,
         boolean active,
-        boolean isSystem,
-        String description
+        boolean isSystem
 ) {}

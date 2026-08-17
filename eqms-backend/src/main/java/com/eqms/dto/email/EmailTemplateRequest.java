@@ -42,5 +42,7 @@ public record EmailTemplateRequest(
     @Size(max = 20, message = "Primary color must not exceed 20 characters")
     String primaryColor,
 
-    String reason
+    String reason,
+
+    String signatureToken
 ) {}

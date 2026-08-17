@@ -88,7 +88,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.io.ByteArrayOutputStream;
@@ -162,6 +161,7 @@ public class ControlledCopyService {
     private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder;
     private final ControlledCopyPreviewGrantService controlledCopyPreviewGrantService;
     private final ControlledCopyBatchStatusService controlledCopyBatchStatusService;
+    private final com.eqms.repository.ControlledCopyPlaceholderFieldRepository controlledCopyPlaceholderFieldRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -188,6 +188,9 @@ public class ControlledCopyService {
 
     @org.springframework.beans.factory.annotation.Autowired
     private com.eqms.repository.ControlledCopyBatchStatusDiscrepancyRepository controlledCopyBatchStatusDiscrepancyRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private ElectronicSignatureService electronicSignatureService;
 
     public ControlledCopyService(
             ControlledCopyRepository controlledCopyRepository,
@@ -216,7 +219,8 @@ public class ControlledCopyService {
             NotificationDispatcher notificationDispatcher,
             org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder,
             ControlledCopyPreviewGrantService controlledCopyPreviewGrantService,
-            ControlledCopyBatchStatusService controlledCopyBatchStatusService
+            ControlledCopyBatchStatusService controlledCopyBatchStatusService,
+            com.eqms.repository.ControlledCopyPlaceholderFieldRepository controlledCopyPlaceholderFieldRepository
     ) {
         this.controlledCopyRepository = controlledCopyRepository;
         this.controlledCopyEvidenceFileRepository = controlledCopyEvidenceFileRepository;
@@ -245,6 +249,7 @@ public class ControlledCopyService {
         this.passwordEncoder = passwordEncoder;
         this.controlledCopyPreviewGrantService = controlledCopyPreviewGrantService;
         this.controlledCopyBatchStatusService = controlledCopyBatchStatusService;
+        this.controlledCopyPlaceholderFieldRepository = controlledCopyPlaceholderFieldRepository;
     }
 
     @Autowired
@@ -689,6 +694,7 @@ public class ControlledCopyService {
         // second flat permission or scope check here: that would allow the UI
         // and mutation endpoint to drift when workflow policy is changed.
         controlledCopyAuthorizationService.requireRequestControlledCopy(currentUser, document, revision);
+        UUID signatureSessionId = requireValidSignatureToken(request == null ? null : request.signatureToken(), currentUser, "controlled copy request");
         if (request != null && StringUtils.hasText(request.sourceRevisionId())) {
             UUID requestedSourceRevisionId = parseUuidOrNull(request.sourceRevisionId());
             if (requestedSourceRevisionId != null && !requestedSourceRevisionId.equals(revision.getId())) {
@@ -717,15 +723,14 @@ public class ControlledCopyService {
         List<String> externalRecipients = request == null || request.externalRecipients() == null ? List.of() : request.externalRecipients().stream().filter(StringUtils::hasText).map(String::trim).toList();
         boolean requestedHasExpiryDate = request != null && Boolean.TRUE.equals(request.hasExpiryDate());
         Instant expiryDate = parseInstant(request == null ? null : request.expiryDate(), null);
-        Integer expiryLimitDays = controlledCopyExpiryLimitService.resolveDurationDays(document.getDocumentType(), document.getDepartment());
-        if (expiryLimitDays == null || expiryLimitDays <= 0) {
+        Instant maximumExpiryDate = controlledCopyExpiryLimitService.resolveMaximumExpiry(document.getDocumentType(), document.getDepartment());
+        if (maximumExpiryDate == null) {
             throw new IllegalStateException("No active Controlled Copy expiry policy is configured.");
         }
-        Instant maximumExpiryDate = Instant.now().plus(expiryLimitDays, ChronoUnit.DAYS);
         if (expiryDate == null) {
             expiryDate = maximumExpiryDate;
         } else if (expiryDate.isAfter(maximumExpiryDate)) {
-            throw new IllegalArgumentException("Expiry date cannot exceed the configured Controlled Copy limit of " + expiryLimitDays + " days.");
+            throw new IllegalArgumentException("Expiry date cannot exceed the configured Controlled Copy expiry limit.");
         }
         boolean hasExpiryDate = requestedHasExpiryDate || expiryDate != null;
 
@@ -862,7 +867,9 @@ public class ControlledCopyService {
                     "REQUEST",
                     null,
                     copy.getStatus(),
-                    reason
+                    reason,
+                    List.of(),
+                    signatureSessionId
             );
             if (firstCreated == null) {
                 firstCreated = copy;
@@ -872,6 +879,7 @@ public class ControlledCopyService {
             }
         }
 
+        electronicSignatureService.createEntitySignature("ControlledCopyDistributionBatch", batch.getId(), batch.getBatchNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_REQUESTED", reason, null, null, firstCreated == null ? null : firstCreated.getStatus());
         return toResponse(firstCreated, false);
     }
 
@@ -1118,12 +1126,16 @@ public class ControlledCopyService {
         batch.setDistributionComment(distributionComment);
         batch.setQuantity(copies.size());
 
+        com.fasterxml.jackson.databind.JsonNode customPlaceholderValues =
+                sanitizeCustomPlaceholderValues(request == null ? null : request.customPlaceholderValues());
+
         for (ControlledCopyRecord copy : copies) {
             ensureControlledCopyNotExpired(copy, distributedAt);
             setControlledCopyStatus(copy, STATUS_DISTRIBUTED);
             copy.setCurrentStage("Distributed");
             copy.setDistributedBy(currentUser);
             copy.setDistributedAt(distributedAt);
+            copy.setCustomPlaceholderValues(customPlaceholderValues);
             UserAccount recipientUser = resolveOptionalUserReference(
                     request == null ? null : request.distributedTo(),
                     copy.getRecipientName()
@@ -1151,10 +1163,11 @@ public class ControlledCopyService {
             controlledCopyRepository.save(copy);
             auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "DISTRIBUTE", "Ready for Distribution", "Distributed", distributionComment, List.of(), signatureSessionId);
             notifyControlledCopyStakeholders(copy, currentUser, "DISTRIBUTE", distributionComment);
-            sendControlledCopyDistributionNotification(copy, currentUser, distributionComment);
+            sendControlledCopyDistributionNotification(copy, currentUser, distributionComment, true);
         }
 
         controlledCopyDistributionBatchRepository.save(batch);
+        electronicSignatureService.createEntitySignature("ControlledCopyDistributionBatch", batch.getId(), batch.getBatchNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_DISTRIBUTED", distributionComment, null, "Ready for Distribution", "Distributed");
         auditTrailService.logAs(currentUser, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId(), "DISTRIBUTE", "Ready for Distribution", "Distributed", distributionComment, List.of(), signatureSessionId);
 
         // Kick off the async per-copy "slow part" (placeholder-composed PDF re-render, see
@@ -1333,11 +1346,13 @@ public class ControlledCopyService {
         if (StringUtils.hasText(request == null ? null : request.location())) {
             copy.setLocation(request.location().trim());
         }
+        copy.setCustomPlaceholderValues(sanitizeCustomPlaceholderValues(request == null ? null : request.customPlaceholderValues()));
         applyComposedControlledCopyPlaceholders(copy);
         controlledCopyRepository.save(copy);
+        electronicSignatureService.createEntitySignature("ControlledCopyRecord", copy.getId(), copy.getControlledCopyNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_DISTRIBUTED", distributionComment, null, "Ready for Distribution", "Distributed");
         auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "DISTRIBUTE", "Ready for Distribution", "Distributed", distributionComment, List.of(), signatureSessionId);
         notifyControlledCopyStakeholders(copy, currentUser, "DISTRIBUTE", distributionComment);
-        sendControlledCopyDistributionNotification(copy, currentUser, distributionComment);
+        sendControlledCopyDistributionNotification(copy, currentUser, distributionComment, false);
         return toResponse(copy, false);
     }
 
@@ -1378,11 +1393,8 @@ public class ControlledCopyService {
         List<MultipartFile> files = evidenceFiles == null ? List.of() : evidenceFiles.stream().filter(file -> file != null && !file.isEmpty()).toList();
         String destructionType = normalize(request == null ? null : request.destructionType());
         ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
-        if ("Damaged".equalsIgnoreCase(destructionType) && !policy.isAllowReportDamaged()) {
-            throw new AccessDeniedException("Reporting damaged copies is disabled by the Controlled Copies Policy.");
-        }
-        if ("Lost".equalsIgnoreCase(destructionType) && !policy.isAllowReportLost()) {
-            throw new AccessDeniedException("Reporting lost copies is disabled by the Controlled Copies Policy.");
+        if (("Damaged".equalsIgnoreCase(destructionType) || "Lost".equalsIgnoreCase(destructionType)) && !policy.isAllowReportLostDamaged()) {
+            throw new AccessDeniedException("Reporting lost or damaged copies is disabled by the Controlled Copies Policy.");
         }
         if ("Damaged".equalsIgnoreCase(destructionType) && files.isEmpty()) {
             throw new IllegalArgumentException("At least one evidence file is required for damaged controlled copies");
@@ -1408,6 +1420,7 @@ public class ControlledCopyService {
         controlledCopyRepository.save(copy);
         String actionType = resolveDestroyAuditAction(obsoleteReason);
         String auditComment = buildDestroyAuditComment(copy, files.size());
+        electronicSignatureService.createEntitySignature("ControlledCopyRecord", copy.getId(), copy.getControlledCopyNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_DESTROYED", copy.getDestroyReason(), null, fromStatus, "Obsoleted");
         auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), actionType, fromStatus, "Obsoleted", auditComment, List.of(), signatureSessionId);
         notifyControlledCopyStakeholders(copy, currentUser, actionType, auditComment);
         controlledCopyBatchStatusService.synchronize(copy);
@@ -1491,6 +1504,7 @@ public class ControlledCopyService {
         String auditComment = "Replacement controlled copy " + copy.getControlledCopyNumber()
                 + " issued for " + original.getControlledCopyNumber()
                 + (StringUtils.hasText(reason) ? "; Reason: " + reason : "");
+        electronicSignatureService.createEntitySignature("ControlledCopyRecord", copy.getId(), copy.getControlledCopyNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_REISSUED", reason, null, original.getStatus(), copy.getStatus());
         auditTrailService.logAs(
                 currentUser,
                 "Controlled Copy",
@@ -1529,6 +1543,7 @@ public class ControlledCopyService {
         }
         controlledCopyRepository.save(copy);
         String auditComment = buildControlledCopyRecordActionComment(copy, "RECALL", firstNonBlank(copy.getRecallReason(), request == null ? null : request.comment()));
+        electronicSignatureService.createEntitySignature("ControlledCopyRecord", copy.getId(), copy.getControlledCopyNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_RECALLED", copy.getRecallReason(), null, fromStatus, "Obsoleted");
         auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "RECALL", fromStatus, "Obsoleted", auditComment, List.of(), signatureSessionId);
         notifyControlledCopyStakeholders(copy, currentUser, "RECALL", auditComment);
         controlledCopyBatchStatusService.synchronize(copy);
@@ -1551,6 +1566,7 @@ public class ControlledCopyService {
         copy.setRequestReason(normalize(firstNonBlank(copy.getRequestReason(), request == null ? null : request.reason())));
         controlledCopyRepository.save(copy);
         String auditComment = buildControlledCopyRecordActionComment(copy, "CANCEL", request == null ? null : request.reason());
+        electronicSignatureService.createEntitySignature("ControlledCopyRecord", copy.getId(), copy.getControlledCopyNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_DISTRIBUTION_CANCELLED", copy.getRequestReason(), null, fromStatus, "Closed - Cancelled");
         auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "CANCEL", fromStatus, "Closed - Cancelled", auditComment, List.of(), signatureSessionId);
         notifyControlledCopyStakeholders(copy, currentUser, "CANCEL", auditComment);
         controlledCopyBatchStatusService.synchronize(copy);
@@ -1584,6 +1600,7 @@ public class ControlledCopyService {
 
         controlledCopyDistributionBatchRepository.save(batch);
         String batchAuditComment = buildControlledCopyBatchActionComment(batch, "CANCEL", cancellationReason);
+        electronicSignatureService.createEntitySignature("ControlledCopyDistributionBatch", batch.getId(), batch.getBatchNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_DISTRIBUTION_CANCELLED", cancellationReason, null, fromStatus, "Closed - Cancelled");
         auditTrailService.logAs(currentUser, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId(), "CANCEL", fromStatus, "Closed - Cancelled", batchAuditComment, List.of(), signatureSessionId);
         notifyControlledCopyBatchStakeholders(batch, copies, currentUser, "CANCEL", batchAuditComment);
 
@@ -1671,6 +1688,7 @@ public class ControlledCopyService {
 
         controlledCopyDistributionBatchRepository.save(batch);
         String batchAuditComment = buildControlledCopyBatchActionComment(batch, "RECALL", recallReason);
+        electronicSignatureService.createEntitySignature("ControlledCopyDistributionBatch", batch.getId(), batch.getBatchNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_RECALLED", recallReason, null, fromStatus, "Obsoleted");
         auditTrailService.logAs(currentUser, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId(), "RECALL", fromStatus, "Obsoleted", batchAuditComment, List.of(), signatureSessionId);
         notifyControlledCopyBatchStakeholders(batch, copies, currentUser, "RECALL", batchAuditComment);
 
@@ -2671,6 +2689,29 @@ public class ControlledCopyService {
      * for any reason, the copy simply keeps the already-stored (uncomposed) published PDF —
      * this must never block or fail the Distribute action itself.
      */
+    /**
+     * Keeps only the values whose key matches a currently-active
+     * {@link com.eqms.entity.ControlledCopyPlaceholderField} — an unknown or deactivated key is
+     * silently dropped rather than rejected, since it must never be able to shadow a built-in
+     * placeholder key (copyNo, documentNumber, ...) or block the Distribute action itself.
+     */
+    private com.fasterxml.jackson.databind.JsonNode sanitizeCustomPlaceholderValues(Map<String, String> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        java.util.Set<String> activeKeys = controlledCopyPlaceholderFieldRepository.findAllByActiveTrue().stream()
+                .map(field -> field.getFieldKey().toLowerCase(Locale.ROOT))
+                .collect(java.util.stream.Collectors.toSet());
+        com.fasterxml.jackson.databind.node.ObjectNode node =
+                new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
+        raw.forEach((key, value) -> {
+            if (StringUtils.hasText(key) && value != null && activeKeys.contains(key.toLowerCase(Locale.ROOT))) {
+                node.put(key, value);
+            }
+        });
+        return node.isEmpty() ? null : node;
+    }
+
     private void applyComposedControlledCopyPlaceholders(ControlledCopyRecord copy) {
         if (copy == null || copy.getRevision() == null || copy.getRevision().getId() == null) {
             return;
@@ -2684,10 +2725,14 @@ public class ControlledCopyService {
                     || !StringUtils.hasText(metadata.getSelectedPublishingLayout())) {
                 return;
             }
-            Map<String, String> placeholderValues = Map.of(
+            Map<String, String> placeholderValues = new java.util.HashMap<>(Map.of(
                     "copyNo", StringUtils.hasText(copy.getControlledCopyNumber()) ? displayControlledCopyNumber(copy.getControlledCopyNumber()) : "",
                     "distributionList", StringUtils.hasText(copy.getDistributionList()) ? copy.getDistributionList() : ""
-            );
+            ));
+            if (copy.getCustomPlaceholderValues() != null) {
+                copy.getCustomPlaceholderValues().fields().forEachRemaining(entry ->
+                        placeholderValues.put(entry.getKey(), entry.getValue().asText("")));
+            }
             PublishingPdfComposerService.PublishingCompositionResult composition = publishingPdfComposerService.composePreview(
                     copy.getRevision(),
                     metadata.getPublishingTemplate(),
@@ -3869,7 +3914,13 @@ public class ControlledCopyService {
         }
     }
 
-    private void sendControlledCopyDistributionNotification(ControlledCopyRecord copy, UserAccount actor, String comment) {
+    /**
+     * @param partOfBatch when true and delivery is redirected to the DCO, the per-copy DCO email
+     *                    with the direct link is skipped here — the DCO instead gets ONE
+     *                    aggregated ZIP email after the whole batch finishes (see
+     *                    {@link #sendDcoBatchZipEmail}), so we don't spam them with one email per copy.
+     */
+    private void sendControlledCopyDistributionNotification(ControlledCopyRecord copy, UserAccount actor, String comment, boolean partOfBatch) {
         try {
             if (copy == null) {
                 return;
@@ -3895,21 +3946,215 @@ public class ControlledCopyService {
                 notificationDispatcher.dispatch("controlled_copy.distributed", List.of(recipient), variables);
                 variables.put("notificationPolicyManaged", "true");
             }
+
+            ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
+            UserAccount dco = resolveDcoRecipient(policy, actor, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId());
+            boolean redirectToDco = policy.isRedirectDeliveryToDco() && dco != null;
+            String requesterTemplateType = redirectToDco
+                    ? EmailTemplateTypeUtils.CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION_NO_ACCESS
+                    : EmailTemplateTypeUtils.CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION;
+
             if (recipient != null && StringUtils.hasText(recipient.getEmail())) {
-                emailNotificationService.sendControlledCopyNotification(EmailTemplateTypeUtils.CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION, List.of(recipient), variables);
-                return;
+                emailNotificationService.sendControlledCopyNotification(requesterTemplateType, List.of(recipient), variables);
+            } else {
+                String recipientEmail = normalize(copy.getRecipientName());
+                if (StringUtils.hasText(recipientEmail) && isValidEmailAddress(recipientEmail)) {
+                    emailNotificationService.sendControlledCopyNotificationToEmails(requesterTemplateType, List.of(recipientEmail), variables);
+                }
             }
-            String recipientEmail = normalize(copy.getRecipientName());
-            if (StringUtils.hasText(recipientEmail) && isValidEmailAddress(recipientEmail)) {
-                emailNotificationService.sendControlledCopyNotificationToEmails(
-                        EmailTemplateTypeUtils.CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION,
-                        List.of(recipientEmail),
-                        variables
-                );
+
+            if (redirectToDco && !partOfBatch) {
+                emailNotificationService.sendControlledCopyNotification(EmailTemplateTypeUtils.CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION, List.of(dco), variables);
+                auditTrailService.logAs(actor, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "DCO_DELIVERY_SENT", null, null,
+                        "Delivery redirected to DCO (" + dco.getFullName() + ") per Controlled Copies Policy.", List.of(), null);
             }
         } catch (Exception ex) {
             log.warn("Failed to dispatch controlled copy distribution email for copy {}: {}", copy == null ? null : copy.getControlledCopyNumber(), ex.getMessage(), ex);
         }
+    }
+
+    /**
+     * Resolves the DCO delivery recipient, re-validating eligibility at send time (not just at
+     * policy-save time) since the assigned user's permission/account status can change afterward.
+     * Returns null whenever redirection cannot safely happen -- callers already treat null as
+     * "fall back to normal per-recipient delivery", so this is a fail-safe, not a failure: a
+     * distribute action must never be blocked just because the DCO routing is misconfigured. Every
+     * fallback is recorded BOTH to the notification delivery-failure log (for admin follow-up) AND
+     * the Audit Trail against the triggering entity (for GMP traceability -- an auditor pulling the
+     * history of a specific controlled copy/batch must be able to see that redirection was
+     * attempted and fell back, not just find that information in a separate operational log).
+     *
+     * @param entityType e.g. "Controlled Copy" or "Controlled Copy Distribution Batch"
+     * @param entityName e.g. controlled copy number or batch number, for the audit entry label
+     * @param entityId   the controlled copy or batch id
+     */
+    private UserAccount resolveDcoRecipient(ControlledCopyPolicySetting policy, UserAccount actor, String entityType, String entityName, UUID entityId) {
+        if (policy == null || !policy.isRedirectDeliveryToDco()) {
+            return null;
+        }
+        String reason;
+        String contextLabel;
+        if (policy.getDcoRecipientUserId() == null) {
+            reason = "Delivery redirection is enabled but no DCO recipient is configured.";
+            contextLabel = "policy";
+        } else {
+            UserAccount recipient = userAccountRepository.findById(policy.getDcoRecipientUserId()).orElse(null);
+            if (recipient == null) {
+                reason = "The configured DCO recipient user no longer exists.";
+                contextLabel = policy.getDcoRecipientUserId().toString();
+            } else if (recipient.getStatus() != com.eqms.entity.UserStatus.Active) {
+                reason = "The configured DCO recipient's account (" + recipient.getFullName() + ") is not Active.";
+                contextLabel = recipient.getEmail();
+            } else if (!permissionEvaluationService.hasPermission(recipient, ControlledCopyPolicyService.DCO_RECIPIENT_PERMISSION)) {
+                reason = "The configured DCO recipient (" + recipient.getFullName() + ") no longer holds the \"Receive Controlled Copies as DCO\" permission.";
+                contextLabel = recipient.getEmail();
+            } else {
+                return recipient;
+            }
+        }
+        emailNotificationService.recordControlledCopyDcoMisconfiguration(contextLabel, reason);
+        auditTrailService.logAs(actor, entityType, entityName, entityId, "DCO_DELIVERY_FALLBACK", null, null,
+                "Delivery redirection to DCO could not be applied -- fell back to normal delivery. Reason: " + reason,
+                List.of(), null);
+        return null;
+    }
+
+    /**
+     * Sanitizes a value for safe use inside a ZIP entry filename: strips characters that are
+     * invalid/ambiguous across common filesystems, collapses whitespace, and bounds length.
+     */
+    private String sanitizeForFileName(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        String cleaned = value.trim().replaceAll("[\\\\/:*?\"<>|]", "-").replaceAll("\\s+", "_");
+        return cleaned.length() > 80 ? cleaned.substring(0, 80) : cleaned;
+    }
+
+    /**
+     * Builds the one aggregated ZIP + email sent to the DCO after a distribution batch finishes
+     * processing (all copies' PDFs finalized), when Controlled Copies Policy redirects delivery
+     * to the DCO. Called from {@link ControlledCopyBatchDistributionAsyncService} once per batch,
+     * after every succeeded copy's placeholder-composed PDF has been rendered. A no-op when the
+     * policy doesn't redirect to a DCO, or when there are no succeeded copies to zip.
+     */
+    @Transactional
+    public void sendDcoBatchZipEmail(UUID batchId, List<UUID> succeededCopyIds, UUID issuerUserId) {
+        if (batchId == null || succeededCopyIds == null || succeededCopyIds.isEmpty()) {
+            return;
+        }
+        ControlledCopyDistributionBatch batch = controlledCopyDistributionBatchRepository.findById(batchId).orElse(null);
+        if (batch == null) {
+            return;
+        }
+        UserAccount issuer = resolveIssuerOrSystemActor(issuerUserId);
+        ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
+        UserAccount dco = resolveDcoRecipient(policy, issuer, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId());
+        if (dco == null) {
+            return;
+        }
+        List<ControlledCopyRecord> copies = controlledCopyRepository.findAllById(succeededCopyIds);
+        if (copies.isEmpty()) {
+            return;
+        }
+        // Per-copy isolation is deliberate: a batch can be hundreds/thousands of records, and one
+        // bad PDF read (corrupt file, transient storage error, ...) must never take down the
+        // whole ZIP/email for every other copy in the batch. Every failure is still individually
+        // logged/recorded so it's discoverable, not silently dropped.
+        List<String> includedNumbers = new java.util.ArrayList<>();
+        List<String> failedNumbers = new java.util.ArrayList<>();
+        byte[] zipBytes;
+        try {
+            java.io.ByteArrayOutputStream zipBuffer = new java.io.ByteArrayOutputStream();
+            java.util.Set<String> usedNames = new java.util.HashSet<>();
+            try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(zipBuffer)) {
+                for (ControlledCopyRecord copy : copies) {
+                    try {
+                        byte[] pdfBytes = loadControlledCopyPreviewPdf(copy);
+                        if (pdfBytes == null || pdfBytes.length == 0) {
+                            failedNumbers.add(copy.getControlledCopyNumber());
+                            continue;
+                        }
+                        String baseName = String.join("_",
+                                List.of(
+                                        sanitizeForFileName(copy.getDocumentNumber()),
+                                        "Rev" + sanitizeForFileName(copy.getRevisionNumber()),
+                                        "Copy" + (copy.getCopyNumber() > 0 ? copy.getCopyNumber() : 0),
+                                        sanitizeForFileName(copy.getRecipientName())
+                                ).stream().filter(StringUtils::hasText).toList()
+                        ) + ".pdf";
+                        String entryName = baseName;
+                        int suffix = 2;
+                        while (!usedNames.add(entryName)) {
+                            entryName = baseName.replace(".pdf", "") + "_" + suffix + ".pdf";
+                            suffix++;
+                        }
+                        zip.putNextEntry(new java.util.zip.ZipEntry(entryName));
+                        zip.write(pdfBytes);
+                        zip.closeEntry();
+                        includedNumbers.add(copy.getControlledCopyNumber());
+                    } catch (Exception copyEx) {
+                        failedNumbers.add(copy.getControlledCopyNumber());
+                        log.warn("Skipped controlled copy {} while building DCO batch ZIP for batch {}: {}",
+                                copy.getControlledCopyNumber(), batchId, copyEx.getMessage(), copyEx);
+                    }
+                }
+            }
+            zipBytes = zipBuffer.toByteArray();
+        } catch (Exception ex) {
+            log.warn("Failed to build DCO batch ZIP for batch {}: {}", batchId, ex.getMessage(), ex);
+            emailNotificationService.recordControlledCopyDcoMisconfiguration(
+                    dco.getEmail(), "Failed to build the batch ZIP for batch " + batch.getBatchNumber() + ": " + ex.getMessage());
+            auditTrailService.logAs(issuer, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId(), "DCO_ZIP_BUILD_FAILED", null, null,
+                    "Failed to build the DCO batch ZIP: " + ex.getMessage(), List.of(), null);
+            return;
+        }
+        if (includedNumbers.isEmpty()) {
+            log.warn("DCO batch ZIP for batch {} has no readable copies ({} failed) — email not sent.", batchId, failedNumbers.size());
+            emailNotificationService.recordControlledCopyDcoMisconfiguration(
+                    dco.getEmail(), "None of the " + copies.size() + " copies in batch " + batch.getBatchNumber() + " could be read to build the ZIP.");
+            auditTrailService.logAs(issuer, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId(), "DCO_ZIP_SEND_FAILED", null, null,
+                    "None of the " + copies.size() + " copies could be read to build the DCO ZIP -- email not sent.", List.of(), null);
+            return;
+        }
+        try {
+            Map<String, String> variables = new java.util.LinkedHashMap<>();
+            variables.put("batchNumber", batch.getBatchNumber() == null ? "" : batch.getBatchNumber());
+            variables.put("documentTitle", copies.get(0).getDocumentTitle() == null ? "" : copies.get(0).getDocumentTitle());
+            variables.put("revisionNumber", copies.get(0).getRevisionNumber() == null ? "" : copies.get(0).getRevisionNumber());
+            variables.put("copyCount", includedNumbers.size() + " of " + copies.size()
+                    + (failedNumbers.isEmpty() ? "" : " (" + failedNumbers.size() + " could not be processed — contact Document Control)"));
+            String zipFileName = "ControlledCopies_Batch_" + sanitizeForFileName(batch.getBatchNumber()) + ".zip";
+            emailNotificationService.sendControlledCopyBatchZipToDco(dco, issuer, variables, zipFileName, zipBytes);
+            // GMP traceability: an auditor must be able to reconstruct exactly which copies were --
+            // and were not -- included in a given ZIP sent to a given DCO on a given date, without
+            // relying on application logs alone.
+            auditTrailService.logAs(issuer, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId(), "DCO_ZIP_SENT", null, null,
+                    "Sent DCO ZIP to " + dco.getFullName() + " (" + dco.getEmail() + "): included " + includedNumbers.size() + " of " + copies.size() + " copies ["
+                            + summarizeCopyNumbers(includedNumbers) + "]"
+                            + (failedNumbers.isEmpty() ? "" : "; excluded " + failedNumbers.size() + " [" + summarizeCopyNumbers(failedNumbers) + "]"),
+                    List.of(), null);
+            if (!failedNumbers.isEmpty()) {
+                emailNotificationService.recordControlledCopyDcoMisconfiguration(
+                        dco.getEmail(), "Batch " + batch.getBatchNumber() + " ZIP was sent but " + failedNumbers.size()
+                                + " of " + copies.size() + " copies could not be included: " + String.join(", ", failedNumbers));
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to send DCO batch ZIP email for batch {}: {}", batchId, ex.getMessage(), ex);
+            emailNotificationService.recordControlledCopyDcoMisconfiguration(
+                    dco.getEmail(), "Batch ZIP for " + batch.getBatchNumber() + " was built (" + includedNumbers.size() + " copies) but could not be emailed: " + ex.getMessage());
+            auditTrailService.logAs(issuer, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId(), "DCO_ZIP_SEND_FAILED", null, null,
+                    "DCO ZIP was built (" + includedNumbers.size() + " copies) but could not be emailed: " + ex.getMessage(), List.of(), null);
+        }
+    }
+
+    /** Caps an audit-trail comment's copy-number listing so a very large batch doesn't produce an unbounded entry. */
+    private String summarizeCopyNumbers(List<String> numbers) {
+        int cap = 30;
+        if (numbers.size() <= cap) {
+            return String.join(", ", numbers);
+        }
+        return String.join(", ", numbers.subList(0, cap)) + ", and " + (numbers.size() - cap) + " more";
     }
 
     private void notifyControlledCopyStakeholders(ControlledCopyRecord copy, UserAccount actor, String action, String comment) {

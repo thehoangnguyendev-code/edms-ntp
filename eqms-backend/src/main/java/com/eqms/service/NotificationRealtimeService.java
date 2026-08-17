@@ -16,7 +16,12 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @Service
 public class NotificationRealtimeService {
 
-    private static final long EMITTER_TIMEOUT_MS = 0L;
+    // Zero (never time out) meant dead/zombie connections (half-open TCP, client crashed without
+    // a clean close) could accumulate forever, growing the per-user emitter set indefinitely at
+    // scale. Bounded to a generous 45 minutes -- long enough to rarely trigger for an active tab,
+    // and the client (notificationRealtime.ts) always reconnects on a clean server-side close, so
+    // this is invisible to the user, just a periodic connection refresh.
+    private static final long EMITTER_TIMEOUT_MS = 45L * 60 * 1000;
     private final ConcurrentHashMap<UUID, CopyOnWriteArraySet<SseEmitter>> emittersByUser = new ConcurrentHashMap<>();
 
     public SseEmitter register(UUID userId) {

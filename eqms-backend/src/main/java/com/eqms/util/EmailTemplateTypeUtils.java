@@ -6,6 +6,11 @@ import java.util.Set;
 public final class EmailTemplateTypeUtils {
 
     public static final String CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION = "controlled-copy-distribution-notification";
+    // Sent to the original requester instead of CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION when the
+    // Controlled Copies Policy redirects delivery to the DCO — no preview link/password.
+    public static final String CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION_NO_ACCESS = "controlled-copy-distribution-no-access";
+    // Sent once to the DCO after a distribution batch finishes, with a ZIP of every copy attached.
+    public static final String CONTROLLED_COPY_BATCH_DISTRIBUTION_DCO_ZIP = "controlled-copy-batch-distribution-dco-zip";
     public static final String CONTROLLED_COPY_NOTIFICATION = "controlled-copy-notification";
     public static final String CONTROLLED_COPY_CANCELLATION_NOTIFICATION = "controlled-copy-cancellation-notification";
     public static final String CONTROLLED_COPY_RECALL_NOTIFICATION = "controlled-copy-recall-notification";
@@ -36,6 +41,8 @@ public final class EmailTemplateTypeUtils {
             "change-control-notification",
             CONTROLLED_COPY_NOTIFICATION,
             CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION,
+            CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION_NO_ACCESS,
+            CONTROLLED_COPY_BATCH_DISTRIBUTION_DCO_ZIP,
             "preference-notification",
             "supplier-notification",
             "equipment-maintenance",

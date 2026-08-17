@@ -867,6 +867,8 @@ export const DestroyControlledCopyView: React.FC = () => {
         onClose={() => setisesignModalOpen(false)}
         onConfirm={handleESignConfirm}
         actionTitle="Confirm Controlled Copy Destruction"
+        meaningDisplayName="Controlled Copy Destroyed"
+        meaningCode="CONTROLLED_COPY_DESTROYED"
       />
     </div>
   );

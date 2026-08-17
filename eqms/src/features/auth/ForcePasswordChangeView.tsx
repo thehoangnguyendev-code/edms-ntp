@@ -59,15 +59,25 @@ const checkPasswordStrength = (password: string, policy: ReturnType<typeof usePa
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
 
-  let score = 0;
-  if (hasMinLength) score++;
-  if (!policy.requireSpecialChars || hasSpecial) score++;
-  if (!policy.requireNumbers || hasNumber) score++;
-  if (!policy.requireUppercase || hasUpper) score++;
-  if (!policy.requireLowercase || hasLower) score++;
+  // The strength bar's segment count and fill level must both track the *currently active*
+  // policy (minLength is always required; the other 4 are admin toggles from Security
+  // Configuration). Only checks the admin has actually turned on go into the bar -- a disabled
+  // requirement used to silently count as an automatic point even for an empty password (e.g.
+  // with all 4 optional requirements off, an empty password scored 4/4 and rendered a "fully
+  // strong" bar), which is misleading regardless of which requirements are enabled.
+  const activeChecks = [
+    hasMinLength,
+    ...(policy.requireUppercase ? [hasUpper] : []),
+    ...(policy.requireLowercase ? [hasLower] : []),
+    ...(policy.requireNumbers ? [hasNumber] : []),
+    ...(policy.requireSpecialChars ? [hasSpecial] : []),
+  ];
+  const score = activeChecks.filter(Boolean).length;
+  const maxScore = activeChecks.length;
 
   return {
-    score, // 0-4
+    score,
+    maxScore,
     hasMinLength,
     hasSpecial,
     hasNumber,
@@ -327,15 +337,15 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 {/* Password Strength Indicator */}
                 <div className="mt-3 space-y-2.5">
                   <div className="flex h-1.5 w-full gap-1.5 overflow-hidden rounded-full bg-slate-100">
-                    {[...Array(4)].map((_, i) => (
+                    {[...Array(strength.maxScore)].map((_, i) => (
                       <motion.div
                         key={i}
                         initial={false}
                         animate={{
                           backgroundColor: i < strength.score
-                            ? strength.score <= 1 ? "#ef4444" // red-500
-                              : strength.score <= 2 ? "#fb923c" // orange-400
-                                : strength.score <= 3 ? "#facc15" // yellow-400
+                            ? strength.score / strength.maxScore <= 0.25 ? "#ef4444" // red-500
+                              : strength.score / strength.maxScore <= 0.5 ? "#fb923c" // orange-400
+                                : strength.score / strength.maxScore <= 0.75 ? "#facc15" // yellow-400
                                   : "#10b981" // emerald-500
                             : "#f1f5f9", // slate-100
                           scaleX: i < strength.score ? 1 : 0

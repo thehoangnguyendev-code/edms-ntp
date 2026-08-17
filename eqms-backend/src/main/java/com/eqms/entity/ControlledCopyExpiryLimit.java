@@ -36,17 +36,18 @@ public class ControlledCopyExpiryLimit {
     @JoinColumn(name = "department_id")
     private Department department;
 
-    @Column(name = "max_duration_days", nullable = false)
-    private int maxDurationDays;
+    @Column(name = "duration_value", nullable = false)
+    private int durationValue;
+
+    /** One of HOURS, DAYS, WEEKS, MONTHS. */
+    @Column(name = "duration_unit", nullable = false, length = 10)
+    private String durationUnit = "DAYS";
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
     @Column(name = "is_system", nullable = false)
     private boolean isSystem = false;
-
-    @Column(name = "description", length = 255)
-    private String description;
 
     @Column(name = "created_by")
     private UUID createdBy;
@@ -78,14 +79,14 @@ public class ControlledCopyExpiryLimit {
     public void setDocumentType(DocumentType documentType) { this.documentType = documentType; }
     public Department getDepartment() { return department; }
     public void setDepartment(Department department) { this.department = department; }
-    public int getMaxDurationDays() { return maxDurationDays; }
-    public void setMaxDurationDays(int maxDurationDays) { this.maxDurationDays = maxDurationDays; }
+    public int getDurationValue() { return durationValue; }
+    public void setDurationValue(int durationValue) { this.durationValue = durationValue; }
+    public String getDurationUnit() { return durationUnit; }
+    public void setDurationUnit(String durationUnit) { this.durationUnit = durationUnit; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public boolean isSystem() { return isSystem; }
     public void setSystem(boolean system) { isSystem = system; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
     public Instant getCreatedAt() { return createdAt; }

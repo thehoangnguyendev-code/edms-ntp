@@ -217,7 +217,7 @@ export const EmailTemplateEditView: React.FC = () => {
     setShowSaveConfirm(true);
   };
 
-  const handleESignConfirm = async (_reason: string) => {
+  const handleESignConfirm = async (data: { reason: string; signatureToken?: string }) => {
     setShowESign(false);
     setIsSubmitting(true);
     try {
@@ -234,7 +234,7 @@ export const EmailTemplateEditView: React.FC = () => {
         return;
       }
 
-      await updateEmailTemplate(id!, delta);
+      await updateEmailTemplate(id!, { ...delta, reason: data.reason, signatureToken: data.signatureToken });
       setUnsavedChanges(false);
       navigateTo("/settings/email-templates");
     } catch (error) {
@@ -546,8 +546,10 @@ export const EmailTemplateEditView: React.FC = () => {
       <ESignatureModal
         isOpen={showESign}
         onClose={() => setShowESign(false)}
-        onConfirm={(data) => handleESignConfirm(data.reason)}
+        onConfirm={handleESignConfirm}
         actionTitle="Update Email Template"
+        meaningDisplayName="Email Template Updated"
+        meaningCode="EMAIL_TEMPLATE_UPDATED"
       />
 
       {/* Delete Confirmation Modal */}

@@ -44,7 +44,7 @@ public class PublishingWorkspaceJobProcessorService {
         this.tokenService = tokenService;
     }
 
-    @Async
+    @Async("fileProcessingExecutor")
     public void processPublishJob(UUID jobId, UUID revisionId, PublishingWorkspaceRequest request, UUID userId) {
         UserAccount currentUser = currentUserService.requireCurrentUser(userId);
         SecurityContext previousContext = SecurityContextHolder.getContext();
@@ -90,7 +90,7 @@ public class PublishingWorkspaceJobProcessorService {
         }
     }
 
-    @Async
+    @Async("fileProcessingExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void processOpenWorkspaceJob(PublishingWorkspaceOpenedEvent event) {
         publishingWorkspaceJobService.markProcessing(event.jobId(), "Generating publishing workspace preview.");

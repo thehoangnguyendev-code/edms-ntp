@@ -55,6 +55,7 @@ class ControlledCopyServiceAuthorizationIntegrationTest {
     @Mock ControlledCopyDistributionJobService controlledCopyDistributionJobService;
     @Mock com.eqms.service.NotificationDispatcher notificationDispatcher;
     @Mock ControlledCopyBatchStatusService controlledCopyBatchStatusService;
+    @Mock ControlledCopyPlaceholderFieldRepository controlledCopyPlaceholderFieldRepository;
 
     ControlledCopyService service;
     UserAccount user;
@@ -90,7 +91,8 @@ class ControlledCopyServiceAuthorizationIntegrationTest {
                 notificationDispatcher,
                 new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(),
                 new ControlledCopyPreviewGrantService("test-secret-with-at-least-32-characters"),
-                controlledCopyBatchStatusService
+                controlledCopyBatchStatusService,
+                controlledCopyPlaceholderFieldRepository
         );
 
         user = new UserAccount();

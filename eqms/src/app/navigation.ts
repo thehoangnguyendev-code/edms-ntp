@@ -59,6 +59,7 @@ import {
   IconJumpRope,
   IconSwitch2,
   IconActivity,
+  IconReport,
 } from "@tabler/icons-react";
 import { NavItem } from "@/types";
 import { ROUTES } from "./routes.constants";
@@ -442,7 +443,7 @@ const SYSTEM_MODULES: NavItem[] = [
       {
         id: "report-configuration",
         label: "Report Configuration",
-        icon: IconFileDescription,
+        icon: IconReport,
         path: ROUTES.SETTINGS.REPORT_CONFIGURATION,
         allowedPermissions: ["reports.definition.view", "settings.configuration.view"],
       },

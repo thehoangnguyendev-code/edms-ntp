@@ -227,6 +227,9 @@ public class DictionaryManagementService {
         businessUnitRepository.delete(businessUnit);
     }
 
+    // Cached -- same rationale as listBusinessUnits() above. Also evicted (not just its own
+    // mutations) whenever a Business Unit changes, since each Department response embeds its
+    // parent Business Unit's name.
     @Transactional(readOnly = true)
     public List<DepartmentDictionaryResponse> listDepartments() {
         requireView();

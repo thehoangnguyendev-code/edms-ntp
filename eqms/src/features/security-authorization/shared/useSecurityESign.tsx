@@ -9,8 +9,22 @@ export interface SecuritySignature {
 interface PendingRequest {
   actionTitle: string;
   meaningDisplayName?: string;
+  meaningCode?: string;
   resolve: (sig: SecuritySignature | null) => void;
 }
+
+// Callers pass one of these fixed category labels as `meaningDisplayName`; map each to the
+// matching backend-seeded meaning code (SecurityChangeSignatureService constants) so the
+// signing modal fetches and reflects the admin-configured display name for that category.
+const MEANING_CODE_BY_DISPLAY_NAME: Record<string, string> = {
+  "Security Configuration Change": "SECURITY_CONFIGURATION_CHANGE",
+  "User Access Change": "USER_ACCESS_CHANGE",
+  "Access Profile Change": "ACCESS_PROFILE_CHANGE",
+  "Permission Set Change": "PERMISSION_SET_CHANGE",
+  "Workflow Authorization Change": "WORKFLOW_AUTHORIZATION_CHANGE",
+  "SoD Rule Change": "SOD_RULE_CHANGE",
+  "Audit Trail Review": "AUDIT_TRAIL_REVIEW",
+};
 
 /**
  * Reusable e-signature gate for critical security administration changes
@@ -29,7 +43,8 @@ export function useSecurityESign() {
   const requestSignature = useCallback(
     (actionTitle: string, meaningDisplayName?: string): Promise<SecuritySignature | null> =>
       new Promise((resolve) => {
-        const req: PendingRequest = { actionTitle, meaningDisplayName, resolve };
+        const meaningCode = meaningDisplayName ? MEANING_CODE_BY_DISPLAY_NAME[meaningDisplayName] : undefined;
+        const req: PendingRequest = { actionTitle, meaningDisplayName, meaningCode, resolve };
         pendingRef.current = req;
         setPending(req);
       }),
@@ -51,7 +66,7 @@ export function useSecurityESign() {
       }
       actionTitle={pending.actionTitle}
       meaningDisplayName={pending.meaningDisplayName ?? "Security Configuration Change"}
-      requiresReason
+      meaningCode={pending.meaningCode ?? "SECURITY_CONFIGURATION_CHANGE"}
     />
   ) : null;
 

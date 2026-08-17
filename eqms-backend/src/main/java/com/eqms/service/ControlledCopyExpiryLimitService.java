@@ -15,10 +15,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -115,18 +119,32 @@ public class ControlledCopyExpiryLimitService {
     private String summarize(ControlledCopyExpiryLimit limit) {
         return "documentType=" + (limit.getDocumentType() == null ? "Any" : limit.getDocumentType().getName())
                 + ", department=" + (limit.getDepartment() == null ? "Any" : limit.getDepartment().getName())
-                + ", durationDays=" + limit.getMaxDurationDays()
-                + ", active=" + limit.isActive()
-                + ", description=" + (limit.getDescription() == null ? "" : limit.getDescription());
+                + ", duration=" + limit.getDurationValue() + " " + limit.getDurationUnit()
+                + ", active=" + limit.isActive();
+    }
+
+    /** Comparable magnitude used only to pick the "shortest" rule when several rules tie in specificity. */
+    private static long toApproxHours(ControlledCopyExpiryLimit limit) {
+        return toApproxHours(limit.getDurationValue(), limit.getDurationUnit());
+    }
+
+    private static long toApproxHours(int value, String unit) {
+        return switch (unit == null ? "DAYS" : unit) {
+            case "HOURS" -> value;
+            case "WEEKS" -> value * 24L * 7;
+            case "MONTHS" -> value * 24L * 30;
+            default -> value * 24L;
+        };
     }
 
     /**
-     * Resolves the expiry duration (in days) to apply for a document. Always resolves to a value
-     * in practice, since the mandatory Global Default row guarantees a fallback match.
-     * Priority: (documentType + department) > documentType-only > department-only > Global Default.
+     * Resolves the expiry limit to apply for a document as a maximum {@link Instant}, computed from
+     * "now". Always resolves to a value in practice, since the mandatory Global Default row
+     * guarantees a fallback match. Priority: (documentType + department) > documentType-only >
+     * department-only > Global Default.
      */
     @Transactional(readOnly = true)
-    public Integer resolveDurationDays(DocumentType documentType, Department department) {
+    public Instant resolveMaximumExpiry(DocumentType documentType, Department department) {
         UUID documentTypeId = documentType == null ? null : documentType.getId();
         UUID departmentId = department == null ? null : department.getId();
 
@@ -136,49 +154,67 @@ public class ControlledCopyExpiryLimitService {
                 .filter(limit -> matchesId(limit.getDocumentType() == null ? null : limit.getDocumentType().getId(), documentTypeId)
                         && matchesId(limit.getDepartment() == null ? null : limit.getDepartment().getId(), departmentId)
                         && limit.getDocumentType() != null && limit.getDepartment() != null)
-                .min(Comparator.comparingInt(ControlledCopyExpiryLimit::getMaxDurationDays));
+                .min(Comparator.comparingLong(ControlledCopyExpiryLimitService::toApproxHours));
         if (exactMatch.isPresent()) {
-            return exactMatch.get().getMaxDurationDays();
+            return addDuration(exactMatch.get());
         }
 
         Optional<ControlledCopyExpiryLimit> documentTypeMatch = active.stream()
                 .filter(limit -> limit.getDepartment() == null
                         && limit.getDocumentType() != null
                         && Objects.equals(limit.getDocumentType().getId(), documentTypeId))
-                .min(Comparator.comparingInt(ControlledCopyExpiryLimit::getMaxDurationDays));
+                .min(Comparator.comparingLong(ControlledCopyExpiryLimitService::toApproxHours));
         if (documentTypeMatch.isPresent()) {
-            return documentTypeMatch.get().getMaxDurationDays();
+            return addDuration(documentTypeMatch.get());
         }
 
         Optional<ControlledCopyExpiryLimit> departmentMatch = active.stream()
                 .filter(limit -> limit.getDocumentType() == null
                         && limit.getDepartment() != null
                         && Objects.equals(limit.getDepartment().getId(), departmentId))
-                .min(Comparator.comparingInt(ControlledCopyExpiryLimit::getMaxDurationDays));
+                .min(Comparator.comparingLong(ControlledCopyExpiryLimitService::toApproxHours));
         if (departmentMatch.isPresent()) {
-            return departmentMatch.get().getMaxDurationDays();
+            return addDuration(departmentMatch.get());
         }
 
         return active.stream()
                 .filter(limit -> limit.getDocumentType() == null && limit.getDepartment() == null)
-                .min(Comparator.comparingInt(ControlledCopyExpiryLimit::getMaxDurationDays))
-                .map(ControlledCopyExpiryLimit::getMaxDurationDays)
+                .min(Comparator.comparingLong(ControlledCopyExpiryLimitService::toApproxHours))
+                .map(this::addDuration)
                 .orElse(null);
+    }
+
+    private Instant addDuration(ControlledCopyExpiryLimit limit) {
+        ZonedDateTime now = Instant.now().atZone(ZoneOffset.UTC);
+        int value = limit.getDurationValue();
+        ZonedDateTime result = switch (limit.getDurationUnit() == null ? "DAYS" : limit.getDurationUnit()) {
+            case "HOURS" -> now.plusHours(value);
+            case "WEEKS" -> now.plusWeeks(value);
+            case "MONTHS" -> now.plusMonths(value);
+            default -> now.plusDays(value);
+        };
+        return result.toInstant();
     }
 
     private boolean matchesId(UUID candidate, UUID target) {
         return target != null && Objects.equals(candidate, target);
     }
 
+    private static final Set<String> VALID_DURATION_UNITS = Set.of("HOURS", "DAYS", "WEEKS", "MONTHS");
+
     private void applyRequest(ControlledCopyExpiryLimit limit, ControlledCopyExpiryLimitRequest request) {
-        if (request.maxDurationDays() == null || request.maxDurationDays() <= 0) {
-            throw new IllegalArgumentException("Duration (days) must be a positive number");
+        if (request.durationValue() == null || request.durationValue() <= 0) {
+            throw new IllegalArgumentException("Duration must be a positive number");
+        }
+        String unit = StringUtils.hasText(request.durationUnit()) ? request.durationUnit().trim().toUpperCase() : "DAYS";
+        if (!VALID_DURATION_UNITS.contains(unit)) {
+            throw new IllegalArgumentException("Duration unit must be one of HOURS, DAYS, WEEKS, MONTHS");
         }
         // The Global Default row's scope is fixed (Any document type / Any department) — ignore
-        // any attempt to change it, only its duration/description may be edited.
+        // any attempt to change it, only its duration may be edited.
         if (limit.isSystem()) {
-            limit.setMaxDurationDays(request.maxDurationDays());
-            limit.setDescription(request.description());
+            limit.setDurationValue(request.durationValue());
+            limit.setDurationUnit(unit);
             return;
         }
         DocumentType documentType = null;
@@ -205,9 +241,9 @@ public class ControlledCopyExpiryLimitService {
 
         limit.setDocumentType(documentType);
         limit.setDepartment(department);
-        limit.setMaxDurationDays(request.maxDurationDays());
+        limit.setDurationValue(request.durationValue());
+        limit.setDurationUnit(unit);
         limit.setActive(request.active() == null || request.active());
-        limit.setDescription(request.description());
     }
 
     private ControlledCopyExpiryLimitResponse toResponse(ControlledCopyExpiryLimit limit) {
@@ -219,10 +255,10 @@ public class ControlledCopyExpiryLimitService {
                 documentType == null ? null : documentType.getName(),
                 department == null ? null : department.getId().toString(),
                 department == null ? null : department.getName(),
-                limit.getMaxDurationDays(),
+                limit.getDurationValue(),
+                limit.getDurationUnit(),
                 limit.isActive(),
-                limit.isSystem(),
-                limit.getDescription()
+                limit.isSystem()
         );
     }
 

@@ -1,0 +1,243 @@
+name: eqms
+
+# Shared bounded log-rotation config -- without this, Docker's default json-file driver keeps
+# every log line forever, and at 500-concurrent-user request volume that fills the host disk in
+# days, not months. Applied per-service below via YAML anchor (`<<: *default-logging`).
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: eqms-postgres
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eqms-database}
+      POSTGRES_USER: ${POSTGRES_USER:-eqms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eqms}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - eqms_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eqms} -d ${POSTGRES_DB:-eqms-database}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  adminer:
+    image: adminer:4
+    container_name: eqms-adminer
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: eqms-minio
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-eqms-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-eqms-minio-secret}
+    ports:
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - eqms_minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: eqms-redis
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - eqms_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  clamav:
+    image: clamav/clamav:stable
+    container_name: eqms-clamav
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - eqms_clamav_data:/var/lib/clamav
+    ports:
+      - "127.0.0.1:${CLAMAV_PORT:-3310}:3310"
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      # First boot downloads the virus database, which can take several minutes.
+      retries: 10
+      start_period: 300s
+
+  mailhog:
+    # NOTIFICATION_SYSTEM_REMEDIATION_PLAN.md Phase 3: dev/test SMTP catcher -- EmailService has
+    # no static SMTP config (it's always DB-driven via System Configuration), so without a local
+    # catcher there was no way to see real email content in dev without a real external SMTP
+    # account. Point System Configuration's SMTP host at "mailhog" / port 1025 (no auth, no TLS)
+    # and open http://localhost:8025 to read what was sent.
+    image: mailhog/mailhog:v1.0.1
+    container_name: eqms-mailhog
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "127.0.0.1:8025:8025" # web UI
+      - "127.0.0.1:1025:1025" # SMTP
+
+  backend:
+    build:
+      context: ./eqms-backend
+      dockerfile: Dockerfile
+      args:
+        MAVEN_IMAGE: ${BACKEND_BUILD_IMAGE:-mirror.gcr.io/library/maven:3.9.16-eclipse-temurin-21}
+    image: eqms-backend:local
+    container_name: eqms-backend
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      SERVER_PORT: 5000
+      # P3 legacy cleanup: all users are backfilled to Access Profiles (V166/V167)
+      APP_SECURITY_LEGACY_ROLE_FALLBACK_ENABLED: "false"
+      # Canonical permission codes only. Legacy aliases can be enabled temporarily
+      # during a documented migration window, never as the production default.
+      APP_SECURITY_COMPATIBILITY_ALIASES_ENABLED: "false"
+      # Strict participant visibility: non-effective revisions are participant-only
+      APP_SECURITY_PARTICIPANT_VISIBILITY_STRICT: "true"
+      # Lifecycle state policy engine (V169 seeds = parity with strict rule)
+      APP_SECURITY_LIFECYCLE_POLICY_ENABLED: "true"
+      # Phase 1-2.5 / Phase 3 hybrid authorization engine cutover
+      # (SECURITY_AUTHORIZATION_HYBRID_REFACTOR_PLAN.md §7 rule 3). Shadow-evaluation confirmed 0
+      # mismatches for all four resource types before enabling each. REQUEST_COPY is a documented
+      # exclusion (see ControlledCopyResourceAdapter#resolvePolicy) -- unaffected, its real
+      # enforcement path (requireRequestControlledCopy) never reaches this adapter's per-copy-id
+      # lookup. Rollback: remove this line (or clear the value) and restart -- the legacy
+      # evaluators are still fully intact and untouched until cutover rule 5 (Phase 1-2.6/3) deletes them.
+      APP_AUTHORIZATION_HYBRID_ENGINE_ENABLED_RESOURCE_TYPES: "REVISION,DOCUMENT,CONTROLLED_COPY,CONTROLLED_COPY_BATCH"
+      SERVER_TOMCAT_CONNECTION_TIMEOUT: 5m
+      SPRING_MVC_ASYNC_REQUEST_TIMEOUT: 900000
+      SPRING_TASK_EXECUTION_POOL_CORE_SIZE: 4
+      SPRING_TASK_EXECUTION_POOL_MAX_SIZE: 8
+      SPRING_TASK_EXECUTION_POOL_QUEUE_CAPACITY: 100
+      LOGGING_FILE_NAME: /app/logs/eqms-backend.log
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-eqms-database}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-eqms}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-eqms}
+      # Historical migrations V198-V200 were removed with the retired AI feature
+      # but remain recorded in this database. Restore their original source files
+      # from the controlled release archive before enabling strict validation.
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
+      APP_AUTH_JWT_SECRET: ${APP_AUTH_JWT_SECRET:-EQMS_DEV_AUTH_SECRET_CHANGE_ME_32_BYTES_MINIMUM_KEY}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:3000}
+      APP_SECURITY_COOKIES_SECURE: ${APP_SECURITY_COOKIES_SECURE:-false}
+      APP_MINIO_ENABLED: "true"
+      APP_MINIO_INITIALIZE_ON_STARTUP: "false"
+      APP_MINIO_ENDPOINT: http://minio:9000
+      APP_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-eqms-minio}
+      APP_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-eqms-minio-secret}
+      APP_MINIO_BUCKET: ${APP_MINIO_BUCKET:-eqms-gmp-revisions}
+      APP_MINIO_DOCUMENTS_PREFIX: ${APP_MINIO_DOCUMENTS_PREFIX:-documents}
+      APP_MINIO_CONTROLLED_COPIES_PREFIX: ${APP_MINIO_CONTROLLED_COPIES_PREFIX:-controlled-copies}
+      APP_MINIO_TEMPLATES_PREFIX: ${APP_MINIO_TEMPLATES_PREFIX:-templates}
+      APP_MINIO_TRAINING_PREFIX: ${APP_MINIO_TRAINING_PREFIX:-training}
+      APP_MINIO_AUDIT_PREFIX: ${APP_MINIO_AUDIT_PREFIX:-audit}
+      APP_MINIO_TEMP_PREFIX: ${APP_MINIO_TEMP_PREFIX:-temp}
+      APP_RATE_LIMIT_REDIS_ENABLED: ${APP_RATE_LIMIT_REDIS_ENABLED:-true}
+      APP_IDEMPOTENCY_REDIS_ENABLED: ${APP_IDEMPOTENCY_REDIS_ENABLED:-true}
+      SPRING_DATA_REDIS_URL: redis://redis:6379
+      SPRING_CACHE_TYPE: redis
+      SPRING_CACHE_REDIS_TTL: 30s
+      APP_MINIO_RETENTION_YEARS: ${APP_MINIO_RETENTION_YEARS:-5}
+      APP_MICROSOFT_GRAPH_ENABLED: ${APP_MICROSOFT_GRAPH_ENABLED:-true}
+      APP_MICROSOFT_GRAPH_BASE_URL: ${APP_MICROSOFT_GRAPH_BASE_URL:-https://graph.microsoft.com/v1.0}
+      # Controlled-copy evidence uploads (Report Lost/Damaged) are scanned before storage.
+      # The scanner fails closed: if it cannot be reached, uploads are rejected, not allowed
+      # through silently. Set to "false" only for environments that intentionally run without
+      # the bundled clamav service.
+      APP_SECURITY_VIRUS_SCAN_ENABLED: ${APP_SECURITY_VIRUS_SCAN_ENABLED:-true}
+      APP_SECURITY_VIRUS_SCAN_HOST: clamav
+      APP_SECURITY_VIRUS_SCAN_PORT: 3310
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
+    volumes:
+      - eqms_backend_storage:/app/storage
+      - eqms_backend_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+
+  frontend:
+    build:
+      context: ./eqms
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: ${FRONTEND_BUILD_IMAGE:-mirror.gcr.io/library/node:22-alpine}
+    image: eqms-frontend:local
+    container_name: eqms-frontend
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000/api}
+      VITE_APP_URL: ${VITE_APP_URL:-http://localhost:3000}
+      VITE_APP_ENV: ${VITE_APP_ENV:-development}
+      VITE_AUTH_TOKEN_KEY: ${VITE_AUTH_TOKEN_KEY:-authToken}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  eqms_postgres_data:
+  eqms_minio_data:
+  eqms_redis_data:
+  eqms_backend_storage:
+  eqms_backend_logs:
+  eqms_clamav_data:

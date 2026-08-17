@@ -65,7 +65,7 @@ export const readSystemLocalizationSettings = (): SystemLocalizationSettings => 
   if (typeof window === 'undefined') return DEFAULT_LOCALIZATION_SETTINGS;
   try {
     const parsed = JSON.parse(window.localStorage.getItem(LOCALIZATION_STORAGE_KEY) || '{}') as Partial<SystemLocalizationSettings>;
-    return { ...DEFAULT_LOCALIZATION_SETTINGS, ...parsed, fontFamily: normalizeFontFamily(parsed.fontFamily) };
+    return { ...DEFAULT_LOCALIZATION_SETTINGS, ...parsed, language: 'en', fontFamily: normalizeFontFamily(parsed.fontFamily) };
   } catch {
     return DEFAULT_LOCALIZATION_SETTINGS;
   }
@@ -76,6 +76,7 @@ export const writeSystemLocalizationSettings = (settings: SystemLocalizationSett
   const normalized = {
     ...DEFAULT_LOCALIZATION_SETTINGS,
     ...settings,
+    language: 'en',
     fontFamily: normalizeFontFamily(settings.fontFamily),
   };
   window.localStorage.setItem(LOCALIZATION_STORAGE_KEY, JSON.stringify(normalized));

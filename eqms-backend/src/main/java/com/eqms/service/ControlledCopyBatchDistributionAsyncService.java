@@ -46,7 +46,7 @@ public class ControlledCopyBatchDistributionAsyncService {
         this.itemRepository = itemRepository;
     }
 
-    @Async
+    @Async("controlledCopyBatchExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBatchDistributed(ControlledCopyBatchDistributedEvent event) {
         List<ControlledCopyDistributionJobItem> items = event.jobId() == null ? List.of() : itemRepository.findAllByJob_IdOrderByIdAsc(event.jobId());
@@ -57,6 +57,7 @@ public class ControlledCopyBatchDistributionAsyncService {
         String batchId = event.batchId() == null ? null : event.batchId().toString();
         int processed = 0;
         int failed = 0;
+        List<UUID> succeededCopyIds = new java.util.ArrayList<>();
         publishProgress(batchId, event.issuerUserId(), processed, total, failed, "in_progress");
         for (int index = 0; index < copyIds.size(); index++) {
             UUID copyId = copyIds.get(index);
@@ -66,14 +67,22 @@ public class ControlledCopyBatchDistributionAsyncService {
                 failed++;
                 restoreFailedCopy(copyId, event.issuerUserId(), batchId);
                 if (item != null) { item.setStatus("FAILED"); item.setLastErrorCode("FILE_PROCESSING_FAILED"); item.setLastErrorMessage("File processing failed after automatic retries."); item.setCompletedAt(Instant.now()); itemRepository.save(item); }
-            } else if (item != null) {
-                item.setStatus("SUCCESS"); item.setCompletedAt(Instant.now()); itemRepository.save(item);
+            } else {
+                succeededCopyIds.add(copyId);
+                if (item != null) { item.setStatus("SUCCESS"); item.setCompletedAt(Instant.now()); itemRepository.save(item); }
             }
             processed++;
             String status = processed == total ? (failed > 0 ? "completed_with_errors" : "completed") : "in_progress";
             publishProgress(batchId, event.issuerUserId(), processed, total, failed, status);
         }
         if (job != null) { job.setSucceededItems(total - failed); job.setFailedItems(failed); job.setStatus(failed > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED"); job.setCompletedAt(Instant.now()); jobRepository.save(job); }
+        if (event.batchId() != null && !succeededCopyIds.isEmpty()) {
+            try {
+                controlledCopyService.sendDcoBatchZipEmail(event.batchId(), succeededCopyIds, event.issuerUserId());
+            } catch (Exception ex) {
+                log.warn("Failed to send DCO batch ZIP email for batch {}: {}", batchId, ex.getMessage(), ex);
+            }
+        }
     }
 
     /**
@@ -82,7 +91,7 @@ public class ControlledCopyBatchDistributionAsyncService {
      * Triggered explicitly by the user from the batch result modal — a no-op if there is no job
      * or no failed items, so it is safe to call speculatively.
      */
-    @Async
+    @Async("controlledCopyBatchExecutor")
     public void retryFailedItems(UUID batchId, UUID issuerUserId) {
         if (batchId == null) {
             return;

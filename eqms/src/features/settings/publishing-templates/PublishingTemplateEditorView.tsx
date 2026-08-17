@@ -15,7 +15,7 @@ import {
   Loader2,
   RefreshCw,
   Search,
-  Send,
+  Tag,
   Trash2,
   Upload,
   Wand2,
@@ -32,6 +32,7 @@ import { FormSection } from "@/components/ui/form/FormSection";
 import { Input } from "@/components/ui/form/ResponsiveForm";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui/utils";
 import { ROUTES } from "@/app/routes.constants";
@@ -42,6 +43,8 @@ import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { navigateBack } from "@/app/navigation/backNavigation";
 import { publishingTemplateCreate, publishingTemplateEdit } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { publishingTemplatesApi } from "@/services/api/publishingTemplates";
+import { controlledCopyPolicyApi } from "@/services/api";
+import type { ControlledCopyPlaceholderField } from "@/services/api/controlledCopyPolicy";
 import type {
   PublishingPlaceholderGroupResponse,
   PublishingPlaceholderStyleConfig,
@@ -108,7 +111,7 @@ const SLOT_GROUPS: Array<{
 const FORM_DEFAULTS: TemplateFormState = {
   templateName: "",
   description: "",
-  status: "DRAFT",
+  status: "INACTIVE",
   publishingMode: "COVER_ONLY",
 };
 
@@ -316,6 +319,13 @@ export const PublishingTemplateEditorView: React.FC = () => {
   const [isSavingPlaceholderStyle, setIsSavingPlaceholderStyle] = useState(false);
   const [styleModalOpen, setStyleModalOpen] = useState(false);
   const [styleModalSlot, setStyleModalSlot] = useState<{ componentType: ComponentType; layout: LayoutType } | null>(null);
+  const [ccPlaceholderFields, setCcPlaceholderFields] = useState<ControlledCopyPlaceholderField[]>([]);
+  const [isSavingDataSource, setIsSavingDataSource] = useState(false);
+  // Pending checkbox state — only committed (create/delete API call) when the Style modal is Saved.
+  const [pendingControlledCopyVisible, setPendingControlledCopyVisible] = useState<boolean | null>(null);
+  // Full (unfiltered) built-in placeholder key set, used to classify detected placeholder chips.
+  // Kept separate from `placeholderCatalog` above, which is re-fetched filtered by search term.
+  const [builtInPlaceholderKeys, setBuiltInPlaceholderKeys] = useState<Set<string>>(new Set());
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const previewUrlRef = useRef<string | null>(null);
   const previewCacheRef = useRef<Map<string, string>>(new Map());
@@ -506,10 +516,16 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       styleSignature,
     ].join("::");
 
-  const buildTemplatePayload = () => ({
+  const buildTemplatePayload = () => {
+    const currentStatus = String(template?.status || "").toUpperCase();
+    const templateIsLive = currentStatus === "ACTIVE" || currentStatus === "PUBLISHED";
+    // Only the Publish flow may transition a template into Active — a plain save must
+    // never send status=ACTIVE unless the template is already live, or the backend guard rejects it.
+    const safeStatus = form.status === "ACTIVE" && !templateIsLive ? (template?.status || "INACTIVE") : form.status;
+    return {
     templateName: form.templateName.trim(),
     description: form.description || null,
-    status: form.status,
+    status: safeStatus,
     publishingMode: form.publishingMode,
     coverOrientation: null,
     bodyOrientation: null,
@@ -531,7 +547,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     footerPageTo: template?.footerPageTo ?? null,
     watermarkPageFrom: template?.watermarkPageFrom ?? null,
     watermarkPageTo: template?.watermarkPageTo ?? null,
-  });
+    };
+  };
 
   useEffect(() => {
     let alive = true;
@@ -549,7 +566,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           setForm({
             templateName: data.templateName || "",
             description: data.description || "",
-            status: data.status || "DRAFT",
+            status: data.status || "INACTIVE",
             publishingMode: normalizePublishingMode(data.publishingMode),
           });
           lastPublishingModeRef.current = normalizePublishingMode(data.publishingMode);
@@ -571,7 +588,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           setTemplate({
             templateName: "",
             description: "",
-            status: "DRAFT",
+            status: "INACTIVE",
             publishingMode: "COVER_ONLY",
             components: [],
           } as PublishingTemplateResponse);
@@ -633,6 +650,25 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       alive = false;
     };
   }, [debouncedPlaceholderSearch]);
+
+  const loadCcPlaceholderFields = () => {
+    controlledCopyPolicyApi.listPlaceholderFields().then(setCcPlaceholderFields).catch(() => setCcPlaceholderFields([]));
+  };
+
+  useEffect(() => {
+    let alive = true;
+    publishingTemplatesApi.getAvailablePlaceholders().then((response) => {
+      if (!alive) return;
+      const groups = Array.isArray(response?.groups) ? response.groups.filter(Boolean) : [];
+      const keys = new Set<string>();
+      groups.forEach((group) => (group.items || []).forEach((item) => keys.add(normalizePlaceholderKey(item.value))));
+      setBuiltInPlaceholderKeys(keys);
+    }).catch(() => setBuiltInPlaceholderKeys(new Set()));
+    loadCcPlaceholderFields();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -888,7 +924,45 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
   const openStyleModal = (placeholder: string, componentType: ComponentType, layout: LayoutType) => {
     setSelectedStylePlaceholder(placeholder);
     setStyleModalSlot({ componentType, layout });
+    setPendingControlledCopyVisible(null);
     setStyleModalOpen(true);
+  };
+
+  /** "recipient_department" / "recipientDepartment" -> "Recipient Department" */
+  const humanizePlaceholderLabel = (key: string) => {
+    const cleaned = key.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").trim();
+    return cleaned.replace(/\S+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  };
+
+  // Only updates local pending state — the actual create/delete API call happens when the
+  // Placeholder Style modal is Saved, via commitControlledCopyVisibility().
+  const handleToggleControlledCopyField = (checked: boolean) => {
+    setPendingControlledCopyVisible(checked);
+  };
+
+  const commitControlledCopyVisibility = async () => {
+    if (pendingControlledCopyVisible === null) return;
+    const fieldKey = selectedStyleKey;
+    const existingField = ccPlaceholderFields.find((f) => f.fieldKey.toLowerCase() === fieldKey);
+    const alreadyMatches = pendingControlledCopyVisible === Boolean(existingField);
+    if (alreadyMatches) return;
+    setIsSavingDataSource(true);
+    try {
+      if (pendingControlledCopyVisible) {
+        if (!existingField) {
+          await controlledCopyPolicyApi.createPlaceholderField({
+            fieldKey,
+            label: humanizePlaceholderLabel(fieldKey),
+            active: true,
+          });
+        }
+      } else if (existingField) {
+        await controlledCopyPolicyApi.deletePlaceholderField(existingField.id);
+      }
+      await loadCcPlaceholderFields();
+    } finally {
+      setIsSavingDataSource(false);
+    }
   };
 
   const handleSave = async (
@@ -935,37 +1009,53 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     }
   };
 
-  const handlePublish = async () => {
+  const currentTemplateStatus = String(template?.status || "").toUpperCase();
+  const templateIsLive = currentTemplateStatus === "ACTIVE" || currentTemplateStatus === "PUBLISHED";
+  const willPublish = form.status === "ACTIVE" && !templateIsLive;
+
+  const handleSaveOrPublish = async () => {
     setPublishConfirmOpen(false);
-    setIsSaving(true);
-    try {
-      const draft = template?.id
-        ? template
-        : await handleSave({ redirectAfterCreate: false });
-      if (!draft?.id) {
+    if (willPublish) {
+      // Persist all other field edits first (this bug existed before: publishing an existing
+      // template skipped re-saving unsaved form changes) — buildTemplatePayload() keeps status
+      // at its current safe value here, the publishTemplate() call below does the real activation.
+      const saved = await handleSave({ redirectAfterCreate: false });
+      if (!saved?.id) {
         return;
       }
-      setTemplate(draft);
-      const published = await publishingTemplatesApi.publishTemplate(
-        draft.id,
-        `Published publishing template "${draft.templateName || "Untitled Template"}" from template editor.`,
-      );
-      setTemplate(published);
-      showToast({
-        type: "success",
-        title: "Published",
-        message: "Publishing template published successfully.",
-      });
-    } catch (error) {
-      console.error("Failed to publish publishing template", error);
-      showToast({
-        type: "error",
-        title: "Publish failed",
-        message: "Unable to publish template.",
-      });
-    } finally {
-      setIsSaving(false);
+      setIsSaving(true);
+      try {
+        const published = await publishingTemplatesApi.publishTemplate(
+          saved.id,
+          `Published publishing template "${saved.templateName || "Untitled Template"}" from template editor.`,
+        );
+        setTemplate(published);
+        showToast({
+          type: "success",
+          title: "Published",
+          message: "Publishing template published successfully.",
+        });
+      } catch (error) {
+        console.error("Failed to publish publishing template", error);
+        showToast({
+          type: "error",
+          title: "Publish failed",
+          message: "Unable to publish template.",
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      await handleSave();
     }
+  };
+
+  const handleSaveOrPublishClick = () => {
+    if (willPublish) {
+      setPublishConfirmOpen(true);
+      return;
+    }
+    void handleSaveOrPublish();
   };
 
   const handleDelete = async () => {
@@ -1003,7 +1093,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       setForm({
         templateName: duplicated.templateName || "",
         description: duplicated.description || "",
-        status: duplicated.status || "DRAFT",
+        status: duplicated.status || "INACTIVE",
         publishingMode: normalizePublishingMode(duplicated.publishingMode),
       });
       showToast({
@@ -1324,6 +1414,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           },
         },
       ]);
+      await commitControlledCopyVisibility();
       await refreshPlaceholderStyles(template.id);
       previewCacheRef.current.delete(activeSlotMeta.key);
       await loadSlotPreview(
@@ -1416,7 +1507,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       <AlertModal
         isOpen={publishConfirmOpen}
         onClose={() => setPublishConfirmOpen(false)}
-        onConfirm={() => void handlePublish()}
+        onConfirm={() => void handleSaveOrPublish()}
         title="Publish Template"
         description={
           template?.templateName
@@ -1485,6 +1576,43 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
 
             {/* Modal body */}
             <div className="max-h-[70vh] overflow-y-auto p-5 space-y-5">
+              {/* Controlled Copy visibility — lets the admin wire any placeholder to a Controlled
+                  Copy Field (DCO fills it in at Distribute time) right from where it was detected,
+                  instead of a separate screen. For a built-in placeholder, checking this lets DCO's
+                  entered value override the automatic one for that specific copy.
+                  Not offered for SIGNATURE-type placeholders: the real signature block is always
+                  resolved last when composing the PDF, so a DCO-entered override would be silently
+                  ignored — better to not offer a control that can never actually take effect. */}
+              {isSignaturePlaceholder ? (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-2xs sm:text-xs text-slate-500">
+                    Signature placeholders always render the actual electronic signature and cannot be overridden by a DCO-entered value at distribution time.
+                  </p>
+                </div>
+              ) : (() => {
+                const isBuiltIn = builtInPlaceholderKeys.has(selectedStyleKey);
+                const registeredField = ccPlaceholderFields.find((f) => f.fieldKey.toLowerCase() === selectedStyleKey);
+                return (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <Checkbox
+                        checked={pendingControlledCopyVisible ?? Boolean(registeredField)}
+                        onChange={(checked) => handleToggleControlledCopyField(checked)}
+                        disabled={isSavingDataSource}
+                      />
+                      <span>
+                        <span className="text-xs sm:text-sm font-medium text-slate-800">Show in Controlled Copies</span>
+                        <span className="mt-0.5 block text-2xs sm:text-xs text-slate-500">
+                          {isBuiltIn
+                            ? "DCO's entered value overrides the automatic value for that specific copy when checked."
+                            : "DCO fills this in when distributing a controlled copy. Without this, it always renders \"-\"."}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                );
+              })()}
+
               {/* Typography */}
               <div>
                 <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">Typography</p>
@@ -1661,10 +1789,11 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
             <Button
               size="sm"
               variant="outline-emerald"
-              onClick={() => void handleSave()}
+              onClick={handleSaveOrPublishClick}
+              disabled={isSaving}
               className="gap-2"
             >
-              Save Changes
+              {willPublish ? "Publish Template" : "Save Changes"}
             </Button>
             {isEditMode && (
               <>
@@ -1700,18 +1829,6 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                       <Copy className="h-4 w-4 flex-shrink-0" />
                       <span className="font-medium text-slate-500">Duplicate</span>
                     </button>
-                    {template?.id && (
-                      <button
-                        onClick={() => {
-                          closeHeaderMenu();
-                          setPublishConfirmOpen(true);
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                      >
-                        <Send className="h-4 w-4 flex-shrink-0" />
-                        <span className="font-medium text-slate-500">Publish Template</span>
-                      </button>
-                    )}
                     <button
                       onClick={() => {
                         closeHeaderMenu();
@@ -1773,12 +1890,16 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     setForm((prev) => ({ ...prev, status: String(value) }))
                   }
                   options={[
-                    { value: "DRAFT", label: "Draft" },
-                    { value: "ACTIVE", label: "Active" },
                     { value: "INACTIVE", label: "Inactive" },
+                    { value: "ACTIVE", label: "Active" },
                   ]}
                   placeholder="Select status"
                 />
+                {willPublish && (
+                  <p className="mt-1 text-2xs text-slate-400">
+                    Selecting Active will publish this template — click "Publish Template" to create a versioned, audited release.
+                  </p>
+                )}
               </div>
               <div>
                 <label className={COMPONENT_PRESETS.formLabel}>
@@ -2021,11 +2142,16 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                           normalizeLayout(s.layout) === layout &&
                                           normalizePlaceholderKey(s.placeholderKey) === pKey,
                                       );
+                                      const registeredField = ccPlaceholderFields.find((f) => f.fieldKey.toLowerCase() === pKey);
                                       return (
                                         <button
                                           key={item}
                                           type="button"
-                                          title="Click to edit style"
+                                          title={
+                                            registeredField
+                                              ? `Controlled Copy Field: ${registeredField.label}. Click to edit style.`
+                                              : "Click to edit style."
+                                          }
                                           onClick={() => openStyleModal(item, group.componentType, layout)}
                                           className={cn(
                                             "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-2xs font-medium transition select-none cursor-pointer",
@@ -2034,6 +2160,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                               : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50",
                                           )}
                                         >
+                                          {registeredField && <Tag className="h-2.5 w-2.5" />}
                                           {item}
                                           {hasStyle && <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />}
                                         </button>

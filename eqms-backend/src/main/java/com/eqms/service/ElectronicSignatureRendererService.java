@@ -56,7 +56,7 @@ public class ElectronicSignatureRendererService {
             return renderPending(s);
         }
         if ("FAILED".equals(status) || "INVALID".equals(status) || "REJECTED".equals(status)) {
-            return renderInvalid(s);
+            return renderRejected(s);
         }
         return renderSigned(s);
     }
@@ -86,10 +86,10 @@ public class ElectronicSignatureRendererService {
         return b.toString();
     }
 
-    private String renderInvalid(ElectronicSignature s) {
+    private String renderRejected(ElectronicSignature s) {
         StringBuilder b = new StringBuilder();
         appendLine(b, s.getFullName());
-        appendLine(b, "Electronic Signature Invalid");
+        appendLine(b, "Signature Rejected");
         appendLine(b, "Meaning: " + displayMeaning(s.getMeaning()));
         if (StringUtils.hasText(s.getReason())) {
             appendLine(b, "Reason: " + s.getReason());

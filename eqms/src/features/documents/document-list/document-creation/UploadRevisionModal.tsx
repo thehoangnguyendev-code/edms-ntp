@@ -24,6 +24,9 @@ interface UploadRevisionModalProps {
   documentSubType?: string;
   canUseTemplate?: boolean;
   maxFileSizeMB?: number;
+  /** True while the parent's onConfirm handler is actually uploading -- disables Confirm/Cancel
+   * and shows a spinner so a slow upload can't be double-submitted by an impatient click. */
+  isSubmitting?: boolean;
 }
 
 const buildTemplateLabel = (item: {
@@ -43,6 +46,7 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
   documentSubType,
   canUseTemplate = false,
   maxFileSizeMB = 25,
+  isSubmitting = false,
 }) => {
   const [note, setNote] = useState("");
   const [useTemplate, setUseTemplate] = useState(false);
@@ -217,7 +221,7 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
         confirmText="OK"
         cancelText="Cancel"
         size="lg"
-        isLoading={false}
+        isLoading={isSubmitting}
         confirmDisabled={!hasFileOrTemplate || Boolean(fileError)}
       >
         <div className="space-y-4">

@@ -2320,6 +2320,7 @@ export const NewDocumentView: React.FC = () => {
               documentSubType={formData.subType}
               canUseTemplate={canUseTemplate}
               maxFileSizeMB={maxRevisionFileSizeMB}
+              isSubmitting={isSaving}
       />
 
       <ESignatureModal
@@ -2327,6 +2328,8 @@ export const NewDocumentView: React.FC = () => {
         onClose={() => setIsObsoleteModalOpen(false)}
         onConfirm={handleObsolete}
         actionTitle="Obsolete Document"
+        meaningDisplayName="Obsoleted"
+        meaningCode="OBSOLETED"
       />
       <FormModal
         isOpen={isCancelModalOpen}

@@ -613,6 +613,8 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
           onClose={() => setShowESignModal(false)}
           onConfirm={handleESignConfirm}
           actionTitle="Sign Off Training"
+          meaningDisplayName="Training Confirmed"
+          meaningCode="TRAINING_CONFIRMED"
           targetDetails={{
             code: document?.documentNumber || "",
             title: document?.documentName || "",

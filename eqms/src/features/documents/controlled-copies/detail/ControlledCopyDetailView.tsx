@@ -6,10 +6,12 @@ import { cn } from "@/components/ui/utils";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
+import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import { documentApi } from "@/services/api/documents";
+import { controlledCopyPolicyApi, type ControlledCopyPlaceholderField } from "@/services/api/controlledCopyPolicy";
 import { ControlledCopy, ControlledCopyDistributionBatch } from "../types";
 import { DestructionTypeSelectionModal } from "../components/DestructionTypeSelectionModal";
 import { RecallControlledCopyModal, type RecallControlledCopyValues } from "../components/RecallControlledCopyModal";
@@ -74,6 +76,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isDestructionModalOpen, setIsDestructionModalOpen] = useState(false);
   const [isDistributeModalOpen, setIsDistributeModalOpen] = useState(false);
+  const [activePlaceholderFields, setActivePlaceholderFields] = useState<ControlledCopyPlaceholderField[]>([]);
+  const [isPlaceholderFieldsModalOpen, setIsPlaceholderFieldsModalOpen] = useState(false);
+  const [placeholderFieldValues, setPlaceholderFieldValues] = useState<Record<string, string>>({});
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRecallFormOpen, setIsRecallFormOpen] = useState(false);
   const [isRecallESignModalOpen, setIsRecallESignModalOpen] = useState(false);
@@ -681,7 +686,18 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     void reason;
   };
 
+  useEffect(() => {
+    controlledCopyPolicyApi.listPlaceholderFields()
+      .then((fields) => setActivePlaceholderFields(fields.filter((field) => field.active)))
+      .catch(() => setActivePlaceholderFields([]));
+  }, []);
+
   const handleDistribute = () => {
+    if (activePlaceholderFields.length > 0) {
+      setPlaceholderFieldValues({});
+      setIsPlaceholderFieldsModalOpen(true);
+      return;
+    }
     setIsDistributeModalOpen(true);
   };
 
@@ -706,6 +722,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             location: controlledCopy.location || "",
             comment: data.reason,
             signatureToken: data.signatureToken as string,
+            customPlaceholderValues: placeholderFieldValues,
           })) as ControlledCopyDistributionBatch
         : await documentApi.distribute(getControlledCopyActionTargetId(controlledCopy), {
             distributedTo: controlledCopy.recipientName || controlledCopy.distributionList || controlledCopy.location || "",
@@ -713,6 +730,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             location: controlledCopy.location || "",
             comment: data.reason,
             signatureToken: data.signatureToken as string,
+            customPlaceholderValues: placeholderFieldValues,
           });
       const mapped = isBatchParent
         ? normalizeControlledCopyBatchDetail(updated as ControlledCopyDistributionBatch)
@@ -828,7 +846,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     }
   };
 
-  const handleRecallSuccess = async (data: { username: string; password: string; reason: string; comment?: string; signatureToken?: string }) => {
+  const handleRecallSuccess = async (data: { username: string; password: string; reason: string; signatureToken?: string }) => {
     if (!recallValues) {
       setIsRecallESignModalOpen(false);
       return;
@@ -840,14 +858,14 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             recalledBy: data.username,
             recallReason: recallValues.recallReason,
             recallDate: recallValues.recallDate,
-            comment: data.comment,
+            comment: data.reason,
             signatureToken: data.signatureToken as string,
           })
         : await documentApi.recallControlledCopy(getControlledCopyActionTargetId(controlledCopy), {
             recalledBy: data.username,
             recallReason: recallValues.recallReason,
             recallDate: recallValues.recallDate,
-            comment: data.comment,
+            comment: data.reason,
             signatureToken: data.signatureToken as string,
           });
       const mapped = isBatchParent
@@ -1208,12 +1226,42 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         )}
       </div>
 
+      {/* Additional placeholder field values, collected before the e-signature step */}
+      <FormModal
+        isOpen={isPlaceholderFieldsModalOpen}
+        onClose={() => setIsPlaceholderFieldsModalOpen(false)}
+        onConfirm={() => {
+          setIsPlaceholderFieldsModalOpen(false);
+          setIsDistributeModalOpen(true);
+        }}
+        title="Additional Details"
+        description="These values are filled into the corresponding {{placeholder}} on the controlled copy's cover/header/footer."
+        confirmText="Continue"
+      >
+        <div className="space-y-3">
+          {activePlaceholderFields.map((field) => (
+            <div key={field.id}>
+              <label className="text-xs sm:text-sm text-slate-700 mb-1.5 block">{field.label}</label>
+              <input
+                type="text"
+                value={placeholderFieldValues[field.fieldKey] || ""}
+                onChange={(e) => setPlaceholderFieldValues((prev) => ({ ...prev, [field.fieldKey]: e.target.value }))}
+                placeholder={field.description || undefined}
+                className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          ))}
+        </div>
+      </FormModal>
+
       {/* E-Signature Modal for Distribute */}
       <ESignatureModal
         isOpen={isDistributeModalOpen}
         onClose={() => setIsDistributeModalOpen(false)}
         onConfirm={handleDistributeSuccess}
         transactionType="distribute"
+        meaningDisplayName="Controlled Copy Distributed"
+        meaningCode="CONTROLLED_COPY_DISTRIBUTED"
         targetDetails={{
           code: controlledCopy.controlledCopyNumber,
           title: controlledCopy.name,
@@ -1290,6 +1338,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         onClose={() => setIsCancelModalOpen(false)}
         onConfirm={handleCancelSuccess}
         transactionType="cancel-distribution"
+        meaningDisplayName="Controlled Copy Distribution Cancelled"
+        meaningCode="CONTROLLED_COPY_DISTRIBUTION_CANCELLED"
         targetDetails={{
           code: controlledCopy.controlledCopyNumber,
           title: controlledCopy.name,
@@ -1316,6 +1366,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         }}
         onConfirm={handleRecallSuccess}
         transactionType="recall-distribution"
+        meaningDisplayName="Controlled Copy Recalled"
+        meaningCode="CONTROLLED_COPY_RECALLED"
         targetDetails={{
           code: controlledCopy.controlledCopyNumber,
           title: controlledCopy.name,
@@ -1339,6 +1391,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         onClose={() => setIsReissueModalOpen(false)}
         onConfirm={handleReissueConfirm}
         actionTitle="Reissue Replacement Controlled Copy"
+        meaningDisplayName="Controlled Copy Reissued"
+        meaningCode="CONTROLLED_COPY_REISSUED"
         targetDetails={{
           code: controlledCopy.controlledCopyNumber,
           title: controlledCopy.name,

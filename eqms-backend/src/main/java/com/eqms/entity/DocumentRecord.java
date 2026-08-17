@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -23,6 +24,16 @@ public class DocumentRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    // Optimistic locking: Hibernate increments this on every UPDATE and checks it hasn't changed
+    // since load, so two concurrent edits to the same document can't silently overwrite each
+    // other -- the second save throws ObjectOptimisticLockingFailureException (mapped to HTTP 409
+    // by GlobalExceptionHandler) instead of clobbering the first. Named lockVersion/lock_version
+    // (not "version") because that name is already taken by the document's own semantic version
+    // string field (e.g. "1.0") below.
+    @Version
+    @Column(name = "lock_version", nullable = false)
+    private long lockVersion;
 
     @Column(name = "document_number", nullable = false, unique = true, length = 80)
     private String documentNumber;
@@ -155,6 +166,10 @@ public class DocumentRecord {
 
     public void setId(UUID id) {
         this.id = id;
+    }
+
+    public long getLockVersion() {
+        return lockVersion;
     }
 
     public String getDocumentNumber() {

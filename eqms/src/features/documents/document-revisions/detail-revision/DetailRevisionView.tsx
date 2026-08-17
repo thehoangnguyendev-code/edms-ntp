@@ -931,6 +931,8 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         onClose={() => setShowESignModal(false)}
         onConfirm={handlePublishConfirm}
         actionTitle="Publish Document"
+        meaningDisplayName="Published"
+        meaningCode="PUBLISHED"
         changes={[
           {
             action: "Update Status",
@@ -952,6 +954,8 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         onClose={() => setShowCancelESignModal(false)}
         onConfirm={handleCancelESignConfirm}
         actionTitle="Cancel Revision"
+        meaningDisplayName="Cancelled"
+        meaningCode="CANCELLED"
         changes={[
           {
             action: "Update Status",

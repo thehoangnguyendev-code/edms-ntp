@@ -5,6 +5,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -44,9 +45,13 @@ public class ObjectAccessRule {
     @Column(name = "resource_name", length = 200)
     private String resourceName;
 
+    // Mapped as a native String[] rather than List<String> -- with this Hibernate version,
+    // @JdbcTypeCode(SqlTypes.ARRAY) on a List<String> was silently overridden by Hibernate's
+    // JSON-by-default handling for List-typed attributes, failing schema validation against the
+    // real Postgres text[] column. A raw array type does not hit that default.
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "actions", columnDefinition = "text[]")
-    private List<String> actions;
+    private String[] actions;
 
     @Column(nullable = false, length = 10)
     private String effect = "ALLOW";
@@ -94,8 +99,8 @@ public class ObjectAccessRule {
     public void setResourceId(UUID resourceId) { this.resourceId = resourceId; }
     public String getResourceName() { return resourceName; }
     public void setResourceName(String resourceName) { this.resourceName = resourceName; }
-    public List<String> getActions() { return actions; }
-    public void setActions(List<String> actions) { this.actions = actions; }
+    public List<String> getActions() { return actions == null ? null : Arrays.asList(actions); }
+    public void setActions(List<String> actions) { this.actions = actions == null ? null : actions.toArray(new String[0]); }
     public String getEffect() { return effect; }
     public void setEffect(String effect) { this.effect = effect; }
     public int getPriority() { return priority; }

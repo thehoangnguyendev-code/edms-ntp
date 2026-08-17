@@ -13,9 +13,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/settings/controlled-copy-policy")
 public class ControlledCopyPolicyController {
+
+    public record DcoEligibleUserResponse(String id, String fullName, String email) {}
 
     private final ControlledCopyPolicyService service;
     private final CurrentUserService currentUserService;
@@ -41,6 +45,18 @@ public class ControlledCopyPolicyController {
     public ResponseEntity<ControlledCopyPolicyResponse> savePolicy(@RequestBody ControlledCopyPolicyRequest request) {
         requireManageAccess();
         return ResponseEntity.ok(service.savePolicy(request));
+    }
+
+    /**
+     * Users eligible to be selected as the DCO delivery recipient -- restricted to those holding
+     * {@link ControlledCopyPolicyService#DCO_RECIPIENT_PERMISSION}, not any hardcoded role name.
+     */
+    @GetMapping("/dco-eligible-users")
+    public ResponseEntity<List<DcoEligibleUserResponse>> getDcoEligibleUsers() {
+        requireManageAccess();
+        return ResponseEntity.ok(service.listDcoEligibleUsers().stream()
+                .map(u -> new DcoEligibleUserResponse(u.getId().toString(), u.getFullName(), u.getEmail()))
+                .toList());
     }
 
     private void requireAccess() {

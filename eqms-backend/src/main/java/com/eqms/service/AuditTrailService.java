@@ -90,6 +90,15 @@ public class AuditTrailService {
      */
     private final ObjectProvider<DocumentAuthorizationService> documentAuthorizationServiceProvider;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.auth.TokenService tokenService;
+
+    // @Lazy breaks the circular dependency: ElectronicSignatureService's constructor already
+    // depends on AuditTrailService.
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private ElectronicSignatureService electronicSignatureService;
+
     public AuditTrailService(
             AuditLogRepository auditLogRepository,
             AuditLogChangeRepository auditLogChangeRepository,
@@ -735,6 +744,25 @@ public class AuditTrailService {
                 .toList();
     }
 
+    /**
+     * Validates the export's electronic signature synchronously, before the controller commits
+     * to a StreamingResponseBody -- once that body starts writing, the 200 response status is
+     * already locked in, so a token failure discovered mid-stream can't be surfaced as a proper
+     * HTTP error (the client would just see an incomplete "successful" download).
+     */
+    @Transactional(readOnly = true)
+    public void requireValidExportSignature(String signatureToken) {
+        UserAccount actor = requireAuditExport();
+        if (!StringUtils.hasText(signatureToken)) {
+            throw new IllegalArgumentException("Electronic signature is required to export the audit trail");
+        }
+        var parsedSignature = tokenService.parseSignatureToken(signatureToken)
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Electronic signature is invalid or expired"));
+        if (!parsedSignature.principal().userId().equals(actor.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Electronic signature must belong to the current user");
+        }
+    }
+
     @Transactional
     public void writeExport(
             String search,
@@ -751,9 +779,19 @@ public class AuditTrailService {
             String dateTo,
             String sortBy,
             String sortDirection,
+            String reason,
+            String signatureToken,
             OutputStream output
     ) throws IOException {
         UserAccount actor = requireAuditExport();
+        if (!StringUtils.hasText(signatureToken)) {
+            throw new IllegalArgumentException("Electronic signature is required to export the audit trail");
+        }
+        var parsedSignature = tokenService.parseSignatureToken(signatureToken)
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Electronic signature is invalid or expired"));
+        if (!parsedSignature.principal().userId().equals(actor.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Electronic signature must belong to the current user");
+        }
         Writer writer = new BufferedWriter(new OutputStreamWriter(output, java.nio.charset.StandardCharsets.UTF_8));
         writer.write("id,timestamp,user,module,action,entityId,entityName,description,severity\n");
 
@@ -783,6 +821,9 @@ public class AuditTrailService {
             pageNumber++;
         } while (result.pagination().page() < result.pagination().totalPages());
 
+        String exportSummary = "Exported " + exportedCount + " audit trail record(s). " + summarizeExportFilters(
+                module, action, user, severity, documentNumber, entityId, status, ipAddress, eSignatureOnly, dateFrom, dateTo);
+        electronicSignatureService.createEntitySignature("AuditTrail", AUDIT_TRAIL_SYSTEM_ENTITY_ID, "System Audit Trail", actor, signatureToken, "AUDIT_RECORD_EXPORTED", reason, null, null, exportSummary);
         logAs(
                 actor,
                 "AUDIT_TRAIL",
@@ -791,8 +832,7 @@ public class AuditTrailService {
                 "EXPORT",
                 null,
                 null,
-                "Exported " + exportedCount + " audit trail record(s). " + summarizeExportFilters(
-                        module, action, user, severity, documentNumber, entityId, status, ipAddress, eSignatureOnly, dateFrom, dateTo)
+                exportSummary
         );
         writer.flush();
     }

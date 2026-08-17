@@ -33,11 +33,8 @@ const DEFAULT_PAGE_SIZE = 10;
 
 const STATUS_OPTIONS = [
   { label: "All Statuses", value: "All" },
-  { label: "Draft", value: "DRAFT" },
   { label: "Active", value: "ACTIVE" },
   { label: "Inactive", value: "INACTIVE" },
-  { label: "Published", value: "PUBLISHED" },
-  { label: "Archived", value: "ARCHIVED" },
 ];
 
 const PUBLISHING_MODE_OPTIONS = [
@@ -62,9 +59,7 @@ const tableColumns = [
 const getStatusColor = (status?: string | null): BadgeColor => {
   const normalized = String(status || "").trim().toUpperCase();
   if (normalized === "ACTIVE" || normalized === "PUBLISHED") return "emerald";
-  if (normalized === "DRAFT") return "slate";
-  if (normalized === "INACTIVE" || normalized === "ARCHIVED") return "amber";
-  return "blue";
+  return "slate";
 };
 
 const formatPublishingMode = (value?: string | null) => {

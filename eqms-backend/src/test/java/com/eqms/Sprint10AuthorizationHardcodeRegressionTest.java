@@ -127,7 +127,7 @@ class Sprint10AuthorizationHardcodeRegressionTest {
         when(controlledCopyPolicyService.savePolicy(any())).thenReturn(null);
 
         var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService);
-        assertThat(controller.savePolicy(new ControlledCopyPolicyRequest(null, null, null, null)).getStatusCode().value()).isEqualTo(200);
+        assertThat(controller.savePolicy(new ControlledCopyPolicyRequest(null, null, null, null, null)).getStatusCode().value()).isEqualTo(200);
     }
 
     @Test
@@ -137,7 +137,7 @@ class Sprint10AuthorizationHardcodeRegressionTest {
         when(permissionEvaluationService.isSuperAdmin(nonSuperAdminWithOldRoleName)).thenReturn(false);
 
         var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService);
-        assertThatThrownBy(() -> controller.savePolicy(new ControlledCopyPolicyRequest(null, null, null, null)))
+        assertThatThrownBy(() -> controller.savePolicy(new ControlledCopyPolicyRequest(null, null, null, null, null)))
                 .isInstanceOf(AccessDeniedException.class);
     }
 

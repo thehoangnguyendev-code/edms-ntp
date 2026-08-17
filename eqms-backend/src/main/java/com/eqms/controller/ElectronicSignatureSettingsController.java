@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -55,6 +56,14 @@ public class ElectronicSignatureSettingsController {
     public ResponseEntity<ElectronicSignatureSettingsResponse> saveSettings(@RequestBody ElectronicSignatureSettingsRequest request) {
         requireAdminManage();
         return ResponseEntity.ok(electronicSignatureService.saveSettings(request));
+    }
+
+    @GetMapping("/settings/electronic-signature/meanings")
+    public ResponseEntity<List<ElectronicSignatureMeaningResponse>> searchMeanings(
+            @RequestParam(required = false) String search
+    ) {
+        requireAdminView();
+        return ResponseEntity.ok(electronicSignatureService.searchMeanings(search));
     }
 
     @GetMapping("/electronic-signature/meanings/{code}")
