@@ -37,14 +37,16 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleCopy = () => {
     const { error, errorInfo } = this.state;
-    const text = [
-      error?.toString() ?? '',
-      '',
-      errorInfo?.componentStack ?? '',
-    ].join('\n');
-    navigator.clipboard.writeText(text).then(() => {
+    // Production builds copy only the message and a timestamp; stack traces are shown in DEV only so
+    // internal file paths and component names are not handed to end users.
+    const text = import.meta.env.DEV
+      ? [error?.toString() ?? '', '', errorInfo?.componentStack ?? ''].join('\n')
+      : [error?.message ?? 'Unknown error', new Date().toISOString(), window.location.pathname].join('\n');
+    navigator.clipboard?.writeText(text).then(() => {
       this.setState({ copied: true });
       setTimeout(() => this.setState({ copied: false }), 2000);
+    }).catch(() => {
+      // Clipboard can be unavailable (insecure context / permission denied); nothing else to do.
     });
   };
 
@@ -67,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <p className="text-slate-600 mb-4">
                 We're sorry for the inconvenience. Please try refreshing the page.
               </p>
-              {this.state.error && (
+              {import.meta.env.DEV && this.state.error && (
                 <details open className="text-left text-sm bg-slate-50 border border-slate-200 rounded-lg mb-4">
                   <summary className="cursor-pointer font-semibold text-slate-700 px-4 py-2.5 select-none">
                     Error Details

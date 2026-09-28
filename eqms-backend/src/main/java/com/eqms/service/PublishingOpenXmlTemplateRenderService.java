@@ -17,7 +17,9 @@ import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlObject;
 import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHdrFtr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTShd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblBorders;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
@@ -162,6 +164,7 @@ public class PublishingOpenXmlTemplateRenderService {
 
         try (InputStream input = Files.newInputStream(sourcePath); XWPFDocument document = new XWPFDocument(input)) {
             Map<String, String> values = resolveValues(document, revision, extraValues);
+            applyPlaceholderVisibility(values, placeholderStyles, extraValues);
             PublishingPlaceholderSyntax.PlaceholderToken previewToken = PublishingPlaceholderSyntax.parse(previewPlaceholderKey);
             String normalizedPreviewPlaceholderKey = previewToken == null ? null : previewToken.key();
             if (StringUtils.hasText(normalizedPreviewPlaceholderKey) && StringUtils.hasText(previewText)) {
@@ -233,6 +236,11 @@ public class PublishingOpenXmlTemplateRenderService {
                     XWPFHeader sourceHeader = firstHeader(headerDocument);
                     if (sourceHeader != null) {
                         applyHeader(document, sourceHeader);
+                        // The header template's own page setup is what its designer positioned the
+                        // header content against -- copying only the header XML content and leaving
+                        // the body document's own (arbitrary, unrelated) header distance in place
+                        // makes the merged header sit further from/closer to the text than intended.
+                        applyHeaderDistance(document, sectPrPageMargin(headerDocument, false));
                     }
                 }
             }
@@ -243,6 +251,11 @@ public class PublishingOpenXmlTemplateRenderService {
                     XWPFFooter sourceFooter = firstFooter(footerDocument);
                     if (sourceFooter != null) {
                         applyFooter(document, sourceFooter);
+                        // Same reasoning as the header above, but for the footer distance -- this is
+                        // the "too much white space around the footer" gap reported when the source
+                        // (body) document's own footer distance is larger than what the footer
+                        // template was actually designed for.
+                        applyFooterDistance(document, sectPrPageMargin(footerDocument, true));
                     }
                 }
             }
@@ -279,6 +292,24 @@ public class PublishingOpenXmlTemplateRenderService {
             }
         }
         return mapped;
+    }
+
+    /**
+     * A placeholder styled as visible only in the published document, or only in a controlled copy, is rendered empty in
+     * the other context. The context comes from the server-set marker in {@code extraValues}, never from the client.
+     */
+    private void applyPlaceholderVisibility(Map<String, String> values, Map<String, PublishingPlaceholderStyleConfig> styles, Map<String, String> extraValues) {
+        if (styles == null || styles.isEmpty()) {
+            return;
+        }
+        boolean controlledCopy = extraValues != null
+                && ControlledCopyPlaceholderValueBuilder.CONTEXT_CONTROLLED_COPY.equals(extraValues.get(ControlledCopyPlaceholderValueBuilder.CONTEXT_KEY));
+        for (String key : List.copyOf(values.keySet())) {
+            PublishingPlaceholderStyleConfig style = resolveStyle(styles, key);
+            if (style != null && !style.visibleIn(controlledCopy)) {
+                values.put(key, "");
+            }
+        }
     }
 
     private List<String> extractVariables(XWPFDocument document) {
@@ -1389,6 +1420,73 @@ public class PublishingOpenXmlTemplateRenderService {
         }
         XWPFFooter targetFooter = targetDocument.createFooter(HeaderFooterType.DEFAULT);
         copyHeaderFooterContent(sourceFooter, targetFooter);
+    }
+
+    /**
+     * The header/footer distance (twips from the page edge) declared on a template file's own
+     * (single-section) page setup -- null if the template has no explicit value, in which case the
+     * body document's own distance is left untouched rather than being overwritten with a guess.
+     */
+    private BigInteger sectPrPageMargin(XWPFDocument templateDocument, boolean footer) {
+        if (templateDocument == null || templateDocument.getDocument() == null
+                || templateDocument.getDocument().getBody() == null
+                || !templateDocument.getDocument().getBody().isSetSectPr()) {
+            return null;
+        }
+        CTSectPr sectPr = templateDocument.getDocument().getBody().getSectPr();
+        if (sectPr == null || !sectPr.isSetPgMar()) {
+            return null;
+        }
+        CTPageMar pgMar = sectPr.getPgMar();
+        if (footer) {
+            return (BigInteger) pgMar.getFooter();
+        }
+        return (BigInteger) pgMar.getHeader();
+    }
+
+    private void applyHeaderDistance(XWPFDocument targetDocument, BigInteger headerDistance) {
+        if (headerDistance == null) {
+            return;
+        }
+        forEachSectPr(targetDocument, sectPr -> sectPr.getPgMar().setHeader(headerDistance));
+    }
+
+    private void applyFooterDistance(XWPFDocument targetDocument, BigInteger footerDistance) {
+        if (footerDistance == null) {
+            return;
+        }
+        forEachSectPr(targetDocument, sectPr -> sectPr.getPgMar().setFooter(footerDistance));
+    }
+
+    /**
+     * A document can carry more than one w:sectPr (one per section break, plus the body-level
+     * one for the final section) -- every one of them independently controls header/footer
+     * distance for its section, so all must be updated for the fix to hold across the whole doc.
+     */
+    private void forEachSectPr(XWPFDocument document, java.util.function.Consumer<CTSectPr> action) {
+        if (document == null || document.getDocument() == null || document.getDocument().getBody() == null) {
+            return;
+        }
+        var body = document.getDocument().getBody();
+        if (body.isSetSectPr()) {
+            applyToSectPr(body.getSectPr(), action);
+        }
+        document.getParagraphs().forEach(paragraph -> {
+            var pPr = paragraph.getCTP().getPPr();
+            if (pPr != null && pPr.isSetSectPr()) {
+                applyToSectPr(pPr.getSectPr(), action);
+            }
+        });
+    }
+
+    private void applyToSectPr(CTSectPr sectPr, java.util.function.Consumer<CTSectPr> action) {
+        if (sectPr == null) {
+            return;
+        }
+        if (!sectPr.isSetPgMar()) {
+            sectPr.addNewPgMar();
+        }
+        action.accept(sectPr);
     }
 
     private void copyHeaderFooterContent(XWPFHeaderFooter source, XWPFHeaderFooter target) {

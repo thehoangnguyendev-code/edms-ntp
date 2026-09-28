@@ -1,18 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import {
-    Trash2,
-    MoreVertical,
-    Building2,
-    Power,
-    PowerOff,
-    Search,
-    AlertTriangle,
-    ChevronUp,
-    ChevronDown,
-    Check,
-    X,
-} from "lucide-react";
+import { Trash2, MoreVertical, Power, PowerOff, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { cn } from "@/components/ui/utils";
@@ -20,13 +8,19 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import type { DepartmentItem, BusinessUnit } from "../types";
 import { usePortalDropdown } from "@/hooks";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Button } from "@/components/ui/button/Button";
-import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
-import {IconFilter2, IconPencilMinus} from "@tabler/icons-react";
+import {
+  FilterDrawer,
+  FilterAccordionItem,
+} from "@/components/ui/filter/FilterDrawer";
+import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
+import { settingsApi } from "@/services/api/settings";
+import type { SelectOption } from "@/components/ui/select/Select";
 import { useToast } from "@/components/ui/toast";
 import { extractApiMessage } from "../utils";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
@@ -36,7 +30,12 @@ export const DepartmentsTab = React.forwardRef<
   { openAddModal: () => void },
   {}
 >((_, ref) => {
-  const [resultModal, setResultModal] = useState<{ isOpen: boolean; type: "success" | "error"; title: string; description: string }>({
+  const [resultModal, setResultModal] = useState<{
+    isOpen: boolean;
+    type: "success" | "error";
+    title: string;
+    description: string;
+  }>({
     isOpen: false,
     type: "success",
     title: "",
@@ -50,19 +49,29 @@ export const DepartmentsTab = React.forwardRef<
   >("All");
   const [modifiedFromDate, setModifiedFromDate] = useState("");
   const [modifiedToDate, setModifiedToDate] = useState("");
-  const { openId: openDropdownId, position: dropdownPosition, getRef: getButtonRef, toggle: handleDropdownToggle, close: closeDropdown } = usePortalDropdown();
+  const {
+    openId: openDropdownId,
+    position: dropdownPosition,
+    getRef: getButtonRef,
+    toggle: handleDropdownToggle,
+    close: closeDropdown,
+  } = usePortalDropdown();
   const { hasPermissionAlias } = usePermissions();
-  const canManage = hasPermissionAlias("settings.dictionary.manage");
+  const canManage = hasPermissionAlias("settings.department.manage");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["businessUnit", "status", "date"]));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(["businessUnit", "status", "date"]),
+  );
   const [selectedItem, setSelectedItem] = useState<DepartmentItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [businessUnits, setBusinessUnits] = useState<{ label: string; value: string }[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<
+    { label: string; value: string }[]
+  >([]);
   const { showToast } = useToast();
 
   const {
@@ -83,18 +92,24 @@ export const DepartmentsTab = React.forwardRef<
     fetcher: dictionaryApi.getDepartmentsPage,
     defaultSortBy: "name",
     extraParams: {
-      businessUnit: businessUnitFilter === "All" ? undefined : businessUnitFilter,
+      businessUnit:
+        businessUnitFilter === "All" ? undefined : businessUnitFilter,
       status: statusFilter,
       modifiedFrom: modifiedFromDate || undefined,
       modifiedTo: modifiedToDate || undefined,
     },
   });
 
-  const openResultModal = (type: "success" | "error", title: string, description: string) => {
+  const openResultModal = (
+    type: "success" | "error",
+    title: string,
+    description: string,
+  ) => {
     setResultModal({ isOpen: true, type, title, description });
   };
 
-  const closeResultModal = () => setResultModal((prev) => ({ ...prev, isOpen: false }));
+  const closeResultModal = () =>
+    setResultModal((prev) => ({ ...prev, isOpen: false }));
 
   // Expose methods to parent
   React.useImperativeHandle(ref, () => ({
@@ -103,15 +118,25 @@ export const DepartmentsTab = React.forwardRef<
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [businessUnitFilter, statusFilter, modifiedFromDate, modifiedToDate, setCurrentPage]);
+  }, [
+    businessUnitFilter,
+    statusFilter,
+    modifiedFromDate,
+    modifiedToDate,
+    setCurrentPage,
+  ]);
 
   React.useEffect(() => {
     const load = async () => {
       try {
         const businessUnitRows = await dictionaryApi.getBusinessUnits();
-        setBusinessUnits(businessUnitRows.map((unit) => ({ label: unit.name, value: unit.name })));
-      } catch (error) {
-      }
+        setBusinessUnits(
+          businessUnitRows.map((unit) => ({
+            label: unit.name,
+            value: unit.name,
+          })),
+        );
+      } catch (error) {}
     };
 
     load();
@@ -138,29 +163,36 @@ export const DepartmentsTab = React.forwardRef<
   const handleConfirmToggleStatus = () => {
     const item = selectedItem;
     if (!item) return;
-    dictionaryApi.updateDepartment(item.id, {
-      name: item.name,
-      abbreviation: item.abbreviation,
-      businessUnit: item.businessUnit,
-      description: item.description,
-      isActive: !item.isActive,
-    })
+    dictionaryApi
+      .updateDepartment(item.id, {
+        name: item.name,
+        abbreviation: item.abbreviation,
+        businessUnit: item.businessUnit,
+        description: item.description,
+        isActive: !item.isActive,
+      })
       .then((updated) => {
         setShowToggleModal(false);
         reload();
         showToast({
           type: "success",
-          title: updated.isActive ? "Department Activated" : "Department Deactivated",
+          title: updated.isActive
+            ? "Department Activated"
+            : "Department Deactivated",
           message: `Department "${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
         });
       })
       .catch((error) => {
-        if (import.meta.env.DEV) console.error("Failed to toggle department", error);
+        if (import.meta.env.DEV)
+          console.error("Failed to toggle department", error);
         setShowToggleModal(false);
         showToast({
           type: "error",
           title: "Department Status Update Failed",
-          message: extractApiMessage(error, "Unable to update department status."),
+          message: extractApiMessage(
+            error,
+            "Unable to update department status.",
+          ),
         });
       });
   };
@@ -180,7 +212,8 @@ export const DepartmentsTab = React.forwardRef<
       setShowDeleteModal(false);
       setSelectedItem(null);
     } catch (error) {
-      if (import.meta.env.DEV) console.error("Failed to delete department", error);
+      if (import.meta.env.DEV)
+        console.error("Failed to delete department", error);
       showToast({
         type: "error",
         title: "Department Delete Failed",
@@ -218,7 +251,7 @@ export const DepartmentsTab = React.forwardRef<
       "w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-all",
       isActive
         ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50",
     );
 
   return (
@@ -226,7 +259,9 @@ export const DepartmentsTab = React.forwardRef<
       {/* Filter Card */}
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block">
+            Search
+          </label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -265,7 +300,9 @@ export const DepartmentsTab = React.forwardRef<
 
         <div className="hidden md:grid grid-cols-3 gap-4 items-end">
           <div className="w-full">
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+              Search
+            </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
@@ -289,10 +326,7 @@ export const DepartmentsTab = React.forwardRef<
                 setBusinessUnitFilter(value as "All" | BusinessUnit);
                 setCurrentPage(1);
               }}
-              options={[
-                { label: "All Units", value: "All" },
-                ...businessUnits,
-              ]}
+              options={[{ label: "All Units", value: "All" }, ...businessUnits]}
               placeholder="All Business Units"
             />
           </div>
@@ -353,26 +387,66 @@ export const DepartmentsTab = React.forwardRef<
                   No.
                 </th>
                 {[
-                  { label: "Department Name", id: "name" },
-                  { label: "Abbreviation", id: "abbreviation" },
-                  { label: "Business Unit", id: "businessUnit" },
-                  { label: "Description", id: "description" },
-                  { label: "Status", id: "isActive" },
-                  { label: "Modified Date", id: "modifiedDate" }
+                  { label: "Department Name", id: "name", sortable: true },
+                  { label: "Abbreviation", id: "abbreviation", sortable: true },
+                  {
+                    label: "Business Unit",
+                    id: "businessUnit",
+                    sortable: true,
+                  },
+                  {
+                    label: "Primary Contact",
+                    id: "primaryContactPhone",
+                    sortable: true,
+                  },
+                  {
+                    label: "Department Head",
+                    id: "departmentHeadName",
+                    sortable: false,
+                  },
+                  { label: "Description", id: "description", sortable: true },
+                  { label: "Status", id: "isActive", sortable: true },
+                  {
+                    label: "Modified Date",
+                    id: "modifiedDate",
+                    sortable: true,
+                  },
                 ].map((col) => {
                   const isSorted = sortConfig.key === col.id;
                   return (
                     <th
                       key={col.id}
-                      onClick={() => handleSort(col.id)}
-                      className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors group"
+                      onClick={
+                        col.sortable ? () => handleSort(col.id) : undefined
+                      }
+                      className={cn(
+                        "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors group",
+                        col.sortable &&
+                          "cursor-pointer hover:bg-slate-100 hover:text-slate-700",
+                      )}
                     >
                       <div className="flex items-center justify-between gap-2 w-full">
                         <span className="truncate">{col.label}</span>
-                        <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                          <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === 'asc' ? "text-emerald-600 font-bold" : "")} />
-                          <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === 'desc' ? "text-emerald-600 font-bold" : "")} />
-                        </div>
+                        {col.sortable && (
+                          <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
+                            <ChevronUp
+                              className={cn(
+                                "h-3 w-3 -mb-1",
+                                isSorted && sortConfig.direction === "asc"
+                                  ? "text-emerald-600 font-bold"
+                                  : "",
+                              )}
+                            />
+                            <ChevronDown
+                              className={cn(
+                                "h-3 w-3",
+                                isSorted && sortConfig.direction === "desc"
+                                  ? "text-emerald-600 font-bold"
+                                  : "",
+                              )}
+                            />
+                          </div>
+                        )}
                       </div>
                     </th>
                   );
@@ -403,29 +477,26 @@ export const DepartmentsTab = React.forwardRef<
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge
-                        color={
-                          item.businessUnit === "Corporate"
-                            ? "slate"
-                            : item.businessUnit === "Operations"
-                            ? "blue"
-                            : item.businessUnit === "Quality"
-                            ? "emerald"
-                            : "cyan"
-                        }
-                        size="sm"
-                      >
-                        {item.businessUnit}
-                      </Badge>
+                      {item.businessUnit}
+                    </td>
+                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                      {item.primaryContactPhone || "-"}
+                    </td>
+                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                      {item.departmentHeadName || "-"}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-md truncate">
                       {item.description || "-"}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                       {item.isActive ? (
-                        <Badge color="emerald" size="sm" showDot pill>Active</Badge>
+                        <Badge color="emerald" size="sm">
+                          Active
+                        </Badge>
                       ) : (
-                        <Badge color="slate" size="sm" showDot pill>Inactive</Badge>
+                        <Badge color="slate" size="sm">
+                          Inactive
+                        </Badge>
                       )}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
@@ -450,16 +521,12 @@ export const DepartmentsTab = React.forwardRef<
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-slate-500">
-                      <div className="bg-slate-50 p-4 rounded-full mb-3">
-                        <Building2 className="h-8 w-8 text-slate-400" />
-                      </div>
-                      <p className="text-base font-medium text-slate-900">
-                        No departments found
-                      </p>
-                      <p className="text-sm mt-1">Try adjusting your search</p>
-                    </div>
+                  <td colSpan={10} className="p-0">
+                    <TableEmptyState
+                     
+                      title="No departments found"
+                      description="Try adjusting your search"
+                    />
                   </td>
                 </tr>
               )}
@@ -480,14 +547,17 @@ export const DepartmentsTab = React.forwardRef<
       </div>
 
       {/* Portal Dropdown */}
-      <PortalDropdownMenu isOpen={openDropdownId !== null} onClose={closeDropdown} position={dropdownPosition} minWidth={180}>
+      <PortalDropdownMenu
+        isOpen={openDropdownId !== null}
+        onClose={closeDropdown}
+        position={dropdownPosition}
+        minWidth={180}
+      >
         <div className="py-1">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const item = items.find(
-                (i) => i.id === openDropdownId,
-              )!;
+              const item = items.find((i) => i.id === openDropdownId)!;
               handleEdit(item);
             }}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
@@ -498,15 +568,12 @@ export const DepartmentsTab = React.forwardRef<
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const item = items.find(
-                (i) => i.id === openDropdownId,
-              )!;
+              const item = items.find((i) => i.id === openDropdownId)!;
               handleRequestToggleStatus(item);
             }}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
-            {items.find((i) => i.id === openDropdownId)
-              ?.isActive ? (
+            {items.find((i) => i.id === openDropdownId)?.isActive ? (
               <>
                 <PowerOff className="h-3.5 w-3.5" />
                 <span>Disable</span>
@@ -521,9 +588,7 @@ export const DepartmentsTab = React.forwardRef<
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const item = items.find(
-                (i) => i.id === openDropdownId,
-              )!;
+              const item = items.find((i) => i.id === openDropdownId)!;
               handleDelete(item);
             }}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
@@ -551,22 +616,32 @@ export const DepartmentsTab = React.forwardRef<
             businessUnit: data.businessUnit,
             description: data.description,
             isActive: data.isActive,
+            departmentHeadId: data.departmentHeadId || null,
+            primaryContactPhone: data.primaryContactPhone || null,
           };
           try {
-            const saved = showEditModal && selectedItem
-              ? await dictionaryApi.updateDepartment(selectedItem.id, payload)
-              : await dictionaryApi.createDepartment(payload);
+            const saved =
+              showEditModal && selectedItem
+                ? await dictionaryApi.updateDepartment(selectedItem.id, payload)
+                : await dictionaryApi.createDepartment(payload);
             reload();
             openResultModal(
               "success",
               showEditModal ? "Department Updated" : "Department Created",
-              `Department "${saved.name}" has been ${showEditModal ? "updated" : "created"} successfully.`
+              `Department "${saved.name}" has been ${showEditModal ? "updated" : "created"} successfully.`,
             );
           } catch (error) {
             openResultModal(
               "error",
-              showEditModal ? "Department Update Failed" : "Department Creation Failed",
-              extractApiMessage(error, showEditModal ? "Unable to update department." : "Unable to create department.")
+              showEditModal
+                ? "Department Update Failed"
+                : "Department Creation Failed",
+              extractApiMessage(
+                error,
+                showEditModal
+                  ? "Unable to update department."
+                  : "Unable to create department.",
+              ),
             );
             throw error;
           }
@@ -612,13 +687,15 @@ export const DepartmentsTab = React.forwardRef<
         description={
           <div className="space-y-3">
             <p>
-              Are you sure you want to {selectedItem?.isActive ? "deactivate" : "activate"}{" "}
+              Are you sure you want to{" "}
+              {selectedItem?.isActive ? "deactivate" : "activate"}{" "}
               <strong>{selectedItem?.name}</strong>?
             </p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-800">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> This change will take effect immediately.
+                <span className="font-semibold">Warning:</span> This change will
+                take effect immediately.
               </p>
             </div>
           </div>
@@ -652,22 +729,25 @@ export const DepartmentsTab = React.forwardRef<
           onToggle={() => toggleSection("businessUnit")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {[
-              { label: "All Units", value: "All" },
-              ...businessUnits,
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => {
-                  setBusinessUnitFilter(opt.value as "All" | BusinessUnit);
-                  setCurrentPage(1);
-                }}
-                className={getOptionClassName(businessUnitFilter === opt.value)}
-              >
-                <span className="text-xs">{opt.label}</span>
-                {businessUnitFilter === opt.value && <Check size={16} className="text-emerald-500" />}
-              </button>
-            ))}
+            {[{ label: "All Units", value: "All" }, ...businessUnits].map(
+              (opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setBusinessUnitFilter(opt.value as "All" | BusinessUnit);
+                    setCurrentPage(1);
+                  }}
+                  className={getOptionClassName(
+                    businessUnitFilter === opt.value,
+                  )}
+                >
+                  <span className="text-xs">{opt.label}</span>
+                  {businessUnitFilter === opt.value && (
+                    <Check size={16} className="text-emerald-500" />
+                  )}
+                </button>
+              ),
+            )}
           </div>
         </FilterAccordionItem>
 
@@ -691,7 +771,9 @@ export const DepartmentsTab = React.forwardRef<
                 className={getOptionClassName(statusFilter === opt.value)}
               >
                 <span className="text-xs">{opt.label}</span>
-                {statusFilter === opt.value && <Check size={16} className="text-emerald-500" />}
+                {statusFilter === opt.value && (
+                  <Check size={16} className="text-emerald-500" />
+                )}
               </button>
             ))}
           </div>
@@ -747,8 +829,15 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
     description: item?.description || "",
     businessUnit: (item?.businessUnit || "Corporate") as BusinessUnit,
     isActive: item?.isActive ?? true,
+    departmentHeadId: item?.departmentHeadId || "",
+    departmentHeadLabel: item?.departmentHeadName || "",
+    primaryContactPhone: item?.primaryContactPhone || "",
   });
   const [isSaving, setIsSaving] = useState(false);
+  // Populated as the admin searches for a Department Head -- keyed by user id, so selecting a
+  // result can auto-fill Primary Contact from that user's own phone number (already on file from
+  // when the user account was created) instead of making the admin retype it.
+  const phoneByUserIdRef = React.useRef<Map<string, string>>(new Map());
 
   React.useEffect(() => {
     if (item) {
@@ -758,6 +847,9 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
         description: item.description || "",
         businessUnit: item.businessUnit,
         isActive: item.isActive,
+        departmentHeadId: item.departmentHeadId || "",
+        departmentHeadLabel: item.departmentHeadName || "",
+        primaryContactPhone: item.primaryContactPhone || "",
       });
     } else {
       setFormData({
@@ -766,9 +858,42 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
         description: "",
         businessUnit: "Corporate",
         isActive: true,
+        departmentHeadId: "",
+        departmentHeadLabel: "",
+        primaryContactPhone: "",
       });
     }
   }, [item, isOpen]);
+
+  const searchDepartmentHeadOptions = React.useCallback(
+    async (query: string): Promise<SelectOption[]> => {
+      const response = await settingsApi.getUsers({
+        search: query,
+        limit: 20,
+        page: 1,
+      } as any);
+      return response.data
+        .filter((u: any) => u.fullName && u.id)
+        .map((u: any) => {
+          phoneByUserIdRef.current.set(u.id, u.phone || "");
+          return { label: `${u.fullName} (${u.username})`, value: u.id };
+        });
+    },
+    [],
+  );
+
+  const handleSelectDepartmentHead = (value: string | number) => {
+    const userId = String(value);
+    const knownPhone = phoneByUserIdRef.current.get(userId);
+    setFormData((prev) => ({
+      ...prev,
+      departmentHeadId: userId,
+      // Auto-fills Primary Contact from the newly-selected head's own phone number (already on
+      // file since that user account was created) -- Primary Contact stays a normal editable
+      // field afterward, so the admin can still override it to a different number if needed.
+      primaryContactPhone: knownPhone || prev.primaryContactPhone,
+    }));
+  };
 
   const handleSubmit = async () => {
     setIsSaving(true);
@@ -776,7 +901,8 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
       await onSave(formData);
       onClose();
     } catch (error) {
-      if (import.meta.env.DEV) console.error("Failed to save department", error);
+      if (import.meta.env.DEV)
+        console.error("Failed to save department", error);
     } finally {
       setIsSaving(false);
     }
@@ -799,9 +925,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
           <input
             type="text"
             value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
             placeholder="Enter department name"
             required
@@ -817,7 +941,10 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
             type="text"
             value={formData.abbreviation}
             onChange={(e) =>
-              setFormData({ ...formData, abbreviation: e.target.value.toUpperCase() })
+              setFormData({
+                ...formData,
+                abbreviation: e.target.value.toUpperCase(),
+              })
             }
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
             placeholder="e.g., QA, R&D"
@@ -830,13 +957,59 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
             Business Unit<span className="text-red-500 ml-1">*</span>
           </label>
-            <Select
+          <Select
             value={formData.businessUnit}
             onChange={(value) =>
               setFormData({ ...formData, businessUnit: value as BusinessUnit })
             }
             options={businessUnitOptions}
           />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+              Department Head
+            </label>
+            <Select
+              value={formData.departmentHeadId}
+              onChange={handleSelectDepartmentHead}
+              options={
+                formData.departmentHeadId
+                  ? [
+                      {
+                        label:
+                          formData.departmentHeadLabel ||
+                          formData.departmentHeadId,
+                        value: formData.departmentHeadId,
+                      },
+                    ]
+                  : []
+              }
+              onSearch={searchDepartmentHeadOptions}
+              enableSearch
+              placeholder="Search and select a user..."
+              disabled={isSaving}
+            />
+          </div>
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+              Primary Contact
+            </label>
+            <input
+              type="tel"
+              value={formData.primaryContactPhone}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  primaryContactPhone: e.target.value,
+                })
+              }
+              className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Auto-filled from Department Head, or enter manually"
+              disabled={isSaving}
+            />
+          </div>
         </div>
 
         <div>

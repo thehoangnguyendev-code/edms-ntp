@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { documentApi } from "@/services/api/documents";
 import { authTokenStore } from "@/services/authTokenStore";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import type {
   RevisionActionCapabilitiesResponse,
   RevisionActionCapabilityDecision,
@@ -97,6 +98,18 @@ export function useRevisionActionCapabilities(revisionId?: string | null) {
     setCapabilities(data);
     return data;
   };
+
+  // What the user may do depends on the revision's state, which anyone can change. When the server says this
+  // revision changed, silently re-read the capabilities so buttons appear/disappear without a manual reload.
+  useEntityChanged(
+    ["REVISION"],
+    () => {
+      void refresh().catch(() => {
+        // keep the last known capabilities on a transient failure; the next event or navigation retries
+      });
+    },
+    { ids: [revisionId], enabled: Boolean(revisionId) },
+  );
 
   return {
     capabilities,

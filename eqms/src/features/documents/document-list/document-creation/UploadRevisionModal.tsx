@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Upload, Eye, FileText } from "lucide-react";
+import { Upload, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { documentApi } from "@/services/api/documents";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
-import { buildPreviewCacheBuster, loadPdfPreviewFile } from "@/features/documents/shared/previewHelpers";
+import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
 
 interface UploadRevisionModalProps {
   isOpen: boolean;
@@ -53,9 +53,8 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [fileError, setFileError] = useState("");
-  const [previewUrl, setPreviewUrl] = useState("");
   const [previewTitle, setPreviewTitle] = useState("");
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewRevisionId, setPreviewRevisionId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const hasFileOrTemplate = useTemplate ? !!selectedTemplate : !!selectedFile;
@@ -80,19 +79,10 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
       setSelectedFile(null);
       setSelectedTemplate("");
       setFileError("");
-      setPreviewUrl("");
       setPreviewTitle("");
-      setPreviewOpen(false);
+      setPreviewRevisionId(null);
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -115,25 +105,10 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
     }
   };
 
-  const openPreview = async (revisionId: string, title: string, previewVersionToken?: string | null) => {
-    try {
-      const cacheBuster = previewVersionToken?.trim()
-        ? previewVersionToken
-        : buildPreviewCacheBuster(revisionId, title, selectedTemplate, selectedFile?.name, selectedFile?.lastModified);
-      const previewFile = await loadPdfPreviewFile(
-        () => documentApi.previewRevisionFile(revisionId, cacheBuster),
-        `${title}.pdf`,
-      );
-      const url = URL.createObjectURL(previewFile);
-      setPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return url;
-      });
-      setPreviewTitle(title);
-      setPreviewOpen(true);
-    } catch (error) {
-      console.error("Failed to preview template", error);
-    }
+  // A template is a Word file used as-is, so it is shown in the read-only OnlyOffice viewer (the same one the Document tab uses).
+  const openPreview = (revisionId: string, title: string) => {
+    setPreviewTitle(title);
+    setPreviewRevisionId(revisionId);
   };
 
   const templateSearch = async (query: string): Promise<SelectOption[]> => {
@@ -158,7 +133,6 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
         documentName:
           item.documentName || item.revisionName || item.title || "Template",
       });
-      const previewVersionToken = (item as any).previewVersionToken || null;
 
       return [
         {
@@ -173,7 +147,7 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                void openPreview(revisionId, label, previewVersionToken);
+                void openPreview(revisionId, label);
               }}
               title="Preview template"
             >
@@ -334,29 +308,23 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
       </FormModal>
 
       <FormModal
-        isOpen={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        title="Template Preview"
+        isOpen={previewRevisionId !== null}
+        onClose={() => setPreviewRevisionId(null)}
+        title={previewTitle ? `Template Preview | ${previewTitle}` : "Template Preview"}
         confirmText="Close"
         showCancel={false}
-        onConfirm={() => setPreviewOpen(false)}
-        size="xl"
+        onConfirm={() => setPreviewRevisionId(null)}
+        size="2xl"
+        className="max-w-[min(96vw,1600px)]"
       >
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-slate-700">
-            <FileText className="h-4 w-4 text-emerald-600" />
-            <span className="font-medium">{previewTitle || "Template"}</span>
-          </div>
-          {previewUrl ? (
-            <iframe
-              title="Template Preview"
-              src={previewUrl}
-              className="w-full h-[70vh] rounded-lg border border-slate-200 bg-white"
+        <div>
+          {previewRevisionId && (
+            // An Effective template does not change, so the viewer does not need to watch it for new saves.
+            <OnlyOfficeDocumentViewer
+              revisionId={previewRevisionId}
+              height="calc(100dvh - 11rem)"
+              watchForChanges={false}
             />
-          ) : (
-            <div className="h-[40vh] flex items-center justify-center text-slate-400">
-              No preview available
-            </div>
           )}
         </div>
       </FormModal>

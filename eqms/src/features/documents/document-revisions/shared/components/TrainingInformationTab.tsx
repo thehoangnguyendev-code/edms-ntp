@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { TemplateNoTrainingNotice } from "./TemplateNoTrainingNotice";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 
 export interface TrainingInformationValue {
@@ -14,6 +15,8 @@ interface TrainingInformationTabProps {
   onChange?: (value: TrainingInformationValue) => void;
   canEditPlannedDate?: boolean;
   canEditCompletionDate?: boolean;
+  /** A controlled-document template never requires training: show a notice instead of the fields. */
+  isTemplate?: boolean;
   /** Errors to display on fields — set by parent after attempted submit */
   submitValidationToken?: number;
 }
@@ -73,6 +76,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
   onChange,
   canEditPlannedDate = false,
   canEditCompletionDate = false,
+  isTemplate = false,
   submitValidationToken = 0,
 }) => {
   const trainingPeriodDays = useMemo(() => data?.trainingPeriodDays ?? null, [data?.trainingPeriodDays]);
@@ -148,6 +152,10 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
   const handleCompletionDateChange = (value: string) => {
     setTrainingCompletionDate(value);
   };
+
+  if (isTemplate) {
+    return <TemplateNoTrainingNotice />;
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">

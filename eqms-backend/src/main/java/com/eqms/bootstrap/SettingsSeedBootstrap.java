@@ -1,20 +1,11 @@
 package com.eqms.bootstrap;
 
-import com.eqms.entity.DocumentWorkflowPoolMember;
 import com.eqms.entity.DocumentWorkflowSetting;
-import com.eqms.entity.Permission;
-import com.eqms.entity.RoleDefinition;
-import com.eqms.entity.RolePermission;
-import com.eqms.entity.RolePermissionId;
 import com.eqms.entity.UserAccount;
 import com.eqms.entity.UserCertification;
 import com.eqms.entity.UserEducation;
 import com.eqms.entity.UserStatus;
-import com.eqms.repository.DocumentWorkflowPoolMemberRepository;
 import com.eqms.repository.DocumentWorkflowSettingRepository;
-import com.eqms.repository.PermissionRepository;
-import com.eqms.repository.RoleDefinitionRepository;
-import com.eqms.repository.RolePermissionRepository;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.repository.UserCertificationRepository;
 import com.eqms.repository.UserEducationRepository;
@@ -33,7 +24,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.UUID;
 
 @Component
 @Order(2)
@@ -45,32 +35,20 @@ public class SettingsSeedBootstrap implements ApplicationRunner {
     private final UserAccountRepository userRepository;
     private final UserEducationRepository educationRepository;
     private final UserCertificationRepository certificationRepository;
-    private final RoleDefinitionRepository roleRepository;
-    private final PermissionRepository permissionRepository;
-    private final RolePermissionRepository rolePermissionRepository;
     private final DocumentWorkflowSettingRepository workflowSettingRepository;
-    private final DocumentWorkflowPoolMemberRepository poolMemberRepository;
     private final PasswordEncoder passwordEncoder;
 
     public SettingsSeedBootstrap(
             UserAccountRepository userRepository,
             UserEducationRepository educationRepository,
             UserCertificationRepository certificationRepository,
-            RoleDefinitionRepository roleRepository,
-            PermissionRepository permissionRepository,
-            RolePermissionRepository rolePermissionRepository,
             DocumentWorkflowSettingRepository workflowSettingRepository,
-            DocumentWorkflowPoolMemberRepository poolMemberRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.educationRepository = educationRepository;
         this.certificationRepository = certificationRepository;
-        this.roleRepository = roleRepository;
-        this.permissionRepository = permissionRepository;
-        this.rolePermissionRepository = rolePermissionRepository;
         this.workflowSettingRepository = workflowSettingRepository;
-        this.poolMemberRepository = poolMemberRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -79,7 +57,6 @@ public class SettingsSeedBootstrap implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         try {
             ensureAdminUser();
-            seedRoles();
             seedUsers();
             seedEducationAndCertifications();
             seedDocumentAdministration();
@@ -108,58 +85,6 @@ public class SettingsSeedBootstrap implements ApplicationRunner {
             user.setUpdatedAt(Instant.now());
             return userRepository.save(user);
         });
-    }
-
-    private void seedRoles() {
-        for (SeedRoleSpec spec : roleSeeds()) {
-            RoleDefinition role = roleRepository.findByName(spec.name()).orElseGet(() -> createRole(spec));
-            ensureRolePermissions(role, spec.permissions());
-        }
-    }
-
-    private RoleDefinition createRole(SeedRoleSpec spec) {
-        RoleDefinition role = new RoleDefinition();
-        role.setCode(spec.code());
-        role.setName(spec.name());
-        role.setDescription(spec.description());
-        role.setSystem(spec.system());
-        role.setActive(spec.active());
-        role.setCreatedAt(Instant.now());
-        role.setUpdatedAt(Instant.now());
-        return roleRepository.save(role);
-    }
-
-    private void ensureRolePermissions(RoleDefinition role, List<String> permissionCodes) {
-        if (permissionCodes == null || permissionCodes.isEmpty()) {
-            return;
-        }
-
-        var existingCodes = rolePermissionRepository.findAllByRole_Id(role.getId()).stream()
-                .map(rolePermission -> rolePermission.getPermission() == null ? null : rolePermission.getPermission().getCode())
-                .filter(this::hasText)
-                .map(code -> code.trim().toLowerCase(Locale.ROOT))
-                .collect(java.util.stream.Collectors.toSet());
-
-        for (String code : permissionCodes.stream().filter(this::hasText).distinct().toList()) {
-            String normalizedCode = code.trim().toLowerCase(Locale.ROOT);
-            if (existingCodes.contains(normalizedCode)) {
-                continue;
-            }
-            Permission permission = permissionRepository.findByCode(code)
-                    .orElse(null);
-            if (permission == null) {
-                log.warn("Skipping missing permission during seed bootstrap: {}", code);
-                continue;
-            }
-            RolePermission rolePermission = new RolePermission();
-            RolePermissionId id = new RolePermissionId();
-            id.setRoleId(role.getId());
-            id.setPermissionId(permission.getId());
-            rolePermission.setId(id);
-            rolePermission.setRole(role);
-            rolePermission.setPermission(permission);
-            rolePermissionRepository.save(rolePermission);
-        }
     }
 
     private void seedUsers() {
@@ -268,105 +193,8 @@ public class SettingsSeedBootstrap implements ApplicationRunner {
         if (workflowSettingRepository.findAll().isEmpty()) {
             DocumentWorkflowSetting setting = new DocumentWorkflowSetting();
             setting.setReviewerNoApprove(false);
-            setting.setRequireTwoReviewers(false);
-            setting.setRequireOneApprover(true);
             workflowSettingRepository.save(setting);
         }
-
-        ensurePoolMembers("DCO", List.of("admin", "dco.lead1", "dco.lead2", "doc.controller1", "workflow.dco1"));
-        ensurePoolMembers("REVIEWER", List.of("reviewer.lead1", "reviewer.lead2", "quality.lead1", "supervisor.ops1"));
-        ensurePoolMembers("APPROVER", List.of("approver.lead1", "approver.lead2", "quality.lead2", "supervisor.ops2"));
-    }
-
-    private void ensurePoolMembers(String poolType, List<String> usernames) {
-        if (!poolMemberRepository.findAllByPoolTypeAndActiveTrueOrderByCreatedAtAsc(poolType).isEmpty()) {
-            return;
-        }
-
-        for (String username : usernames) {
-            UserAccount user = userRepository.findByUsername(username).orElse(null);
-            if (user == null || poolMemberExists(poolType, user.getId())) {
-                continue;
-            }
-            DocumentWorkflowPoolMember member = new DocumentWorkflowPoolMember();
-            member.setPoolType(poolType);
-            member.setUser(user);
-            member.setActive(true);
-            member.setCreatedAt(Instant.now());
-            member.setUpdatedAt(Instant.now());
-            poolMemberRepository.save(member);
-        }
-    }
-
-    private boolean poolMemberExists(String poolType, UUID userId) {
-        return poolMemberRepository.findAllByPoolType(poolType)
-                .stream()
-                .anyMatch(member -> poolType.equals(member.getPoolType()) && member.getUser() != null && userId.equals(member.getUser().getId()));
-    }
-
-    private List<SeedRoleSpec> roleSeeds() {
-        return List.of(
-                new SeedRoleSpec("ADMINISTRATOR", "Administrator", "System administrator access", true, true, permissionCodes(
-                        "VIEW_USERS", "CREATE_USERS", "EDIT_USERS", "DELETE_USERS", "RESET_PASSWORDS",
-                        "VIEW_DOCUMENTS", "CREATE_DOCUMENTS", "EDIT_DOCUMENTS", "REVIEW_DOCUMENTS", "APPROVE_DOCUMENTS",
-                        "PUBLISH_DOCUMENTS", "VIEW_SETTINGS", "EDIT_SETTINGS", "MANAGE_ROLES", "VIEW_AUDIT_TRAIL",
-                        "VIEW_REPORTS", "EXPORT_REPORTS",
-                        "dashboard.module.view", "documents.module.view", "documents.admin.view",
-                        "documents.admin.manage_workflow_roles", "documents.admin.manage_sod_constraints",
-                        "documents.training.manage", "documents.training.complete",
-                        "training.module.view", "training.material.manage",
-                        "deviations.module.view", "change_control.module.view", "capa.module.view",
-                        "complaints.module.view", "risk_management.module.view", "equipment.module.view",
-                        "supplier.module.view", "product.module.view", "regulatory.module.view",
-                        "report.module.view", "report.module.export", "audittrail.module.view",
-                        "settings.user.view", "settings.user.create", "settings.user.edit", "settings.user.delete",
-                        "settings.user.reset_password", "settings.user.force_logout",
-                        "settings.role.view", "settings.role.manage", "settings.role.assign_permissions",
-                        "settings.configuration.view", "settings.configuration.edit",
-                        "my_tasks.module.view", "notifications.module.view", "preferences.module.view",
-                        "preferences.module.edit"
-                )),
-                new SeedRoleSpec("DCO", "DCO", "Document control coordinator", true, true, permissionCodes(
-                        "VIEW_USERS", "VIEW_DOCUMENTS", "CREATE_DOCUMENTS", "EDIT_DOCUMENTS", "SUBMIT_REVISION", "REVIEW_DOCUMENTS",
-                        "APPROVE_DOCUMENTS", "PUBLISH_DOCUMENTS", "VIEW_AUDIT_TRAIL", "VIEW_REPORTS", "EXPORT_REPORTS",
-                        "dashboard.module.view", "documents.module.view", "documents.admin.view",
-                        "documents.admin.manage_workflow_roles", "documents.admin.manage_sod_constraints",
-                        "documents.training.manage", "documents.training.complete",
-                        "training.module.view", "report.module.view", "report.module.export", "audittrail.module.view",
-                        "settings.configuration.view", "settings.configuration.edit",
-                        "settings.user.view", "settings.user.create", "settings.user.edit", "settings.user.delete",
-                        "settings.user.reset_password", "settings.user.force_logout",
-                        "settings.role.view", "settings.role.manage", "settings.role.assign_permissions",
-                        "my_tasks.module.view", "notifications.module.view", "preferences.module.view",
-                        "preferences.module.edit"
-                )),
-                new SeedRoleSpec("QUALITY", "Quality", "Quality assurance role", true, true, permissionCodes(
-                        "VIEW_USERS", "VIEW_DOCUMENTS", "CREATE_DOCUMENTS", "EDIT_DOCUMENTS", "REVIEW_DOCUMENTS",
-                        "APPROVE_DOCUMENTS", "PUBLISH_DOCUMENTS", "VIEW_AUDIT_TRAIL", "VIEW_REPORTS", "EXPORT_REPORTS"
-                )),
-                new SeedRoleSpec("SUPERVISOR", "Supervisor", "Department supervisor access", true, true, permissionCodes(
-                        "VIEW_DOCUMENTS", "CREATE_DOCUMENTS", "EDIT_DOCUMENTS", "REVIEW_DOCUMENTS",
-                        "VIEW_AUDIT_TRAIL", "VIEW_REPORTS", "EXPORT_REPORTS"
-                )),
-                new SeedRoleSpec("VIEWER_OPERATOR", "Viewer/Operator", "Read-only operational access", true, true, permissionCodes(
-                        "VIEW_DOCUMENTS",
-                        "dashboard.module.view", "documents.module.view", "training.module.view",
-                        "my_tasks.module.view", "notifications.module.view", "preferences.module.view",
-                        "preferences.module.edit"
-                )),
-                new SeedRoleSpec("DOCUMENT_CONTROLLER", "Document Controller", "Custom document controller role", false, true, permissionCodes(
-                        "VIEW_DOCUMENTS", "CREATE_DOCUMENTS", "EDIT_DOCUMENTS", "REVIEW_DOCUMENTS", "VIEW_REPORTS"
-                )),
-                new SeedRoleSpec("REVIEWER_LEAD", "Reviewer Lead", "Custom reviewer role", false, true, permissionCodes(
-                        "VIEW_DOCUMENTS", "REVIEW_DOCUMENTS", "VIEW_REPORTS"
-                )),
-                new SeedRoleSpec("APPROVER_LEAD", "Approver Lead", "Custom approver role", false, true, permissionCodes(
-                        "VIEW_DOCUMENTS", "APPROVE_DOCUMENTS", "VIEW_REPORTS"
-                )),
-                new SeedRoleSpec("DOCUMENT_TRAINEE", "Document Trainee", "Inactive sample role", false, false, permissionCodes(
-                        "VIEW_DOCUMENTS"
-                ))
-        );
     }
 
     private List<UserSeed> userSeeds() {
@@ -442,14 +270,6 @@ public class SettingsSeedBootstrap implements ApplicationRunner {
         );
     }
 
-    private List<String> permissionCodes(String... codes) {
-        return List.of(codes);
-    }
-
-    private boolean hasText(String value) {
-        return value != null && !value.trim().isEmpty();
-    }
-
     private String slugify(String value) {
         if (value == null) {
             return "";
@@ -458,9 +278,6 @@ public class SettingsSeedBootstrap implements ApplicationRunner {
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9]+", "_")
                 .replaceAll("^_+|_+$", "");
-    }
-
-    private record SeedRoleSpec(String code, String name, String description, boolean system, boolean active, List<String> permissions) {
     }
 
     private record UserSeed(

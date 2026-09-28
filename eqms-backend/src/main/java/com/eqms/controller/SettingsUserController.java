@@ -4,9 +4,8 @@ import com.eqms.dto.user.*;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.service.PermissionEvaluationService;
 import com.eqms.service.UserManagementService;
+import com.eqms.service.TimeLimitedUserGrantService;
 import com.eqms.service.SystemConfigurationService;
-import com.eqms.service.OfficeOnlineConfigurationService;
-import com.eqms.service.MicrosoftGraphOfficeOnlineService;
 import com.eqms.service.FileStorageService;
 import com.eqms.service.EmailService;
 import com.eqms.service.ExternalIdentityProvisioningService;
@@ -34,32 +33,29 @@ import java.util.UUID;
 public class SettingsUserController {
 
     private final UserManagementService service;
+    private final TimeLimitedUserGrantService timeLimitedUserGrantService;
     private final SystemConfigurationService systemConfigurationService;
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
-    private final OfficeOnlineConfigurationService officeOnlineConfigurationService;
-    private final MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService;
     private final FileStorageService fileStorageService;
     private final EmailService emailService;
     private final ExternalIdentityProvisioningService externalIdentityProvisioningService;
 
     public SettingsUserController(
             UserManagementService service,
+            TimeLimitedUserGrantService timeLimitedUserGrantService,
             SystemConfigurationService systemConfigurationService,
             CurrentUserService currentUserService,
             PermissionEvaluationService permissionEvaluationService,
-            OfficeOnlineConfigurationService officeOnlineConfigurationService,
-            MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService,
             FileStorageService fileStorageService,
             EmailService emailService,
             ExternalIdentityProvisioningService externalIdentityProvisioningService
     ) {
         this.service = service;
+        this.timeLimitedUserGrantService = timeLimitedUserGrantService;
         this.systemConfigurationService = systemConfigurationService;
         this.currentUserService = currentUserService;
         this.permissionEvaluationService = permissionEvaluationService;
-        this.officeOnlineConfigurationService = officeOnlineConfigurationService;
-        this.microsoftGraphOfficeOnlineService = microsoftGraphOfficeOnlineService;
         this.fileStorageService = fileStorageService;
         this.emailService = emailService;
         this.externalIdentityProvisioningService = externalIdentityProvisioningService;
@@ -90,10 +86,25 @@ public class SettingsUserController {
         return ResponseEntity.ok(service.getUsers(page, limit, search, role, status, online, businessUnit, department, position, dateFrom, dateTo, suspendFrom, suspendTo, terminateFrom, terminateTo, sortBy, sortDirection, includeTerminated));
     }
 
-    @GetMapping("/users/{id}")
-    public ResponseEntity<UserManagementResponse> getUser(@PathVariable UUID id) {
+    @GetMapping("/users/manager-options")
+    public ResponseEntity<List<LookupItemResponse>> getManagerOptions() {
         requireUserView();
-        return ResponseEntity.ok(service.getUser(id));
+        return ResponseEntity.ok(service.getManagerOptions());
+    }
+
+    @GetMapping("/users/next-employee-code")
+    public ResponseEntity<String> getNextEmployeeCode() {
+        requireUserView();
+        return ResponseEntity.ok(service.getNextEmployeeCodeSuggestion());
+    }
+
+    @GetMapping("/users/{id}")
+    public ResponseEntity<UserManagementResponse> getUser(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "true") boolean includeDetails
+    ) {
+        requireUserView();
+        return ResponseEntity.ok(service.getUser(id, includeDetails));
     }
 
     @PostMapping("/users")
@@ -143,9 +154,9 @@ public class SettingsUserController {
     }
 
     @PostMapping("/users/{id}/unlock")
-    public ResponseEntity<UserManagementResponse> unlockUser(@PathVariable UUID id, HttpServletRequest httpRequest) {
+    public ResponseEntity<UnlockAccountResponse> unlockUser(@PathVariable UUID id, @RequestBody UnlockUserRequest request, HttpServletRequest httpRequest) {
         requireUserEdit();
-        return ResponseEntity.ok(service.unlockUser(id, httpRequest));
+        return ResponseEntity.ok(service.unlockUser(id, request, httpRequest));
     }
 
     @PostMapping("/users/{id}/force-logout")
@@ -153,6 +164,83 @@ public class SettingsUserController {
         requireUserForceLogout();
         service.forceLogout(id, request, httpRequest);
         return ResponseEntity.noContent().build();
+    }
+
+    /** "Logged in Users" admin screen. View-only -- same requireUserView() gate as the User
+     *  Management list; the Force Logout action on a row calls the existing
+     *  /users/{id}/force-logout endpoint above, not a new one. Search/sort/pagination all happen
+     *  server-side, mirroring GET /users above -- the FE only renders what comes back. */
+    @GetMapping("/users/sessions")
+    public ResponseEntity<PageResponse<LoggedInSessionResponse>> getLoggedInSessions(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "lastActivityAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(required = false) String lastLoginFrom,
+            @RequestParam(required = false) String lastLoginTo,
+            @RequestParam(required = false) String sessionStartedFrom,
+            @RequestParam(required = false) String sessionStartedTo,
+            @RequestParam(required = false) String lastActivityFrom,
+            @RequestParam(required = false) String lastActivityTo
+    ) {
+        requireUserView();
+        return ResponseEntity.ok(service.getLoggedInSessions(
+                page, limit, search, sortBy, sortDirection,
+                lastLoginFrom, lastLoginTo, sessionStartedFrom, sessionStartedTo, lastActivityFrom, lastActivityTo
+        ));
+    }
+
+    /** "Time-Limited User" admin screen. Search/sort/pagination/filter all happen server-side;
+     *  one row per grant, never merged even when several were created together. */
+    @GetMapping("/users/time-limited-grants")
+    public ResponseEntity<com.eqms.dto.user.PageResponse<com.eqms.dto.user.TimeLimitedUserGrantResponse>> getTimeLimitedGrants(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(required = false) String startDateFrom,
+            @RequestParam(required = false) String startDateTo,
+            @RequestParam(required = false) String endDateFrom,
+            @RequestParam(required = false) String endDateTo,
+            @RequestParam(required = false) String createdFrom,
+            @RequestParam(required = false) String createdTo
+    ) {
+        requireUserView();
+        return ResponseEntity.ok(timeLimitedUserGrantService.getGrants(
+                page, limit, search, status, sortBy, sortDirection,
+                startDateFrom, startDateTo, endDateFrom, endDateTo, createdFrom, createdTo
+        ));
+    }
+
+    @GetMapping("/users/time-limited-grants/{id}")
+    public ResponseEntity<com.eqms.dto.user.TimeLimitedUserGrantResponse> getTimeLimitedGrant(@PathVariable UUID id) {
+        requireUserView();
+        return ResponseEntity.ok(timeLimitedUserGrantService.getGrant(id));
+    }
+
+    @PostMapping("/users/time-limited-grants")
+    public ResponseEntity<List<com.eqms.dto.user.TimeLimitedUserGrantResponse>> createTimeLimitedGrants(
+            @Valid @RequestBody com.eqms.dto.user.CreateTimeLimitedUserGrantRequest request, HttpServletRequest httpRequest) {
+        requireUserEdit();
+        return ResponseEntity.ok(timeLimitedUserGrantService.createGrants(request, httpRequest));
+    }
+
+    @PutMapping("/users/time-limited-grants/{id}")
+    public ResponseEntity<com.eqms.dto.user.TimeLimitedUserGrantResponse> updateTimeLimitedGrant(
+            @PathVariable UUID id, @Valid @RequestBody com.eqms.dto.user.UpdateTimeLimitedUserGrantRequest request,
+            HttpServletRequest httpRequest) {
+        requireUserEdit();
+        return ResponseEntity.ok(timeLimitedUserGrantService.updateGrant(id, request, httpRequest));
+    }
+
+    @PostMapping("/users/time-limited-grants/{id}/cancel")
+    public ResponseEntity<com.eqms.dto.user.TimeLimitedUserGrantResponse> cancelTimeLimitedGrant(
+            @PathVariable UUID id, @Valid @RequestBody com.eqms.dto.user.CancelTimeLimitedUserGrantRequest request, HttpServletRequest httpRequest) {
+        requireUserEdit();
+        return ResponseEntity.ok(timeLimitedUserGrantService.cancelGrant(id, request, httpRequest));
     }
 
     @GetMapping("/users/{id}/permissions")
@@ -208,26 +296,6 @@ public class SettingsUserController {
                 .body(body);
     }
 
-    @GetMapping("/roles")
-    public ResponseEntity<PageResponse<RoleSummaryResponse>> getRoles(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int limit,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String type,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "name") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDirection
-    ) {
-        requireAccessProfileView();
-        return ResponseEntity.ok(service.getRoles(page, limit, search, type, status, sortBy, sortDirection));
-    }
-
-    @GetMapping("/roles/{id}")
-    public ResponseEntity<RoleSummaryResponse> getRole(@PathVariable UUID id) {
-        requireAccessProfileView();
-        return ResponseEntity.ok(service.getRole(id));
-    }
-
     @GetMapping("/permissions/catalog")
     public ResponseEntity<List<PermissionGroupResponse>> getPermissionCatalog(
             @RequestParam(required = false) String module,
@@ -238,48 +306,10 @@ public class SettingsUserController {
         return ResponseEntity.ok(service.getPermissionCatalog(module, search, audit));
     }
 
-    @PostMapping("/roles")
-    public ResponseEntity<RoleSummaryResponse> createRole(@Valid @RequestBody RoleUpsertRequest request, HttpServletRequest httpRequest) {
-        requireAccessProfileUpdate();
-        return ResponseEntity.ok(service.createRole(request, httpRequest));
-    }
-
-    @PutMapping("/roles/{id}")
-    public ResponseEntity<RoleSummaryResponse> updateRole(@PathVariable UUID id, @Valid @RequestBody RoleUpsertRequest request, HttpServletRequest httpRequest) {
-        requireAccessProfileUpdate();
-        return ResponseEntity.ok(service.updateRole(id, request, httpRequest));
-    }
-
-    @DeleteMapping("/roles/{id}")
-    public ResponseEntity<Void> deleteRole(@PathVariable UUID id, HttpServletRequest httpRequest) {
-        requireAccessProfileUpdate();
-        service.deleteRole(id, httpRequest);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PutMapping("/roles/{id}/permissions")
-    public ResponseEntity<RoleSummaryResponse> updateRolePermissions(@PathVariable UUID id, @Valid @RequestBody RolePermissionsUpdateRequest request, HttpServletRequest httpRequest) {
-        requireAccessProfileUpdate();
-        return ResponseEntity.ok(service.updateRolePermissions(id, request, httpRequest));
-    }
-
     @GetMapping("/document-administration")
     public ResponseEntity<DocumentAdministrationResponse> getDocumentAdministration() {
         requireDocumentAdminView();
         return ResponseEntity.ok(service.getDocumentAdministration());
-    }
-
-    @GetMapping("/document-administration/users")
-    public ResponseEntity<PageResponse<UserManagementResponse>> getDocumentAdministrationUsers(
-            @RequestParam String pool,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int limit,
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "fullName") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDirection
-    ) {
-        requireDocumentAdminView();
-        return ResponseEntity.ok(service.getDocumentAdministrationUsers(pool, page, limit, search, sortBy, sortDirection));
     }
 
     @PutMapping("/document-administration")
@@ -307,6 +337,17 @@ public class SettingsUserController {
     public ResponseEntity<SystemConfigurationResponse> getSystemConfiguration() {
         requireConfigurationView();
         return ResponseEntity.ok(systemConfigurationService.getConfiguration());
+    }
+
+    // Deliberately no permission gate: the Documents section (retention days, watermark,
+    // versioning rules, max upload size, ...) is operational policy every document-module user
+    // needs client-side -- e.g. to enforce the upload size limit while creating a document. It
+    // holds no credentials or security thresholds (those stay behind /system above). Splitting
+    // this out avoids reusing settings.configuration.view (an admin-only Settings permission) to
+    // gate a read that ordinary document creation legitimately depends on.
+    @GetMapping("/system/documents")
+    public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getDocumentsOperationalConfig() {
+        return ResponseEntity.ok(systemConfigurationService.requireConfiguration().getDocumentsConfig());
     }
 
     @PostMapping("/users/{id}/external-invitation")
@@ -351,50 +392,88 @@ public class SettingsUserController {
         return ResponseEntity.ok(systemConfigurationService.updateConfiguration(request));
     }
 
-    @PostMapping("/system/office-online/test-connection")
-    public ResponseEntity<OfficeOnlineConnectionTestResponse> testOfficeOnlineConnection(
-            @RequestBody OfficeOnlineConfigurationTestRequest request
-    ) throws java.io.IOException {
-        requireConfigurationEdit();
-        var resolved = officeOnlineConfigurationService.mergeRequestWithExisting(request);
-        microsoftGraphOfficeOnlineService.testConnection(resolved);
-        microsoftGraphOfficeOnlineService.testTemporarySharingCapabilities(resolved);
-        String sharingMessage = "users".equalsIgnoreCase(resolved.shareLinkScope())
-                ? "Named-user Office Online access is configured. Upload and direct item access were verified; recipient permission delivery is verified when an assigned workflow user opens a revision."
-                : "Organization-scoped Office Online upload and sharing were verified.";
-        return ResponseEntity.ok(new OfficeOnlineConnectionTestResponse(
-                true,
-                "Office Online workspace connection and upload test successful. " + sharingMessage + " Review-link delivery still requires a real assigned user test.",
-                resolved.siteId(),
-                resolved.driveId(),
-                resolved.libraryFolder()
-        ));
+    // Dedicated Document Properties read/write, scoped to only the `documents` config section --
+    // deliberately NOT reusing the /system endpoints above. Those return/accept the FULL
+    // configuration object (general/security/documents/notifications/integrations/features),
+    // including integrations credentials (masked, but still structurally present); gating that
+    // shared endpoint with the narrower documents.admin.properties.* permission would let a
+    // Document Properties-only user read/influence unrelated sensitive sections. Fixes a
+    // pre-existing mismatch where the Document Properties screen's FE gated itself on
+    // documents.admin.manage while the /system endpoint it actually called enforced
+    // settings.configuration.manage.
+    @GetMapping("/system/document-properties")
+    public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getDocumentPropertiesConfig() {
+        requireDocumentPropertiesView();
+        return ResponseEntity.ok(systemConfigurationService.requireConfiguration().getDocumentsConfig());
     }
 
-    @GetMapping("/system/office-online")
-    public ResponseEntity<OfficeOnlineConfigurationService.OfficeOnlineConfiguration> getOfficeOnlineConfiguration() {
+    @PutMapping("/system/document-properties")
+    public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> updateDocumentPropertiesConfig(
+            @RequestBody com.fasterxml.jackson.databind.JsonNode documents
+    ) {
+        requireDocumentPropertiesManage();
+        com.fasterxml.jackson.databind.JsonNode basis = documents == null ? null : documents.get("effectiveDateBasis");
+        if (basis != null && !basis.isNull() && !java.util.Set.of("AFTER_APPROVAL", "AFTER_TRAINING", "AFTER_PUBLISH").contains(basis.asText())) {
+            throw new IllegalArgumentException("Effective Date basis must be AFTER_APPROVAL, AFTER_TRAINING or AFTER_PUBLISH");
+        }
+        com.fasterxml.jackson.databind.JsonNode offset = documents == null ? null : documents.get("effectiveDateOffsetDays");
+        if (offset != null && !offset.isNull() && (!offset.canConvertToInt() || offset.asInt() < 0 || offset.asInt() > 365)) {
+            throw new IllegalArgumentException("Effective Date offset must be between 0 and 365 days");
+        }
+        SystemConfigurationResponse updated = systemConfigurationService.updateConfiguration(
+                new SystemConfigurationRequest(null, null, documents, null, null, null));
+        return ResponseEntity.ok(updated.documents());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.service.OnlyOfficeConfigurationService onlyOfficeConfigurationService;
+
+    @GetMapping("/system/onlyoffice")
+    public ResponseEntity<com.eqms.service.OnlyOfficeConfigurationService.OnlyOfficeConfiguration> getOnlyOfficeConfiguration() {
         requireConfigurationView();
-        return ResponseEntity.ok(systemConfigurationService.getOfficeOnlineConfiguration());
+        return ResponseEntity.ok(onlyOfficeConfigurationService.getConfigurationForResponse());
     }
 
-    @PutMapping("/system/office-online")
-    public ResponseEntity<OfficeOnlineConfigurationService.OfficeOnlineConfiguration> updateOfficeOnlineConfiguration(
-            @RequestBody OfficeOnlineConfigurationTestRequest request) {
+    /**
+     * Pings the document server's own {@code /healthcheck} endpoint using the currently saved
+     * configuration (there is no separate "unsaved draft" test here, unlike Graph's test-connection,
+     * since OnlyOffice's config has no external tenant/credential round-trip to validate beyond
+     * reachability -- save the config first, then test).
+     */
+    @PostMapping("/system/onlyoffice/test-connection")
+    public ResponseEntity<java.util.Map<String, Object>> testOnlyOfficeConnection() {
         requireConfigurationEdit();
-        return ResponseEntity.ok(systemConfigurationService.updateOfficeOnlineConfiguration(request));
-    }
-
-    @GetMapping("/system/office-online/health")
-    public ResponseEntity<OfficeOnlineHealthResponse> officeOnlineHealth() {
-        requireConfigurationView();
-        String checkedAt = java.time.Instant.now().toString();
-        var config = officeOnlineConfigurationService.getEffectiveConfiguration();
+        var config = onlyOfficeConfigurationService.getEffectiveConfiguration();
+        if (!config.enabled() || !org.springframework.util.StringUtils.hasText(config.documentServerUrl())) {
+            return ResponseEntity.ok(java.util.Map.of("success", false, "message", "OnlyOffice is not enabled or the Document Server URL is not configured."));
+        }
         try {
-            microsoftGraphOfficeOnlineService.testConnection(config);
-            microsoftGraphOfficeOnlineService.testTemporarySharingCapabilities();
-            return ResponseEntity.ok(new OfficeOnlineHealthResponse("HEALTHY", "Graph, SharePoint drive, upload, and item sharing are reachable. Review-link recipient delivery still requires a real user test.", true, true, true, checkedAt));
+            // OnlyOffice's bundled nginx does not handle a plaintext HTTP/2 upgrade attempt
+            // cleanly (returns 502) -- java.net.http.HttpClient defaults to trying HTTP/2 first,
+            // unlike curl, which is why a manual curl to the same URL succeeds while this call
+            // failed. Force HTTP/1.1 to match how every other call in this codebase (and OnlyOffice
+            // Document Server's own expectations) actually talks to it.
+            var client = java.net.http.HttpClient.newBuilder()
+                    .version(java.net.http.HttpClient.Version.HTTP_1_1)
+                    .connectTimeout(java.time.Duration.ofSeconds(10))
+                    .build();
+            var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(config.documentServerUrl() + "/healthcheck"))
+                    .timeout(java.time.Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+            var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            boolean healthy = response.statusCode() == 200 && response.body() != null && response.body().toLowerCase().contains("true");
+            return ResponseEntity.ok(java.util.Map.of(
+                    "success", healthy,
+                    "message", healthy
+                            ? "OnlyOffice Document Server is reachable and healthy."
+                            : "OnlyOffice Document Server responded but did not report healthy (HTTP " + response.statusCode() + ")."
+            ));
         } catch (Exception ex) {
-            return ResponseEntity.ok(new OfficeOnlineHealthResponse("UNHEALTHY", ex.getMessage(), false, false, false, checkedAt));
+            return ResponseEntity.ok(java.util.Map.of(
+                    "success", false,
+                    "message", "Unable to reach the OnlyOffice Document Server: " + ex.getMessage()
+            ));
         }
     }
 
@@ -426,19 +505,6 @@ public class SettingsUserController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(new SmtpConnectionTestResponse(false, "SMTP connection test failed: " + e.getMessage()));
         }
-    }
-
-    @GetMapping("/system/office-online/browse-folders")
-    public ResponseEntity<java.util.List<com.eqms.dto.user.FolderBrowseResponse>> browseSharePointFolders(
-            @RequestParam(required = false, defaultValue = "") String path
-    ) throws java.io.IOException {
-        requireConfigurationEdit();
-        java.util.List<MicrosoftGraphOfficeOnlineService.FolderItem> folders =
-                microsoftGraphOfficeOnlineService.browseFolders(path);
-        java.util.List<com.eqms.dto.user.FolderBrowseResponse> response = folders.stream()
-                .map(f -> new com.eqms.dto.user.FolderBrowseResponse(f.id(), f.name(), f.path(), f.webUrl()))
-                .toList();
-        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/users/{id}/education")
@@ -520,13 +586,6 @@ public class SettingsUserController {
         }
     }
 
-    private void requireAccessProfileUpdate() {
-        var user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasPermission(user, "security.access_profiles.update")) {
-            throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to manage access profiles");
-        }
-    }
-
     private void requireAccessProfileAssign() {
         var user = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasPermission(user, "security.access_profiles.assign")) {
@@ -548,6 +607,25 @@ public class SettingsUserController {
         }
     }
 
+    private void requireDocumentPropertiesView() {
+        var user = currentUserService.requireCurrentUser();
+        boolean allowed = permissionEvaluationService.hasAnyPermission(user,
+                "documents.admin.properties.view", "documents.admin.properties.manage",
+                "settings.configuration.view", "settings.configuration.manage");
+        if (!allowed) {
+            throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to view document properties");
+        }
+    }
+
+    private void requireDocumentPropertiesManage() {
+        var user = currentUserService.requireCurrentUser();
+        boolean allowed = permissionEvaluationService.hasAnyPermission(user,
+                "documents.admin.properties.manage", "settings.configuration.manage");
+        if (!allowed) {
+            throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to manage document properties");
+        }
+    }
+
     private void requireConfigurationView() {
         var user = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasPermission(user, "settings.configuration.view")) {
@@ -557,7 +635,7 @@ public class SettingsUserController {
 
     private void requireConfigurationEdit() {
         var user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasPermission(user, "settings.configuration.edit")) {
+        if (!permissionEvaluationService.hasPermission(user, "settings.configuration.manage")) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to edit system configuration");
         }
     }

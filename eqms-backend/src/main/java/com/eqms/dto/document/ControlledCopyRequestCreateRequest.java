@@ -9,7 +9,16 @@ public record ControlledCopyRequestCreateRequest(
         @Size(max = 100) String documentNumber,
         @Size(max = 100) String sourceRevisionId,
         @Size(max = 255) String requestedBy,
-        @Size(max = 255) String department,
+        // RequestControlledCopyView.tsx joins every selected department/business-unit label into
+        // this one field with ", " for an "internal" request -- with enough recipients selected
+        // that routinely exceeds 255 chars. This value is display-only (ControlledCopyService never
+        // persists it: the entity's departmentName comes from the source Document's own
+        // department), so there is no reason to reject a long one; 255 was simply too tight and
+        // failed real submissions with an opaque "Invalid request data" toast.
+        @Size(max = 5000) String department,
+        // Unlike department above, this one IS persisted (ControlledCopyService.setLocation) into
+        // an entity column that is genuinely length=255 -- keep this cap matching that column so a
+        // long value fails here with a clear 422 instead of a raw DB constraint violation.
         @Size(max = 255) String location,
         @Size(max = 2000) String purpose,
         Integer copies,

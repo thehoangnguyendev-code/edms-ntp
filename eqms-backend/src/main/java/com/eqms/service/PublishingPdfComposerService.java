@@ -20,12 +20,14 @@ import java.util.Map;
 
 @Service
 public class PublishingPdfComposerService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PublishingPdfComposerService.class);
+
 
     public record PublishingCompositionResult(byte[] pdfBytes, int pageCount) {
     }
 
     private final FileStorageService fileStorageService;
-    private final MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService;
+    private final OnlyOfficeDocumentEditService onlyOfficeDocumentEditService;
     private final PublishingOpenXmlTemplateRenderService openXmlTemplateRenderService;
     private final RevisionService revisionService;
     private final PublishingTemplateComponentRepository componentRepository;
@@ -33,14 +35,14 @@ public class PublishingPdfComposerService {
 
     public PublishingPdfComposerService(
             FileStorageService fileStorageService,
-            MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService,
+            OnlyOfficeDocumentEditService onlyOfficeDocumentEditService,
             PublishingOpenXmlTemplateRenderService openXmlTemplateRenderService,
             RevisionService revisionService,
             PublishingTemplateComponentRepository componentRepository,
             PublishingPlaceholderStyleService placeholderStyleService
     ) {
         this.fileStorageService = fileStorageService;
-        this.microsoftGraphOfficeOnlineService = microsoftGraphOfficeOnlineService;
+        this.onlyOfficeDocumentEditService = onlyOfficeDocumentEditService;
         this.openXmlTemplateRenderService = openXmlTemplateRenderService;
         this.revisionService = revisionService;
         this.componentRepository = componentRepository;
@@ -77,7 +79,12 @@ public class PublishingPdfComposerService {
             Map<String, String> callerExtraValues
     ) throws IOException {
         Path sourcePath = requireSourcePath(revision);
-        RevisionDetailResponse revisionDetail = revision == null ? null : revisionService.getRevision(revision.getId());
+        // buildDetailResponse(), not getRevision(id): this already has the loaded entity, and
+        // getRevision() requires an authenticated current user + writes its own "opened"/VIEW
+        // audit bookkeeping -- both wrong here, and getRevision() throws outright when this runs
+        // on a background thread with no HTTP request/current-user context (e.g. the async
+        // snapshot regeneration in RevisionPublishingSnapshotAsyncService).
+        RevisionDetailResponse revisionDetail = revision == null ? null : revisionService.buildDetailResponseForRendering(revision);
         String normalizedLayout = normalizeLayout(layout);
         String sourceFileName = safeName(revision);
         Map<String, String> extraValues = new LinkedHashMap<>();
@@ -103,8 +110,247 @@ public class PublishingPdfComposerService {
                         resolveComponentStyles(template, "cover", normalizedLayout)
                 ))
                 : null;
-        byte[] merged = mergePdfParts(coverPdf, sourcePdf);
+        log.info("Publishing compose: template={} hasCover={} header={}[{}-{}] footer={}[{}-{}]",
+                template == null ? null : template.getId(), hasCover,
+                applyHeader, template == null ? null : template.getHeaderPageFrom(), template == null ? null : template.getHeaderPageTo(),
+                applyFooter, template == null ? null : template.getFooterPageFrom(), template == null ? null : template.getFooterPageTo());
+        byte[] bodyPdf = sourcePdf;
+        if ((applyHeader || applyFooter) && rangesRestrictHeaderFooter(template, hasCover, applyHeader, applyFooter)) {
+            try {
+                bodyPdf = composeWithPageRanges(sourcePath, sourceFileName, template, normalizedLayout, revisionDetail,
+                        extraValues, applyHeader, applyFooter, hasCover, sourcePdf, bodyPageCount);
+            } catch (Exception ex) {
+                log.warn("Header/footer page ranges could not be applied; using header/footer on every page", ex);
+                bodyPdf = sourcePdf;
+            }
+        }
+        byte[] merged = mergePdfParts(coverPdf, bodyPdf);
         return new PublishingCompositionResult(merged, countPages(merged));
+    }
+
+    /** First page of the FINAL pdf on which header/footer may appear when no explicit "From" is set. */
+    private int defaultHeaderFooterStart(boolean hasCover) {
+        return hasCover ? 2 : 1;
+    }
+
+    private boolean inPageRange(int finalPage, Integer from, Integer to, int defaultFrom) {
+        int start = from == null ? defaultFrom : Math.max(from, defaultFrom);
+        return finalPage >= start && (to == null || finalPage <= to);
+    }
+
+    private boolean rangesRestrictHeaderFooter(PublishingTemplate template, boolean hasCover, boolean applyHeader, boolean applyFooter) {
+        if (template == null) {
+            return false;
+        }
+        int start = defaultHeaderFooterStart(hasCover);
+        boolean header = applyHeader && (template.getHeaderPageTo() != null
+                || (template.getHeaderPageFrom() != null && template.getHeaderPageFrom() > start));
+        boolean footer = applyFooter && (template.getFooterPageTo() != null
+                || (template.getFooterPageFrom() != null && template.getFooterPageFrom() > start));
+        return header || footer;
+    }
+
+    private record Cut(int elementIndex, boolean header, boolean footer) {}
+
+    private static final String HDR_MARK = "ZZHDRMARKZZ";
+    private static final String FTR_MARK = "ZZFTRMARKZZ";
+
+    /**
+     * Honours the workspace's Header/Footer page ranges by giving the body real Word sections: pages inside
+     * a range keep the header/footer, pages outside get empty ones, so the body reclaims the freed space
+     * and re-flows (no blank bands). Section breaks are placed by probing: for each state change, binary
+     * search the paragraph after which a break makes the new section begin on the wanted page, detecting
+     * which pages carry the header/footer through invisible probe markers that never reach the final PDF.
+     */
+    private byte[] composeWithPageRanges(
+            Path sourcePath, String sourceFileName, PublishingTemplate template, String layout,
+            RevisionDetailResponse revisionDetail, Map<String, String> extraValues,
+            boolean applyHeader, boolean applyFooter, boolean hasCover, byte[] fullPdf, int bodyPages
+    ) throws IOException {
+        int offset = hasCover ? 1 : 0;
+        int defaultFrom = defaultHeaderFooterStart(hasCover);
+        java.util.List<boolean[]> states = new java.util.ArrayList<>();
+        java.util.List<Integer> boundaryPages = new java.util.ArrayList<>();
+        boolean[] previous = null;
+        for (int bp = 1; bp <= bodyPages; bp++) {
+            int finalPage = bp + offset;
+            boolean[] current = {
+                    applyHeader && inPageRange(finalPage, template.getHeaderPageFrom(), template.getHeaderPageTo(), defaultFrom),
+                    applyFooter && inPageRange(finalPage, template.getFooterPageFrom(), template.getFooterPageTo(), defaultFrom)};
+            if (previous == null) {
+                states.add(current);
+            } else if (previous[0] != current[0] || previous[1] != current[1]) {
+                states.add(current);
+                boundaryPages.add(bp);
+            }
+            previous = current;
+        }
+        boolean[] lastState = states.get(states.size() - 1);
+        if (boundaryPages.isEmpty() && states.get(0)[0] == applyHeader && states.get(0)[1] == applyFooter) {
+            return fullPdf; // every page has exactly what the full render has
+        }
+
+        Path base = prepareSourceWithHeaderFooter(sourcePath, sourceFileName, template, layout, revisionDetail, extraValues, applyHeader, applyFooter);
+        if (base.equals(sourcePath)) {
+            return fullPdf;
+        }
+        Path probeBase = withProbeMarkers(base);
+        java.util.List<Integer> candidates = paragraphCandidates(base);
+        java.util.List<Cut> cuts = new java.util.ArrayList<>();
+        int searchFrom = 0;
+        int previousBoundary = 1;
+        for (int j = 1; j < states.size(); j++) {
+            boolean[] before = states.get(j - 1);
+            boolean[] after = states.get(j);
+            int target = boundaryPages.get(j - 1);
+            int lo = searchFrom;
+            int hi = candidates.size() - 1;
+            int best = -1;
+            while (lo <= hi) {
+                int mid = (lo + hi) >>> 1;
+                java.util.List<Cut> trial = new java.util.ArrayList<>(cuts);
+                trial.add(new Cut(candidates.get(mid), before[0], before[1]));
+                int start = firstPageMatching(convertToPdf(buildSectioned(probeBase, trial, after[0], after[1]), sourceFileName),
+                        after, previousBoundary);
+                if (start <= target) {
+                    best = mid;
+                    lo = mid + 1;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+            if (best < 0) {
+                throw new IllegalStateException("No section break position found for page " + target);
+            }
+            cuts.add(new Cut(candidates.get(best), before[0], before[1]));
+            searchFrom = best + 1;
+            previousBoundary = target;
+        }
+
+        byte[] result = convertToPdf(buildSectioned(base, cuts, lastState[0], lastState[1]), sourceFileName);
+        int newCount = countPages(result);
+        if (newCount != bodyPages) {
+            // "Page x of N" placeholders were filled from the full render's page count; refresh them.
+            extraValues.putAll(buildExtraValues(newCount, hasCover));
+            Path rebased = prepareSourceWithHeaderFooter(sourcePath, sourceFileName, template, layout, revisionDetail, extraValues, applyHeader, applyFooter);
+            result = convertToPdf(buildSectioned(rebased, cuts, lastState[0], lastState[1]), sourceFileName);
+        }
+        return result;
+    }
+
+    /** First body page (1-based, at or after {@code from}) whose header/footer presence equals the state. */
+    private int firstPageMatching(byte[] pdf, boolean[] state, int from) throws IOException {
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            org.apache.pdfbox.text.PDFTextStripper stripper = new org.apache.pdfbox.text.PDFTextStripper();
+            int pages = document.getNumberOfPages();
+            for (int p = Math.max(1, from); p <= pages; p++) {
+                stripper.setStartPage(p);
+                stripper.setEndPage(p);
+                String text = stripper.getText(document);
+                if (text.contains(HDR_MARK) == state[0] && text.contains(FTR_MARK) == state[1]) {
+                    return p;
+                }
+            }
+            return pages + 1;
+        }
+    }
+
+    /** Indexes (within the body element list) of top-level paragraphs after which a section break may go. */
+    private java.util.List<Integer> paragraphCandidates(Path docx) throws IOException {
+        try (java.io.InputStream in = Files.newInputStream(docx);
+             org.apache.poi.xwpf.usermodel.XWPFDocument doc = new org.apache.poi.xwpf.usermodel.XWPFDocument(in)) {
+            java.util.List<Integer> result = new java.util.ArrayList<>();
+            var elements = doc.getBodyElements();
+            for (int i = 0; i < elements.size() - 1; i++) {
+                if (elements.get(i) instanceof org.apache.poi.xwpf.usermodel.XWPFParagraph paragraph
+                        && !(paragraph.getCTP().isSetPPr() && paragraph.getCTP().getPPr().isSetSectPr())) {
+                    result.add(i);
+                }
+            }
+            return result;
+        }
+    }
+
+    /** Copy of the docx whose header/footer each end with an invisible 1pt marker so probes can see them. */
+    private Path withProbeMarkers(Path docx) throws IOException {
+        Path out = Files.createTempFile("publishing-probe-", ".docx");
+        out.toFile().deleteOnExit();
+        try (java.io.InputStream in = Files.newInputStream(docx);
+             org.apache.poi.xwpf.usermodel.XWPFDocument doc = new org.apache.poi.xwpf.usermodel.XWPFDocument(in);
+             java.io.OutputStream os = Files.newOutputStream(out)) {
+            for (var header : doc.getHeaderList()) {
+                appendMarker(header.getParagraphs().isEmpty() ? header.createParagraph() : header.getParagraphs().get(header.getParagraphs().size() - 1), HDR_MARK);
+            }
+            for (var footer : doc.getFooterList()) {
+                appendMarker(footer.getParagraphs().isEmpty() ? footer.createParagraph() : footer.getParagraphs().get(footer.getParagraphs().size() - 1), FTR_MARK);
+            }
+            doc.write(os);
+        }
+        return out;
+    }
+
+    private void appendMarker(org.apache.poi.xwpf.usermodel.XWPFParagraph paragraph, String marker) {
+        var run = paragraph.createRun();
+        run.setText(marker);
+        run.setFontSize(1);
+        run.setColor("FFFFFF");
+    }
+
+    /**
+     * Copy of {@code base} split into sections: each cut ends a section (after that paragraph) that shows
+     * the header/footer per the cut's state; the trailing section uses the final state. "Off" sections
+     * point at empty header/footer parts instead of the full ones.
+     */
+    private Path buildSectioned(Path base, java.util.List<Cut> cuts, boolean finalHeader, boolean finalFooter) throws IOException {
+        Path out = Files.createTempFile("publishing-sectioned-", ".docx");
+        out.toFile().deleteOnExit();
+        try (java.io.InputStream in = Files.newInputStream(base);
+             org.apache.poi.xwpf.usermodel.XWPFDocument doc = new org.apache.poi.xwpf.usermodel.XWPFDocument(in);
+             java.io.OutputStream os = Files.newOutputStream(out)) {
+            var body = doc.getDocument().getBody();
+            var bodySect = body.isSetSectPr() ? body.getSectPr() : body.addNewSectPr();
+            String fullHeaderId = bodySect.sizeOfHeaderReferenceArray() > 0 ? bodySect.getHeaderReferenceArray(0).getId() : null;
+            String fullFooterId = bodySect.sizeOfFooterReferenceArray() > 0 ? bodySect.getFooterReferenceArray(0).getId() : null;
+            // Fresh, empty header/footer parts. Created through a policy bound to a detached sectPr so POI
+            // neither reuses nor overwrites the full parts already referenced by the document.
+            var detached = org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr.Factory.newInstance();
+            var detachedPolicy = new org.apache.poi.xwpf.model.XWPFHeaderFooterPolicy(doc, detached);
+            String emptyHeaderId = doc.getRelationId(detachedPolicy.createHeader(org.apache.poi.xwpf.model.XWPFHeaderFooterPolicy.DEFAULT));
+            String emptyFooterId = doc.getRelationId(detachedPolicy.createFooter(org.apache.poi.xwpf.model.XWPFHeaderFooterPolicy.DEFAULT));
+            var template = (org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr) bodySect.copy();
+            var elements = doc.getBodyElements();
+            for (Cut cut : cuts) {
+                var paragraph = (org.apache.poi.xwpf.usermodel.XWPFParagraph) elements.get(cut.elementIndex());
+                var pPr = paragraph.getCTP().isSetPPr() ? paragraph.getCTP().getPPr() : paragraph.getCTP().addNewPPr();
+                var sectPr = pPr.isSetSectPr() ? pPr.getSectPr() : pPr.addNewSectPr();
+                sectPr.set(template.copy());
+                setHeaderFooterRefs(sectPr,
+                        cut.header() ? fullHeaderId : emptyHeaderId, cut.footer() ? fullFooterId : emptyFooterId);
+            }
+            setHeaderFooterRefs(bodySect,
+                    finalHeader ? fullHeaderId : emptyHeaderId, finalFooter ? fullFooterId : emptyFooterId);
+            doc.write(os);
+        }
+        return out;
+    }
+
+    private void setHeaderFooterRefs(org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr sectPr, String headerId, String footerId) {
+        while (sectPr.sizeOfHeaderReferenceArray() > 0) {
+            sectPr.removeHeaderReference(0);
+        }
+        while (sectPr.sizeOfFooterReferenceArray() > 0) {
+            sectPr.removeFooterReference(0);
+        }
+        if (headerId != null) {
+            var ref = sectPr.addNewHeaderReference();
+            ref.setType(org.openxmlformats.schemas.wordprocessingml.x2006.main.STHdrFtr.DEFAULT);
+            ref.setId(headerId);
+        }
+        if (footerId != null) {
+            var ref = sectPr.addNewFooterReference();
+            ref.setType(org.openxmlformats.schemas.wordprocessingml.x2006.main.STHdrFtr.DEFAULT);
+            ref.setId(footerId);
+        }
     }
 
     private boolean resolveEnabled(Boolean override, boolean templateDefault) {
@@ -354,7 +600,7 @@ public class PublishingPdfComposerService {
         if (isPdf(path, fileName)) {
             return Files.readAllBytes(path);
         }
-        return microsoftGraphOfficeOnlineService.convertSourceFileToPdf(path, fileName);
+        return onlyOfficeDocumentEditService.convertLocalFileToPdf(path, fileName);
     }
 
     private boolean isPdf(Path path, String fileName) {

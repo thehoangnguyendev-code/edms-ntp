@@ -35,8 +35,6 @@ class ControlledCopyAuthorizationServiceTest {
     @Mock ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository;
     @Mock WorkflowActionPolicyRepository workflowActionPolicyRepository;
     @Mock UserAccessProfileRepository userAccessProfileRepository;
-    @Mock AccessProfileWorkflowRoleRepository accessProfileWorkflowRoleRepository;
-    @Mock DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     @Mock DocumentRecordRepository documentRecordRepository;
     @Mock ObjectAccessEvaluationService objectAccessEvaluationService;
 
@@ -60,8 +58,6 @@ class ControlledCopyAuthorizationServiceTest {
                 controlledCopyDistributionBatchRepository,
                 workflowActionPolicyRepository,
                 userAccessProfileRepository,
-                accessProfileWorkflowRoleRepository,
-                documentWorkflowPoolMemberRepository,
                 documentRecordRepository
         );
 
@@ -135,8 +131,7 @@ class ControlledCopyAuthorizationServiceTest {
                 permissionEvaluationService, currentUserService, documentAuthorizationService,
                 controlledCopyPolicyService, secureFileAccessService, controlledCopyRepository,
                 controlledCopyDistributionBatchRepository, workflowActionPolicyRepository,
-                userAccessProfileRepository, accessProfileWorkflowRoleRepository,
-                documentWorkflowPoolMemberRepository, documentRecordRepository, objectAccessEvaluationService
+                userAccessProfileRepository, documentRecordRepository, objectAccessEvaluationService
         );
         when(documentRecordRepository.findById(document.getId())).thenReturn(Optional.of(document));
         when(objectAccessEvaluationService.canAccessDocument(eq(user), eq(document), eq("VIEW"))).thenReturn(false);

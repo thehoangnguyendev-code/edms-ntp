@@ -97,6 +97,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -113,16 +114,23 @@ import javax.imageio.IIOImage;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.ImageTypeSpecifier;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 
 @Service
 public class ControlledCopyService {
+
+    private static final int MAX_LIST_PAGE_SIZE = 50;
+    private static final SecureRandom PREVIEW_PASSWORD_RANDOM = new SecureRandom();
+    private static final int PREVIEW_PASSWORD_BYTES = 18;
 
     private static final Logger log = LoggerFactory.getLogger(ControlledCopyService.class);
     private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
     private static final DateTimeFormatter DMY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final long MAX_EVIDENCE_FILE_SIZE_BYTES = 10L * 1024L * 1024L;
     private static final int MAX_EVIDENCE_DIMENSION = 4096;
+    private static final long MAX_EVIDENCE_PIXELS = 16L * 1024L * 1024L;
     private static final String STATUS_READY_FOR_DISTRIBUTION = "READY_FOR_DISTRIBUTION";
     private static final String STATUS_DISTRIBUTED = "DISTRIBUTED";
     private static final String STATUS_OBSOLETED = "OBSOLETED";
@@ -162,6 +170,10 @@ public class ControlledCopyService {
     private final ControlledCopyPreviewGrantService controlledCopyPreviewGrantService;
     private final ControlledCopyBatchStatusService controlledCopyBatchStatusService;
     private final com.eqms.repository.ControlledCopyPlaceholderFieldRepository controlledCopyPlaceholderFieldRepository;
+    private final ControlledCopyPlaceholderValueBuilder placeholderValueBuilder;
+    private final ControlledCopyPdfMarkingService pdfMarkingService;
+    private final ControlledCopyWithdrawalNoticeService withdrawalNoticeService;
+    private final SignatureTokenConsumptionService signatureTokenConsumptionService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -192,6 +204,9 @@ public class ControlledCopyService {
     @org.springframework.beans.factory.annotation.Autowired
     private ElectronicSignatureService electronicSignatureService;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private SystemActorProvider systemActorProvider;
+
     public ControlledCopyService(
             ControlledCopyRepository controlledCopyRepository,
             ControlledCopyEvidenceFileRepository controlledCopyEvidenceFileRepository,
@@ -220,7 +235,11 @@ public class ControlledCopyService {
             org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder,
             ControlledCopyPreviewGrantService controlledCopyPreviewGrantService,
             ControlledCopyBatchStatusService controlledCopyBatchStatusService,
-            com.eqms.repository.ControlledCopyPlaceholderFieldRepository controlledCopyPlaceholderFieldRepository
+            com.eqms.repository.ControlledCopyPlaceholderFieldRepository controlledCopyPlaceholderFieldRepository,
+            ControlledCopyPlaceholderValueBuilder placeholderValueBuilder,
+            ControlledCopyPdfMarkingService pdfMarkingService,
+            ControlledCopyWithdrawalNoticeService withdrawalNoticeService,
+            SignatureTokenConsumptionService signatureTokenConsumptionService
     ) {
         this.controlledCopyRepository = controlledCopyRepository;
         this.controlledCopyEvidenceFileRepository = controlledCopyEvidenceFileRepository;
@@ -250,6 +269,10 @@ public class ControlledCopyService {
         this.controlledCopyPreviewGrantService = controlledCopyPreviewGrantService;
         this.controlledCopyBatchStatusService = controlledCopyBatchStatusService;
         this.controlledCopyPlaceholderFieldRepository = controlledCopyPlaceholderFieldRepository;
+        this.placeholderValueBuilder = placeholderValueBuilder;
+        this.pdfMarkingService = pdfMarkingService;
+        this.withdrawalNoticeService = withdrawalNoticeService;
+        this.signatureTokenConsumptionService = signatureTokenConsumptionService;
     }
 
     @Autowired
@@ -304,7 +327,7 @@ public class ControlledCopyService {
     ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         int safePage = Math.max(page == null ? 1 : page, 1);
-        int safeLimit = Math.max(limit == null ? 10 : limit, 1);
+        int safeLimit = Math.min(Math.max(limit == null ? 10 : limit, 1), MAX_LIST_PAGE_SIZE);
         Specification<ControlledCopyRecord> specification = buildSpecification(
                 search,
                 status,
@@ -474,6 +497,13 @@ public class ControlledCopyService {
         String message = canRequest
                 ? null
                 : "Request Controlled Copy requires permission and is available only when the document is Active and the latest revision is Effective.";
+        // Every Controlled Copy always has a real, resolved expiry (the mandatory Global Default
+        // row guarantees a match) -- there is no "never expires" state. Resolve the same rule the
+        // actual request submission will use (resolveMaximumExpiry), so this preview can never
+        // drift from what gets applied at submit time.
+        var matchedExpiryLimit = controlledCopyExpiryLimitService.resolveMatchingLimit(document.getDocumentType(), document.getDepartment());
+        Integer expiryDurationValue = matchedExpiryLimit.map(com.eqms.entity.ControlledCopyExpiryLimit::getDurationValue).orElse(null);
+        String expiryDurationUnit = matchedExpiryLimit.map(com.eqms.entity.ControlledCopyExpiryLimit::getDurationUnit).orElse(null);
 
         return new ControlledCopyRequestContextResponse(
                 document.getId() == null ? null : document.getId().toString(),
@@ -490,7 +520,9 @@ public class ControlledCopyService {
                 DateTimeFormatUtils.formatDate(currentEffectiveRevision.getValidUntil()),
                 canRequest,
                 canRequestForOthers,
-                message
+                message,
+                expiryDurationValue,
+                expiryDurationUnit
         );
     }
 
@@ -502,6 +534,107 @@ public class ControlledCopyService {
             throw new AccessDeniedException("Controlled copy access denied");
         }
         return toResponse(copy, true);
+    }
+
+    /**
+     * The PDF of this copy for an authorised signed-in user (Document tab): the stored issued file while valid; the same file with a
+     * server-drawn status text once it is withdrawn or cancelled; and, before distribution, a preview composed exactly as it would be
+     * issued (nothing is stored) marked "PREVIEW - NOT ISSUED". Read-only: no download/print counter is consumed.
+     */
+    @Transactional
+    public FileDownload viewIssuedDocument(UUID id) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        ControlledCopyRecord copy = requireControlledCopyForDetail(id);
+        if (!canViewControlledCopy(currentUser, copy)
+                || !permissionEvaluationService.hasPermission(currentUser, "documents.controlled_copy.view_file")) {
+            throw new AccessDeniedException("Controlled copy access denied");
+        }
+        String status = copy.getStatusCode() == null ? "" : copy.getStatusCode().trim().toUpperCase(Locale.ROOT);
+        byte[] pdf;
+        List<String> banner = null;
+        com.eqms.dto.controlledcopypolicy.ControlledCopyStatusMarking statusMarking = null;
+        List<String> watermarkLines = List.of();
+        List<String> stampLines = List.of();
+        try {
+            if (STATUS_READY_FOR_DISTRIBUTION.equals(status)) {
+                pdf = composeIssuedPreview(copy);
+                banner = List.of("PREVIEW - NOT ISSUED");
+            } else {
+                pdf = loadControlledCopyPreviewPdf(copy);
+                if (STATUS_OBSOLETED.equals(status) || STATUS_CLOSED_CANCELLED.equals(status)) {
+                    statusMarking = controlledCopyPolicyService.statusMarkingFor(controlledCopyPolicyService.loadOrDefault(), status);
+                    String reason = STATUS_OBSOLETED.equals(status)
+                            ? ControlledCopyWithdrawalNoticeService.reasonLabel(copy.getObsoleteReason())
+                            : "Request cancelled";
+                    java.time.Instant endedAt = STATUS_OBSOLETED.equals(status)
+                            ? (copy.getRecalledAt() != null ? copy.getRecalledAt() : copy.getObsoletedAt())
+                            : copy.getCancelledAt();
+                    String date = endedAt == null ? null
+                            : (STATUS_OBSOLETED.equals(status) ? "Withdrawn " : "Cancelled ")
+                            + DateTimeFormatUtils.formatDate(endedAt.atZone(SYSTEM_ZONE).toLocalDate());
+                    ControlledCopyPdfMarkingService.StatusLines lines = pdfMarkingService.statusLines(statusMarking, reason, date);
+                    watermarkLines = lines.watermark();
+                    stampLines = lines.stamp();
+                }
+            }
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to load the controlled copy PDF", ex);
+        }
+        if (pdf == null || pdf.length == 0) {
+            throw new IllegalStateException("The controlled copy PDF is not available");
+        }
+        if (banner != null) {
+            pdf = pdfMarkingService.applyStatusWatermark(pdf, banner);
+        }
+        if (statusMarking != null) {
+            pdf = pdfMarkingService.applyStatusMarking(pdf, statusMarking, watermarkLines, stampLines, issuedMarks(copy, pdf));
+        }
+        auditPreviewAccess(currentUser, copy, "VIEW_ISSUED_DOCUMENT", "Viewed the controlled copy document (" + status + ")");
+        return new FileDownload(pdf, buildControlledCopyDownloadFileName(copy), "application/pdf");
+    }
+
+    /** Composes and marks the PDF the way distribution would, without changing or storing anything. */
+    private byte[] composeIssuedPreview(ControlledCopyRecord copy) throws IOException {
+        RevisionPublishingMetadata metadata = copy.getRevision() == null || copy.getRevision().getId() == null ? null
+                : revisionPublishingMetadataRepository.findByRevision_Id(copy.getRevision().getId()).orElse(null);
+        com.fasterxml.jackson.databind.JsonNode recipient = placeholderValueBuilder.recipientSnapshotForPreview(copy);
+        boolean hasTemplate = metadata != null && metadata.getPublishingTemplate() != null
+                && StringUtils.hasText(metadata.getSelectedPublishingLayout());
+        byte[] base = hasTemplate ? composeThroughTemplate(copy, metadata, recipient) : loadControlledCopyPreviewPdf(copy);
+        if (base == null || base.length == 0) {
+            return base;
+        }
+        ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
+        if (!pdfMarkingService.isMarkingEnabled(policy)) {
+            return base;
+        }
+        // The "PREVIEW - NOT ISSUED" text is drawn over the page next; the watermark would collide with it, so the preview keeps the stamp only.
+        ControlledCopyPolicySetting previewPolicy = new ControlledCopyPolicySetting();
+        org.springframework.beans.BeanUtils.copyProperties(policy, previewPolicy);
+        previewPolicy.setWatermarkEnabled(false);
+        return pdfMarkingService.isMarkingEnabled(previewPolicy) ? pdfMarkingService.apply(base, copy, recipient, previewPolicy) : base;
+    }
+
+    /**
+     * The recall / withdrawal notice for a copy that is no longer valid. Built entirely on the server from the copy's record and
+     * the recipient details captured at distribution; every generation is audited.
+     */
+    @Transactional
+    public FileDownload generateWithdrawalNotice(UUID id) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        ControlledCopyRecord copy = requireControlledCopyForDetail(id);
+        if (!canViewControlledCopy(currentUser, copy)
+                || !permissionEvaluationService.hasPermission(currentUser, "documents.controlled_copy.recall")) {
+            throw new AccessDeniedException("Controlled copy access denied");
+        }
+        if (!STATUS_OBSOLETED.equalsIgnoreCase(copy.getStatusCode())) {
+            throw new IllegalStateException("A notice can only be generated for a controlled copy that is no longer valid.");
+        }
+        com.fasterxml.jackson.databind.JsonNode recipient = placeholderValueBuilder.captureRecipientSnapshotIfAbsent(copy);
+        byte[] pdf = withdrawalNoticeService.build(copy, recipient, currentUser);
+        auditPreviewAccess(currentUser, copy, "GENERATE_WITHDRAWAL_NOTICE",
+                "Generated the withdrawal notice (" + ControlledCopyWithdrawalNoticeService.reasonLabel(copy.getObsoleteReason()) + ")");
+        return new FileDownload(pdf, "Withdrawal-Notice-" + copy.getControlledCopyNumber() + ".pdf", "application/pdf");
     }
 
     @Transactional(readOnly = true)
@@ -546,7 +679,9 @@ public class ControlledCopyService {
         controlledCopyAuthorizationService.requireTokenPreviewAccess(copy, token, password);
         UserAccount currentUser = findAuthenticatedPreviewUser();
         auditPreviewAccess(currentUser, copy, "OPEN_PREVIEW", "Opened controlled copy preview");
-        return buildPreviewResponse(copy, controlledCopyPreviewGrantService.issue(copy));
+        // The grant doubles as the viewing session: it lasts as long as the policy lets an external recipient keep the copy open.
+        long sessionSeconds = controlledCopyPolicyService.loadOrDefault().getPreviewSessionMinutes() * 60L;
+        return buildPreviewResponse(copy, controlledCopyPreviewGrantService.issue(copy, sessionSeconds));
     }
 
     @Transactional
@@ -733,6 +868,12 @@ public class ControlledCopyService {
             throw new IllegalArgumentException("Expiry date cannot exceed the configured Controlled Copy expiry limit.");
         }
         boolean hasExpiryDate = requestedHasExpiryDate || expiryDate != null;
+        // No explicit date was requested: the expiry above is only a projection (now + policy
+        // duration) shown while the copy waits in Ready for Distribution. It is recomputed as
+        // distributedAt + duration at Distribute time so the copy can never expire before it is
+        // actually distributed. An explicit requester-chosen date is a fixed deadline and is left
+        // exactly as requested at Distribute time.
+        boolean expiryAnchoredToDistribution = !requestedHasExpiryDate;
 
         List<RecipientAllocation> recipients = resolveRequestRecipients(
                 request,
@@ -777,13 +918,26 @@ public class ControlledCopyService {
         String joinedExternalRecipients = externalMode
                 ? recipients.stream().map(RecipientAllocation::identifier).filter(StringUtils::hasText).distinct().reduce((left, right) -> left + ", " + right).orElse(null)
                 : null;
+        // Every recipient allocation in a business-unit/department request carries that target's
+        // own name as its label (repeated once per user resolved into it) -- distinct + join to
+        // get every selected unit's name, not just the first. Using recipients.get(0) here used to
+        // silently drop every unit after the first when more than one was selected in the same
+        // request (e.g. "Quality Control" + "Quality Assurance" -> only "Quality Control" was ever
+        // persisted). location/locationCode deliberately stay first-only: they're used elsewhere as
+        // a single scalar identifier (search/fallback), not as the user-facing distribution list.
+        String joinedDistributionUnitLabels = recipients.stream()
+                .map(RecipientAllocation::label)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .reduce((left, right) -> left + "; " + right)
+                .orElse(recipients.get(0).label());
         String resolvedLocation = recipients.get(0).label();
         String resolvedLocationCode = locationIds.isEmpty() ? recipients.get(0).identifier() : locationIds.get(0);
         String resolvedScope = resolveDistributionScope(request, distributionMode);
         String resolvedDistributionList = externalMode
                 ? "External"
                 : ("business-unit".equalsIgnoreCase(resolvedScope) || "department".equalsIgnoreCase(resolvedScope))
-                        ? resolvedLocation
+                        ? joinedDistributionUnitLabels
                         : ("individual".equalsIgnoreCase(resolvedScope) && totalCopies > 1)
                                 ? "Individual"
                         : joinedDistributionList;
@@ -792,8 +946,8 @@ public class ControlledCopyService {
                 request == null ? null : request.purpose(),
                 request == null ? null : request.signature()
         ));
-        if (!StringUtils.hasText(reason) || reason.length() < 10) {
-            throw new IllegalArgumentException("A request reason of at least 10 characters is required.");
+        if (!StringUtils.hasText(reason)) {
+            throw new IllegalArgumentException("A request reason is required.");
         }
 
         ControlledCopyDistributionBatch batch = createDistributionBatch(
@@ -809,7 +963,8 @@ public class ControlledCopyService {
                 joinedExternalRecipients,
                 reason,
                 hasExpiryDate,
-                expiryDate
+                expiryDate,
+                expiryAnchoredToDistribution
         );
 
         ControlledCopyRecord firstCreated = null;
@@ -856,6 +1011,7 @@ public class ControlledCopyService {
             copy.setEffectiveDate(revision.getEffectiveDate());
             copy.setHasExpiryDate(hasExpiryDate);
             copy.setExpiryDate(expiryDate);
+            copy.setExpiryAnchoredToDistribution(expiryAnchoredToDistribution);
             copy.setExpiryReminderSentAt(null);
             storeControlledCopyPublishedPdf(copy, publishedPdf);
             controlledCopyRepository.save(copy);
@@ -880,6 +1036,23 @@ public class ControlledCopyService {
         }
 
         electronicSignatureService.createEntitySignature("ControlledCopyDistributionBatch", batch.getId(), batch.getBatchNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_REQUESTED", reason, null, null, firstCreated == null ? null : firstCreated.getStatus());
+        // Distribute/Cancel/Recall each log a batch-level row alongside every member copy's own
+        // row (see the "Controlled Copy Distribution Batch" logAs calls elsewhere in this class);
+        // Request never did, so the batch's own Audit Trail tab had no "created" event of its own
+        // -- viewing it only ever showed as many near-identical per-copy REQUEST rows as there were
+        // recipients (merged in from its members), with no single row representing the batch itself.
+        auditTrailService.logAs(
+                currentUser,
+                "Controlled Copy Distribution Batch",
+                batch.getBatchNumber(),
+                batch.getId(),
+                "REQUEST",
+                null,
+                firstCreated == null ? null : firstCreated.getStatus(),
+                reason,
+                List.of(),
+                signatureSessionId
+        );
         return toResponse(firstCreated, false);
     }
 
@@ -903,7 +1076,7 @@ public class ControlledCopyService {
     ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         int safePage = Math.max(page == null ? 1 : page, 1);
-        int safeLimit = Math.max(limit == null ? 10 : limit, 1);
+        int safeLimit = Math.min(Math.max(limit == null ? 10 : limit, 1), MAX_LIST_PAGE_SIZE);
         // Filtering and authorization both execute in SQL.  Do not load the whole
         // batch register and then slice it in Java: that turns a paged UI request
         // into an unbounded memory/latency cost as the register grows.
@@ -964,6 +1137,7 @@ public class ControlledCopyService {
             case "distributionlist" -> "distributionList";
             case "openedby" -> "requestedBy.fullName";
             case "revisionnumber", "version" -> "revisionNumber";
+            case "lastupdated", "lastupdatedat", "updated", "updatedat" -> "updatedAt";
             default -> "requestedAt";
         };
         return Sort.by(direction, property).and(Sort.by(Sort.Direction.ASC, "requestedAt"));
@@ -1125,18 +1299,27 @@ public class ControlledCopyService {
         batch.setDistributedAt(distributedAt);
         batch.setDistributionComment(distributionComment);
         batch.setQuantity(copies.size());
+        // Every copy in a batch shares one document, so anchoring resolves to the same recomputed
+        // instant for all of them; mirror it on the batch record too, which is what the batch
+        // summary response displays for a multi-recipient distribution.
+        anchorExpiryToDistributionIfNeeded(batch, distributedAt);
 
         com.fasterxml.jackson.databind.JsonNode customPlaceholderValues =
                 sanitizeCustomPlaceholderValues(request == null ? null : request.customPlaceholderValues());
 
         for (ControlledCopyRecord copy : copies) {
+            anchorExpiryToDistributionIfNeeded(copy, distributedAt);
             ensureControlledCopyNotExpired(copy, distributedAt);
             setControlledCopyStatus(copy, STATUS_DISTRIBUTED);
             copy.setCurrentStage("Distributed");
             copy.setDistributedBy(currentUser);
             copy.setDistributedAt(distributedAt);
             copy.setCustomPlaceholderValues(customPlaceholderValues);
-            UserAccount recipientUser = resolveOptionalUserReference(
+            // See the single-copy distribute() for why external copies must never be resolved
+            // to an internal user reference here.
+            UserAccount recipientUser = isExternalDistribution(copy)
+                    ? null
+                    : resolveOptionalUserReference(
                     request == null ? null : request.distributedTo(),
                     copy.getRecipientName()
             );
@@ -1155,6 +1338,14 @@ public class ControlledCopyService {
                 copy.setAccessToken(generateAccessToken());
                 copy.setAccessTokenIssuedAt(Instant.now());
             }
+            // Preview password issuance and the distribution e-mail (which carries that password +
+            // the preview link) are deliberately NOT done here. This loop only flips status/metadata
+            // synchronously; the placeholder-composed, copy-specific PDF is rendered afterward by the
+            // async per-copy step (finalizeDistributedCopy) once this transaction commits. Emailing
+            // before that step ran would hand out a preview link that still points at the generic,
+            // uncomposed PDF -- see the single-copy distribute() above for the correct order this
+            // mirrors (compose -> then notify), applied here in finalizeDistributedCopy instead since
+            // composition itself is async for a batch.
             copy.setDistributionComment(distributionComment);
             copy.setRecipientDate(LocalDate.now(SYSTEM_ZONE));
             if (StringUtils.hasText(request == null ? null : request.location())) {
@@ -1162,8 +1353,6 @@ public class ControlledCopyService {
             }
             controlledCopyRepository.save(copy);
             auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "DISTRIBUTE", "Ready for Distribution", "Distributed", distributionComment, List.of(), signatureSessionId);
-            notifyControlledCopyStakeholders(copy, currentUser, "DISTRIBUTE", distributionComment);
-            sendControlledCopyDistributionNotification(copy, currentUser, distributionComment, true);
         }
 
         controlledCopyDistributionBatchRepository.save(batch);
@@ -1186,34 +1375,127 @@ public class ControlledCopyService {
     /**
      * Finalizes the per-copy background processing step of a batch distribution
      * (e.g. re-rendered PDF / stamped preview) after the batch's status transition
-     * has already committed. Returns true when the copy was finalized (or was
-     * already finalized), false when it could not be processed on this attempt.
+     * has already committed. Returns {@link ControlledCopyFinalizationOutcome#SUCCESS} when the
+     * copy was finalized (or was already finalized), {@link ControlledCopyFinalizationOutcome#FAILED}
+     * when it could not be processed on this attempt, or
+     * {@link ControlledCopyFinalizationOutcome#SKIPPED_TERMINAL} when a concurrent lifecycle action
+     * (Obsolete/Cancel) has already moved the copy to a terminal state -- callers must treat that as
+     * a completed, intentional outcome, never as a failure to retry or restore from.
      */
     @Transactional
-    public boolean finalizeDistributedCopy(UUID copyId, UUID issuerUserId) {
+    public ControlledCopyFinalizationOutcome finalizeDistributedCopy(UUID copyId, UUID issuerUserId) {
         if (copyId == null) {
-            return false;
+            return ControlledCopyFinalizationOutcome.FAILED;
         }
         ControlledCopyRecord copy = controlledCopyRepository.findById(copyId).orElse(null);
         if (copy == null) {
-            return false;
+            return ControlledCopyFinalizationOutcome.FAILED;
+        }
+        if (isTerminalControlledCopyStatus(copy.getStatusCode())) {
+            return ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL;
         }
         // Note: distributeBatch() already flips each child copy's status to DISTRIBUTED
         // synchronously before this async step runs, so this is normally already true here.
         // The actual "slow part" this method exists for is the placeholder-composed PDF
         // re-render below, which must still run regardless of that status guard.
         boolean alreadyDistributed = STATUS_DISTRIBUTED.equalsIgnoreCase(normalizeControlledCopyStatusCode(copy.getStatusCode()));
+        // Never issue credentials/notify for a copy that was already finalized (e.g. this method
+        // re-run after a status-only guard tripped above) -- that would re-send the distribution
+        // e-mail (with a freshly rotated password, invalidating the one already sent) for a copy
+        // whose recipient already has a working preview link.
+        boolean alreadyFinalized = StringUtils.hasText(copy.getPreviewPasswordHash());
         UserAccount issuer = resolveIssuerOrSystemActor(issuerUserId);
-        applyComposedControlledCopyPlaceholders(copy);
-        if (!alreadyDistributed) {
-            setControlledCopyStatus(copy, STATUS_DISTRIBUTED);
-            copy.setCurrentStage("Distributed");
+        // This method runs on the batch executor's async thread (ControlledCopyBatchDistribution-
+        // AsyncService), which has no incoming HTTP request and therefore no SecurityContext --
+        // but applyComposedControlledCopyPlaceholders() below calls down into
+        // PublishingPdfComposerService -> RevisionService.getRevision(), which requires an
+        // authenticated current user for its own permission check. Without this, every batch
+        // distribution's per-copy finalize step failed outright ("Authentication required"),
+        // exhausted its 3 retries, and got silently rolled back to Ready for Distribution --
+        // Distribute Batch never actually completed for any batch. Establish a SecurityContext for
+        // the already-resolved issuer, exactly as AuthTokenFilter does for a real request, for the
+        // duration of this call only, then restore whatever the thread had before (it is pooled and
+        // reused across unrelated async tasks).
+        var previousSecurityContext = establishIssuerSecurityContext(issuer);
+        try {
+            applyComposedControlledCopyPlaceholders(copy);
+            if (!alreadyDistributed) {
+                setControlledCopyStatus(copy, STATUS_DISTRIBUTED);
+                copy.setCurrentStage("Distributed");
+            }
+            String previewPassword = alreadyFinalized ? null : issuePreviewPassword(copy);
+            // Flush now (not just save()) so an optimistic-lock conflict on this copy (e.g. a
+            // concurrent Obsolete/Cancel, or this same method racing itself) surfaces here -- before
+            // the e-mail below is dispatched -- rather than only at this transaction's commit, after
+            // that side-effect already ran and can no longer be undone.
+            controlledCopyRepository.saveAndFlush(copy);
+            if (!alreadyFinalized) {
+                // Only NOW -- after the copy-specific composed PDF actually exists -- do stakeholders
+                // get notified and the recipient's e-mail (with the preview link + password) go out.
+                // Sending this any earlier (e.g. synchronously in distributeControlledCopyBatch(), before
+                // this async step ran) would hand out a link to the still-generic, uncomposed PDF.
+                notifyControlledCopyStakeholders(copy, issuer, "DISTRIBUTE", copy.getDistributionComment());
+                sendControlledCopyDistributionNotification(copy, issuer, copy.getDistributionComment(), true, previewPassword);
+            }
+            // No audit row for this async step's success: the signed "DISTRIBUTE" entry written by
+            // distributeControlledCopyBatch() (Ready for Distribution -> Distributed) already
+            // records the action in full. This step is internal post-processing (per-copy PDF
+            // composition + recipient e-mail), not a distinct business action -- emitting a second
+            // "... -> Distributed" row with a fictional "Processing" from-status and no e-signature
+            // only duplicated the timeline. Its failure IS still audited (DISTRIBUTE_PROCESSING_FAILED
+            // in markDistributedCopyProcessingFailed), because a rollback to Ready for Distribution
+            // is a real, reviewer-relevant state change. Recall/Cancel batch flows never emitted an
+            // equivalent success row either.
+            return ControlledCopyFinalizationOutcome.SUCCESS;
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.setContext(previousSecurityContext);
         }
-        controlledCopyRepository.save(copy);
-        auditTrailService.logAs(issuer, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(),
-                "DISTRIBUTE_PROCESSING_COMPLETED", "Processing", "Distributed",
-                "Controlled copy batch distribution processing completed.", List.of(), null);
-        return true;
+    }
+
+    /**
+     * Establishes a SecurityContext for `issuer` on the current thread (mirroring what
+     * AuthTokenFilter does for a real HTTP request) so downstream code that requires
+     * currentUserService.requireCurrentUser() works correctly when invoked from an @Async
+     * background thread, which never receives one on its own. Returns the context that was in
+     * place before the call, so the caller can restore it in a finally block -- this thread may be
+     * pooled and reused for unrelated work afterward.
+     */
+    private org.springframework.security.core.context.SecurityContext establishIssuerSecurityContext(UserAccount issuer) {
+        var previous = org.springframework.security.core.context.SecurityContextHolder.getContext();
+        if (issuer != null) {
+            var permissions = permissionEvaluationService.getPermissionCodes(issuer);
+            var principal = new AuthenticatedUser(issuer.getId(), null, issuer.getUsername(), issuer.getRoleName(), permissions);
+            var authentication = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                    principal, null, tokenService.toAuthorities(permissions));
+            var context = org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(authentication);
+            org.springframework.security.core.context.SecurityContextHolder.setContext(context);
+        }
+        return previous;
+    }
+
+    /**
+     * Re-reads a copy's status in its own fresh transaction to check whether it has already reached
+     * a terminal lifecycle state. Used by the async worker after catching an optimistic-lock
+     * conflict from {@link #finalizeDistributedCopy} -- the conflict itself surfaces at the
+     * enclosing {@code @Transactional} proxy boundary (i.e. after that method has already returned
+     * to its caller), so re-checking here in a brand-new transaction is the only reliable way to
+     * learn which concurrent writer actually won the race.
+     */
+    @Transactional(readOnly = true)
+    public boolean isControlledCopyInTerminalState(UUID copyId) {
+        if (copyId == null) {
+            return false;
+        }
+        return controlledCopyRepository.findById(copyId)
+                .map(ControlledCopyRecord::getStatusCode)
+                .map(this::isTerminalControlledCopyStatus)
+                .orElse(false);
+    }
+
+    private boolean isTerminalControlledCopyStatus(String statusCode) {
+        String normalized = normalizeControlledCopyStatusCode(statusCode);
+        return STATUS_OBSOLETED.equalsIgnoreCase(normalized) || STATUS_CLOSED_CANCELLED.equalsIgnoreCase(normalized);
     }
 
     /**
@@ -1226,7 +1508,7 @@ public class ControlledCopyService {
     public void retryFailedDistribution(UUID batchId) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         ControlledCopyDistributionBatch batch = requireDistributionBatch(batchId);
-        controlledCopyAuthorizationService.requireDistributeControlledCopy(currentUser, batch);
+        controlledCopyAuthorizationService.requireRetryControlledCopyBatchAction(currentUser, batch, com.eqms.enums.ControlledCopyWorkflowAction.DISTRIBUTE_BATCH);
         controlledCopyBatchDistributionAsyncService.retryFailedItems(batchId, currentUser.getId());
     }
 
@@ -1237,7 +1519,7 @@ public class ControlledCopyService {
     public void retryFailedRecall(UUID batchId) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         ControlledCopyDistributionBatch batch = requireDistributionBatch(batchId);
-        controlledCopyAuthorizationService.requireRecallControlledCopy(currentUser, batch);
+        controlledCopyAuthorizationService.requireRetryControlledCopyBatchAction(currentUser, batch, com.eqms.enums.ControlledCopyWorkflowAction.RECALL_BATCH);
         controlledCopyBatchRecallAsyncService.retryFailedItems(batchId, currentUser.getId(), batch.getRecallReason(), batch.getRecallDate());
     }
 
@@ -1248,7 +1530,7 @@ public class ControlledCopyService {
     public void retryFailedCancel(UUID batchId) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         ControlledCopyDistributionBatch batch = requireDistributionBatch(batchId);
-        controlledCopyAuthorizationService.requireCancelControlledCopy(currentUser, batch);
+        controlledCopyAuthorizationService.requireRetryControlledCopyBatchAction(currentUser, batch, com.eqms.enums.ControlledCopyWorkflowAction.CANCEL_REQUEST);
         controlledCopyBatchCancelAsyncService.retryFailedItems(batchId, currentUser.getId(), batch.getDistributionComment());
     }
 
@@ -1266,25 +1548,43 @@ public class ControlledCopyService {
         if (copy == null) {
             return;
         }
+        if (isTerminalControlledCopyStatus(copy.getStatusCode())) {
+            // A concurrent lifecycle action (Obsolete/Cancel) already moved this copy to a terminal
+            // state -- never "restore" it back to Ready for Distribution.
+            return;
+        }
         UserAccount issuer = resolveIssuerOrSystemActor(issuerUserId);
+        // Truthful from-status: distributeControlledCopyBatch() had already moved this copy to
+        // Distributed; the async post-processing (PDF compose + recipient e-mail) then failed after
+        // retries, so it is rolled back here. There is no "Processing" lifecycle state -- recording
+        // the real transition (Distributed -> Ready for Distribution) is what tells a reviewer the
+        // copy was NOT actually delivered and the batch needs a retry.
+        String rolledBackFrom = firstNonBlank(copy.getStatus(), STATUS_DISTRIBUTED);
         setControlledCopyStatus(copy, STATUS_READY_FOR_DISTRIBUTION);
         copy.setCurrentStage("Ready for Distribution");
         controlledCopyRepository.save(copy);
         auditTrailService.logAs(issuer, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(),
-                "DISTRIBUTE_PROCESSING_FAILED", "Processing", "Ready for Distribution",
+                "DISTRIBUTE_PROCESSING_FAILED", rolledBackFrom, "Ready for Distribution",
                 StringUtils.hasText(message) ? message : "Controlled copy batch distribution processing failed.",
                 List.of(), null);
     }
 
     /**
-     * Resolves the actor for background/async processing audit entries. Falls back to the
-     * "admin" system account (same pattern as ControlledCopyExpiryScheduler) when the original
-     * issuer's account can no longer be found (e.g. deleted between request and async
-     * completion), so the state change is never left without an audit trail entry.
+     * Resolves the actor for background/async processing audit entries. Falls back to the reserved
+     * SYSTEM account (V413) when the original issuer's account can no longer be found (e.g. deleted
+     * between request and async completion), so the state change is never left without an audit
+     * trail entry and is never mis-attributed to a real human.
      */
     private UserAccount resolveIssuerOrSystemActor(UUID issuerUserId) {
         UserAccount issuer = issuerUserId == null ? null : userAccountRepository.findById(issuerUserId).orElse(null);
-        return issuer != null ? issuer : userAccountRepository.findByUsername("admin").orElse(null);
+        if (issuer != null) {
+            return issuer;
+        }
+        // The original issuer's account is gone (renamed/deleted between request and async
+        // completion). Attribute the state change to the reserved SYSTEM account (V413) so the
+        // audit trail still records a real, unambiguous "who" -- never null, never a human who
+        // did not perform this.
+        return systemActorProvider.get();
     }
 
     @Transactional
@@ -1300,9 +1600,11 @@ public class ControlledCopyService {
         copy.setPrintedBy(currentUser);
         copy.setPrintedAt(parseInstant(request == null ? null : request.printedAt(), Instant.now()));
         copy.setCurrentStage("Ready for Distribution");
-        controlledCopyRepository.save(copy);
+        // Flush now so an optimistic-lock conflict surfaces here, before the notification below.
+        controlledCopyRepository.saveAndFlush(copy);
         auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "PRINT", null, copy.getStatus(), "Controlled copy marked as printed", List.of(), signatureSessionId);
-        notifyControlledCopyStakeholders(copy, currentUser, "PRINT", "Controlled copy marked as printed");
+        // Notified only after this transaction commits -- see ControlledCopyActionNotificationEvent.
+        eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), currentUser.getId(), "PRINT", "Controlled copy marked as printed", null));
         return toResponse(copy, false);
     }
 
@@ -1317,12 +1619,19 @@ public class ControlledCopyService {
             throw new IllegalArgumentException("Comments are required when distributing a controlled copy");
         }
         Instant distributedAt = parseInstant(request == null ? null : request.distributedAt(), Instant.now());
+        anchorExpiryToDistributionIfNeeded(copy, distributedAt);
         ensureControlledCopyNotExpired(copy, distributedAt);
         setControlledCopyStatus(copy, STATUS_DISTRIBUTED);
         copy.setCurrentStage("Distributed");
         copy.setDistributedBy(currentUser);
         copy.setDistributedAt(distributedAt);
-        UserAccount recipientUser = resolveOptionalUserReference(
+        // External copies have no internal login account -- the recipient is only an e-mail
+        // address (externalRecipients). Never look one up by name/e-mail here: if that address
+        // happens to match an unrelated internal user's account (e.g. a test user sharing an
+        // e-mail), the copy would get silently hijacked to that internal user's identity/inbox.
+        UserAccount recipientUser = isExternalDistribution(copy)
+                ? null
+                : resolveOptionalUserReference(
                 request == null ? null : request.distributedTo(),
                 copy.getRecipientName()
         );
@@ -1341,6 +1650,7 @@ public class ControlledCopyService {
             copy.setAccessToken(generateAccessToken());
             copy.setAccessTokenIssuedAt(Instant.now());
         }
+        String previewPassword = issuePreviewPassword(copy);
         copy.setDistributionComment(distributionComment);
         copy.setRecipientDate(LocalDate.now(SYSTEM_ZONE));
         if (StringUtils.hasText(request == null ? null : request.location())) {
@@ -1348,11 +1658,14 @@ public class ControlledCopyService {
         }
         copy.setCustomPlaceholderValues(sanitizeCustomPlaceholderValues(request == null ? null : request.customPlaceholderValues()));
         applyComposedControlledCopyPlaceholders(copy);
-        controlledCopyRepository.save(copy);
+        // Flush now (not just save()) so an optimistic-lock conflict on this copy surfaces here --
+        // before the e-mail further below is dispatched -- rather than only at this transaction's
+        // commit, after that side-effect already ran and can no longer be undone.
+        controlledCopyRepository.saveAndFlush(copy);
         electronicSignatureService.createEntitySignature("ControlledCopyRecord", copy.getId(), copy.getControlledCopyNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_DISTRIBUTED", distributionComment, null, "Ready for Distribution", "Distributed");
         auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "DISTRIBUTE", "Ready for Distribution", "Distributed", distributionComment, List.of(), signatureSessionId);
-        notifyControlledCopyStakeholders(copy, currentUser, "DISTRIBUTE", distributionComment);
-        sendControlledCopyDistributionNotification(copy, currentUser, distributionComment, false);
+        // Notified only after this transaction commits -- see ControlledCopyActionNotificationEvent.
+        eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), currentUser.getId(), "DISTRIBUTE", distributionComment, previewPassword));
         return toResponse(copy, false);
     }
 
@@ -1404,12 +1717,19 @@ public class ControlledCopyService {
         if (destroyedByUser != null && witnessUser != null && destroyedByUser.getId().equals(witnessUser.getId())) {
             throw new IllegalArgumentException("Executor and witness must be different users");
         }
+        Instant destroyedAt = parseInstant(request == null ? null : request.destroyedAt(), Instant.now());
+        // Independent of the client-side check -- a client-only guard is not a control. A future
+        // timestamp on a destruction/loss event is an audit-trail integrity issue regardless of how
+        // it got past the UI.
+        if (destroyedAt.isAfter(Instant.now())) {
+            throw new IllegalArgumentException("Destruction date cannot be in the future");
+        }
         setControlledCopyStatus(copy, STATUS_OBSOLETED);
         copy.setCurrentStage("Obsoleted");
         String obsoleteReason = resolveDestroyObsoleteReason(destructionType);
         copy.setObsoleteReason(obsoleteReason);
         copy.setDestroyedBy(destroyedByUser == null ? currentUser : destroyedByUser);
-        copy.setDestroyedAt(parseInstant(request == null ? null : request.destroyedAt(), Instant.now()));
+        copy.setDestroyedAt(destroyedAt);
         copy.setObsoletedBy(currentUser);
         copy.setObsoletedAt(Instant.now());
         copy.setDestroyReason(normalize(request == null ? null : request.destroyReason()));
@@ -1417,12 +1737,14 @@ public class ControlledCopyService {
         copy.setDestructionType(destructionType);
         copy.setWitnessedBy(witnessUser == null ? normalize(request == null ? null : request.witnessedBy()) : witnessUser.getFullName());
         storeEvidenceFiles(copy, files, currentUser);
-        controlledCopyRepository.save(copy);
+        // Flush now so an optimistic-lock conflict surfaces here, before the notification below.
+        controlledCopyRepository.saveAndFlush(copy);
         String actionType = resolveDestroyAuditAction(obsoleteReason);
         String auditComment = buildDestroyAuditComment(copy, files.size());
         electronicSignatureService.createEntitySignature("ControlledCopyRecord", copy.getId(), copy.getControlledCopyNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_DESTROYED", copy.getDestroyReason(), null, fromStatus, "Obsoleted");
         auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), actionType, fromStatus, "Obsoleted", auditComment, List.of(), signatureSessionId);
-        notifyControlledCopyStakeholders(copy, currentUser, actionType, auditComment);
+        // Notified only after this transaction commits -- see ControlledCopyActionNotificationEvent.
+        eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), currentUser.getId(), actionType, auditComment, null));
         controlledCopyBatchStatusService.synchronize(copy);
         return toResponse(copy, true);
     }
@@ -1438,6 +1760,14 @@ public class ControlledCopyService {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         ControlledCopyRecord original = requireControlledCopy(id);
         controlledCopyAuthorizationService.requireReplaceLostDamaged(currentUser, original);
+        // The Obsoleted + Lost/Damaged invariant checked above stays true forever after the first
+        // replacement (nothing about `original` changes when a replacement is issued), so without
+        // this guard a double-click, retry, or two people acting on the same lost/damaged copy would
+        // each pass authorization and mint a separate replacement -- multiple controlled copies loose
+        // in the field for what should be exactly one lost/damaged original.
+        if (controlledCopyRepository.findTopByReplacedControlledCopy_IdOrderByRequestedAtDesc(original.getId()).isPresent()) {
+            throw new IllegalArgumentException("This controlled copy has already been replaced.");
+        }
         UUID signatureSessionId = requireValidSignatureToken(request == null ? null : request.signatureToken(), currentUser, "controlled copy replacement");
 
         DocumentRevisionRecord revision = original.getRevision();
@@ -1460,7 +1790,10 @@ public class ControlledCopyService {
                         ? "Replacement for " + original.getControlledCopyNumber() + ": " + reason
                         : "Replacement for " + original.getControlledCopyNumber(),
                 Boolean.TRUE.equals(original.getHasExpiryDate()),
-                original.getExpiryDate()
+                original.getExpiryDate(),
+                // A Lost/Damaged replacement always inherits the original's already-fixed expiry
+                // exactly, never recomputed at this replacement's own Distribute time.
+                false
         );
 
         ControlledCopyRecord copy = new ControlledCopyRecord();
@@ -1499,7 +1832,17 @@ public class ControlledCopyService {
         copy.setHasExpiryDate(original.getHasExpiryDate());
         copy.setExpiryDate(original.getExpiryDate());
         storeControlledCopyPublishedPdf(copy, publishedPdf);
-        controlledCopyRepository.save(copy);
+        // Flush now so an optimistic-lock conflict surfaces here, before the notification below.
+        // Also where the true-concurrency case of the duplicate-replacement guard above actually
+        // gets enforced: the up-front SELECT closes the common (sequential) double-submit, but two
+        // truly simultaneous requests could both pass it before either commits -- the unique index
+        // on replaced_controlled_copy_id (V410) is what makes the loser fail here instead of
+        // silently minting a second replacement.
+        try {
+            controlledCopyRepository.saveAndFlush(copy);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            throw new IllegalArgumentException("This controlled copy has already been replaced.");
+        }
 
         String auditComment = "Replacement controlled copy " + copy.getControlledCopyNumber()
                 + " issued for " + original.getControlledCopyNumber()
@@ -1517,7 +1860,8 @@ public class ControlledCopyService {
                 List.of(),
                 signatureSessionId
         );
-        notifyControlledCopyStakeholders(copy, currentUser, "REPLACE_LOST_DAMAGED", auditComment);
+        // Notified only after this transaction commits -- see ControlledCopyActionNotificationEvent.
+        eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), currentUser.getId(), "REPLACE_LOST_DAMAGED", auditComment, null));
         return toResponse(copy, true);
     }
 
@@ -1541,11 +1885,13 @@ public class ControlledCopyService {
         if (!StringUtils.hasText(copy.getRecallReason())) {
             throw new IllegalArgumentException("Reason for recall is required.");
         }
-        controlledCopyRepository.save(copy);
+        // Flush now so an optimistic-lock conflict surfaces here, before the notification below.
+        controlledCopyRepository.saveAndFlush(copy);
         String auditComment = buildControlledCopyRecordActionComment(copy, "RECALL", firstNonBlank(copy.getRecallReason(), request == null ? null : request.comment()));
         electronicSignatureService.createEntitySignature("ControlledCopyRecord", copy.getId(), copy.getControlledCopyNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_RECALLED", copy.getRecallReason(), null, fromStatus, "Obsoleted");
         auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "RECALL", fromStatus, "Obsoleted", auditComment, List.of(), signatureSessionId);
-        notifyControlledCopyStakeholders(copy, currentUser, "RECALL", auditComment);
+        // Notified only after this transaction commits -- see ControlledCopyActionNotificationEvent.
+        eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), currentUser.getId(), "RECALL", auditComment, null));
         controlledCopyBatchStatusService.synchronize(copy);
         return toResponse(copy, false);
     }
@@ -1564,11 +1910,13 @@ public class ControlledCopyService {
         copy.setCancelledBy(currentUser);
         copy.setCancelledAt(Instant.now());
         copy.setRequestReason(normalize(firstNonBlank(copy.getRequestReason(), request == null ? null : request.reason())));
-        controlledCopyRepository.save(copy);
+        // Flush now so an optimistic-lock conflict surfaces here, before the notification below.
+        controlledCopyRepository.saveAndFlush(copy);
         String auditComment = buildControlledCopyRecordActionComment(copy, "CANCEL", request == null ? null : request.reason());
         electronicSignatureService.createEntitySignature("ControlledCopyRecord", copy.getId(), copy.getControlledCopyNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_DISTRIBUTION_CANCELLED", copy.getRequestReason(), null, fromStatus, "Closed - Cancelled");
         auditTrailService.logAs(currentUser, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "CANCEL", fromStatus, "Closed - Cancelled", auditComment, List.of(), signatureSessionId);
-        notifyControlledCopyStakeholders(copy, currentUser, "CANCEL", auditComment);
+        // Notified only after this transaction commits -- see ControlledCopyActionNotificationEvent.
+        eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), currentUser.getId(), "CANCEL", auditComment, null));
         controlledCopyBatchStatusService.synchronize(copy);
         return toResponse(copy, false);
     }
@@ -1602,7 +1950,12 @@ public class ControlledCopyService {
         String batchAuditComment = buildControlledCopyBatchActionComment(batch, "CANCEL", cancellationReason);
         electronicSignatureService.createEntitySignature("ControlledCopyDistributionBatch", batch.getId(), batch.getBatchNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_DISTRIBUTION_CANCELLED", cancellationReason, null, fromStatus, "Closed - Cancelled");
         auditTrailService.logAs(currentUser, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId(), "CANCEL", fromStatus, "Closed - Cancelled", batchAuditComment, List.of(), signatureSessionId);
-        notifyControlledCopyBatchStakeholders(batch, copies, currentUser, "CANCEL", batchAuditComment);
+        // Per-copy stakeholder notification (including each copy's actual recipient) is sent from
+        // finalizeCancelledCopy() below, once a copy is actually cancelled -- not here. Notifying
+        // eagerly for the whole (unfiltered) `copies` list would (a) tell a Distributed copy's
+        // recipient their copy was cancelled when it wasn't (ineligible, excluded above), and
+        // (b) tell every recipient "cancelled" before knowing whether their specific copy's async
+        // finalize step actually succeeds.
 
         // Per-copy cancel (status flip + individual audit log) runs async, per copy, with
         // retry/progress tracking — mirrors distributeBatch()/recallBatch()'s job/event pattern.
@@ -1618,23 +1971,31 @@ public class ControlledCopyService {
 
     /**
      * Per-copy cancel mutation used by the async batch-cancel processing step
-     * (see {@link ControlledCopyBatchCancelAsyncService}). Returns false (never throws) so the
-     * caller can mark the item FAILED and continue with the rest of the batch instead of one bad
-     * copy aborting the others. A Distributed copy always fails here (by design — Distributed
-     * copies can never be cancelled) and is reported to the user as such via the item's error
-     * message rather than a hard batch-wide rejection.
+     * (see {@link ControlledCopyBatchCancelAsyncService}). Never throws -- the caller inspects the
+     * returned {@link ControlledCopyFinalizationOutcome} and marks the item FAILED/SKIPPED
+     * accordingly, so one bad copy never blocks the rest of the batch. A Distributed copy always
+     * fails here (by design — Distributed copies can never be cancelled) and is reported to the
+     * user as such via the item's error message rather than a hard batch-wide rejection.
      */
     @Transactional
-    public boolean finalizeCancelledCopy(UUID copyId, UUID issuerUserId, String cancellationReason) {
+    public ControlledCopyFinalizationOutcome finalizeCancelledCopy(UUID copyId, UUID issuerUserId, String cancellationReason) {
         if (copyId == null) {
-            return false;
+            return ControlledCopyFinalizationOutcome.FAILED;
         }
         ControlledCopyRecord copy = controlledCopyRepository.findById(copyId).orElse(null);
         if (copy == null) {
-            return false;
+            return ControlledCopyFinalizationOutcome.FAILED;
+        }
+        // A concurrent lifecycle action (e.g. the source Revision/Document being Obsoleted, which
+        // cascades to every non-terminal copy including Ready-for-Distribution ones) may have
+        // already moved this copy to a terminal state while it sat waiting for this async step.
+        // Blindly proceeding would overwrite that outcome's status/obsoleteReason with "Cancelled"
+        // -- corrupting the audit trail about why the copy actually became invalid.
+        if (isTerminalControlledCopyStatus(copy.getStatusCode())) {
+            return ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL;
         }
         if (STATUS_DISTRIBUTED.equalsIgnoreCase(normalizeControlledCopyStatusCode(copy.getStatusCode()))) {
-            return false;
+            return ControlledCopyFinalizationOutcome.FAILED;
         }
         try {
             UserAccount issuer = resolveIssuerOrSystemActor(issuerUserId);
@@ -1645,13 +2006,31 @@ public class ControlledCopyService {
             copy.setCancelledBy(issuer);
             copy.setCancelledAt(Instant.now());
             copy.setRequestReason(firstNonBlank(copy.getRequestReason(), cancellationReason));
-            controlledCopyRepository.save(copy);
+            // Flush now (not just save()) so an optimistic-lock conflict with a concurrent action on
+            // this same copy surfaces here -- before the notification below is dispatched -- rather
+            // than only at this transaction's commit, after the e-mail side-effect already ran.
+            controlledCopyRepository.saveAndFlush(copy);
             String auditComment = buildControlledCopyRecordActionComment(copy, "CANCEL", cancellationReason);
             auditTrailService.logAs(issuer, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "CANCEL", fromStatus, "Closed - Cancelled", auditComment, List.of(), null);
-            return true;
+            // No per-copy notification here (deliberately -- see notifyBatchCancelled()): this
+            // runs once per member copy, and per-copy notifying used to fire the SAME "your batch
+            // was cancelled" e-mail/in-app message once for EACH copy in the batch -- a batch of 5
+            // sent the actor 5 near-identical notifications. ControlledCopyBatchCancelAsyncService
+            // sends exactly one consolidated notification after every copy has been processed.
+            return ControlledCopyFinalizationOutcome.SUCCESS;
+        } catch (org.springframework.dao.OptimisticLockingFailureException conflictEx) {
+            // Same reasoning as finalizeDistributedCopy(): the version conflict surfaces only at
+            // this method's own transactional-proxy boundary, i.e. after it already returned/rolled
+            // back -- re-check in a fresh read to learn whether a concurrent action actually won by
+            // moving the copy to a terminal state (not a real failure) or something else conflicted.
+            if (isControlledCopyInTerminalState(copyId)) {
+                return ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL;
+            }
+            log.warn("Optimistic lock conflict cancelling controlled copy {} as part of batch cancel processing.", copyId, conflictEx);
+            return ControlledCopyFinalizationOutcome.FAILED;
         } catch (Exception ex) {
             log.warn("Failed to cancel controlled copy {} as part of batch cancel processing.", copyId, ex);
-            return false;
+            return ControlledCopyFinalizationOutcome.FAILED;
         }
     }
 
@@ -1690,7 +2069,9 @@ public class ControlledCopyService {
         String batchAuditComment = buildControlledCopyBatchActionComment(batch, "RECALL", recallReason);
         electronicSignatureService.createEntitySignature("ControlledCopyDistributionBatch", batch.getId(), batch.getBatchNumber(), currentUser, request == null ? null : request.signatureToken(), "CONTROLLED_COPY_RECALLED", recallReason, null, fromStatus, "Obsoleted");
         auditTrailService.logAs(currentUser, "Controlled Copy Distribution Batch", batch.getBatchNumber(), batch.getId(), "RECALL", fromStatus, "Obsoleted", batchAuditComment, List.of(), signatureSessionId);
-        notifyControlledCopyBatchStakeholders(batch, copies, currentUser, "RECALL", batchAuditComment);
+        // Per-copy stakeholder notification (including each copy's actual recipient) is sent from
+        // finalizeRecalledCopy() below, once a copy is actually recalled -- see cancelBatch()'s
+        // matching comment above for why notifying eagerly here is wrong.
 
         // Per-copy recall (status flip + individual audit log) runs async, per copy, with
         // retry/progress tracking — mirrors distributeBatch()'s job/event pattern so a large
@@ -1708,18 +2089,33 @@ public class ControlledCopyService {
 
     /**
      * Per-copy recall mutation used by the async batch-recall processing step
-     * (see {@link ControlledCopyBatchRecallAsyncService}). Returns false (never throws) so the
-     * caller can mark the item FAILED and continue with the rest of the batch instead of one bad
-     * copy aborting the others.
+     * (see {@link ControlledCopyBatchRecallAsyncService}). Never throws -- the caller inspects the
+     * returned {@link ControlledCopyFinalizationOutcome} and marks the item FAILED/SKIPPED
+     * accordingly, so one bad copy never blocks the rest of the batch.
      */
     @Transactional
-    public boolean finalizeRecalledCopy(UUID copyId, UUID issuerUserId, String recallReason, Instant recalledAt) {
+    public ControlledCopyFinalizationOutcome finalizeRecalledCopy(UUID copyId, UUID issuerUserId, String recallReason, Instant recalledAt) {
         if (copyId == null) {
-            return false;
+            return ControlledCopyFinalizationOutcome.FAILED;
         }
         ControlledCopyRecord copy = controlledCopyRepository.findById(copyId).orElse(null);
         if (copy == null) {
-            return false;
+            return ControlledCopyFinalizationOutcome.FAILED;
+        }
+        // recallBatch() intentionally snapshots Distributed OR already-Obsoleted copies as
+        // eligible, so OBSOLETED alone isn't a reliable "concurrent action already handled this"
+        // signal here (unlike Distribute/Cancel, where reaching a terminal state is never expected
+        // going in). Only skip when the copy is unambiguously not this recall's to finalize:
+        // Closed/Cancelled can never legitimately arrive here, and an OBSOLETED copy whose reason
+        // is something OTHER than "Recalled" was made invalid by a different, unrelated action
+        // (e.g. its Revision/Document being Obsoleted concurrently) -- overwriting that reason with
+        // "Recalled" would corrupt the audit trail about why the copy actually became invalid.
+        String currentStatus = normalizeControlledCopyStatusCode(copy.getStatusCode());
+        if (STATUS_CLOSED_CANCELLED.equalsIgnoreCase(currentStatus)) {
+            return ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL;
+        }
+        if (STATUS_OBSOLETED.equalsIgnoreCase(currentStatus) && !OBSOLETE_REASON_RECALLED.equalsIgnoreCase(copy.getObsoleteReason())) {
+            return ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL;
         }
         try {
             UserAccount issuer = resolveIssuerOrSystemActor(issuerUserId);
@@ -1732,13 +2128,29 @@ public class ControlledCopyService {
             copy.setObsoletedBy(issuer);
             copy.setObsoletedAt(recalledAt);
             copy.setRecallReason(firstNonBlank(copy.getRecallReason(), recallReason));
-            controlledCopyRepository.save(copy);
+            // Flush now (not just save()) so an optimistic-lock conflict with a concurrent action on
+            // this same copy surfaces here -- before the notification below is dispatched -- rather
+            // than only at this transaction's commit, after the e-mail side-effect already ran.
+            controlledCopyRepository.saveAndFlush(copy);
             String auditComment = buildControlledCopyRecordActionComment(copy, "RECALL", recallReason);
             auditTrailService.logAs(issuer, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "RECALL", fromStatus, "Obsoleted", auditComment, List.of(), null);
-            return true;
+            // Per-copy notification (covers this copy's own recipient, distributor, requester, etc.)
+            // only fires once the copy is actually recalled -- never eagerly for the whole batch.
+            notifyControlledCopyStakeholders(copy, issuer, "RECALL", auditComment);
+            return ControlledCopyFinalizationOutcome.SUCCESS;
+        } catch (org.springframework.dao.OptimisticLockingFailureException conflictEx) {
+            // Same reasoning as finalizeDistributedCopy()/finalizeCancelledCopy(): the version
+            // conflict surfaces only at this method's own transactional-proxy boundary -- re-check
+            // in a fresh read to learn whether a concurrent action actually won by moving the copy
+            // to a terminal state (not a real failure) or something else conflicted.
+            if (isControlledCopyInTerminalState(copyId)) {
+                return ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL;
+            }
+            log.warn("Optimistic lock conflict recalling controlled copy {} as part of batch recall processing.", copyId, conflictEx);
+            return ControlledCopyFinalizationOutcome.FAILED;
         } catch (Exception ex) {
             log.warn("Failed to recall controlled copy {} as part of batch recall processing.", copyId, ex);
-            return false;
+            return ControlledCopyFinalizationOutcome.FAILED;
         }
     }
 
@@ -1798,7 +2210,8 @@ public class ControlledCopyService {
             String externalRecipients,
             String requestReason,
             boolean hasExpiryDate,
-            Instant expiryDate
+            Instant expiryDate,
+            boolean expiryAnchoredToDistribution
     ) {
         ControlledCopyDistributionBatch batch = new ControlledCopyDistributionBatch();
         batch.setId(UUID.randomUUID());
@@ -1820,6 +2233,7 @@ public class ControlledCopyService {
         batch.setRequestReason(requestReason);
         batch.setHasExpiryDate(hasExpiryDate);
         batch.setExpiryDate(expiryDate);
+        batch.setExpiryAnchoredToDistribution(expiryAnchoredToDistribution);
         batch.setRequestedBy(currentUser);
         batch.setRequestedAt(Instant.now());
         return controlledCopyDistributionBatchRepository.save(batch);
@@ -1913,13 +2327,21 @@ public class ControlledCopyService {
         ControlledCopyRecord firstCopy = batchId == null
                 ? null
                 : controlledCopyRepository.findTopByDistributionBatch_IdOrderByCopyNumberAsc(batchId).orElse(null);
-        List<String> copyIds = includeCopyIds && batchId != null
-                ? controlledCopyRepository.findAllByDistributionBatch_IdOrderByCopyNumberAsc(batchId).stream()
+        List<ControlledCopyRecord> allCopiesForBatch = includeCopyIds && batchId != null
+                ? controlledCopyRepository.findAllByDistributionBatch_IdOrderByCopyNumberAsc(batchId)
+                : List.of();
+        List<String> copyIds = allCopiesForBatch.stream()
                 .map(ControlledCopyRecord::getId)
                 .filter(java.util.Objects::nonNull)
                 .map(UUID::toString)
-                .toList()
-                : List.of();
+                .toList();
+        // A batch distributed to multiple departments/business units at once (locationIds is a
+        // list at request time) can have member copies that don't all share one value -- show the
+        // shared value when every copy agrees, "Multiple" when they genuinely differ, null when
+        // none has one. Only computed when the member copies were already loaded above (detail
+        // view); list rows don't show Business Unit/Department, so no extra query for that case.
+        String batchBusinessUnitName = distinctBatchFieldValue(allCopiesForBatch, ControlledCopyRecord::getBusinessUnitName);
+        String batchDepartmentName = distinctBatchFieldValue(allCopiesForBatch, ControlledCopyRecord::getDepartmentName);
         // Keep the actual child controlled-copy number in the API response.  The
         // distribution batch number is a separate identifier and is only the
         // user-facing number when the request contains multiple copies.
@@ -1972,13 +2394,26 @@ public class ControlledCopyService {
                 ? batch.getRecallDate() : (isSingleton ? firstCopy.getRecalledAt() : null);
         String effectiveRecallReason = batch != null && StringUtils.hasText(batch.getRecallReason())
                 ? batch.getRecallReason() : (isSingleton ? firstCopy.getRecallReason() : null);
+        // The batch row's own updatedAt covers batch-level actions and any member action that
+        // flips the aggregated batch status; for a singleton the child copy is the source of
+        // truth for single-copy actions, so take whichever is more recent.
+        Instant batchUpdatedAt = batch == null ? null : batch.getUpdatedAt();
+        Instant firstCopyUpdatedAt = isSingleton ? firstCopy.getUpdatedAt() : null;
+        Instant effectiveLastUpdatedAt = batchUpdatedAt == null ? firstCopyUpdatedAt
+                : firstCopyUpdatedAt == null ? batchUpdatedAt
+                : (firstCopyUpdatedAt.isAfter(batchUpdatedAt) ? firstCopyUpdatedAt : batchUpdatedAt);
         return new ControlledCopyDistributionBatchSummaryResponse(
                 batch == null || batch.getId() == null ? null : batch.getId().toString(),
                 batch == null ? null : batch.getBatchNumber(),
                 controlledCopyNumber,
                 isSingleton
                         ? buildControlledCopyName(documentTitle, batch == null ? null : batch.getRevisionNumber(), firstCopy.getCopyNumber())
-                        : buildControlledCopyBatchName(documentTitle, batch == null ? null : batch.getRevisionNumber(), quantity),
+                        : buildControlledCopyBatchName(documentTitle, batch == null ? null : batch.getRevisionNumber()),
+                // Distinct from controlledCopyName above (which always ends with "Controlled Copy N"/
+                // a batch quantity suffix) -- this is just "<document title>_<revision>", matching the
+                // per-copy list response's own revisionName so the FE's "Document Revision" column
+                // never has to fall back to reusing the Controlled Copy Name column's value.
+                buildRevisionName(documentTitle, batch == null ? null : batch.getRevisionNumber()),
                 firstCopy == null || firstCopy.getId() == null ? null : firstCopy.getId().toString(),
                 documentId,
                 documentNumber,
@@ -1987,7 +2422,13 @@ public class ControlledCopyService {
                 batch == null ? null : batch.getRevisionNumber(),
                 batch == null || batch.getRevision() == null || batch.getRevision().getId() == null ? null : batch.getRevision().getId().toString(),
                 batch == null || batch.getRevision() == null ? null : DateTimeFormatUtils.formatDate(batch.getRevision().getValidUntil()),
-                effectiveExpiryDate == null ? null : DateTimeFormatUtils.formatDateTime(effectiveExpiryDate),
+                // A policy-derived expiry is only computed at distribution time (see
+                // anchorExpiryToDistributionIfNeeded); before that the stored value is a placeholder,
+                // so it is not shown while the batch is still Ready for Distribution.
+                effectiveExpiryDate == null || (effectiveDistributedAt == null && Boolean.TRUE.equals(batch == null
+                        ? (isSingleton ? firstCopy.getExpiryAnchoredToDistribution() : null)
+                        : batch.getExpiryAnchoredToDistribution()))
+                        ? null : DateTimeFormatUtils.formatDateTime(effectiveExpiryDate),
                 effectiveHasExpiryDate,
                 quantity,
                 readyCount,
@@ -2007,8 +2448,23 @@ public class ControlledCopyService {
                 effectiveDistributedAt == null ? null : DateTimeFormatUtils.formatDateTime(effectiveDistributedAt),
                 effectiveRecallDate == null ? null : DateTimeFormatUtils.formatDateTime(effectiveRecallDate),
                 effectiveRecallReason,
-                copyIds
+                batchBusinessUnitName,
+                batchDepartmentName,
+                copyIds,
+                effectiveLastUpdatedAt == null ? null : DateTimeFormatUtils.formatDateTime(effectiveLastUpdatedAt)
         );
+    }
+
+    private String distinctBatchFieldValue(List<ControlledCopyRecord> copies, java.util.function.Function<ControlledCopyRecord, String> extractor) {
+        java.util.Set<String> distinctValues = copies.stream()
+                .map(extractor)
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        if (distinctValues.isEmpty()) {
+            return null;
+        }
+        return distinctValues.size() == 1 ? distinctValues.iterator().next() : "Multiple";
     }
 
     private boolean matchesBatchSearch(ControlledCopyDistributionBatch batch, String search) {
@@ -2107,6 +2563,7 @@ public class ControlledCopyService {
             case "distributionlist" -> Comparator.comparing(batch -> normalizeForSort(batch.getDistributionList()));
             case "openedby" -> Comparator.comparing(batch -> normalizeForSort(batch.getRequestedBy() == null ? null : batch.getRequestedBy().getFullName()));
             case "revisionnumber", "version" -> Comparator.comparing(batch -> normalizeForSort(batch.getRevisionNumber()));
+            case "lastupdated", "lastupdatedat", "updated", "updatedat" -> Comparator.comparing(ControlledCopyDistributionBatch::getUpdatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
             default -> Comparator.comparing(ControlledCopyDistributionBatch::getRequestedAt, Comparator.nullsLast(Comparator.naturalOrder()));
         };
         if ("desc".equalsIgnoreCase(sortDirection)) {
@@ -2543,7 +3000,7 @@ public class ControlledCopyService {
     }
 
     private String csv(String value) {
-        return "\"" + String.valueOf(value == null ? "" : value).replace("\"", "\"\"") + "\"";
+        return com.eqms.util.CsvSafety.escapeCell(value);
     }
 
     private void addInstantDateRangePredicate(
@@ -2630,6 +3087,36 @@ public class ControlledCopyService {
         return fallback;
     }
 
+    /**
+     * If this copy's expiry was defaulted from the Expiry Policy's duration (not an explicit date
+     * the requester chose), recompute it as {@code distributedAt + duration} so it is anchored to
+     * the real distribution moment instead of whenever the request happened to be created -- a
+     * copy that waited in Ready for Distribution can then never turn out to already be expired.
+     * Must run before {@link #ensureControlledCopyNotExpired} at every Distribute call site.
+     */
+    private void anchorExpiryToDistributionIfNeeded(ControlledCopyRecord copy, Instant distributedAt) {
+        if (copy == null || !Boolean.TRUE.equals(copy.getExpiryAnchoredToDistribution()) || copy.getDocument() == null) {
+            return;
+        }
+        Instant recomputed = controlledCopyExpiryLimitService.resolveExpiryFrom(
+                copy.getDocument().getDocumentType(), copy.getDocument().getDepartment(), distributedAt);
+        if (recomputed != null) {
+            copy.setExpiryDate(recomputed);
+        }
+    }
+
+    /** Batch-record counterpart of {@link #anchorExpiryToDistributionIfNeeded(ControlledCopyRecord, Instant)}. */
+    private void anchorExpiryToDistributionIfNeeded(ControlledCopyDistributionBatch batch, Instant distributedAt) {
+        if (batch == null || !Boolean.TRUE.equals(batch.getExpiryAnchoredToDistribution()) || batch.getDocument() == null) {
+            return;
+        }
+        Instant recomputed = controlledCopyExpiryLimitService.resolveExpiryFrom(
+                batch.getDocument().getDocumentType(), batch.getDocument().getDepartment(), distributedAt);
+        if (recomputed != null) {
+            batch.setExpiryDate(recomputed);
+        }
+    }
+
     private void ensureControlledCopyNotExpired(ControlledCopyRecord copy, Instant executionTime) {
         if (copy == null || !Boolean.TRUE.equals(copy.getHasExpiryDate()) || copy.getExpiryDate() == null || executionTime == null) {
             return;
@@ -2705,48 +3192,128 @@ public class ControlledCopyService {
         com.fasterxml.jackson.databind.node.ObjectNode node =
                 new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
         raw.forEach((key, value) -> {
-            if (StringUtils.hasText(key) && value != null && activeKeys.contains(key.toLowerCase(Locale.ROOT))) {
+            if (StringUtils.hasText(key) && value != null && activeKeys.contains(key.toLowerCase(Locale.ROOT))
+                    && !ControlledCopyPlaceholderValueBuilder.isReserved(key)) {
                 node.put(key, value);
             }
         });
         return node.isEmpty() ? null : node;
     }
 
+    /**
+     * Renders the copy-specific PDF (copy number, distribution list, and any custom placeholder
+     * values are unique per Controlled Copy, so this cannot reuse the Revision's shared published
+     * PDF). Deliberately does NOT catch its own exceptions: a failure here must fail the whole
+     * distribute action (single-copy path) or the batch item (async batch path, which already
+     * retries and marks the item FAILED on any exception from finalizeDistributedCopy) rather than
+     * silently leaving the copy marked Distributed with the generic, non-personalized PDF -- see
+     * TBR-CC-011.
+     */
     private void applyComposedControlledCopyPlaceholders(ControlledCopyRecord copy) {
         if (copy == null || copy.getRevision() == null || copy.getRevision().getId() == null) {
             return;
         }
+        RevisionPublishingMetadata metadata = revisionPublishingMetadataRepository
+                .findByRevision_Id(copy.getRevision().getId())
+                .orElse(null);
+        boolean hasTemplate = metadata != null
+                && metadata.getPublishingTemplate() != null
+                && StringUtils.hasText(metadata.getSelectedPublishingLayout());
+        // Recipient details are captured once, when the copy is distributed (also for a copy that has no template).
+        com.fasterxml.jackson.databind.JsonNode recipientSnapshot = placeholderValueBuilder.captureRecipientSnapshotIfAbsent(copy);
+        byte[] composedPdf = hasTemplate ? composeThroughTemplate(copy, metadata, recipientSnapshot) : null;
+        markAndStore(copy, composedPdf, recipientSnapshot);
+    }
+
+    /** Composes the copy through the revision's publishing template (the existing behaviour, unchanged). */
+    private byte[] composeThroughTemplate(ControlledCopyRecord copy, RevisionPublishingMetadata metadata,
+                                          com.fasterxml.jackson.databind.JsonNode recipientSnapshot) {
+        // System-computed values the DCO must never be asked to retype -- copyNo/distributionList
+        // were already auto-filled here; recipientDepartment was missing, forcing a manual "Additional
+        // Details" prompt (driven by controlled_copy_placeholder_fields) for data the copy already
+        // captured at request time. Auto-filling it here means that prompt no longer needs to exist
+        // for this value -- see the 2026-09-04 cleanup of the misconfigured placeholder field rows.
+        // Server-computed, reserved values: copy identity and recipient (captured once, immutable) -- see
+        // ControlledCopyPlaceholderValueBuilder. A value typed in for a reserved key is ignored below.
+        Map<String, String> placeholderValues = new java.util.HashMap<>(placeholderValueBuilder.build(
+                copy,
+                recipientSnapshot,
+                // Printed on the document itself inside a fixed-width frame -- only the short sequence is shown;
+                // the full unique code stays available in emails, UI and audit trail.
+                StringUtils.hasText(copy.getControlledCopyNumber()) ? shortControlledCopyNumber(copy.getControlledCopyNumber()) : ""));
+        if (copy.getCustomPlaceholderValues() != null) {
+            copy.getCustomPlaceholderValues().fields().forEachRemaining(entry -> {
+                if (!ControlledCopyPlaceholderValueBuilder.isReserved(entry.getKey())) {
+                    placeholderValues.put(entry.getKey(), entry.getValue().asText(""));
+                }
+            });
+        }
+        PublishingPdfComposerService.PublishingCompositionResult composition;
         try {
-            RevisionPublishingMetadata metadata = revisionPublishingMetadataRepository
-                    .findByRevision_Id(copy.getRevision().getId())
-                    .orElse(null);
-            if (metadata == null
-                    || metadata.getPublishingTemplate() == null
-                    || !StringUtils.hasText(metadata.getSelectedPublishingLayout())) {
-                return;
-            }
-            Map<String, String> placeholderValues = new java.util.HashMap<>(Map.of(
-                    "copyNo", StringUtils.hasText(copy.getControlledCopyNumber()) ? displayControlledCopyNumber(copy.getControlledCopyNumber()) : "",
-                    "distributionList", StringUtils.hasText(copy.getDistributionList()) ? copy.getDistributionList() : ""
-            ));
-            if (copy.getCustomPlaceholderValues() != null) {
-                copy.getCustomPlaceholderValues().fields().forEachRemaining(entry ->
-                        placeholderValues.put(entry.getKey(), entry.getValue().asText("")));
-            }
-            PublishingPdfComposerService.PublishingCompositionResult composition = publishingPdfComposerService.composePreview(
+            composition = publishingPdfComposerService.composePreview(
                     copy.getRevision(),
-                    metadata.getPublishingTemplate(),
+                    PublishingWorkspaceService.effectiveTemplate(metadata),
                     metadata.getSelectedPublishingLayout(),
                     null, null, null,
                     placeholderValues
             );
-            byte[] composedPdf = composition == null ? null : composition.pdfBytes();
-            if (composedPdf != null && composedPdf.length > 0) {
-                storeControlledCopyPublishedPdf(copy, composedPdf);
-            }
-        } catch (Exception ex) {
-            log.warn("Failed to compose controlled-copy-specific PDF for copy {}; keeping the original published PDF.", copy.getId(), ex);
+        } catch (java.io.IOException ex) {
+            throw new IllegalStateException(
+                    "Failed to compose controlled-copy-specific PDF for copy " + copy.getId(), ex);
         }
+        byte[] composedPdf = composition == null ? null : composition.pdfBytes();
+        if (composedPdf == null || composedPdf.length == 0) {
+            throw new IllegalStateException(
+                    "Controlled-copy-specific PDF composition returned no bytes for copy " + copy.getId());
+        }
+        return composedPdf;
+    }
+
+    /**
+     * Burns the configured stamp/watermark into the PDF this copy will hold and stores it. A copy without a template keeps
+     * the published PDF stored at request time as its base. A failure here fails the whole distribution (never an unmarked copy).
+     */
+    private void markAndStore(ControlledCopyRecord copy, byte[] composedPdf, com.fasterxml.jackson.databind.JsonNode recipientSnapshot) {
+        if (composedPdf == null && copy.isMarkingApplied()) {
+            // A retry: the stored PDF is already marked and there is no template to compose a fresh one from.
+            return;
+        }
+        ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
+        byte[] toStore = composedPdf;
+        if (pdfMarkingService.isMarkingEnabled(policy)) {
+            byte[] base = composedPdf;
+            if (base == null) {
+                try {
+                    base = StringUtils.hasText(copy.getControlledCopyFilePath()) ? fileStorageService.readFile(copy.getControlledCopyFilePath()) : null;
+                } catch (IOException ex) {
+                    throw new IllegalStateException("Failed to read the controlled copy PDF to mark it: " + copy.getId(), ex);
+                }
+            }
+            ControlledCopyPdfMarkingService.Marked marked = pdfMarkingService.applyWithLayout(base, copy, recipientSnapshot, policy);
+            toStore = marked.pdf();
+            copy.setMarkingApplied(true);
+            // Remember where the marks went, so a later status stamp can be placed without covering them.
+            copy.setMarkingLayout(pdfMarkingService.toJson(marked.placements()));
+        }
+        storeControlledCopyPublishedPdf(copy, toStore);
+    }
+
+    /**
+     * The stamp and watermark this copy carries from when it was issued. Copies issued since the layout is recorded have it stored.
+     * For older copies the stamp frames are read back from the stored PDF, and a watermark is assumed across the middle of the page,
+     * so the status marks are still kept clear of them.
+     */
+    private List<ControlledCopyPdfMarkingService.Placement> issuedMarks(ControlledCopyRecord copy, byte[] storedPdf) {
+        if (!copy.isMarkingApplied()) {
+            return List.of();
+        }
+        List<ControlledCopyPdfMarkingService.Placement> recorded = pdfMarkingService.fromJson(copy.getMarkingLayout());
+        if (!recorded.isEmpty()) {
+            return recorded;
+        }
+        List<ControlledCopyPdfMarkingService.Placement> legacy = new java.util.ArrayList<>(pdfMarkingService.detectIssuedStamps(storedPdf));
+        legacy.add(pdfMarkingService.legacyWatermarkEstimate());
+        return legacy;
     }
 
     private ControlledCopyListItemResponse toResponse(ControlledCopyRecord copy, boolean includeEvidence) {
@@ -2816,7 +3383,9 @@ public class ControlledCopyService {
                 copy.getStatusCode(),
                 new StatusResponse(copy.getStatusCode(), copy.getStatus()),
                 DateTimeFormatUtils.formatDate(copy.getValidUntil()),
-                DateTimeFormatUtils.formatDateTime(copy.getExpiryDate()),
+                // Placeholder until distribution: a policy-derived expiry is (re)computed at distribute time.
+                copy.getDistributedAt() == null && Boolean.TRUE.equals(copy.getExpiryAnchoredToDistribution())
+                        ? null : DateTimeFormatUtils.formatDateTime(copy.getExpiryDate()),
                 copy.getHasExpiryDate(),
                 DateTimeFormatUtils.formatDateTime(copy.getExpiryReminderSentAt()),
                 documentNumber,
@@ -2830,9 +3399,17 @@ public class ControlledCopyService {
                 copy.getBusinessUnitName(),
                 copy.getDepartmentName(),
                 copy.getRequestReason(),
-                copy.getDistributedAt() == null ? null : DateTimeFormatUtils.formatDate(copy.getDistributedAt().atZone(SYSTEM_ZONE).toLocalDate()),
+                // Full timestamp -- distribution is stamped with Instant.now(), and the "Distributed
+                // On" column shows the time, not just the date (date-only rendered as "00:00:00").
+                copy.getDistributedAt() == null ? null : DateTimeFormatUtils.formatDateTime(copy.getDistributedAt()),
                 copy.getDistributedBy() == null ? null : copy.getDistributedBy().getFullName(),
                 copy.getRecipientName(),
+                copy.getRecipientUser() == null ? null : copy.getRecipientUser().getEmployeeCode(),
+                copy.getRecipientUser() == null ? null : copy.getRecipientUser().getDepartment(),
+                // Internal recipient: their account e-mail. External recipient: recipientName is
+                // already the e-mail address.
+                copy.getRecipientUser() != null ? copy.getRecipientUser().getEmail()
+                        : (isExternalDistribution(copy) ? copy.getRecipientName() : null),
                 copy.getRecipientSignature(),
                 DateTimeFormatUtils.formatDate(copy.getRecipientDate()),
                 copy.getRecalledAt() == null ? null : DateTimeFormatUtils.formatDate(copy.getRecalledAt().atZone(SYSTEM_ZONE).toLocalDate()),
@@ -2866,7 +3443,8 @@ public class ControlledCopyService {
                 replacedControlledCopy == null ? null : replacedControlledCopy.getId().toString(),
                 replacedControlledCopy == null ? null : displayControlledCopyNumber(replacedControlledCopy.getControlledCopyNumber()),
                 replacementControlledCopy == null ? null : replacementControlledCopy.getId().toString(),
-                replacementControlledCopy == null ? null : displayControlledCopyNumber(replacementControlledCopy.getControlledCopyNumber())
+                replacementControlledCopy == null ? null : displayControlledCopyNumber(replacementControlledCopy.getControlledCopyNumber()),
+                copy.getUpdatedAt() == null ? null : DateTimeFormatUtils.formatDateTime(copy.getUpdatedAt())
         );
     }
 
@@ -2914,6 +3492,22 @@ public class ControlledCopyService {
         return normalized.replaceAll("(?i)\\.EXT\\.", ".").replaceAll("(?i)\\.EXT$", "");
     }
 
+    /**
+     * Plain 3-digit sequence number (e.g. "002") extracted from the trailing segment of a full
+     * controlled-copy code (e.g. "CC.SOP.0037.002"). Only for the in-document "copyNo" placeholder,
+     * whose printed frame the full code overflows -- do not reuse where cross-document uniqueness
+     * matters (emails, UI, audit trail keep the full code via displayControlledCopyNumber).
+     */
+    private String shortControlledCopyNumber(String value) {
+        String display = displayControlledCopyNumber(value);
+        if (!StringUtils.hasText(display)) {
+            return display;
+        }
+        String[] segments = display.split("\\.");
+        String tail = segments[segments.length - 1];
+        return tail.matches("\\d{1,3}") ? tail : display;
+    }
+
     private String trimCopySuffix(String value) {
         if (!StringUtils.hasText(value)) {
             return value;
@@ -2956,7 +3550,7 @@ public class ControlledCopyService {
         return String.join(" - ", parts);
     }
 
-    private String buildControlledCopyBatchName(String documentTitle, String revisionNumber, int copyCount) {
+    private String buildControlledCopyBatchName(String documentTitle, String revisionNumber) {
         List<String> parts = new ArrayList<>();
         if (StringUtils.hasText(documentTitle)) {
             parts.add(documentTitle.trim());
@@ -2964,7 +3558,8 @@ public class ControlledCopyService {
         if (StringUtils.hasText(revisionNumber)) {
             parts.add(revisionNumber.trim());
         }
-        parts.add("Controlled Copies (" + Math.max(copyCount, 0) + ")");
+        // No copy-count suffix -- the list/detail views already show it in a dedicated Quantity column.
+        parts.add("Controlled Copies");
         return String.join(" - ", parts);
     }
 
@@ -2992,12 +3587,11 @@ public class ControlledCopyService {
     }
 
     /**
-     * Normalises any version string to the canonical A.0.B format.
-     * The middle part is always 0. Examples:
-     *   "0.0.1" → "0.0.1" (unchanged)
-     *   "1.0" → "1.0.0", "0.1" → "0.0.1"
-     *   "0.1.0" → "0.0.1" (middle non-zero, patch=0 → treat middle as patch)
-     *   "1.0.0" → "1.0.0"
+     * Canonicalises a revision number while PRESERVING its format family (part count), so a
+     * controlled copy of a two-part-family document keeps showing "0.2" rather than "0.0.2".
+     * Mirrors {@code RevisionService.normalizeVersionFormat}.
+     *   two-part  "0.1" -> "0.1",   "1.0"   -> "1.0"
+     *   three-part "0.0.1" -> "0.0.1", "0.1.0" -> "0.0.1", "1.0.0" -> "1.0.0"
      */
     private String normalizeVersionFormat(String version) {
         if (!StringUtils.hasText(version)) {
@@ -3006,15 +3600,13 @@ public class ControlledCopyService {
         String trimmed = version.trim();
         String[] parts = trimmed.split("\\.", -1);
         int major = parseSafePart(parts, 0);
-        int patch;
-        if (parts.length == 2) {
-            patch = parseSafePart(parts, 1);
-        } else {
-            int middle = parseSafePart(parts, 1);
-            patch = parseSafePart(parts, 2);
-            if (middle != 0 && patch == 0) {
-                patch = middle;
-            }
+        if (parts.length <= 2) {
+            return major + "." + parseSafePart(parts, 1);
+        }
+        int middle = parseSafePart(parts, 1);
+        int patch = parseSafePart(parts, 2);
+        if (middle != 0 && patch == 0) {
+            patch = middle;
         }
         return String.format("%d.0.%d", major, patch);
     }
@@ -3150,14 +3742,14 @@ public class ControlledCopyService {
             boolean watermarked
     ) { }
 
+    private record DecodedEvidenceImage(BufferedImage image, String contentType, boolean jpeg) { }
+
     private WatermarkedEvidence watermarkEvidence(MultipartFile file) throws IOException {
         byte[] original = file.getBytes();
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(original));
+        DecodedEvidenceImage decoded = decodeEvidenceImage(original);
+        BufferedImage image = decoded.image();
         String originalName = sanitizeFileName(file.getOriginalFilename());
-        String originalContentType = normalizedEvidenceContentType(file, originalName);
-        if (image == null) {
-            return unchangedEvidence(original, originalName, originalContentType);
-        }
+        String originalContentType = decoded.contentType();
 
         String logoData = systemConfigurationService == null ? null : systemConfigurationService.getPublicBranding().systemLogo();
         if (!StringUtils.hasText(logoData) || !logoData.startsWith("data:image/")) {
@@ -3195,8 +3787,7 @@ public class ControlledCopyService {
             graphics.dispose();
         }
 
-        boolean jpeg = "image/jpeg".equalsIgnoreCase(originalContentType)
-                || originalName.toLowerCase(Locale.ROOT).matches(".*\\.(jpe?g)$");
+        boolean jpeg = decoded.jpeg();
         String format = jpeg ? "jpg" : "png";
         byte[] encoded = encodeEvidenceImage(image, format, jpeg ? 0.92f : null);
         String extension = jpeg ? ".jpg" : ".png";
@@ -3206,19 +3797,42 @@ public class ControlledCopyService {
                 jpeg ? "image/jpeg" : "image/png", sha256(original), sha256(encoded), true);
     }
 
+    private DecodedEvidenceImage decodeEvidenceImage(byte[] bytes) throws IOException {
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            if (input == null) {
+                throw new IllegalArgumentException("Evidence file must be a valid JPEG or PNG image");
+            }
+            java.util.Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                throw new IllegalArgumentException("Evidence file must be a valid JPEG or PNG image");
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                String format = reader.getFormatName().toLowerCase(Locale.ROOT);
+                boolean jpeg = "jpeg".equals(format) || "jpg".equals(format);
+                if (!jpeg && !"png".equals(format)) {
+                    throw new IllegalArgumentException("Evidence file must be a valid JPEG or PNG image");
+                }
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if (width <= 0 || height <= 0 || (long) width * height > MAX_EVIDENCE_PIXELS) {
+                    throw new IllegalArgumentException("Evidence image exceeds the maximum allowed pixel dimensions");
+                }
+                BufferedImage image = reader.read(0);
+                if (image == null) {
+                    throw new IllegalArgumentException("Evidence file must be a valid JPEG or PNG image");
+                }
+                return new DecodedEvidenceImage(image, jpeg ? "image/jpeg" : "image/png", jpeg);
+            } finally {
+                reader.dispose();
+            }
+        }
+    }
+
     private WatermarkedEvidence unchangedEvidence(byte[] bytes, String fileName, String contentType) {
         String hash = sha256(bytes);
         return new WatermarkedEvidence(bytes, fileName, contentType, bytes, fileName, contentType, hash, hash, false);
-    }
-
-    private String normalizedEvidenceContentType(MultipartFile file, String fileName) {
-        if (StringUtils.hasText(file.getContentType())) {
-            return file.getContentType().toLowerCase(Locale.ROOT);
-        }
-        String lower = fileName.toLowerCase(Locale.ROOT);
-        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-        if (lower.endsWith(".png")) return "image/png";
-        return "application/octet-stream";
     }
 
     private byte[] encodeEvidenceImage(BufferedImage source, String format, Float quality) throws IOException {
@@ -3320,6 +3934,13 @@ public class ControlledCopyService {
         }
     }
 
+    private boolean isExternalDistribution(ControlledCopyRecord copy) {
+        return copy != null
+                && (StringUtils.hasText(copy.getExternalRecipients())
+                        || "external".equalsIgnoreCase(copy.getDistributionScope())
+                        || "EXTERNAL".equalsIgnoreCase(copy.getDistributionMode()));
+    }
+
     private UserAccount resolveUserReference(String preferredId, String fallbackReference, UserAccount fallbackUser) {
         UserAccount resolved = resolveOptionalUserReference(preferredId, fallbackReference);
         return resolved == null ? fallbackUser : resolved;
@@ -3384,6 +4005,25 @@ public class ControlledCopyService {
 
     private String generateAccessToken() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * Issues a second-factor credential only as part of Distribution. Its plaintext is never put
+     * on the entity, response, audit record or log; only the BCrypt hash is persisted and the
+     * plaintext is passed to that distribution email's template variables.
+     */
+    private String issuePreviewPassword(ControlledCopyRecord copy) {
+        if (copy == null) {
+            throw new IllegalArgumentException("Controlled copy is required to issue preview credentials");
+        }
+        if (passwordEncoder == null) {
+            throw new IllegalStateException("Preview password encoder is not configured");
+        }
+        byte[] randomBytes = new byte[PREVIEW_PASSWORD_BYTES];
+        PREVIEW_PASSWORD_RANDOM.nextBytes(randomBytes);
+        String password = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+        copy.setPreviewPasswordHash(passwordEncoder.encode(password));
+        return password;
     }
 
     private List<RecipientAllocation> resolveRequestRecipients(
@@ -3498,9 +4138,10 @@ public class ControlledCopyService {
         if (businessUnit == null) {
             return List.of();
         }
-        List<UserAccount> users = userAccountRepository.findAllByBusinessUnitNameOrCode(
+        List<UserAccount> users = userAccountRepository.findAllByBusinessUnitNameOrCodeAndStatus(
                 firstNonBlank(businessUnit.getName(), ""),
-                firstNonBlank(businessUnit.getCode(), "")
+                firstNonBlank(businessUnit.getCode(), ""),
+                com.eqms.entity.UserStatus.Active
         );
         if (users.isEmpty()) {
             return List.of();
@@ -3523,9 +4164,10 @@ public class ControlledCopyService {
         if (department == null) {
             return List.of();
         }
-        List<UserAccount> users = userAccountRepository.findAllByDepartmentNameOrCode(
+        List<UserAccount> users = userAccountRepository.findAllByDepartmentNameOrCodeAndStatus(
                 firstNonBlank(department.getName(), ""),
-                firstNonBlank(department.getCode(), "")
+                firstNonBlank(department.getCode(), ""),
+                com.eqms.entity.UserStatus.Active
         );
         if (users.isEmpty()) {
             return List.of();
@@ -3705,7 +4347,8 @@ public class ControlledCopyService {
                 isDownloadAllowed(copy),
                 isPrintAllowed(copy),
                 controlledCopyPolicyService.loadOrDefault().isDownloadOnce(),
-                controlledCopyPolicyService.loadOrDefault().isPrintOnce()
+                controlledCopyPolicyService.loadOrDefault().isPrintOnce(),
+                java.util.Optional.ofNullable(controlledCopyPreviewGrantService.expiresAt(token)).map(java.time.Instant::toString).orElse(null)
         );
     }
 
@@ -3728,6 +4371,10 @@ public class ControlledCopyService {
         // subsequent file/page/print call must present that grant; accepting the
         // long-lived email token here would let callers bypass the password.
         controlledCopyAuthorizationService.requireNotExpired(copy);
+        // Re-check lifecycle status on every call within an already-open preview session, not just
+        // at openPreview() -- otherwise a copy Obsoleted/Cancelled mid-session stays viewable for
+        // up to the remaining grant TTL (15 min). See requireStatusAllowedForPreview's own comment.
+        controlledCopyAuthorizationService.requireStatusAllowedForPreview(copy);
         controlledCopyPreviewGrantService.require(copy, token);
 
         // Preview links are deliberately usable by an anonymous/guest browser
@@ -3836,7 +4483,7 @@ public class ControlledCopyService {
                 PDFRenderer renderer = new PDFRenderer(document);
                 BufferedImage image = renderer.renderImageWithDPI(zeroBased, 160, ImageType.RGB);
                 ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
-                if (policy == null || policy.isWatermarkEnabled()) {
+                if (!copy.isMarkingApplied() && (policy == null || policy.isWatermarkEnabled())) {
                     applyControlledCopyWatermark(image, copy, policy);
                 }
                 ImageIO.write(image, "png", output);
@@ -3920,7 +4567,16 @@ public class ControlledCopyService {
      *                    aggregated ZIP email after the whole batch finishes (see
      *                    {@link #sendDcoBatchZipEmail}), so we don't spam them with one email per copy.
      */
-    private void sendControlledCopyDistributionNotification(ControlledCopyRecord copy, UserAccount actor, String comment, boolean partOfBatch) {
+    // Package-private (not private): also called from ControlledCopyNotificationAsyncService,
+    // which runs the single-copy distribute() notification after that transaction commits (see
+    // ControlledCopyActionNotificationEvent's javadoc for why).
+    void sendControlledCopyDistributionNotification(
+            ControlledCopyRecord copy,
+            UserAccount actor,
+            String comment,
+            boolean partOfBatch,
+            String previewPassword
+    ) {
         try {
             if (copy == null) {
                 return;
@@ -3939,7 +4595,10 @@ public class ControlledCopyService {
                             "workflowComment", comment == null ? "" : comment,
                             "documentTitle", copy.getDocumentTitle() == null ? "" : copy.getDocumentTitle(),
                             "documentNumber", copy.getDocumentNumber() == null ? "" : copy.getDocumentNumber(),
-                            "revisionNumber", copy.getRevisionNumber() == null ? "" : copy.getRevisionNumber()
+                            "revisionNumber", copy.getRevisionNumber() == null ? "" : copy.getRevisionNumber(),
+                            // Plaintext is scoped to this outbound email payload only. The record
+                            // persists only its BCrypt hash, never the credential itself.
+                            "previewPassword", previewPassword == null ? "" : previewPassword
                     )
             );
             if (recipient != null) {
@@ -4031,6 +4690,88 @@ public class ControlledCopyService {
         return cleaned.length() > 80 ? cleaned.substring(0, 80) : cleaned;
     }
 
+    private record ZipBuildResult(byte[] zipBytes, List<String> includedNumbers, List<String> failedNumbers) {
+    }
+
+    /** Per-copy isolation is deliberate: a batch can be hundreds/thousands of records, and one bad PDF
+     *  read (corrupt file, transient storage error, ...) must never take down the whole ZIP for every
+     *  other copy in the batch. Every failure is returned, not silently dropped. */
+    private ZipBuildResult buildDcoZip(List<ControlledCopyRecord> copies, UUID batchId) throws IOException {
+        List<String> includedNumbers = new java.util.ArrayList<>();
+        List<String> failedNumbers = new java.util.ArrayList<>();
+        java.io.ByteArrayOutputStream zipBuffer = new java.io.ByteArrayOutputStream();
+        java.util.Set<String> usedNames = new java.util.HashSet<>();
+        try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(zipBuffer)) {
+            for (ControlledCopyRecord copy : copies) {
+                try {
+                    byte[] pdfBytes = loadControlledCopyPreviewPdf(copy);
+                    if (pdfBytes == null || pdfBytes.length == 0) {
+                        failedNumbers.add(copy.getControlledCopyNumber());
+                        continue;
+                    }
+                    String baseName = String.join("_",
+                            List.of(
+                                    sanitizeForFileName(copy.getDocumentNumber()),
+                                    "Rev" + sanitizeForFileName(copy.getRevisionNumber()),
+                                    "Copy" + (copy.getCopyNumber() > 0 ? copy.getCopyNumber() : 0),
+                                    sanitizeForFileName(copy.getRecipientName())
+                            ).stream().filter(StringUtils::hasText).toList()
+                    ) + ".pdf";
+                    String entryName = baseName;
+                    int suffix = 2;
+                    while (!usedNames.add(entryName)) {
+                        entryName = baseName.replace(".pdf", "") + "_" + suffix + ".pdf";
+                        suffix++;
+                    }
+                    zip.putNextEntry(new java.util.zip.ZipEntry(entryName));
+                    zip.write(pdfBytes);
+                    zip.closeEntry();
+                    includedNumbers.add(copy.getControlledCopyNumber());
+                } catch (Exception copyEx) {
+                    failedNumbers.add(copy.getControlledCopyNumber());
+                    log.warn("Skipped controlled copy {} while building DCO batch ZIP for batch {}: {}",
+                            copy.getControlledCopyNumber(), batchId, copyEx.getMessage(), copyEx);
+                }
+            }
+        }
+        return new ZipBuildResult(zipBuffer.toByteArray(), includedNumbers, failedNumbers);
+    }
+
+    public record DcoBatchZipFile(String fileName, byte[] bytes, int includedCount, int totalCount) {
+    }
+
+    /**
+     * Rebuilds the same ZIP {@link #sendDcoBatchZipEmail} last emailed the DCO, for the "download"
+     * link in that email -- so the DCO isn't solely dependent on their mail client keeping the
+     * attachment (some strip large attachments, or the DCO reads the email from a different device).
+     * Sourced from the batch's most recent DISTRIBUTE run's durable job/item records, not the
+     * transient in-memory list from whenever that run first finished.
+     */
+    @Transactional(readOnly = true)
+    public DcoBatchZipFile buildDcoBatchZipForDownload(UUID batchId) throws IOException {
+        // Open to any current holder of the DCO permission, not just whoever was configured as the
+        // recipient at send time -- consistent with how the rest of this feature resolves eligibility
+        // (see resolveDcoRecipient), so a re-assignment doesn't lock the previous DCO's teammates out
+        // of a batch still sitting in their inbox.
+        UserAccount requester = currentUserService.requireCurrentUser();
+        if (!permissionEvaluationService.hasPermission(requester, ControlledCopyPolicyService.DCO_RECIPIENT_PERMISSION)) {
+            throw new AccessDeniedException("You do not hold the \"Receive Controlled Copies as DCO\" permission");
+        }
+        ControlledCopyDistributionBatch batch = controlledCopyDistributionBatchRepository.findById(batchId)
+                .orElseThrow(() -> new IllegalArgumentException("Distribution batch not found"));
+        List<UUID> succeededCopyIds = controlledCopyDistributionJobService.succeededDistributeCopyIds(batchId);
+        if (succeededCopyIds.isEmpty()) {
+            throw new IllegalStateException("This batch has no successfully distributed copies to download");
+        }
+        List<ControlledCopyRecord> copies = controlledCopyRepository.findAllById(succeededCopyIds);
+        ZipBuildResult built = buildDcoZip(copies, batchId);
+        if (built.includedNumbers().isEmpty()) {
+            throw new IllegalStateException("None of this batch's copies could be read to build the ZIP");
+        }
+        String zipFileName = "ControlledCopies_Batch_" + sanitizeForFileName(batch.getBatchNumber()) + ".zip";
+        return new DcoBatchZipFile(zipFileName, built.zipBytes(), built.includedNumbers().size(), copies.size());
+    }
+
     /**
      * Builds the one aggregated ZIP + email sent to the DCO after a distribution batch finishes
      * processing (all copies' PDFs finalized), when Controlled Copies Policy redirects delivery
@@ -4057,50 +4798,9 @@ public class ControlledCopyService {
         if (copies.isEmpty()) {
             return;
         }
-        // Per-copy isolation is deliberate: a batch can be hundreds/thousands of records, and one
-        // bad PDF read (corrupt file, transient storage error, ...) must never take down the
-        // whole ZIP/email for every other copy in the batch. Every failure is still individually
-        // logged/recorded so it's discoverable, not silently dropped.
-        List<String> includedNumbers = new java.util.ArrayList<>();
-        List<String> failedNumbers = new java.util.ArrayList<>();
-        byte[] zipBytes;
+        ZipBuildResult built;
         try {
-            java.io.ByteArrayOutputStream zipBuffer = new java.io.ByteArrayOutputStream();
-            java.util.Set<String> usedNames = new java.util.HashSet<>();
-            try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(zipBuffer)) {
-                for (ControlledCopyRecord copy : copies) {
-                    try {
-                        byte[] pdfBytes = loadControlledCopyPreviewPdf(copy);
-                        if (pdfBytes == null || pdfBytes.length == 0) {
-                            failedNumbers.add(copy.getControlledCopyNumber());
-                            continue;
-                        }
-                        String baseName = String.join("_",
-                                List.of(
-                                        sanitizeForFileName(copy.getDocumentNumber()),
-                                        "Rev" + sanitizeForFileName(copy.getRevisionNumber()),
-                                        "Copy" + (copy.getCopyNumber() > 0 ? copy.getCopyNumber() : 0),
-                                        sanitizeForFileName(copy.getRecipientName())
-                                ).stream().filter(StringUtils::hasText).toList()
-                        ) + ".pdf";
-                        String entryName = baseName;
-                        int suffix = 2;
-                        while (!usedNames.add(entryName)) {
-                            entryName = baseName.replace(".pdf", "") + "_" + suffix + ".pdf";
-                            suffix++;
-                        }
-                        zip.putNextEntry(new java.util.zip.ZipEntry(entryName));
-                        zip.write(pdfBytes);
-                        zip.closeEntry();
-                        includedNumbers.add(copy.getControlledCopyNumber());
-                    } catch (Exception copyEx) {
-                        failedNumbers.add(copy.getControlledCopyNumber());
-                        log.warn("Skipped controlled copy {} while building DCO batch ZIP for batch {}: {}",
-                                copy.getControlledCopyNumber(), batchId, copyEx.getMessage(), copyEx);
-                    }
-                }
-            }
-            zipBytes = zipBuffer.toByteArray();
+            built = buildDcoZip(copies, batchId);
         } catch (Exception ex) {
             log.warn("Failed to build DCO batch ZIP for batch {}: {}", batchId, ex.getMessage(), ex);
             emailNotificationService.recordControlledCopyDcoMisconfiguration(
@@ -4109,6 +4809,9 @@ public class ControlledCopyService {
                     "Failed to build the DCO batch ZIP: " + ex.getMessage(), List.of(), null);
             return;
         }
+        byte[] zipBytes = built.zipBytes();
+        List<String> includedNumbers = built.includedNumbers();
+        List<String> failedNumbers = built.failedNumbers();
         if (includedNumbers.isEmpty()) {
             log.warn("DCO batch ZIP for batch {} has no readable copies ({} failed) — email not sent.", batchId, failedNumbers.size());
             emailNotificationService.recordControlledCopyDcoMisconfiguration(
@@ -4124,6 +4827,7 @@ public class ControlledCopyService {
             variables.put("revisionNumber", copies.get(0).getRevisionNumber() == null ? "" : copies.get(0).getRevisionNumber());
             variables.put("copyCount", includedNumbers.size() + " of " + copies.size()
                     + (failedNumbers.isEmpty() ? "" : " (" + failedNumbers.size() + " could not be processed — contact Document Control)"));
+            variables.put("dcoZipDownloadUrl", emailNotificationService.buildControlledCopyDcoZipDownloadUrl(batchId));
             String zipFileName = "ControlledCopies_Batch_" + sanitizeForFileName(batch.getBatchNumber()) + ".zip";
             emailNotificationService.sendControlledCopyBatchZipToDco(dco, issuer, variables, zipFileName, zipBytes);
             // GMP traceability: an auditor must be able to reconstruct exactly which copies were --
@@ -4157,7 +4861,59 @@ public class ControlledCopyService {
         return String.join(", ", numbers.subList(0, cap)) + ", and " + (numbers.size() - cap) + " more";
     }
 
-    private void notifyControlledCopyStakeholders(ControlledCopyRecord copy, UserAccount actor, String action, String comment) {
+    // Package-private (not private): also called from ControlledCopyLifecycleObsolescenceService
+    // when a copy is auto-Obsoleted as a cascade of Document/Revision Obsolete or a new Revision
+    // publish -- that path previously only wrote an audit trail entry, leaving the copy's holder
+    // with no notice that their controlled copy is no longer valid.
+    /**
+     * The ONE consolidated notification for a Cancel Batch action -- e-mail + in-app -- sent once
+     * after every member copy has finished processing, to the actor alone. Replaces the previous
+     * per-copy notifyControlledCopyStakeholders() call inside finalizeCancelledCopy(), which fired
+     * the same "your batch was cancelled" message once for EACH copy (5 copies = 5 duplicate
+     * notifications) and also (incorrectly, for the same reason CANCEL skips it for a single copy
+     * -- see notifyControlledCopyStakeholders()) notified each copy's own never-actually-delivered
+     * recipient. @Transactional so the batch/actor's lazy associations resolve safely: this is
+     * invoked from ControlledCopyBatchCancelAsyncService, an @Async listener with no surrounding
+     * transaction of its own (deliberately, so a slow SMTP send never holds a DB connection open).
+     */
+    @Transactional(readOnly = true)
+    public void notifyBatchCancelled(UUID batchId, UUID actorUserId, int succeeded, int failed, int skipped) {
+        try {
+            if (batchId == null || actorUserId == null) {
+                return;
+            }
+            ControlledCopyDistributionBatch batch = controlledCopyDistributionBatchRepository.findById(batchId).orElse(null);
+            UserAccount actor = userAccountRepository.findById(actorUserId).orElse(null);
+            if (batch == null || actor == null || !StringUtils.hasText(actor.getEmail())) {
+                return;
+            }
+            int total = succeeded + failed + skipped;
+            StringBuilder comment = new StringBuilder("Cancelled ").append(succeeded).append(" of ").append(total)
+                    .append(succeeded == 1 ? " controlled copy" : " controlled copies")
+                    .append(" in batch ").append(batch.getBatchNumber());
+            if (failed > 0) {
+                comment.append("; ").append(failed).append(" failed");
+            }
+            if (skipped > 0) {
+                comment.append("; ").append(skipped).append(" skipped (already in a terminal state)");
+            }
+            Map<String, String> variables = emailNotificationService.buildControlledCopyBatchVariables(
+                    batch, actor, actor, "CANCEL", comment.toString(),
+                    Map.of(
+                            "controlledCopyStatus", batch.getStatus() == null ? "" : batch.getStatus(),
+                            "workflowStage", batch.getStatus() == null ? "" : batch.getStatus(),
+                            "workflowAction", "CANCEL",
+                            "workflowComment", comment.toString()
+                    )
+            );
+            emailNotificationService.sendControlledCopyNotification(
+                    resolveControlledCopyNotificationTemplate("CANCEL"), List.of(actor), variables);
+        } catch (Exception ex) {
+            log.warn("Failed to dispatch batch cancellation notification for batch {}: {}", batchId, ex.getMessage(), ex);
+        }
+    }
+
+    void notifyControlledCopyStakeholders(ControlledCopyRecord copy, UserAccount actor, String action, String comment) {
         try {
             if (copy == null) {
                 return;
@@ -4185,24 +4941,97 @@ public class ControlledCopyService {
                 recipients.add(copy.getPrintedBy());
             }
 
+            // CANCEL is only ever possible while a copy is still Ready for Distribution (see
+            // ensureCanCancel) -- it was NEVER actually handed to its intended recipient. Emailing
+            // that recipientUser/external address "your controlled copy has been cancelled" is
+            // meaningless to them (they never knew it existed) and reads as a confusing, out-of-
+            // context message. The person who actually needs to know is whoever is tracking this
+            // request -- the requester (and the actor who cancelled it, if different) -- not the
+            // never-notified intended recipient. RECALL is the correct analog for a copy that WAS
+            // actually distributed (see ensureCanRecall), and still notifies the recipient as before.
+            boolean isPreDistributionCancel = "CANCEL".equalsIgnoreCase(action);
+
+            // The actual recipient is already notified above (policy-managed dispatch, the direct
+            // generic send, or -- for DISTRIBUTE -- the dedicated distribution e-mail sent
+            // separately). Excluding them here prevents a second, different-looking e-mail to the
+            // same person whenever the recipient also happens to be one of the internal actors
+            // below -- most commonly true whenever someone requests a copy for themselves
+            // (recipientUser == requestedBy). Not applicable to CANCEL: recipientUser is being
+            // skipped entirely above, and there is nothing to de-duplicate against.
+            UUID recipientUserId = copy.getRecipientUser() == null ? null : copy.getRecipientUser().getId();
+            // The person who just performed THIS action (`actor`) never needs a "stakeholder" ping
+            // about their own click -- they already know it happened (they're watching the
+            // progress modal/result). Without this, distributedBy is set to the batch-distribute
+            // actor on every member copy synchronously, so whoever runs Distribute Batch ends up as
+            // a stakeholder on every one of its N copies and gets N near-identical in-app/e-mail
+            // notifications about the batch action they themselves just triggered.
+            //
+            // CANCEL is the one exception: it is the ONLY notification this request will ever
+            // generate (the recipientUser branch below is skipped for it), so the requester -- who
+            // in the common case (self-service cancel of one's own request) IS the actor -- must
+            // still get a durable e-mail/in-app record of it, not just a transient success toast.
+            UUID actorId = actor == null || isPreDistributionCancel ? null : actor.getId();
             recipients = recipients.stream()
                     .filter(java.util.Objects::nonNull)
+                    .filter(recipient -> recipientUserId == null || !recipientUserId.equals(recipient.getId()))
+                    .filter(recipient -> actorId == null || !actorId.equals(recipient.getId()))
                     .distinct()
                     .toList();
+
+            // Independent of the internal-actors list below: this copy's actual recipient (an
+            // internal user, or an external e-mail address) must be notified regardless of whether
+            // any internal actor happens to be attached to this copy.
+            String policyEvent = resolveControlledCopyPolicyEvent(action);
+            String templateType = resolveControlledCopyNotificationTemplate(action);
+            if (isPreDistributionCancel) {
+                // Skipped -- see isPreDistributionCancel above.
+            } else if (copy.getRecipientUser() != null) {
+                if (StringUtils.hasText(policyEvent)) {
+                    Map<String, String> policyVariables = emailNotificationService.buildControlledCopyVariables(
+                            copy, actor, copy.getRecipientUser(), action, comment, Map.of("actionUrl",
+                                    "/documents/controlled-copies/" + copy.getId())
+                    );
+                    notificationDispatcher.dispatch(policyEvent, List.of(copy.getRecipientUser()), policyVariables);
+                } else if (!"DISTRIBUTE".equalsIgnoreCase(action)
+                        && copy.getRecipientUser().getEmail() != null && !copy.getRecipientUser().getEmail().isBlank()) {
+                    // No admin-managed notification policy exists for this action (e.g. OBSOLETE) --
+                    // still notify the named internal recipient directly via the plain template.
+                    // Without this, they'd only be notified when they also happen to be one of the
+                    // internal actors below (requestedBy/distributedBy/...), which for a cascaded
+                    // Obsolete (someone else's action on the source Revision/Document) is never true.
+                    // DISTRIBUTE is excluded: sendControlledCopyDistributionNotification() already
+                    // notifies this exact recipient with the dedicated (preview link + password)
+                    // e-mail -- sending this generic one too would be a duplicate, different-looking
+                    // notification for the same single action.
+                    Map<String, String> recipientVariables = emailNotificationService.buildControlledCopyVariables(
+                            copy, actor, copy.getRecipientUser(), action, comment, Map.of(
+                                    "controlledCopyStatus", copy.getStatus() == null ? "" : copy.getStatus(),
+                                    "workflowStage", copy.getCurrentStage() == null ? "" : copy.getCurrentStage(),
+                                    "workflowAction", action == null ? "" : action,
+                                    "workflowComment", comment == null ? "" : comment
+                            )
+                    );
+                    emailNotificationService.sendControlledCopyNotification(templateType, List.of(copy.getRecipientUser()), recipientVariables);
+                }
+            } else {
+                // External copies have no internal login account -- the recipient is only an
+                // e-mail address (see isExternalDistribution()/distribute()). Without this branch,
+                // an external recipient who actually holds the file/preview link never learns it
+                // was Recalled/Cancelled/Destroyed -- they'd only find out by hitting an Access
+                // Denied page next time they open the (now-blocked) link.
+                String recipientEmail = normalize(copy.getRecipientName());
+                if (StringUtils.hasText(recipientEmail) && isValidEmailAddress(recipientEmail)) {
+                    Map<String, String> externalVariables = emailNotificationService.buildControlledCopyVariables(
+                            copy, actor, null, action, comment, Map.of("actionUrl", "")
+                    );
+                    emailNotificationService.sendControlledCopyNotificationToEmails(templateType, List.of(recipientEmail), externalVariables);
+                }
+            }
+
             if (recipients.isEmpty()) {
                 return;
             }
 
-            String policyEvent = resolveControlledCopyPolicyEvent(action);
-            if (StringUtils.hasText(policyEvent) && copy.getRecipientUser() != null) {
-                Map<String, String> policyVariables = emailNotificationService.buildControlledCopyVariables(
-                        copy, actor, copy.getRecipientUser(), action, comment, Map.of("actionUrl",
-                                "/documents/controlled-copies/" + copy.getId())
-                );
-                notificationDispatcher.dispatch(policyEvent, List.of(copy.getRecipientUser()), policyVariables);
-            }
-
-            String templateType = resolveControlledCopyNotificationTemplate(action);
             for (UserAccount recipient : recipients) {
                 if (recipient.getEmail() == null || recipient.getEmail().isBlank()) {
                     continue;
@@ -4233,89 +5062,16 @@ public class ControlledCopyService {
         }
     }
 
-    private void notifyControlledCopyBatchStakeholders(
-            ControlledCopyDistributionBatch batch,
-            List<ControlledCopyRecord> copies,
-            UserAccount actor,
-            String action,
-            String comment
-    ) {
-        try {
-            if (batch == null) {
-                return;
-            }
-            List<UserAccount> recipients = new ArrayList<>();
-            for (ControlledCopyRecord copy : copies) {
-                if (copy == null) {
-                    continue;
-                }
-                if (copy.getRequestedBy() != null) {
-                    recipients.add(copy.getRequestedBy());
-                }
-                if (copy.getDistributedBy() != null) {
-                    recipients.add(copy.getDistributedBy());
-                }
-                if (copy.getDestroyedBy() != null) {
-                    recipients.add(copy.getDestroyedBy());
-                }
-                if (copy.getRecalledBy() != null) {
-                    recipients.add(copy.getRecalledBy());
-                }
-                if (copy.getCancelledBy() != null) {
-                    recipients.add(copy.getCancelledBy());
-                }
-                if (copy.getApprovedBy() != null) {
-                    recipients.add(copy.getApprovedBy());
-                }
-                if (copy.getPrintedBy() != null) {
-                    recipients.add(copy.getPrintedBy());
-                }
-            }
-
-            recipients = recipients.stream()
-                    .filter(java.util.Objects::nonNull)
-                    .distinct()
-                    .toList();
-            if (recipients.isEmpty()) {
-                return;
-            }
-
-            String templateType = resolveControlledCopyNotificationTemplate(action);
-            for (UserAccount recipient : recipients) {
-                if (recipient.getEmail() == null || recipient.getEmail().isBlank()) {
-                    continue;
-                }
-                Map<String, String> variables = emailNotificationService.buildControlledCopyBatchVariables(
-                        batch,
-                        actor,
-                        recipient,
-                        action,
-                        comment,
-                        Map.of(
-                                "controlledCopyStatus", batch.getStatus() == null ? "" : batch.getStatus(),
-                                "workflowStage", batch.getStatus() == null ? "" : batch.getStatus(),
-                                "workflowAction", action == null ? "" : action,
-                                "workflowComment", comment == null ? "" : comment,
-                                "documentTitle", batch.getDocumentTitle() == null ? "" : batch.getDocumentTitle(),
-                                "documentNumber", batch.getDocumentNumber() == null ? "" : batch.getDocumentNumber(),
-                                "revisionNumber", batch.getRevisionNumber() == null ? "" : batch.getRevisionNumber(),
-                                "batchNumber", batch.getBatchNumber() == null ? "" : batch.getBatchNumber(),
-                                "batchQuantity", batch.getQuantity() > 0 ? String.valueOf(batch.getQuantity()) : "",
-                                "workflowScope", "Batch"
-                        )
-                );
-                emailNotificationService.sendControlledCopyNotification(templateType, List.of(recipient), variables);
-            }
-        } catch (Exception ex) {
-            log.warn("Failed to dispatch controlled copy batch email notification for batch {}: {}", batch == null ? null : batch.getBatchNumber(), ex.getMessage(), ex);
-        }
-    }
-
     private String resolveControlledCopyNotificationTemplate(String action) {
         String normalized = normalize(action).toUpperCase(Locale.ROOT);
         return switch (normalized) {
             case "CANCEL" -> EmailTemplateTypeUtils.CONTROLLED_COPY_CANCELLATION_NOTIFICATION;
             case "RECALL" -> EmailTemplateTypeUtils.CONTROLLED_COPY_RECALL_NOTIFICATION;
+            // Cascaded from the source Revision/Document being Obsoleted (manually or
+            // automatically) -- see ControlledCopyLifecycleObsolescenceService. Distinct from
+            // Recall so the recipient understands the copy became invalid because of its SOURCE,
+            // not because someone recalled the copy itself.
+            case "OBSOLETE" -> EmailTemplateTypeUtils.CONTROLLED_COPY_OBSOLETED_NOTIFICATION;
             default -> EmailTemplateTypeUtils.CONTROLLED_COPY_NOTIFICATION;
         };
     }
@@ -4357,12 +5113,7 @@ public class ControlledCopyService {
         if (!StringUtils.hasText(signatureToken)) {
             throw new IllegalArgumentException("Electronic signature is required for " + actionName);
         }
-        var parsed = tokenService.parseSignatureToken(signatureToken)
-                .orElseThrow(() -> new IllegalArgumentException("Electronic signature is invalid or expired"));
-        if (!Objects.equals(parsed.principal().userId(), currentUser.getId())) {
-            throw new IllegalArgumentException("Electronic signature must belong to the current user");
-        }
-        return parsed.principal().sessionId();
+        return signatureTokenConsumptionService.requireAndConsume(signatureToken, currentUser);
     }
 }
 

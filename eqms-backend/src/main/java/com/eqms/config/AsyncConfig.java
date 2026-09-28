@@ -22,6 +22,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  *   off batches concurrently.
  * - integrationExecutor: outbound calls to external systems (SharePoint/MS Graph) that mostly
  *   block on network I/O rather than local CPU, so a larger pool is safe/beneficial here.
+ * - controlledCopyNotificationExecutor: stakeholder notification (in-app + e-mail, both channels)
+ *   for single-copy Controlled Copy actions (Distribute/Recall/Cancel/Destroy/Replace/Print),
+ *   dispatched after that action's transaction commits. Kept separate from
+ *   controlledCopyBatchExecutor so a slow/degraded mail server delays only notification delivery,
+ *   never the heavier per-copy PDF composition work in a batch.
  */
 @Configuration
 public class AsyncConfig {
@@ -55,6 +60,17 @@ public class AsyncConfig {
         executor.setMaxPoolSize(8);
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("eqms-cc-batch-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "controlledCopyNotificationExecutor")
+    public TaskExecutor controlledCopyNotificationExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(6);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("eqms-cc-notify-");
         executor.initialize();
         return executor;
     }

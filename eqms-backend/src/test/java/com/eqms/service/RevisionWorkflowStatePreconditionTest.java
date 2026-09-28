@@ -32,10 +32,11 @@ class RevisionWorkflowStatePreconditionTest {
     @Mock private AuditTrailService auditTrailService;
     @Mock private WorkflowParticipantRepository workflowParticipantRepository;
     @Mock private AuthorizationEngineService authorizationEngineService;
+    @Mock private SystemConfigurationService systemConfigurationService;
 
     private RevisionWorkflowAuthorizationService newService() {
         return new RevisionWorkflowAuthorizationService(
-                auditTrailService, workflowParticipantRepository, authorizationEngineService);
+                auditTrailService, workflowParticipantRepository, authorizationEngineService, systemConfigurationService);
     }
 
     private DocumentRevisionRecord revision(String statusCode) {

@@ -72,6 +72,7 @@ import {
   pollSnapshotInBackground,
 } from "@/features/documents/shared/detailSnapshotHelpers";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
+import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
 
 type TabType =
   | "general"
@@ -778,14 +779,6 @@ const RevisionCreateViewContent: React.FC = () => {
     { id: "audit", label: "Audit Trail" },
   ];
 
-  const hasOfficeOnlineWorkingCopy = Boolean(
-    revisionDisplay?.storageItemId ||
-    revisionDisplay?.storageEditUrl ||
-    revisionDisplay?.storageViewUrl ||
-    revisionDisplay?.storageWebUrl ||
-    normalizeString(revisionDisplay?.storageProvider).toLowerCase() ===
-      "microsoft-graph",
-  );
   // An Upgrade intentionally starts without a source. The Author must upload a
   // new revision file; a predecessor's source is never reused as working content.
   const hasRevisionSource = Boolean(
@@ -812,21 +805,18 @@ const RevisionCreateViewContent: React.FC = () => {
     Boolean(revisionDisplay?.id) &&
     editingCompleted &&
     resolveRevisionCapability("submitForReview");
-  const canUploadToOffice =
-    Boolean(revisionDisplay?.id) &&
-    resolveRevisionCapability("syncToOffice");
-  const canCreateOfficeOnlineCopy =
-    canUploadToOffice && hasRevisionSource && !hasOfficeOnlineWorkingCopy;
+  // OnlyOffice has no "upload a working copy to a remote workspace" step -- it reads the
+  // revision's current MinIO-stored source file directly on each edit session (see
+  // RevisionService#getOnlyOfficeEditConfig), so there is no separate "Upload to Office Online"
+  // action anymore.
   const canEditOnline =
     Boolean(revisionDisplay?.id) &&
-    hasOfficeOnlineWorkingCopy &&
+    hasRevisionSource &&
     canCurrentUserEditDraftFile;
   const canReplaceRevisionFile =
     Boolean(revisionDisplay?.id) &&
     isEditable &&
     !editingCompleted &&
-    !hasOfficeOnlineWorkingCopy &&
-    revisionDisplay?.officeOnlineEverSynced !== true &&
     resolveRevisionCapability("uploadSource");
   const isRejectedRework = isEditable && reviewComments.length > 0;
   const isPublishingReworkComparison = Boolean(
@@ -834,28 +824,12 @@ const RevisionCreateViewContent: React.FC = () => {
       revisionDisplay?.previewType === "REVIEW_SNAPSHOT",
   );
 
-  const syncPreview = async (revisionId: string, useCurrentSource = false) => {
-    try {
-      setPreviewStatus("loading");
-      setPreviewMessage(null);
-      const cacheBuster = buildPreviewVersionCacheBuster(resolveRevisionPreviewVersionToken(revisionRecord));
-      const file = await loadPdfPreviewFile(
-        () => useCurrentSource
-          ? documentApi.previewRevisionSourceFile(revisionId, cacheBuster)
-          : documentApi.previewRevisionFile(revisionId, cacheBuster),
-        buildRevisionPreviewFileName(
-          generalForm.documentNumber,
-          generalForm.revisionNumber || "0.0.1",
-        ),
-      );
-      setRevisionFile(file);
-      setPreviewStatus("ready");
-      setPreviewMessage(null);
-    } catch (error) {
-      setRevisionFile(null);
-      setPreviewStatus("error");
-      setPreviewMessage((error as any)?.response?.data?.message || "Unable to load PDF preview from server.");
-    }
+  // The Draft Document tab shows the working file in the read-only OnlyOffice viewer, so no PDF is
+  // converted here any more (that conversion was the slow part of opening or uploading a draft).
+  // Kept as a function because upload/refresh flows still call it after they change the source.
+  const syncPreview = async (_revisionId: string, _useCurrentSource = false) => {
+    setPreviewStatus("idle");
+    setPreviewMessage(null);
   };
 
   const handleReplaceRevisionFile = async (file: File) => {
@@ -1035,41 +1009,6 @@ const RevisionCreateViewContent: React.FC = () => {
     }
   }, [activeQueryTab]);
 
-  useEffect(() => {
-    if (
-      !revisionDisplay?.id ||
-      !hasOfficeOnlineWorkingCopy ||
-      officeOnlineEditUrl
-    ) {
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const response = await documentApi.getRevisionOfficeOnlineEditLink(
-          revisionDisplay.id,
-        );
-        if (cancelled) return;
-        setOfficeOnlineDebugInfo({
-          configuredScope: response?.configuredScope || null,
-          effectiveScope: response?.effectiveScope || null,
-          fetchedAt: response?.fetchedAt || null,
-        });
-        if (response?.url) {
-          setOfficeOnlineEditUrl(response.url);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.debug("Office Online edit link prefetch skipped", error);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hasOfficeOnlineWorkingCopy, officeOnlineEditUrl, revisionDisplay?.id]);
-
   const handleBack = () => {
     const returnTo =
       locationState?.workspaceReturnPath ||
@@ -1138,14 +1077,27 @@ const RevisionCreateViewContent: React.FC = () => {
         if (cancelled) {
           return;
         }
+        const authorChanged = live.author !== revisionRecord?.author;
         const workflowChanged =
           live.editingStatus !== revisionRecord?.editingStatus ||
           live.sourceLocked !== revisionRecord?.sourceLocked ||
           live.status !== revisionRecord?.status ||
-          live.statusInfo?.id !== revisionRecord?.statusInfo?.id;
+          live.statusInfo?.id !== revisionRecord?.statusInfo?.id ||
+          authorChanged;
         if (!workflowChanged) {
           return;
         }
+
+        // A DCO can reassign the Author (via Document Detail > "Edit Revision for Upgrade") while
+        // this Draft is still open here -- the server re-checks authorization fresh on every
+        // Office Online action, so no one ever edits with stale authority, but the person sitting
+        // on this exact page would otherwise only find out when their next click is rejected. Warn
+        // them the moment the poll/realtime update notices it, so it's never a surprise mid-action.
+        const currentUserDisplayName = user?.fullName || user?.username || "";
+        const wasCurrentUserTheAuthor =
+          authorChanged &&
+          Boolean(currentUserDisplayName) &&
+          normalizeString(revisionRecord?.author).toLowerCase() === normalizeString(currentUserDisplayName).toLowerCase();
 
         setRevisionRecord((current) => current == null
           ? live
@@ -1159,9 +1111,17 @@ const RevisionCreateViewContent: React.FC = () => {
               lastModifiedDate: live.lastModifiedDate,
               lastModifiedBy: live.lastModifiedBy,
               signatures: live.signatures,
+              author: live.author,
             });
         void revisionActionCapabilities.refresh();
-        if (live.editingStatus === "COMPLETED" || live.sourceLocked) {
+        if (wasCurrentUserTheAuthor) {
+          showToast({
+            type: "warning",
+            title: "You are no longer the Author",
+            message: `${live.author || "Someone else"} was assigned as the Author of this revision. You can no longer edit or submit it.`,
+            duration: 6000,
+          });
+        } else if (live.editingStatus === "COMPLETED" || live.sourceLocked) {
           showToast({
             type: "success",
             title: "Author completed editing",
@@ -1205,6 +1165,7 @@ const RevisionCreateViewContent: React.FC = () => {
     };
   }, [
     isEditable,
+    revisionRecord?.author,
     revisionRecord?.editingStatus,
     revisionRecord?.id,
     revisionRecord?.sourceLocked,
@@ -1213,6 +1174,8 @@ const RevisionCreateViewContent: React.FC = () => {
     routeRevisionId,
     revisionActionCapabilities,
     showToast,
+    user?.fullName,
+    user?.username,
   ]);
 
   const persistRevision = async (revisionId: string) => {
@@ -1311,7 +1274,6 @@ const RevisionCreateViewContent: React.FC = () => {
         file,
         {
           changeDescription: note?.trim() || undefined,
-          revisionType: "Minor",
           templateRevisionId: useTemplate ? templateRevisionId : undefined,
         },
       );
@@ -1510,84 +1472,10 @@ const RevisionCreateViewContent: React.FC = () => {
     }
   };
 
-  const handleUploadToOfficeOnline = async () => {
+  const handleOpenEditFileOnline = () => {
     if (!revisionDisplay?.id) return;
-
-    setIsSyncingOffice(true);
-    try {
-      await documentApi.uploadRevisionToOfficeOnline(revisionDisplay.id);
-      const refreshed = await refreshRevisionFromBackend(revisionDisplay.id);
-      // Revision metadata contains a generic SharePoint URL. The actual
-      // authoring action must obtain a recipient-bound sharing link instead.
-      setOfficeOnlineEditUrl(null);
-      showToast({
-        type: "success",
-        title: "Synced successfully",
-        message: "The revision file has been uploaded to Office Online.",
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error("Failed to sync revision to Office Online", error);
-      showToast({
-        type: "error",
-        title: "Sync failed",
-        message:
-          (error as any)?.response?.data?.error?.message ||
-          (error as any)?.response?.data?.message ||
-          "Unable to upload the revision to Office Online.",
-        duration: 3000,
-      });
-    } finally {
-      setIsSyncingOffice(false);
-    }
-  };
-
-  const handleOpenEditFileOnline = async () => {
-    if (!revisionDisplay?.id) return;
-
-    try {
-      setIsOpeningOfficeOnline(true);
-      const popup = window.open("about:blank", "_blank");
-      // Never reuse a cached storage/edit URL. It is a generic SharePoint
-      // Doc.aspx URL, not a "Specific people" authorisation grant, and can
-      // produce Access Denied for an Entra B2B guest.
-      const response = await documentApi.getRevisionOfficeOnlineEditLink(
-        revisionDisplay.id,
-      );
-      setOfficeOnlineDebugInfo({
-        configuredScope: response?.configuredScope || null,
-        effectiveScope: response?.effectiveScope || null,
-        fetchedAt: response?.fetchedAt || null,
-      });
-      const url =
-        response?.url ||
-        revisionDisplay.storageEditUrl ||
-        revisionDisplay.storageViewUrl;
-      if (!url) {
-        popup?.close();
-        throw new Error("No Office Online edit link is available.");
-      }
-      if (popup) {
-        popup.location.href = url;
-        officeOnlineWindowRef.current = popup;
-      } else {
-        officeOnlineWindowRef.current = window.open(url, "_blank");
-      }
-      if (response?.url) setOfficeOnlineEditUrl(response.url);
-    } catch (error) {
-      console.error("Failed to open Office Online edit link", error);
-      showToast({
-        type: "error",
-        title: "Unable to open editor",
-        message:
-          (error as any)?.response?.data?.error?.message ||
-          (error as any)?.response?.data?.message ||
-          "The Office Online edit link is not available.",
-        duration: 3000,
-      });
-    } finally {
-      setIsOpeningOfficeOnline(false);
-    }
+    const title = revisionDisplay.fileName ? `?title=${encodeURIComponent(revisionDisplay.fileName)}` : "";
+    window.open(`/documents/revisions/${revisionDisplay.id}/onlyoffice-editor${title}`, "_blank");
   };
 
   const handleOpenPublishingWorkspace = async () => {
@@ -1779,20 +1667,6 @@ const RevisionCreateViewContent: React.FC = () => {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : null}
               {hasRevisionSource ? "Replace Source File" : "Upload Source File"}
-            </Button>
-          )}
-          {canCreateOfficeOnlineCopy && (
-            <Button
-              onClick={handleUploadToOfficeOnline}
-              size="sm"
-              variant="outline-emerald"
-              disabled={isSyncingOffice}
-              className="whitespace-nowrap gap-2"
-            >
-              {isSyncingOffice ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null}
-              Upload to Office Online
             </Button>
           )}
           {canCompleteEditing && (
@@ -2028,6 +1902,7 @@ const RevisionCreateViewContent: React.FC = () => {
               )}
               <DocumentTab
                 documentFile={revisionFile}
+                liveViewRevisionId={hasRevisionSource && revisionDisplay?.id && isLiveViewStage(revisionDisplay) ? revisionDisplay.id : null}
                 previewStatus={previewStatus}
                 previewMessage={previewMessage}
                 revisionId={revisionDisplay?.id}
@@ -2111,20 +1986,6 @@ const RevisionCreateViewContent: React.FC = () => {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : null}
                 {hasRevisionSource ? "Replace Source File" : "Upload Source File"}
-              </Button>
-            )}
-            {canCreateOfficeOnlineCopy && (
-              <Button
-                onClick={handleUploadToOfficeOnline}
-                size="sm"
-                variant="outline-emerald"
-                disabled={isSyncingOffice}
-                className="whitespace-nowrap gap-2"
-              >
-                {isSyncingOffice ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : null}
-                Upload to Office Online
               </Button>
             )}
             {canCompleteEditing && (

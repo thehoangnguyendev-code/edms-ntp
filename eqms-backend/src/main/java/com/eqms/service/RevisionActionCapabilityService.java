@@ -65,7 +65,6 @@ public class RevisionActionCapabilityService {
         Map<String, RevisionActionCapabilityDecisionResponse> actions = new LinkedHashMap<>();
 
         actions.put("preview", evaluatePreview(user, revision));
-        actions.put("downloadSource", evaluateFileAction(user, revision, FileAccessAction.DOWNLOAD, FileObjectType.SOURCE_DOCX));
         actions.put("editOnline", evaluateEditOnline(user, revision));
         actions.put("uploadSource", evaluateSourceUpload(user, revision, FileAccessAction.UPLOAD));
         actions.put("replaceSource", evaluateSourceUpload(user, revision, FileAccessAction.REPLACE));
@@ -75,8 +74,6 @@ public class RevisionActionCapabilityService {
         actions.put("completeAuthoring", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.COMPLETE_AUTHORING));
         actions.put("updateDraftMetadata", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.UPDATE_DRAFT_METADATA));
         actions.put("openPublishingWorkspace", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.OPEN_PUBLISHING_WORKSPACE));
-        actions.put("generateReviewSnapshot", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.GENERATE_REVIEW_SNAPSHOT));
-        actions.put("regenerateSnapshot", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.REGENERATE_SNAPSHOT));
         actions.put("submitForReview", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.SUBMIT_FOR_REVIEW));
         actions.put("completeReview", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.COMPLETE_REVIEW));
         actions.put("rejectReview", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.REJECT_REVIEW));
@@ -273,12 +270,16 @@ public class RevisionActionCapabilityService {
             );
         }
 
+        // GMP decision (HDR-AUTH-001): a direct stakeholder (already passed
+        // documentAuthorizationService.requireCanViewRevision in getCapabilities()) bypasses the
+        // separate preview permission.
+        boolean isDirectStakeholder = documentAuthorizationService.isDirectStakeholder(user, revision);
         FileAccessDecision decision = secureFileAccessService.check(
                 user,
                 FileAccessAction.VIEW_PREVIEW,
                 objectType,
                 revision.getId(),
-                FileAccessContext.ofRevision(revision)
+                FileAccessContext.ofRevision(revision, isDirectStakeholder)
         );
         return toDecision(decision, resolveRequiredPermissionCode(FileAccessAction.VIEW_PREVIEW, objectType));
     }
@@ -369,13 +370,18 @@ public class RevisionActionCapabilityService {
         return OFFICE_EDITABLE_EXTENSIONS.stream().anyMatch(normalized::endsWith);
     }
 
+    /**
+     * Whether the revision's source file is ready for an online editing session. OnlyOffice
+     * reads the revision's current MinIO-stored source file directly on each session -- no
+     * pre-upload "working copy" step is needed -- so the presence of a stored source file alone
+     * is sufficient, exactly like the frontend's own hasRevisionSource gate in RevisionCreateView.tsx.
+     */
     private boolean hasOfficeWorkspace(DocumentRevisionRecord revision) {
-        return revision != null && (
-                StringUtils.hasText(revision.getStorageEditUrl())
-                        || StringUtils.hasText(revision.getStorageItemId())
-                        || StringUtils.hasText(revision.getStorageDriveId())
-                        || StringUtils.hasText(revision.getStorageWebUrl())
-        );
+        if (revision == null) {
+            return false;
+        }
+        return StringUtils.hasText(revision.getSourceFileChecksum())
+                && StringUtils.hasText(revision.getSourceStorageObjectKey());
     }
 
     /**
@@ -402,14 +408,11 @@ public class RevisionActionCapabilityService {
     private String resolveRequiredPermissionCode(FileAccessAction action, FileObjectType objectType) {
         return switch (action) {
             case VIEW_PREVIEW -> "documents.revision.preview";
-            case DOWNLOAD -> "documents.revision.download_source";
             case UPLOAD -> "documents.revision.upload_source";
             case REPLACE -> "documents.revision.upload_source";
             case EDIT_ONLINE -> "documents.revision.edit_online";
             case SYNC_TO_OFFICE, SYNC_FROM_OFFICE -> "documents.revision.upload_office_online";
-            default -> objectType == FileObjectType.SOURCE_DOCX
-                    ? "documents.revision.download_source"
-                    : "documents.revision.preview";
+            default -> "documents.revision.preview";
         };
     }
 

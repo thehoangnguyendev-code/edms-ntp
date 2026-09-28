@@ -12,6 +12,7 @@ type AuditTrailUserDto = {
   role: string | null;
   position: string | null;
   department: string | null;
+  accessProfileNames?: string[] | null;
 };
 
 type AuditTrailRecordDto = Omit<AuditTrailRecord, 'fullName' | 'userId'> & {
@@ -36,6 +37,13 @@ export const normalizeAuditTrailRecord = (record: AuditTrailRecordDto): AuditTra
   user: record.user || null,
   fullName: record.user?.fullName || record.fullName || '',
   userId: record.user?.employeeCode || record.user?.id || record.userId || '',
+  // The list/entity endpoints (AuditTrailRecordResponse) only carry actionType/fromStatus/toStatus
+  // inside `metadata`, not as top-level fields -- unlike the detail endpoint. Without this fallback,
+  // any workflow-stepper logic reading these off the row (e.g. resolveTerminalProgressStep) silently
+  // sees them as undefined for every row and can never resolve the real prior status.
+  actionType: record.actionType || (record.metadata as any)?.actionType || null,
+  fromStatus: record.fromStatus || (record.metadata as any)?.fromStatus || null,
+  toStatus: record.toStatus || (record.metadata as any)?.toStatus || null,
   entityLabel: record.entityLabel || record.entityName || (record.metadata as any)?.entityLabel || '',
   objectCode: record.objectCode || (record.metadata as any)?.objectCode || null,
   changeSummary: record.changeSummary || (record.metadata as any)?.changeSummary || record.description || '',

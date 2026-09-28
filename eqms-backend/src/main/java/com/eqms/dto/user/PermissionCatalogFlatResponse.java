@@ -1,5 +1,7 @@
 package com.eqms.dto.user;
 
+import java.util.List;
+
 /** Flat (non-grouped) row for paginated, sortable permission-catalog browsing. */
 public record PermissionCatalogFlatResponse(
         String code,
@@ -7,6 +9,7 @@ public record PermissionCatalogFlatResponse(
         String description,
         String module,
         String groupName,
-        boolean requiresAudit
+        boolean requiresAudit,
+        List<PermissionLifecycleUsageResponse> lifecycleUsages
 ) {
 }

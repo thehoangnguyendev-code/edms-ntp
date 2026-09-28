@@ -23,10 +23,10 @@ export const describeRevisionPreviewUnavailable = (detail?: {
   const previewType = String(detail?.previewType || "").trim().toUpperCase();
 
   if (previewStatus === "GENERATING" && (previewType === "REVIEW_PDF" || previewType === "REVIEW_SNAPSHOT")) {
-    return "The immutable review snapshot is being generated. It will be available shortly.";
+    return "The immutable review snapshot is still being generated. Click \"Open File to Comment\" below to view and review the source file directly in the meantime.";
   }
   if (previewStatus === "FAILED") {
-    return "The PDF preview could not be generated. Document Control should review the source file and generation log.";
+    return "The PDF preview could not be generated automatically. Click \"Open File to Comment\" below to view and review the source file directly — the system will keep retrying the PDF snapshot in the background.";
   }
   if (previewType === "SOURCE_DOCX" || status === "DRAFT") {
     return detail?.fileName

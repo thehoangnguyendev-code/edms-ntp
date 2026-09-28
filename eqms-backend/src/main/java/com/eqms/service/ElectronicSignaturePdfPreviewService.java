@@ -18,16 +18,16 @@ public class ElectronicSignaturePdfPreviewService {
 
     private final ElectronicSignatureService electronicSignatureService;
     private final PublishingOpenXmlTemplateRenderService openXmlTemplateRenderService;
-    private final MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService;
+    private final OnlyOfficeDocumentEditService onlyOfficeDocumentEditService;
 
     public ElectronicSignaturePdfPreviewService(
             ElectronicSignatureService electronicSignatureService,
             PublishingOpenXmlTemplateRenderService openXmlTemplateRenderService,
-            MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService
+            OnlyOfficeDocumentEditService onlyOfficeDocumentEditService
     ) {
         this.electronicSignatureService = electronicSignatureService;
         this.openXmlTemplateRenderService = openXmlTemplateRenderService;
-        this.microsoftGraphOfficeOnlineService = microsoftGraphOfficeOnlineService;
+        this.onlyOfficeDocumentEditService = onlyOfficeDocumentEditService;
     }
 
     public byte[] generatePdfPreview() throws IOException {
@@ -40,7 +40,7 @@ public class ElectronicSignaturePdfPreviewService {
                 Map.of("approvedsignature", previewBlock),
                 true
         );
-        return microsoftGraphOfficeOnlineService.convertSourceFileToPdf(rendered, PREVIEW_FILE_NAME);
+        return onlyOfficeDocumentEditService.convertLocalFileToPdf(rendered, PREVIEW_FILE_NAME);
     }
 
     private Path createSampleDocx() throws IOException {

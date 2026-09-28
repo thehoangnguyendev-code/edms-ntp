@@ -1,10 +1,19 @@
 ﻿import React from "react";
-import { Search } from "lucide-react";
+
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import type { Reviewer } from "../tabs/subtabs";
 
-export const ReadOnlyReviewersTable: React.FC<{ reviewers: Reviewer[] }> = ({
-  reviewers,
-}) => {
+export const ReadOnlyReviewersTable: React.FC<{
+  reviewers: Reviewer[];
+  reviewRequirement?: "NONE" | "REQUIRED" | null;
+}> = ({ reviewers, reviewRequirement }) => {
+  if (reviewRequirement === "NONE") {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
+        Review is not required for this Document Type and Sub-Type.
+      </div>
+    );
+  }
   return (
     <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -34,15 +43,8 @@ export const ReadOnlyReviewersTable: React.FC<{ reviewers: Reviewer[] }> = ({
           <tbody className="divide-y divide-slate-200 bg-white">
             {reviewers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2.5">
-                    <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center">
-                      <Search className="h-5 w-5 text-slate-300" />
-                    </div>
-                    <p className="text-sm font-medium text-slate-500">
-                      No records to display
-                    </p>
-                  </div>
+                <td colSpan={6} className="p-0">
+                  <TableEmptyState title="No Reviewer assigned yet" />
                 </td>
               </tr>
             ) : (

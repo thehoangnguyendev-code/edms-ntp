@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
+@jakarta.persistence.EntityListeners(EntityChangeListener.class)
 @Table(name = "controlled_copy_distribution_batches")
 public class ControlledCopyDistributionBatch {
 
@@ -78,6 +79,10 @@ public class ControlledCopyDistributionBatch {
 
     @Column(name = "expiry_date")
     private Instant expiryDate;
+
+    /** See {@link com.eqms.entity.ControlledCopyRecord#getExpiryAnchoredToDistribution()}. */
+    @Column(name = "expiry_anchored_to_distribution", nullable = false)
+    private Boolean expiryAnchoredToDistribution = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requested_by_user_id")
@@ -165,6 +170,8 @@ public class ControlledCopyDistributionBatch {
     public void setHasExpiryDate(Boolean hasExpiryDate) { this.hasExpiryDate = hasExpiryDate; }
     public Instant getExpiryDate() { return expiryDate; }
     public void setExpiryDate(Instant expiryDate) { this.expiryDate = expiryDate; }
+    public Boolean getExpiryAnchoredToDistribution() { return expiryAnchoredToDistribution; }
+    public void setExpiryAnchoredToDistribution(Boolean expiryAnchoredToDistribution) { this.expiryAnchoredToDistribution = expiryAnchoredToDistribution; }
     public UserAccount getRequestedBy() { return requestedBy; }
     public void setRequestedBy(UserAccount requestedBy) { this.requestedBy = requestedBy; }
     public Instant getRequestedAt() { return requestedAt; }

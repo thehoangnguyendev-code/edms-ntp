@@ -75,6 +75,13 @@ export const Select: React.FC<SelectProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  // See the matching comment in MultiSelect.tsx: onSearch is frequently a fresh inline function
+  // on every render, so it must not sit in the debounce effect's dependency array below or every
+  // unrelated parent re-render re-triggers (and visually flashes) the search.
+  const onSearchRef = useRef(onSearch);
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
 
   // Flatten groups to options for internal use
   const safeOptions = options.filter(Boolean) as SelectOption[];
@@ -126,7 +133,7 @@ export const Select: React.FC<SelectProps> = ({
 
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const results = await onSearch(searchQuery);
+        const results = await onSearchRef.current!(searchQuery);
         setAsyncOptions(results);
       } catch (error) {
         console.error('Search failed:', error);
@@ -141,7 +148,8 @@ export const Select: React.FC<SelectProps> = ({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchQuery, onSearch, debounceMs, minSearchLength, isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSearch intentionally excluded, see onSearchRef above
+  }, [searchQuery, debounceMs, minSearchLength, isOpen]);
 
   // Calculate dropdown position
   const updatePosition = () => {

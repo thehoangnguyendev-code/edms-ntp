@@ -8,10 +8,12 @@ import com.eqms.entity.UserAccount;
 import com.eqms.enums.RevisionWorkflowAction;
 import com.eqms.repository.DocumentRelationRepository;
 import com.eqms.repository.DocumentRevisionRepository;
+import com.eqms.repository.DocumentStakeholderHistoryRepository;
 import com.eqms.repository.DocumentWorkflowParticipantRepository;
 import com.eqms.repository.RevisionWorkflowParticipantRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -33,6 +35,8 @@ public class DocumentAuthorizationService {
     private final DocumentRelationRepository documentRelationRepository;
     private final DocumentMasterWorkflowAuthorizationService documentMasterWorkflowAuthorizationService;
     private final RevisionWorkflowAuthorizationService revisionWorkflowAuthorizationService;
+    private final DocumentStakeholderHistoryRepository documentStakeholderHistoryRepository;
+    private final SystemConfigurationService systemConfigurationService;
 
     public DocumentAuthorizationService(
             DocumentWorkflowParticipantRepository documentWorkflowParticipantRepository,
@@ -43,13 +47,17 @@ public class DocumentAuthorizationService {
             LifecycleStatePolicyEvaluator lifecycleStatePolicyEvaluator,
             DocumentRelationRepository documentRelationRepository,
             DocumentMasterWorkflowAuthorizationService documentMasterWorkflowAuthorizationService,
-            RevisionWorkflowAuthorizationService revisionWorkflowAuthorizationService
+            RevisionWorkflowAuthorizationService revisionWorkflowAuthorizationService,
+            DocumentStakeholderHistoryRepository documentStakeholderHistoryRepository,
+            @Lazy SystemConfigurationService systemConfigurationService
     ) {
         this.documentWorkflowParticipantRepository = documentWorkflowParticipantRepository;
         this.revisionWorkflowParticipantRepository = revisionWorkflowParticipantRepository;
         this.documentRevisionRepository = documentRevisionRepository;
         this.permissionEvaluationService = permissionEvaluationService;
         this.objectAccessEvaluationService = objectAccessEvaluationService;
+        this.documentStakeholderHistoryRepository = documentStakeholderHistoryRepository;
+        this.systemConfigurationService = systemConfigurationService;
         this.lifecycleStatePolicyEvaluator = lifecycleStatePolicyEvaluator;
         this.documentRelationRepository = documentRelationRepository;
         this.documentMasterWorkflowAuthorizationService = documentMasterWorkflowAuthorizationService;
@@ -71,6 +79,22 @@ public class DocumentAuthorizationService {
 
     public void requireCanManageDocumentWorkspace(UserAccount user) {
         if (!canManageDocumentWorkspace(user)) {
+            throw new AccessDeniedException("Current user is not allowed to perform this action");
+        }
+    }
+
+    /** "documents.document.create" was previously only ever read by CapabilityService to decide
+     * whether the FE shows the "+ Add Document" button -- the actual create-draft endpoint only
+     * checked the broader documents.workspace.manage (also used by canPublishRevision(), so it
+     * can't just be granted to document.create holders generally without also handing them
+     * publish rights). An Access Profile granting only "Create a new document shell" therefore
+     * showed the Add button but always 403'd on save. Scoped to draft creation only. */
+    public boolean canCreateDocument(UserAccount user) {
+        return canManageDocumentWorkspace(user) || permissionEvaluationService.hasPermission(user, "documents.document.create");
+    }
+
+    public void requireCanCreateDocument(UserAccount user) {
+        if (!canCreateDocument(user)) {
             throw new AccessDeniedException("Current user is not allowed to perform this action");
         }
     }
@@ -107,7 +131,7 @@ public class DocumentAuthorizationService {
                 user,
                 "documents.admin.view",
                 "documents.admin.manage_workflow_roles",
-                "documents.admin.manage_sod_constraints",
+                "security.sod.manage",
                 "documents.document.view_all"
         );
     }
@@ -118,7 +142,18 @@ public class DocumentAuthorizationService {
         }
     }
 
-    public boolean canViewDocument(UserAccount user, DocumentRecord document) {
+    /**
+     * True when the user has a direct, record-scoped relationship to this Document -- Admin/DCO
+     * (via the blanket {@link #canViewAllDocuments}), the Author, or any workflow participant
+     * (Co-author/Reviewer/Approver on the document or any of its revisions). Deliberately EXCLUDES
+     * the strict-visibility broad-viewer grant (base {@code documents.document.view} permission +
+     * terminal-status filter) below -- that grant is for indirect/broad viewers only.
+     *
+     * GMP decision (HDR-AUTH-001): direct stakeholders automatically see a record's Preview file
+     * and Audit Trail tab without needing the separate preview/view_audit permission codes;
+     * indirect/broad viewers still need them. See SecureFileAccessService and AuditTrailService.
+     */
+    public boolean isDirectStakeholder(UserAccount user, DocumentRecord document) {
         if (user == null || user.getId() == null || document == null) {
             return false;
         }
@@ -130,13 +165,31 @@ public class DocumentAuthorizationService {
         if (Objects.equals(authorId, currentUserId)) {
             return true;
         }
-        boolean isParticipant = documentWorkflowParticipantRepository
+        if (documentWorkflowParticipantRepository
                 .findAllByDocument_IdOrderBySequenceOrderAsc(document.getId())
                 .stream()
                 .anyMatch(participant -> participant.getUser() != null && Objects.equals(participant.getUser().getId(), currentUserId))
                 || revisionWorkflowParticipantRepository
-                .countByRevision_Document_IdAndUser_Id(document.getId(), currentUserId) > 0;
-        if (isParticipant) {
+                .countByRevision_Document_IdAndUser_Id(document.getId(), currentUserId) > 0) {
+            return true;
+        }
+        // Optional, per-role (Document Properties > "Retain Visibility for Removed ..." -- one
+        // toggle each for Author/Co-Author/Reviewer/Approver, off by default): a user REMOVED from
+        // one of those roles (e.g. reassigned via "Edit Revision for Upgrade") would otherwise lose
+        // all trace above the moment they're no longer the CURRENT participant, and no separate
+        // revision-level row exists for them yet -- this consults the permanent history, but only
+        // for whichever of the 4 roles currently has its own toggle enabled.
+        java.util.Set<String> retainedTypes = systemConfigurationService.getRetainVisibilityForRemovedParticipantTypes();
+        return !retainedTypes.isEmpty()
+                && documentStakeholderHistoryRepository.existsByDocument_IdAndUser_IdAndParticipantTypeIn(
+                        document.getId(), currentUserId, retainedTypes);
+    }
+
+    public boolean canViewDocument(UserAccount user, DocumentRecord document) {
+        if (user == null || user.getId() == null || document == null) {
+            return false;
+        }
+        if (isDirectStakeholder(user, document)) {
             return true;
         }
         // Strict-visibility is an ADDITIONAL grant (broadens access to terminal-status documents
@@ -179,7 +232,13 @@ public class DocumentAuthorizationService {
         return strictVisibility && permissionEvaluationService.hasPermission(user, "documents.document.view");
     }
 
-    public boolean canViewRevision(UserAccount user, DocumentRevisionRecord revision) {
+    /**
+     * True when the user has a direct, record-scoped relationship to this Revision -- Admin/DCO
+     * (via the blanket {@link #canViewAllDocuments}), the Author, or an assigned Co-author/
+     * Reviewer/Approver participant. Deliberately EXCLUDES the strict-visibility broad-viewer
+     * grant below -- see {@link #isDirectStakeholder(UserAccount, DocumentRecord)} for rationale.
+     */
+    public boolean isDirectStakeholder(UserAccount user, DocumentRevisionRecord revision) {
         if (user == null || user.getId() == null || revision == null) {
             return false;
         }
@@ -193,7 +252,7 @@ public class DocumentAuthorizationService {
             return true;
         }
 
-        boolean isParticipant = revisionWorkflowParticipantRepository
+        if (revisionWorkflowParticipantRepository
                 .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "CO_AUTHOR")
                 .stream()
                 .anyMatch(participant -> participant.getUser() != null && Objects.equals(participant.getUser().getId(), currentUserId))
@@ -204,8 +263,26 @@ public class DocumentAuthorizationService {
                 || revisionWorkflowParticipantRepository
                 .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "APPROVER")
                 .stream()
-                .anyMatch(participant -> participant.getUser() != null && Objects.equals(participant.getUser().getId(), currentUserId));
-        if (isParticipant) {
+                .anyMatch(participant -> participant.getUser() != null && Objects.equals(participant.getUser().getId(), currentUserId))) {
+            return true;
+        }
+        // Same optional, per-role "Retain Visibility for Removed ..." fallback as the Document-level
+        // overload above -- see its comment for rationale.
+        UUID documentId = revision.getDocument() == null ? null : revision.getDocument().getId();
+        if (documentId == null) {
+            return false;
+        }
+        java.util.Set<String> retainedTypes = systemConfigurationService.getRetainVisibilityForRemovedParticipantTypes();
+        return !retainedTypes.isEmpty()
+                && documentStakeholderHistoryRepository.existsByDocument_IdAndUser_IdAndParticipantTypeIn(
+                        documentId, currentUserId, retainedTypes);
+    }
+
+    public boolean canViewRevision(UserAccount user, DocumentRevisionRecord revision) {
+        if (user == null || user.getId() == null || revision == null) {
+            return false;
+        }
+        if (isDirectStakeholder(user, revision)) {
             return true;
         }
 
@@ -260,7 +337,21 @@ public class DocumentAuthorizationService {
     public boolean canStartNewRevisionUpload(UserAccount user, DocumentRecord document) {
         return canUploadRevision(user, document)
                 && document != null
+                && isNextRevisionConfiguredForUpload(document)
                 && !documentRevisionRepository.existsByDocument_IdAndStatus_CodeIn(document.getId(), IN_PROGRESS_REVISION_STATUS_CODES);
+    }
+
+    /**
+     * An Active document (i.e. an upgrade) may only receive a new revision after the DCO saved "Edit
+     * Revision for Upgrade"; the marker is consumed by the upload. Documents that are not Active yet
+     * (the initial revision) are not subject to this step.
+     */
+    public boolean isNextRevisionConfiguredForUpload(DocumentRecord document) {
+        if (document == null) {
+            return false;
+        }
+        boolean active = document.getStatus() != null && "ACTIVE".equalsIgnoreCase(document.getStatus().getCode());
+        return !active || document.getNextRevisionConfiguredAt() != null;
     }
 
     public void requireCanUploadRevision(UserAccount user, DocumentRecord document) {
@@ -466,17 +557,13 @@ public class DocumentAuthorizationService {
         return canActOnRevisionParticipant(user, revision, "REVIEWER");
     }
 
-    /** Only the first APPROVER whose action is still PENDING may act, and only once the
-     *  immutable review snapshot has finished rendering. */
+    /** Only the first APPROVER whose action is still PENDING may act. */
     public boolean canApproveRevision(UserAccount user, DocumentRevisionRecord revision) {
         return canActOnRevisionParticipant(user, revision, "APPROVER");
     }
 
     private boolean canActOnRevisionParticipant(UserAccount user, DocumentRevisionRecord revision, String participantType) {
         if (user == null || user.getId() == null || revision == null) {
-            return false;
-        }
-        if (!"READY".equalsIgnoreCase(revision.getSnapshotStatus())) {
             return false;
         }
         List<RevisionWorkflowParticipant> participants = revisionWorkflowParticipantRepository

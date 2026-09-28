@@ -104,7 +104,10 @@ public class OfficeOnlineConfigurationService {
         officeOnline.put("graphBaseUrl", safe(effective.graphBaseUrl()));
         officeOnline.put("tenantId", safe(effective.tenantId()));
         officeOnline.put("clientId", safe(effective.clientId()));
-        officeOnline.put("clientSecret", safe(effective.clientSecret()));
+        // The browser must only learn that a secret exists.  The effective configuration may
+        // contain a value sourced from either the database or an environment variable; returning
+        // it here would disclose the Graph application credential through GET /settings/system.
+        officeOnline.put("clientSecret", "");
         officeOnline.put("clientSecretConfigured", StringUtils.hasText(effective.clientSecret()));
         officeOnline.put("clientSecretMasked", StringUtils.hasText(effective.clientSecret()) ? SECRET_MASK : "");
         officeOnline.put("clearClientSecret", false);

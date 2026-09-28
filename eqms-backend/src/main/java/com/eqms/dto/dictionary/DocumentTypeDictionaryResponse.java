@@ -12,7 +12,9 @@ public record DocumentTypeDictionaryResponse(
         String createdDate,
         String modifiedDate,
         String lastIssuedDocumentNumber,
-        String nextDocumentNumber
+        String nextDocumentNumber,
+        UUID nameFormatId,
+        String nameFormatName
 ) {
     /** Compatibility constructor for callers compiled against the original API shape. */
     public DocumentTypeDictionaryResponse(
@@ -25,6 +27,6 @@ public record DocumentTypeDictionaryResponse(
             String createdDate,
             String modifiedDate
     ) {
-        this(id, name, shortCode, currentSequence, description, isActive, createdDate, modifiedDate, null, null);
+        this(id, name, shortCode, currentSequence, description, isActive, createdDate, modifiedDate, null, null, null, null);
     }
 }

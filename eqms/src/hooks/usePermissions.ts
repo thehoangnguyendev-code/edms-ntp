@@ -46,7 +46,7 @@ export function usePermissions() {
   const isAdministrator = hasAnyPermission([
     'settings.user.view',
     'settings.user.edit',
-    'settings.configuration.edit',
+    'settings.configuration.manage',
     'security.access_profiles.view',
     'security.access_profiles.update',
     'security.permission_sets.view',

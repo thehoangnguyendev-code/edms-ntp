@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/settings/controlled-copy-policy")
+@RequestMapping("/documents/administration/controlled-copies-policy")
 public class ControlledCopyPolicyController {
 
     public record DcoEligibleUserResponse(String id, String fullName, String email) {}
@@ -24,12 +24,15 @@ public class ControlledCopyPolicyController {
     private final ControlledCopyPolicyService service;
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
+    private final com.eqms.service.ControlledCopyMarkingPreviewService markingPreviewService;
 
     public ControlledCopyPolicyController(
             ControlledCopyPolicyService service,
             CurrentUserService currentUserService,
-            PermissionEvaluationService permissionEvaluationService
+            PermissionEvaluationService permissionEvaluationService,
+            com.eqms.service.ControlledCopyMarkingPreviewService markingPreviewService
     ) {
+        this.markingPreviewService = markingPreviewService;
         this.service = service;
         this.currentUserService = currentUserService;
         this.permissionEvaluationService = permissionEvaluationService;
@@ -48,6 +51,18 @@ public class ControlledCopyPolicyController {
     }
 
     /**
+     * A picture of a Publishing Template page with the DRAFT stamp/watermark on it (nothing is saved), drawn by the server, so the
+     * administrator sees how issued / withdrawn / cancelled copies will look before saving. Also reports overlapping stamps.
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/marking-preview")
+    public ResponseEntity<com.eqms.dto.controlledcopypolicy.ControlledCopyMarkingPreviewResponse> markingPreview(
+            @RequestBody com.eqms.dto.controlledcopypolicy.ControlledCopyMarkingPreviewRequest request
+    ) {
+        requireManageAccess();
+        return ResponseEntity.ok(markingPreviewService.preview(request));
+    }
+
+    /**
      * Users eligible to be selected as the DCO delivery recipient -- restricted to those holding
      * {@link ControlledCopyPolicyService#DCO_RECIPIENT_PERMISSION}, not any hardcoded role name.
      */
@@ -61,16 +76,16 @@ public class ControlledCopyPolicyController {
 
     private void requireAccess() {
         var user = currentUserService.requireCurrentUser();
-        boolean allowed = permissionEvaluationService.hasPermission(user, "settings.controlled_copy_policy.view")
-                || permissionEvaluationService.hasPermission(user, "settings.controlled_copy_policy.manage")
-                || permissionEvaluationService.isSuperAdmin(user);
+        boolean allowed = permissionEvaluationService.hasAnyPermission(user,
+                "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage",
+                "settings.configuration.view", "settings.configuration.manage");
         if (!allowed) throw new AccessDeniedException("Access denied");
     }
 
     private void requireManageAccess() {
         var user = currentUserService.requireCurrentUser();
-        boolean allowed = permissionEvaluationService.hasPermission(user, "settings.controlled_copy_policy.manage")
-                || permissionEvaluationService.isSuperAdmin(user);
+        boolean allowed = permissionEvaluationService.hasAnyPermission(user,
+                "documents.admin.controlled_copies_policy.manage", "settings.configuration.manage");
         if (!allowed) throw new AccessDeniedException("Access denied");
     }
 }

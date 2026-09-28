@@ -8,6 +8,7 @@ import { FormSection } from '@/components/ui/form/FormSection';
 import { IconAddressBook, IconPencilMinus } from '@tabler/icons-react';
 import { type ProfilePermissionState } from './profilePermissions';
 import { AvatarCropModal } from './AvatarCropModal';
+import { Avatar } from '@/components/ui/avatar';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 
 interface AccountInfoTabProps {
@@ -20,9 +21,8 @@ interface AccountInfoTabProps {
         businessUnit: string;
         employmentType: string;
         startDate: string;
-        systemRole: string;
         nationality: string;
-        userGroup: string;
+        accessProfiles: string;
         email: string;
         phone: string;
     };
@@ -108,21 +108,12 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                 <div className="flex flex-col items-center">
                     {/* Avatar */}
                     <div className="relative group">
-                        <div className="h-32 w-32 sm:h-40 sm:w-40 lg:h-48 lg:w-48 rounded-full bg-slate-100 overflow-hidden border-2 border-slate-200 flex items-center justify-center">
-                            {avatarPreview ? (
-                                <img
-                                    src={avatarPreview}
-                                    alt="User Avatar"
-                                    className="h-full w-full object-cover"
-                                    onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                        e.currentTarget.parentElement!.innerHTML = '<div class="h-full w-full flex items-center justify-center bg-emerald-50"><svg class="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></div>';
-                                    }}
-                                />
-                            ) : (
-                                <UserIcon className="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 text-emerald-600" strokeWidth={1.5} />
-                            )}
-                        </div>
+                        <Avatar
+                            name={formData.fullName || formData.username || 'User'}
+                            src={avatarPreview}
+                            tone="brand"
+                            className="h-32 w-32 sm:h-40 sm:w-40 lg:h-48 lg:w-48 border-2 border-slate-200 text-3xl sm:text-4xl"
+                        />
                         {/* Camera Button */}
                         <button
                             onClick={handleAvatarClick}
@@ -208,7 +199,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                             </div>
                             <div>
                                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Access Profiles</label>
-                                <input type="text" value={formData.systemRole} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
+                                <input type="text" value={formData.accessProfiles} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                         </div>
                     </FormSection>

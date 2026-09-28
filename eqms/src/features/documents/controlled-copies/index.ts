@@ -8,6 +8,7 @@
 export { ControlledCopiesView } from './ControlledCopiesView';
 export { ControlledCopyDetailView } from './detail/ControlledCopyDetailView';
 export { DestroyControlledCopyView } from './DestroyControlledCopyView';
+export { DcoBatchZipDownloadView } from './DcoBatchZipDownloadView';
 export { ControlledCopyPreviewView } from './ControlledCopyPreviewView';
 export { ControlledCopyBatchStatusDiscrepanciesView } from './ControlledCopyBatchStatusDiscrepanciesView';
 

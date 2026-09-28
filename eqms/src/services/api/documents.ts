@@ -1,3 +1,4 @@
+import { config } from '@/config';
 import { api, uploadFile } from './client';
 import { authTokenStore } from '@/services/authTokenStore';
 import type { Document, DocumentFilters, PaginatedResponse } from '@/types';
@@ -38,11 +39,40 @@ import { formatDocumentTypeLookupLabel } from '@/features/documents/shared/docum
 const DOCUMENTS_ENDPOINT = '/documents';
 const REVISIONS_ENDPOINT = '/revisions';
 const CONTROLLED_COPIES_ENDPOINT = '/controlled-copies';
+
+/** One historical revision section in a Legacy Batch Import submission. */
+export interface LegacyBatchRevisionSectionPayload {
+  revisionNumber: string;
+  /** UserAccount id. Falls back to the Document's own Author on the backend when omitted. */
+  authorId?: string;
+  /** dd/MM/yyyy -- when the paper original was historically authored/drafted, reference only. */
+  legacyHistoricalAuthoredDate?: string;
+  legacyHistoricalReviewers?: string;
+  legacyHistoricalApprover?: string;
+  legacyHistoricalReviewDate?: string;
+  legacyHistoricalApprovalDate?: string;
+  changeDescription?: string;
+  /** dd/MM/yyyy -- required, must be strictly increasing across sections. */
+  effectiveDate: string;
+  /** dd/MM/yyyy -- optional. Maps onto DocumentRevisionRecord#trainingCompletionDate, the same
+   *  field the ordinary Pending Training workflow step sets on any other revision. */
+  trainingCompletionDate?: string;
+  file?: File | null;
+  /** Required when file is not provided. */
+  noFileJustification?: string;
+}
+
+export interface LegacyBatchImportResult {
+  documentId: string;
+  revisions: RevisionDetailResponse[];
+}
 export type ControlledCopyDistributionJobStatus = {
   batchId: string;
   processed: number;
   total: number;
+  succeeded: number;
   failed: number;
+  skipped: number;
   status: "in_progress" | "completed" | "completed_with_errors";
 };
 // List/detail views can poll the same batch at the same time. Share the in-flight
@@ -69,6 +99,34 @@ const controlledCopyActionCapabilitiesRequestCache = new Map<string, Promise<Con
 const controlledCopyActionCapabilitiesResolvedCache = new Map<string, { data: ControlledCopyActionCapabilities; expiresAt: number }>();
 const controlledCopyBatchActionCapabilitiesRequestCache = new Map<string, Promise<ControlledCopyActionCapabilities>>();
 const controlledCopyBatchActionCapabilitiesResolvedCache = new Map<string, { data: ControlledCopyActionCapabilities; expiresAt: number }>();
+/**
+ * Every controlled-copy mutation (distribute, recall, cancel, report lost/damaged, reissue) must drop these
+ * short-lived read caches, otherwise a list/detail opened right afterwards can still show the copy's old
+ * status (e.g. "Distributed" after it was reported damaged). Views that keep their own copy of the data
+ * (the expanded batch rows) listen for the event below.
+ */
+export const CONTROLLED_COPY_MUTATED_EVENT = "eqms:controlled-copy-mutated";
+const notifyControlledCopyMutated = () => {
+  [
+    controlledCopyJobStatusRequestCache,
+    controlledCopyJobStatusResolvedCache,
+    controlledCopyByIdRequestCache,
+    controlledCopyByIdResolvedCache,
+    controlledCopyResolvedDetailRequestCache,
+    controlledCopyResolvedDetailCache,
+    controlledCopyResolvedDetailSnapshotRequestCache,
+    controlledCopyResolvedDetailSnapshotCache,
+    controlledCopyBatchRequestCache,
+    controlledCopyBatchResolvedCache,
+    controlledCopyActionCapabilitiesRequestCache,
+    controlledCopyActionCapabilitiesResolvedCache,
+    controlledCopyBatchActionCapabilitiesRequestCache,
+    controlledCopyBatchActionCapabilitiesResolvedCache,
+  ].forEach((cache) => cache.clear());
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CONTROLLED_COPY_MUTATED_EVENT));
+  }
+};
 const documentVersionsRequestCache = new Map<string, Promise<any>>();
 const documentVersionsResolvedCache = new Map<string, { data: any; expiresAt: number }>();
 const revisionListRequestCache = new Map<string, Promise<PaginatedResponse<any>>>();
@@ -295,7 +353,12 @@ export interface ControlledCopyRequestContextResponse {
    * copy for themselves only). Computed server-side; do not re-derive from permission lists. */
   canRequestForOthers?: boolean;
   message?: string | null;
-  expiryDurationDays?: number | null;
+  /** Resolved from the applicable Controlled Copy Policy expiry rule (document type + department
+   * specificity, falling back to the mandatory Global Default) -- the same rule the request will
+   * actually be submitted against. There is no "never expires" state; a Controlled Copy always
+   * resolves to one of these. */
+  expiryDurationValue?: number | null;
+  expiryDurationUnit?: "HOURS" | "DAYS" | "WEEKS" | "MONTHS" | string | null;
 }
 
 const appendQueryParams = (params: Record<string, string | number | boolean | undefined>) => {
@@ -564,11 +627,6 @@ export const documentApi = {
       return response.data;
     },
 
-    /** POST /documents/knowledge-base/:id/preview-opened */
-    logKnowledgeBasePreviewOpened: async (documentId: string) => {
-      await api.post(`${DOCUMENTS_ENDPOINT}/knowledge-base/${documentId}/preview-opened`);
-    },
-
   /** POST /documents */
   createDocument: async (data: DocumentDraftCreateRequest) => {
     const response = await api.post<DocumentListItem>(DOCUMENTS_ENDPOINT, data);
@@ -615,11 +673,6 @@ export const documentApi = {
     const response = await api.post<DocumentDetailResponse>(`${DOCUMENTS_ENDPOINT}/cancel/${id}`, {
       activitySummary,
     });
-    return response.data;
-  },
-
-  reopenDocument: async (id: string, activitySummary: string) => {
-    const response = await api.post<DocumentDetailResponse>(`${DOCUMENTS_ENDPOINT}/${id}/reopen`, { activitySummary });
     return response.data;
   },
 
@@ -700,6 +753,29 @@ export const documentApi = {
 
   // â”””€ Document Revisions â”””””””””””””””””””””””””””””””””””””””””””””””””””””€
 
+  /** GET /documents/:id/revisions/page -- one page of revisions; search, sort and paging done by the server. */
+  getDocumentRevisionsPage: async (
+    id: string,
+    params: { search?: string; sortBy?: string; sortDirection?: string; page?: number; limit?: number },
+  ) => {
+    const response = await api.get(`${DOCUMENTS_ENDPOINT}/${id}/revisions/page`, { params });
+    return response.data as { data: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } };
+  },
+
+  /** POST /documents/relations/page -- one page of the selected Related/Correlated documents, resolved by the server. */
+  getDocumentRelationsPage: async (body: {
+    ids: string[];
+    relationType: "RELATED" | "CORRELATED";
+    search?: string;
+    sortBy?: string;
+    sortDirection?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const response = await api.post(`${DOCUMENTS_ENDPOINT}/relations/page`, body);
+    return response.data as { data: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } };
+  },
+
   /** GET /documents/:id/revisions  version history */
   getDocumentVersions: async (id: string) => {
     const resolvedCache = documentVersionsResolvedCache.get(id);
@@ -729,7 +805,7 @@ export const documentApi = {
   /** POST /documents/:id/revisions  táº¡o revision má»›i */
   createRevision: async (
     id: string,
-    data: { changeDescription?: string; revisionType: 'Major' | 'Minor'; templateRevisionId?: string }
+    data: { changeDescription?: string; templateRevisionId?: string }
   ) => {
     const response = await api.post<RevisionDetailResponse>(`${DOCUMENTS_ENDPOINT}/${id}/revisions`, data);
     return response.data;
@@ -739,7 +815,7 @@ export const documentApi = {
   createRevisionWithUpload: async (
     id: string,
     file: File | null,
-    data?: { changeDescription?: string; revisionType?: 'Major' | 'Minor'; templateRevisionId?: string }
+    data?: { changeDescription?: string; templateRevisionId?: string }
   ) => {
     const response = await uploadFile(
       `${DOCUMENTS_ENDPOINT}/${id}/revisions/upload`,
@@ -747,11 +823,114 @@ export const documentApi = {
       undefined,
       {
         changeDescription: data?.changeDescription,
-        revisionType: data?.revisionType,
         templateRevisionId: data?.templateRevisionId,
       }
     );
     clearDocumentDetailCaches(id);
+    return response.data;
+  },
+
+  /** GET /documents/legacy-import/check-document-number  realtime availability as the user types */
+  checkLegacyDocumentNumberAvailable: async (documentNumber: string): Promise<boolean> => {
+    const response = await api.get<{ available: boolean }>(`${DOCUMENTS_ENDPOINT}/legacy-import/check-document-number`, {
+      params: { documentNumber },
+    });
+    return response.data.available;
+  },
+
+  /**
+   * POST /documents/:id/revisions/legacy-import  Legacy Import -- creates the document's entire
+   * revision chain (just one revision, or its full historical chain e.g. 1.0 -> 4.0) in one atomic
+   * transaction, one e-signature covering the whole batch. Only the last section (isLast=true) may
+   * omit a file. A single revision is simply a batch of one -- there is no separate endpoint.
+   */
+  createLegacyImportRevisionsBatch: async (
+    documentId: string,
+    sections: LegacyBatchRevisionSectionPayload[],
+    legacyJustification: string,
+    signatureToken?: string,
+  ): Promise<LegacyBatchImportResult> => {
+    const formData = new FormData();
+    formData.append(
+      'revisions',
+      JSON.stringify(
+        sections.map((section) => ({
+          revisionNumber: section.revisionNumber,
+          authorId: section.authorId,
+          legacyHistoricalAuthoredDate: section.legacyHistoricalAuthoredDate,
+          legacyHistoricalReviewers: section.legacyHistoricalReviewers,
+          legacyHistoricalApprover: section.legacyHistoricalApprover,
+          legacyHistoricalReviewDate: section.legacyHistoricalReviewDate,
+          legacyHistoricalApprovalDate: section.legacyHistoricalApprovalDate,
+          changeDescription: section.changeDescription,
+          effectiveDate: section.effectiveDate,
+          trainingCompletionDate: section.trainingCompletionDate,
+          hasFile: Boolean(section.file),
+          noFileJustification: section.noFileJustification,
+        })),
+      ),
+    );
+    sections.forEach((section) => {
+      if (section.file) formData.append('files', section.file);
+    });
+    formData.append('legacyJustification', legacyJustification);
+    if (signatureToken) formData.append('signatureToken', signatureToken);
+
+    const response = await api.post<LegacyBatchImportResult>(
+      `${DOCUMENTS_ENDPOINT}/${documentId}/revisions/legacy-import`,
+      formData,
+      { timeout: 180000 },
+    );
+    clearDocumentDetailCaches(documentId);
+    return response.data;
+  },
+
+  /**
+   * POST /documents/legacy-import  Creates the Draft document AND its revision batch in a single
+   * request/transaction -- prefer this over calling createDocument then
+   * createLegacyImportRevisionsBatch separately: if the revision batch fails (bad file, validation
+   * error), a two-call sequence leaves the already-created document behind, permanently holding
+   * the legacy document number and blocking every retry with "Document number already in use"
+   * even though nothing was actually imported. This single call rolls back both together.
+   */
+  createLegacyImportDocumentAndRevisions: async (
+    document: DocumentDraftCreateRequest,
+    sections: LegacyBatchRevisionSectionPayload[],
+    legacyJustification: string,
+    signatureToken?: string,
+  ): Promise<LegacyBatchImportResult> => {
+    const formData = new FormData();
+    formData.append('document', JSON.stringify(document));
+    formData.append(
+      'revisions',
+      JSON.stringify(
+        sections.map((section) => ({
+          revisionNumber: section.revisionNumber,
+          authorId: section.authorId,
+          legacyHistoricalAuthoredDate: section.legacyHistoricalAuthoredDate,
+          legacyHistoricalReviewers: section.legacyHistoricalReviewers,
+          legacyHistoricalApprover: section.legacyHistoricalApprover,
+          legacyHistoricalReviewDate: section.legacyHistoricalReviewDate,
+          legacyHistoricalApprovalDate: section.legacyHistoricalApprovalDate,
+          changeDescription: section.changeDescription,
+          effectiveDate: section.effectiveDate,
+          trainingCompletionDate: section.trainingCompletionDate,
+          hasFile: Boolean(section.file),
+          noFileJustification: section.noFileJustification,
+        })),
+      ),
+    );
+    sections.forEach((section) => {
+      if (section.file) formData.append('files', section.file);
+    });
+    formData.append('legacyJustification', legacyJustification);
+    if (signatureToken) formData.append('signatureToken', signatureToken);
+
+    const response = await api.post<LegacyBatchImportResult>(
+      `${DOCUMENTS_ENDPOINT}/legacy-import`,
+      formData,
+      { timeout: 180000 },
+    );
     return response.data;
   },
 
@@ -1246,6 +1425,7 @@ export const documentApi = {
         activeTab: data.activeTab,
         reviewFlowType: data.reviewFlowType,
         items: data.items,
+        fileItemIndexes: (data.files || []).flatMap((file, index) => file ? [index] : []),
       })], { type: "application/json" }),
       "request.json",
     );
@@ -1303,6 +1483,7 @@ export const documentApi = {
         activeTab: data.activeTab,
         reviewFlowType: data.reviewFlowType,
         items: data.items,
+        fileItemIndexes: (data.files || []).flatMap((file, index) => file ? [index] : []),
       })], { type: "application/json" }),
       "request.json",
     );
@@ -1324,31 +1505,35 @@ export const documentApi = {
     return response.data;
   },
 
+  /** Document Control hands a pending Reviewer/Approver assignment to another user. */
+  replaceWorkflowParticipant: async (
+    revisionId: string,
+    data: { participantType: 'REVIEWER' | 'APPROVER'; fromUserId: string; toUserId: string; reason: string; signatureToken: string },
+  ) => {
+    const response = await api.post<RevisionDetailResponse>(`${REVISIONS_ENDPOINT}/${revisionId}/workflow-participants/replace`, data);
+    return response.data;
+  },
+
   /** POST /revisions/:revisionId/upload  upload file Ä‘Ã­nh kÃ¨m */
   uploadRevisionFile: async (revisionId: string, file: File) => {
     return uploadFile(`${REVISIONS_ENDPOINT}/${revisionId}/upload`, file);
   },
 
-  uploadRevisionToOfficeOnline: async (revisionId: string) => {
-    const response = await api.post<RevisionDetailResponse>(`${REVISIONS_ENDPOINT}/${revisionId}/office-online/sync`);
+  /** Session-authenticated: returns the full OnlyOffice editor config (document/editorConfig/token), already scoped to the caller's permitted mode by the backend. */
+  getRevisionOnlyOfficeEditConfig: async (revisionId: string) => {
+    const response = await api.get<Record<string, unknown>>(`${REVISIONS_ENDPOINT}/${revisionId}/onlyoffice/edit-config`, { params: { logoUrl: `${config.api.baseURL}/branding/logo` } });
     return response.data;
   },
 
-  /** @deprecated Use uploadRevisionToOfficeOnline. */
-  syncRevisionToOfficeOnline: async (revisionId: string) => documentApi.uploadRevisionToOfficeOnline(revisionId),
-
-  syncEditedRevisionFromOfficeOnline: async (revisionId: string) => {
-    const response = await api.post<RevisionDetailResponse>(`${REVISIONS_ENDPOINT}/${revisionId}/office-online/sync-back`);
+  /** Connection usage of the OnlyOffice document server (-1 = unknown), used to warn before its licence limit is hit. */
+  getOnlyOfficeCapacity: async () => {
+    const response = await api.get<{ editUsed: number; editLimit: number; viewUsed: number; viewLimit: number }>(`${REVISIONS_ENDPOINT}/onlyoffice-capacity`);
     return response.data;
   },
 
-  getRevisionOfficeOnlineEditLink: async (revisionId: string) => {
-    const response = await api.get<{ url: string; configuredScope?: string | null; effectiveScope?: string | null; fetchedAt?: string | null }>(`${REVISIONS_ENDPOINT}/${revisionId}/office-online/edit-link`);
-    return response.data;
-  },
-
-  getRevisionOfficeOnlineReviewLink: async (revisionId: string) => {
-    const response = await api.get<{ url: string; configuredScope?: string | null; effectiveScope?: string | null; fetchedAt?: string | null }>(`${REVISIONS_ENDPOINT}/${revisionId}/office-online/review-link`);
+  /** Read-only OnlyOffice viewer config for the Document tab (Draft / Pending Review / Pending Approval). */
+  getRevisionOnlyOfficeViewConfig: async (revisionId: string) => {
+    const response = await api.get<Record<string, unknown>>(`${REVISIONS_ENDPOINT}/${revisionId}/onlyoffice/view-config`, { params: { logoUrl: `${config.api.baseURL}/branding/logo` } });
     return response.data;
   },
 
@@ -1591,6 +1776,18 @@ export const documentApi = {
     return response.data;
   },
 
+  /** GET /controlled-copies/batches/:id/dco-zip - the same ZIP emailed to the DCO, rebuilt on demand
+   *  (the "download" link in that email calls this). Requires the caller to hold the "Receive
+   *  Controlled Copies as DCO" permission; the server returns 403 otherwise. */
+  downloadDcoBatchZip: async (batchId: string) => {
+    const response = await api.get<Blob>(`${CONTROLLED_COPIES_ENDPOINT}/batches/${batchId}/dco-zip`, {
+      responseType: "blob",
+    });
+    const disposition = response.headers?.["content-disposition"] as string | undefined;
+    const match = disposition?.match(/filename="([^"]+)"/);
+    return { blob: response.data, fileName: match?.[1] || `ControlledCopies_Batch_${batchId}.zip` };
+  },
+
   /** GET /controlled-copies/:id/action-capabilities */
   getControlledCopyActionCapabilities: async (copyId: string) => {
     const cacheKey = controlledCopyCapabilityCacheKey(copyId);
@@ -1796,8 +1993,11 @@ export const documentApi = {
   },
 
   openControlledCopyPreview: async (id: string, token: string, password?: string) => {
-    const response = await api.get(`${CONTROLLED_COPIES_ENDPOINT}/${id}/preview`, {
-      params: { token, ...(password ? { password } : {}) },
+    // The long-lived distribution token and password must never be placed in a URL.
+    // URLs are commonly retained by browser history and access logs.
+    const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/${id}/preview`, {
+      token,
+      ...(password ? { password } : {}),
     });
     return response.data;
   },
@@ -1811,21 +2011,18 @@ export const documentApi = {
     await api.post(`${CONTROLLED_COPIES_ENDPOINT}/${id}/preview/print`, { token });
   },
 
-  controlledCopyPreviewPageUrl: (id: string, page: number, token: string) =>
-    `${CONTROLLED_COPIES_ENDPOINT}/${id}/preview/pages/${page}?token=${encodeURIComponent(token)}`,
-
   /** GET /controlled-copies/:id/preview/file — full PDF for the embedded viewer */
   getControlledCopyPreviewFile: async (id: string, token: string) => {
     const response = await api.get<Blob>(`${CONTROLLED_COPIES_ENDPOINT}/${id}/preview/file`, {
-      params: { token },
+      headers: { "X-EQMS-Controlled-Copy-Preview-Grant": token },
       responseType: "blob",
     });
     return response.data;
   },
 
-  downloadControlledCopy: async (id: string, token: string, password?: string) => {
+  downloadControlledCopy: async (id: string, token: string) => {
     const response = await api.get<Blob>(`${CONTROLLED_COPIES_ENDPOINT}/${id}/download`, {
-      params: { token, ...(password ? { password } : {}) },
+      headers: { "X-EQMS-Controlled-Copy-Preview-Grant": token },
       responseType: "blob",
     });
     return response.data;
@@ -1868,6 +2065,7 @@ export const documentApi = {
     data: { distributedTo: string; distributedAt: string; location: string; comment: string; signatureToken: string; customPlaceholderValues?: Record<string, string> }
   ) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/${id}/distribute`, data);
+    notifyControlledCopyMutated();
     return response.data;
   },
 
@@ -1877,6 +2075,7 @@ export const documentApi = {
     data: { distributedTo: string; distributedAt: string; location: string; comment: string; signatureToken: string; customPlaceholderValues?: Record<string, string> }
   ) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/batches/${batchId}/distribute`, data);
+    notifyControlledCopyMutated();
     return response.data as ControlledCopyDistributionBatch;
   },
 
@@ -1915,6 +2114,33 @@ export const documentApi = {
     return request;
   },
 
+  /**
+   * Poll job-status until the job actually reports a finished state AND its tallies add up
+   * (succeeded + failed + skipped === total). The SSE "completed" event that triggers the caller
+   * is published from inside the backend's per-copy loop -- BEFORE the job row is saved with
+   * status=COMPLETED and its authoritative succeeded_items. A single fetch right after that event
+   * can land in the gap and read a still-counting job_items table (e.g. 20 of 21 rows committed),
+   * so the result modal would show "20/21 succeeded" for a batch where every copy actually
+   * distributed. Spacing is > the 500ms resolved-cache TTL so each attempt is a fresh read.
+   */
+  awaitSettledControlledCopyDistributionJobStatus: async (
+    batchId: string,
+    action: "DISTRIBUTE" | "RECALL" | "CANCEL" = "DISTRIBUTE",
+    { attempts = 8, intervalMs = 600 }: { attempts?: number; intervalMs?: number } = {},
+  ): Promise<ControlledCopyDistributionJobStatus> => {
+    let last: ControlledCopyDistributionJobStatus | null = null;
+    for (let i = 0; i < attempts; i++) {
+      const status = await documentApi.getControlledCopyDistributionJobStatus(batchId, action);
+      last = status;
+      const settled =
+        status.status !== "in_progress" &&
+        status.succeeded + status.failed + status.skipped === status.total;
+      if (settled) return status;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, intervalMs));
+    }
+    return last as ControlledCopyDistributionJobStatus;
+  },
+
   /** GET /controlled-copies/distribution-batches/:batchId/failed-items */
   getControlledCopyDistributionFailedItems: async (batchId: string, action: "DISTRIBUTE" | "RECALL" | "CANCEL" = "DISTRIBUTE") => {
     const response = await api.get<Array<{
@@ -1937,6 +2163,7 @@ export const documentApi = {
     data: { destroyedBy?: string; destroyedByUserId?: string; destroyReason: string; witnessedBy?: string; witnessedByUserId?: string; destroyedAt?: string; destructionMethod?: string; destructionType?: string; signatureToken: string }
   ) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/${id}/destroy`, data);
+    notifyControlledCopyMutated();
     return response.data;
   },
 
@@ -1958,11 +2185,26 @@ export const documentApi = {
       onUploadProgress,
       timeout: 120000,
     });
+    notifyControlledCopyMutated();
     return response.data;
   },
 
   listControlledCopyEvidence: async (id: string) => {
     const response = await api.get(`${CONTROLLED_COPIES_ENDPOINT}/${id}/evidence`);
+    return response.data;
+  },
+
+  /** GET /controlled-copies/:id/document -- the copy's PDF for the Document tab; any status text is drawn by the server. */
+  getControlledCopyDocument: async (id: string) => {
+    const response = await api.get<Blob>(`${CONTROLLED_COPIES_ENDPOINT}/${id}/document`, { responseType: "blob" });
+    return response.data;
+  },
+
+  /** GET /controlled-copies/:id/withdrawal-notice -- recall / withdrawal notice PDF, generated by the server. */
+  downloadControlledCopyWithdrawalNotice: async (id: string) => {
+    const response = await api.get<Blob>(`${CONTROLLED_COPIES_ENDPOINT}/${id}/withdrawal-notice`, {
+      responseType: "blob",
+    });
     return response.data;
   },
 
@@ -1976,28 +2218,33 @@ export const documentApi = {
   /** POST /controlled-copies/:id/replace — reissue a new copy to the same recipient */
   replaceControlledCopy: async (id: string, data: { reason: string; signatureToken: string }) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/${id}/replace`, data);
+    notifyControlledCopyMutated();
     return response.data;
   },
 
   /** POST /controlled-copies/:id/recall */
   recallControlledCopy: async (id: string, data: { recalledBy: string; recallReason: string; recallDate?: string; comment?: string; signatureToken: string }) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/${id}/recall`, data);
+    notifyControlledCopyMutated();
     return response.data;
   },
 
   /** POST /controlled-copies/batches/:batchId/recall */
   recallControlledCopyBatch: async (batchId: string, data: { recalledBy: string; recallReason: string; recallDate?: string; comment?: string; signatureToken: string }) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/batches/${batchId}/recall`, data);
+    notifyControlledCopyMutated();
     return response.data as ControlledCopyDistributionBatch;
   },
 
   cancelControlledCopy: async (id: string, data: { reason: string; signatureToken: string }) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/${id}/cancel`, data);
+    notifyControlledCopyMutated();
     return response.data;
   },
 
   cancelControlledCopyBatch: async (batchId: string, data: { reason: string; signatureToken: string }) => {
     const response = await api.post(`${CONTROLLED_COPIES_ENDPOINT}/batches/${batchId}/cancel`, data);
+    notifyControlledCopyMutated();
     return response.data as ControlledCopyDistributionBatch;
   },
 
@@ -2007,14 +2254,6 @@ export const documentApi = {
   /** POST /documents/:id/upload */
   uploadDocumentFile: async (id: string, file: File) => {
     return uploadFile(`${DOCUMENTS_ENDPOINT}/${id}/upload`, file);
-  },
-
-  /** GET /documents/:id/download  táº£i file vá» (blob) */
-  downloadDocument: async (id: string) => {
-    const response = await api.get<Blob>(`${DOCUMENTS_ENDPOINT}/${id}/download`, {
-      responseType: 'blob',
-    });
-    return response.data;
   },
 
   /** GET /documents/:id/preview  preview file tÃ i liá»‡u (blob) */

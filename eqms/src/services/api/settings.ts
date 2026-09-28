@@ -6,6 +6,11 @@ import type {
   TerminateUserPayload,
   ResetPasswordPayload,
   ForceLogoutPayload,
+  LoggedInSession,
+  TimeLimitedUserGrant,
+  CreateTimeLimitedUserGrantPayload,
+  CancelTimeLimitedUserGrantPayload,
+  UpdateTimeLimitedUserGrantPayload,
 } from '@/features/security-authorization/user-management/types';
 import type { PaginatedResponse } from '@/types';
 
@@ -171,11 +176,43 @@ export interface SodViolationResponse {
   permissionCodeA: string;
   permissionCodeB: string;
   regulationRef: string | null;
+  /** A single Access Profile alone grants both sides -- fix the profile. */
   violatingAccessProfiles: {
     accessProfileId: string;
     accessProfileName: string;
     accessProfileCode: string;
   }[];
+  /** No single profile grants both sides, but this user's combined active profiles do -- fix the
+   * assignment, not any one profile. */
+  violatingUserCombinations: {
+    userId: string;
+    username: string;
+    fullName: string | null;
+    profilesGrantingA: { accessProfileId: string; accessProfileName: string; accessProfileCode: string }[];
+    profilesGrantingB: { accessProfileId: string; accessProfileName: string; accessProfileCode: string }[];
+  }[];
+}
+
+export interface SodRemediationPermissionSet {
+  permissionSetId: string;
+  permissionSetName: string;
+  /** How many Access Profiles include this set -- "Mức 2" impact if removed from just the one
+   *  profile in `SodCombinationProfileRef` (that profile's own user count already covers it). */
+  profilesUsingThisSet: number;
+  /** Distinct users across EVERY profile built on this set -- "Mức 3" impact if the permission is
+   *  removed from the set's own definition instead, a strictly wider blast radius than Mức 2. */
+  usersAffectedIfEditedAtSetLevel: number;
+}
+
+export interface SodCombinationProfileRef {
+  accessProfileId: string;
+  accessProfileName: string;
+  accessProfileCode: string;
+  /** "Mức 2" impact if a Permission Set below is removed from THIS profile -- every other user
+   *  holding this same profile. */
+  usersHoldingThisProfile: number;
+  /** The Permission Set(s) inside this profile that actually grant the conflicting permission. */
+  permissionSets: SodRemediationPermissionSet[];
 }
 
 export interface SodProfileCombinationViolationResponse {
@@ -187,8 +224,8 @@ export interface SodProfileCombinationViolationResponse {
   permissionCodeB: string;
   permissionNameB: string;
   regulationRef: string | null;
-  contributingProfilesA: { accessProfileId: string; accessProfileName: string; accessProfileCode: string }[];
-  contributingProfilesB: { accessProfileId: string; accessProfileName: string; accessProfileCode: string }[];
+  contributingProfilesA: SodCombinationProfileRef[];
+  contributingProfilesB: SodCombinationProfileRef[];
 }
 
 const ENDPOINT = '/settings/users';
@@ -289,8 +326,6 @@ export interface AccessProfileCapabilitiesResponse {
 
 export type DocumentAdministrationSettings = {
   reviewerNoApprove: boolean;
-  requireTwoReviewers: boolean;
-  requireOneApprover: boolean;
   authorCannotBeReviewerOrApprover: boolean;
   coAuthorCannotBeReviewerOrApprover: boolean;
   sameUserCannotHoldMultipleWorkflowRoles: boolean;
@@ -351,6 +386,15 @@ export interface GetRolesParams {
   sortDirection?: "asc" | "desc";
 }
 
+export interface PermissionLifecycleUsage {
+  objectType: string;
+  objectTypeLabel: string;
+  fromStatus: string | null;
+  fromStatusLabel: string | null;
+  action: string;
+  actionLabel: string;
+}
+
 export interface PermissionCatalogFlatItem {
   code: string;
   name: string;
@@ -358,6 +402,7 @@ export interface PermissionCatalogFlatItem {
   module: string;
   groupName: string;
   requiresAudit: boolean;
+  lifecycleUsages?: PermissionLifecycleUsage[];
 }
 
 export interface PermissionCatalogGroup {
@@ -378,6 +423,7 @@ export interface PermissionCatalogGroup {
     requiresESign?: boolean;
     systemDefined?: boolean;
     active?: boolean;
+    lifecycleUsages?: PermissionLifecycleUsage[];
   }[];
 }
 
@@ -444,10 +490,31 @@ export const settingsApi = {
     return request;
   },
 
-  /** GET /settings/users/:id */
-  getUserById: async (id: string) => {
-    const response = await api.get<User>(`${ENDPOINT}/${id}`);
+  /** GET /settings/users/:id. Set includeDetails false when tab-specific data is loaded separately. */
+  getUserById: async (id: string, options?: { includeDetails?: boolean }) => {
+    const response = await api.get<User>(`${ENDPOINT}/${id}`, {
+      params: options?.includeDetails === undefined ? undefined : { includeDetails: options.includeDetails },
+    });
     return normalizeUserSessionState(response.data);
+  },
+
+  /** Minimal options for the Direct Manager picker; unlike getUsers, this has no admin-list enrichments. */
+  getUserManagerOptions: async () => {
+    const response = await api.get<{
+      id: string;
+      name: string;
+      code: string | null;
+      label: string;
+      value: string;
+    }[]>(`${ENDPOINT}/manager-options`);
+    return response.data;
+  },
+
+  /** Next suggested Employee ID (e.g. "NTP.0009") for the New User form; unlike getUsers, this
+   *  has no admin-list enrichments -- just the max existing employeeCode digits + 1. */
+  getNextEmployeeCode: async (): Promise<string> => {
+    const response = await api.get<string>(`${ENDPOINT}/next-employee-code`);
+    return response.data;
   },
 
   /** GET /settings/users/:id/capabilities */
@@ -497,15 +564,70 @@ export const settingsApi = {
     return response.data;
   },
 
-  /** POST /settings/users/:id/unlock */
-  unlockUser: async (id: string) => {
-    const response = await api.post<User>(`${ENDPOINT}/${id}/unlock`);
+  /** POST /settings/users/:id/unlock -- also issues + emails a new temporary password. */
+  unlockUser: async (id: string, payload: SecuritySignaturePayload) => {
+    const response = await api.post<{ temporaryPassword: string; user: User }>(
+      `${ENDPOINT}/${id}/unlock`,
+      payload
+    );
+    return response.data;
+  },
+
+  /** GET /settings/users/time-limited-grants -- "Time-Limited User" admin screen. Search/sort/
+   *  pagination/filter all happen server-side; this call just forwards whatever params the table
+   *  hook builds. */
+  getTimeLimitedUserGrants: async (
+    params: Record<string, string | number | undefined>
+  ): Promise<{ data: TimeLimitedUserGrant[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
+    const response = await api.get<{ data: TimeLimitedUserGrant[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(
+      `${ENDPOINT}/time-limited-grants`,
+      { params }
+    );
+    return response.data;
+  },
+
+  /** GET /settings/users/time-limited-grants/:id -- authoritative data for the detail/edit screens. */
+  getTimeLimitedUserGrant: async (id: string): Promise<TimeLimitedUserGrant> => {
+    const response = await api.get<TimeLimitedUserGrant>(`${ENDPOINT}/time-limited-grants/${id}`);
+    return response.data;
+  },
+
+  /** POST /settings/users/time-limited-grants -- creates one grant row per selected user (never
+   *  merged), sharing a single e-signature for the whole bulk submission. */
+  createTimeLimitedUserGrants: async (payload: CreateTimeLimitedUserGrantPayload): Promise<TimeLimitedUserGrant[]> => {
+    const response = await api.post<TimeLimitedUserGrant[]>(`${ENDPOINT}/time-limited-grants`, payload);
+    return response.data;
+  },
+
+  /** PUT /settings/users/time-limited-grants/:id -- updates only an active grant with an e-signature. */
+  updateTimeLimitedUserGrant: async (id: string, payload: UpdateTimeLimitedUserGrantPayload): Promise<TimeLimitedUserGrant> => {
+    const response = await api.put<TimeLimitedUserGrant>(`${ENDPOINT}/time-limited-grants/${id}`, payload);
+    return response.data;
+  },
+
+  /** POST /settings/users/time-limited-grants/:id/cancel -- early revoke; status change only,
+   *  never deleted (GMP data-integrity convention). */
+  cancelTimeLimitedUserGrant: async (id: string, payload: CancelTimeLimitedUserGrantPayload): Promise<TimeLimitedUserGrant> => {
+    const response = await api.post<TimeLimitedUserGrant>(`${ENDPOINT}/time-limited-grants/${id}/cancel`, payload);
     return response.data;
   },
 
   /** POST /settings/users/:id/force-logout */
   forceLogoutUser: async (id: string, payload: ForceLogoutPayload) => {
     await api.post(`${ENDPOINT}/${id}/force-logout`, payload);
+  },
+
+  /** GET /settings/users/sessions -- "Logged in Users" admin screen. Search/sort/pagination all
+   *  happen server-side (see UserManagementService#getLoggedInSessions); this call just forwards
+   *  whatever params the table hook builds. */
+  getLoggedInSessions: async (
+    params: Record<string, string | number | undefined>
+  ): Promise<{ data: LoggedInSession[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
+    const response = await api.get<{ data: LoggedInSession[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(
+      `${ENDPOINT}/sessions`,
+      { params }
+    );
+    return response.data;
   },
 
   /** GET /settings/users/:id/permissions */
@@ -606,8 +728,6 @@ export const settingsApi = {
   /** PUT /settings/document-administration */
   updateDocumentAdministration: async (payload: {
     reviewerNoApprove: boolean;
-    requireTwoReviewers: boolean;
-    requireOneApprover: boolean;
     authorCannotBeReviewerOrApprover: boolean;
     coAuthorCannotBeReviewerOrApprover: boolean;
     sameUserCannotHoldMultipleWorkflowRoles: boolean;
@@ -644,6 +764,30 @@ export const settingsApi = {
 
     pendingGetSystemConfigurationRequests.set(cacheKey, request);
     return request;
+  },
+
+  /**
+   * GET/PUT /settings/system/document-properties -- dedicated, narrower endpoints for the
+   * Document Properties screen, gated by documents.admin.properties.* instead of
+   * settings.configuration.* (the generic /settings/system endpoints above, used by Settings >
+   * Configuration, carry unrelated sensitive sections like integrations credentials).
+   */
+  getDocumentPropertiesConfig: async (): Promise<Record<string, any>> => {
+    const response = await api.get<Record<string, any>>('/settings/system/document-properties');
+    return response.data;
+  },
+
+  updateDocumentPropertiesConfig: async (documents: Record<string, any>): Promise<Record<string, any>> => {
+    const response = await api.put<Record<string, any>>('/settings/system/document-properties', documents);
+    return response.data;
+  },
+
+  /** GET /settings/system/documents -- no permission gate, unlike getSystemConfiguration()
+   * above. Operational document policy (max upload size, retention, versioning, ...) needed by
+   * ordinary document-creation/editing flows, not the full (partly admin-only) config bundle. */
+  getDocumentsOperationalConfig: async (): Promise<Record<string, any>> => {
+    const response = await api.get<Record<string, any>>('/settings/system/documents');
+    return response.data;
   },
 
   inviteExternalUser: async (id: string, reason: string) => {
@@ -711,58 +855,13 @@ export const settingsApi = {
     return response.data;
   },
 
-  testOfficeOnlineConnection: async (payload: {
-    enabled: boolean;
-    graphBaseUrl: string;
-    tenantId: string;
-    clientId: string;
-    clientSecret: string;
-    siteId: string;
-    driveId: string;
-    libraryFolder: string;
-    shareLinkScope?: string;
-    reviewLinksEnabled?: boolean;
-  }) => {
-    const response = await api.post<{
-      success: boolean;
-      message: string;
-      siteId: string;
-      driveId: string;
-      libraryFolder: string;
-    }>('/settings/system/office-online/test-connection', payload);
+  testOnlyOfficeConnection: async () => {
+    const response = await api.post<{ success: boolean; message: string }>('/settings/system/onlyoffice/test-connection');
     return response.data;
   },
 
-  getOfficeOnlineConfiguration: async () => {
-    const response = await api.get('/settings/system/office-online');
-    return response.data;
-  },
-
-  updateOfficeOnlineConfiguration: async (payload: {
-    enabled?: boolean;
-    graphBaseUrl?: string;
-    tenantId?: string;
-    clientId?: string;
-    clientSecret?: string;
-    siteId?: string;
-    driveId?: string;
-    libraryFolder?: string;
-    shareLinkScope?: string;
-    reviewLinksEnabled?: boolean;
-  }) => {
-    const response = await api.put('/settings/system/office-online', payload);
-    return response.data;
-  },
-
-  getOfficeOnlineHealth: async () => {
-    const response = await api.get<{
-      status: string;
-      message: string;
-      configured: boolean;
-      graphReachable: boolean;
-      sharingCapabilityTested: boolean;
-      checkedAt: string;
-    }>('/settings/system/office-online/health');
+  getOnlyOfficeConfiguration: async () => {
+    const response = await api.get('/settings/system/onlyoffice');
     return response.data;
   },
 
@@ -779,18 +878,6 @@ export const settingsApi = {
       success: boolean;
       message: string;
     }>('/settings/system/smtp/test-connection', payload);
-    return response.data;
-  },
-
-  browseFolders: async (path?: string) => {
-    const response = await api.get<Array<{
-      id: string;
-      name: string;
-      path: string;
-      webUrl: string;
-    }>>('/settings/system/office-online/browse-folders', {
-      params: path ? { path } : {},
-    });
     return response.data;
   },
 
@@ -1231,6 +1318,7 @@ export interface AccessReviewItem {
   decisionLabel: string;
   decisionNote?: string | null;
   decidedAt?: string | null;
+  decidedByName?: string | null;
 }
 
 export interface AccessReviewCampaignDetail {

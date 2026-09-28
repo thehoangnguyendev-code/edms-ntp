@@ -1,5 +1,6 @@
 ﻿import React, { useMemo, useState } from "react";
 import { Search, X, Building2 } from "lucide-react";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { IconUsers, IconCheck, IconBuilding } from "@tabler/icons-react";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -298,13 +299,7 @@ export const Step2Assignees: React.FC<Step2Props> = ({
                     {resolvedAssignees.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="p-0">
-                          <div className="flex flex-col items-center justify-center p-6 text-center">
-                            <IconUsers className="h-8 w-8 text-slate-300" />
-                            <h4 className="text-sm font-semibold text-slate-900 mt-2">No assignees selected</h4>
-                            <p className="text-xs text-slate-500 max-w-xs mt-1">
-                              Select assignees from the scope selector on the left.
-                            </p>
-                          </div>
+                          <TableEmptyState title="No assignees selected" description="Select assignees from the scope selector on the left." />
                         </td>
                       </tr>
                     ) : (
@@ -352,12 +347,8 @@ export const Step2Assignees: React.FC<Step2Props> = ({
               {/* ==================== PREMIUM MOBILE CARD VIEW (< 1024px) ==================== */}
               <div className="block lg:hidden p-4 space-y-3 bg-slate-50/50 max-h-[500px] overflow-y-auto scrollbar-thin">
                 {resolvedAssignees.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-6 text-center bg-white border border-slate-200 rounded-xl">
-                    <IconUsers className="h-8 w-8 text-slate-300" />
-                    <h4 className="text-sm font-semibold text-slate-900 mt-2">No assignees selected</h4>
-                    <p className="text-xs text-slate-500 max-w-xs mt-1">
-                      Select assignees from the scope selector on the left.
-                    </p>
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <TableEmptyState title="No assignees selected" description="Select assignees from the scope selector on the left." />
                   </div>
                 ) : (
                   currentAssignees.map((emp, idx) => (

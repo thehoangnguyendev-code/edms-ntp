@@ -28,8 +28,20 @@ public record FileAccessContext(
 
     /** Build a context from a DocumentRevisionRecord. */
     public static FileAccessContext ofRevision(DocumentRevisionRecord revision) {
+        return ofRevision(revision, false);
+    }
+
+    /**
+     * Build a context from a DocumentRevisionRecord, carrying whether the acting user is a direct
+     * stakeholder of it (Author/Co-author/Reviewer/Approver/Admin-DCO -- see
+     * DocumentAuthorizationService#isDirectStakeholder). GMP decision (HDR-AUTH-001): a direct
+     * stakeholder bypasses the separate preview permission requirement in
+     * SecureFileAccessService#check for VIEW_PREVIEW/VIEW_ONLINE actions.
+     */
+    public static FileAccessContext ofRevision(DocumentRevisionRecord revision, boolean isDirectStakeholder) {
         if (revision == null) return empty();
         Map<String, Object> attrs = new HashMap<>();
+        attrs.put("isDirectStakeholder", isDirectStakeholder);
         attrs.put("sourceLocked", revision.isSourceLocked());
         attrs.put("editingStatus", revision.getEditingStatus());
         attrs.put("hasRejectedReviewSnapshot", revision.getRejectedAt() != null

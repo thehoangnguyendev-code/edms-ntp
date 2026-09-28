@@ -53,7 +53,10 @@ import static org.mockito.Mockito.when;
  * - canPublishRevision on RevisionListItemResponse is derived from
  *   RevisionWorkflowAuthorizationService, not a role/status FE check.
  * - Users with raw role names like "System Administrator" or "QA Administrator" are
- *   denied when isSuperAdmin() returns false (i.e., they have no SYSTEM_SUPER_ADMIN profile).
+ *   denied without the matching permission.
+ * - The identity-based isSuperAdmin() bypass has since been retired entirely (the
+ *   SYSTEM_SUPER_ADMIN profile was merged into ADMINISTRATOR): even a user for whom
+ *   isSuperAdmin() reports true is now denied without the actual permission.
  */
 @ExtendWith(MockitoExtension.class)
 class Sprint10AuthorizationHardcodeRegressionTest {
@@ -85,59 +88,59 @@ class Sprint10AuthorizationHardcodeRegressionTest {
 
     @Mock ControlledCopyPolicyService controlledCopyPolicyService;
 
+    // Controlled Copies Policy is administered from the Document Control module's
+    // "Document Administration" area — gated by its own documents.admin.controlled_copies_policy.*
+    // permission pair (split out of the old catch-all documents.admin.* family).
+    private static final String[] CC_VIEW_PERMS =
+            {"documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage", "settings.configuration.view", "settings.configuration.manage"};
+    private static final String[] CC_MANAGE_PERMS =
+            {"documents.admin.controlled_copies_policy.manage", "settings.configuration.manage"};
+
     @Test
     void controlledCopyPolicy_view_allowedWithViewPermission() {
         when(currentUserService.requireCurrentUser()).thenReturn(permissionHolderUser);
-        when(permissionEvaluationService.hasPermission(permissionHolderUser, "settings.controlled_copy_policy.view")).thenReturn(true);
-        lenient().when(permissionEvaluationService.isSuperAdmin(permissionHolderUser)).thenReturn(false);
+        when(permissionEvaluationService.hasAnyPermission(permissionHolderUser, CC_VIEW_PERMS)).thenReturn(true);
         when(controlledCopyPolicyService.getPolicy()).thenReturn(null);
 
-        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService);
+        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService, null);
         assertThat(controller.getPolicy().getStatusCode().value()).isEqualTo(200);
     }
 
     @Test
-    void controlledCopyPolicy_view_allowedForSystemSuperAdmin() {
+    void controlledCopyPolicy_view_deniedForSuperAdminFlagWithoutPermission() {
         when(currentUserService.requireCurrentUser()).thenReturn(superAdminUser);
-        when(permissionEvaluationService.hasPermission(superAdminUser, "settings.controlled_copy_policy.view")).thenReturn(false);
-        when(permissionEvaluationService.hasPermission(superAdminUser, "settings.controlled_copy_policy.manage")).thenReturn(false);
-        when(permissionEvaluationService.isSuperAdmin(superAdminUser)).thenReturn(true);
-        when(controlledCopyPolicyService.getPolicy()).thenReturn(null);
+        when(permissionEvaluationService.hasAnyPermission(superAdminUser, CC_VIEW_PERMS)).thenReturn(false);
 
-        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService);
-        assertThat(controller.getPolicy().getStatusCode().value()).isEqualTo(200);
+        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService, null);
+        assertThatThrownBy(controller::getPolicy).isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
     void controlledCopyPolicy_view_deniedWhenRoleNameOnlyNoPermissionNoSuperAdmin() {
         when(currentUserService.requireCurrentUser()).thenReturn(nonSuperAdminWithOldRoleName);
-        when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.controlled_copy_policy.view")).thenReturn(false);
-        when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.controlled_copy_policy.manage")).thenReturn(false);
-        when(permissionEvaluationService.isSuperAdmin(nonSuperAdminWithOldRoleName)).thenReturn(false);
+        when(permissionEvaluationService.hasAnyPermission(nonSuperAdminWithOldRoleName, CC_VIEW_PERMS)).thenReturn(false);
 
-        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService);
+        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService, null);
         assertThatThrownBy(controller::getPolicy).isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
     void controlledCopyPolicy_manage_allowedWithManagePermission() {
         when(currentUserService.requireCurrentUser()).thenReturn(permissionHolderUser);
-        when(permissionEvaluationService.hasPermission(permissionHolderUser, "settings.controlled_copy_policy.manage")).thenReturn(true);
-        lenient().when(permissionEvaluationService.isSuperAdmin(permissionHolderUser)).thenReturn(false);
+        when(permissionEvaluationService.hasAnyPermission(permissionHolderUser, CC_MANAGE_PERMS)).thenReturn(true);
         when(controlledCopyPolicyService.savePolicy(any())).thenReturn(null);
 
-        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService);
-        assertThat(controller.savePolicy(new ControlledCopyPolicyRequest(null, null, null, null, null)).getStatusCode().value()).isEqualTo(200);
+        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService, null);
+        assertThat(controller.savePolicy(new ControlledCopyPolicyRequest(null, null, null, null, null, null, null, null)).getStatusCode().value()).isEqualTo(200);
     }
 
     @Test
     void controlledCopyPolicy_manage_deniedWhenRoleNameOnlyNoPermissionNoSuperAdmin() {
         when(currentUserService.requireCurrentUser()).thenReturn(nonSuperAdminWithOldRoleName);
-        when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.controlled_copy_policy.manage")).thenReturn(false);
-        when(permissionEvaluationService.isSuperAdmin(nonSuperAdminWithOldRoleName)).thenReturn(false);
+        when(permissionEvaluationService.hasAnyPermission(nonSuperAdminWithOldRoleName, CC_MANAGE_PERMS)).thenReturn(false);
 
-        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService);
-        assertThatThrownBy(() -> controller.savePolicy(new ControlledCopyPolicyRequest(null, null, null, null, null)))
+        var controller = new ControlledCopyPolicyController(controlledCopyPolicyService, currentUserService, permissionEvaluationService, null);
+        assertThatThrownBy(() -> controller.savePolicy(new ControlledCopyPolicyRequest(null, null, null, null, null, null, null, null)))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -160,16 +163,14 @@ class Sprint10AuthorizationHardcodeRegressionTest {
     }
 
     @Test
-    void electronicSignatureSettings_allowedForSystemSuperAdmin() {
+    void electronicSignatureSettings_deniedForSuperAdminFlagWithoutPermission() {
         when(currentUserService.requireCurrentUser()).thenReturn(superAdminUser);
         when(permissionEvaluationService.hasPermission(superAdminUser, "settings.configuration.view")).thenReturn(false);
         when(permissionEvaluationService.hasPermission(superAdminUser, "settings.configuration.manage")).thenReturn(false);
-        when(permissionEvaluationService.isSuperAdmin(superAdminUser)).thenReturn(true);
-        when(electronicSignatureService.getSettings()).thenReturn(null);
 
         var controller = new ElectronicSignatureSettingsController(
                 electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService);
-        assertThat(controller.getSettings().getStatusCode().value()).isEqualTo(200);
+        assertThatThrownBy(controller::getSettings).isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
@@ -177,7 +178,6 @@ class Sprint10AuthorizationHardcodeRegressionTest {
         when(currentUserService.requireCurrentUser()).thenReturn(nonSuperAdminWithOldRoleName);
         when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.configuration.view")).thenReturn(false);
         when(permissionEvaluationService.hasPermission(nonSuperAdminWithOldRoleName, "settings.configuration.manage")).thenReturn(false);
-        when(permissionEvaluationService.isSuperAdmin(nonSuperAdminWithOldRoleName)).thenReturn(false);
 
         var controller = new ElectronicSignatureSettingsController(
                 electronicSignatureService, electronicSignaturePdfPreviewService, currentUserService, permissionEvaluationService);
@@ -271,21 +271,19 @@ class Sprint10AuthorizationHardcodeRegressionTest {
     @Mock com.eqms.repository.RoleDefinitionRepository roleDefinitionRepository;
 
     @Test
-    void objectAccessRuleService_requireAdmin_allowedForSuperAdmin() {
+    void objectAccessRuleService_requireAdmin_deniedForSuperAdminFlagWithoutPermission() {
         when(currentUserService.requireCurrentUser()).thenReturn(superAdminUser);
-        when(permissionEvaluationService.isSuperAdmin(superAdminUser)).thenReturn(true);
-        when(objectAccessRuleRepository.findAllByOrderByPriorityDescNameAsc()).thenReturn(java.util.List.of());
+        when(permissionEvaluationService.hasAnyPermission(eq(superAdminUser), any(String[].class))).thenReturn(false);
 
         var service = new ObjectAccessRuleService(objectAccessRuleRepository, roleDefinitionRepository,
                 null, null, null,
                 currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService);
-        assertThat(service.listAll()).isEmpty();
+        assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 
     @Test
     void objectAccessRuleService_requireAdmin_deniedWhenRoleNameOnlyNoSuperAdmin() {
         when(currentUserService.requireCurrentUser()).thenReturn(nonSuperAdminWithOldRoleName);
-        when(permissionEvaluationService.isSuperAdmin(nonSuperAdminWithOldRoleName)).thenReturn(false);
 
         var service = new ObjectAccessRuleService(objectAccessRuleRepository, roleDefinitionRepository,
                 null, null, null,
@@ -294,27 +292,27 @@ class Sprint10AuthorizationHardcodeRegressionTest {
     }
 
     @Mock com.eqms.repository.SodConstraintRepository sodRepository;
-    @Mock com.eqms.repository.RolePermissionRepository rolePermissionRepository;
     @Mock EffectivePermissionService effectivePermissionService;
+    @Mock com.eqms.repository.UserAccountRepository userAccountRepository;
 
     @Test
-    void sodConstraintService_requireAdmin_allowedForSuperAdmin() {
+    void sodConstraintService_requireAdmin_deniedForSuperAdminFlagWithoutPermission() {
         when(currentUserService.requireCurrentUser()).thenReturn(superAdminUser);
-        when(permissionEvaluationService.isSuperAdmin(superAdminUser)).thenReturn(true);
-        when(sodRepository.findAllByOrderByNameAsc()).thenReturn(java.util.List.of());
+        when(permissionEvaluationService.hasAnyPermission(eq(superAdminUser), any(String[].class))).thenReturn(false);
 
         var service = new SodConstraintService(sodRepository, roleDefinitionRepository, effectivePermissionService,
-                permissionRepository, currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService);
-        assertThat(service.listAll()).isEmpty();
+                permissionRepository, currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService,
+                userAccountRepository, userAccessProfileRepository, accessProfilePermissionSetRepository);
+        assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 
     @Test
     void sodConstraintService_requireAdmin_deniedWhenRoleNameOnlyNoSuperAdmin() {
         when(currentUserService.requireCurrentUser()).thenReturn(nonSuperAdminWithOldRoleName);
-        when(permissionEvaluationService.isSuperAdmin(nonSuperAdminWithOldRoleName)).thenReturn(false);
 
         var service = new SodConstraintService(sodRepository, roleDefinitionRepository, effectivePermissionService,
-                permissionRepository, currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService);
+                permissionRepository, currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService,
+                userAccountRepository, userAccessProfileRepository, accessProfilePermissionSetRepository);
         assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 

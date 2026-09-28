@@ -21,6 +21,8 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.Locale;
@@ -37,20 +39,19 @@ public class SystemConfigurationService {
     private static final UUID SYSTEM_CONFIG_AUDIT_ENTITY_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final String ACTION_SYSTEM_CONFIGURATION_UPDATED = "SYSTEM_CONFIGURATION_UPDATED";
     private static final String ACTION_SYSTEM_SECURITY_CONFIGURATION_UPDATED = "SYSTEM_SECURITY_CONFIGURATION_UPDATED";
-    private static final String SECRET_MASK = OfficeOnlineConfigurationService.SECRET_MASK;
+    private static final String SECRET_MASK = OnlyOfficeConfigurationService.SECRET_MASK;
 
     private final SystemConfigurationRepository repository;
     private final UserAccountRepository userRepository;
     private final ObjectMapper objectMapper;
     private final AuditTrailService auditTrailService;
     private final CurrentUserService currentUserService;
+    private final NotificationRealtimeService notificationRealtimeService;
 
     @org.springframework.beans.factory.annotation.Autowired
     private PermissionEvaluationService permissionEvaluationService;
     private final EmailNotificationService emailNotificationService;
-    private final OfficeOnlineConfigurationService officeOnlineConfigurationService;
     private final StoragePathBuilder storagePathBuilder;
-    private final SharePointPathBuilder sharePointPathBuilder;
     private final String defaultMinioEndpoint;
     private final String defaultMinioBucket;
     private final String defaultMinioAccessKeyId;
@@ -69,10 +70,9 @@ public class SystemConfigurationService {
             ObjectMapper objectMapper,
             AuditTrailService auditTrailService,
             CurrentUserService currentUserService,
+            NotificationRealtimeService notificationRealtimeService,
             EmailNotificationService emailNotificationService,
-            OfficeOnlineConfigurationService officeOnlineConfigurationService,
             StoragePathBuilder storagePathBuilder,
-            SharePointPathBuilder sharePointPathBuilder,
             @Value("${app.minio.endpoint:http://localhost:9000}") String defaultMinioEndpoint,
             @Value("${app.minio.bucket:eqms-gmp-revisions}") String defaultMinioBucket,
             @Value("${app.minio.access-key:eqms-minio}") String defaultMinioAccessKeyId,
@@ -90,10 +90,9 @@ public class SystemConfigurationService {
         this.objectMapper = objectMapper;
         this.auditTrailService = auditTrailService;
         this.currentUserService = currentUserService;
+        this.notificationRealtimeService = notificationRealtimeService;
         this.emailNotificationService = emailNotificationService;
-        this.officeOnlineConfigurationService = officeOnlineConfigurationService;
         this.storagePathBuilder = storagePathBuilder;
-        this.sharePointPathBuilder = sharePointPathBuilder;
         this.defaultMinioEndpoint = defaultMinioEndpoint;
         this.defaultMinioBucket = defaultMinioBucket;
         this.defaultMinioAccessKeyId = defaultMinioAccessKeyId;
@@ -112,43 +111,6 @@ public class SystemConfigurationService {
         return toResponse(requireConfiguration());
     }
 
-    public OfficeOnlineConfigurationService.OfficeOnlineConfiguration getOfficeOnlineConfiguration() {
-        return officeOnlineConfigurationService.getConfigurationForResponse();
-    }
-
-    @Transactional
-    public OfficeOnlineConfigurationService.OfficeOnlineConfiguration updateOfficeOnlineConfiguration(
-            com.eqms.dto.user.OfficeOnlineConfigurationTestRequest request) {
-        SystemConfiguration config = requireConfiguration();
-        ObjectNode general = config.getGeneralConfig() instanceof ObjectNode object
-                ? object.deepCopy() : objectMapper.createObjectNode();
-        ObjectNode backup = general.get("backupSettings") instanceof ObjectNode object
-                ? object : general.putObject("backupSettings");
-        ObjectNode office = backup.get("officeOnline") instanceof ObjectNode object
-                ? object.deepCopy() : objectMapper.createObjectNode();
-        if (request.enabled() != null) office.put("enabled", request.enabled());
-        putIfText(office, "graphBaseUrl", request.graphBaseUrl());
-        putIfText(office, "tenantId", request.tenantId());
-        putIfText(office, "clientId", request.clientId());
-        putIfText(office, "siteId", request.siteId());
-        putIfText(office, "driveId", request.driveId());
-        putIfText(office, "libraryFolder", request.libraryFolder());
-        putIfText(office, "shareLinkScope", request.shareLinkScope());
-        if (request.reviewLinksEnabled() != null) office.put("reviewLinksEnabled", request.reviewLinksEnabled());
-        if (request.clientSecret() != null && !request.clientSecret().isBlank()
-                && !OfficeOnlineConfigurationService.SECRET_MASK.equals(request.clientSecret().trim())) {
-            office.put("clientSecret", request.clientSecret().trim());
-        }
-        backup.set("officeOnline", office);
-        general.set("backupSettings", backup);
-        updateConfiguration(new com.eqms.dto.user.SystemConfigurationRequest(general, null, null, null, null, null));
-        return officeOnlineConfigurationService.getConfigurationForResponse();
-    }
-
-    private void putIfText(ObjectNode node, String field, String value) {
-        if (value != null && !value.isBlank()) node.put(field, value.trim());
-    }
-
     /**
      * Returns display-safe examples from the persisted configuration. The paths are built by
      * the production path builders, preventing the UI from duplicating storage conventions.
@@ -164,8 +126,6 @@ public class SystemConfigurationService {
         String entity = "previewentityid";
 
         return new StoragePathPreviewResponse(
-                replacePreviewTokens(sharePointPathBuilder.editOnlineFolderV2(
-                        officeOnlineConfigurationService.getEffectiveConfiguration(), document, previewId), previewId),
                 replacePreviewTokens(storagePathBuilder.revisionSourceV2(storage, document, previewId, "source.pdf"), previewId)
                         .replace("source.pdf", "source.{extension}"),
                 replacePreviewTokens(storagePathBuilder.controlledCopyPdfV2(storage, batch, copy, previewId), previewId),
@@ -209,11 +169,13 @@ public class SystemConfigurationService {
         validateSecurityConfig(defaultIfNull(request.security(), config.getSecurityConfig()));
         JsonNode nextGeneral = request.general() == null
                 ? config.getGeneralConfig()
-                : officeOnlineConfigurationService.mergeGeneralConfigForStorage(request.general(), config.getGeneralConfig());
-        validateOfficeOnlineConfig(nextGeneral);
+                : onlyOfficeConfigurationService.mergeGeneralConfigForStorage(request.general(), config.getGeneralConfig());
         config.setGeneralConfig(nextGeneral);
         config.setSecurityConfig(defaultIfNull(request.security(), config.getSecurityConfig()));
-        config.setDocumentsConfig(defaultIfNull(request.documents(), config.getDocumentsConfig()));
+        if (request.documents() != null) {
+            validateDocumentsConfig(request.documents());
+        }
+        config.setDocumentsConfig(mergeDocumentsConfig(request.documents(), config.getDocumentsConfig()));
         config.setNotificationsConfig(defaultIfNull(request.notifications(), config.getNotificationsConfig()));
         config.setIntegrationsConfig(request.integrations() == null
                 ? config.getIntegrationsConfig()
@@ -259,7 +221,25 @@ public class SystemConfigurationService {
                 summarizeConfigFromSections(previousGeneral, previousSecurity, previousDocuments, previousNotifications, previousIntegrations, previousFeatures),
                 summarizeConfig(saved)
         );
+        publishBrandingInvalidationAfterCommit(previousGeneral, nextGeneral);
         return toResponse(saved);
+    }
+
+    /**
+     * A branding refresh is presentation-only, but clients must never observe it before the
+     * configuration and its audit entry commit. The SSE payload contains no configuration data;
+     * each authenticated browser re-reads the public branding endpoint after this signal.
+     */
+    private void publishBrandingInvalidationAfterCommit(JsonNode previousGeneral, JsonNode nextGeneral) {
+        if (Objects.equals(previousGeneral, nextGeneral)) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationRealtimeService.publishGlobalEvent("branding-updated");
+            }
+        });
     }
 
     @Transactional(readOnly = true)
@@ -273,6 +253,8 @@ public class SystemConfigurationService {
                 appearance != null && textValue(appearance, "systemSidebarCollapsedLogo") != null
                         ? textValue(appearance, "systemSidebarCollapsedLogo")
                         : textValue(general, "systemSidebarCollapsedLogo"),
+                appearance != null && appearance.path("showSidebarUserProfile").asBoolean(false),
+                appearance != null && appearance.path("knowledgeExplorerEnabled").asBoolean(false),
                 textValue(general, "systemFavicon"),
                 appearance == null ? null : textValue(appearance, "systemFooter"),
                 readStringMap(general == null ? null : general.get("navigationLabelOverrides"))
@@ -317,6 +299,206 @@ public class SystemConfigurationService {
         return new SecurityConfigurationResponse(getSessionTimeoutMinutes());
     }
 
+    /** Admin-selected seed for the FIRST revision number of newly created documents.
+     *  Supported: "0.0.1" (three-part) and "0.1" (two-part). Falls back to "0.0.1". */
+    @Transactional(readOnly = true)
+    public String getRevisionNumberSeed() {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        if (documents == null) {
+            return "0.0.1";
+        }
+        JsonNode value = documents.get("revisionNumberSeed");
+        if (value == null || value.isNull()) {
+            return "0.0.1";
+        }
+        String seed = value.asText("").trim();
+        return ("0.0.1".equals(seed) || "0.1".equals(seed)) ? seed : "0.0.1";
+    }
+
+    /**
+     * Admin-selected fallback Document Name Format (Document Properties screen), used by
+     * DocumentService#generateDocumentNumber only when the Document Type being numbered has no
+     * Format of its own assigned. Null when unset -- callers fall back to the legacy hardcoded
+     * "TYPE.NNNN" shape, same as if this key never existed.
+     */
+    @Transactional(readOnly = true)
+    public java.util.UUID getDefaultDocumentNameFormatId() {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        if (documents == null) {
+            return null;
+        }
+        JsonNode value = documents.get("defaultDocumentNameFormatId");
+        String text = value == null || value.isNull() ? null : value.asText(null);
+        if (text == null || text.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return java.util.UUID.fromString(text.trim());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    /**
+     * Zero-padding width for the Serial Number Document Component (Document Properties screen).
+     * Defaults to 4 (the pre-existing hardcoded behavior) when unset or out of the sane 1-9 range
+     * -- 9 is the practical ceiling before a serial number risks overflowing a 32-bit sequence
+     * column. Only affects NEW document numbers generated going forward; existing document
+     * numbers already issued at a different width are never rewritten.
+     */
+    @Transactional(readOnly = true)
+    public int getSerialNumberDigits() {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        if (documents == null) {
+            return 4;
+        }
+        JsonNode value = documents.get("serialNumberDigits");
+        if (value == null || value.isNull() || !value.isIntegralNumber()) {
+            return 4;
+        }
+        int digits = value.asInt(4);
+        return digits >= 1 && digits <= 9 ? digits : 4;
+    }
+
+    /**
+     * The 4 Document Master participant roles -- one independent on/off setting each (Document
+     * Properties > Protection & Distribution) -- whose REMOVED holder keeps read-only visibility of
+     * the Document afterwards (e.g. a DCO reassigning the Author via "Edit Revision for Upgrade" on
+     * Document Detail), via the permanent {@code document_stakeholder_history} record of everyone
+     * who was ever assigned that role (see V458). Each defaults to false -- zero behavior change
+     * for anyone who never touches this setting: a removed participant with no separate
+     * revision-level footprint stops seeing the Document, exactly as before this setting existed.
+     */
+    private static final java.util.Map<String, String> RETAIN_VISIBILITY_CONFIG_KEY_BY_PARTICIPANT_TYPE = java.util.Map.of(
+            "AUTHOR", "retainVisibilityForRemovedAuthor",
+            "CO_AUTHOR", "retainVisibilityForRemovedCoAuthor",
+            "REVIEWER", "retainVisibilityForRemovedReviewer",
+            "APPROVER", "retainVisibilityForRemovedApprover"
+    );
+
+    /** The subset of AUTHOR/CO_AUTHOR/REVIEWER/APPROVER currently enabled -- empty set (not null)
+     *  when none are, so callers can pass it straight into an IN-clause. */
+    @Transactional(readOnly = true)
+    public java.util.Set<String> getRetainVisibilityForRemovedParticipantTypes() {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        if (documents == null) {
+            return java.util.Set.of();
+        }
+        java.util.Set<String> enabled = new java.util.LinkedHashSet<>();
+        for (var entry : RETAIN_VISIBILITY_CONFIG_KEY_BY_PARTICIPANT_TYPE.entrySet()) {
+            JsonNode value = documents.get(entry.getValue());
+            if (value != null && value.asBoolean(false)) {
+                enabled.add(entry.getKey());
+            }
+        }
+        return enabled;
+    }
+
+    /**
+     * Whether Document Revision Reviewers may act in any order (true) instead of the historical
+     * one-at-a-time sequence gated by {@code sequenceOrder} (false, the default -- zero behavior
+     * change for anyone who never touches this setting). Read by
+     * RevisionWorkflowAuthorizationService (who may act right now) and RevisionService (server-side
+     * re-check at the point of action) -- both must agree, so this is the single source of truth
+     * for either to consult rather than each keeping its own flag.
+     */
+    /** Days a Review/Approval may wait before the assignee is reminded; 0 disables reminders. */
+    @Transactional(readOnly = true)
+    public int getWorkflowReminderAfterDays() {
+        return getDaysDocumentsConfig("workflowReminderAfterDays", 3);
+    }
+
+    /** Days a Review/Approval may wait before Document Control is told; 0 disables escalation. */
+    @Transactional(readOnly = true)
+    public int getWorkflowEscalationAfterDays() {
+        return getDaysDocumentsConfig("workflowEscalationAfterDays", 7);
+    }
+
+    /** How many documents each Knowledge portal card lists (1-20, default 5). */
+    @Transactional(readOnly = true)
+    public int getKnowledgePortalTopCount() {
+        int value = getDaysDocumentsConfig("knowledgePortalTopCount", 5);
+        return value >= 1 && value <= 20 ? value : 5;
+    }
+
+    /** Days of views that count towards "Most Viewed" (1-365, default 30). */
+    @Transactional(readOnly = true)
+    public int getKnowledgePortalViewsWindowDays() {
+        int value = getDaysDocumentsConfig("knowledgePortalViewsWindowDays", 30);
+        return value >= 1 ? value : 30;
+    }
+
+    public static final String EFFECTIVE_DATE_AFTER_APPROVAL = "AFTER_APPROVAL";
+    public static final String EFFECTIVE_DATE_AFTER_TRAINING = "AFTER_TRAINING";
+    public static final String EFFECTIVE_DATE_AFTER_PUBLISH = "AFTER_PUBLISH";
+
+    /**
+     * What event the Effective Date is counted from: AFTER_APPROVAL (last Approver completed, the
+     * default), AFTER_TRAINING (training completion date) or AFTER_PUBLISH (the DCO publishing).
+     * Unknown or missing values fall back to the default.
+     */
+    @Transactional(readOnly = true)
+    public String getEffectiveDateBasis() {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        String value = documents == null || documents.get("effectiveDateBasis") == null
+                ? null : documents.get("effectiveDateBasis").asText(null);
+        if (EFFECTIVE_DATE_AFTER_TRAINING.equals(value) || EFFECTIVE_DATE_AFTER_PUBLISH.equals(value)) {
+            return value;
+        }
+        return EFFECTIVE_DATE_AFTER_APPROVAL;
+    }
+
+    /** Calendar days added to the basis event to get the Effective Date (0-365, default 0 = same day). */
+    @Transactional(readOnly = true)
+    public int getEffectiveDateOffsetDays() {
+        int value = getDaysDocumentsConfig("effectiveDateOffsetDays", 0);
+        return value >= 0 && value <= 365 ? value : 0;
+    }
+
+    private int getDaysDocumentsConfig(String key, int defaultDays) {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        JsonNode value = documents == null ? null : documents.get(key);
+        if (value == null || value.isNull() || !value.isIntegralNumber()) {
+            return defaultDays;
+        }
+        int days = value.asInt(defaultDays);
+        return days >= 0 && days <= 365 ? days : defaultDays;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isParallelReviewEnabled() {
+        return getBooleanDocumentsConfig("parallelReviewEnabled");
+    }
+
+    /**
+     * Whether the configured Reviewer/Approver sequence still gates "who may act right now" for
+     * this participant type -- {@code false} once the Parallel Review switch is on. Approvers are
+     * always sequence-gated (the system allows exactly one Approver, so there is no Parallel
+     * Approval option). Single source of truth for the REVIEWER/APPROVER branching that
+     * RevisionWorkflowAuthorizationService#isPendingReviewer/isPendingApprover (read-time capability
+     * check, against the generic {@code workflow_participants} table) and
+     * RevisionService#requirePendingParticipant (mutation-time re-check, against
+     * {@code revision_workflow_participants}) each re-derive against their own participant table --
+     * this only centralizes the shared "is sequence enforced" business rule, not the two tables
+     * themselves, which remain intentionally separate data sources.
+     */
+    @Transactional(readOnly = true)
+    public boolean isSequenceEnforcedForParticipantType(String participantType) {
+        if ("REVIEWER".equalsIgnoreCase(participantType)) {
+            return !isParallelReviewEnabled();
+        }
+        return true;
+    }
+
+    private boolean getBooleanDocumentsConfig(String key) {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        if (documents == null) {
+            return false;
+        }
+        JsonNode value = documents.get(key);
+        return value != null && value.isBoolean() && value.asBoolean(false);
+    }
+
     @Transactional(readOnly = true)
     public boolean isDocumentWatermarkEnabled() {
         JsonNode documents = requireConfiguration().getDocumentsConfig();
@@ -355,8 +537,11 @@ public class SystemConfigurationService {
     @Transactional
     public SecurityConfigurationResponse updateSecurityConfiguration(SecurityConfigurationRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(currentUser)) {
-            throw new org.springframework.security.access.AccessDeniedException("Only Super Admin can update security configuration");
+        // Same permission that already gates the broader /configurations/system endpoint, which
+        // can set this exact securityConfig field wholesale -- this narrower endpoint used to be
+        // gated more strictly (super-admin-only), which was inconsistent, not more secure.
+        if (!permissionEvaluationService.hasPermission(currentUser, "settings.configuration.manage")) {
+            throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to edit system configuration");
         }
         SystemConfiguration config = requireConfiguration();
         int previousTimeout = getSessionTimeoutMinutes(config);
@@ -812,7 +997,8 @@ public class SystemConfigurationService {
                 "compactMode": false,
                 "showBreadcrumbs": true,
                 "sidebarDefaultCollapsed": false,
-                "animationsEnabled": true
+                "animationsEnabled": true,
+                "knowledgeExplorerEnabled": false
               }
             }
             """));
@@ -835,25 +1021,10 @@ public class SystemConfigurationService {
             """));
         config.setDocumentsConfig(parse("""
             {
-              "defaultRetentionPeriodDays": 365,
               "enableWatermark": true,
               "allowDownload": false,
               "maxFileSizeMB": 25,
-              "versionControl": {
-                "enableAutoVersioning": true,
-                "maxVersionsToKeep": 10,
-                "compareVersionsEnabled": true,
-                "requireVersionNotes": true,
-                "majorMinorVersioning": true
-              },
-              "eSignature": {
-                "enableESignature": true,
-                "requirePasswordForSigning": true,
-                "allowDigitalCertificates": false,
-                "signingMethods": ["password", "otp"],
-                "enforceSigningOrder": true,
-                "signatureValidityDays": 365
-              }
+              "revisionNumberSeed": "0.0.1"
             }
             """));
         config.setNotificationsConfig(parse("""
@@ -965,9 +1136,12 @@ public class SystemConfigurationService {
         return config;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private OnlyOfficeConfigurationService onlyOfficeConfigurationService;
+
     private SystemConfigurationResponse toResponse(SystemConfiguration config) {
         return new SystemConfigurationResponse(
-                officeOnlineConfigurationService.sanitizeGeneralConfigForResponse(config.getGeneralConfig()),
+                onlyOfficeConfigurationService.sanitizeGeneralConfigForResponse(config.getGeneralConfig()),
                 config.getSecurityConfig(),
                 config.getDocumentsConfig(),
                 config.getNotificationsConfig(),
@@ -1068,6 +1242,59 @@ public class SystemConfigurationService {
         return incoming != null ? incoming : existing;
     }
 
+    /**
+     * Two screens (Configuration and Document Properties) write this section, and other features add keys of their own
+     * (e.g. pdfPreview). A shallow merge keeps every key the caller did not send instead of silently dropping it.
+     */
+    private JsonNode mergeDocumentsConfig(JsonNode incoming, JsonNode existing) {
+        if (incoming == null) {
+            return existing;
+        }
+        if (!incoming.isObject() || existing == null || !existing.isObject()) {
+            return incoming;
+        }
+        com.fasterxml.jackson.databind.node.ObjectNode merged = ((com.fasterxml.jackson.databind.node.ObjectNode) existing).deepCopy();
+        incoming.fields().forEachRemaining(entry -> merged.set(entry.getKey(), entry.getValue()));
+        return merged;
+    }
+
+    /** Server-side limits for the Documents policy (the screens clamp too, but the API is also called directly). */
+    private void validateDocumentsConfig(JsonNode documents) {
+        if (!documents.isObject()) {
+            throw new IllegalArgumentException("Documents configuration must be an object");
+        }
+        requireIntInRange(documents, "maxFileSizeMB", 1, 100, "Max File Size (MB)");
+        requireIntInRange(documents, "serialNumberDigits", 1, 9, "Serial Number digits");
+        requireIntInRange(documents, "workflowReminderAfterDays", 0, 365, "Reminder days");
+        requireIntInRange(documents, "workflowEscalationAfterDays", 0, 365, "Escalation days");
+        requireIntInRange(documents, "knowledgePortalTopCount", 1, 20, "Knowledge portal list size");
+        requireIntInRange(documents, "knowledgePortalViewsWindowDays", 1, 365, "Most Viewed window (days)");
+        requireIntInRange(documents, "effectiveDateOffsetDays", 0, 365, "Effective Date offset");
+        requireIntInRange(documents, "defaultRetentionPeriodDays", 0, 36500, "Default retention period");
+        JsonNode seed = documents.get("revisionNumberSeed");
+        if (seed != null && !seed.isNull() && !java.util.Set.of("0.0.1", "0.1").contains(seed.asText())) {
+            throw new IllegalArgumentException("Revision number seed must be 0.0.1 or 0.1");
+        }
+        for (String flag : java.util.List.of("enableWatermark", "allowDownload", "parallelReviewEnabled", "parallelApprovalEnabled",
+                "retainVisibilityForRemovedAuthor", "retainVisibilityForRemovedCoAuthor",
+                "retainVisibilityForRemovedReviewer", "retainVisibilityForRemovedApprover")) {
+            JsonNode value = documents.get(flag);
+            if (value != null && !value.isNull() && !value.isBoolean()) {
+                throw new IllegalArgumentException(flag + " must be true or false");
+            }
+        }
+    }
+
+    private static void requireIntInRange(JsonNode config, String key, int min, int max, String label) {
+        JsonNode node = config.get(key);
+        if (node == null || node.isNull()) {
+            return;
+        }
+        if (!node.isInt() || node.asInt() < min || node.asInt() > max) {
+            throw new IllegalArgumentException(label + " must be an integer between " + min + " and " + max);
+        }
+    }
+
     private void validateSecurityConfig(JsonNode securityConfig) {
         if (securityConfig == null || securityConfig.get("sessionTimeoutMinutes") == null || securityConfig.get("sessionTimeoutMinutes").isNull()) {
             return;
@@ -1082,6 +1309,8 @@ public class SystemConfigurationService {
                 throw new IllegalArgumentException("Minimum Password Length must be between 8 and 128");
             }
         }
+        requireIntInRange(securityConfig, "minUniqueChars", 0, 64, "Minimum Unique Characters");
+        requireIntInRange(securityConfig, "maxRepeatedChars", 0, 10, "Maximum Repeated Characters");
         JsonNode passwordExpiryDaysNode = securityConfig.get("passwordExpiryDays");
         if (securityConfig.path("enablePasswordExpiry").asBoolean(false) || passwordExpiryDaysNode != null) {
             if (passwordExpiryDaysNode == null || passwordExpiryDaysNode.isNull()) {
@@ -1126,26 +1355,6 @@ public class SystemConfigurationService {
             }
         }
 
-    }
-
-    private void validateOfficeOnlineConfig(JsonNode generalConfig) {
-        JsonNode backupSettings = generalConfig == null ? null : generalConfig.get("backupSettings");
-        JsonNode officeOnline = backupSettings == null ? null : backupSettings.get("officeOnline");
-        if (officeOnline == null || officeOnline.isNull() || !officeOnline.path("enabled").asBoolean(false)) {
-            return;
-        }
-        requireText(officeOnline, "graphBaseUrl", "Microsoft Graph Base URL is required when Office Online sync is enabled");
-        requireText(officeOnline, "tenantId", "Tenant ID is required when Office Online sync is enabled");
-        requireText(officeOnline, "clientId", "Client ID is required when Office Online sync is enabled");
-        requireText(officeOnline, "siteId", "Site ID is required when Office Online sync is enabled");
-        requireText(officeOnline, "driveId", "Drive ID is required when Office Online sync is enabled");
-        requireText(officeOnline, "libraryFolder", "Library Folder is required when Office Online sync is enabled");
-        String clientSecret = textValue(officeOnline, "clientSecret");
-        boolean clientSecretConfigured = officeOnline.path("clientSecretConfigured").asBoolean(false);
-        boolean clearClientSecret = officeOnline.path("clearClientSecret").asBoolean(false);
-        if ((!clientSecretConfigured || clearClientSecret) && (clientSecret == null || clientSecret.isBlank())) {
-            throw new IllegalArgumentException("Client Secret is required when Office Online sync is enabled");
-        }
     }
 
     private String summarizeConfig(SystemConfiguration config) {
@@ -1414,18 +1623,36 @@ public class SystemConfigurationService {
     public com.eqms.dto.auth.PasswordPolicyResponse getPasswordPolicy() {
         JsonNode security = requireConfiguration().getSecurityConfig();
         if (security == null) {
-            return new com.eqms.dto.auth.PasswordPolicyResponse(12, true, true, true, true);
+            return new com.eqms.dto.auth.PasswordPolicyResponse(12, true, true, true, true, 0, 0, false, false, false, false);
         }
         return new com.eqms.dto.auth.PasswordPolicyResponse(
                 security.path("passwordMinLength").asInt(12),
                 security.path("requireUppercase").asBoolean(true),
                 security.path("requireLowercase").asBoolean(true),
                 security.path("requireNumbers").asBoolean(true),
-                security.path("requireSpecialChars").asBoolean(true)
+                security.path("requireSpecialChars").asBoolean(true),
+                security.path("minUniqueChars").asInt(0),
+                security.path("maxRepeatedChars").asInt(0),
+                security.path("disallowSequentialChars").asBoolean(false),
+                security.path("disallowCommonPasswords").asBoolean(false),
+                security.path("disallowUserInfo").asBoolean(false),
+                security.path("disallowWhitespace").asBoolean(false)
         );
     }
 
+    private static final java.util.Set<String> COMMON_PASSWORDS = java.util.Set.of(
+            "password", "password1", "password123", "passw0rd", "p@ssw0rd", "p@ssword", "admin", "admin123",
+            "administrator", "welcome", "welcome1", "welcome123", "letmein", "qwerty", "qwerty123", "qwertyuiop",
+            "abc123", "abcd1234", "iloveyou", "monkey", "dragon", "master", "login", "changeme", "changeme123",
+            "123456", "1234567", "12345678", "123456789", "1234567890", "111111", "000000", "123123", "654321",
+            "trustno1", "sunshine", "football", "baseball", "superman", "internet", "eqms", "eqms123");
+
     public void validatePasswordPolicy(String password) {
+        validatePasswordPolicy(password, null);
+    }
+
+    /** {@code user} may be null; the user-information rule is then skipped. */
+    public void validatePasswordPolicy(String password, com.eqms.entity.UserAccount user) {
         JsonNode security = requireConfiguration().getSecurityConfig();
         if (security == null) return;
         int minLength = security.path("passwordMinLength").asInt(12);
@@ -1444,6 +1671,72 @@ public class SystemConfigurationService {
         if (security.path("requireSpecialChars").asBoolean(true) && !password.matches(".*[^a-zA-Z0-9].*")) {
             throw new IllegalArgumentException("Password must contain at least one special character (@, #, $, etc.)");
         }
+        if (security.path("disallowWhitespace").asBoolean(false) && password.chars().anyMatch(Character::isWhitespace)) {
+            throw new IllegalArgumentException("Password must not contain spaces");
+        }
+        int minUnique = security.path("minUniqueChars").asInt(0);
+        if (minUnique > 0 && password.chars().distinct().count() < minUnique) {
+            throw new IllegalArgumentException("Password must contain at least " + minUnique + " different characters");
+        }
+        int maxRepeated = security.path("maxRepeatedChars").asInt(0);
+        if (maxRepeated > 0 && hasRepeatedRun(password, maxRepeated)) {
+            throw new IllegalArgumentException("Password must not repeat the same character more than " + maxRepeated + " times in a row");
+        }
+        if (security.path("disallowSequentialChars").asBoolean(false) && hasSequentialRun(password)) {
+            throw new IllegalArgumentException("Password must not contain sequences such as abc, 123 or cba");
+        }
+        if (security.path("disallowCommonPasswords").asBoolean(false)
+                && COMMON_PASSWORDS.contains(password.toLowerCase(java.util.Locale.ROOT))) {
+            throw new IllegalArgumentException("Password is too common. Choose a less predictable password");
+        }
+        if (security.path("disallowUserInfo").asBoolean(false) && user != null && containsUserInfo(password, user)) {
+            throw new IllegalArgumentException("Password must not contain your username, e-mail name or name");
+        }
+    }
+
+    private static boolean hasRepeatedRun(String password, int maxRun) {
+        int run = 1;
+        for (int i = 1; i < password.length(); i++) {
+            run = password.charAt(i) == password.charAt(i - 1) ? run + 1 : 1;
+            if (run > maxRun) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Three or more consecutive letters/digits, each one code point above (or below) the previous, case-insensitive. */
+    private static boolean hasSequentialRun(String password) {
+        String p = password.toLowerCase(java.util.Locale.ROOT);
+        int up = 1;
+        int down = 1;
+        for (int i = 1; i < p.length(); i++) {
+            char prev = p.charAt(i - 1);
+            char cur = p.charAt(i);
+            boolean alnum = Character.isLetterOrDigit(cur) && Character.isLetterOrDigit(prev);
+            up = alnum && cur == prev + 1 ? up + 1 : 1;
+            down = alnum && cur == prev - 1 ? down + 1 : 1;
+            if (up >= 3 || down >= 3) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsUserInfo(String password, com.eqms.entity.UserAccount user) {
+        String lower = password.toLowerCase(java.util.Locale.ROOT);
+        java.util.List<String> tokens = new java.util.ArrayList<>();
+        tokens.add(user.getUsername());
+        String email = user.getEmail();
+        if (email != null && email.contains("@")) {
+            tokens.add(email.substring(0, email.indexOf('@')));
+        }
+        if (user.getFullName() != null) {
+            tokens.addAll(java.util.Arrays.asList(user.getFullName().split("\\s+")));
+        }
+        return tokens.stream()
+                .filter(t -> t != null && t.trim().length() >= 3)
+                .anyMatch(t -> lower.contains(t.trim().toLowerCase(java.util.Locale.ROOT)));
     }
 
     public void validatePasswordHistory(String newPassword, String historyStr, int historyCount, PasswordEncoder passwordEncoder) {

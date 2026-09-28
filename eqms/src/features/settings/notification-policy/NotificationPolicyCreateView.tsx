@@ -226,7 +226,7 @@ export const NotificationPolicyCreateView: React.FC = () => {
               Event Code <span className="text-red-500">*</span>
             </label>
             <input
-              className={`${inputClass} font-mono`}
+              className={`${inputClass} `}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="e.g. document.custom_review"
@@ -251,7 +251,7 @@ export const NotificationPolicyCreateView: React.FC = () => {
           <div>
             <label className={labelClass}>Action Link Template</label>
             <input
-              className={`${inputClass} font-mono`}
+              className={`${inputClass} `}
               value={actionUrlTemplate}
               onChange={(e) => setActionUrlTemplate(e.target.value)}
               placeholder="/documents/{{documentNumber}} (optional)"
@@ -261,7 +261,7 @@ export const NotificationPolicyCreateView: React.FC = () => {
             <label className={labelClass}>Available Variables</label>
             <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 p-2">
               {variables.map((v) => (
-                <span key={v} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-mono font-medium text-emerald-700">
+                <span key={v} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-2xs  font-medium text-emerald-700">
                   {`{{${v}}}`}
                   <button type="button" onClick={() => removeVariable(v)} className="text-emerald-500 hover:text-emerald-800">
                     <X className="h-3 w-3" />

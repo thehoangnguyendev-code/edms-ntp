@@ -8,8 +8,10 @@ import com.eqms.exception.RevisionUploadValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** Persists security-relevant rejected upload attempts independently of the caller transaction. */
@@ -70,12 +72,28 @@ public class RevisionUploadSecurityAuditService {
                 status,
                 status,
                 reasonMessage,
-                List.of(
-                        new AuditTrailChangeResponse("validationReasonCode", "-", reasonCode),
-                        new AuditTrailChangeResponse("fileName", "-", fileName == null ? "-" : fileName),
-                        new AuditTrailChangeResponse("clientDeclaredContentType", "-", clientDeclaredContentType == null ? "-" : clientDeclaredContentType),
-                        new AuditTrailChangeResponse("fileSizeBytes", "-", String.valueOf(Math.max(fileSize, 0L)))
-                )
+                buildRejectionChanges(reasonCode, fileName, clientDeclaredContentType, fileSize)
         );
+    }
+
+    /**
+     * fileName/clientDeclaredContentType are only meaningful when the multipart request actually
+     * carried them -- unconditionally emitting both regardless produced a "fileName: - -> -"
+     * no-op whenever they were absent. reasonCode is always real (a rejection always has one) and
+     * fileSizeBytes is always meaningful (0 is a real, reportable size), so both stay unconditional.
+     */
+    private List<AuditTrailChangeResponse> buildRejectionChanges(
+            String reasonCode, String fileName, String clientDeclaredContentType, long fileSize
+    ) {
+        List<AuditTrailChangeResponse> changes = new ArrayList<>();
+        changes.add(new AuditTrailChangeResponse("validationReasonCode", null, reasonCode));
+        if (StringUtils.hasText(fileName)) {
+            changes.add(new AuditTrailChangeResponse("fileName", null, fileName));
+        }
+        if (StringUtils.hasText(clientDeclaredContentType)) {
+            changes.add(new AuditTrailChangeResponse("clientDeclaredContentType", null, clientDeclaredContentType));
+        }
+        changes.add(new AuditTrailChangeResponse("fileSizeBytes", null, String.valueOf(Math.max(fileSize, 0L))));
+        return changes;
     }
 }

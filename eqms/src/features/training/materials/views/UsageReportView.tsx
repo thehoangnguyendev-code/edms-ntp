@@ -3,31 +3,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
-import {
-  ArrowLeft,
-  GraduationCap,
-  Users,
-  TrendingUp,
-  Calendar,
-  BarChart3,
-  CheckCircle,
-  Check,
-  Clock,
-  XCircle,
-  Search,
-  X,
-  Download,
-  FileText,
-  Video,
-  FileImage,
-  GitBranch,
-  Building2,
-  Award,
-  Activity,
-  Eye,
-  ChevronUp,
-  ChevronDown,
-} from "lucide-react";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
+import { ArrowLeft, GraduationCap, Users, TrendingUp, Calendar, BarChart3, CheckCircle, Check, Search, X, Download, FileText, Video, FileImage, GitBranch, Building2, Award, Activity, Eye, ChevronUp, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { materialUsageReport } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { Button } from "@/components/ui/button/Button";
@@ -623,14 +600,8 @@ export const UsageReportView: React.FC = () => {
                 <tbody className="divide-y divide-slate-200 bg-white">
                   {filteredRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-16 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
-                            <BarChart3 className="h-6 w-6 text-slate-300" />
-                          </div>
-                          <p className="text-sm font-medium text-slate-900">No records found</p>
-                          <p className="text-xs text-slate-500">Try adjusting your filters.</p>
-                        </div>
+                      <td colSpan={10} className="p-0">
+                        <TableEmptyState title="No records found" description="Try adjusting your filters." />
                       </td>
                     </tr>
                   ) : (

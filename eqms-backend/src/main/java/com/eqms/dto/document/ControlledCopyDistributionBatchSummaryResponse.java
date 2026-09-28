@@ -7,6 +7,7 @@ public record ControlledCopyDistributionBatchSummaryResponse(
         String batchNumber,
         String controlledCopyNumber,
         String controlledCopyName,
+        String revisionName,
         String primaryControlledCopyId,
         String documentId,
         String documentNumber,
@@ -35,6 +36,19 @@ public record ControlledCopyDistributionBatchSummaryResponse(
         String distributedAt,
         String recallDate,
         String recallReason,
-        List<String> copyIds
+        // Batches distributed to multiple departments/business units at once (locationIds is a
+        // list at request time) can have member copies that don't all share one value -- null
+        // when no copy has one, the shared value when every copy agrees, or "Multiple" when they
+        // don't. Only populated when the caller already loaded the member copies (detail view);
+        // list rows leave these null since Business Unit/Department aren't shown there anyway.
+        String businessUnitName,
+        String departmentName,
+        List<String> copyIds,
+        // When a batch's member copies were last touched by a workflow action (Distribute/Recall/
+        // Cancel Batch, or any of those on a single member copy inside it). Lets the register be
+        // sorted/scanned for "what changed recently" instead of only "what was created recently" --
+        // a batch created months ago that was just Obsoleted today would otherwise stay buried by
+        // the default created-date sort with no visual cue anything happened.
+        String lastUpdatedAt
 ) {
 }

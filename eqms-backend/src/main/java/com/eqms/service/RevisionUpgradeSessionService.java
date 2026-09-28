@@ -44,25 +44,47 @@ public class RevisionUpgradeSessionService {
     private final RevisionService revisionService;
     private final CurrentUserService currentUserService;
     private final ObjectMapper objectMapper;
+    private final RevisionWorkflowAuthorizationService revisionWorkflowAuthorizationService;
 
     public RevisionUpgradeSessionService(
             RevisionUpgradeSessionRepository sessionRepository,
             DocumentService documentService,
             RevisionService revisionService,
             CurrentUserService currentUserService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            RevisionWorkflowAuthorizationService revisionWorkflowAuthorizationService
     ) {
         this.sessionRepository = sessionRepository;
         this.documentService = documentService;
         this.revisionService = revisionService;
         this.currentUserService = currentUserService;
         this.objectMapper = objectMapper;
+        this.revisionWorkflowAuthorizationService = revisionWorkflowAuthorizationService;
+    }
+
+    /**
+     * Same UPGRADE_REVISION policy check {@code RevisionService.upgradeDocumentRevision} enforces
+     * (Author of the current Effective revision, or a user granted documents.revision.upgrade /
+     * documents.workspace.manage per workflow_action_policies) -- applied here too so that neither
+     * creating nor reading an Upgrade Session bypasses it. Only the Effective revision's own
+     * Author/permission holder may create or read a session for it; an ordinary viewer with no
+     * Upgrade Revision rights must not, even though the session payload contains Document detail.
+     */
+    private void requireCanManageUpgradeSession(UserAccount currentUser, UUID documentId) {
+        DocumentRevisionRecord currentEffectiveRevision = revisionService.requireCurrentEffectiveRevisionForSnapshot(documentId);
+        revisionWorkflowAuthorizationService.require(
+                currentUser,
+                currentEffectiveRevision,
+                com.eqms.enums.RevisionWorkflowAction.UPGRADE_REVISION,
+                com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(currentEffectiveRevision)
+        );
     }
 
     @Transactional
     public RevisionUpgradeSessionResponse createSession(UUID documentId) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         revisionService.validateUpgradeableDocument(documentId);
+        requireCanManageUpgradeSession(currentUser, documentId);
 
         String sessionKey = buildSessionKey(documentId);
         RevisionUpgradeSession existing = sessionRepository.findBySessionKey(sessionKey).orElse(null);
@@ -118,6 +140,8 @@ public class RevisionUpgradeSessionService {
 
     @Transactional(readOnly = true)
     public RevisionUpgradeSessionResponse getSession(UUID documentId, UUID sessionId) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        requireCanManageUpgradeSession(currentUser, documentId);
         RevisionUpgradeSession session = sessionRepository.findByIdAndSourceDocument_Id(sessionId, documentId)
                 .orElseThrow(() -> new IllegalArgumentException("Upgrade session not found"));
         return readSession(session);
@@ -158,6 +182,13 @@ public class RevisionUpgradeSessionService {
             }
         }
 
+        String effectiveReasonForChange = request == null || !StringUtils.hasText(request.reasonForChange())
+                ? sessionResponse.reasonForChange()
+                : request.reasonForChange().trim();
+        if (!StringUtils.hasText(effectiveReasonForChange)) {
+            throw new IllegalArgumentException("A reason for change is required to complete the upgrade session");
+        }
+
         List<RevisionDetailResponse> createdRevisions = new ArrayList<>();
         createdRevisions.add(revisionService.upgradeDocumentRevision(documentId, sessionId));
         for (UUID relatedDocumentId : selectedRelatedDocumentIds) {
@@ -179,9 +210,7 @@ public class RevisionUpgradeSessionService {
                 sessionResponse.correlatedDocuments(),
                 createdRevisions,
                 "COMPLETED",
-                request == null || !StringUtils.hasText(request.reasonForChange())
-                        ? sessionResponse.reasonForChange()
-                        : request.reasonForChange().trim(),
+                effectiveReasonForChange,
                 session.getCreatedAt(),
                 now
         );

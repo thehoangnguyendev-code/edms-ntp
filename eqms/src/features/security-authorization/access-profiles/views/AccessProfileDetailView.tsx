@@ -398,13 +398,13 @@ export const AccessProfileDetailView: React.FC = () => {
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-lg font-semibold text-slate-900 truncate">{profile.name}</h2>
-                    <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="xs">
+                    <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="sm">
                       {profile.type === "SYSTEM" ? "System" : "Custom"}
                     </Badge>
-                    <Badge color={profile.active ? "emerald" : "slate"} size="xs" showDot pill>
+                    <Badge color={profile.active ? "emerald" : "slate"} size="sm" >
                       {profile.active ? "Active" : "Inactive"}
                     </Badge>
-                    <Badge color="slate" size="xs">
+                    <Badge color="slate" size="sm">
                       {profile.code || "-"}
                     </Badge>
                   </div>
@@ -434,6 +434,13 @@ export const AccessProfileDetailView: React.FC = () => {
         </div>
       )}
 
+      {isEditing && !isNew && profile?.system && (
+        <div className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-2.5 text-xs text-purple-800">
+          Editing a system access profile. Changes still require electronic signature confirmation on Save
+          and are recorded in the Audit Trail as a system profile override.
+        </div>
+      )}
+
       {isEditing && !isNew && hasChanges && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
           Unsaved changes: {generalDirty ? "general information; " : ""}{managedDirty ? "direct permissions; " : ""}{assignmentsDirty ? "assignments; " : ""}
@@ -459,8 +466,8 @@ export const AccessProfileDetailView: React.FC = () => {
               profileId={id}
               profileCode={profile.code}
               reloadKey={reloadKey}
-              canEdit={canAssignInTab("assignPermissionSets") && !profile.system}
-              deniedReason={profile.system ? "System profiles cannot be modified." : tabDeniedReason("assignPermissionSets")}
+              canEdit={canAssignInTab("assignPermissionSets")}
+              deniedReason={tabDeniedReason("assignPermissionSets")}
               onManagedChange={(codes, dirty) => setManagedDraft({ codes, dirty })}
             />
           )}
@@ -468,8 +475,8 @@ export const AccessProfileDetailView: React.FC = () => {
             <PermissionSetsTab
               profileId={id}
               reloadKey={reloadKey}
-              canAssign={canAssignInTab("assignPermissionSets") && !profile?.system}
-              deniedReason={profile?.system ? "System profiles cannot be modified." : tabDeniedReason("assignPermissionSets")}
+              canAssign={canAssignInTab("assignPermissionSets")}
+              deniedReason={tabDeniedReason("assignPermissionSets")}
               onOpenDrawer={setDrawerPs}
               onChangesChange={(diff) => handleTabChanges("permissionSets", diff)}
             />
@@ -478,8 +485,8 @@ export const AccessProfileDetailView: React.FC = () => {
             <WorkflowTab
               profileId={id}
               reloadKey={reloadKey}
-              canAssign={canAssignInTab("assignWorkflowRoles") && !profile?.system}
-              deniedReason={profile?.system ? "System profiles cannot be modified." : tabDeniedReason("assignWorkflowRoles")}
+              canAssign={canAssignInTab("assignWorkflowRoles")}
+              deniedReason={tabDeniedReason("assignWorkflowRoles")}
               onChangesChange={(diff) => handleTabChanges("workflowRoles", diff)}
             />
           )}
@@ -490,8 +497,8 @@ export const AccessProfileDetailView: React.FC = () => {
             <AccessProfileAssignedUsersTab
               profileId={id}
               reloadKey={reloadKey}
-              canAssign={canAssignInTab("assignUsers") && !profile?.system}
-              deniedReason={profile?.system ? "System profiles cannot be modified." : tabDeniedReason("assignUsers")}
+              canAssign={canAssignInTab("assignUsers")}
+              deniedReason={tabDeniedReason("assignUsers")}
               onChangesChange={(diff) => handleTabChanges("users", diff)}
             />
           )}

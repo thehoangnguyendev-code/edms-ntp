@@ -2,10 +2,12 @@ package com.eqms.service;
 
 import com.eqms.auth.CurrentUserService;
 import org.springframework.security.access.AccessDeniedException;
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.user.ObjectAccessRuleOptionsResponse;
 import com.eqms.dto.user.ObjectAccessRuleRequest;
 import com.eqms.service.PermissionEvaluationService;
 import com.eqms.dto.user.ObjectAccessRuleResponse;
+import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.ObjectAccessRule;
 import com.eqms.entity.RoleDefinition;
 import com.eqms.entity.UserAccount;
@@ -19,6 +21,7 @@ import com.eqms.repository.RoleDefinitionRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -149,14 +152,15 @@ public class ObjectAccessRuleService {
         rule.setUpdatedBy(actor);
         ruleRepository.save(rule);
 
-        auditTrailService.log("OBJECT_ACCESS_RULE", rule.getName(), rule.getId(),
-                "CREATED", null, "Active",
-                "Created " + rule.getEffect() + " rule for " + rule.getResourceType());
-
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_SECURITY_CONFIGURATION_CHANGE,
                 "OBJECT_ACCESS_RULE", rule.getId(), rule.getName(), request.reason(),
                 null, rule.getEffect() + " rule for " + rule.getResourceType());
+
+        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.getName(), rule.getId(),
+                "CREATED", null, "Active",
+                withReason("Created " + rule.getEffect() + " rule for " + rule.getResourceType(), request.reason()),
+                List.of(), esig == null ? null : esig.getId());
         return toResponse(rule);
     }
 
@@ -167,20 +171,63 @@ public class ObjectAccessRuleService {
         securityChangeSignatureService.requireValidToken(actor, request.signatureToken());
         ObjectAccessRule rule = require(id);
         String oldStatus = rule.isActive() ? "Active" : "Inactive";
+        String oldName = rule.getName();
+        String oldDescription = rule.getDescription();
+        String oldResourceType = rule.getResourceType();
+        String oldResourceId = rule.getResourceId() == null ? null : rule.getResourceId().toString();
+        String oldResourceName = rule.getResourceName();
+        String oldActions = rule.getActions() == null ? null : String.join(", ", rule.getActions());
+        String oldEffect = rule.getEffect();
+        int oldPriority = rule.getPriority();
+        String oldAccessProfiles = accessProfileNames(rule);
 
         applyRequest(rule, request);
         rule.setUpdatedBy(actor);
         ruleRepository.save(rule);
 
-        auditTrailService.log("OBJECT_ACCESS_RULE", rule.getName(), rule.getId(),
-                "UPDATED", oldStatus, rule.isActive() ? "Active" : "Inactive",
-                "Updated object access rule");
+        // Previously this recorded only the Active/Inactive status with an empty changes list --
+        // an inspector could see THAT a rule was updated but never WHAT changed (resource target,
+        // effect, actions, priority, linked access profiles...). Diff every field that
+        // applyRequest() can touch, same pattern as AccessProfileService.addChange().
+        List<AuditTrailChangeResponse> changes = new ArrayList<>();
+        addRuleChange(changes, "Name", oldName, rule.getName());
+        addRuleChange(changes, "Description", oldDescription, rule.getDescription());
+        addRuleChange(changes, "Resource Type", oldResourceType, rule.getResourceType());
+        addRuleChange(changes, "Resource ID", oldResourceId, rule.getResourceId() == null ? null : rule.getResourceId().toString());
+        addRuleChange(changes, "Resource Name", oldResourceName, rule.getResourceName());
+        addRuleChange(changes, "Actions", oldActions, rule.getActions() == null ? null : String.join(", ", rule.getActions()));
+        addRuleChange(changes, "Effect", oldEffect, rule.getEffect());
+        addRuleChange(changes, "Priority", String.valueOf(oldPriority), String.valueOf(rule.getPriority()));
+        addRuleChange(changes, "Access Profiles", oldAccessProfiles, accessProfileNames(rule));
+        addRuleChange(changes, "Status", oldStatus, rule.isActive() ? "Active" : "Inactive");
 
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_SECURITY_CONFIGURATION_CHANGE,
                 "OBJECT_ACCESS_RULE", rule.getId(), rule.getName(), request.reason(),
                 oldStatus, rule.isActive() ? "Active" : "Inactive");
+
+        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.getName(), rule.getId(),
+                "UPDATED", oldStatus, rule.isActive() ? "Active" : "Inactive",
+                withReason("Updated object access rule", request.reason()),
+                changes, esig == null ? null : esig.getId());
         return toResponse(rule);
+    }
+
+    private String accessProfileNames(ObjectAccessRule rule) {
+        if (rule.getAccessProfiles() == null || rule.getAccessProfiles().isEmpty()) {
+            return null;
+        }
+        return rule.getAccessProfiles().stream()
+                .map(RoleDefinition::getName)
+                .filter(java.util.Objects::nonNull)
+                .sorted()
+                .collect(java.util.stream.Collectors.joining(", "));
+    }
+
+    private void addRuleChange(List<AuditTrailChangeResponse> changes, String field, String oldValue, String newValue) {
+        if (!java.util.Objects.equals(oldValue, newValue)) {
+            changes.add(new AuditTrailChangeResponse(field, oldValue, newValue));
+        }
     }
 
     @Transactional
@@ -190,14 +237,24 @@ public class ObjectAccessRuleService {
         sig = com.eqms.dto.settings.SecurityChangeRequest.orEmpty(sig);
         securityChangeSignatureService.requireValidToken(actor, sig.signatureToken());
         ObjectAccessRule rule = require(id);
-        auditTrailService.log("OBJECT_ACCESS_RULE", rule.getName(), rule.getId(),
-                "DELETED", rule.isActive() ? "Active" : "Inactive", null,
-                "Deleted object access rule");
-        ruleRepository.delete(rule);
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
                 SecurityChangeSignatureService.MEANING_SECURITY_CONFIGURATION_CHANGE,
                 "OBJECT_ACCESS_RULE", id, rule.getName(), sig.reason(),
                 rule.getEffect() + " rule for " + rule.getResourceType(), null);
+        auditTrailService.logAs(actor, "OBJECT_ACCESS_RULE", rule.getName(), rule.getId(),
+                "DELETED", rule.isActive() ? "Active" : "Inactive", null,
+                withReason("Deleted object access rule", sig.reason()),
+                List.of(), esig == null ? null : esig.getId());
+        ruleRepository.delete(rule);
+    }
+
+    /**
+     * The reason typed into the e-signature modal is otherwise only persisted on the
+     * ElectronicSignature row and never surfaced in the Audit Trail's own comment/description --
+     * fold it into the action's own comment so a reviewer can actually see it.
+     */
+    private String withReason(String comment, String reason) {
+        return org.springframework.util.StringUtils.hasText(reason) ? comment + " Reason: " + reason : comment;
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -281,16 +338,14 @@ public class ObjectAccessRuleService {
 
     private void requireView() {
         UserAccount u = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(u)
-                && !permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Object access rule view permission required");
         }
     }
 
     private void requireManage() {
         UserAccount u = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(u)
-                && !permissionEvaluationService.hasPermission(u, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasPermission(u, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Object access rule management permission required");
         }
     }

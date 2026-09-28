@@ -12,6 +12,8 @@ import { myProfile } from '@/components/ui/breadcrumb/breadcrumbs/settings';
 import { navigateBack } from '@/app/navigation/backNavigation';
 import { AccountInfoTab } from "./AccountInfoTab";
 import { PasswordTab } from "./PasswordTab";
+import { usePasswordPolicy } from '@/features/auth/usePasswordPolicy';
+import { evaluatePasswordPolicy } from '@/features/auth/passwordPolicyRules';
 import { authApi } from '@/services/api/auth';
 import { resolveProfilePermissionState } from './profilePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -56,9 +58,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         businessUnit: '',
         employmentType: '',
         startDate: '',
-        systemRole: '',
         nationality: '',
-        userGroup: '',
+        accessProfiles: '',
         email: '',
         phone: '',
     });
@@ -107,9 +108,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                 businessUnit: user.businessUnit || '',
                 employmentType: user.employmentType || '',
                 startDate: user.startDate || '',
-                systemRole: user.role || '',
                 nationality: user.nationality || '',
-                userGroup: user.role || '',
+                accessProfiles: (user.accessProfileNames && user.accessProfileNames.length > 0)
+                    ? user.accessProfileNames.join(', ')
+                    : 'Unassigned',
                 email: user.email || '',
                 phone: user.phone || '',
             };
@@ -175,16 +177,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
     };
 
-    const validatePassword = (password: string) => {
-        const requirements = {
-            minLength: password.length >= 8,
-            hasUpperCase: /[A-Z]/.test(password),
-            hasLowerCase: /[a-z]/.test(password),
-            hasNumber: /[0-9]/.test(password),
-            hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
-        };
-        return requirements;
-    };
+    const passwordPolicy = usePasswordPolicy();
+    const passwordUserTokens = [
+        originalFormData.username,
+        originalFormData.email.split('@')[0],
+        ...originalFormData.fullName.split(/\s+/),
+    ];
 
     const handleSubmit = async () => {
         let hasError = false;
@@ -199,8 +197,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                 newErrors.newPassword = 'New password is required';
                 hasError = true;
             } else {
-                const requirements = validatePassword(passwordData.newPassword);
-                if (!Object.values(requirements).every(Boolean)) {
+                if (!evaluatePasswordPolicy(passwordData.newPassword, passwordPolicy, passwordUserTokens).isValid) {
                     newErrors.newPassword = 'Password does not meet all requirements';
                     hasError = true;
                 }
@@ -387,6 +384,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                             onTogglePasswordVisibility={togglePasswordVisibility}
                             onLogoutAllSessionsChange={setLogoutAllSessions}
                             passwordChangedAt={passwordChangedAt}
+                            passwordPolicy={passwordPolicy}
+                            userTokens={passwordUserTokens}
                         />
                     )}
                 </div>

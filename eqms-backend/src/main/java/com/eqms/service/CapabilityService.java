@@ -42,10 +42,19 @@ public class CapabilityService {
                         "security.workflow_authorization.manage",
                         "security.object_rules.manage",
                         "security.sod.manage"),
-                hasAny(user, "settings.configuration.edit", "settings.configuration.manage"),
-                hasAny(user, "settings.email_template.manage", "settings.configuration.edit"),
-                hasAny(user, "settings.dictionary.manage", "settings.configuration.edit"),
-                hasAny(user, "settings.system_info.view", "settings.configuration.view"),
+                has(user, "settings.configuration.manage"),
+                hasAny(user, "settings.email_template.manage", "settings.configuration.manage"),
+                hasAny(user,
+                        "settings.business_unit.manage",
+                        "settings.department.manage",
+                        "settings.position.manage",
+                        "settings.storage_location.manage",
+                        "settings.retention_policy.manage",
+                        "settings.country.manage",
+                        "settings.education.degree_level.manage",
+                        "settings.education.school.manage",
+                        "settings.configuration.manage"),
+                has(user, "settings.configuration.view"),
                 superAdmin
         );
     }

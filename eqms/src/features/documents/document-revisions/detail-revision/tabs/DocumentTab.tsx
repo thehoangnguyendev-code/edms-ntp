@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { Loading } from "@/components/ui/loading/Loading";
+import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
 
 export interface DocumentTabProps {
   documentFile?: File | null;
@@ -13,6 +14,11 @@ export interface DocumentTabProps {
   primaryPreviewLabel?: string;
   /** Optional authenticated Office Online action for the current workflow state. */
   workspaceAction?: React.ReactNode;
+  /**
+   * When set, the tab shows the revision's working file in a read-only OnlyOffice viewer instead of a
+   * converted PDF (Draft / Pending Review / Pending Approval). Later stages keep the PDF preview.
+   */
+  liveViewRevisionId?: string | null;
 }
 
 export const DocumentTab: React.FC<DocumentTabProps> = ({
@@ -21,6 +27,7 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
   previewStatus,
   previewMessage,
   workspaceAction,
+  liveViewRevisionId = null,
 }) => {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
 
@@ -49,6 +56,15 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
       URL.revokeObjectURL(url);
     };
   }, [documentFile, documentType]);
+
+  if (liveViewRevisionId) {
+    return (
+      <div className="min-w-0 select-none" onContextMenu={(e) => e.preventDefault()}>
+        {workspaceAction ? <div className="mb-3 flex justify-end">{workspaceAction}</div> : null}
+        <OnlyOfficeDocumentViewer revisionId={liveViewRevisionId} />
+      </div>
+    );
+  }
 
   if (pdfPreviewUrl) {
     return (

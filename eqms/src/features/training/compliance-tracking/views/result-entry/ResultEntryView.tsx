@@ -3,19 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
-import {
-  Search,
-  Upload,
-  Trash2,
-  X,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  ZoomIn,
-  RefreshCw,
-  ChevronUp,
-  ChevronDown,
-} from "lucide-react";
+import { Search, Upload, Trash2, X, CheckCircle2, XCircle, AlertCircle, ZoomIn, ChevronUp, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { courseResultEntry } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { Button } from "@/components/ui/button/Button";
@@ -707,7 +695,7 @@ export const ResultEntryView: React.FC = () => {
             <div className="md:hidden p-3 space-y-3">
               {paginatedRows.length === 0 ? (
                 <TableEmptyState
-                  icon={<Search className="h-8 w-8 text-slate-300" />}
+                 
                   title="No Results Found"
                   description="We couldn't find any employees matching your current search and filters. Try adjusting your criteria or clear the search."
                 />
@@ -953,7 +941,7 @@ export const ResultEntryView: React.FC = () => {
                     <tr>
                       <td colSpan={11}>
                         <TableEmptyState
-                          icon={<Search className="h-8 w-8 text-slate-300" />}
+                         
                           title="No Results Found"
                           description="We couldn't find any employees matching your current search and filters. Try adjusting your criteria or clear the search."
                         />

@@ -1,5 +1,5 @@
 import React from "react";
-import { Lock, PenTool } from "lucide-react";
+import { GitBranch, Lock, PenTool } from "lucide-react";
 import { IconFilter2Search } from "@tabler/icons-react";
 import { cn } from "@/components/ui/utils";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -38,6 +38,11 @@ function buildTooltip(p: Permission): string {
     `Action: ${p.action}`,
     `Risk: ${RISK_LABEL[p.riskLevel]}`,
   ];
+  if (p.lifecycleUsages && p.lifecycleUsages.length > 0) {
+    const shown = p.lifecycleUsages.slice(0, 3).map((u) => `${u.objectTypeLabel} · ${u.fromStatusLabel ?? u.fromStatus ?? "Any state"} (${u.actionLabel})`);
+    const extra = p.lifecycleUsages.length > 3 ? ` (+${p.lifecycleUsages.length - 3} more)` : "";
+    lines.push(`Applies at: ${shown.join(", ")}${extra}`);
+  }
   if (p.requiresAudit) lines.push("GMP Audit: Required");
   if (p.requiresESign) lines.push("E-Signature: Required");
   return lines.join("\n");
@@ -58,7 +63,7 @@ export const PermissionActionRow: React.FC<PermissionActionRowProps> = ({
     <div
       title={locked && lockedNote ? `${lockedNote}\n${buildTooltip(permission)}` : buildTooltip(permission)}
       className={cn(
-        "group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors cursor-default hover:bg-slate-50",
+        "group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-slate-50 sm:items-center sm:py-3",
         disabled && !checked && "opacity-70"
       )}
     >
@@ -80,22 +85,25 @@ export const PermissionActionRow: React.FC<PermissionActionRowProps> = ({
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className={cn("truncate text-xs sm:text-sm font-medium leading-snug", checked ? "text-slate-800" : "text-slate-700")}>
+        <span className={cn("text-sm font-medium leading-5", checked ? "text-slate-900" : "text-slate-800")}>
           {permission.label}
         </span>
         {/* Legacy catalogs can have distinct codes sharing a display label — the code,
             on its own line, disambiguates rows that otherwise look like exact duplicates. */}
-        <span className="break-all font-mono text-[9px] leading-tight text-slate-400">
+        <span className="break-all text-[11px] font-medium leading-4 text-slate-500 sm:text-xs">
           {permission.id}
         </span>
         {permission.description && (
-          <span className="truncate text-[10px] sm:text-xs text-slate-500">{permission.description}</span>
+          <span className="text-xs leading-5 text-slate-600">{permission.description}</span>
         )}
       </div>
 
       {/* Compliance icons — right-aligned, subtle */}
-      {(permission.requiresAudit || permission.requiresESign) && (
+      {(permission.requiresAudit || permission.requiresESign || (permission.lifecycleUsages?.length ?? 0) > 0) && (
         <div className="ml-auto flex shrink-0 items-center gap-1 text-slate-300 group-hover:text-slate-400">
+          {(permission.lifecycleUsages?.length ?? 0) > 0 && (
+            <span title="Applies only at specific lifecycle states" className="leading-none"><GitBranch className="h-3.5 w-3.5 text-slate-400" /></span>
+          )}
           {permission.requiresAudit && (
             <span title="GMP Audit required" className="leading-none"><IconFilter2Search className="h-3.5 w-3.5 text-slate-400" /></span>
           )}

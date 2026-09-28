@@ -6,10 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -21,16 +17,22 @@ public class VersionNormalizationTest {
         Method method = RevisionService.class.getDeclaredMethod("normalizeVersionFormat", String.class);
         method.setAccessible(true);
 
+        // Blank -> configured seed; falls back to "0.0.1" when config is unavailable (mock).
         assertEquals("0.0.1", method.invoke(service, (String) null));
         assertEquals("0.0.1", method.invoke(service, ""));
         assertEquals("0.0.1", method.invoke(service, "   "));
+
+        // Three-part family is preserved and canonicalised (middle always 0).
         assertEquals("0.0.1", method.invoke(service, "0.0.1"));
-        assertEquals("1.0.0", method.invoke(service, "1.0"));
-        assertEquals("0.0.1", method.invoke(service, "0.1"));
-        assertEquals("0.0.1", method.invoke(service, "0.1.0"));
         assertEquals("1.0.0", method.invoke(service, "1.0.0"));
-        assertEquals("1.0.1", method.invoke(service, "1.1"));
+        assertEquals("0.0.1", method.invoke(service, "0.1.0"));
         assertEquals("2.0.3", method.invoke(service, "2.0.3"));
+
+        // Two-part family is now PRESERVED (previously collapsed to three-part).
+        assertEquals("1.0", method.invoke(service, "1.0"));
+        assertEquals("0.1", method.invoke(service, "0.1"));
+        assertEquals("1.1", method.invoke(service, "1.1"));
+        assertEquals("2.3", method.invoke(service, "2.3"));
     }
 
     @Test
@@ -39,10 +41,56 @@ public class VersionNormalizationTest {
         Method method = RevisionService.class.getDeclaredMethod("incrementPatchVersion", String.class);
         method.setAccessible(true);
 
+        // Three-part family
         assertEquals("0.0.2", method.invoke(service, "0.0.1"));
         assertEquals("1.0.1", method.invoke(service, "1.0.0"));
         assertEquals("1.0.2", method.invoke(service, "1.0.1"));
         assertEquals("2.0.4", method.invoke(service, "2.0.3"));
+
+        // Two-part family
+        assertEquals("0.2", method.invoke(service, "0.1"));
+        assertEquals("0.4", method.invoke(service, "0.3"));
+        assertEquals("1.1", method.invoke(service, "1.0"));
+        assertEquals("1.3", method.invoke(service, "1.2"));
+    }
+
+    @Test
+    public void testRevisionServicePromoteToNextMajorVersion() throws Exception {
+        RevisionService service = Mockito.mock(RevisionService.class, Mockito.CALLS_REAL_METHODS);
+        Method method = RevisionService.class.getDeclaredMethod("promoteToNextMajorVersion", String.class);
+        method.setAccessible(true);
+
+        assertEquals("1.0.0", method.invoke(service, "0.0.3"));
+        assertEquals("2.0.0", method.invoke(service, "1.0.2"));
+        assertEquals("1.0", method.invoke(service, "0.3"));
+        assertEquals("2.0", method.invoke(service, "1.2"));
+    }
+
+    @Test
+    public void testRevisionServiceNextDraftFromEffective() throws Exception {
+        RevisionService service = Mockito.mock(RevisionService.class, Mockito.CALLS_REAL_METHODS);
+        Method method = RevisionService.class.getDeclaredMethod("resolveNextDraftRevisionNumberFromEffective", String.class);
+        method.setAccessible(true);
+
+        assertEquals("1.0.1", method.invoke(service, "1.0.0"));
+        assertEquals("2.0.1", method.invoke(service, "2.0.0"));
+        assertEquals("1.1", method.invoke(service, "1.0"));
+        assertEquals("2.1", method.invoke(service, "2.0"));
+    }
+
+    @Test
+    public void testRevisionServiceCompareRevisionNumbers() throws Exception {
+        RevisionService service = Mockito.mock(RevisionService.class, Mockito.CALLS_REAL_METHODS);
+        Method method = RevisionService.class.getDeclaredMethod("compareRevisionNumbers", String.class, String.class);
+        method.setAccessible(true);
+
+        assertEquals(true, ((int) method.invoke(service, "0.0.1", "0.0.2")) < 0);
+        assertEquals(true, ((int) method.invoke(service, "1.0.0", "0.0.9")) > 0);
+        assertEquals(0, ((int) method.invoke(service, "1.0.2", "1.0.2")));
+        // Two-part family
+        assertEquals(true, ((int) method.invoke(service, "0.1", "0.2")) < 0);
+        assertEquals(true, ((int) method.invoke(service, "1.0", "0.5")) > 0);
+        assertEquals(0, ((int) method.invoke(service, "0.3", "0.3")));
     }
 
     @Test
@@ -55,57 +103,12 @@ public class VersionNormalizationTest {
         assertEquals("0.0.1", method.invoke(service, ""));
         assertEquals("0.0.1", method.invoke(service, "   "));
         assertEquals("0.0.1", method.invoke(service, "0.0.1"));
-        assertEquals("1.0.0", method.invoke(service, "1.0"));
-        assertEquals("0.0.1", method.invoke(service, "0.1"));
-        assertEquals("0.0.1", method.invoke(service, "0.1.0"));
         assertEquals("1.0.0", method.invoke(service, "1.0.0"));
-        assertEquals("1.0.1", method.invoke(service, "1.1"));
+        assertEquals("0.0.1", method.invoke(service, "0.1.0"));
         assertEquals("2.0.3", method.invoke(service, "2.0.3"));
-    }
-
-    @Test
-    public void runDbDiagnosticsAndDisableMfa() throws Exception {
-        System.out.println("=== DB DIAGNOSTICS & BYPASS START ===");
-        Class.forName("org.postgresql.Driver");
-        try (Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/eqms-database", "eqms", "eqms");
-             Statement stmt = conn.createStatement()) {
-
-            // Disable MFA for dco.lead1 to allow API login
-            int updated = stmt.executeUpdate(
-                "UPDATE app_users SET mfa_enabled = false, mfa_email_fallback_enabled = false WHERE username = 'dco.lead1'"
-            );
-            System.out.println("Disabled MFA for dco.lead1, rows updated: " + updated);
-
-            // Print documents data
-            System.out.println("--- Documents Data ---");
-            try (ResultSet rs = stmt.executeQuery(
-                "SELECT id, document_number, document_name, version, status_code FROM documents ORDER BY document_number"
-            )) {
-                while (rs.next()) {
-                    System.out.printf("Doc ID: %s | Number: %s | Name: %s | Version: %s | Status: %s%n",
-                        rs.getString("id"),
-                        rs.getString("document_number"),
-                        rs.getString("document_name"),
-                        rs.getString("version"),
-                        rs.getString("status_code"));
-                }
-            }
-
-            // Print document_revisions data
-            System.out.println("--- Document Revisions Data ---");
-            try (ResultSet rs = stmt.executeQuery(
-                "SELECT id, document_id, document_number, revision_number, status_code FROM document_revisions ORDER BY document_number, revision_number"
-            )) {
-                while (rs.next()) {
-                    System.out.printf("Revision ID: %s | Doc ID: %s | Number: %s | Rev: %s | Status: %s%n",
-                        rs.getString("id"),
-                        rs.getString("document_id"),
-                        rs.getString("document_number"),
-                        rs.getString("revision_number"),
-                        rs.getString("status_code"));
-                }
-            }
-        }
-        System.out.println("=== DB DIAGNOSTICS & BYPASS END ===");
+        // Two-part family preserved (mirrors RevisionService).
+        assertEquals("1.0", method.invoke(service, "1.0"));
+        assertEquals("0.1", method.invoke(service, "0.1"));
+        assertEquals("1.1", method.invoke(service, "1.1"));
     }
 }

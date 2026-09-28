@@ -19,11 +19,11 @@ public interface AuditTrailReviewItemRepository extends JpaRepository<AuditTrail
             JOIN item.auditLog auditLog
             WHERE item.campaign.id = :campaignId
               AND (:search IS NULL
-                    OR LOWER(COALESCE(auditLog.userFullName, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                    OR LOWER(COALESCE(auditLog.employeeCode, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                    OR LOWER(COALESCE(auditLog.entityType, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                    OR LOWER(COALESCE(auditLog.action, auditLog.actionType, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                    OR LOWER(COALESCE(auditLog.entityName, '')) LIKE LOWER(CONCAT('%', :search, '%')))
+                    OR LOWER(COALESCE(auditLog.userFullName, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                    OR LOWER(COALESCE(auditLog.employeeCode, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                    OR LOWER(COALESCE(auditLog.entityType, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                    OR LOWER(COALESCE(auditLog.action, auditLog.actionType, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                    OR LOWER(COALESCE(auditLog.entityName, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
               AND (:decision IS NULL OR item.decision = :decision)
             """)
     Page<AuditTrailReviewItem> search(

@@ -129,7 +129,7 @@ export const GeneralTab: React.FC<{
             disabled={!isEditing}
             size="sm"
           />
-          <Badge size="xs" color={(isEditing ? draft.active : profile.active) ? "emerald" : "slate"}>
+          <Badge size="sm" color={(isEditing ? draft.active : profile.active) ? "emerald" : "slate"}>
             {(isEditing ? draft.active : profile.active) ? "Active" : "Inactive"}
           </Badge>
         </div>
@@ -213,7 +213,7 @@ export const NewProfileForm: React.FC<{
         </div>
         <div className="flex items-center gap-2.5">
           <Switch checked={draft.active} onChange={checked => onChange("active", checked)} size="sm" />
-          <Badge size="xs" color={draft.active ? "emerald" : "slate"}>
+          <Badge size="sm" color={draft.active ? "emerald" : "slate"}>
             {draft.active ? "Active" : "Inactive"}
           </Badge>
         </div>

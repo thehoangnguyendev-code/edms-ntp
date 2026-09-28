@@ -1,12 +1,14 @@
 ﻿import React, { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { StatusBadge } from "@/components/ui";
 import { ControlledCopy } from "./types";
 import { useDocumentControlledCopies } from "@/features/documents/shared/useDocumentControlledCopies";
 import { cn } from "@/components/ui/utils";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
+import { SortableTh } from "./components/SortableTh";
 import { buildControlledCopySnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 
 interface ControlledCopiesTabProps {
@@ -39,6 +41,13 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
+    // Keys are the ones ControlledCopyService#resolveSort understands; search, sort and paging all run on the server.
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({
+        key: "created",
+        direction: "desc",
+    });
+    const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
     const shouldLoadFromServer = Boolean(documentId) && !copies;
     const {
         copies: fetchedCopies,
@@ -50,7 +59,28 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
         search: debouncedSearchQuery,
         page: currentPage,
         limit: itemsPerPage,
+        sortBy: sortConfig.key,
+        sortDirection: sortConfig.direction,
     });
+
+    const handleSort = (key: string) => {
+        setSortConfig((prev) => ({
+            key,
+            direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+        }));
+        setCurrentPage(1);
+    };
+
+    const sortableTh = (key: string, label: string, visibilityClass = "") => (
+        <SortableTh
+            label={label}
+            sortKey={key}
+            activeKey={sortConfig.key}
+            direction={sortConfig.direction}
+            onSort={handleSort}
+            className={visibilityClass}
+        />
+    );
 
     const sourceData = copies ?? fetchedCopies ?? [];
     const isLoading = externalLoading || fetchedLoading;
@@ -58,6 +88,10 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
     const totalPages = pagination?.totalPages ?? Math.max(1, Math.ceil(sourceData.length / itemsPerPage));
     const totalItems = pagination?.total ?? sourceData.length;
     const currentCopies = sourceData;
+
+    useEffect(() => {
+        if (!isLoading) setHasLoadedOnce(true);
+    }, [isLoading]);
 
     useEffect(() => {
         if (!isLoading && totalPages > 0 && currentPage > totalPages) {
@@ -78,7 +112,8 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
         });
     };
 
-    if (isLoading) {
+    // Only the very first load replaces the tab; later loads (search / sort / page) keep the table and search box mounted.
+    if (isLoading && !hasLoadedOnce) {
         return (
             <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
                 <div className="p-12 text-center text-slate-500 text-sm">Loading controlled copies...</div>
@@ -106,7 +141,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
             </div>
 
             {/* Table */}
-            <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
+            <div className={cn("border rounded-xl bg-white shadow-sm overflow-hidden transition-opacity", isLoading && "opacity-60")}>
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead className="bg-slate-50 border-b border-slate-200">
@@ -114,30 +149,14 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                 <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">
                                     No.
                                 </th>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                                    Controlled Copies Name
-                                </th>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
-                                    Copy Number
-                                </th>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
-                                    Created
-                                </th>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                                    Status
-                                </th>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
-                                    Opened by
-                                </th>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
-                                    Valid Until
-                                </th>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden xl:table-cell">
-                                    Document Revision
-                                </th>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                                    Document Number
-                                </th>
+                                {sortableTh("name", "Controlled Copy Name")}
+                                {sortableTh("controlledCopyNumber", "Copy Number", "hidden md:table-cell")}
+                                {sortableTh("created", "Created", "hidden md:table-cell")}
+                                {sortableTh("status", "Status")}
+                                {sortableTh("openedBy", "Opened by", "hidden lg:table-cell")}
+                                {sortableTh("validUntil", "Valid Until", "hidden lg:table-cell")}
+                                {sortableTh("revisionName", "Document Revision", "hidden xl:table-cell")}
+                                {sortableTh("controlledCopyNumber", "Document Number")}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 bg-white">
@@ -154,13 +173,8 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                 </tr>
                             ) : currentCopies.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="py-12 text-center">
-                                        <div className="flex flex-col items-center justify-center gap-2.5">
-                                            <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center">
-                                                <Search className="h-5 w-5 text-slate-300" />
-                                            </div>
-                                            <p className="text-sm font-medium text-slate-500">{emptyMessage}</p>
-                                        </div>
+                                    <td colSpan={9} className="p-0">
+                                        <TableEmptyState title={emptyMessage} />
                                     </td>
                                 </tr>
                             ) : (
@@ -176,7 +190,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                         <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900">
                                             {copy.controlledCopiesName}
                                         </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-emerald-600 hidden md:table-cell">
+                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-700 hidden md:table-cell">
                                             {copy.copyNumber}
                                         </td>
                                         <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden md:table-cell">
@@ -192,10 +206,23 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                             {copy.validUntil}
                                         </td>
                                         <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden xl:table-cell">
-                                            {copy.documentRevision}
+                                            {copy.sourceRevisionId ? (
+                                                <button
+                                                    type="button"
+                                                    className="font-medium text-emerald-600 hover:underline"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(ROUTES.DOCUMENTS.REVISIONS.DETAIL(copy.sourceRevisionId!));
+                                                    }}
+                                                >
+                                                    {copy.documentRevision}
+                                                </button>
+                                            ) : (
+                                                copy.documentRevision
+                                            )}
                                         </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                                            {copy.documentNumber}
+                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900">
+                                            {copy.controlledCopyNumber || copy.documentNumber}
                                         </td>
                                     </tr>
                                 ))
@@ -223,5 +250,4 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
         </div>
     );
 };
-
 

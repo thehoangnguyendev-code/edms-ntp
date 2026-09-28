@@ -23,12 +23,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.HashSet;
 
 @Service
 public class RevisionWorkspaceBatchService {
@@ -81,6 +83,7 @@ public class RevisionWorkspaceBatchService {
         if (!validationIssues.isEmpty()) {
             throw new RevisionWorkspaceBatchValidationException(validationIssues);
         }
+        Map<Integer, MultipartFile> filesByItemIndex = mapFilesByItemIndex(request, files);
 
         workspaceSnapshotService.saveSnapshot(new com.eqms.dto.document.RevisionWorkspaceSnapshotRequest(
                 request.workspaceId(),
@@ -104,7 +107,7 @@ public class RevisionWorkspaceBatchService {
             List<RevisionWorkspaceItemRequest> items = request.items() == null ? List.of() : request.items();
             for (int index = 0; index < items.size(); index++) {
                 RevisionWorkspaceItemRequest item = items.get(index);
-                MultipartFile file = files != null && index < files.size() ? files.get(index) : null;
+                MultipartFile file = filesByItemIndex.get(index);
                 RevisionWorkspaceBatchItemResponse response = processItem(
                         workspaceKey,
                         workspaceMode,
@@ -152,6 +155,8 @@ public class RevisionWorkspaceBatchService {
             return issues;
         }
 
+        validateFileItemIndexes(request, files, items.size(), issues);
+
         for (int index = 0; index < items.size(); index++) {
             RevisionWorkspaceItemRequest item = items.get(index);
             String itemFieldPrefix = "items[" + index + "]";
@@ -198,7 +203,8 @@ public class RevisionWorkspaceBatchService {
             }
 
             if (submit) {
-                if (files == null || index >= files.size() || files.get(index) == null || files.get(index).isEmpty()) {
+                MultipartFile file = fileForItem(request, files, index);
+                if (file == null || file.isEmpty()) {
                     issues.add(new RevisionWorkspaceValidationIssue(index, documentId, parentDocumentId, sourceDocumentId, sourceRevisionId, itemFieldPrefix + ".file", itemLabel + ": Revision file is required before submitting for review"));
                 }
             }
@@ -214,6 +220,77 @@ public class RevisionWorkspaceBatchService {
         }
 
         return issues;
+    }
+
+    /**
+     * Binds multipart files to workspace items by the explicit source item index supplied by the
+     * client. Positional binding is retained only for legacy callers that submit a complete file
+     * list, where it is unambiguous. A sparse positional list is rejected during validation.
+     */
+    private void validateFileItemIndexes(
+            RevisionWorkspaceBatchRequest request,
+            List<MultipartFile> files,
+            int itemCount,
+            List<RevisionWorkspaceValidationIssue> issues
+    ) {
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+
+        List<Integer> indexes = request.fileItemIndexes();
+        if (indexes == null) {
+            if (files.size() != itemCount) {
+                issues.add(new RevisionWorkspaceValidationIssue(null, null, request.parentDocumentId(), request.sourceDocumentId(), request.sourceRevisionId(),
+                        "fileItemIndexes", "Sparse multipart file lists must include fileItemIndexes so files cannot be assigned to the wrong workspace item"));
+            }
+            return;
+        }
+        if (indexes.size() != files.size()) {
+            issues.add(new RevisionWorkspaceValidationIssue(null, null, request.parentDocumentId(), request.sourceDocumentId(), request.sourceRevisionId(),
+                    "fileItemIndexes", "fileItemIndexes must contain exactly one entry for each uploaded file"));
+            return;
+        }
+
+        Set<Integer> seenIndexes = new HashSet<>();
+        for (int filePosition = 0; filePosition < indexes.size(); filePosition++) {
+            Integer itemIndex = indexes.get(filePosition);
+            if (itemIndex == null || itemIndex < 0 || itemIndex >= itemCount) {
+                issues.add(new RevisionWorkspaceValidationIssue(null, null, request.parentDocumentId(), request.sourceDocumentId(), request.sourceRevisionId(),
+                        "fileItemIndexes[" + filePosition + "]", "File item index must refer to an existing workspace item"));
+            } else if (!seenIndexes.add(itemIndex)) {
+                issues.add(new RevisionWorkspaceValidationIssue(itemIndex, null, request.parentDocumentId(), request.sourceDocumentId(), request.sourceRevisionId(),
+                        "fileItemIndexes[" + filePosition + "]", "Only one uploaded file may be assigned to each workspace item"));
+            }
+        }
+    }
+
+    private MultipartFile fileForItem(RevisionWorkspaceBatchRequest request, List<MultipartFile> files, int itemIndex) {
+        if (files == null || files.isEmpty()) {
+            return null;
+        }
+        List<Integer> indexes = request.fileItemIndexes();
+        if (indexes == null) {
+            return itemIndex < files.size() ? files.get(itemIndex) : null;
+        }
+        for (int filePosition = 0; filePosition < indexes.size(); filePosition++) {
+            if (Integer.valueOf(itemIndex).equals(indexes.get(filePosition))) {
+                return files.get(filePosition);
+            }
+        }
+        return null;
+    }
+
+    static Map<Integer, MultipartFile> mapFilesByItemIndex(RevisionWorkspaceBatchRequest request, List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, MultipartFile> filesByItemIndex = new HashMap<>();
+        List<Integer> indexes = request.fileItemIndexes();
+        for (int filePosition = 0; filePosition < files.size(); filePosition++) {
+            int itemIndex = indexes == null ? filePosition : indexes.get(filePosition);
+            filesByItemIndex.put(itemIndex, files.get(filePosition));
+        }
+        return filesByItemIndex;
     }
 
     private void validateDraftPayload(
@@ -330,7 +407,7 @@ public class RevisionWorkspaceBatchService {
         } else if (item.sourceDocumentId() != null) {
             var created = revisionService.createRevisionFromDocument(
                     item.sourceDocumentId(),
-                    new RevisionCreationRequest(StringUtils.hasText(batchReason) ? batchReason : null, "Major", null)
+                    new RevisionCreationRequest(StringUtils.hasText(batchReason) ? batchReason : null, null)
             );
             targetRevision = revisionService.requireRevisionForSnapshot(UUID.fromString(created.id()));
             createdNewRevision = true;

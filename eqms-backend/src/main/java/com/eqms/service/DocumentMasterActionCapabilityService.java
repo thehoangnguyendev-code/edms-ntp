@@ -29,6 +29,7 @@ public class DocumentMasterActionCapabilityService {
     private final DocumentMasterWorkflowAuthorizationService documentMasterWorkflowAuthorizationService;
     private final PermissionEvaluationService permissionEvaluationService;
     private final DocumentService documentService;
+    private final RevisionService revisionService;
 
     public DocumentMasterActionCapabilityService(
             CurrentUserService currentUserService,
@@ -37,7 +38,8 @@ public class DocumentMasterActionCapabilityService {
             DocumentAuthorizationService documentAuthorizationService,
             DocumentMasterWorkflowAuthorizationService documentMasterWorkflowAuthorizationService,
             PermissionEvaluationService permissionEvaluationService,
-            @Lazy DocumentService documentService
+            @Lazy DocumentService documentService,
+            @Lazy RevisionService revisionService
     ) {
         this.currentUserService = currentUserService;
         this.documentRepository = documentRepository;
@@ -46,6 +48,7 @@ public class DocumentMasterActionCapabilityService {
         this.documentMasterWorkflowAuthorizationService = documentMasterWorkflowAuthorizationService;
         this.permissionEvaluationService = permissionEvaluationService;
         this.documentService = documentService;
+        this.revisionService = revisionService;
     }
 
     @Transactional(readOnly = true)
@@ -66,9 +69,15 @@ public class DocumentMasterActionCapabilityService {
                 "documents.document.edit_metadata",
                 false));
         actions.put("uploadRevision", uploadRevision(user, document));
-        actions.put("requestControlledCopy", activeEffectivePermission(
-                user, document, "documents.controlled_copy.request", "CONTROLLED_COPY_REQUEST_NOT_ALLOWED",
-                "A controlled copy can be requested only for an active document with an Effective revision."));
+        // A controlled-document template is used directly as its Word file and is never distributed as a
+        // controlled copy (ControlledCopyService#requestControlledCopy refuses it too); keep the button off.
+        actions.put("requestControlledCopy", document.isTemplate()
+                ? simple(false, "CONTROLLED_COPY_NOT_FOR_TEMPLATE",
+                        "A controlled document template is used directly; controlled copies are not requested for templates.",
+                        "documents.controlled_copy.request", false)
+                : activeEffectivePermission(
+                        user, document, "documents.controlled_copy.request", "CONTROLLED_COPY_REQUEST_NOT_ALLOWED",
+                        "A controlled copy can be requested only for an active document with an Effective revision."));
         actions.put("configureNextReviewers", nextRevisionConfigurablePermission(
                 user, document, "documents.revision.configure_next_reviewers", "CONFIGURE_REVIEWERS_NOT_ALLOWED",
                 "You cannot configure reviewers for the next revision."));
@@ -81,9 +90,15 @@ public class DocumentMasterActionCapabilityService {
         actions.put("configureNextCorrelatedDocuments", nextRevisionConfigurablePermission(
                 user, document, "documents.revision.configure_next_correlated_documents", "CONFIGURE_CORRELATED_DOCUMENTS_NOT_ALLOWED",
                 "You cannot configure correlated documents for the next revision."));
-        actions.put("manageReviewCycle", nextRevisionConfigurablePermission(
-                user, document, "documents.document.configure_next_metadata", "REVIEW_CYCLE_NOT_ALLOWED",
-                "You cannot update the document review date."));
+        // Despite the permission's broader scope (also gates Author, Co-Author, Training and
+        // Description -- see V365__add_configure_next_metadata_permission.sql), this action key and
+        // message stayed named after only its first field, Review Date, when it was introduced. That
+        // undersold what granting documents.document.configure_next_metadata actually allows -- most
+        // notably reassigning the Author -- to anyone reading this response or this code. Renamed for
+        // accuracy; no behavior change (same permission code, same guard).
+        actions.put("configureNextMetadata", nextRevisionConfigurablePermission(
+                user, document, "documents.document.configure_next_metadata", "CONFIGURE_NEXT_METADATA_NOT_ALLOWED",
+                "You cannot configure Author, Co-Author, Training, Periodic Review Cycle/Notification, Review Date or Description for the next revision."));
         actions.put("cancel", lifecycle(user, document, "CANCEL", false));
         actions.put("obsolete", obsolete(user, document));
 
@@ -121,6 +136,26 @@ public class DocumentMasterActionCapabilityService {
             return simple(false, "DOCUMENT_HAS_OPEN_REVISIONS",
                     "Complete or close the current in-progress revision before uploading another revision.",
                     "documents.revision.upload_source", false);
+        }
+        if (!documentAuthorizationService.isNextRevisionConfiguredForUpload(document)) {
+            return simple(false, "UPGRADE_NOT_CONFIGURED",
+                    "The DCO must configure the next revision (Edit Revision for Upgrade) and save before a new revision can be uploaded.",
+                    "documents.revision.upload_source", false);
+        }
+        // Mirrors the real guard RevisionService#createRevisionAndUploadFile enforces at submit
+        // time (requireDocumentWorkflowParticipantsAssigned) -- without this check here too, the
+        // button renders and is clickable for a Document with no Approver assigned yet (e.g. a
+        // freshly-promoted Legacy Import, which never gets real workflow participants), and the DCO
+        // only discovers that after picking a file and submitting.
+        String missingParticipantsReason = revisionService.describeWhyDocumentWorkflowParticipantsAreMissing(document);
+        if (missingParticipantsReason != null) {
+            String reasonCode = missingParticipantsReason.startsWith("REVIEWER_REQUIRED")
+                    ? "REVIEWER_REQUIRED"
+                    : "APPROVER_REQUIRED";
+            String message = "APPROVER_REQUIRED".equals(reasonCode)
+                    ? "Assign an Approver before uploading a revision."
+                    : "Assign a Reviewer before uploading a revision.";
+            return simple(false, reasonCode, message, "documents.revision.upload_source", false);
         }
         return allow("documents.revision.upload_source", false);
     }

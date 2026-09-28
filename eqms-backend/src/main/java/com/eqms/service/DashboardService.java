@@ -45,7 +45,9 @@ public class DashboardService {
     }
 
     public DashboardSummaryResponse getSummary(AuthenticatedUser currentUser) {
-        long totalEffective = documentRepo.countByStatus_Code("EFFECTIVE");
+        // A Document Master becomes ACTIVE when it has an Effective Revision. EFFECTIVE is a
+        // Revision-only lifecycle state, so querying it on the Document table always undercounts.
+        long totalEffective = documentRepo.countByStatus_Code("ACTIVE");
         long total = documentRepo.count();
         long pendingReview = revisionRepo.countByStatus_Code("PENDING_REVIEW");
         long pendingApproval = revisionRepo.countByStatus_Code("PENDING_APPROVAL");
@@ -85,11 +87,15 @@ public class DashboardService {
         long inactiveUsers = totalUsers - activeUsers;
         long totalDocuments = documentRepo.count();
 
+        // Status codes must match the real values documents are stored with (see
+        // DocumentService.cancelDocument()/obsoleteDocument(), which set "CLOSED_CANCELLED"/
+        // "OBSOLETED" -- not the stale "CANCELLED"/"OBSOLETE" this previously counted against,
+        // which always returned 0.
         Map<String, Long> documentsByStatus = Map.of(
-                "EFFECTIVE", documentRepo.countByStatus_Code("EFFECTIVE"),
+                "ACTIVE", documentRepo.countByStatus_Code("ACTIVE"),
                 "DRAFT", documentRepo.countByStatus_Code("DRAFT"),
-                "OBSOLETE", documentRepo.countByStatus_Code("OBSOLETE"),
-                "CANCELLED", documentRepo.countByStatus_Code("CANCELLED")
+                "OBSOLETED", documentRepo.countByStatus_Code("OBSOLETED"),
+                "CLOSED_CANCELLED", documentRepo.countByStatus_Code("CLOSED_CANCELLED")
         );
 
         Map<String, Long> revisionsByStatus = Map.of(

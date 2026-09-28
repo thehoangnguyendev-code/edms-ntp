@@ -103,8 +103,16 @@ public class SecureFileAccessService {
         // 2. GMP Segregation of Duties: SYSTEM_SUPER_ADMIN is not exempt from file access
         // permission checks — it must hold the required permission like any other user (see
         // V243__seed_system_super_admin_permission_set.sql).
+        //
+        // GMP decision (HDR-AUTH-001): a direct stakeholder of the underlying Document/Revision
+        // (Author/Co-author/Reviewer/Approver/Admin-DCO — see DocumentAuthorizationService
+        // #isDirectStakeholder) bypasses the separate preview permission requirement, since they
+        // already passed the record's own View Detail gate. Indirect/broad viewers still need it.
+        // This bypass never applies to DOWNLOAD (see evaluateBusinessRules' unconditional deny).
         String requiredPermission = resolveRequiredPermission(action, objectType);
-        if (requiredPermission != null && !hasFilePermission(user, requiredPermission, context)) {
+        boolean isPreviewAction = action == FileAccessAction.VIEW_PREVIEW || action == FileAccessAction.VIEW_ONLINE;
+        boolean stakeholderPreviewBypass = isPreviewAction && context != null && context.getBool("isDirectStakeholder", false);
+        if (requiredPermission != null && !stakeholderPreviewBypass && !hasFilePermission(user, requiredPermission, context)) {
             return FileAccessDecision.denied("MISSING_PERMISSION",
                     "You do not have permission to perform this action.",
                     requiredPermission, action, objectType, objectId);
@@ -157,25 +165,22 @@ public class SecureFileAccessService {
         return switch (objectType) {
             case REVISION -> switch (action) {
                 case VIEW_PREVIEW -> "documents.revision.preview";
-                case DOWNLOAD -> "documents.revision.download_source";
                 case UPLOAD, REPLACE -> "documents.revision.upload_source";
                 case EDIT_ONLINE, GENERATE_SHAREPOINT_LINK -> "documents.revision.edit_online";
                 case SYNC_TO_OFFICE, SYNC_FROM_OFFICE -> "documents.revision.upload_office_online";
-                case GENERATE_PREVIEW -> "documents.revision.generate_preview";
                 default -> null;
             };
             case REVIEW_SNAPSHOT -> "documents.revision.preview";
             case PUBLISHED_PDF -> switch (action) {
                 case VIEW_PREVIEW, VIEW_ONLINE -> "documents.document.preview_published";
-                case DOWNLOAD -> "documents.document.download_published";
                 case GENERATE_PUBLISHED_PDF -> "documents.revision.publish";
                 default -> null;
             };
             case SOURCE_DOCX -> switch (action) {
-                // Preview is read-only review access; downloading the editable source remains a
-                // separate, more sensitive permission.
+                // Preview is read-only review access. Direct download of the source file is no
+                // longer a supported capability -- see evaluateBusinessRules(), which denies
+                // DOWNLOAD unconditionally for this object type regardless of permission.
                 case VIEW_PREVIEW -> "documents.revision.preview";
-                case DOWNLOAD -> "documents.revision.download_source";
                 case UPLOAD, REPLACE -> "documents.revision.upload_source";
                 case EDIT_ONLINE -> "documents.revision.edit_online";
                 case SYNC_TO_OFFICE, SYNC_FROM_OFFICE -> "documents.revision.upload_office_online";
@@ -194,7 +199,6 @@ public class SecureFileAccessService {
             };
             case DOCUMENT -> switch (action) {
                 case VIEW_PREVIEW -> "documents.document.preview_published";
-                case DOWNLOAD -> "documents.document.download_published";
                 default -> null;
             };
             // Publishing workspace
@@ -221,6 +225,22 @@ public class SecureFileAccessService {
             FileAccessContext context,
             String permissionCode
     ) {
+        // GMP decision: direct download of the source/master document is no longer a supported
+        // capability, regardless of any permission grant -- the only sanctioned path to obtain a
+        // copy is the Controlled Copy distribution workflow (CONTROLLED_COPY/CONTROLLED_COPY_EVIDENCE
+        // object types, untouched below). This check is unconditional so it cannot be bypassed by a
+        // future permission grant reintroducing the removed download_source/download_published codes.
+        if (action == FileAccessAction.DOWNLOAD
+                && (objectType == FileObjectType.REVISION
+                    || objectType == FileObjectType.SOURCE_DOCX
+                    || objectType == FileObjectType.PUBLISHED_PDF
+                    || objectType == FileObjectType.DOCUMENT)) {
+            return FileAccessDecision.denied("DOWNLOAD_NOT_SUPPORTED",
+                    "Direct download of the source or master document is not permitted. "
+                            + "Obtain an authorized copy via the Controlled Copy distribution workflow.",
+                    permissionCode, action, objectType, objectId);
+        }
+
         if (context == null) return null;
 
         return switch (objectType) {
@@ -292,19 +312,6 @@ public class SecureFileAccessService {
                 return FileAccessDecision.denied("NOT_REVISION_AUTHOR",
                         "Only the assigned revision author can upload, replace, or synchronize the source file.",
                         permissionCode, action, FileObjectType.SOURCE_DOCX, objectId);
-            }
-        }
-
-        // Download source DOCX: only allowed in Draft, or if user has DCO/admin override
-        if (action == FileAccessAction.DOWNLOAD) {
-            if (!"DRAFT".equalsIgnoreCase(status)) {
-                // Allow DCO / document admin to download at any status
-                boolean hasCrossDocumentVisibility = canViewAllDocuments(user);
-                if (!hasCrossDocumentVisibility) {
-                    return FileAccessDecision.denied("INVALID_REVISION_STATUS",
-                            "Source document download is only available for Draft revisions.",
-                            permissionCode, action, FileObjectType.SOURCE_DOCX, objectId);
-                }
             }
         }
 
@@ -452,6 +459,10 @@ public class SecureFileAccessService {
         };
     }
 
+    // Optional: keeps existing constructors/tests valid; always injected in the application.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private WorkflowDeniedAuditService workflowDeniedAuditService;
+
     private void logDeniedAudit(
             UserAccount user,
             FileAccessAction action,
@@ -465,15 +476,21 @@ public class SecureFileAccessService {
                     + " objectType=" + objectType
                     + " reason=" + reasonCode
                     + (permissionCode != null ? " permission=" + permissionCode : "");
-            auditTrailService.logAs(
-                    user,
-                    objectType == null ? "FILE" : objectType.name(),
-                    null,
-                    objectId,
-                    "FILE_ACCESS_DENIED",
-                    null, null,
-                    comment
-            );
+            if (workflowDeniedAuditService != null) {
+                workflowDeniedAuditService.recordDenied(
+                        user, objectType == null ? "FILE" : objectType.name(), null, objectId,
+                        "FILE_ACCESS_DENIED", null, comment);
+            } else {
+                auditTrailService.logAs(
+                        user,
+                        objectType == null ? "FILE" : objectType.name(),
+                        null,
+                        objectId,
+                        "FILE_ACCESS_DENIED",
+                        null, null,
+                        comment
+                );
+            }
         } catch (Exception ex) {
             log.warn("[SECURITY] Failed to log denied file access audit event: {}", ex.getMessage());
         }

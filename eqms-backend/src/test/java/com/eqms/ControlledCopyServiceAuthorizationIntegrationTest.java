@@ -3,6 +3,7 @@ package com.eqms;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.auth.TokenService;
 import com.eqms.entity.ControlledCopyDistributionBatch;
+import com.eqms.entity.ControlledCopyPolicySetting;
 import com.eqms.entity.ControlledCopyRecord;
 import com.eqms.entity.DocumentRecord;
 import com.eqms.entity.DocumentRevisionRecord;
@@ -16,13 +17,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -56,6 +62,7 @@ class ControlledCopyServiceAuthorizationIntegrationTest {
     @Mock com.eqms.service.NotificationDispatcher notificationDispatcher;
     @Mock ControlledCopyBatchStatusService controlledCopyBatchStatusService;
     @Mock ControlledCopyPlaceholderFieldRepository controlledCopyPlaceholderFieldRepository;
+    @Mock SignatureTokenConsumptionService signatureTokenConsumptionService;
 
     ControlledCopyService service;
     UserAccount user;
@@ -92,7 +99,11 @@ class ControlledCopyServiceAuthorizationIntegrationTest {
                 new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(),
                 new ControlledCopyPreviewGrantService("test-secret-with-at-least-32-characters"),
                 controlledCopyBatchStatusService,
-                controlledCopyPlaceholderFieldRepository
+                controlledCopyPlaceholderFieldRepository,
+                new com.eqms.service.ControlledCopyPlaceholderValueBuilder(new com.fasterxml.jackson.databind.ObjectMapper()),
+                new com.eqms.service.ControlledCopyPdfMarkingService(),
+                new com.eqms.service.ControlledCopyWithdrawalNoticeService(),
+                signatureTokenConsumptionService
         );
 
         user = new UserAccount();
@@ -131,6 +142,76 @@ class ControlledCopyServiceAuthorizationIntegrationTest {
         lenient().doThrow(new AccessDeniedException("denied"))
                 .when(controlledCopyAuthorizationService)
                 .requireDistributeControlledCopy(eq(user), eq(copy));
+    }
+
+    @Test
+    void watermarkEvidence_rejectsBytesThatOnlyClaimToBeAnImage() {
+        MultipartFile spoofedImage = new MockMultipartFile(
+                "evidence", "evidence.jpg", "image/jpeg", "not an image".getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+
+        assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(service, "watermarkEvidence", spoofedImage))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("valid JPEG or PNG");
+    }
+
+    @Test
+    void watermarkEvidence_usesTheDecodedFormatInsteadOfTheBrowserClaim() throws Exception {
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "png", bytes);
+        MultipartFile mismatchedClaim = new MockMultipartFile(
+                "evidence", "evidence.jpg", "image/jpeg", bytes.toByteArray()
+        );
+
+        Object result = ReflectionTestUtils.invokeMethod(service, "watermarkEvidence", mismatchedClaim);
+        Object originalContentType = ReflectionTestUtils.invokeMethod(result, "originalContentType");
+
+        assertThat(originalContentType).isEqualTo("image/png");
+    }
+
+    @Test
+    void issuePreviewPassword_persistsOnlyBcryptHashAndRotatesCredential() {
+        String firstPassword = (String) ReflectionTestUtils.invokeMethod(service, "issuePreviewPassword", copy);
+        String firstHash = copy.getPreviewPasswordHash();
+
+        assertThat(firstPassword).isNotBlank();
+        assertThat(firstHash).isNotBlank().isNotEqualTo(firstPassword);
+        assertThat(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().matches(firstPassword, firstHash)).isTrue();
+
+        String secondPassword = (String) ReflectionTestUtils.invokeMethod(service, "issuePreviewPassword", copy);
+        assertThat(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().matches(secondPassword, copy.getPreviewPasswordHash())).isTrue();
+        assertThat(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().matches(firstPassword, copy.getPreviewPasswordHash())).isFalse();
+    }
+
+    @Test
+    void distributionNotification_exposesPreviewPasswordOnlyInOutboundTemplateVariables() {
+        user.setEmail("recipient@example.test");
+        String password = (String) ReflectionTestUtils.invokeMethod(service, "issuePreviewPassword", copy);
+        ControlledCopyPolicySetting policy = new ControlledCopyPolicySetting();
+        when(controlledCopyPolicyService.loadOrDefault()).thenReturn(policy);
+        when(emailNotificationService.buildControlledCopyVariables(any(), any(), any(), any(), any(), anyMap()))
+                .thenAnswer(invocation -> new HashMap<>((Map<String, String>) invocation.getArgument(5)));
+
+        ReflectionTestUtils.invokeMethod(
+                service,
+                "sendControlledCopyDistributionNotification",
+                copy,
+                user,
+                "Distribution completed",
+                false,
+                password
+        );
+
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<Map<String, String>> variables = org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(emailNotificationService).sendControlledCopyNotification(
+                eq(com.eqms.util.EmailTemplateTypeUtils.CONTROLLED_COPY_DISTRIBUTION_NOTIFICATION),
+                eq(List.of(user)),
+                variables.capture()
+        );
+        assertThat(variables.getValue()).containsEntry("previewPassword", password);
+        assertThat(copy.getPreviewPasswordHash()).doesNotContain(password);
     }
 
     @Test
@@ -271,4 +352,5 @@ class ControlledCopyServiceAuthorizationIntegrationTest {
 
         verifyNoInteractions(fileStorageService, emailNotificationService, auditTrailService);
     }
+
 }

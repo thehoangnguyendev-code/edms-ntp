@@ -57,9 +57,6 @@ class NotificationHandoverTest {
     @Mock private EmailNotificationService emailNotificationService;
     @Mock private TrainingAuthorizationService trainingAuthorizationService;
     @Mock private SystemConfigurationService systemConfigurationService;
-    @Mock private OfficeOnlineConfigurationService officeOnlineConfigurationService;
-    @Mock private MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService;
-    @Mock private SharePointPathBuilder sharePointPathBuilder;
     @Mock private FileStorageService fileStorageService;
     @Mock private ControlledCopyRepository controlledCopyRepository;
     @Mock private RevisionPublishingMetadataRepository publishingMetadataRepository;
@@ -72,6 +69,7 @@ class NotificationHandoverTest {
     @Mock private WorkflowActionPolicyService workflowActionPolicyService;
     @Mock private UserAccessProfileRepository userAccessProfileRepository;
     @Mock private UserAccountRepository userAccountRepository;
+    @Mock private SignatureTokenConsumptionService signatureTokenConsumptionService;
 
     @InjectMocks
     private RevisionService revisionService;
@@ -99,6 +97,7 @@ class NotificationHandoverTest {
         revision = new DocumentRevisionRecord();
         revision.setId(UUID.randomUUID());
         revision.setDocument(document);
+        revision.setFilePath("revisions/" + revision.getId() + "/source.docx");
         RevisionStatusDefinition draft = new RevisionStatusDefinition();
         draft.setCode("DRAFT");
         revision.setStatus(draft);
@@ -109,7 +108,6 @@ class NotificationHandoverTest {
                         invocation.getArgument(2),
                         invocation.getArgument(1, DocumentRevisionRecord.class).getId(),
                         "DRAFT", false, false));
-        lenient().when(microsoftGraphOfficeOnlineService.isConfigured()).thenReturn(false);
         lenient().when(tokenService.parseSignatureToken(anyString())).thenReturn(Optional.of(
                 new TokenService.ParsedAccessToken(
                         "signature",
@@ -117,8 +115,21 @@ class NotificationHandoverTest {
                 )
         ));
         lenient().when(currentUserService.requireCurrentUser()).thenReturn(author);
+        lenient().when(signatureTokenConsumptionService.requireAndConsume(anyString(), any(UserAccount.class)))
+                .thenReturn(UUID.randomUUID());
         lenient().when(revisionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));
+        lenient().when(revisionRepository.findByIdForUpdate(revision.getId())).thenReturn(Optional.of(revision));
         lenient().when(electronicSignatureService.hasRevisionSignatureMeaning(any(DocumentRevisionRecord.class), anyString())).thenReturn(true);
+        // Complete Editing now requires a real, resolvable source file (see
+        // RevisionService.requireRevisionSourceFile) -- materialize a real temp file so
+        // Files.exists() confirms the "source file present" check for these notification tests.
+        try {
+            java.nio.file.Path tempSourceFile = java.nio.file.Files.createTempFile("notification-handover-test-source", ".docx");
+            tempSourceFile.toFile().deleteOnExit();
+            lenient().when(fileStorageService.materializeStoredFile(anyString())).thenReturn(tempSourceFile);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private WorkflowActionPolicy policyWithAccessProfileActors(String... profileCodes) {
@@ -196,12 +207,6 @@ class NotificationHandoverTest {
         dco.setStatus(UserStatus.Active);
         // Cancel is performed by DCO (D-5), not the Author, so the Author must be notified.
         when(currentUserService.requireCurrentUser()).thenReturn(dco);
-        when(tokenService.parseSignatureToken(anyString())).thenReturn(Optional.of(
-                new TokenService.ParsedAccessToken(
-                        "signature",
-                        new com.eqms.auth.AuthenticatedUser(dco.getId(), UUID.randomUUID(), dco.getUsername(), "USER", java.util.Collections.emptySet())
-                )
-        ));
 
         UserAccount coAuthor = new UserAccount();
         coAuthor.setId(UUID.randomUUID());

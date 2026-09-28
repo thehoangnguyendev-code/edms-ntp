@@ -29,6 +29,7 @@ interface SignaturesTabProps {
   controlledCopy: ControlledCopy;
   records?: SignatureRecord[];
   auditTrailRecords?: AuditTrailRecord[];
+  isBatchParent?: boolean;
 }
 
 const ACTION_LABELS: Record<string, { by: string; on: string }> = {
@@ -87,6 +88,7 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
   controlledCopy,
   records = [],
   auditTrailRecords = [],
+  isBatchParent = false,
 }) => {
   const signatureRecords = useMemo<SignatureRecord[]>(() => {
     if (records.length > 0) {
@@ -98,7 +100,21 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
       }));
     }
 
-    const normalizedAuditRows = auditTrailRecords
+    // auditTrailRecords for a batch is a MERGED timeline (the batch's own rows + every member
+    // copy's own rows, see ControlledCopyDetailView's loadAuditTrail) -- picking "the latest row
+    // per action across the whole merged list" without this filter meant a batch's own Signatures
+    // tab showed whichever of its N member copies happened to be distributed/recalled/cancelled
+    // *last*, an arbitrary single recipient with no batch-level meaning. Restrict to the batch's
+    // own rows so this reflects the batch's own milestones -- who requested/distributed/recalled/
+    // cancelled the batch as a whole, and when. Filtered on `module`, not `entityType`: the
+    // getByEntity endpoint behind loadAuditTrail (normalizeAuditTrailRecord) never populates
+    // entityType -- only the separate single-record detail endpoint does -- while module always
+    // carries the same "Controlled Copy Distribution Batch" / "Controlled Copy" value logAs wrote.
+    const scopedAuditRows = isBatchParent
+      ? auditTrailRecords.filter((record) => record.module === "Controlled Copy Distribution Batch")
+      : auditTrailRecords;
+
+    const normalizedAuditRows = scopedAuditRows
       .filter((record) => ACTION_LABELS[String(record.action || "").toUpperCase()])
       .sort((left, right) => {
         const leftTime = left.timestamp ? new Date(left.timestamp).getTime() : 0;

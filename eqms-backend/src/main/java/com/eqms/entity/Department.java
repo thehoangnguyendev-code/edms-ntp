@@ -13,6 +13,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+// UserAccount is in the same package (com.eqms.entity) -- no import needed.
 import java.util.UUID;
 
 @Entity
@@ -35,6 +36,13 @@ public class Department {
 
     @Column(length = 255)
     private String manager;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_head_id")
+    private UserAccount departmentHead;
+
+    @Column(name = "primary_contact_phone", length = 20)
+    private String primaryContactPhone;
 
     @Column(length = 512)
     private String description;
@@ -102,6 +110,22 @@ public class Department {
 
     public void setManager(String manager) {
         this.manager = manager;
+    }
+
+    public UserAccount getDepartmentHead() {
+        return departmentHead;
+    }
+
+    public void setDepartmentHead(UserAccount departmentHead) {
+        this.departmentHead = departmentHead;
+    }
+
+    public String getPrimaryContactPhone() {
+        return primaryContactPhone;
+    }
+
+    public void setPrimaryContactPhone(String primaryContactPhone) {
+        this.primaryContactPhone = primaryContactPhone;
     }
 
     public String getDescription() {

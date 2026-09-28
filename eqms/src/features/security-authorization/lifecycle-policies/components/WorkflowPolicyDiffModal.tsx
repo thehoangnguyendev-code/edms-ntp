@@ -1,7 +1,7 @@
 import React from "react";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Badge } from "@/components/ui/badge/Badge";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import type { WorkflowActionPolicyPreviewResponse } from "../types";
 import { IconCheck } from "@tabler/icons-react";
 
@@ -43,10 +43,10 @@ export const WorkflowPolicyDiffModal: React.FC<WorkflowPolicyDiffModalProps> = (
       {preview && (
         <div className="flex flex-col gap-4">
           {!isPreviewValid && (
-            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-              <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-              <p>The preview is invalid. Confirmation is disabled until the policy is corrected.</p>
-            </div>
+            <WarningBanner
+              variant="error"
+              description="The preview is invalid. Confirmation is disabled until the policy is corrected."
+            />
           )}
           {/* Changes list */}
           {hasChanges ? (
@@ -91,18 +91,12 @@ export const WorkflowPolicyDiffModal: React.FC<WorkflowPolicyDiffModalProps> = (
               </p>
               <div className="flex flex-col gap-2">
                 {preview.warnings.map((w, i) => (
-                  <div
+                  <WarningBanner
                     key={i}
-                    className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm"
-                  >
-                    <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <Badge color="amber" size="xs" className="mb-1">
-                        {w.code}
-                      </Badge>
-                      <p className="text-amber-800 text-xs">{w.message}</p>
-                    </div>
-                  </div>
+                    variant="warning"
+                    title={w.code}
+                    description={w.message}
+                  />
                 ))}
               </div>
             </div>

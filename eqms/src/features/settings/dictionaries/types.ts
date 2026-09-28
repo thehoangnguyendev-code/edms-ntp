@@ -8,8 +8,6 @@ import type { ElementType } from 'react';
 // ─── Navigation ───────────────────────────────────────────────────────────────
 export type DictionaryType =
   | "business-units"
-  | "document-types"
-  | "sub-types"
   | "departments"
   | "positions"
   | "storage-locations"
@@ -45,13 +43,17 @@ export interface DepartmentItem {
   isActive: boolean;
   createdDate: string;
   modifiedDate: string;
+  departmentHeadId?: string | null;
+  departmentHeadName?: string | null;
+  /** Auto-filled from the selected Department Head's phone number when set in the modal, but
+   *  stored as its own editable field (not a live join) so it can be overridden. */
+  primaryContactPhone?: string | null;
 }
 
 // ─── Position ────────────────────────────────────────────────────────────────
 export interface PositionItem {
   id: string;
   name: string;
-  abbreviation?: string;
   businessUnit: BusinessUnit;
   department: string;
   description?: string;
@@ -72,16 +74,19 @@ export interface DocumentTypeItem {
   isActive: boolean;
   createdDate: string;
   modifiedDate: string;
+  /** Document Name Format used to generate this type's document numbers (Phase 2). */
+  nameFormatId?: string | null;
+  nameFormatName?: string | null;
 }
 
-// â”€â”€â”€ Document Sub-Type â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Document Sub-Type 
 export interface DocumentSubTypeItem {
   id: string;
   name: string;
   documentTypeId: string;
   documentType: string;
   description?: string;
-  reviewRequirement: "NONE" | "SINGLE" | "MULTIPLE";
+  reviewRequirement: "NONE" | "REQUIRED";
   isActive: boolean;
   createdDate: string;
   modifiedDate: string;

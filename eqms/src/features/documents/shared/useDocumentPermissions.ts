@@ -12,14 +12,20 @@ export const DOCUMENT_PERMISSION_CODES = {
   uploadToOfficeOnline: 'documents.revision.upload_office_online',
   editFileOnline: 'documents.revision.edit_online',
   submitRevision: 'documents.revision.submit_review',
-  cancelRevision: 'documents.revision.cancel',
+  // The REVISION/CANCEL row in workflow_action_policies requires documents.workspace.manage, not
+  // documents.revision.cancel (which exists in the permission catalog but nothing actually
+  // enforces) -- same class of drift as the OBSOLETE fix below. Verified against the live policy
+  // table, not guessed from the permission's name.
+  cancelRevision: 'documents.workspace.manage',
   completeReview: 'documents.revision.review',
   rejectReview: 'documents.revision.reject_review',
   rejectApproval: 'documents.revision.reject_approval',
   approveRevision: 'documents.revision.approve',
   manageTrainingPlan: 'documents.training.manage',
   completeTraining: 'documents.training.complete',
-  publishRevision: 'documents.revision.publish',
+  // Same drift: REVISION/PUBLISH requires documents.workspace.manage, not
+  // documents.revision.publish -- ticking only the latter showed the button but always 403'd.
+  publishRevision: 'documents.workspace.manage',
   openPublishingWorkspace: 'documents.revision.open_publishing_workspace',
   viewFinalPdfPreview: 'documents.document.preview_published',
   // Matches the actual backend enforcement (requireCanManageDocumentWorkspace) and the
@@ -41,8 +47,6 @@ export const DOCUMENT_PERMISSION_CODES = {
   accessDocumentAdministration: 'documents.admin.view',
   manageDocumentWorkflowRoles: 'documents.admin.manage_workflow_roles',
   manageDocumentSodConstraints: 'security.sod.manage',
-  useDocumentTemplate: 'documents.template.use',
-  manageDocumentTemplate: 'documents.template.manage',
 } as const;
 
 export function useDocumentPermissions() {
@@ -96,11 +100,8 @@ export function useDocumentPermissions() {
     canConfigureNextRevisionCorrelatedDocuments: hasPermission(DOCUMENT_PERMISSION_CODES.configureNextRevisionCorrelatedDocuments),
     canAccessDocumentAdministration: hasPermission(DOCUMENT_PERMISSION_CODES.accessDocumentAdministration),
     canManageDocumentWorkflowRoles: hasPermission(DOCUMENT_PERMISSION_CODES.manageDocumentWorkflowRoles),
-    canUseDocumentTemplate: hasAnyPermission([
-      DOCUMENT_PERMISSION_CODES.useDocumentTemplate,
-      DOCUMENT_PERMISSION_CODES.manageDocumentTemplate,
-    ]),
-    canManageDocumentTemplate: hasPermission(DOCUMENT_PERMISSION_CODES.manageDocumentTemplate),
+    // Choosing a template to start a revision from is another way of supplying its source file, so it shares the upload permission.
+    canUseDocumentTemplate: hasPermission(DOCUMENT_PERMISSION_CODES.uploadRevisionFile),
     canManageDocumentSodConstraints: hasPermission(DOCUMENT_PERMISSION_CODES.manageDocumentSodConstraints),
   }), [
     user,

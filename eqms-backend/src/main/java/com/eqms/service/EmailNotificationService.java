@@ -5,9 +5,14 @@ import com.eqms.entity.ControlledCopyDistributionBatch;
 import com.eqms.entity.DocumentRecord;
 import com.eqms.entity.DocumentRevisionRecord;
 import com.eqms.entity.EmailTemplate;
+import com.eqms.entity.NotificationPolicy;
+import com.eqms.entity.NotificationTemplateVersion;
 import com.eqms.entity.UserAccount;
 import com.eqms.entity.NotificationDeliveryFailure;
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.repository.EmailTemplateRepository;
+import com.eqms.repository.NotificationPolicyRepository;
+import com.eqms.repository.NotificationTemplateVersionRepository;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.repository.NotificationDeliveryFailureRepository;
 import com.eqms.util.NotificationPreferenceUtils;
@@ -30,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +57,18 @@ public class EmailNotificationService {
 
     @Autowired
     private ObjectProvider<NotificationDispatcher> notificationDispatcherProvider;
+
+    @Autowired
+    private ObjectProvider<AuditTrailService> auditTrailServiceProvider;
+
+    @Autowired
+    private ObjectProvider<SystemActorProvider> systemActorProviderProvider;
+
+    @Autowired
+    private NotificationPolicyRepository notificationPolicyRepository;
+
+    @Autowired
+    private NotificationTemplateVersionRepository notificationTemplateVersionRepository;
 
     @Value("${app.public-url:http://localhost:3000}")
     private String envPublicAppUrl;
@@ -129,20 +147,25 @@ public class EmailNotificationService {
                 }
                 boolean sent = sendTemplateEmailWithRetry(emailService, recipientEmail.trim(), template, payload, true);
                 if (!sent) {
+                    String reason = "Email provider rejected delivery or is not configured";
                     recordDeliveryFailure(
                             recipientEmail,
                             normalizedType,
                             "CONTROLLED_COPY",
-                            new IllegalStateException("Email provider rejected delivery or is not configured"), payload
+                            new IllegalStateException(reason), payload
                     );
+                    auditEmailAttempt(recipientEmail, recipientEmail, template.getName(), payload, false, reason);
                     log.warn(
                             "Email template '{}' was not sent to {} because email notifications are disabled or SMTP is not configured.",
                             template.getName(),
                             recipientEmail
                     );
+                } else {
+                    auditEmailAttempt(recipientEmail, recipientEmail, template.getName(), payload, true, null);
                 }
             } catch (Exception ex) {
                 recordDeliveryFailure(recipientEmail, normalizedType, "CONTROLLED_COPY", ex, payload);
+                auditEmailAttempt(recipientEmail, recipientEmail, template.getName(), payload, false, ex.getMessage());
                 log.warn("Failed to send '{}' controlled copy notification to {}: {}", normalizedType, recipientEmail, ex.getMessage(), ex);
             }
         }
@@ -175,11 +198,16 @@ public class EmailNotificationService {
             }
             boolean sent = emailService.sendTemplateEmailWithAttachment(dco.getEmail(), template, payload, attachmentFileName, attachmentBytes);
             if (!sent) {
+                String reason = "Email provider rejected delivery or is not configured";
                 recordDeliveryFailure(dco.getEmail(), normalizedType, "CONTROLLED_COPY",
-                        new IllegalStateException("Email provider rejected delivery or is not configured"), payload);
+                        new IllegalStateException(reason), payload);
+                auditEmailAttempt(dco.getFullName(), dco.getEmail(), template.getName(), payload, false, reason);
+            } else {
+                auditEmailAttempt(dco.getFullName(), dco.getEmail(), template.getName(), payload, true, null);
             }
         } catch (Exception ex) {
             recordDeliveryFailure(dco.getEmail(), normalizedType, "CONTROLLED_COPY", ex, payload);
+            auditEmailAttempt(dco.getFullName(), dco.getEmail(), template.getName(), payload, false, ex.getMessage());
             log.warn("Failed to send DCO batch ZIP notification to {}: {}", dco.getEmail(), ex.getMessage(), ex);
         }
     }
@@ -269,6 +297,10 @@ public class EmailNotificationService {
     ) {
         Map<String, String> merged = buildUserVariables(recipient, actor, variables);
         if (copy != null) {
+            // Lets auditEmailAttempt() anchor the "email sent" audit row to this specific
+            // Controlled Copy (not just its parent Document/Revision) when neither of those ids
+            // is present in the payload.
+            merged.put("controlledCopyId", copy.getId() == null ? "" : copy.getId().toString());
             merged.put("controlledCopyNumber", value(copy.getControlledCopyNumber()));
             merged.put("copyNumber", copy.getCopyNumber() > 0 ? String.valueOf(copy.getCopyNumber()) : "");
             merged.put("totalCopies", copy.getTotalCopies() > 0 ? String.valueOf(copy.getTotalCopies()) : "");
@@ -282,8 +314,19 @@ public class EmailNotificationService {
             merged.put("controlledCopyUrl", copy.getId() == null ? "" : "/documents/controlled-copies/" + copy.getId());
             merged.put("controlledCopyPreviewUrl", buildControlledCopyPreviewUrl(copy));
             merged.put("previewToken", value(copy.getAccessToken()));
+            // The Cancellation/Recall/Obsoleted templates render "Scope: {{workflowScope}}" and
+            // "Batch Number: {{batchNumber}}" unconditionally -- they were populated only by
+            // buildControlledCopyBatchVariables (the bulk cancelBatch()/recallBatch() path), so a
+            // SINGLE-copy action (cancelControlledCopy, recall of one copy, etc. -- the far more
+            // common case) left both placeholders completely unsubstituted in the recipient's
+            // inbox: "Scope: {{workflowScope}} Batch Number: {{batchNumber}}", verbatim. Every
+            // copy belongs to a batch even when only it (not the whole batch) is being acted on,
+            // so scope is "Individual Copy" (to distinguish from an actual bulk batch action) and
+            // the real batch number is still shown for reference.
+            merged.put("workflowScope", "Individual Copy");
+            merged.put("batchNumber", safeBatchNumber(copy));
             merged.put("workflowStage", value(copy.getCurrentStage()));
-            merged.put("workflowAction", value(action));
+            merged.put("workflowAction", humanizeControlledCopyAction(action));
             merged.put("workflowComment", value(comment));
             merged.put("distributionList", value(copy.getDistributionList()));
             merged.put("distributionScope", value(copy.getDistributionScope()));
@@ -305,6 +348,9 @@ public class EmailNotificationService {
             merged.put("effectiveDate", formatDate(copy.getEffectiveDate()));
             merged.put("hasExpiryDate", Boolean.TRUE.equals(copy.getHasExpiryDate()) ? "true" : "false");
             merged.put("expiryDate", formatDateTime(copy.getExpiryDate()));
+            // Canonical name used by the templates / notification-event catalog
+            // ("{{controlledCopyNumber}} expires on {{expiryDateDisplay}}"). Date-only.
+            merged.put("expiryDateDisplay", formatInstantAsDate(copy.getExpiryDate()));
             merged.put("expiryReminderSentAt", formatDateTime(copy.getExpiryReminderSentAt()));
         }
         merged.put("systemName", merged.getOrDefault("systemName", "EQMS"));
@@ -322,6 +368,7 @@ public class EmailNotificationService {
     ) {
         Map<String, String> merged = buildUserVariables(recipient, actor, variables);
         if (batch != null) {
+            merged.put("controlledCopyBatchId", batch.getId() == null ? "" : batch.getId().toString());
             merged.put("workflowScope", "Batch");
             merged.put("batchNumber", value(batch.getBatchNumber()));
             merged.put("batchQuantity", batch.getQuantity() > 0 ? String.valueOf(batch.getQuantity()) : "");
@@ -339,7 +386,7 @@ public class EmailNotificationService {
             merged.put("controlledCopyPreviewUrl", batch.getId() == null ? "" : "/documents/controlled-copies/" + batch.getId());
             merged.put("previewToken", "");
             merged.put("workflowStage", value(batch.getStatus()));
-            merged.put("workflowAction", value(action));
+            merged.put("workflowAction", humanizeControlledCopyAction(action));
             merged.put("workflowComment", value(comment));
             merged.put("distributionList", value(batch.getDistributionList()));
             merged.put("distributionScope", value(batch.getDistributionScope()));
@@ -361,6 +408,7 @@ public class EmailNotificationService {
             merged.put("effectiveDate", formatDateTime(batch.getDistributedAt()));
             merged.put("hasExpiryDate", Boolean.TRUE.equals(batch.getHasExpiryDate()) ? "true" : "false");
             merged.put("expiryDate", formatDateTime(batch.getExpiryDate()));
+            merged.put("expiryDateDisplay", formatInstantAsDate(batch.getExpiryDate()));
             merged.put("expiryReminderSentAt", "");
         }
         merged.put("systemName", merged.getOrDefault("systemName", "EQMS"));
@@ -377,7 +425,31 @@ public class EmailNotificationService {
         if (!StringUtils.hasText(token)) {
             return baseUrl + "/documents/controlled-copies/" + copy.getId();
         }
-        return baseUrl + "/documents/controlled-copies/preview/" + copy.getId() + "?token=" + token;
+        // Must be the standalone, no-login public route (outside ProtectedRoute/MainLayout) --
+        // "/documents/controlled-copies/preview/..." (the old value here) requires an internal
+        // eQMS login just to reach the route, and even when reached from an already-authenticated
+        // browser session, that session's JWT gets attached to every subsequent preview/download
+        // call and is checked against the copy's actual recipient, denying access whenever the
+        // logged-in user isn't that exact recipient. See routes.constants.ts
+        // PUBLIC_CONTROLLED_COPY_PREVIEW for the frontend route this must match.
+        //
+        // BUGFIX: the token MUST be a URL fragment ("#token="), not a query parameter
+        // ("?token="). A query parameter is sent to the server on the very first request and can
+        // end up in server access logs, intermediate proxy logs, or a Referer header if the page
+        // ever loads a third-party resource -- exactly what ControlledCopyPreviewView.tsx's own
+        // fragment-only design (and its "never sent in the initial HTTP request" comment) exists
+        // to prevent. The frontend already falls back to reading a "?token=" query parameter too,
+        // so old links already delivered before this fix keep working.
+        return baseUrl + "/controlled-copy-preview/" + copy.getId() + "#token=" + token;
+    }
+
+    /** The "download" link inside the DCO's batch-ZIP email: an ordinary, login-required app route
+     *  (never a public/token link) that rebuilds and downloads the same ZIP on demand. */
+    public String buildControlledCopyDcoZipDownloadUrl(java.util.UUID batchId) {
+        if (batchId == null) {
+            return "";
+        }
+        return resolvePublicAppBaseUrl() + "/documents/controlled-copies/batches/" + batchId + "/dco-zip";
     }
 
     private String resolvePublicAppBaseUrl() {
@@ -445,10 +517,11 @@ public class EmailNotificationService {
             if (recipient == null) {
                 continue;
             }
+            boolean mandatoryNotification = variables != null && "true".equals(variables.get("notificationMandatory"));
             String moduleKey = resolveModuleKey(normalizedType);
             Map<String, String> payload = buildUserVariables(recipient, null, variables);
             dispatchPolicyNotification(recipient, payload);
-            if (!isPolicyManaged(variables) && NotificationPreferenceUtils.canReceiveInAppNotification(objectMapper, recipient, moduleKey)) {
+            if (!isPolicyManaged(variables) && (mandatoryNotification || NotificationPreferenceUtils.canReceiveInAppNotification(objectMapper, recipient, moduleKey))) {
                 recordInboxNotificationFromTemplate(
                         template,
                         recipient,
@@ -469,7 +542,7 @@ public class EmailNotificationService {
                     log.warn("EmailService is not available. Skipping {} notification to {}", eventDomain, recipient.getEmail());
                     continue;
                 }
-                if (!NotificationPreferenceUtils.canReceiveEmailNotification(objectMapper, recipient, moduleKey)) {
+                if (!mandatoryNotification && !NotificationPreferenceUtils.canReceiveEmailNotification(objectMapper, recipient, moduleKey)) {
                     log.debug("Skipping email notification for {} because email notifications are disabled for this module.", recipient.getEmail());
                     continue;
                 }
@@ -484,17 +557,22 @@ public class EmailNotificationService {
                     userSent = userSent || sent;
                     sentAny = sentAny || sent;
                     if (!sent) {
+                        String reason = "Email provider rejected delivery or is not configured";
                         recordDeliveryFailure(
                                 recipientEmail,
                                 normalizedType,
                                 eventDomain,
-                                new IllegalStateException("Email provider rejected delivery or is not configured"), emailPayload
+                                new IllegalStateException(reason), emailPayload
                         );
+                        auditEmailAttempt(recipient.getFullName(), recipientEmail, template.getName(), emailPayload, false, reason);
                         log.warn("Email template '{}' was not sent to {} because email notifications are disabled or SMTP is not configured.", template.getName(), recipientEmail);
+                    } else {
+                        auditEmailAttempt(recipient.getFullName(), recipientEmail, template.getName(), emailPayload, true, null);
                     }
                 }
             } catch (Exception ex) {
                 recordDeliveryFailure(recipient.getEmail(), normalizedType, eventDomain, ex, variables);
+                auditEmailAttempt(recipient.getFullName(), recipient.getEmail(), template.getName(), variables, false, ex.getMessage());
                 log.warn("Failed to send '{}' notification to {}: {}", normalizedType, recipient.getEmail(), ex.getMessage(), ex);
             }
         }
@@ -519,16 +597,23 @@ public class EmailNotificationService {
             log.warn("EmailService is not available. Skipping policy-driven notification '{}' to {}", eventCode, recipientEmail);
             return false;
         }
+        String recipientLabel = payload == null ? recipientEmail
+                : payload.getOrDefault("fullName", payload.getOrDefault("recipientName", recipientEmail));
         try {
             boolean sent = sendRenderedEmailWithRetry(emailService, recipientEmail, subject, body);
             if (!sent) {
+                String reason = "Email provider rejected delivery or is not configured";
                 recordDeliveryFailure(recipientEmail, eventCode, eventDomain,
-                        new IllegalStateException("Email provider rejected delivery or is not configured"), payload);
+                        new IllegalStateException(reason), payload);
+                auditEmailAttempt(recipientLabel, recipientEmail, eventCode, payload, false, reason);
                 log.warn("Policy-driven email '{}' was not sent to {} because email notifications are disabled or SMTP is not configured.", eventCode, recipientEmail);
+            } else {
+                auditEmailAttempt(recipientLabel, recipientEmail, eventCode, payload, true, null);
             }
             return sent;
         } catch (Exception ex) {
             recordDeliveryFailure(recipientEmail, eventCode, eventDomain, ex, payload);
+            auditEmailAttempt(recipientLabel, recipientEmail, eventCode, payload, false, ex.getMessage());
             log.warn("Failed to send policy-driven email '{}' to {}: {}", eventCode, recipientEmail, ex.getMessage(), ex);
             return false;
         }
@@ -630,6 +715,95 @@ public class EmailNotificationService {
         }
     }
 
+    /**
+     * Records that the system attempted to email a recipient (an Author/Co-Author/Reviewer/
+     * Approver being notified of an assignment or workflow step, a Controlled Copy recipient,
+     * etc.) as an audit trail entry -- so an inspector (or a "I was never notified" dispute) has
+     * durable, attributable evidence of whether and when the notification was actually sent, not
+     * just that the workflow step itself happened. Anchored to the most specific related record
+     * present in the payload (Revision > Controlled Copy > Controlled Copy Batch > Document) so it
+     * surfaces directly in that record's own Audit Trail tab, not only in the global "All Records"
+     * view. The actor is always the reserved SYSTEM account: the human whose action triggered the
+     * email (e.g. the Author who submitted for review) already has their own audit row for that
+     * action -- this row is attributable to the system's own delivery, not to them.
+     */
+    private void auditEmailAttempt(
+            String recipientLabel, String recipientEmail, String notificationLabel,
+            Map<String, String> payload, boolean success, String failureReason
+    ) {
+        if (!StringUtils.hasText(recipientEmail)) {
+            return;
+        }
+        try {
+            AuditTrailService auditTrailService = auditTrailServiceProvider.getIfAvailable();
+            SystemActorProvider systemActorProvider = systemActorProviderProvider.getIfAvailable();
+            if (auditTrailService == null || systemActorProvider == null) {
+                return;
+            }
+            String entityType;
+            UUID entityId;
+            String revisionId = payload == null ? null : payload.get("revisionId");
+            String controlledCopyId = payload == null ? null : payload.get("controlledCopyId");
+            String batchId = payload == null ? null : payload.get("controlledCopyBatchId");
+            String documentId = payload == null ? null : payload.get("documentId");
+            if (StringUtils.hasText(revisionId)) {
+                entityType = "REVISION";
+                entityId = safeUuid(revisionId);
+            } else if (StringUtils.hasText(controlledCopyId)) {
+                entityType = "CONTROLLED_COPY";
+                entityId = safeUuid(controlledCopyId);
+            } else if (StringUtils.hasText(batchId)) {
+                entityType = "CONTROLLED_COPY_DISTRIBUTION_BATCH";
+                entityId = safeUuid(batchId);
+            } else if (StringUtils.hasText(documentId)) {
+                entityType = "DOCUMENT";
+                entityId = safeUuid(documentId);
+            } else {
+                // entity_id is NOT NULL in audit_logs -- there is no related Document/Revision/
+                // Controlled Copy to anchor to (e.g. a preference-change notification), so
+                // synthesise an id for this send the same way Login synthesises an "Authentication
+                // Session" id rather than leaving the column null.
+                entityType = "NOTIFICATION";
+                entityId = UUID.randomUUID();
+            }
+            if (entityId == null) {
+                // A related id was present in the payload but not a parseable UUID -- fall back to
+                // the same synthesis rather than risk a NOT NULL violation on entity_id.
+                entityId = UUID.randomUUID();
+            }
+            String label = StringUtils.hasText(recipientLabel) ? recipientLabel : recipientEmail;
+            String comment = success
+                    ? "Email notification \"" + notificationLabel + "\" sent to " + label + " (" + recipientEmail + ")"
+                    : "Email notification \"" + notificationLabel + "\" FAILED to send to " + label + " (" + recipientEmail + ")"
+                            + (StringUtils.hasText(failureReason) ? ": " + failureReason : "");
+            auditTrailService.logAs(
+                    systemActorProvider.get(),
+                    entityType,
+                    entityType.equals("NOTIFICATION") ? notificationLabel : label,
+                    entityId,
+                    success ? "SEND_EMAIL" : "SEND_EMAIL_FAILED",
+                    null,
+                    null,
+                    comment,
+                    List.of(
+                            new AuditTrailChangeResponse("Recipient", null, label + " <" + recipientEmail + ">"),
+                            new AuditTrailChangeResponse("Notification", null, notificationLabel)
+                    )
+            );
+        } catch (Exception ex) {
+            log.warn("Failed to record audit trail entry for email notification '{}' to {}: {}",
+                    notificationLabel, recipientEmail, ex.getMessage(), ex);
+        }
+    }
+
+    private UUID safeUuid(String value) {
+        try {
+            return StringUtils.hasText(value) ? UUID.fromString(value.trim()) : null;
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
     private void recordDeliveryFailure(String recipient, String type, String domain, Exception error) {
         recordDeliveryFailure(recipient, type, domain, error, Map.of());
     }
@@ -686,15 +860,31 @@ public class EmailNotificationService {
         NotificationDeliveryFailure failure = repository.findById(failureId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification delivery failure not found"));
         if (failure.getAttempts() >= 5) throw new IllegalStateException("Notification retry limit reached");
+        EmailService emailService = emailServiceProvider.getIfAvailable();
+        if (emailService == null) throw new IllegalStateException("Email service is unavailable");
+
+        Map<String, String> payload = StringUtils.hasText(failure.getPayloadJson())
+                ? readPayload(failure.getPayloadJson())
+                : new LinkedHashMap<>();
+
+        // TBR-DOC-016 gap closure: a delivery failure whose notificationType is a
+        // NotificationDispatcher event code (policy-driven -- rendered from a
+        // NotificationTemplateVersion, not a legacy EmailTemplate) has no legacy EmailTemplate row
+        // to look up, ever -- that lookup was written only for the pre-existing per-module legacy
+        // template pipeline and was never updated when the newer policy-driven pipeline was added.
+        // The durably-persisted payloadJson already holds exactly the variables the original send
+        // rendered with, so the policy-driven event's own ACTIVE EMAIL NotificationTemplateVersion
+        // can be re-rendered from that same payload and resent directly -- no legacy template
+        // needs to be provisioned, and no second notification subsystem is introduced.
+        Optional<NotificationPolicy> policy = notificationPolicyRepository.findByEventCode(failure.getNotificationType());
+        if (policy.isPresent()) {
+            return retryPolicyDrivenFailure(repository, failure, policy.get(), emailService, payload);
+        }
+
         EmailTemplate template = templateRepository
                 .findTopByTypeIgnoreCaseAndStatusIgnoreCaseOrderByUpdatedDateDesc(failure.getNotificationType(), "Active")
                 .orElseThrow(() -> new IllegalStateException("No active email template is available for this notification"));
-        EmailService emailService = emailServiceProvider.getIfAvailable();
-        if (emailService == null) throw new IllegalStateException("Email service is unavailable");
         try {
-            Map<String, String> payload = StringUtils.hasText(failure.getPayloadJson())
-                    ? objectMapper.readValue(failure.getPayloadJson(), objectMapper.getTypeFactory().constructMapType(LinkedHashMap.class, String.class, String.class))
-                    : new LinkedHashMap<>();
             boolean sent = sendTemplateEmailWithRetry(emailService, failure.getRecipient(), template, payload, true);
             failure.setAttempts(failure.getAttempts() + 1);
             failure.setLastAttemptAt(Instant.now());
@@ -708,6 +898,52 @@ public class EmailNotificationService {
             failure.setErrorMessage(message.substring(0, Math.min(4000, message.length())));
         }
         return repository.save(failure);
+    }
+
+    private NotificationDeliveryFailure retryPolicyDrivenFailure(
+            NotificationDeliveryFailureRepository repository,
+            NotificationDeliveryFailure failure,
+            NotificationPolicy policy,
+            EmailService emailService,
+            Map<String, String> payload
+    ) {
+        NotificationDispatcher dispatcher = notificationDispatcherProvider.getIfAvailable();
+        NotificationTemplateVersion version = notificationTemplateVersionRepository
+                .findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(
+                        policy.getId(), NotificationTemplateVersion.CHANNEL_EMAIL, NotificationTemplateVersion.STATUS_ACTIVE)
+                .orElse(null);
+        if (dispatcher == null || version == null) {
+            failure.setAttempts(failure.getAttempts() + 1);
+            failure.setLastAttemptAt(Instant.now());
+            failure.setStatus("FAILED");
+            failure.setErrorMessage("No active EMAIL template version is configured for this policy-driven event");
+            return repository.save(failure);
+        }
+        try {
+            String subject = dispatcher.render(version.getSubject(), payload);
+            String body = dispatcher.render(version.getBody(), payload);
+            boolean sent = StringUtils.hasText(subject) && StringUtils.hasText(body)
+                    && sendRenderedEmailWithRetry(emailService, failure.getRecipient(), subject, body);
+            failure.setAttempts(failure.getAttempts() + 1);
+            failure.setLastAttemptAt(Instant.now());
+            failure.setStatus(sent ? "RESOLVED" : "FAILED");
+            if (!sent) failure.setErrorMessage("Email provider rejected delivery or is not configured");
+        } catch (Exception ex) {
+            failure.setAttempts(failure.getAttempts() + 1);
+            failure.setLastAttemptAt(Instant.now());
+            failure.setStatus("FAILED");
+            String message = ex.getMessage() == null ? "Retry failed" : ex.getMessage();
+            failure.setErrorMessage(message.substring(0, Math.min(4000, message.length())));
+        }
+        return repository.save(failure);
+    }
+
+    private Map<String, String> readPayload(String payloadJson) {
+        try {
+            return objectMapper.readValue(payloadJson, objectMapper.getTypeFactory().constructMapType(LinkedHashMap.class, String.class, String.class));
+        } catch (Exception ex) {
+            return new LinkedHashMap<>();
+        }
     }
 
     /** A workflow event already delivered through NotificationDispatcher must not create a
@@ -822,12 +1058,67 @@ public class EmailNotificationService {
         return DateTimeFormatUtils.formatDate(value);
     }
 
+    /**
+     * copy.getDistributionBatch() is a LAZY @ManyToOne -- notifyControlledCopyStakeholders() is
+     * invoked from ControlledCopyNotificationAsyncService on a separate thread, after the
+     * originating transaction/Hibernate session has already closed. Actually reading the
+     * association's fields (getBatchNumber()) there throws LazyInitializationException ("no
+     * session"), which was silently swallowed by the caller's try/catch -- so the FULL email
+     * (recipient/copy status/everything) never sent at all, not just this one field. Catch it
+     * locally so a batch-number lookup failure degrades to a blank value instead of losing the
+     * whole notification.
+     */
+    private String safeBatchNumber(ControlledCopyRecord copy) {
+        try {
+            return copy.getDistributionBatch() == null ? "" : value(copy.getDistributionBatch().getBatchNumber());
+        } catch (RuntimeException ex) {
+            log.debug("Distribution batch not loaded for controlled copy {}; leaving batchNumber blank: {}",
+                    copy.getControlledCopyNumber(), ex.getMessage());
+            return "";
+        }
+    }
+
+    /** Date-only (dd/MM/yyyy) rendering of an Instant, in the system zone. */
+    private String formatInstantAsDate(Instant value) {
+        return value == null ? "" : DateTimeFormatUtils.formatDate(
+                java.time.LocalDate.ofInstant(value, java.time.ZoneId.systemDefault()));
+    }
+
     private String formatDateTime(Instant value) {
         return DateTimeFormatUtils.formatDateTime(value);
     }
 
     private String value(String value) {
         return value == null ? "" : value;
+    }
+
+    /**
+     * The {@code {{workflowAction}}} placeholder is rendered directly into the
+     * controlled-copy-notification email subject/body ("Controlled Copy CC-0001 - {{workflowAction}}",
+     * "Action: {{workflowAction}}") -- raw internal action codes like REPLACE_LOST_DAMAGED or
+     * REPORT_DAMAGED must never reach a recipient's inbox verbatim. Unknown/future codes fall back
+     * to a title-cased, underscore-stripped rendering rather than throwing, so a missing mapping
+     * degrades to "Replace Lost Damaged" instead of a raw code or a blank subject.
+     */
+    private String humanizeControlledCopyAction(String action) {
+        if (action == null || action.isBlank()) {
+            return "";
+        }
+        return switch (action.trim().toUpperCase(java.util.Locale.ROOT)) {
+            case "DISTRIBUTE" -> "Distributed";
+            case "PRINT" -> "Printed";
+            case "RECALL" -> "Recalled";
+            case "CANCEL" -> "Cancelled";
+            case "REPLACE_LOST_DAMAGED" -> "Replacement Issued";
+            case "REPORT_LOST" -> "Reported Lost";
+            case "REPORT_DAMAGED" -> "Reported Damaged";
+            case "DESTROY" -> "Destroyed";
+            case "OBSOLETE" -> "Obsoleted";
+            default -> java.util.Arrays.stream(action.trim().split("_"))
+                    .filter(word -> !word.isBlank())
+                    .map(word -> word.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + word.substring(1).toLowerCase(java.util.Locale.ROOT))
+                    .collect(java.util.stream.Collectors.joining(" "));
+        };
     }
 
     private String nullSafe(UserAccount user) {

@@ -1,14 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ChevronDown,
-  ChevronUp,
-  ClipboardCheck,
-  MoreVertical,
-  Plus,
-  Search,
-  X,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, MoreVertical, Plus, Search, X } from "lucide-react";
 import { IconFilter2, IconInfoCircle, IconX } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -456,11 +448,9 @@ export const AuditTrailReviewView: React.FC = () => {
                   <tbody className="divide-y divide-slate-200 bg-white">
                     {!loading && campaigns.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="py-12">
+                        <td colSpan={9} className="p-0">
                           <TableEmptyState
-                            icon={
-                              <ClipboardCheck className="h-10 w-10 text-slate-300" />
-                            }
+                           
                             title="No Audit Trail Review Campaigns"
                             description="Create a periodic campaign to review audit trail entries."
                           />

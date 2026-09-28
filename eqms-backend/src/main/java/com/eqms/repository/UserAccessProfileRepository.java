@@ -16,6 +16,21 @@ public interface UserAccessProfileRepository extends JpaRepository<UserAccessPro
 
     List<UserAccessProfile> findByUserId(UUID userId);
 
+    /** Batch variant of findByUserId, for building a page's Access Profile summary in one query
+     *  instead of N. Order is by assignedAt so callers can treat the earliest grant as the
+     *  "primary" for display -- user_access_profiles has no persisted primary/additional
+     *  distinction; that split only exists transiently in the Add User form. */
+    @Query("SELECT u FROM UserAccessProfile u JOIN FETCH u.accessProfile WHERE u.userId IN :userIds ORDER BY u.assignedAt ASC")
+    List<UserAccessProfile> findByUserIdInOrderByAssignedAtAsc(@Param("userIds") Collection<UUID> userIds);
+
+    /** Distinct users holding ANY Access Profile that includes the given Permission Set -- the
+     *  full blast radius of editing that set's contents directly (SoD remediation "Mức 3": every
+     *  profile built on this set × every user of those profiles), as opposed to countByAccessProfileId
+     *  which only covers one profile at a time ("Mức 2"). */
+    @Query("SELECT COUNT(DISTINCT u.userId) FROM UserAccessProfile u WHERE u.accessProfileId IN "
+            + "(SELECT aps.accessProfileId FROM com.eqms.entity.AccessProfilePermissionSet aps WHERE aps.permissionSetId = :permissionSetId)")
+    long countDistinctUsersAffectedByPermissionSet(@Param("permissionSetId") UUID permissionSetId);
+
     @Modifying
     @Query("DELETE FROM UserAccessProfile u WHERE u.userId = :userId AND u.accessProfileId = :profileId")
     void deleteByUserIdAndAccessProfileId(UUID userId, UUID profileId);
@@ -33,9 +48,10 @@ public interface UserAccessProfileRepository extends JpaRepository<UserAccessPro
 
     /**
      * Users whose Access Profile carries the given Workflow Role code (join through
-     * access_profile_workflow_roles). This is the new catalog-based lookup that
-     * supplements (not yet replaces) the legacy document_workflow_pool_members path
-     * for role-based bypass checks (see workflow_roles catalog, V172).
+     * access_profile_workflow_roles). This is the sole catalog-based lookup for
+     * role-based bypass checks (see workflow_roles catalog, V172) -- the legacy
+     * document_workflow_pool_members table it originally supplemented has since
+     * been retired (V398).
      */
     @Query("SELECT DISTINCT u.userId FROM UserAccessProfile u "
             + "JOIN com.eqms.entity.AccessProfileWorkflowRole apwr ON apwr.accessProfileId = u.accessProfileId "

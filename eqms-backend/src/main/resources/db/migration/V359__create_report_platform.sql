@@ -46,7 +46,6 @@ CREATE TABLE IF NOT EXISTS report_runs (
     definition_version INTEGER NOT NULL,
     requester_user_id UUID NOT NULL REFERENCES app_users(id),
     request_type VARCHAR(30) NOT NULL,
-    requested_format VARCHAR(12) NOT NULL DEFAULT 'CSV',
     parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
     selected_fields JSONB NOT NULL DEFAULT '[]'::jsonb,
     sort_spec JSONB NOT NULL DEFAULT '[]'::jsonb,

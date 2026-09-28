@@ -53,6 +53,9 @@ export interface ControlledCopy {
   distributedDate?: string;
   distributedBy?: string;
   recipientName?: string;
+  recipientEmployeeCode?: string;
+  recipientDepartment?: string;
+  recipientEmail?: string;
   distributionComment?: string;
   recipientSignature?: string;
   recipientDate?: string;
@@ -81,6 +84,8 @@ export interface ControlledCopy {
   distributionBatchId?: string;
   distributionBatchNumber?: string;
   copyIds?: string[];
+  /** When this batch/record was last touched by a workflow action (server-formatted date-time). */
+  lastUpdatedAt?: string;
   replacedControlledCopyId?: string;
   replacedControlledCopyNumber?: string;
   replacementControlledCopyId?: string;
@@ -108,6 +113,7 @@ export interface ControlledCopyDistributionBatch {
   batchNumber: string;
   controlledCopyNumber?: string;
   controlledCopyName?: string;
+  revisionName?: string;
   primaryControlledCopyId?: string;
   documentId?: string;
   documentNumber: string;
@@ -140,5 +146,12 @@ export interface ControlledCopyDistributionBatch {
   recallDate?: string;
   recallReason?: string;
   externalRecipients?: string;
+  // Only populated by the detail endpoint (already loads the member copies) -- the shared value
+  // when every member copy agrees, "Multiple" when a batch was distributed to more than one
+  // department/business unit at once, null when none has one. Never populated on list rows.
+  businessUnitName?: string;
+  departmentName?: string;
   copyIds?: string[];
+  /** When the batch or any of its member copies was last touched by a workflow action. */
+  lastUpdatedAt?: string;
 }

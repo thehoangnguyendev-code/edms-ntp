@@ -1,9 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import {
-  Grid3X3, KeyRound, ShieldCheck, Users, Clock,
-  Info,
-} from "lucide-react";
+import { Grid3X3, KeyRound, ShieldCheck, Users, Info } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -200,7 +197,7 @@ export const PermissionSetDetailView: React.FC = () => {
               <Badge color={permissionSet.system ? "blue" : "slate"} size="xs">
                 {permissionSet.system ? "System" : "Custom"}
               </Badge>
-              <Badge color={permissionSet.active ? "emerald" : "slate"} size="xs" showDot pill>
+              <Badge color={permissionSet.active ? "emerald" : "slate"} size="xs" >
                 {permissionSet.active ? "Active" : "Inactive"}
               </Badge>
               <Badge color="slate" size="xs">{permissionSet.code}</Badge>
@@ -261,7 +258,7 @@ export const PermissionSetDetailView: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Status</p>
-                    <Badge color={permissionSet.active ? "emerald" : "slate"} size="sm" showDot pill>
+                    <Badge color={permissionSet.active ? "emerald" : "slate"} size="sm" >
                       {permissionSet.active ? "Active" : "Inactive"}
                     </Badge>
                   </div>
@@ -370,9 +367,9 @@ export const PermissionSetDetailView: React.FC = () => {
                       </tr>
                     ) : assignedProfiles.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-10">
+                        <td colSpan={6} className="p-0">
                           <TableEmptyState
-                            icon={<Users className="h-8 w-8 text-slate-300" />}
+                           
                             title="No Access Profiles assigned"
                             description="Assign this permission set to an Access Profile from the Access Profiles module."
                           />
@@ -394,7 +391,7 @@ export const PermissionSetDetailView: React.FC = () => {
                         <td className="px-4 py-3 text-slate-700">{profile.departmentScope || "—"}</td>
                         <td className="px-4 py-3 text-slate-700">{profile.userCount}</td>
                         <td className="px-4 py-3">
-                          <Badge color={profile.active ? "emerald" : "slate"} size="xs" showDot pill>
+                          <Badge color={profile.active ? "emerald" : "slate"} size="xs" >
                             {profile.active ? "Active" : "Inactive"}
                           </Badge>
                         </td>

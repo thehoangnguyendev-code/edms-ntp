@@ -51,7 +51,12 @@ export type ReviewFlowType = 'sequential' | 'parallel';
 export interface ControlledCopy {
     id: string;
     controlledCopiesName: string;
+    /** Sequence of the copy within its document (e.g. "22"), as shown in the "Copy Number" column. */
     copyNumber: string;
+    /** The copy's own unique number (e.g. "CC.SOP.10110.022"), shown in the "Document Number" column. */
+    controlledCopyNumber?: string;
+    /** Revision the copy was issued from, for the Document Revision link. */
+    sourceRevisionId?: string;
     created: string;
     status: "draft" | "pendingReview" | "approved" | "effective" | "obsolete";
     openedBy: string;

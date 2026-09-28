@@ -20,5 +20,6 @@ public record RevisionWorkspaceBatchRequest(
         Integer currentDocIndex,
         String activeTab,
         String reviewFlowType,
-        @Valid List<RevisionWorkspaceItemRequest> items
+        @Valid List<RevisionWorkspaceItemRequest> items,
+        List<Integer> fileItemIndexes
 ) {}

@@ -42,6 +42,13 @@ public class RevisionWorkspaceSnapshotService {
 
     @Transactional(readOnly = true)
     public RevisionWorkspaceSnapshotResponse getSnapshot(UUID sourceRevisionId, String workspaceMode) {
+        // DC-XF-45: previously had no authorization check at all -- any authenticated user who
+        // guessed/enumerated a sourceRevisionId could read another Revision's full workspace
+        // snapshot (participants, related/correlated selections, publishing config). Require the
+        // same object-level view permission every other Revision read path enforces.
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        DocumentRevisionRecord sourceRevision = revisionService.requireRevisionForSnapshot(sourceRevisionId);
+        documentAuthorizationService.requireCanViewRevision(currentUser, sourceRevision);
         String normalizedMode = normalizeMode(workspaceMode);
         RevisionWorkspaceSnapshot snapshot = snapshotRepository
                 .findBySourceRevision_IdAndWorkspaceMode(sourceRevisionId, normalizedMode)
@@ -107,8 +114,8 @@ public class RevisionWorkspaceSnapshotService {
                 snapshot.getSourceDocument() == null ? null : snapshot.getSourceDocument().getId(),
                 snapshot.getSourceDocument() == null ? null : snapshot.getSourceDocument().getId(),
                 snapshot.getWorkspaceMode(),
-                snapshot.getStatus(),
                 workspaceStateJson,
+                snapshot.getStatus(),
                 workspaceStateJson,
                 snapshot.getCreatedAt(),
                 snapshot.getUpdatedAt()

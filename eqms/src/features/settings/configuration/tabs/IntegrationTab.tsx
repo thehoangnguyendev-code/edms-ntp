@@ -1,4 +1,5 @@
 ﻿import React, { useState } from 'react';
+import { FormSection } from '@/components/ui/form/FormSection';
 import { IntegrationConfig } from '../types';
 import { useEffect } from 'react';
 import { Select } from '@/components/ui/select/Select';
@@ -152,19 +153,6 @@ interface IntegrationTabProps {
 
 
 
-const SettingsCard: React.FC<{
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}> = ({ title, icon, children }) => (
-  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div className="flex items-center gap-2.5 px-4 md:px-5 py-4 border-b border-slate-100">
-      <span className="text-emerald-600">{icon}</span>
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-    </div>
-    <div className="p-4 md:p-5">{children}</div>
-  </div>
-);
 
 export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange }) => {
   const { showToast } = useToast();
@@ -256,7 +244,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
   return (
     <div className="p-4 md:p-5 space-y-4">
       {/* LDAP Directory */}
-      <SettingsCard title="LDAP / Active Directory" icon={<Key className="h-4 w-4" />}>
+      <FormSection title="LDAP / Active Directory" icon={<Key className="h-4 w-4" />}>
         <div className="space-y-4">
           <div>
             <Checkbox
@@ -402,12 +390,12 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             </div>
           )}
         </div>
-      </SettingsCard>
+      </FormSection>
 
 
 
       {/* Cloud Storage */}
-      <SettingsCard title="Cloud Storage Integration" icon={<Cloud className="h-4 w-4" />}>
+      <FormSection title="Cloud Storage Integration" icon={<Cloud className="h-4 w-4" />}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
@@ -443,7 +431,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             )}
           </div>
           {['aws-s3', 'azure-blob', 'google-cloud'].includes(config.storage.provider) && (
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
@@ -537,7 +525,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             </div>
           )}
           {config.storage.provider === 'minio' && (
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
@@ -760,7 +748,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             </div>
           )}
           {config.storage.provider === 'nas' && (
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
@@ -850,7 +838,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             </div>
           )}
           {config.storage.provider === 'google-drive' && (
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
@@ -902,7 +890,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
           )}
 
           {['onedrive', 'sharepoint'].includes(config.storage.provider) && (
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
@@ -992,7 +980,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
           )}
 
           {config.storage.provider === 'dropbox' && (
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
@@ -1087,7 +1075,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             </Button>
           </div>
         </div>
-      </SettingsCard>
+      </FormSection>
 
 
     </div>

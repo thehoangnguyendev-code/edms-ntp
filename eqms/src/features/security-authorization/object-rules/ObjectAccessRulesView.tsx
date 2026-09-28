@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { Plus, Database, Search, ShieldCheck, ShieldX, MoreVertical, X, Check, ChevronUp, ChevronDown } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Plus, Search, ShieldCheck, ShieldX, MoreVertical, X, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { IconFilter2, IconPencilMinus, IconTrash } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -37,6 +37,7 @@ const STATUS_OPTIONS: SelectOption[] = [
 
 export const ObjectAccessRulesView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
   const canViewRules = hasPermissionAlias("security.object_rules.view");
@@ -65,6 +66,44 @@ export const ObjectAccessRulesView: React.FC = () => {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  React.useLayoutEffect(() => {
+    setSearch(searchParams.get("search") ?? "");
+    setResourceTypeFilter(searchParams.get("resourceType") ?? "ALL");
+    setEffectFilter(searchParams.get("effect") ?? "ALL");
+    setStatusFilter(searchParams.get("status") ?? "ALL");
+    setCreatedFrom(searchParams.get("createdFrom") ?? "");
+    setCreatedTo(searchParams.get("createdTo") ?? "");
+    setUpdatedFrom(searchParams.get("updatedFrom") ?? "");
+    setUpdatedTo(searchParams.get("updatedTo") ?? "");
+    setSortKey(searchParams.get("sortBy") ?? "priority");
+    setSortDir(searchParams.get("sortDir") === "asc" ? "asc" : "desc");
+    setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
+    setItemsPerPage(Math.max(1, Number(searchParams.get("limit")) || 10));
+  }, [searchParams]);
+
+  useEffect(() => {
+    // Keep Browser Back/Forward from being overwritten by a pending search debounce.
+    if (search !== debouncedSearch) return;
+
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (resourceTypeFilter !== "ALL") params.set("resourceType", resourceTypeFilter);
+    if (effectFilter !== "ALL") params.set("effect", effectFilter);
+    if (statusFilter !== "ALL") params.set("status", statusFilter);
+    if (createdFrom) params.set("createdFrom", createdFrom);
+    if (createdTo) params.set("createdTo", createdTo);
+    if (updatedFrom) params.set("updatedFrom", updatedFrom);
+    if (updatedTo) params.set("updatedTo", updatedTo);
+    if (sortKey !== "priority") params.set("sortBy", sortKey);
+    if (sortDir !== "desc") params.set("sortDir", sortDir);
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (itemsPerPage !== 10) params.set("limit", String(itemsPerPage));
+
+    if (params.toString() !== searchParams.toString()) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [search, debouncedSearch, resourceTypeFilter, effectFilter, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, currentPage, itemsPerPage, searchParams, setSearchParams]);
 
   // Dropdown values from the server options endpoint.
   const [resourceTypes, setResourceTypes] = useState<string[]>([]);
@@ -308,9 +347,9 @@ export const ObjectAccessRulesView: React.FC = () => {
                   <tbody className="divide-y divide-slate-200 bg-white">
                     {!loading && rules.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="py-12 text-center">
+                        <td colSpan={10} className="p-0">
                           <TableEmptyState
-                            icon={<Database className="h-10 w-10 text-slate-300" />}
+
                             title="No Object Access Rules"
                             description={hasFilters ? "Try adjusting your search or filters." : "No object access rules have been defined yet."}
                           />
@@ -331,7 +370,7 @@ export const ObjectAccessRulesView: React.FC = () => {
                             )}
                           </td>
                           <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <span className="font-mono text-slate-500">{r.resourceType.replace(/_/g, " ")}</span>
+                            <span className="text-slate-500">{r.resourceType.replace(/_/g, " ")}</span>
                             {r.resourceName && <div className="text-xs text-slate-600 mt-0.5">{r.resourceName}</div>}
                           </td>
                           <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(r.createdAt)}</td>

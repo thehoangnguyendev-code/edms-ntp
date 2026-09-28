@@ -31,10 +31,7 @@ public class PermissionEvaluationService {
             Map.entry("documents.revision.approve", List.of("APPROVE_REVISION", "APPROVE_DOCUMENTS")),
             Map.entry("documents.revision.publish", List.of("PUBLISH_REVISION", "PUBLISH_DOCUMENTS")),
             Map.entry("documents.training.manage", List.of("MANAGE_TRAINING_PLAN")),
-            Map.entry("documents.training.complete", List.of("COMPLETE_TRAINING")),
-            Map.entry("settings.role.view", List.of("MANAGE_ROLES")),
-            Map.entry("settings.role.manage", List.of("MANAGE_ROLES")),
-            Map.entry("settings.role.assign_permissions", List.of("MANAGE_ROLES"))
+            Map.entry("documents.training.complete", List.of("COMPLETE_TRAINING"))
     );
 
     private final EffectivePermissionService effectivePermissionService;

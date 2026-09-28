@@ -3,6 +3,7 @@ package com.eqms;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.auth.TokenService;
 import com.eqms.dto.user.StatusActionRequest;
+import com.eqms.dto.user.ForceLogoutRequest;
 import com.eqms.entity.AuthSession;
 import com.eqms.entity.UserAccount;
 import com.eqms.entity.UserStatus;
@@ -42,10 +43,8 @@ class UserManagementServiceStatusTransitionTest {
     @Mock private UserLanguageRepository userLanguageRepository;
     @Mock private RoleDefinitionRepository roleRepository;
     @Mock private PermissionRepository permissionRepository;
-    @Mock private RolePermissionRepository rolePermissionRepository;
     @Mock private PermissionEvaluationService permissionEvaluationService;
     @Mock private DocumentWorkflowSettingRepository documentWorkflowSettingRepository;
-    @Mock private DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     @Mock private AuthSessionRepository sessionRepository;
     @Mock private AuthAuditService auditService;
     @Mock private CurrentUserService currentUserService;
@@ -57,6 +56,10 @@ class UserManagementServiceStatusTransitionTest {
     @Mock private FileStorageService fileStorageService;
     @Mock private com.eqms.service.authorization.AuthorizationEngineService authorizationEngineService;
     @Mock private NotificationDispatcher notificationDispatcher;
+    @Mock private ElectronicSignatureService electronicSignatureService;
+    @Mock private com.eqms.repository.RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
+    @Mock private com.eqms.repository.UserAccessProfileRepository userAccessProfileRepository;
+    @Mock private com.eqms.service.SodConstraintService sodConstraintService;
 
     @InjectMocks
     private UserManagementService userManagementService;
@@ -67,6 +70,13 @@ class UserManagementServiceStatusTransitionTest {
 
     @BeforeEach
     void setUp() {
+        // electronicSignatureService is an @Autowired field (not a constructor arg), so
+        // @InjectMocks does not populate it — set it explicitly.
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                userManagementService, "electronicSignatureService", electronicSignatureService);
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                userManagementService, "revisionWorkflowParticipantRepository", revisionWorkflowParticipantRepository);
+
         userId = UUID.randomUUID();
         user = new UserAccount();
         user.setId(userId);
@@ -113,8 +123,41 @@ class UserManagementServiceStatusTransitionTest {
     }
 
     @Test
+    void suspendUser_recordsAuditOnRevisionsWaitingOnTheSuspendedAssignee() {
+        com.eqms.entity.DocumentRevisionRecord revision = new com.eqms.entity.DocumentRevisionRecord();
+        revision.setId(UUID.randomUUID());
+        revision.setRevisionName("SOP.1_1.0.0");
+        com.eqms.entity.RevisionStatusDefinition pendingReview = new com.eqms.entity.RevisionStatusDefinition();
+        pendingReview.setCode("PENDING_REVIEW");
+        revision.setStatus(pendingReview);
+        com.eqms.entity.RevisionWorkflowParticipant pending = new com.eqms.entity.RevisionWorkflowParticipant();
+        pending.setRevision(revision);
+        pending.setUser(user);
+        pending.setParticipantType("REVIEWER");
+        pending.setActionStatus("PENDING");
+        when(revisionWorkflowParticipantRepository.findAllByUser_IdAndActionStatusAndRevision_Status_CodeIn(
+                eq(userId), eq("PENDING"), any())).thenReturn(List.of(pending));
+
+        userManagementService.suspendUser(userId, statusRequest("Under investigation", null), httpRequest());
+
+        verify(auditTrailService).logAs(
+                eq(actor), eq("REVISION"), eq("SOP.1_1.0.0"), eq(revision.getId()),
+                eq("WORKFLOW_ASSIGNEE_UNAVAILABLE"), eq("PENDING_REVIEW"), eq("PENDING_REVIEW"), any(String.class));
+        assertEquals(UserStatus.Suspended, user.getStatus(), "the suspension itself must never be blocked");
+    }
+
+    @Test
+    void suspendUser_recordsNothingOnRevisionsWhenAssigneeHasNoPendingWork() {
+        userManagementService.suspendUser(userId, statusRequest("Under investigation", null), httpRequest());
+
+        verify(auditTrailService, never()).logAs(
+                any(), eq("REVISION"), any(), any(), eq("WORKFLOW_ASSIGNEE_UNAVAILABLE"), any(), any(), any(String.class));
+    }
+
+    @Test
     void suspendUser_revokesAllSessions_andEvictsPermissionCache() {
         AuthSession session = activeSession();
+        user.setTimeLimitedGrantId(UUID.randomUUID());
         when(sessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(userId))
                 .thenReturn(List.of(session));
 
@@ -124,12 +167,14 @@ class UserManagementServiceStatusTransitionTest {
         assertNotNull(session.getRevokedAt());
         assertEquals(AuthSession.SessionStatus.REVOKED, session.getStatus());
         assertFalse(session.isCurrentSession());
+        assertNull(user.getTimeLimitedGrantId(), "a manual suspension must supersede scheduler ownership");
         verify(permissionEvaluationService).evictUserPermissionCache(userId);
     }
 
     @Test
     void terminateUser_revokesAllSessions_andEvictsPermissionCache() {
         AuthSession session = activeSession();
+        user.setTimeLimitedGrantId(UUID.randomUUID());
         when(sessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(userId))
                 .thenReturn(List.of(session));
 
@@ -137,7 +182,27 @@ class UserManagementServiceStatusTransitionTest {
 
         assertEquals(UserStatus.Terminated, user.getStatus());
         assertNotNull(session.getRevokedAt());
+        assertNull(user.getTimeLimitedGrantId(), "a termination must supersede scheduler ownership");
         verify(permissionEvaluationService).evictUserPermissionCache(userId);
+    }
+
+    @Test
+    void forceLogout_revokesSessionsAndWritesAuditWithoutElectronicSignature() {
+        AuthSession session = activeSession();
+        when(sessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(session));
+
+        userManagementService.forceLogout(userId,
+                new ForceLogoutRequest("Administrator confirmed immediate logout"), httpRequest());
+
+        assertNotNull(session.getRevokedAt());
+        assertEquals(AuthSession.SessionStatus.REVOKED, session.getStatus());
+        assertFalse(session.isCurrentSession());
+        verify(auditService).log(eq("user_force_logout"), eq(user), anyMap(), any(), any());
+        verify(auditTrailService).logAs(
+                eq(actor), eq("USER"), eq("Jane Doe"), eq(userId), eq("USER_FORCE_LOGOUT"),
+                eq("Active"), eq("REVOKED"), anyString(), isNull(), isNull());
+        verifyNoInteractions(tokenService, electronicSignatureService);
     }
 
     @Test
@@ -160,9 +225,9 @@ class UserManagementServiceStatusTransitionTest {
 
         userManagementService.suspendUser(userId, statusRequest("Policy violation", null), httpRequest());
 
-        verify(auditTrailService).log(
-                eq("USER"), eq("Jane Doe"), eq(userId), eq("USER_SUSPENDED"),
-                eq("Active"), eq("Suspended"), anyString()
+        verify(auditTrailService).logAs(
+                eq(actor), eq("USER"), eq("Jane Doe"), eq(userId), eq("USER_SUSPENDED"),
+                eq("Active"), eq("Suspended"), anyString(), anyList(), any()
         );
     }
 

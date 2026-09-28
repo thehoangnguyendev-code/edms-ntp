@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 
@@ -39,13 +40,14 @@ export function useDictionaryServerTable<T>({
   initialItemsPerPage = 10,
 }: UseDictionaryServerTableOptions<T>) {
   const { showToast } = useToast();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(initialItemsPerPage);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: defaultSortBy,
-    direction: defaultSortDirection,
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, Number(searchParams.get("page")) || 1));
+  const [itemsPerPage, setItemsPerPage] = useState(() => Number(searchParams.get("limit")) || initialItemsPerPage);
+  const [sortConfig, setSortConfig] = useState<SortConfig>(() => ({
+    key: searchParams.get("sortBy") ?? defaultSortBy,
+    direction: searchParams.get("sortDirection") === "desc" ? "desc" : defaultSortDirection,
+  }));
   const [items, setItems] = useState<T[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -54,6 +56,22 @@ export function useDictionaryServerTable<T>({
 
   const debouncedSearch = useDebounce(searchQuery, searchDelayMs);
   const extraParamsSignature = useMemo(() => JSON.stringify(extraParams ?? {}), [extraParams]);
+  useLayoutEffect(() => {
+    setSearchQuery(searchParams.get("search") ?? "");
+    setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
+    setItemsPerPage(Number(searchParams.get("limit")) || initialItemsPerPage);
+    setSortConfig({ key: searchParams.get("sortBy") ?? defaultSortBy, direction: searchParams.get("sortDirection") === "desc" ? "desc" : defaultSortDirection });
+  }, [searchParams, initialItemsPerPage, defaultSortBy, defaultSortDirection]);
+  useEffect(() => {
+    if (searchQuery !== debouncedSearch) return;
+    const params = new URLSearchParams();
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (itemsPerPage !== initialItemsPerPage) params.set("limit", String(itemsPerPage));
+    if (sortConfig.key !== defaultSortBy) params.set("sortBy", sortConfig.key);
+    if (sortConfig.direction !== defaultSortDirection) params.set("sortDirection", sortConfig.direction);
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [searchQuery, debouncedSearch, currentPage, itemsPerPage, sortConfig, initialItemsPerPage, defaultSortBy, defaultSortDirection, searchParams, setSearchParams]);
 
   const handleSort = (key: string) => {
     setSortConfig((prev) => ({

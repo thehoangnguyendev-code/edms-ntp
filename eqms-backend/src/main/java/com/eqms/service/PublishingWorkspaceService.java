@@ -51,7 +51,6 @@ public class PublishingWorkspaceService {
     private final PublishingWorkspaceJobRepository publishingWorkspaceJobRepository;
     private final PublishingWorkspaceJobService publishingWorkspaceJobService;
     private final FileStorageService fileStorageService;
-    private final MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService;
     private final PublishingPdfComposerService publishingPdfComposerService;
     private final PublishingTemplatePreviewService publishingTemplatePreviewService;
     private final CurrentUserService currentUserService;
@@ -71,7 +70,6 @@ public class PublishingWorkspaceService {
             PublishingWorkspaceJobRepository publishingWorkspaceJobRepository,
             PublishingWorkspaceJobService publishingWorkspaceJobService,
             FileStorageService fileStorageService,
-            MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService,
             PublishingPdfComposerService publishingPdfComposerService,
             PublishingTemplatePreviewService publishingTemplatePreviewService,
             CurrentUserService currentUserService,
@@ -90,7 +88,6 @@ public class PublishingWorkspaceService {
         this.publishingWorkspaceJobRepository = publishingWorkspaceJobRepository;
         this.publishingWorkspaceJobService = publishingWorkspaceJobService;
         this.fileStorageService = fileStorageService;
-        this.microsoftGraphOfficeOnlineService = microsoftGraphOfficeOnlineService;
         this.publishingPdfComposerService = publishingPdfComposerService;
         this.publishingTemplatePreviewService = publishingTemplatePreviewService;
         this.currentUserService = currentUserService;
@@ -138,10 +135,8 @@ public class PublishingWorkspaceService {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         DocumentRevisionRecord revision = requireReadyRevision(revisionId);
         documentAuthorizationService.requireCanOpenPublishingWorkspace(currentUser, revision);
-        if (StringUtils.hasText(revision.getStorageItemId()) && StringUtils.hasText(revision.getStorageDriveId())) {
-            revisionService.syncEditedFileFromOfficeOnlineToMinio(revision, currentUser);
-            revisionService.lockOfficeOnlineEditing(revision, currentUser);
-        }
+        // OnlyOffice keeps MinIO current on every save via its push callback -- there is no
+        // separate "pull the latest edit"/"lock remote access" step needed here anymore.
         RevisionPublishingMetadata metadata = metadataRepository.findByRevision_Id(revisionId).orElseGet(RevisionPublishingMetadata::new);
         PublishingTemplate template = prepareWorkspaceMetadata(revisionId, request, currentUser, revision, metadata);
         PublishingWorkspaceJob job = publishingWorkspaceJobService.createOpenWorkspaceJob(revisionId, currentUser.getId(), request);
@@ -258,11 +253,13 @@ public class PublishingWorkspaceService {
             DocumentRevisionRecord revision,
             RevisionPublishingMetadata metadata
     ) {
-        PublishingTemplate template = resolveTemplate(request == null ? null : request.publishingTemplateId());
-        template = applyWorkspacePageRanges(template, request, currentUser);
+        PublishingTemplate storedTemplate = resolveTemplate(request == null ? null : request.publishingTemplateId());
         metadata.setRevision(revision);
-        metadata.setPublishingTemplate(template);
-        metadata.setPublishingTemplateVersion(template == null ? null : template.getVersionNumber());
+        metadata.setPublishingTemplate(storedTemplate);
+        metadata.setPublishingTemplateVersion(storedTemplate == null ? null : storedTemplate.getVersionNumber());
+        // Page ranges are this revision's choice: recorded on its metadata and applied to a detached copy of the
+        // template. The shared template row is never modified by a publishing action.
+        PublishingTemplate template = applyWorkspacePageRanges(storedTemplate, metadata, request, currentUser);
         String selectedLayout = resolveSelectedLayout(template, request == null ? null : request.selectedLayout(), metadata);
         metadata.setSelectedPublishingLayout(selectedLayout);
         metadataRepository.save(metadata);
@@ -287,12 +284,17 @@ public class PublishingWorkspaceService {
                 && !StringUtils.hasText(firstNonBlank(metadata.getPublishingPreviewPdfPath(), revision.getPreviewFilePath()))) {
             throw new IllegalStateException("Publishing preview has not been generated yet");
         }
-        PublishingTemplate template = metadata.getPublishingTemplate();
+        PublishingTemplate storedTemplate = metadata.getPublishingTemplate();
+        if (storedTemplate != null && !isLiveTemplate(storedTemplate)) {
+            throw new com.eqms.exception.RevisionLifecycleConflictException("PUBLISHING_TEMPLATE_NOT_ACTIVE",
+                    "The Publishing Template used for this preview is no longer the active template. Regenerate the preview before publishing.");
+        }
+        PublishingTemplate template = storedTemplate;
         String selectedLayout = resolveSelectedLayout(template, request == null ? null : request.selectedLayout(), metadata);
         if (StringUtils.hasText(metadata.getSelectedPublishingLayout()) && !metadata.getSelectedPublishingLayout().equalsIgnoreCase(selectedLayout)) {
             throw new IllegalStateException("Selected layout does not match the generated preview. Regenerate preview first.");
         }
-        template = applyWorkspacePageRanges(template, request, currentUser);
+        template = applyWorkspacePageRanges(storedTemplate, metadata, request, currentUser);
         metadata.setSelectedPublishingLayout(selectedLayout);
         validateSignaturePlaceholders(template, selectedLayout, revisionId, true);
         revisionService.publishRevision(revisionId, new com.eqms.dto.document.RevisionWorkflowActionRequest(
@@ -394,12 +396,29 @@ public class PublishingWorkspaceService {
         return revision;
     }
 
+    /** Only the single active Publishing Template may be used; a client-supplied id can only confirm it. */
     private PublishingTemplate resolveTemplate(String templateId) {
-        if (!StringUtils.hasText(templateId)) {
-            return publishingTemplateRepository.findByStatusOrderByTemplateNameAsc("ACTIVE").stream().findFirst().orElse(null);
+        PublishingTemplate active = publishingTemplateRepository.findAll().stream()
+                .filter(this::isLiveTemplate)
+                .findFirst()
+                .orElse(null);
+        if (StringUtils.hasText(templateId)) {
+            UUID requested;
+            try {
+                requested = UUID.fromString(templateId.trim());
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Publishing template not found");
+            }
+            if (active == null || !active.getId().equals(requested)) {
+                throw new com.eqms.exception.RevisionLifecycleConflictException("PUBLISHING_TEMPLATE_NOT_ACTIVE",
+                        "Only the active Publishing Template can be used. Reload the workspace to use it.");
+            }
         }
-        return publishingTemplateRepository.findById(UUID.fromString(templateId))
-                .orElseThrow(() -> new IllegalArgumentException("Publishing template not found"));
+        return active;
+    }
+
+    private boolean isLiveTemplate(PublishingTemplate template) {
+        return template != null && ("ACTIVE".equalsIgnoreCase(template.getStatus()) || "PUBLISHED".equalsIgnoreCase(template.getStatus()));
     }
 
     private PublishingWorkspaceResponse toWorkspaceResponse(RevisionDetailResponse revision, RevisionPublishingMetadata metadata, Integer pageCount, String generatedBy) {
@@ -409,7 +428,8 @@ public class PublishingWorkspaceService {
     private PublishingWorkspaceResponse toWorkspaceResponse(RevisionDetailResponse revision, RevisionPublishingMetadata metadata, Integer pageCount, String generatedBy, PublishingWorkspaceJob job) {
         PublishingTemplate selectedTemplate = metadata == null ? null : metadata.getPublishingTemplate();
         String workspacePreviewPath = resolveWorkspacePreviewPath(revision == null ? null : UUID.fromString(revision.id()), metadata);
-        List<PublishingTemplateResponse> templates = publishingTemplateRepository.findAll().stream().map(template -> new PublishingTemplateResponse(
+        boolean useRevisionRanges = metadata != null && metadata.isPageRangesRecorded();
+        List<PublishingTemplateResponse> templates = publishingTemplateRepository.findAll().stream().filter(this::isLiveTemplate).map(template -> new PublishingTemplateResponse(
                 template.getId(),
                 template.getTemplateName(),
                 template.getDocumentType(),
@@ -441,12 +461,12 @@ public class PublishingWorkspaceService {
                 template.getCoverSourcePageTo(),
                 template.getBodySourcePageFrom(),
                 template.getBodySourcePageTo(),
-                template.getHeaderPageFrom(),
-                template.getHeaderPageTo(),
-                template.getFooterPageFrom(),
-                template.getFooterPageTo(),
-                template.getWatermarkPageFrom(),
-                template.getWatermarkPageTo(),
+                useRevisionRanges ? metadata.getHeaderPageFrom() : template.getHeaderPageFrom(),
+                useRevisionRanges ? metadata.getHeaderPageTo() : template.getHeaderPageTo(),
+                useRevisionRanges ? metadata.getFooterPageFrom() : template.getFooterPageFrom(),
+                useRevisionRanges ? metadata.getFooterPageTo() : template.getFooterPageTo(),
+                useRevisionRanges ? metadata.getWatermarkPageFrom() : template.getWatermarkPageFrom(),
+                useRevisionRanges ? metadata.getWatermarkPageTo() : template.getWatermarkPageTo(),
                 template.getCreatedAt(),
                 template.getUpdatedAt(),
                 template.getCreatedBy(),
@@ -608,76 +628,98 @@ public class PublishingWorkspaceService {
         return "LANDSCAPE".equals(normalized) ? "LANDSCAPE" : "PORTRAIT";
     }
 
-    private PublishingTemplate applyWorkspacePageRanges(PublishingTemplate template, PublishingWorkspaceRequest request, UserAccount currentUser) {
+    /**
+     * Records this revision's page ranges on its publishing metadata and returns a DETACHED copy of the template with
+     * them applied, for composing only. The shared template row is left untouched.
+     */
+    private PublishingTemplate applyWorkspacePageRanges(
+            PublishingTemplate template,
+            RevisionPublishingMetadata metadata,
+            PublishingWorkspaceRequest request,
+            UserAccount currentUser
+    ) {
         if (template == null) {
             return null;
         }
-
-        Integer previousCoverFrom = template.getCoverSourcePageFrom();
-        Integer previousCoverTo = template.getCoverSourcePageTo();
-        Integer previousBodyFrom = template.getBodySourcePageFrom();
-        Integer previousBodyTo = template.getBodySourcePageTo();
-        Integer previousHeaderFrom = template.getHeaderPageFrom();
-        Integer previousHeaderTo = template.getHeaderPageTo();
-        Integer previousFooterFrom = template.getFooterPageFrom();
-        Integer previousFooterTo = template.getFooterPageTo();
-        Integer previousWatermarkFrom = template.getWatermarkPageFrom();
-        Integer previousWatermarkTo = template.getWatermarkPageTo();
+        boolean recorded = metadata != null && metadata.isPageRangesRecorded();
+        Integer previousHeaderFrom = recorded ? metadata.getHeaderPageFrom() : template.getHeaderPageFrom();
+        Integer previousHeaderTo = recorded ? metadata.getHeaderPageTo() : template.getHeaderPageTo();
+        Integer previousFooterFrom = recorded ? metadata.getFooterPageFrom() : template.getFooterPageFrom();
+        Integer previousFooterTo = recorded ? metadata.getFooterPageTo() : template.getFooterPageTo();
+        Integer previousWatermarkFrom = recorded ? metadata.getWatermarkPageFrom() : template.getWatermarkPageFrom();
+        Integer previousWatermarkTo = recorded ? metadata.getWatermarkPageTo() : template.getWatermarkPageTo();
 
         Integer headerFrom = normalizePageStart(request == null ? null : request.headerPageFrom(), previousHeaderFrom, 2);
-        Integer headerTo = normalizePageEnd(request == null ? null : request.headerPageTo(), previousHeaderTo, headerFrom);
+        // The workspace always posts the full range set (From is always present), so a blank "To" then
+        // means "to end" -- falling back to the previously saved "To" made it impossible to clear.
+        boolean fullRangeSet = request != null && request.headerPageFrom() != null && request.footerPageFrom() != null;
+        Integer headerTo = normalizePageEnd(request == null ? null : request.headerPageTo(), fullRangeSet ? null : previousHeaderTo, headerFrom);
         Integer footerFrom = normalizePageStart(request == null ? null : request.footerPageFrom(), previousFooterFrom, 2);
-        Integer footerTo = normalizePageEnd(request == null ? null : request.footerPageTo(), previousFooterTo, footerFrom);
-
-        template.setCoverSourcePageFrom(1);
-        template.setCoverSourcePageTo(1);
-        template.setBodySourcePageFrom(2);
-        template.setBodySourcePageTo(null);
-        template.setHeaderPageFrom(headerFrom);
-        template.setHeaderPageTo(headerTo);
-        template.setFooterPageFrom(footerFrom);
-        template.setFooterPageTo(footerTo);
-
+        Integer footerTo = normalizePageEnd(request == null ? null : request.footerPageTo(), fullRangeSet ? null : previousFooterTo, footerFrom);
+        Integer watermarkFrom = previousWatermarkFrom;
+        Integer watermarkTo = previousWatermarkTo;
         if (request != null && (request.watermarkPageFrom() != null || request.watermarkPageTo() != null)) {
-            template.setWatermarkPageFrom(request.watermarkPageFrom());
-            template.setWatermarkPageTo(request.watermarkPageTo());
+            watermarkFrom = request.watermarkPageFrom();
+            watermarkTo = request.watermarkPageTo();
         }
 
-        if (hasPageRangeChanges(
-                template,
-                previousCoverFrom,
-                previousCoverTo,
-                previousBodyFrom,
-                previousBodyTo,
-                previousHeaderFrom,
-                previousHeaderTo,
-                previousFooterFrom,
-                previousFooterTo,
-                previousWatermarkFrom,
-                previousWatermarkTo
-        )) {
-            template.setUpdatedBy(currentUser == null ? template.getUpdatedBy() : currentUser.getFullName());
-            publishingTemplateRepository.save(template);
-            auditTrailService.logAs(
-                    currentUser,
-                    "PUBLISHING_TEMPLATE",
-                    template.getTemplateName(),
-                    template.getId(),
-                    "PUBLISHING_TEMPLATE_PAGE_RANGE_UPDATED",
-                    "DRAFT",
-                    "DRAFT",
-                    "Updated page range rules for publishing workspace.",
-                    List.of(
-                            new com.eqms.dto.audittrail.AuditTrailChangeResponse("Cover Page Range", pageRangeLabel(previousCoverFrom, previousCoverTo), pageRangeLabel(template.getCoverSourcePageFrom(), template.getCoverSourcePageTo())),
-                            new com.eqms.dto.audittrail.AuditTrailChangeResponse("Body Page Range", pageRangeLabel(previousBodyFrom, previousBodyTo), pageRangeLabel(template.getBodySourcePageFrom(), template.getBodySourcePageTo())),
-                            new com.eqms.dto.audittrail.AuditTrailChangeResponse("Header Page Range", pageRangeLabel(previousHeaderFrom, previousHeaderTo), pageRangeLabel(template.getHeaderPageFrom(), template.getHeaderPageTo())),
-                            new com.eqms.dto.audittrail.AuditTrailChangeResponse("Footer Page Range", pageRangeLabel(previousFooterFrom, previousFooterTo), pageRangeLabel(template.getFooterPageFrom(), template.getFooterPageTo())),
-                            new com.eqms.dto.audittrail.AuditTrailChangeResponse("Watermark Page Range", pageRangeLabel(previousWatermarkFrom, previousWatermarkTo), pageRangeLabel(template.getWatermarkPageFrom(), template.getWatermarkPageTo()))
-                    )
-            );
+        boolean changed = !recorded
+                || !Objects.equals(previousHeaderFrom, headerFrom) || !Objects.equals(previousHeaderTo, headerTo)
+                || !Objects.equals(previousFooterFrom, footerFrom) || !Objects.equals(previousFooterTo, footerTo)
+                || !Objects.equals(previousWatermarkFrom, watermarkFrom) || !Objects.equals(previousWatermarkTo, watermarkTo);
+        if (metadata != null) {
+            metadata.setPageRanges(headerFrom, headerTo, footerFrom, footerTo, watermarkFrom, watermarkTo);
+            if (changed && recorded && metadata.getRevision() != null && currentUser != null) {
+                auditTrailService.logAs(
+                        currentUser,
+                        "DOCUMENT_REVISION",
+                        metadata.getRevision().getDocumentNumber() + " Rev " + metadata.getRevision().getRevisionNumber(),
+                        metadata.getRevision().getId(),
+                        "PUBLISHING_PAGE_RANGE_UPDATED",
+                        null,
+                        null,
+                        "Updated header/footer/watermark page ranges for this revision's publication.",
+                        List.of(
+                                new com.eqms.dto.audittrail.AuditTrailChangeResponse("Header Page Range", pageRangeLabel(previousHeaderFrom, previousHeaderTo), pageRangeLabel(headerFrom, headerTo)),
+                                new com.eqms.dto.audittrail.AuditTrailChangeResponse("Footer Page Range", pageRangeLabel(previousFooterFrom, previousFooterTo), pageRangeLabel(footerFrom, footerTo)),
+                                new com.eqms.dto.audittrail.AuditTrailChangeResponse("Watermark Page Range", pageRangeLabel(previousWatermarkFrom, previousWatermarkTo), pageRangeLabel(watermarkFrom, watermarkTo))
+                        )
+                );
+            }
         }
+        return detachedCopy(template, headerFrom, headerTo, footerFrom, footerTo, watermarkFrom, watermarkTo);
+    }
 
-        return template;
+    /**
+     * The template as it applies to one revision: the stored template with that revision's recorded page ranges (a
+     * detached copy, never persisted), or the template itself for rows written before ranges moved to the revision.
+     */
+    public static PublishingTemplate effectiveTemplate(RevisionPublishingMetadata metadata) {
+        PublishingTemplate template = metadata == null ? null : metadata.getPublishingTemplate();
+        if (template == null || !metadata.isPageRangesRecorded()) {
+            return template;
+        }
+        return detachedCopy(template, metadata.getHeaderPageFrom(), metadata.getHeaderPageTo(),
+                metadata.getFooterPageFrom(), metadata.getFooterPageTo(),
+                metadata.getWatermarkPageFrom(), metadata.getWatermarkPageTo());
+    }
+
+    /** A copy for composing only (same id so components and styles resolve); it is never persisted. */
+    static PublishingTemplate detachedCopy(PublishingTemplate source, Integer headerFrom, Integer headerTo,
+                                           Integer footerFrom, Integer footerTo, Integer watermarkFrom, Integer watermarkTo) {
+        PublishingTemplate copy = new PublishingTemplate();
+        org.springframework.beans.BeanUtils.copyProperties(source, copy);
+        copy.setCoverSourcePageFrom(1);
+        copy.setCoverSourcePageTo(1);
+        copy.setBodySourcePageFrom(2);
+        copy.setBodySourcePageTo(null);
+        copy.setHeaderPageFrom(headerFrom);
+        copy.setHeaderPageTo(headerTo);
+        copy.setFooterPageFrom(footerFrom);
+        copy.setFooterPageTo(footerTo);
+        copy.setWatermarkPageFrom(watermarkFrom);
+        copy.setWatermarkPageTo(watermarkTo);
+        return copy;
     }
 
     private Integer normalizePageStart(Integer requested, Integer existing, int minimum) {
@@ -700,31 +742,6 @@ public class PublishingWorkspaceService {
             throw new IllegalArgumentException("Page range end must be greater than or equal to start");
         }
         return candidate;
-    }
-
-    private boolean hasPageRangeChanges(
-            PublishingTemplate template,
-            Integer previousCoverFrom,
-            Integer previousCoverTo,
-            Integer previousBodyFrom,
-            Integer previousBodyTo,
-            Integer previousHeaderFrom,
-            Integer previousHeaderTo,
-            Integer previousFooterFrom,
-            Integer previousFooterTo,
-            Integer previousWatermarkFrom,
-            Integer previousWatermarkTo
-    ) {
-        return !Objects.equals(previousCoverFrom, template.getCoverSourcePageFrom())
-                || !Objects.equals(previousCoverTo, template.getCoverSourcePageTo())
-                || !Objects.equals(previousBodyFrom, template.getBodySourcePageFrom())
-                || !Objects.equals(previousBodyTo, template.getBodySourcePageTo())
-                || !Objects.equals(previousHeaderFrom, template.getHeaderPageFrom())
-                || !Objects.equals(previousHeaderTo, template.getHeaderPageTo())
-                || !Objects.equals(previousFooterFrom, template.getFooterPageFrom())
-                || !Objects.equals(previousFooterTo, template.getFooterPageTo())
-                || !Objects.equals(previousWatermarkFrom, template.getWatermarkPageFrom())
-                || !Objects.equals(previousWatermarkTo, template.getWatermarkPageTo());
     }
 
     private String pageRangeLabel(Integer from, Integer to) {

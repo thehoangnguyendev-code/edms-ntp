@@ -615,7 +615,7 @@ const TransitionPolicyForm: React.FC = () => {
 
   const breadcrumbItems = lifecyclePoliciesSubPage(
     navigate,
-    "Transitions",
+    "Transition Policies",
     titleMap[mode],
   );
 
@@ -1228,7 +1228,7 @@ const CapabilityPolicyForm: React.FC = () => {
         title={title}
         breadcrumbItems={lifecyclePoliciesSubPage(
           navigate,
-          "Capabilities",
+          "State Capabilities",
           title,
         )}
         actions={
@@ -1355,7 +1355,7 @@ const CapabilityPolicyForm: React.FC = () => {
 // ── Dispatcher ───────────────────────────────────────────────────────────────
 // Decides which form body to render. `kind` comes from `?kind=transition|capability`
 // when present; otherwise falls back to detecting the `/state-policies/` path
-// segment so the existing (unmodified) navigate() calls in StatePoliciesView /
+// segment so the existing (unmodified) navigate() calls in StateCapabilitiesView /
 // StatePolicyFormView keep working without having to add the query param there.
 export const LifecyclePolicyFormView: React.FC = () => {
   const [searchParams] = useSearchParams();

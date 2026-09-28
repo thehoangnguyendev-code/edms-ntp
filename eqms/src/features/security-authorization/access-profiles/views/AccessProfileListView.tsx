@@ -1,11 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
-import {
-  Plus, Download, Search, Copy, MoreVertical,
-  Users, ShieldCheck, KeyRound, ChevronUp, ChevronDown, Check, X,
-  Trash2, Sparkles, Settings2,
-} from "lucide-react";
-import { IconEye, IconPencilMinus, IconTrash, IconToggleLeft, IconToggleRight, IconFilter2, IconInfoCircle, IconSparkles } from "@tabler/icons-react";
+import { Plus, Download, Search, Copy, MoreVertical, Users, ChevronUp, ChevronDown, Check, X, Trash2, Settings2 } from "lucide-react";
+import { IconPencilMinus, IconToggleLeft, IconToggleRight, IconFilter2, IconInfoCircle, IconSparkles } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -146,10 +143,11 @@ const DuplicateModal: React.FC<{
 
 type SortKey = "name" | "type" | "permissionSetCount" | "assignedUserCount" | "createdAt" | "updatedAt";
 
-const TABLE_COLS: { id: SortKey | "no" | "workflowRoles" | "action"; label: string; sortable: boolean }[] = [
+const TABLE_COLS: { id: SortKey | "no" | "workflowRoles" | "status" | "action"; label: string; sortable: boolean }[] = [
   { id: "no",               label: "No.",              sortable: false },
   { id: "name",             label: "Access Profile",   sortable: true  },
   { id: "type",             label: "Type",             sortable: true  },
+  { id: "status",           label: "Status",           sortable: false },
   { id: "permissionSetCount", label: "Permission Sets", sortable: true },
   { id: "workflowRoles",   label: "Workflow Eligibility",   sortable: false },
   { id: "assignedUserCount", label: "Assigned Users", sortable: true  },
@@ -159,6 +157,7 @@ const TABLE_COLS: { id: SortKey | "no" | "workflowRoles" | "action"; label: stri
 ];
 
 export const AccessProfileListView: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { navigateTo, isNavigating } = useNavigateWithLoading();
@@ -187,6 +186,41 @@ export const AccessProfileListView: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["type", "status"]));
 
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "name", direction: "asc" });
+
+  React.useLayoutEffect(() => {
+    setSearchQuery(searchParams.get("search") ?? "");
+    setTypeFilter(searchParams.get("type") ?? "ALL");
+    setStatusFilter(searchParams.get("status") ?? "all");
+    setCreatedFromDate(searchParams.get("createdFrom") ?? "");
+    setCreatedToDate(searchParams.get("createdTo") ?? "");
+    setUpdatedFromDate(searchParams.get("updatedFrom") ?? "");
+    setUpdatedToDate(searchParams.get("updatedTo") ?? "");
+    setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
+    setItemsPerPage(Math.max(1, Number(searchParams.get("limit")) || 10));
+    const sortKey = searchParams.get("sortBy");
+    const allowedSortKeys: SortKey[] = ["name", "type", "permissionSetCount", "assignedUserCount", "createdAt", "updatedAt"];
+    setSortConfig({
+      key: allowedSortKeys.includes(sortKey as SortKey) ? sortKey as SortKey : "name",
+      direction: searchParams.get("sortDir") === "desc" ? "desc" : "asc",
+    });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchQuery !== debouncedSearch) return;
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("search", searchQuery);
+    if (typeFilter !== "ALL") params.set("type", typeFilter);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (createdFromDate) params.set("createdFrom", createdFromDate);
+    if (createdToDate) params.set("createdTo", createdToDate);
+    if (updatedFromDate) params.set("updatedFrom", updatedFromDate);
+    if (updatedToDate) params.set("updatedTo", updatedToDate);
+    if (sortConfig.key !== "name") params.set("sortBy", sortConfig.key);
+    if (sortConfig.direction !== "asc") params.set("sortDir", sortConfig.direction);
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (itemsPerPage !== 10) params.set("limit", String(itemsPerPage));
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [searchQuery, debouncedSearch, typeFilter, statusFilter, createdFromDate, createdToDate, updatedFromDate, updatedToDate, sortConfig, currentPage, itemsPerPage, searchParams, setSearchParams]);
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; profile: AccessProfileResponse | null }>({ open: false, profile: null });
   const [duplicateModal, setDuplicateModal] = useState<{ open: boolean; profile: AccessProfileResponse | null }>({ open: false, profile: null });
   const [capabilityByProfileId, setCapabilityByProfileId] = useState<Record<string, AccessProfileCapabilitiesResponse>>({});
@@ -606,7 +640,7 @@ export const AccessProfileListView: React.FC = () => {
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[1020px]">
+                <table className="w-full min-w-[1120px]">
                   <thead className="sticky top-0 z-30">
                     <tr>
                       {TABLE_COLS.map(col => {
@@ -640,9 +674,9 @@ export const AccessProfileListView: React.FC = () => {
                   <tbody className="divide-y divide-slate-200 bg-white">
                     {!isLoading && sortedProfiles.length === 0 ? (
                       <tr>
-                        <td colSpan={TABLE_COLS.length} className="py-12 text-center">
+                        <td colSpan={TABLE_COLS.length} className="p-0">
                           <TableEmptyState
-                            icon={<ShieldCheck className="h-10 w-10 text-slate-300" />}
+
                             title="No access profiles found"
                             description={hasFilters ? "Try adjusting your search or filters." : "Create your first access profile to get started."}
                           />
@@ -675,6 +709,13 @@ export const AccessProfileListView: React.FC = () => {
                         <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                           <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="sm">
                             {profile.type === "SYSTEM" ? "System" : "Custom"}
+                          </Badge>
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          <Badge color={profile.active ? "emerald" : "slate"} size="sm" showDot>
+                            {profile.active ? "Active" : "Inactive"}
                           </Badge>
                         </td>
 

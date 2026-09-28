@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronDown,
   ChevronUp,
@@ -142,13 +142,48 @@ const buildObjectCode = (record: AuditTrailRecord) => {
   return record.entityName || "-";
 };
 
+// A real transition: both sides present and actually different. Anything else -- a View,
+// a Login, a metadata-only edit, "Obsoleted -> Obsoleted" -- is not a status change and
+// must render "-" so an inspector isn't misled. (Backend also stopped emitting these, but
+// older rows persist synthetic ones.)
+const isRealTransition = (from?: string | null, to?: string | null) => {
+  const f = (from ?? "").trim();
+  const t = (to ?? "").trim();
+  return f !== "" && t !== "" && f.toLowerCase() !== t.toLowerCase();
+};
+
+// A blank "from" with a real "to" is a creation (e.g. Controlled Copy REQUEST) -- the record
+// simply didn't exist before, which is itself meaningful ("None -> Ready for Distribution"),
+// not the same as no status concept applying at all (Login/View, where "to" is blank too).
+const isCreation = (from?: string | null, to?: string | null) => {
+  const f = (from ?? "").trim();
+  const t = (to ?? "").trim();
+  return f === "" && t !== "";
+};
+
+// Symmetric to isCreation: a real "from" with a blank "to" is a deletion (e.g. Access Profile
+// DELETE) -- also meaningful ("Active -> None"), not something to collapse to "-".
+const isDeletion = (from?: string | null, to?: string | null) => {
+  const f = (from ?? "").trim();
+  const t = (to ?? "").trim();
+  return f !== "" && t === "";
+};
+
 const buildStatusChange = (record: AuditTrailRecord) => {
   const statusChange = record.changes?.find(
     (c) =>
       c.field?.toLowerCase() === "status" || c.field?.toLowerCase() === "state",
   );
   if (statusChange) {
-    return `${formatWorkflowStatusLabel(statusChange.oldValue)} → ${formatWorkflowStatusLabel(statusChange.newValue)}`;
+    if (isRealTransition(statusChange.oldValue, statusChange.newValue)) {
+      return `${formatWorkflowStatusLabel(statusChange.oldValue)} → ${formatWorkflowStatusLabel(statusChange.newValue)}`;
+    }
+    if (isCreation(statusChange.oldValue, statusChange.newValue)) {
+      return `None → ${formatWorkflowStatusLabel(statusChange.newValue)}`;
+    }
+    if (isDeletion(statusChange.oldValue, statusChange.newValue)) {
+      return `${formatWorkflowStatusLabel(statusChange.oldValue)} → None`;
+    }
   }
   const oldStatus =
     record.metadata?.oldStatus ||
@@ -158,8 +193,14 @@ const buildStatusChange = (record: AuditTrailRecord) => {
     record.metadata?.newStatus ||
     record.metadata?.new_status ||
     record.metadata?.toStatus;
-  if (oldStatus || newStatus) {
+  if (isRealTransition(oldStatus as string, newStatus as string)) {
     return `${formatWorkflowStatusLabel(oldStatus)} → ${formatWorkflowStatusLabel(newStatus)}`;
+  }
+  if (isCreation(oldStatus as string, newStatus as string)) {
+    return `None → ${formatWorkflowStatusLabel(newStatus as string)}`;
+  }
+  if (isDeletion(oldStatus as string, newStatus as string)) {
+    return `${formatWorkflowStatusLabel(oldStatus as string)} → None`;
   }
   return "-";
 };
@@ -226,6 +267,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
 export const AuditTrailView: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [records, setRecords] = useState<AuditTrailRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -273,6 +315,35 @@ export const AuditTrailView: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(["action", "user", "signature", "date"]),
   );
+
+  useLayoutEffect(() => {
+    const defaults = getDefaultAuditTrailDateRange();
+    setSearchQuery(searchParams.get("search") ?? "");
+    setActionFilter(searchParams.get("action") ?? "All");
+    setUserFilter(searchParams.get("user") ?? "");
+    setESignatureFilter((searchParams.get("eSignature") as "All" | "Yes" | "No") ?? "All");
+    setDateFrom(searchParams.get("dateFrom") ?? defaults.startDate);
+    setDateTo(searchParams.get("dateTo") ?? defaults.endDate);
+    setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
+    setItemsPerPage(Number(searchParams.get("limit")) || 10);
+    setSortConfig({ key: (searchParams.get("sortBy") as typeof sortConfig.key) ?? "timestamp", direction: searchParams.get("sortDirection") === "asc" ? "asc" : "desc" });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchQuery !== debouncedSearchQuery) return;
+    const params = new URLSearchParams();
+    if (debouncedSearchQuery.trim()) params.set("search", debouncedSearchQuery.trim());
+    if (actionFilter !== "All") params.set("action", actionFilter);
+    if (userFilter) params.set("user", userFilter);
+    if (eSignatureFilter !== "All") params.set("eSignature", eSignatureFilter);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (itemsPerPage !== 10) params.set("limit", String(itemsPerPage));
+    if (sortConfig.key !== "timestamp") params.set("sortBy", sortConfig.key);
+    if (sortConfig.direction !== "desc") params.set("sortDirection", sortConfig.direction);
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [searchQuery, debouncedSearchQuery, actionFilter, userFilter, eSignatureFilter, dateFrom, dateTo, currentPage, itemsPerPage, sortConfig, searchParams, setSearchParams]);
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => {
@@ -636,7 +707,7 @@ export const AuditTrailView: React.FC = () => {
                           { label: "Timestamp", key: "timestamp" },
                           { label: "User", key: "user" },
                           { label: "Employee ID" },
-                          { label: "Role" },
+                          { label: "Access Profile" },
                           { label: "Module", key: "module" },
                           { label: "Object Type" },
                           { label: "Object Code", key: "entityId" },
@@ -698,7 +769,7 @@ export const AuditTrailView: React.FC = () => {
                           user?.fullName || record.fullName || "-";
                         const employeeId = user?.employeeCode || "-";
                         const profileId = user?.id || "";
-                        const role = user?.role || "-";
+                        const accessProfileNames = user?.accessProfileNames ?? [];
                         const action = record.action || "-";
                         const signature = hasESignature(record) ? "Yes" : "No";
                         const device = record.device || "-";
@@ -746,7 +817,20 @@ export const AuditTrailView: React.FC = () => {
                               )}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
-                              {role}
+                              {accessProfileNames.length === 0 ? (
+                                <Badge size="sm" color="amber" title="No Access Profile was assigned at the time of this event.">
+                                  Unassigned
+                                </Badge>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Badge size="sm" color="slate">
+                                    {accessProfileNames[0]}
+                                  </Badge>
+                                  {accessProfileNames.length > 1 && (
+                                    <span className="text-2xs text-slate-500 font-medium">+{accessProfileNames.length - 1}</span>
+                                  )}
+                                </span>
+                              )}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               {moduleLabel}
@@ -785,14 +869,14 @@ export const AuditTrailView: React.FC = () => {
                                 >
                                   {signature}
                                 </Badge>
-                                {record.signatureId && (
+                                {/* {record.signatureId && (
                                   <span
                                     className="text-xs font-medium text-slate-600 whitespace-nowrap"
                                     title={`Full UUID: ${record.signatureId}`}
                                   >
                                     {formatSignatureId(record.signatureId)}
                                   </span>
-                                )}
+                                )} */}
                               </div>
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">

@@ -2,6 +2,7 @@ package com.eqms.service;
 
 import com.eqms.auth.TokenService;
 import com.eqms.auth.UnauthorizedException;
+import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.UserAccount;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -67,8 +68,13 @@ public class SecurityChangeSignatureService {
     /**
      * Persist the electronic signature record AFTER the mutation succeeded
      * (same transaction — a failed mutation rolls the signature back too).
+     *
+     * Returns the created signature (or null when esign is not required) so the caller's own
+     * action-specific audit trail entry can carry its ID -- electronic signing is a step that
+     * accompanies the real action, surfaced via that entry's own E-Signature flag/detail, not a
+     * separate "signed" row of its own (see ElectronicSignatureService#createEntitySignature).
      */
-    public void record(
+    public ElectronicSignature record(
             UserAccount actor,
             String signatureToken,
             String meaning,
@@ -79,9 +85,9 @@ public class SecurityChangeSignatureService {
             String oldValue,
             String newValue) {
         if (!esignRequired) {
-            return;
+            return null;
         }
-        electronicSignatureService.createEntitySignature(
+        return electronicSignatureService.createEntitySignature(
                 entityType, entityId, entityName, actor, signatureToken,
                 meaning, reason, null, oldValue, newValue);
     }

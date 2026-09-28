@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Lock, Shield, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page/PageHeader';
@@ -77,11 +77,16 @@ export const NotificationPolicyDetailView: React.FC<NotificationPolicyDetailView
   const [history, setHistory] = useState<NotificationTemplateVersion[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // Only the most recent load may write state: navigating between events, or reloading after a save, must not
+  // let a slower earlier response overwrite the newer one (or the user's edits).
+  const detailRequestRef = useRef(0);
   const loadDetail = useCallback(() => {
+    const requestId = ++detailRequestRef.current;
     setIsLoading(true);
     notificationPolicyApi
       .getDetail(eventCode)
       .then((data) => {
+        if (requestId !== detailRequestRef.current) return;
         setDetail(data);
         setStatus(data.policyStatus);
         setRecipientRules(data.recipientRules ?? []);
@@ -94,9 +99,12 @@ export const NotificationPolicyDetailView: React.FC<NotificationPolicyDetailView
         setContent(toTemplateValue(data.activeTemplates[0]));
       })
       .catch(() => {
+        if (requestId !== detailRequestRef.current) return;
         showToast({ type: 'error', title: 'Failed to load', message: 'Unable to load this notification policy.' });
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (requestId === detailRequestRef.current) setIsLoading(false);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventCode]);
 
@@ -176,12 +184,16 @@ export const NotificationPolicyDetailView: React.FC<NotificationPolicyDetailView
   useEffect(() => {
     if (activeTab === 'preview' && detail) {
       runPreview();
+      let alive = true;
       setIsLoadingHistory(true);
       notificationPolicyApi
         .getHistory(eventCode)
-        .then(setHistory)
-        .catch(() => setHistory([]))
-        .finally(() => setIsLoadingHistory(false));
+        .then((versions) => { if (alive) setHistory(versions); })
+        .catch(() => { if (alive) setHistory([]); })
+        .finally(() => { if (alive) setIsLoadingHistory(false); });
+      return () => {
+        alive = false;
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, detail]);

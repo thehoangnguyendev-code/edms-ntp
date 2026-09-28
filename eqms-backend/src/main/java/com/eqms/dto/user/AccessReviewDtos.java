@@ -63,7 +63,8 @@ public final class AccessReviewDtos {
             String decision,
             String decisionLabel,
             String decisionNote,
-            Instant decidedAt
+            Instant decidedAt,
+            String decidedByName
     ) {}
 
     public record CampaignDetailResponse(

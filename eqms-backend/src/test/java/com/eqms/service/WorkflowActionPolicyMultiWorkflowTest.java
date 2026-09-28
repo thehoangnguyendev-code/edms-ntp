@@ -282,6 +282,8 @@ class WorkflowActionPolicyMultiWorkflowTest {
 
         assertThat(result.source()).isEqualTo("GLOBAL");
         assertThat(result.fallbackUsed()).isFalse();
+        assertThat(result.trace()).extracting(t -> t.reasonCode())
+                .containsExactly("GLOBAL_POLICY_MATCHED");
         assertThat(result.policy()).isNotNull();
         assertThat(result.policy().workflowKey()).isEqualTo("CONTROLLED_COPY");
         assertThat(result.policy().actionCode()).isEqualTo("PREVIEW_FILE");
@@ -357,7 +359,9 @@ class WorkflowActionPolicyMultiWorkflowTest {
                 "PREVIEW_FILE", "DISTRIBUTED", docTypeId);
 
         assertThat(result.source()).isEqualTo("GLOBAL");
-        assertThat(result.fallbackUsed()).isFalse();
+        assertThat(result.fallbackUsed()).isTrue();
+        assertThat(result.trace()).extracting(t -> t.reasonCode())
+                .containsExactly("NO_DOCUMENT_TYPE_OVERRIDE", "GLOBAL_FALLBACK");
     }
 
     // ── Reset default tests ────────────────────────────────────────────────────

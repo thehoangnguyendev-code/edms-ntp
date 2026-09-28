@@ -38,4 +38,21 @@ public class ControlledCopyDistributionJobService {
         return job;
     }
     public UUID idOf(ControlledCopyDistributionJob job) { return job == null ? null : job.getId(); }
+
+    /** The copies a batch's most recent DISTRIBUTE run actually succeeded on, from the durable job/item
+     *  records -- so a DCO batch ZIP can be rebuilt later (e.g. for the download link in the DCO's
+     *  email) without depending on the in-memory list from the moment the batch first finished. */
+    @Transactional(readOnly = true)
+    public List<UUID> succeededDistributeCopyIds(UUID batchId) {
+        if (batchId == null) {
+            return List.of();
+        }
+        List<ControlledCopyDistributionJob> runs = jobs.findByBatch_IdAndActionTypeOrderByCreatedAtDesc(batchId, "DISTRIBUTE");
+        if (runs.isEmpty()) {
+            return List.of();
+        }
+        return items.findAllByJob_IdAndStatusOrderByIdAsc(runs.get(0).getId(), "SUCCESS").stream()
+                .map(item -> item.getControlledCopy().getId())
+                .toList();
+    }
 }

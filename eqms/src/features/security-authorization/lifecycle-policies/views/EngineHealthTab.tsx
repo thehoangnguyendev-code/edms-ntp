@@ -61,7 +61,7 @@ export const EngineHealthTab: React.FC = () => {
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const [items, setItems] = useState<AuthorizationShadowMismatch[]>([]);
   const [summary, setSummary] = useState<
-    { resourceType: string; total: number; mismatches: number }[]
+    { resourceType: string; total: number; mismatches: number; cutoverComplete: boolean }[]
   >([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -152,7 +152,9 @@ export const EngineHealthTab: React.FC = () => {
       <p className="mb-4 max-w-3xl text-xs text-slate-500 sm:text-sm md:mb-5">
         Compares the new hybrid AuthorizationEngineService against each legacy
         evaluator. A resource type must show zero mismatches before its cutover
-        feature flag is enabled.
+        feature flag is enabled — except resource types marked "Cutover complete"
+        below, whose legacy evaluator has already been permanently removed from
+        the code; their totals are a frozen historical record, not live monitoring.
       </p>
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:mb-5 md:grid-cols-4 md:gap-4">
@@ -172,7 +174,7 @@ export const EngineHealthTab: React.FC = () => {
             <p className="mt-1 text-xl font-bold text-slate-900 md:text-2xl">
               {entry.total}
             </p>
-            <div className="mt-1.5">
+            <div className="mt-1.5 flex flex-wrap gap-1">
               <Badge
                 semantic={entry.mismatches === 0 ? "success" : "danger"}
                 size="xs"
@@ -186,6 +188,11 @@ export const EngineHealthTab: React.FC = () => {
                   ? "0 mismatches"
                   : `${entry.mismatches} mismatches`}
               </Badge>
+              {entry.cutoverComplete && (
+                <Badge semantic="neutral" size="xs" title="Legacy evaluator removed from code — this total is a frozen historical record, not live monitoring.">
+                  Cutover complete
+                </Badge>
+              )}
             </div>
           </div>
         ))}
@@ -309,7 +316,7 @@ export const EngineHealthTab: React.FC = () => {
                   <tbody className="divide-y divide-slate-200 bg-white">
                     {!loading && items.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center">
+                        <td colSpan={6} className="p-0">
                           {error ? (
                             <TableEmptyState
                               title="Failed to Load"
@@ -317,9 +324,7 @@ export const EngineHealthTab: React.FC = () => {
                             />
                           ) : (
                             <TableEmptyState
-                              icon={
-                                <ShieldCheck className="h-10 w-10 text-slate-300" />
-                              }
+                             
                               title="No Events"
                               description={
                                 mismatchesOnly
@@ -349,11 +354,11 @@ export const EngineHealthTab: React.FC = () => {
                               <div className="font-medium text-slate-800">
                                 {entry.resourceType}
                               </div>
-                              <div className="max-w-[160px] truncate font-mono text-2xs text-slate-400">
+                              <div className="max-w-[160px] truncate  text-2xs text-slate-400">
                                 {entry.resourceId}
                               </div>
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-700 sm:text-sm">
+                            <td className="whitespace-nowrap px-4 py-3  text-xs text-slate-700 sm:text-sm">
                               {entry.actionCode}
                             </td>
                             <td className="px-4 py-3">

@@ -46,8 +46,6 @@ class ControlledCopyAuthorizationServiceCutoverTest {
     @Mock private ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository;
     @Mock private WorkflowActionPolicyRepository workflowActionPolicyRepository;
     @Mock private UserAccessProfileRepository userAccessProfileRepository;
-    @Mock private AccessProfileWorkflowRoleRepository accessProfileWorkflowRoleRepository;
-    @Mock private DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     @Mock private DocumentRecordRepository documentRecordRepository;
     @Mock private ObjectAccessEvaluationService objectAccessEvaluationService;
     @Mock private AuthorizationEngineService authorizationEngineService;
@@ -61,8 +59,7 @@ class ControlledCopyAuthorizationServiceCutoverTest {
                 permissionEvaluationService, currentUserService, documentAuthorizationService,
                 controlledCopyPolicyService, secureFileAccessService, controlledCopyRepository,
                 controlledCopyDistributionBatchRepository, workflowActionPolicyRepository,
-                userAccessProfileRepository, accessProfileWorkflowRoleRepository,
-                documentWorkflowPoolMemberRepository, documentRecordRepository,
+                userAccessProfileRepository, documentRecordRepository,
                 objectAccessEvaluationService, null, authorizationEngineService);
     }
 

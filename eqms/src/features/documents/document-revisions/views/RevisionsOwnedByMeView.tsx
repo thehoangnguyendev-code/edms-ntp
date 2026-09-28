@@ -129,11 +129,11 @@ export const RevisionsOwnedByMeView: React.FC = () => {
         async () => ({
           ...buildRevisionDetailSnapshotState(await documentApi.getRevisionByIdSnapshot(revisionId)),
         }),
-        { state: { from } },
+        { state: { from, returnTo: `${location.pathname}${location.search}` } },
       );
     } catch (error) {
       console.error("Failed to preload revision before navigation", error);
-      navigateTo(route, { state: { from } });
+      navigateTo(route, { state: { from, returnTo: `${location.pathname}${location.search}` } });
     }
   };
 
@@ -298,7 +298,7 @@ export const RevisionsOwnedByMeView: React.FC = () => {
         return <span className="font-medium text-slate-900">{revision.revisionName}</span>;
       case "state":
         return (
-          <Badge color={getBadgeColor(revision.statusCode, revision.state)}>
+          <Badge color={getBadgeColor(revision.statusCode, revision.state)} size="sm">
             {revision.state}
           </Badge>
         );

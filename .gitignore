@@ -31,8 +31,14 @@
 /logs/
 /.env
 
-# Editor/tooling local config - not shared with the team
-/.claude/
+# Editor/tooling local config - not shared with the team.
+# Keep the reviewed EQMS engineering skill versioned; it is project guidance,
+# not machine-local Claude state.
+/.claude/*
+!/.claude/skills/
+/.claude/skills/*
+!/.claude/skills/eqms-validation-engineering/
+!/.claude/skills/eqms-validation-engineering/**
 /.vscode/
 
 # Build artifacts

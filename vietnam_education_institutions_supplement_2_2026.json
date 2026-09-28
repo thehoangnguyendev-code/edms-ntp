@@ -1,0 +1,282 @@
+{
+  "metadata": {
+    "title": "Vietnam education institutions - supplement 2 (2026)",
+    "purpose": "Additional institutions found after re-auditing previous seed and supplement files.",
+    "generated_on": "2026-09-16",
+    "record_count": 19,
+    "scope_note": "Only records not already present by normalized name in the two previously generated datasets are included. This remains an incremental supplement, not a claim of nationwide exhaustiveness.",
+    "key_sources": [
+      "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html",
+      "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=182191",
+      "https://huongnghiep.gf.edu.vn/truong"
+    ]
+  },
+  "institutions": [
+    {
+      "supplement_id": "vn-edu-sup2-0001",
+      "name": "Trường Cao đẳng nghề Kỹ thuật công nghệ",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-nghe-ky-thuat-cong-nghe",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0002",
+      "name": "Trường Cao đẳng Kỹ nghệ Dung Quất",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-ky-nghe-dung-quat",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0003",
+      "name": "Trường Cao đẳng Xây dựng số 1",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-xay-dung-so-1",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0004",
+      "name": "Trường Cao đẳng Xây dựng Thành phố Hồ Chí Minh",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-xay-dung-thanh-pho-ho-chi-minh",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0005",
+      "name": "Trường Cao đẳng Xây dựng Nam Định",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-xay-dung-nam-dinh",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0006",
+      "name": "Trường Cao đẳng Xây dựng Công trình đô thị",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-xay-dung-cong-trinh-do-thi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0007",
+      "name": "Trường Cao đẳng nghề Việt - Xô số 1",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-nghe-viet-xo-so-1",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0008",
+      "name": "Trường Cao đẳng Cơ giới Xây dựng",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-co-gioi-xay-dung",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0009",
+      "name": "Trường Cao đẳng Xây dựng và Công nghệ - Xã hội",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-xay-dung-va-cong-nghe-xa-hoi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0010",
+      "name": "Trường Cao đẳng Kỹ thuật và Nghiệp vụ Hà Nội",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": "cong_lap",
+      "governing_body": "Bộ Giáo dục và Đào tạo",
+      "slug": "truong-cao-dang-ky-thuat-va-nghiep-vu-ha-noi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://thuvienphapluat.vn/phap-luat/danh-sach-15-truong-cao-dang-truc-thuoc-bo-giao-duc-va-dao-tao-chi-tiet-ra-sao-theo-quyet-dinh-1723-616098-248999.html"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0011",
+      "name": "Trường Trung cấp nghề số 1 Hà Nội",
+      "abbreviation": null,
+      "institution_type": "trung_cap",
+      "ownership": "cong_lap",
+      "governing_body": "Thành phố Hà Nội",
+      "slug": "truong-trung-cap-nghe-so-1-ha-noi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=182191"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0012",
+      "name": "Trường Trung cấp nghề Tổng hợp Hà Nội",
+      "abbreviation": null,
+      "institution_type": "trung_cap",
+      "ownership": "cong_lap",
+      "governing_body": "Thành phố Hà Nội",
+      "slug": "truong-trung-cap-nghe-tong-hop-ha-noi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=182191"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0013",
+      "name": "Trường Trung cấp nghề Giao thông công chính Hà Nội",
+      "abbreviation": null,
+      "institution_type": "trung_cap",
+      "ownership": "cong_lap",
+      "governing_body": "Thành phố Hà Nội",
+      "slug": "truong-trung-cap-nghe-giao-thong-cong-chinh-ha-noi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=182191"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0014",
+      "name": "Trường Trung cấp nghề Cơ khí I Hà Nội",
+      "abbreviation": null,
+      "institution_type": "trung_cap",
+      "ownership": "cong_lap",
+      "governing_body": "Thành phố Hà Nội",
+      "slug": "truong-trung-cap-nghe-co-khi-i-ha-noi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=182191"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0015",
+      "name": "Trường Trung cấp nghề Nấu ăn - Nghiệp vụ du lịch và Thời trang Hà Nội",
+      "abbreviation": null,
+      "institution_type": "trung_cap",
+      "ownership": "cong_lap",
+      "governing_body": "Thành phố Hà Nội",
+      "slug": "truong-trung-cap-nghe-nau-an-nghiep-vu-du-lich-va-thoi-trang-ha-noi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=182191"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0016",
+      "name": "Trường Trung cấp Kinh tế - Kỹ thuật và Công nghệ Hà Nội",
+      "abbreviation": null,
+      "institution_type": "trung_cap",
+      "ownership": "cong_lap",
+      "governing_body": "Thành phố Hà Nội",
+      "slug": "truong-trung-cap-kinh-te-ky-thuat-va-cong-nghe-ha-noi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=182191"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0017",
+      "name": "Trường Trung cấp Xây dựng Hà Nội",
+      "abbreviation": null,
+      "institution_type": "trung_cap",
+      "ownership": "cong_lap",
+      "governing_body": "Thành phố Hà Nội",
+      "slug": "truong-trung-cap-xay-dung-ha-noi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=182191"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0018",
+      "name": "Trường Trung cấp Kỹ thuật tin học Hà Nội",
+      "abbreviation": null,
+      "institution_type": "trung_cap",
+      "ownership": "cong_lap",
+      "governing_body": "Thành phố Hà Nội",
+      "slug": "truong-trung-cap-ky-thuat-tin-hoc-ha-noi",
+      "verification_status": "verified_public_source",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=182191"
+      ]
+    },
+    {
+      "supplement_id": "vn-edu-sup2-0019",
+      "name": "Trường Cao đẳng Công nghệ và Du lịch",
+      "abbreviation": null,
+      "institution_type": "cao_dang",
+      "ownership": null,
+      "governing_body": null,
+      "slug": "truong-cao-dang-cong-nghe-va-du-lich",
+      "verification_status": "verified_name_type_only",
+      "verified_as_of": "2026-09-16",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong?nganh=quan-tri-nha-hang"
+      ]
+    }
+  ]
+}

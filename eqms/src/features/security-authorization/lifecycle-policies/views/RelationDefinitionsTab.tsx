@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Check, ChevronDown, ChevronUp, Link2, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
@@ -299,12 +299,12 @@ export const RelationDefinitionsTab: React.FC = () => {
                   <tbody className="divide-y divide-slate-200 bg-white">
                     {!loading && items.length === 0 ? (
                       <tr>
-                        <td colSpan={TABLE_COLS.length} className="py-12 text-center">
+                        <td colSpan={TABLE_COLS.length} className="p-0">
                           {error ? (
                             <TableEmptyState title="Failed to Load" description={error} />
                           ) : (
                             <TableEmptyState
-                              icon={<Link2 className="h-10 w-10 text-slate-300" />}
+                             
                               title="No Relation Definitions"
                               description={hasFilters ? "Try adjusting your search or filters." : "No relation definitions match this filter."}
                             />
@@ -318,33 +318,28 @@ export const RelationDefinitionsTab: React.FC = () => {
                         <tr key={d.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="px-4 py-3 align-middle text-center text-xs sm:text-sm text-slate-500 whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
                           <td className="px-4 py-3 align-middle">
-                            <div title={d.code} className="truncate font-mono text-xs sm:text-sm font-medium text-slate-800">{d.code}</div>
-                            <div title={d.displayName} className="truncate text-2xs text-slate-400">{d.displayName}</div>
+                            <div className="break-all  text-xs sm:text-sm font-medium text-slate-800">{d.code}</div>
+                            <div className="break-words text-2xs text-slate-400">{d.displayName}</div>
                           </td>
                           <td className="px-4 py-3 align-middle whitespace-nowrap">
                             <Badge color="purple" size="xs">{d.resourceType}</Badge>
                           </td>
-                          <td title={d.resolverCode} className="px-4 py-3 align-middle font-mono text-xs sm:text-sm text-slate-600"><span className="block truncate">{d.resolverCode}</span></td>
+                          <td className="px-4 py-3 align-middle  text-xs sm:text-sm text-slate-600 break-all">{d.resolverCode}</td>
                           <td className="px-4 py-3 align-middle">
                             {configEntries.length > 0 ? (
-                              <div className="flex w-full items-center gap-1 overflow-hidden whitespace-nowrap">
-                                {configEntries.slice(0, 3).map(([key, value]) => (
-                                  <span key={key} title={`${key}=${String(value)}`} className="min-w-0 max-w-full shrink rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-2xs text-slate-600 truncate">
+                              <div className="flex w-full flex-wrap items-center gap-1">
+                                {configEntries.map(([key, value]) => (
+                                  <span key={key} className="rounded-md bg-slate-100 px-1.5 py-0.5  text-2xs text-slate-600 break-all">
                                     {key}={String(value)}
                                   </span>
                                 ))}
-                                {configEntries.length > 3 && (
-                                  <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-2xs text-slate-400">
-                                    +{configEntries.length - 3}
-                                  </span>
-                                )}
                               </div>
                             ) : (
                               <span className="text-2xs text-slate-300">—</span>
                             )}
                           </td>
                           <td className="px-4 py-3 align-middle whitespace-nowrap">
-                            <Badge color={d.active ? "emerald" : "slate"} size="sm" showDot pill>{d.active ? "Active" : "Inactive"}</Badge>
+                            <Badge color={d.active ? "emerald" : "slate"} size="sm">{d.active ? "Active" : "Inactive"}</Badge>
                           </td>
                           <td className="px-4 py-3 align-middle text-xs sm:text-sm text-slate-600 whitespace-nowrap">{formatDateTime(d.updatedAt)}</td>
                         </tr>

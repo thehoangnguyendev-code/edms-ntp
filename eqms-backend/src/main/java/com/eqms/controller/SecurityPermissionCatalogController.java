@@ -59,8 +59,7 @@ public class SecurityPermissionCatalogController {
 
     private void requirePermissionCatalogAccess() {
         UserAccount user = currentUserService.requireCurrentUser();
-        boolean allowed = permissionEvaluationService.isSuperAdmin(user)
-                || permissionEvaluationService.hasAnyPermission(
+        boolean allowed = permissionEvaluationService.hasAnyPermission(
                 user,
                 "security.permission_sets.view",
                 "security.permission_sets.update",

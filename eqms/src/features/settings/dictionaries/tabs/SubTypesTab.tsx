@@ -1,18 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import {
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  FileType,
-  MoreVertical,
-  Power,
-  PowerOff,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Power, PowerOff, Search, X } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
@@ -25,6 +13,7 @@ import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
 import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
@@ -47,7 +36,7 @@ type SubTypeFormData = {
   name: string;
   documentTypeId: string;
   description: string;
-  reviewRequirement: "NONE" | "SINGLE" | "MULTIPLE";
+  reviewRequirement: "NONE" | "REQUIRED";
   isActive: boolean;
 };
 
@@ -63,24 +52,26 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       close: closeDropdown,
     } = usePortalDropdown();
     const { hasPermissionAlias } = usePermissions();
-    const canManage = hasPermissionAlias("settings.dictionary.manage");
+    const canManage = hasPermissionAlias("documents.admin.document_types.manage");
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedItem, setSelectedItem] =
       useState<DocumentSubTypeItem | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showToggleModal, setShowToggleModal] = useState(false);
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<
       "All" | "Active" | "Inactive"
     >("All");
     const [documentTypeFilter, setDocumentTypeFilter] = useState("");
+    const [reviewFilter, setReviewFilter] = useState<"All" | "REQUIRED" | "NONE">(
+      "All",
+    );
     const [modifiedFromDate, setModifiedFromDate] = useState("");
     const [modifiedToDate, setModifiedToDate] = useState("");
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
-      new Set(["status", "documentType", "date"]),
+      new Set(["status", "documentType", "review", "date"]),
     );
     const [resultModal, setResultModal] = useState<ResultModalState>({
       isOpen: false,
@@ -111,6 +102,7 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       extraParams: {
         status: statusFilter,
         documentType: documentTypeFilter || undefined,
+        reviewRequirement: reviewFilter === "All" ? undefined : reviewFilter,
         modifiedFrom: modifiedFromDate || undefined,
         modifiedTo: modifiedToDate || undefined,
       },
@@ -141,6 +133,7 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
     }, [
       statusFilter,
       documentTypeFilter,
+      reviewFilter,
       modifiedFromDate,
       modifiedToDate,
       setCurrentPage,
@@ -263,41 +256,12 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       }
     };
 
-    const handleDelete = (item: DocumentSubTypeItem) => {
-      setSelectedItem(item);
-      setShowDeleteModal(true);
-      closeDropdown();
-    };
-
-    const handleConfirmDelete = async () => {
-      if (!selectedItem) return;
-      setIsSubmitting(true);
-      try {
-        await dictionaryApi.deleteSubType(selectedItem.id);
-        setShowDeleteModal(false);
-        reload();
-        showToast({
-          type: "success",
-          title: "Sub-Type Deleted",
-          message: `Sub-type "${selectedItem.name}" has been deleted successfully.`,
-        });
-        setSelectedItem(null);
-      } catch (error) {
-        setShowDeleteModal(false);
-        showToast({
-          type: "error",
-          title: "Sub-Type Delete Failed",
-          message: extractApiMessage(error, "Unable to delete sub-type."),
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    };
 
     const clearFilters = () => {
       setSearchQuery("");
       setStatusFilter("All");
       setDocumentTypeFilter("");
+      setReviewFilter("All");
       setModifiedFromDate("");
       setModifiedToDate("");
       setCurrentPage(1);
@@ -307,6 +271,7 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       searchQuery.length > 0 ||
       statusFilter !== "All" ||
       documentTypeFilter.length > 0 ||
+      reviewFilter !== "All" ||
       modifiedFromDate.length > 0 ||
       modifiedToDate.length > 0;
 
@@ -418,6 +383,23 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
                 options={filterDocumentTypeOptions}
                 placeholder="All Document Types"
                 enableSearch={true}
+              />
+            </div>
+
+            <div className="w-full">
+              <Select
+                label="Review"
+                value={reviewFilter}
+                onChange={(value) => {
+                  setReviewFilter(value as "All" | "REQUIRED" | "NONE");
+                  setCurrentPage(1);
+                }}
+                options={[
+                  { label: "All", value: "All" },
+                  { label: "Required", value: "REQUIRED" },
+                  { label: "Not required", value: "NONE" },
+                ]}
+                placeholder="All"
               />
             </div>
 
@@ -534,18 +516,18 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
                         </span>
                       </td>
                       <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                        {item.reviewRequirement === "NONE" ? "No reviewer" : item.reviewRequirement === "MULTIPLE" ? "Multiple reviewers" : "One reviewer"}
+                        {item.reviewRequirement === "NONE" ? "Not required" : "Required"}
                       </td>
                       <td className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-md truncate">
                         {item.description || "-"}
                       </td>
                       <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                         {item.isActive ? (
-                          <Badge color="emerald" size="sm" showDot pill>
+                          <Badge color="emerald" size="sm" >
                             Active
                           </Badge>
                         ) : (
-                          <Badge color="slate" size="sm" showDot pill>
+                          <Badge color="slate" size="sm" >
                             Inactive
                           </Badge>
                         )}
@@ -572,18 +554,8 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center">
-                      <div className="flex flex-col items-center justify-center text-slate-500">
-                        <div className="bg-slate-50 p-4 rounded-full mb-3">
-                          <FileType className="h-8 w-8 text-slate-400" />
-                        </div>
-                        <p className="text-base font-medium text-slate-900">
-                          No items found
-                        </p>
-                        <p className="text-sm mt-1">
-                          Try adjusting your search
-                        </p>
-                      </div>
+                    <td colSpan={8} className="p-0">
+                      <TableEmptyState title="No items found" description="Try adjusting your search" />
                     </td>
                   </tr>
                 )}
@@ -647,19 +619,6 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
                 </>
               )}
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const item = items.find(
-                  (current) => current.id === openDropdownId,
-                );
-                if (item) handleDelete(item);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>Delete</span>
-            </button>
           </div>
         </PortalDropdownMenu>
 
@@ -679,35 +638,6 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
           }))}
         />
 
-        <AlertModal
-          isOpen={showDeleteModal}
-          onClose={() => {
-            setShowDeleteModal(false);
-            setSelectedItem(null);
-          }}
-          onConfirm={handleConfirmDelete}
-          type="warning"
-          title="Delete Sub-Type?"
-          description={
-            <div className="space-y-3">
-              <p>
-                Are you sure you want to delete{" "}
-                <strong>{selectedItem?.name}</strong>?
-              </p>
-              <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-amber-800">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                  <span className="font-semibold">Warning:</span> This action
-                  cannot be undone.
-                </p>
-              </div>
-            </div>
-          }
-          confirmText="Delete"
-          cancelText="Cancel"
-          isLoading={isSubmitting}
-          showCancel
-        />
 
         <AlertModal
           isOpen={showToggleModal}
@@ -811,6 +741,34 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
           </FilterAccordionItem>
 
           <FilterAccordionItem
+            label="Review"
+            isExpanded={expandedSections.has("review")}
+            onToggle={() => toggleSection("review")}
+          >
+            <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
+              {[
+                { label: "All", value: "All" },
+                { label: "Required", value: "REQUIRED" },
+                { label: "Not required", value: "NONE" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setReviewFilter(opt.value as "All" | "REQUIRED" | "NONE");
+                    setCurrentPage(1);
+                  }}
+                  className={getOptionClassName(reviewFilter === opt.value)}
+                >
+                  <span className="text-xs">{opt.label}</span>
+                  {reviewFilter === opt.value && (
+                    <Check size={16} className="text-emerald-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </FilterAccordionItem>
+
+          <FilterAccordionItem
             label="Modified Date Range"
             isExpanded={expandedSections.has("date")}
             onToggle={() => toggleSection("date")}
@@ -875,7 +833,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
     name: item?.name || "",
     documentTypeId: item?.documentTypeId || "",
     description: item?.description || "",
-    reviewRequirement: item?.reviewRequirement || "SINGLE",
+    reviewRequirement: item?.reviewRequirement || "REQUIRED",
     isActive: item?.isActive ?? true,
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -886,7 +844,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
         name: item.name,
         documentTypeId: item.documentTypeId,
         description: item.description || "",
-        reviewRequirement: item.reviewRequirement || "SINGLE",
+        reviewRequirement: item.reviewRequirement || "REQUIRED",
         isActive: item.isActive,
       });
     } else {
@@ -894,7 +852,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
         name: "",
         documentTypeId: "",
         description: "",
-        reviewRequirement: "SINGLE",
+        reviewRequirement: "REQUIRED",
         isActive: true,
       });
     }
@@ -955,9 +913,8 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
             value={formData.reviewRequirement}
             onChange={(value) => setFormData({ ...formData, reviewRequirement: value as SubTypeFormData["reviewRequirement"] })}
             options={[
-              { value: "NONE", label: "No reviewer required" },
-              { value: "SINGLE", label: "One reviewer required" },
-              { value: "MULTIPLE", label: "Multiple reviewers required" },
+              { value: "NONE", label: "Review not required" },
+              { value: "REQUIRED", label: "Review required" },
             ]}
             disabled={isSaving}
           />

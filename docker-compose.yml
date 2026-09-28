@@ -68,6 +68,35 @@ services:
       retries: 10
       start_period: 10s
 
+  onlyoffice-documentserver:
+    image: onlyoffice/documentserver:8.2
+    container_name: eqms-onlyoffice
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-EQMS_DEV_ONLYOFFICE_JWT_SECRET_CHANGE_ME}
+      JWT_HEADER: Authorization
+    ports:
+      # Local operator/debug access only -- editor traffic is reached by the frontend
+      # iframe/browser directly against this port on the docker host; it stays loopback-bound
+      # like every other internal service here (no public HTTPS is required, callbacks stay
+      # entirely on the docker-compose network).
+      - "127.0.0.1:${ONLYOFFICE_PORT:-8082}:80"
+    volumes:
+      - eqms_onlyoffice_data:/var/www/onlyoffice/Data
+      - eqms_onlyoffice_logs:/var/log/onlyoffice
+      # Lets the EQMS backend read /info/info.json (connection usage) from the docker network only.
+      - ./deploy/onlyoffice/ds-docservice.conf:/etc/onlyoffice/documentserver/nginx/includes/ds-docservice.conf:ro
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost/healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
   redis:
     image: redis:7-alpine
     container_name: eqms-redis
@@ -138,6 +167,8 @@ services:
         condition: service_healthy
       clamav:
         condition: service_started
+      onlyoffice-documentserver:
+        condition: service_healthy
     environment:
       TZ: Asia/Ho_Chi_Minh
       SERVER_PORT: 5000
@@ -167,13 +198,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-eqms-database}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-eqms}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-eqms}
-      # Historical migrations V198-V200 were removed with the retired AI feature
-      # but remain recorded in this database. Restore their original source files
-      # from the controlled release archive before enabling strict validation.
-      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
       APP_AUTH_JWT_SECRET: ${APP_AUTH_JWT_SECRET:-EQMS_DEV_AUTH_SECRET_CHANGE_ME_32_BYTES_MINIMUM_KEY}
       APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:3000}
       APP_SECURITY_COOKIES_SECURE: ${APP_SECURITY_COOKIES_SECURE:-false}
+      RESTCOUNTRIES_API_KEY: ${RESTCOUNTRIES_API_KEY:-rc_live_641e880d05c745cab842f02b06fb0f30}
       APP_MINIO_ENABLED: "true"
       APP_MINIO_INITIALIZE_ON_STARTUP: "false"
       APP_MINIO_ENDPOINT: http://minio:9000
@@ -194,6 +222,13 @@ services:
       APP_MINIO_RETENTION_YEARS: ${APP_MINIO_RETENTION_YEARS:-5}
       APP_MICROSOFT_GRAPH_ENABLED: ${APP_MICROSOFT_GRAPH_ENABLED:-true}
       APP_MICROSOFT_GRAPH_BASE_URL: ${APP_MICROSOFT_GRAPH_BASE_URL:-https://graph.microsoft.com/v1.0}
+      APP_ONLYOFFICE_ENABLED: ${APP_ONLYOFFICE_ENABLED:-true}
+      APP_ONLYOFFICE_DOCUMENT_SERVER_URL: ${APP_ONLYOFFICE_DOCUMENT_SERVER_URL:-http://onlyoffice-documentserver}
+      # Must include the /api context path (server.servlet.context-path=/api) -- this is the
+      # base URL onlyoffice-documentserver itself uses to fetch the source file and post the
+      # save callback, not a browser-facing URL.
+      APP_ONLYOFFICE_CALLBACK_BASE_URL: ${APP_ONLYOFFICE_CALLBACK_BASE_URL:-http://backend:5000/api}
+      APP_ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-EQMS_DEV_ONLYOFFICE_JWT_SECRET_CHANGE_ME}
       # Controlled-copy evidence uploads (Report Lost/Damaged) are scanned before storage.
       # The scanner fails closed: if it cannot be reached, uploads are rejected, not allowed
       # through silently. Set to "false" only for environments that intentionally run without
@@ -202,7 +237,10 @@ services:
       APP_SECURITY_VIRUS_SCAN_HOST: clamav
       APP_SECURITY_VIRUS_SCAN_PORT: 3310
     ports:
-      - "${BACKEND_PORT:-5000}:5000"
+      # Local operator/debug access only.  The GMP reverse proxy reaches this service on
+      # Docker's internal network; publishing it on every host interface would bypass that
+      # perimeter (and any TLS/header/rate controls installed there).
+      - "127.0.0.1:${BACKEND_PORT:-5000}:5000"
     volumes:
       - eqms_backend_storage:/app/storage
       - eqms_backend_logs:/app/logs
@@ -231,8 +269,14 @@ services:
       VITE_APP_URL: ${VITE_APP_URL:-http://localhost:3000}
       VITE_APP_ENV: ${VITE_APP_ENV:-development}
       VITE_AUTH_TOKEN_KEY: ${VITE_AUTH_TOKEN_KEY:-authToken}
+      # Browser-reachable address for the OnlyOffice DocsAPI script + iframe content -- distinct
+      # from the backend's APP_ONLYOFFICE_DOCUMENT_SERVER_URL, which is the container-to-container
+      # (internal Docker network) address the backend uses when building editor configs.
+      VITE_ONLYOFFICE_URL: ${VITE_ONLYOFFICE_URL:-http://localhost:8082}
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      # Keep the development UI local; production traffic must enter through the approved
+      # HTTPS edge/proxy rather than a directly exposed Vite/Nginx application port.
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
 
 volumes:
   eqms_postgres_data:
@@ -240,4 +284,6 @@ volumes:
   eqms_redis_data:
   eqms_backend_storage:
   eqms_backend_logs:
+  eqms_onlyoffice_data:
+  eqms_onlyoffice_logs:
   eqms_clamav_data:

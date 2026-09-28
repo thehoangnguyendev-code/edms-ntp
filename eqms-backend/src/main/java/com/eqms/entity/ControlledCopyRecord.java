@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
+@jakarta.persistence.EntityListeners(EntityChangeListener.class)
 @Table(name = "controlled_copies")
 public class ControlledCopyRecord {
 
@@ -114,6 +115,20 @@ public class ControlledCopyRecord {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "custom_placeholder_values", columnDefinition = "jsonb")
     private JsonNode customPlaceholderValues;
+
+    /** True once the stamp/watermark was burned into the stored PDF (the on-screen overlay is then skipped). */
+    @Column(name = "marking_applied", nullable = false)
+    private boolean markingApplied;
+
+    /** Where the issue-time stamp/watermark were drawn (see ControlledCopyPdfMarkingService.Placement); null for older copies. */
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "marking_layout", columnDefinition = "jsonb")
+    private JsonNode markingLayout;
+
+    /** Recipient details captured when the copy was distributed; never re-read from the user's profile afterwards. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "recipient_snapshot", columnDefinition = "jsonb")
+    private JsonNode recipientSnapshot;
 
     @Column(nullable = false, length = 40)
     private String status;
@@ -227,6 +242,16 @@ public class ControlledCopyRecord {
     @Column(name = "expiry_date")
     private Instant expiryDate;
 
+    /**
+     * True when {@link #expiryDate} was defaulted from the Controlled Copy Expiry Policy's
+     * duration (not an explicit date chosen by the requester). Such a policy-derived expiry is
+     * recomputed as {@code distributedAt + duration} at Distribute time, so a copy that sits in
+     * Ready for Distribution never expires before anyone had the chance to distribute it. An
+     * explicit requester-chosen expiry date is a fixed deadline and is never recomputed.
+     */
+    @Column(name = "expiry_anchored_to_distribution", nullable = false)
+    private Boolean expiryAnchoredToDistribution = false;
+
     @Column(name = "expiry_reminder_sent_at")
     private Instant expiryReminderSentAt;
 
@@ -326,6 +351,12 @@ public class ControlledCopyRecord {
     public void setControlledCopyStorageVersionId(String controlledCopyStorageVersionId) { this.controlledCopyStorageVersionId = controlledCopyStorageVersionId; }
     public String getControlledCopyChecksum() { return controlledCopyChecksum; }
     public void setControlledCopyChecksum(String controlledCopyChecksum) { this.controlledCopyChecksum = controlledCopyChecksum; }
+    public JsonNode getMarkingLayout() { return markingLayout; }
+    public void setMarkingLayout(JsonNode markingLayout) { this.markingLayout = markingLayout; }
+    public boolean isMarkingApplied() { return markingApplied; }
+    public void setMarkingApplied(boolean markingApplied) { this.markingApplied = markingApplied; }
+    public JsonNode getRecipientSnapshot() { return recipientSnapshot; }
+    public void setRecipientSnapshot(JsonNode recipientSnapshot) { this.recipientSnapshot = recipientSnapshot; }
     public JsonNode getCustomPlaceholderValues() { return customPlaceholderValues; }
     public void setCustomPlaceholderValues(JsonNode customPlaceholderValues) { this.customPlaceholderValues = customPlaceholderValues; }
     public String getStatus() { return status; }
@@ -399,6 +430,8 @@ public class ControlledCopyRecord {
     public void setHasExpiryDate(Boolean hasExpiryDate) { this.hasExpiryDate = hasExpiryDate; }
     public Instant getExpiryDate() { return expiryDate; }
     public void setExpiryDate(Instant expiryDate) { this.expiryDate = expiryDate; }
+    public Boolean getExpiryAnchoredToDistribution() { return expiryAnchoredToDistribution; }
+    public void setExpiryAnchoredToDistribution(Boolean expiryAnchoredToDistribution) { this.expiryAnchoredToDistribution = expiryAnchoredToDistribution; }
     public Instant getExpiryReminderSentAt() { return expiryReminderSentAt; }
     public void setExpiryReminderSentAt(Instant expiryReminderSentAt) { this.expiryReminderSentAt = expiryReminderSentAt; }
     public Instant getCreatedAt() { return createdAt; }

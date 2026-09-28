@@ -7,6 +7,7 @@
 
 // Document views
 export { NewDocumentView } from './NewDocumentView';
+export { LegacyImportView } from './LegacyImportView';
 // Workflow layout (re-export from shared)
 export { DocumentWorkflowLayout, DEFAULT_WORKFLOW_TABS } from '@/features/documents/shared/layouts';
 

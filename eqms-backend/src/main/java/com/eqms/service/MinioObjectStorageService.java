@@ -94,6 +94,20 @@ public class MinioObjectStorageService {
         this.defaultBucket = requireValue(bucket, "MinIO bucket");
         this.defaultRetentionYears = Math.max(retentionYears, 1);
         this.systemConfigurationService = systemConfigurationService;
+        // #6: these @Value defaults exist only so a fresh dev/test environment boots without any
+        // configuration -- an admin can always override them for real via Integration Settings
+        // (IntegrationTab.tsx), which SystemConfigurationService-backed config takes precedence
+        // over. But if APP_MINIO_ACCESS_KEY/APP_MINIO_SECRET_KEY were never set (env var absent, or
+        // still the docker-compose fallback) AND no admin has configured real credentials yet, the
+        // application is silently running on a publicly-known default credential pair with no
+        // signal to an operator -- warn loudly at startup so this is never mistaken for "already
+        // configured".
+        if ("eqms-minio".equals(this.defaultAccessKey) && "eqms-minio-secret".equals(this.defaultSecretKey)) {
+            log.warn("MinIO is using the built-in default credentials (eqms-minio/eqms-minio-secret) -- "
+                    + "this is fine for local development, but MUST be overridden with real credentials "
+                    + "(APP_MINIO_ACCESS_KEY/APP_MINIO_SECRET_KEY, or Integration Settings) before this "
+                    + "environment stores real data.");
+        }
     }
 
     public boolean isEnabled() {
@@ -266,7 +280,7 @@ public class MinioObjectStorageService {
         String secretKey = firstText(storageNode, "minioSecretAccessKey", "secretAccessKey");
         // The configuration API masks an unchanged secret as "********". Never use that
         // display value for request signing; resolve the raw persisted secret on the server.
-        if (OfficeOnlineConfigurationService.SECRET_MASK.equals(secretKey)) {
+        if (OnlyOfficeConfigurationService.SECRET_MASK.equals(secretKey)) {
             JsonNode persistedStorage = systemConfigurationService.requireConfiguration()
                     .getIntegrationsConfig()
                     .path("storage");

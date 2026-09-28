@@ -59,10 +59,16 @@ export interface AuditTrailRecord {
     position: string | null;
     department: string | null;
     avatar?: string | null;
+    /** Point-in-time Access Profile(s) the actor held when this event occurred -- not their
+     *  current profile, which may have changed since. Empty when no snapshot was captured
+     *  (rows predating this field). */
+    accessProfileNames?: string[] | null;
   } | null;
   module: AuditModule | string;
   action: AuditAction;
   actionType?: string | null;
+  fromStatus?: string | null;
+  toStatus?: string | null;
   entityId: string;
   entityType?: string | null;
   entityName: string;

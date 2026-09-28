@@ -1,0 +1,48 @@
+package com.eqms.service;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.eqms.entity.SystemConfiguration;
+import com.eqms.repository.SystemConfigurationRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+
+class SystemConfigurationServiceBrandingTest {
+
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    private SystemConfigurationService serviceWithGeneral(String generalJson) throws Exception {
+        SystemConfigurationRepository repository = mock(SystemConfigurationRepository.class);
+        SystemConfiguration config = new SystemConfiguration();
+        config.setGeneralConfig(mapper.readTree(generalJson));
+        config.setFeaturesConfig(mapper.readTree("[]"));
+        when(repository.findByConfigKey("default")).thenReturn(Optional.of(config));
+        return new SystemConfigurationService(repository, null, mapper, null, null, null, null, null,
+                "http://localhost:9000", "bucket", "key", "secret", "documents", "controlled-copies",
+                "templates", "training", "audit", "temp", 5);
+    }
+
+    @Test
+    void knowledgeExplorerIsOffWhenTheSettingIsMissing() throws Exception {
+        var branding = serviceWithGeneral("{\"appearance\":{\"showSidebarUserProfile\":true}}").getPublicBranding();
+        assertFalse(branding.knowledgeExplorerEnabled());
+        assertTrue(branding.showSidebarUserProfile());
+    }
+
+    @Test
+    void knowledgeExplorerIsOffWhenThereIsNoAppearanceSection() throws Exception {
+        assertFalse(serviceWithGeneral("{}").getPublicBranding().knowledgeExplorerEnabled());
+    }
+
+    @Test
+    void knowledgeExplorerFollowsTheAdministratorSetting() throws Exception {
+        assertTrue(serviceWithGeneral("{\"appearance\":{\"knowledgeExplorerEnabled\":true}}")
+                .getPublicBranding().knowledgeExplorerEnabled());
+        assertFalse(serviceWithGeneral("{\"appearance\":{\"knowledgeExplorerEnabled\":false}}")
+                .getPublicBranding().knowledgeExplorerEnabled());
+    }
+}

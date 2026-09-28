@@ -37,7 +37,7 @@ public class DocumentSubType {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "review_requirement", nullable = false, length = 16)
-    private ReviewRequirement reviewRequirement = ReviewRequirement.SINGLE;
+    private ReviewRequirement reviewRequirement = ReviewRequirement.REQUIRED;
 
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
@@ -101,7 +101,7 @@ public class DocumentSubType {
     }
 
     public void setReviewRequirement(ReviewRequirement reviewRequirement) {
-        this.reviewRequirement = reviewRequirement == null ? ReviewRequirement.SINGLE : reviewRequirement;
+        this.reviewRequirement = reviewRequirement == null ? ReviewRequirement.REQUIRED : reviewRequirement;
     }
 
     public boolean isActive() {

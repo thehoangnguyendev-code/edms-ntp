@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "title": "International higher-education presence in Vietnam - supplement 4",
+    "verified_as_of": "2026-09-16",
+    "record_count": 11,
+    "scope": "New names found after previous foreign/international supplements. These are not separate Vietnamese university legal entities unless explicitly stated; most are TNE/joint/delivery programmes."
+  },
+  "institutions": [
+    {
+      "name": "Kyungpook National University Vietnam Program",
+      "abbreviation": "KNU Vietnam",
+      "country_or_origin": "South Korea",
+      "presence_type": "foreign_university_alliance_program",
+      "host_in_vietnam": "FPT University",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "FPT announced the KNU Vietnam program on 2026-03-05. Technology and Business curricula are transferred from KNU and bachelor degrees are awarded directly by KNU.",
+      "source_urls": [
+        "https://fpt.com/en/news/fpt-partners-with-kyungpook-national-university-to-launch-international-training-program-in-vietnam"
+      ]
+    },
+    {
+      "name": "Bournemouth University at British University Vietnam",
+      "abbreviation": "BU@BUV",
+      "country_or_origin": "United Kingdom",
+      "presence_type": "foreign_university_tne_program",
+      "host_in_vietnam": "British University Vietnam",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "Bournemouth University degrees have been delivered at BUV from September 2025 under a TNE partnership.",
+      "source_urls": [
+        "https://www.bournemouth.ac.uk/collaborate/global-bu/our-partnership-british-university-vietnam",
+        "https://www.bournemouth.ac.uk/study/international/bu-your-country/vietnam"
+      ]
+    },
+    {
+      "name": "University of Staffordshire at British University Vietnam",
+      "abbreviation": "Staffs@BUV",
+      "country_or_origin": "United Kingdom",
+      "presence_type": "foreign_university_tne_program",
+      "host_in_vietnam": "British University Vietnam",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "One of BUV's UK awarding university partners.",
+      "source_urls": [
+        "https://www.buv.edu.vn/"
+      ]
+    },
+    {
+      "name": "University of Stirling at British University Vietnam",
+      "abbreviation": "Stirling@BUV",
+      "country_or_origin": "United Kingdom",
+      "presence_type": "foreign_university_tne_program",
+      "host_in_vietnam": "British University Vietnam",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "Listed among BUV's UK awarding university partners.",
+      "source_urls": [
+        "https://www.buv.edu.vn/"
+      ]
+    },
+    {
+      "name": "Arts University Bournemouth at British University Vietnam",
+      "abbreviation": "AUB@BUV",
+      "country_or_origin": "United Kingdom",
+      "presence_type": "foreign_university_tne_program",
+      "host_in_vietnam": "British University Vietnam",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "BUV delivers programmes accredited/awarded in partnership with Arts University Bournemouth.",
+      "source_urls": [
+        "https://www.buv.edu.vn/"
+      ]
+    },
+    {
+      "name": "Manchester Metropolitan University at British University Vietnam",
+      "abbreviation": "MMU@BUV",
+      "country_or_origin": "United Kingdom",
+      "presence_type": "foreign_university_tne_program",
+      "host_in_vietnam": "British University Vietnam",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "BUV's sixth UK TNE partner; current dual-degree programmes are advertised in 2026.",
+      "source_urls": [
+        "https://www.buv.edu.vn/"
+      ]
+    },
+    {
+      "name": "University of Lincoln joint programme at UEH",
+      "abbreviation": "Lincoln@UEH",
+      "country_or_origin": "United Kingdom",
+      "presence_type": "foreign_university_joint_degree_program",
+      "host_in_vietnam": "University of Economics Ho Chi Minh City",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "UEH IBR operates the LINCOLn Bachelor 1+2 programme; the degree is awarded by the University of Lincoln.",
+      "source_urls": [
+        "https://ibr.ueh.edu.vn/english/ibr-ueh-international-programs/lincoln-bachelor-12/frequently-asked-questions-faqs/"
+      ]
+    },
+    {
+      "name": "University of St. Francis programme at VNU-UEB",
+      "abbreviation": "USF@UEB",
+      "country_or_origin": "United States",
+      "presence_type": "foreign_university_joint_degree_program",
+      "host_in_vietnam": "VNU University of Economics and Business",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "UEB-SITE identifies an active BBA-USF programme with degree awarded by the University of St. Francis.",
+      "source_urls": [
+        "https://ueb.vnu.edu.vn/Don-Vi-Giang-Vien/UEB/12-diem-nhan-cua-vien-dao-tao-quoc-te-ueb-site-nam-2024/1875/1958/43122"
+      ]
+    },
+    {
+      "name": "Ming Chuan University programme at Foreign Trade University",
+      "abbreviation": "MCU@FTU",
+      "country_or_origin": "Taiwan",
+      "presence_type": "foreign_university_joint_degree_program",
+      "host_in_vietnam": "Foreign Trade University",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "FTU offers an International Business & Trade programme with a bachelor's degree issued by Ming Chuan University.",
+      "source_urls": [
+        "https://kdtqt.ftu.edu.vn/tin-tuc/admissions-announcement-bachelor-s-program-in-international-business-trade-a-collaborative-program-between-foreign-trade-university-and-ming-chuan-university-taiwan?language=en"
+      ]
+    },
+    {
+      "name": "Curtin University programme at Foreign Trade University",
+      "abbreviation": "Curtin@FTU",
+      "country_or_origin": "Australia",
+      "presence_type": "foreign_university_joint_degree_program",
+      "host_in_vietnam": "Foreign Trade University - Ho Chi Minh City Campus",
+      "status": "active",
+      "verified_as_of": "2026-09-16",
+      "notes": "FTU and Curtin University cooperate on the Bachelor of Commerce in Logistics and Supply Chain Management; FTU still refers to Curtin as a partner in 2026.",
+      "source_urls": [
+        "https://www.english.ftu.edu.vn/academics/undergraduate-programs/career-orientation-international-development-training-programs/itemlist/user/927-admin.html?start=80"
+      ]
+    },
+    {
+      "name": "HELP University dual-degree programme at VNU International School",
+      "abbreviation": "HELP@VNU-IS",
+      "country_or_origin": "Malaysia",
+      "presence_type": "foreign_university_joint_degree_program",
+      "host_in_vietnam": "VNU International School",
+      "status": "historically_verified_current_status_needs_recheck",
+      "verified_as_of": "2026-09-16",
+      "notes": "VNU documented a dual-degree Bachelor in Marketing programme with HELP University. Current 2026 admissions status should be rechecked before marking active.",
+      "source_urls": [
+        "https://en.vnu.edu.vn/the-first-dual-degree-programs-between-vietnam-national-university-hanoi-and-international-partners-post26286.html"
+      ]
+    }
+  ]
+}

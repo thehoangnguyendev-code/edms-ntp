@@ -1,5 +1,6 @@
 ﻿import React, { useState, useMemo } from "react";
-import { History, Search, Monitor, Info, Check, X } from "lucide-react";
+import { Search, Monitor, Check, X } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { cn } from "@/components/ui/utils";
 import { parseDMYStart, parseDMYEnd } from "@/lib/date";
 import { Button } from "@/components/ui/button/Button";
@@ -7,8 +8,9 @@ import { Select, SelectOption } from "@/components/ui/select/Select";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
-import { useTableDragScroll, useNavigateWithLoading } from "@/hooks";
+import { useDebounce, useTableDragScroll, useNavigateWithLoading } from "@/hooks";
 import { USER_MANAGEMENT_ROUTES } from "@/features/security-authorization/user-management/constants";
 import { IconFilter2 } from "@tabler/icons-react";
 import {
@@ -29,6 +31,7 @@ export const CourseAuditTrailTab: React.FC<CourseAuditTrailTabProps> = ({
   actionOptions = COURSE_AUDIT_ACTION_OPTIONS,
   emptyMessage = "No audit trail records available for this course"
 }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { navigateTo } = useNavigateWithLoading();
   const [selectedAction, setSelectedAction] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,7 +45,34 @@ export const CourseAuditTrailTab: React.FC<CourseAuditTrailTabProps> = ({
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["action", "user", "department", "date"]));
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
+
+  React.useLayoutEffect(() => {
+    setSelectedAction(searchParams.get("courseAuditAction") ?? "all");
+    setSearchQuery(searchParams.get("courseAuditSearch") ?? "");
+    setSelectedUser(searchParams.get("courseAuditUser") ?? "all");
+    setSelectedDepartment(searchParams.get("courseAuditDepartment") ?? "all");
+    setDateFrom(searchParams.get("courseAuditFrom") ?? "");
+    setDateTo(searchParams.get("courseAuditTo") ?? "");
+    setCurrentPage(Math.max(1, Number(searchParams.get("courseAuditPage")) || 1));
+    setItemsPerPage(Math.max(1, Number(searchParams.get("courseAuditLimit")) || 10));
+  }, [searchParams]);
+
+  React.useEffect(() => {
+    if (searchQuery !== debouncedSearch) return;
+    const params = new URLSearchParams(searchParams);
+    ["courseAuditAction", "courseAuditSearch", "courseAuditUser", "courseAuditDepartment", "courseAuditFrom", "courseAuditTo", "courseAuditPage", "courseAuditLimit"].forEach((key) => params.delete(key));
+    if (selectedAction !== "all") params.set("courseAuditAction", selectedAction);
+    if (searchQuery) params.set("courseAuditSearch", searchQuery);
+    if (selectedUser !== "all") params.set("courseAuditUser", selectedUser);
+    if (selectedDepartment !== "all") params.set("courseAuditDepartment", selectedDepartment);
+    if (dateFrom) params.set("courseAuditFrom", dateFrom);
+    if (dateTo) params.set("courseAuditTo", dateTo);
+    if (currentPage > 1) params.set("courseAuditPage", String(currentPage));
+    if (itemsPerPage !== 10) params.set("courseAuditLimit", String(itemsPerPage));
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [selectedAction, searchQuery, debouncedSearch, selectedUser, selectedDepartment, dateFrom, dateTo, currentPage, itemsPerPage, searchParams, setSearchParams]);
 
   const userOptions = useMemo(() => {
     const users = new Set<string>();
@@ -124,6 +154,7 @@ export const CourseAuditTrailTab: React.FC<CourseAuditTrailTabProps> = ({
 
   const handleClearFilters = () => {
     setSelectedAction("all");
+    setSearchQuery("");
     setSelectedUser("all");
     setSelectedDepartment("all");
     setDateFrom("");
@@ -405,18 +436,12 @@ export const CourseAuditTrailTab: React.FC<CourseAuditTrailTabProps> = ({
             <tbody className="divide-y divide-slate-200 bg-white">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-16 text-center">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <History className="h-12 w-12 text-slate-300" />
-                      <div>
-                        <p className="text-xs sm:text-sm font-medium text-slate-700">No audit entries found</p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {searchQuery || selectedAction !== "all"
-                            ? "Try adjusting your filters or search query"
-                            : emptyMessage}
-                        </p>
-                      </div>
-                    </div>
+                  <td colSpan={10} className="p-0">
+                    <TableEmptyState
+
+                      title="No audit entries found"
+                      description={searchQuery || selectedAction !== "all" ? "Try adjusting your filters or search query" : emptyMessage}
+                    />
                   </td>
                 </tr>
               ) : (

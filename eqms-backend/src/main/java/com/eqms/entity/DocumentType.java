@@ -2,9 +2,12 @@ package com.eqms.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -34,6 +37,16 @@ public class DocumentType {
 
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
+
+    /**
+     * The Document Name Format used to generate this type's document numbers (Phase 2 of the
+     * Document Name Formats feature). Nullable for safety (generateDocumentNumber() falls back to
+     * the legacy hardcoded "TYPE.NNNN" shape if this is somehow unset), but every row is defaulted
+     * to the seeded "Standard" format by migration V416.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "name_format_id")
+    private DocumentNameFormat nameFormat;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -103,6 +116,14 @@ public class DocumentType {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public DocumentNameFormat getNameFormat() {
+        return nameFormat;
+    }
+
+    public void setNameFormat(DocumentNameFormat nameFormat) {
+        this.nameFormat = nameFormat;
     }
 
     public Instant getCreatedAt() {

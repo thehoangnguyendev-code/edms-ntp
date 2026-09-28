@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Plus, ClipboardCheck, Search, X, Check, ChevronUp, ChevronDown, MoreVertical, Eye, Ban } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Plus, Search, X, Check, ChevronUp, ChevronDown, MoreVertical } from "lucide-react";
 import { IconFilter2, IconInfoCircle, IconX } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -41,6 +41,7 @@ const textareaClass = "w-full px-3 py-2 text-sm border border-slate-200 rounded-
 
 export const AccessReviewView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   useLocalizationPreferences();
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
@@ -63,6 +64,35 @@ export const AccessReviewView: React.FC = () => {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  React.useLayoutEffect(() => {
+    setSearch(searchParams.get("search") ?? "");
+    setStatusFilter(searchParams.get("status") ?? "ALL");
+    setCreatedFrom(searchParams.get("createdFrom") ?? "");
+    setCreatedTo(searchParams.get("createdTo") ?? "");
+    setUpdatedFrom(searchParams.get("updatedFrom") ?? "");
+    setUpdatedTo(searchParams.get("updatedTo") ?? "");
+    setSortKey(searchParams.get("sortBy") ?? "createdAt");
+    setSortDir(searchParams.get("sortDir") === "asc" ? "asc" : "desc");
+    setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
+    setItemsPerPage(Math.max(1, Number(searchParams.get("limit")) || 10));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (search !== debouncedSearch) return;
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (statusFilter !== "ALL") params.set("status", statusFilter);
+    if (createdFrom) params.set("createdFrom", createdFrom);
+    if (createdTo) params.set("createdTo", createdTo);
+    if (updatedFrom) params.set("updatedFrom", updatedFrom);
+    if (updatedTo) params.set("updatedTo", updatedTo);
+    if (sortKey !== "createdAt") params.set("sortBy", sortKey);
+    if (sortDir !== "desc") params.set("sortDir", sortDir);
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (itemsPerPage !== 10) params.set("limit", String(itemsPerPage));
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [search, debouncedSearch, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, currentPage, itemsPerPage, searchParams, setSearchParams]);
   const [statusValues, setStatusValues] = useState<AccessReviewListOption[]>([]);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedFilterSections, setExpandedFilterSections] = useState<Set<string>>(
@@ -278,7 +308,7 @@ export const AccessReviewView: React.FC = () => {
               {!loading && campaigns.length === 0 ? (
                 <div className="border border-slate-200 rounded-xl py-12 bg-white">
                   <TableEmptyState
-                    icon={<ClipboardCheck className="h-10 w-10 text-slate-300" />}
+
                     title="No Access Review Campaigns"
                     description="Create a campaign to snapshot and review every user's current access."
                   />
@@ -350,7 +380,7 @@ export const AccessReviewView: React.FC = () => {
                             {c.reviewPeriodStart ? formatDateUS(c.reviewPeriodStart) : "—"} → {c.reviewPeriodEnd ? formatDateUS(c.reviewPeriodEnd) : "—"}
                           </td>
                           <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={statusBadge(c.status)} size="xs">
+                            <Badge color={statusBadge(c.status)} size="sm">
                               {c.statusLabel}
                             </Badge>
                           </td>

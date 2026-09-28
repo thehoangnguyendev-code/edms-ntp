@@ -17,6 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -75,10 +76,24 @@ public class ControlledCopyListAuthorizationIntegrationTest {
         assertFalse(requestedByAdmin.isEmpty(), "Seed data must contain at least one controlled copy requested by 'admin'");
 
         authenticateAs(requester);
-        PageResponse<ControlledCopyListItemResponse> page = controlledCopyService.list(
-                1, 1000, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
-
-        List<String> visibleIds = page.data().stream().map(ControlledCopyListItemResponse::id).toList();
+        // The server hard-caps every page to 50 rows regardless of the requested limit (see
+        // list_paginationReturnsExactPageSize_andTotalMatchesFullResultCount below) -- with the
+        // dataset now grown past 50 total controlled copies, a single-page fetch no longer covers
+        // it. Page through the full result set so this asserts visibility, not pagination.
+        List<String> visibleIds = new ArrayList<>();
+        int pageNumber = 1;
+        while (true) {
+            PageResponse<ControlledCopyListItemResponse> page = controlledCopyService.list(
+                    pageNumber, 50, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
+            if (page.data().isEmpty()) {
+                break;
+            }
+            page.data().forEach(item -> visibleIds.add(item.id()));
+            if (pageNumber >= page.pagination().totalPages()) {
+                break;
+            }
+            pageNumber++;
+        }
         for (ControlledCopyRecord copy : requestedByAdmin) {
             assertTrue(visibleIds.contains(copy.getId().toString()),
                     "Controlled copy " + copy.getControlledCopyNumber() + " requested by the current user must be visible to them");
@@ -94,6 +109,7 @@ public class ControlledCopyListAuthorizationIntegrationTest {
         PageResponse<ControlledCopyListItemResponse> fullPage = controlledCopyService.list(
                 1, 1000, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
         long total = fullPage.pagination().total();
+        assertEquals(50, fullPage.pagination().limit(), "The server must cap a requested list page to 50 rows");
         assertTrue(total >= 2, "Test requires at least 2 visible controlled copies for this user; adjust seed data if this fails");
 
         PageResponse<ControlledCopyListItemResponse> firstPageOfTwo = controlledCopyService.list(

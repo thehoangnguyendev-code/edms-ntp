@@ -5,6 +5,7 @@ import com.eqms.auth.RateLimitFilter;
 import com.eqms.auth.IdempotencyFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import jakarta.servlet.DispatcherType;
 import org.springframework.http.HttpMethod;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.security.config.Customizer;
@@ -58,10 +59,16 @@ public class SecurityConfig {
                 .addFilterAfter(rateLimitFilter, AuthTokenFilter.class)
                 .addFilterAfter(idempotencyFilter, RateLimitFilter.class)
                 .authorizeHttpRequests(auth -> auth
+                        // Only the initial REQUEST dispatch is authenticated and authorized. Async completion (SSE stream
+                        // ended/failed) and the container's ERROR dispatch re-enter the chain with an empty security
+                        // context, so requiring authentication there produced a spurious "Access Denied" after the
+                        // response was already committed. Nothing new is exposed: the request itself was already checked.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/auth/**",
                                 "/branding",
+                                "/branding/logo",
                                 "/localization",
                                 "/health",
                                 // Controlled-copy portal links authenticate with
@@ -70,7 +77,11 @@ public class SecurityConfig {
                                 // endpoints protected by the normal session.
                                 "/controlled-copies/*/preview",
                                 "/controlled-copies/*/preview/**",
-                                "/controlled-copies/*/download"
+                                "/controlled-copies/*/download",
+                                // Reached by the onlyoffice-documentserver container itself, not a
+                                // browser session -- authenticated by the revision-scoped JWT
+                                // token query param instead (see OnlyOfficeController).
+                                "/onlyoffice/**"
                         ).permitAll()
                         .anyRequest().authenticated())
                 .build();
@@ -84,7 +95,10 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Location"));
+        // Content-Disposition: without this, the browser can fetch a file download but JS can't read
+        // its filename cross-origin (frontend :3000 -> backend :5000 in dev), so any download that
+        // names itself from that header (e.g. the DCO batch ZIP) falls back to a generic/UUID name.
+        configuration.setExposedHeaders(List.of("Location", "Content-Disposition"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

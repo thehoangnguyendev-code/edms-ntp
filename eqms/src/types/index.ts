@@ -6,7 +6,6 @@
 // ============ App Types ============
 export * from './app';
 export * from './roles';
-import { UserRole } from './roles';
 
 export * from './document';
 import { User } from './user';

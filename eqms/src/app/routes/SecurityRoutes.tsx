@@ -10,6 +10,7 @@ const AccessProfileListView = lazy(() => import('@/features/security-authorizati
 const AccessProfileDetailView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.AccessProfileDetailView })));
 const RoleSetupWizardView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.RoleSetupWizardView })));
 const LifecyclePoliciesView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.LifecyclePoliciesView })));
+const PolicyResolverView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.PolicyResolverView })));
 const AuthorizationDiagnosticsView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.AuthorizationDiagnosticsView })));
 const LifecyclePolicyFormView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.LifecyclePolicyFormView })));
 const WorkflowPolicyDuplicateView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.WorkflowPolicyDuplicateView })));
@@ -60,6 +61,7 @@ export function securityRoutes() {
       </Route>
       <Route path="lifecycle-policies">
         <Route index element={<SecurityGuard permission="security.workflow_authorization.view"><Suspense fallback={<LoadingFallback />}><LifecyclePoliciesView /></Suspense></SecurityGuard>} />
+        <Route path="policy-resolver" element={<SecurityGuard permission="security.workflow_authorization.view"><Suspense fallback={<LoadingFallback />}><PolicyResolverView /></Suspense></SecurityGuard>} />
         <Route path="transitions" element={<Navigate to="/security/lifecycle-policies?tab=transitions" replace />} />
         <Route path="capabilities" element={<Navigate to="/security/lifecycle-policies?tab=capabilities" replace />} />
         <Route path="roles" element={<Navigate to="/security/advanced/workflow-roles" replace />} />

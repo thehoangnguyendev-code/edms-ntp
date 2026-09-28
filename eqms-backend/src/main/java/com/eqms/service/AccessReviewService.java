@@ -113,10 +113,11 @@ public class AccessReviewService {
     /** Dropdown values for the Access Review list filters. */
     public java.util.Map<String, java.util.List<CodeLabelResponse>> getListOptions() {
         requireView();
-        return java.util.Map.of("statuses",
-                java.util.List.of("IN_PROGRESS", "COMPLETED", "CANCELLED").stream()
-                        .map(value -> new CodeLabelResponse(value, displayLabel(value)))
-                        .toList());
+        return java.util.Map.of(
+                "statuses", codeLabels(List.of("IN_PROGRESS", "COMPLETED", "CANCELLED")),
+                "decisions", codeLabels(List.of("PENDING", "CONFIRMED", "MODIFY_REQUESTED", "REVOKE_REQUESTED")),
+                "userStatuses", codeLabels(java.util.Arrays.stream(com.eqms.entity.UserStatus.values())
+                        .map(Enum::name).toList()));
     }
 
     @Transactional(readOnly = true)
@@ -131,8 +132,10 @@ public class AccessReviewService {
     public CampaignDetailResponse getCampaign(UUID id) {
         requireView();
         AccessReviewCampaign campaign = require(id);
-        List<ItemResponse> items = itemRepo.findByCampaign_IdOrderByUsernameAsc(id).stream()
-                .map(this::toItemResponse)
+        List<AccessReviewItem> entities = itemRepo.findByCampaign_IdOrderByUsernameAsc(id);
+        java.util.Map<UUID, String> deciderNames = deciderNames(entities);
+        List<ItemResponse> items = entities.stream()
+                .map(entity -> toItemResponse(entity, deciderNames))
                 .toList();
         return new CampaignDetailResponse(toSummary(campaign), items);
     }
@@ -150,8 +153,10 @@ public class AccessReviewService {
         requireView();
         require(campaignId);
         String query = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
-        List<ItemResponse> filtered = itemRepo.findByCampaign_IdOrderByUsernameAsc(campaignId).stream()
-                .map(this::toItemResponse)
+        List<AccessReviewItem> entities = itemRepo.findByCampaign_IdOrderByUsernameAsc(campaignId);
+        java.util.Map<UUID, String> deciderNames = deciderNames(entities);
+        List<ItemResponse> filtered = entities.stream()
+                .map(entity -> toItemResponse(entity, deciderNames))
                 .filter(item -> !StringUtils.hasText(userStatus)
                         || "ALL".equalsIgnoreCase(userStatus)
                         || userStatus.equalsIgnoreCase(item.userStatus()))
@@ -160,10 +165,17 @@ public class AccessReviewService {
                         || decision.equalsIgnoreCase(item.decision()))
                 .filter(item -> query.isEmpty() || (item.username() + " "
                         + Objects.toString(item.fullName(), "") + " "
+                        + Objects.toString(item.employeeCode(), "") + " "
                         + Objects.toString(item.accessProfiles(), ""))
                         .toLowerCase(Locale.ROOT).contains(query))
                 .collect(Collectors.toList());
         java.util.Comparator<ItemResponse> comparator = switch (sortBy == null ? "username" : sortBy) {
+            case "employeeCode" -> java.util.Comparator.comparing(
+                    item -> Objects.toString(item.employeeCode(), ""), String.CASE_INSENSITIVE_ORDER);
+            case "fullName" -> java.util.Comparator.comparing(
+                    item -> Objects.toString(item.fullName(), item.username()), String.CASE_INSENSITIVE_ORDER);
+            case "accessProfiles" -> java.util.Comparator.comparing(
+                    item -> Objects.toString(item.accessProfiles(), ""), String.CASE_INSENSITIVE_ORDER);
             case "userStatus" -> java.util.Comparator.comparing(
                     item -> Objects.toString(item.userStatus(), ""), String.CASE_INSENSITIVE_ORDER);
             case "permissionCount" -> java.util.Comparator.comparingInt(ItemResponse::permissionCount);
@@ -252,7 +264,7 @@ public class AccessReviewService {
                 "ACCESS_REVIEW_ITEM_DECIDED", oldDecision, decision,
                 "Review decision for user " + item.getUsername()
                         + (StringUtils.hasText(request.note()) ? ": " + request.note() : ""));
-        return toItemResponse(item);
+        return toItemResponse(item, deciderNames(List.of(item)));
     }
 
     @Transactional
@@ -287,7 +299,8 @@ public class AccessReviewService {
 
         auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
                 "ACCESS_REVIEW_CAMPAIGN_COMPLETED", "In Progress", "Completed",
-                "Completed access review campaign. Signature: " + signature.getSignatureId());
+                "Completed access review campaign. Signature: " + signature.getSignatureId(),
+                List.of(), signature.getId());
         return getCampaignInternal(id);
     }
 
@@ -311,8 +324,10 @@ public class AccessReviewService {
 
     private CampaignDetailResponse getCampaignInternal(UUID id) {
         AccessReviewCampaign campaign = require(id);
-        List<ItemResponse> items = itemRepo.findByCampaign_IdOrderByUsernameAsc(id).stream()
-                .map(this::toItemResponse)
+        List<AccessReviewItem> entities = itemRepo.findByCampaign_IdOrderByUsernameAsc(id);
+        java.util.Map<UUID, String> deciderNames = deciderNames(entities);
+        List<ItemResponse> items = entities.stream()
+                .map(entity -> toItemResponse(entity, deciderNames))
                 .toList();
         return new CampaignDetailResponse(toSummary(campaign), items);
     }
@@ -324,16 +339,14 @@ public class AccessReviewService {
 
     private void requireView() {
         UserAccount u = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(u)
-                && !permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Access review view permission required");
         }
     }
 
     private UserAccount requireManage() {
         UserAccount u = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(u)
-                && !permissionEvaluationService.hasPermission(u, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasPermission(u, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Access review management permission required");
         }
         return u;
@@ -351,12 +364,28 @@ public class AccessReviewService {
                 total, pending, c.getCreatedAt(), c.getUpdatedAt());
     }
 
-    private ItemResponse toItemResponse(AccessReviewItem i) {
+    private java.util.Map<UUID, String> deciderNames(List<AccessReviewItem> items) {
+        Set<UUID> ids = items.stream().map(AccessReviewItem::getDecidedBy).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        java.util.Map<UUID, String> names = new java.util.HashMap<>();
+        if (!ids.isEmpty()) {
+            userRepo.findAllById(ids).forEach(user -> names.put(user.getId(),
+                    StringUtils.hasText(user.getFullName()) ? user.getFullName() : user.getUsername()));
+        }
+        return names;
+    }
+
+    private List<CodeLabelResponse> codeLabels(List<String> codes) {
+        return codes.stream().map(code -> new CodeLabelResponse(code, displayLabel(code))).toList();
+    }
+
+    private ItemResponse toItemResponse(AccessReviewItem i, java.util.Map<UUID, String> deciderNames) {
         return new ItemResponse(
                 i.getId(), i.getUserId(), i.getEmployeeCode(), i.getUsername(), i.getFullName(),
                 i.getUserStatus(), displayLabel(i.getUserStatus()), i.getAccessProfiles(),
                 i.getPermissionCount(), i.isSuperAdmin(),
-                i.getDecision(), displayLabel(i.getDecision()), i.getDecisionNote(), i.getDecidedAt());
+                i.getDecision(), displayLabel(i.getDecision()), i.getDecisionNote(), i.getDecidedAt(),
+                i.getDecidedBy() == null ? null : deciderNames.get(i.getDecidedBy()));
     }
 
     private String displayLabel(String code) {

@@ -15,23 +15,29 @@ export interface BackupSettings {
   retentionDays: number;
   backupLocation: 'local' | 'cloud' | 's3';
   notifyOnBackupFailure: boolean;
-  officeOnline: OfficeOnlineStorageConfig;
+  onlyOffice: OnlyOfficeStorageConfig;
 }
 
-export interface OfficeOnlineStorageConfig {
+/** Which parts of OnlyOffice's own toolbar the read-only Document-tab viewer shows (admin setting). */
+export interface OnlyOfficeViewerConfig {
+  showFileTab?: boolean;
+  showViewTab?: boolean;
+  showPluginsTab?: boolean;
+  showLeftPanel?: boolean;
+  showRightMenu?: boolean;
+  showStatusBar?: boolean;
+  showFileName?: boolean;
+}
+
+export interface OnlyOfficeStorageConfig {
+  viewer?: OnlyOfficeViewerConfig;
   enabled: boolean;
-  graphBaseUrl: string;
-  tenantId: string;
-  clientId: string;
-  clientSecret: string;
-  clientSecretConfigured?: boolean;
-  clientSecretMasked?: string;
-  clearClientSecret?: boolean;
-  siteId: string;
-  driveId: string;
-  libraryFolder: string;
-  shareLinkScope: string;
-  reviewLinksEnabled?: boolean;
+  documentServerUrl: string;
+  callbackBaseUrl: string;
+  jwtSecret: string;
+  jwtSecretConfigured?: boolean;
+  jwtSecretMasked?: string;
+  clearJwtSecret?: boolean;
 }
 
 export interface LocaleSettings {
@@ -41,6 +47,10 @@ export interface LocaleSettings {
 
 export interface AppearanceSettings {
   systemSidebarCollapsedLogo?: string;
+  /** When enabled by an administrator, show the signed-in user's profile at the bottom of the sidebar. */
+  showSidebarUserProfile?: boolean;
+  /** When enabled, the Knowledge Base menu opens the explorer experience in a new browser tab. */
+  knowledgeExplorerEnabled?: boolean;
   theme: 'light' | 'dark' | 'auto';
   primaryColor: string;
   compactMode: boolean;
@@ -73,6 +83,14 @@ export interface SecurityConfig {
   requireNumbers: boolean;
   requireUppercase: boolean;
   requireLowercase: boolean;
+  /** Minimum number of distinct characters (0 = off). */
+  minUniqueChars?: number;
+  /** Longest run of the same character allowed (0 = off). */
+  maxRepeatedChars?: number;
+  disallowSequentialChars?: boolean;
+  disallowCommonPasswords?: boolean;
+  disallowUserInfo?: boolean;
+  disallowWhitespace?: boolean;
   passwordExpiryDays: number;
   enablePasswordExpiry: boolean;
   preventPasswordReuse: boolean;
@@ -84,14 +102,6 @@ export interface SecurityConfig {
   maxLoginAttempts: number;
 }
 
-export interface VersionControl {
-  enableAutoVersioning: boolean;
-  maxVersionsToKeep: number;
-  compareVersionsEnabled: boolean;
-  requireVersionNotes: boolean;
-  majorMinorVersioning: boolean;
-}
-
 export interface ESignatureSettings {
   enableESignature: boolean;
   requirePasswordForSigning: boolean;
@@ -101,12 +111,29 @@ export interface ESignatureSettings {
   signatureValidityDays: number;
 }
 
+/** Admin options for the system PDF viewer (Settings > Configuration > Preview File). */
+export interface PdfPreviewConfig {
+  /** 'page-fit' | 'page-width' | 'actual-size' (100%). */
+  defaultZoom?: 'page-fit' | 'page-width' | 'actual-size';
+  /** Open the thumbnail sidebar by default where the viewer supports it. */
+  showThumbnailSidebar?: boolean;
+  showSearch?: boolean;
+  showPageNavigation?: boolean;
+  showZoomControls?: boolean;
+  showFullScreen?: boolean;
+  showThemeSwitch?: boolean;
+  /** Allow selecting/copying text in the preview. */
+  allowTextSelection?: boolean;
+}
+
 export interface DocumentConfig {
+  pdfPreview?: PdfPreviewConfig;
   defaultRetentionPeriodDays: number;
   enableWatermark: boolean;
   allowDownload: boolean;
   maxFileSizeMB: number;
-  versionControl: VersionControl;
+  /** Seed for the first revision number of newly created documents: '0.0.1' (three-part) or '0.1' (two-part). */
+  revisionNumberSeed?: '0.0.1' | '0.1';
   eSignature: ESignatureSettings;
 }
 

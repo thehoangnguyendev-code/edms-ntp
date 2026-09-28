@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { FormSection } from '@/components/ui/form/FormSection';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronRight, Menu, RotateCcw, Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge/Badge';
@@ -81,13 +82,8 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
 
   return (
     <div className="p-4 md:p-5 space-y-4">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2.5 px-4 md:px-5 py-4 border-b border-slate-100">
-          <span className="text-emerald-600"><Menu className="h-4 w-4" /></span>
-          <h3 className="text-sm font-semibold text-slate-900">Navigation, Breadcrumbs &amp; Page Titles</h3>
-        </div>
-
-        <div className="p-4 md:p-5 space-y-4">
+      <FormSection title="Navigation, Breadcrumbs & Page Titles" icon={<Menu className="h-4 w-4" />}>
+        <div className="space-y-4">
           <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3 text-xs sm:text-sm text-slate-700">
             <p>Set the display name used by the sidebar, matching breadcrumbs and page titles across the system. Routes, permissions, icons and menu hierarchy are not changed.</p>
             <p className="mt-1 text-slate-500">Leave a name unchanged to use the built-in default. Changes apply after Save and are loaded from the server for every user. The Dashboard breadcrumb icon is fixed and cannot be changed.</p>
@@ -222,7 +218,7 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
             )}
           </div>
         </div>
-      </div>
+      </FormSection>
     </div>
   );
 };

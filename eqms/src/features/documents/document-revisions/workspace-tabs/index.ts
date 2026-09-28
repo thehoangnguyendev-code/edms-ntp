@@ -16,10 +16,6 @@ export { InfoFromDocumentTab } from './InfoFromDocumentTab';
 export { RevisionWorkspaceReviewersTab } from './RevisionWorkspaceReviewersTab';
 export { RevisionWorkspaceApproversTab } from './RevisionWorkspaceApproversTab';
 
-// Revision-local general/audit tabs
-export { GeneralTab } from './GeneralTab';
-export type { GeneralTabFormData } from './GeneralTab';
-
 // Revision workspace-local tab implementations (identical UI to detail-revision/tabs)
 export { GeneralInformationTab } from './GeneralInformationTab';
 export type { GeneralInformationDocumentDetail } from './GeneralInformationTab';

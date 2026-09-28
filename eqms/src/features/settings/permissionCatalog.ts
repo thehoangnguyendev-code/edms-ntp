@@ -40,7 +40,15 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "dashboard_admin",
   },
 
-  // ─── My Tasks ───────────────────────────────────────────────────────────────
+  // ─── Self-Service ───────────────────────────────────────────────────────────
+  {
+    code: "self_service.knowledge.view",
+    label: "View Knowledge",
+    description: "View the Knowledge portal under Self-Service (browse/search published documents, feedback, subscriptions).",
+    module: "self_service",
+    group: "self_service_access",
+  },
+
   // ─── Document Control ───────────────────────────────────────────────────────
   {
     code: "documents.module.view",
@@ -125,10 +133,63 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
   {
     code: "documents.document.view_audit",
     label: "View Document Audit Trail",
-    description: "View audit trail history for document and revision records.",
+    description:
+      "View the Audit Trail tab for a document or revision. Direct stakeholders (Author, Co-author, Reviewer/Approver, Admin/DCO) see it automatically without this permission; it is only required for indirect/broad viewers.",
     module: "documents",
-    group: "document_compliance",
+    group: "document_master",
     legacyCodes: ["VIEW_DOCUMENT_AUDIT_TRAIL", "VIEW_AUDIT_TRAIL"],
+  },
+  {
+    code: "documents.document.reopen",
+    label: "Reopen Cancelled Document",
+    description: "Reopen a closed-cancelled Draft document with an auditable activity summary.",
+    module: "documents",
+    group: "document_master",
+  },
+  {
+    code: "documents.document.update_metadata",
+    label: "Update Draft Document Metadata",
+    description: "Update metadata of a Draft document master.",
+    module: "documents",
+    group: "document_master",
+  },
+  {
+    code: "documents.document.configure_next_metadata",
+    label: "Configure Next Revision Metadata",
+    description:
+      "Change Author, Co-Author, Periodic Review Cycle/Notification, Review Date and Description inherited by the next revision of an Active document.",
+    module: "documents",
+    group: "revision_configuration",
+  },
+  {
+    code: "documents.revision.update_draft_metadata",
+    label: "Update Draft Revision Metadata",
+    description: "Update metadata of a Draft document revision.",
+    module: "documents",
+    group: "document_control_access",
+  },
+  {
+    code: "documents.revision.force_publish",
+    label: "Force Publish Revision (Override Related Documents Check)",
+    description:
+      "Allows publishing a Revision even when one or more Related Documents are not currently Effective. GMP exception/deviation -- not granted by default.",
+    module: "documents",
+    group: "revision_workflow",
+  },
+  {
+    code: "documents.controlled_copy.print",
+    label: "Print Controlled Copy",
+    description: "Print an authorized controlled copy.",
+    module: "documents",
+    group: "controlled_copy_files",
+  },
+  {
+    code: "documents.controlled_copy.receive_as_dco",
+    label: "Receive Controlled Copies as DCO",
+    description:
+      "Eligible to be selected in Controlled Copies Policy as the DCO recipient who receives the printable file/ZIP instead of the original requester(s) when delivery redirection is enabled.",
+    module: "documents",
+    group: "controlled_copy",
   },
   {
     code: "documents.document.obsolete",
@@ -149,13 +210,6 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     code: "documents.document.preview_published",
     label: "Preview Published Document",
     description: "Open the controlled preview of a published document.",
-    module: "documents",
-    group: "document_access",
-  },
-  {
-    code: "documents.document.download_published",
-    label: "Download Published Document",
-    description: "Download a published document when download policy permits it.",
     module: "documents",
     group: "document_access",
   },
@@ -221,13 +275,6 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "revision_publish",
   },
   {
-    code: "documents.revision.complete_training",
-    label: "Complete Revision Training",
-    description: "Record completion of the revision training workflow stage.",
-    module: "documents",
-    group: "training_publish",
-  },
-  {
     code: "documents.revision.cancel",
     label: "Cancel Revision",
     description: "Cancel a revision while it is in an allowed in-progress lifecycle state.",
@@ -242,23 +289,9 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "revision_access",
   },
   {
-    code: "documents.revision.download_source",
-    label: "Download Revision Source",
-    description: "Download a revision source file when its access policy permits it.",
-    module: "documents",
-    group: "revision_access",
-  },
-  {
     code: "documents.revision.edit_online",
     label: "Edit Revision Online",
     description: "Edit an authorized draft revision in the integrated online editor.",
-    module: "documents",
-    group: "revision_authoring",
-  },
-  {
-    code: "documents.revision.generate_preview",
-    label: "Generate Revision Preview",
-    description: "Generate the controlled preview used by the revision workflow.",
     module: "documents",
     group: "revision_authoring",
   },
@@ -393,16 +426,114 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "controlled_copies",
   },
   {
+    code: "documents.admin.properties.view",
+    label: "View Document Properties",
+    description: "View the Document Properties screen (default revision number format, default document number format, file size limit, watermark and download policy).",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.properties.manage",
+    label: "Manage Document Properties",
+    description: "Edit the Document Properties screen (default revision number format, default document number format, file size limit, watermark and download policy).",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.name_formats.view",
+    label: "View Document Name Formats",
+    description: "View the Document Name Formats and Document Components catalogs.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.name_formats.manage",
+    label: "Manage Document Name Formats",
+    description: "Create and edit Document Name Formats and Document Components.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.document_types.view",
+    label: "View Document Types",
+    description: "View Document Types and Document Sub-Types.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.document_types.manage",
+    label: "Manage Document Types",
+    description: "Create and edit Document Types and Document Sub-Types.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.knowledge_categories.view",
+    label: "View Knowledge Categories Hierarchies",
+    description: "View the Knowledge Categories Hierarchies screen.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.knowledge_categories.manage",
+    label: "Manage Knowledge Categories Hierarchies",
+    description: "Create and edit Knowledge Categories Hierarchies.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.publishing_templates.view",
+    label: "View Publishing Templates",
+    description: "View Publishing Templates.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.publishing_templates.manage",
+    label: "Manage Publishing Templates",
+    description: "Create and edit Publishing Templates.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.controlled_copies_policy.view",
+    label: "View Controlled Copies Policy",
+    description: "View the Controlled Copies Policy screen (expiry limits, placeholder fields, distribution rules).",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.controlled_copies_policy.manage",
+    label: "Manage Controlled Copies Policy",
+    description: "Create and edit the Controlled Copies Policy (expiry limits, placeholder fields, distribution rules).",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.legacy_import.manage",
+    label: "Legacy Import",
+    description: "Import a document that already exists outside the system (e.g. a paper original) -- one revision or its entire historical revision chain (e.g. 1.0 through 4.0) -- assigning its existing document number and revision number(s) directly instead of the automatic sequence.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
     code: "documents.admin.view",
-    label: "Access Document Administration",
-    description: "Open Document Administration and review system workflow settings.",
+    label: "View All Documents (Legacy Broad Grant)",
+    description: "Grants blanket read access to every document master and revision system-wide. Also used as a fallback when viewing e-signature records and reviewing Controlled Copy batch distribution discrepancies.",
+    module: "documents",
+    group: "document_administration",
+  },
+  {
+    code: "documents.admin.manage",
+    label: "Document Administration (Legacy, Superseded)",
+    description: "No longer independently checked anywhere; superseded by the granular Document Administration permissions above. Kept only for historical Access Profile compatibility -- use the specific permissions instead.",
     module: "documents",
     group: "document_administration",
   },
   {
     code: "documents.admin.manage_workflow_roles",
-    label: "Manage Document Workflow Roles",
-    description: "Manage workflow-coordinator, reviewer, and approver assignments for Document Control.",
+    label: "Manage Document Revision Segregation-of-Duties Rules",
+    description: "Edit the Document Revision workflow's segregation-of-duties rules (e.g. reviewer cannot approve, require two reviewers, author cannot review own revision). Unrelated to the Workflow Roles catalog under Security & Authorization.",
     module: "documents",
     group: "document_administration",
   },
@@ -435,353 +566,42 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     module: "training",
     group: "training_admin",
   },
-
-  // ─── Deviations & NCs ────────────────────────────────────────────────────────
   {
-    code: "deviations.module.view",
-    label: "View Deviations & NCs",
-    description: "Access the Deviations & Non-Conformances module.",
-    module: "deviations",
-    group: "deviations_access",
+    code: "training.admin.view",
+    label: "View Training Administration",
+    description: "View the Training Administration section under System Administration.",
+    module: "training",
+    group: "training_admin",
   },
   {
-    code: "deviations.record.create",
-    label: "Report Deviation / NC",
-    description: "Create and submit a new deviation or non-conformance report.",
-    module: "deviations",
-    group: "deviations_actions",
+    code: "training.admin.properties.view",
+    label: "View Training Properties",
+    description: "View the Training Properties section under Training Administration.",
+    module: "training",
+    group: "training_admin",
   },
   {
-    code: "deviations.record.edit",
-    label: "Edit Deviation Record",
-    description: "Edit an existing deviation or non-conformance record.",
-    module: "deviations",
-    group: "deviations_actions",
+    code: "training.admin.requirement_templates.view",
+    label: "View Requirement Templates",
+    description: "View the Requirement Templates section under Training Administration.",
+    module: "training",
+    group: "training_admin",
   },
   {
-    code: "deviations.record.investigate",
-    label: "Investigate Deviation",
-    description: "Perform root cause analysis and document investigation findings.",
-    module: "deviations",
-    group: "deviations_actions",
+    code: "training.admin.quiz.view",
+    label: "View Create a Quiz",
+    description: "View the Create a Quiz section under Training Administration.",
+    module: "training",
+    group: "training_admin",
   },
   {
-    code: "deviations.record.approve",
-    label: "Approve Deviation",
-    description: "Review and approve a deviation investigation outcome.",
-    module: "deviations",
-    group: "deviations_actions",
-  },
-  {
-    code: "deviations.record.close",
-    label: "Close Deviation",
-    description: "Close a resolved deviation or non-conformance record.",
-    module: "deviations",
-    group: "deviations_actions",
+    code: "training.admin.curriculums.view",
+    label: "View Curriculums",
+    description: "View the Curriculums section under Training Administration.",
+    module: "training",
+    group: "training_admin",
   },
 
-  // ─── CAPA Management ─────────────────────────────────────────────────────────
-  {
-    code: "capa.module.view",
-    label: "View CAPA",
-    description: "Access the CAPA Management module.",
-    module: "capa",
-    group: "capa_access",
-  },
-  {
-    code: "capa.record.create",
-    label: "Create CAPA",
-    description: "Create a new corrective or preventive action record.",
-    module: "capa",
-    group: "capa_actions",
-  },
-  {
-    code: "capa.record.edit",
-    label: "Edit CAPA Record",
-    description: "Edit an existing CAPA record or action plan.",
-    module: "capa",
-    group: "capa_actions",
-  },
-  {
-    code: "capa.record.assign",
-    label: "Assign CAPA Actions",
-    description: "Assign tasks and responsible owners to CAPA action items.",
-    module: "capa",
-    group: "capa_actions",
-  },
-  {
-    code: "capa.record.implement",
-    label: "Implement CAPA Action",
-    description: "Record implementation evidence for assigned CAPA actions.",
-    module: "capa",
-    group: "capa_actions",
-  },
-  {
-    code: "capa.record.verify",
-    label: "Verify CAPA Effectiveness",
-    description: "Perform and record effectiveness verification for a closed CAPA.",
-    module: "capa",
-    group: "capa_actions",
-  },
-  {
-    code: "capa.record.close",
-    label: "Close CAPA",
-    description: "Close a verified and completed CAPA record.",
-    module: "capa",
-    group: "capa_actions",
-  },
-
-  // ─── Change Controls ─────────────────────────────────────────────────────────
-  {
-    code: "change_control.module.view",
-    label: "View Change Controls",
-    description: "Access the Change Controls module.",
-    module: "change-control",
-    group: "change_control_access",
-  },
-  {
-    code: "change_control.record.create",
-    label: "Create Change Control",
-    description: "Create a new change control request.",
-    module: "change-control",
-    group: "change_control_actions",
-  },
-  {
-    code: "change_control.record.edit",
-    label: "Edit Change Control",
-    description: "Edit a change control request record.",
-    module: "change-control",
-    group: "change_control_actions",
-  },
-  {
-    code: "change_control.record.review",
-    label: "Review Change Control",
-    description: "Perform an assigned review step for a change control request.",
-    module: "change-control",
-    group: "change_control_actions",
-  },
-  {
-    code: "change_control.record.approve",
-    label: "Approve Change Control",
-    description: "Approve a change control request to proceed with implementation.",
-    module: "change-control",
-    group: "change_control_actions",
-  },
-  {
-    code: "change_control.record.implement",
-    label: "Implement Change Control",
-    description: "Record implementation details and evidence for an approved change.",
-    module: "change-control",
-    group: "change_control_actions",
-  },
-  {
-    code: "change_control.record.close",
-    label: "Close Change Control",
-    description: "Close a fully implemented and verified change control.",
-    module: "change-control",
-    group: "change_control_actions",
-  },
-
-  // ─── Complaints Management ───────────────────────────────────────────────────
-  {
-    code: "complaints.module.view",
-    label: "View Complaints",
-    description: "Access the Complaints Management module.",
-    module: "complaints",
-    group: "complaints_access",
-  },
-  {
-    code: "complaints.record.create",
-    label: "Create Complaint",
-    description: "Create and submit a new customer or regulatory complaint record.",
-    module: "complaints",
-    group: "complaints_actions",
-  },
-  {
-    code: "complaints.record.edit",
-    label: "Edit Complaint Record",
-    description: "Edit an existing complaint record.",
-    module: "complaints",
-    group: "complaints_actions",
-  },
-  {
-    code: "complaints.record.investigate",
-    label: "Investigate Complaint",
-    description: "Perform investigation and document findings for a complaint.",
-    module: "complaints",
-    group: "complaints_actions",
-  },
-  {
-    code: "complaints.record.close",
-    label: "Close Complaint",
-    description: "Close a resolved complaint record.",
-    module: "complaints",
-    group: "complaints_actions",
-  },
-
-  // ─── Risk Management ─────────────────────────────────────────────────────────
-  {
-    code: "risk_management.module.view",
-    label: "View Risk Management",
-    description: "Access the Risk Management module.",
-    module: "risk-management",
-    group: "risk_access",
-  },
-  {
-    code: "risk_management.record.create",
-    label: "Create Risk Assessment",
-    description: "Create a new risk assessment record.",
-    module: "risk-management",
-    group: "risk_actions",
-  },
-  {
-    code: "risk_management.record.edit",
-    label: "Edit Risk Record",
-    description: "Edit an existing risk record or assessment.",
-    module: "risk-management",
-    group: "risk_actions",
-  },
-  {
-    code: "risk_management.record.review",
-    label: "Review Risk Assessment",
-    description: "Review and score a risk assessment.",
-    module: "risk-management",
-    group: "risk_actions",
-  },
-  {
-    code: "risk_management.record.approve",
-    label: "Approve Risk",
-    description: "Approve and accept a reviewed risk assessment.",
-    module: "risk-management",
-    group: "risk_actions",
-  },
-
-  // ─── Equipment Management ────────────────────────────────────────────────────
-  {
-    code: "equipment.module.view",
-    label: "View Equipment",
-    description: "Access the Equipment Management module.",
-    module: "equipment",
-    group: "equipment_access",
-  },
-  {
-    code: "equipment.record.create",
-    label: "Add Equipment",
-    description: "Add a new equipment record to the asset register.",
-    module: "equipment",
-    group: "equipment_actions",
-  },
-  {
-    code: "equipment.record.edit",
-    label: "Edit Equipment Record",
-    description: "Edit equipment metadata and lifecycle information.",
-    module: "equipment",
-    group: "equipment_actions",
-  },
-  {
-    code: "equipment.record.calibrate",
-    label: "Manage Calibration",
-    description: "Create and manage calibration records for equipment.",
-    module: "equipment",
-    group: "equipment_actions",
-  },
-  {
-    code: "equipment.record.retire",
-    label: "Retire Equipment",
-    description: "Retire or decommission an equipment asset.",
-    module: "equipment",
-    group: "equipment_actions",
-  },
-
-  // ─── Supplier Management ─────────────────────────────────────────────────────
-  {
-    code: "supplier.module.view",
-    label: "View Supplier Management",
-    description: "Access the Supplier Management module.",
-    module: "supplier",
-    group: "supplier_access",
-  },
-  {
-    code: "supplier.record.create",
-    label: "Add Supplier",
-    description: "Add a new supplier or vendor to the system.",
-    module: "supplier",
-    group: "supplier_actions",
-  },
-  {
-    code: "supplier.record.edit",
-    label: "Edit Supplier Record",
-    description: "Edit supplier profile and qualification information.",
-    module: "supplier",
-    group: "supplier_actions",
-  },
-  {
-    code: "supplier.record.approve",
-    label: "Approve Supplier",
-    description: "Approve or qualify a supplier for use.",
-    module: "supplier",
-    group: "supplier_actions",
-  },
-  {
-    code: "supplier.record.audit",
-    label: "Manage Supplier Audit",
-    description: "Create and manage supplier audit records.",
-    module: "supplier",
-    group: "supplier_actions",
-  },
-
-  // ─── Product Management ──────────────────────────────────────────────────────
-  {
-    code: "product.module.view",
-    label: "View Product Management",
-    description: "Access the Product Management module.",
-    module: "product",
-    group: "product_access",
-  },
-  {
-    code: "product.record.create",
-    label: "Add Product",
-    description: "Add a new product or specification to the system.",
-    module: "product",
-    group: "product_actions",
-  },
-  {
-    code: "product.record.edit",
-    label: "Edit Product Record",
-    description: "Edit a product specification or lifecycle record.",
-    module: "product",
-    group: "product_actions",
-  },
-
-  // ─── Regulatory Management ───────────────────────────────────────────────────
-  {
-    code: "regulatory.module.view",
-    label: "View Regulatory Management",
-    description: "Access the Regulatory Management module.",
-    module: "regulatory",
-    group: "regulatory_access",
-  },
-  {
-    code: "regulatory.record.create",
-    label: "Create Regulatory Record",
-    description: "Create a new regulatory record or submission.",
-    module: "regulatory",
-    group: "regulatory_actions",
-  },
-  {
-    code: "regulatory.record.edit",
-    label: "Edit Regulatory Record",
-    description: "Edit an existing regulatory record.",
-    module: "regulatory",
-    group: "regulatory_actions",
-  },
-  {
-    code: "regulatory.record.submit",
-    label: "Submit Regulatory Filing",
-    description: "Submit a regulatory filing or dossier to a health authority.",
-    module: "regulatory",
-    group: "regulatory_actions",
-  },
 
   // ─── Reports & Analytics ─────────────────────────────────────────────────────
   {
@@ -1003,30 +823,31 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "system_configuration",
     legacyCodes: ["VIEW_SETTINGS"],
   },
-  {
-    code: "settings.configuration.edit",
-    label: "Edit Configuration",
-    description: "Edit configuration, password policies, sessions, and maintenance settings.",
-    module: "app-settings",
-    group: "system_configuration",
-    legacyCodes: ["EDIT_SETTINGS"],
-  },
-  {
-    code: "settings.dictionary.view",
-    label: "View Data Dictionaries",
-    description: "View controlled dictionary values such as business units, departments, document types, and retention policies.",
-    module: "app-settings",
-    group: "data_dictionaries",
-    legacyCodes: ["settings.configuration.view", "VIEW_SETTINGS"],
-  },
-  {
-    code: "settings.dictionary.manage",
-    label: "Manage Data Dictionaries",
-    description: "Create, update, and delete controlled dictionary values used by GxP records.",
-    module: "app-settings",
-    group: "data_dictionaries",
-    legacyCodes: ["settings.configuration.edit", "EDIT_SETTINGS"],
-  },
+  ...[
+    ["business_unit", "Business Units"],
+    ["department", "Departments"],
+    ["position", "Positions"],
+    ["storage_location", "Storage Locations"],
+    ["retention_policy", "Retention Policies"],
+    ["country", "Countries"],
+    ["education.degree_level", "Education Degree Levels"],
+    ["education.school", "Education Schools"],
+  ].flatMap(([resource, label]) => [
+    {
+      code: `settings.${resource}.view`,
+      label: `View ${label}`,
+      description: `View controlled ${label.toLowerCase()} values.`,
+      module: "app-settings",
+      group: "data_dictionaries",
+    },
+    {
+      code: `settings.${resource}.manage`,
+      label: `Manage ${label}`,
+      description: `Create, update, and delete controlled ${label.toLowerCase()} values.`,
+      module: "app-settings",
+      group: "data_dictionaries",
+    },
+  ]),
   {
     code: "settings.controlled_copy_policy.view",
     label: "View Controlled Copies Policy",
@@ -1104,6 +925,13 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     legacyCodes: ["settings.configuration.edit", "EDIT_SETTINGS"],
   },
   {
+    code: "settings.email_template.view",
+    label: "View Email Templates",
+    description: "View notification email templates.",
+    module: "settings",
+    group: "system_settings",
+  },
+  {
     code: "settings.email_template.manage",
     label: "Manage Email Templates",
     description: "Create and edit notification email templates.",
@@ -1135,28 +963,7 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
 
 ];
 
-/**
- * Modules deferred from the current product scope are deliberately excluded
- * from the administration UI. The legacy descriptors remain only to preserve
- * compatibility with historical permission-set payloads until their database
- * records are removed by the decommission migration.
- */
-const DEFERRED_MODULE_KEYS = new Set([
-  "deviations",
-  "capa",
-  "change-control",
-  "complaints",
-  "risk-management",
-  "equipment",
-  "supplier",
-  "product",
-  "regulatory",
-]);
-
-export const SYSTEM_PERMISSION_CATALOG: PermissionDescriptor[] =
-  LEGACY_PERMISSION_CATALOG.filter(
-    (descriptor) => !DEFERRED_MODULE_KEYS.has(descriptor.module),
-  );
+export const SYSTEM_PERMISSION_CATALOG: PermissionDescriptor[] = LEGACY_PERMISSION_CATALOG;
 
 const descriptorMap = new Map<string, PermissionDescriptor>();
 

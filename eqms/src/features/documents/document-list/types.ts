@@ -49,8 +49,14 @@ export interface DocumentListItem {
   canRequestControlledCopy?: boolean;
   /** Server-evaluated eligibility to edit the initial Draft from assigned permission codes. */
   canStartInitialAuthoring?: boolean;
+  /** Author of an Active document whose upgrade the DCO already configured: "Edit Document" may open it to Upload Revision. */
+  canEditForUpgrade?: boolean;
   /** Server-evaluated capability to upload a source file as a new revision. */
   canUploadRevision?: boolean;
+  /** Resolved server-side from the Sub-Type Dictionary (never re-derive this from a client-side
+   * Sub-Type lookup snapshot -- it goes stale the moment the user re-selects a different
+   * Sub-Type and saves). */
+  reviewRequirement?: "NONE" | "REQUIRED" | null;
 }
 
 export interface DocumentListQuery {
@@ -109,6 +115,10 @@ export interface DocumentDraftCreateRequest {
   approverUserIds?: string[];
   relatedDocumentIds?: string[];
   correlatedDocumentIds?: string[];
+  /** Legacy Import only; ignored unless the caller holds documents.legacy_import.manage. */
+  legacyDocumentNumber?: string;
+  legacyOriginalEffectiveDate?: string;
+  legacyJustification?: string;
 }
 
 export interface DocumentParticipantItem {
@@ -238,6 +248,9 @@ export interface DocumentDetailResponse extends DocumentListItem {
   description?: string | null;
   knowledgeBase?: string | null;
   subType?: string | null;
+  /** Resolved from the Sub-Type's configured requirement -- "NONE" means Reviewer assignment is
+   * intentionally not applicable, not missing data. */
+  reviewRequirement?: "NONE" | "REQUIRED" | null;
   periodicReviewCycle?: number | null;
   periodicReviewNotification?: number | null;
   language?: string | null;
@@ -260,9 +273,6 @@ export interface DocumentDetailResponse extends DocumentListItem {
   correlatedDocuments: DocumentRelationItem[];
   revisions: DocumentRevisionItem[];
   previewVersionToken?: string | null;
-  canCancel?: boolean;
-  canObsolete?: boolean;
-  canStartInitialAuthoring?: boolean;
   canUploadRevision?: boolean;
   /** Server-computed preview of the number the next Draft revision will receive (display only). */
   nextDraftRevisionNumber?: string;

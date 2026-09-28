@@ -7,7 +7,15 @@ import { Button } from "@/components/ui/button/Button";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { cn } from "@/components/ui/utils";
 import { ROUTES } from "@/app/routes.constants";
-import { settingsApi, type PermissionCatalogGroup, type PermissionSetResponse, type PermissionSetSummary } from "@/services/api/settings";
+import { settingsApi, type PermissionCatalogGroup, type PermissionLifecycleUsage, type PermissionSetResponse, type PermissionSetSummary } from "@/services/api/settings";
+
+const formatLifecycleState = (u: PermissionLifecycleUsage) =>
+  `${u.objectTypeLabel} · ${u.fromStatusLabel ?? u.fromStatus ?? "Any state"}`;
+// Includes the action -- two entries can share the same object type + status (e.g. distributing a
+// single Controlled Copy vs. a Controlled Copy Batch both apply "Ready for Distribution"), so the
+// action is what tells them apart and must be visible wherever more than one entry is listed together.
+const formatLifecycleUsage = (u: PermissionLifecycleUsage) =>
+  `${formatLifecycleState(u)} (${u.actionLabel})`;
 
 interface PermissionSetDrawerProps {
   ps: PermissionSetSummary | null;
@@ -31,6 +39,7 @@ const useIsMobile = () => {
 
 export const AccessProfilePermissionSetDrawer: React.FC<PermissionSetDrawerProps> = ({ ps, onClose }) => {
   const navigate = useNavigate();
+  const [expandedLifecycle, setExpandedLifecycle] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<PermissionSetResponse | null>(null);
   const [catalog, setCatalog] = useState<PermissionCatalogGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -134,7 +143,7 @@ export const AccessProfilePermissionSetDrawer: React.FC<PermissionSetDrawerProps
   const groupedPermissions = (detail?.permissionCodes ?? []).reduce<Record<string, {
     title: string;
     description: string | null;
-    items: { code: string; name: string; description: string; module: string; action?: string; riskLevel?: string; requiresAudit?: boolean; requiresESign?: boolean }[];
+    items: { code: string; name: string; description: string; module: string; action?: string; riskLevel?: string; requiresAudit?: boolean; requiresESign?: boolean; lifecycleUsages?: PermissionLifecycleUsage[] }[];
   }>>((acc, code) => {
     const item = permissionLookup.get(code);
     const key = item?.module || "General";
@@ -154,6 +163,7 @@ export const AccessProfilePermissionSetDrawer: React.FC<PermissionSetDrawerProps
       riskLevel: item?.riskLevel,
       requiresAudit: item?.requiresAudit,
       requiresESign: item?.requiresESign,
+      lifecycleUsages: item?.lifecycleUsages,
     });
     return acc;
   }, {});
@@ -269,6 +279,37 @@ export const AccessProfilePermissionSetDrawer: React.FC<PermissionSetDrawerProps
                           {item.riskLevel ? <Badge size="xs" color={item.riskLevel === "CRITICAL" ? "red" : item.riskLevel === "HIGH" ? "orange" : "slate"}>{item.riskLevel}</Badge> : null}
                           {item.requiresAudit ? <Badge size="xs" color="indigo">Audit</Badge> : null}
                           {item.requiresESign ? <Badge size="xs" color="emerald">E-sign</Badge> : null}
+                          {item.lifecycleUsages && item.lifecycleUsages.length > 0 && (
+                            expandedLifecycle.has(item.code) ? (
+                              <>
+                                {item.lifecycleUsages.map((u, i) => (
+                                  <Badge key={i} size="xs" color="purple">{formatLifecycleUsage(u)}</Badge>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedLifecycle((prev) => { const next = new Set(prev); next.delete(item.code); return next; })}
+                                  className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline"
+                                >
+                                  Show less
+                                </button>
+                              </>
+                            ) : (
+                              <span className="inline-flex items-center gap-1">
+                                <Badge size="xs" color="purple" title={formatLifecycleUsage(item.lifecycleUsages[0])}>
+                                  {formatLifecycleState(item.lifecycleUsages[0])}
+                                </Badge>
+                                {item.lifecycleUsages.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedLifecycle((prev) => new Set(prev).add(item.code))}
+                                    className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline"
+                                  >
+                                    +{item.lifecycleUsages.length - 1} more
+                                  </button>
+                                )}
+                              </span>
+                            )
+                          )}
                         </div>
                       </div>
                     ))}

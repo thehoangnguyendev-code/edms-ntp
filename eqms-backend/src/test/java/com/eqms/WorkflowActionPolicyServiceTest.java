@@ -425,7 +425,7 @@ class WorkflowActionPolicyServiceTest {
 
         assertThat(resp.active()).isTrue();
         verify(auditTrailService).logAs(any(), any(), any(), eq(policyId),
-                eq("WORKFLOW_ACTION_POLICY_ACTIVATED"), any(), any(), any());
+                eq("WORKFLOW_ACTION_POLICY_ACTIVATED"), any(), any(), any(), any(), any());
     }
 
     // ── deactivatePolicy ──────────────────────────────────────────────────────
@@ -443,7 +443,7 @@ class WorkflowActionPolicyServiceTest {
 
         assertThat(resp.active()).isFalse();
         verify(auditTrailService).logAs(any(), any(), any(), eq(policyId),
-                eq("WORKFLOW_ACTION_POLICY_DEACTIVATED"), any(), any(), any());
+                eq("WORKFLOW_ACTION_POLICY_DEACTIVATED"), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -499,8 +499,26 @@ class WorkflowActionPolicyServiceTest {
                 "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
                 "SUBMIT_FOR_REVIEW", "DRAFT", docTypeId);
 
+        // A document type WAS requested but has no override, so GLOBAL is a fallback for it.
+        assertThat(result.source()).isEqualTo("GLOBAL");
+        assertThat(result.fallbackUsed()).isTrue();
+        assertThat(result.trace()).extracting(t -> t.reasonCode())
+                .containsExactly("NO_DOCUMENT_TYPE_OVERRIDE", "GLOBAL_FALLBACK");
+    }
+
+    @Test
+    void effectivePolicy_globalIsNotAFallbackWhenNoDocumentTypeRequested() {
+        when(policyRepo.findActiveGlobalPolicies(any(), any(), any(), any(), any()))
+                .thenReturn(List.of(basePolicy));
+
+        WorkflowActionPolicyEffectiveResponse result = service.getEffectivePolicy(
+                "DOCUMENT_CONTROL", "DOCUMENT_REVISION", "REVISION",
+                "SUBMIT_FOR_REVIEW", "DRAFT", null);
+
         assertThat(result.source()).isEqualTo("GLOBAL");
         assertThat(result.fallbackUsed()).isFalse();
+        assertThat(result.trace()).extracting(t -> t.reasonCode())
+                .containsExactly("GLOBAL_POLICY_MATCHED");
     }
 
     @Test

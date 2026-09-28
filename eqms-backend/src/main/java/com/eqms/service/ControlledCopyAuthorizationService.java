@@ -15,16 +15,13 @@ import com.eqms.entity.WorkflowActionPolicyActor;
 import com.eqms.enums.ControlledCopyWorkflowAction;
 import com.eqms.enums.FileAccessAction;
 import com.eqms.enums.FileObjectType;
-import com.eqms.enums.WorkflowActorType;
 import com.eqms.exception.ControlledCopyAuthorizationException;
 import com.eqms.exception.ControlledCopyNotAvailableException;
 import com.eqms.auth.CurrentUserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.eqms.repository.AccessProfileWorkflowRoleRepository;
 import com.eqms.repository.ControlledCopyDistributionBatchRepository;
 import com.eqms.repository.ControlledCopyRepository;
 import com.eqms.repository.DocumentRecordRepository;
-import com.eqms.repository.DocumentWorkflowPoolMemberRepository;
 import com.eqms.repository.UserAccessProfileRepository;
 import com.eqms.repository.WorkflowActionPolicyRepository;
 import com.eqms.service.authorization.AuthorizationEngineService;
@@ -68,8 +65,6 @@ public class ControlledCopyAuthorizationService {
     private final ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository;
     private final WorkflowActionPolicyRepository workflowActionPolicyRepository;
     private final UserAccessProfileRepository userAccessProfileRepository;
-    private final AccessProfileWorkflowRoleRepository accessProfileWorkflowRoleRepository;
-    private final DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     private final DocumentRecordRepository documentRecordRepository;
     private final ObjectAccessEvaluationService objectAccessEvaluationService;
     private final PasswordEncoder passwordEncoder;
@@ -86,8 +81,6 @@ public class ControlledCopyAuthorizationService {
             ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository,
             WorkflowActionPolicyRepository workflowActionPolicyRepository,
             UserAccessProfileRepository userAccessProfileRepository,
-            AccessProfileWorkflowRoleRepository accessProfileWorkflowRoleRepository,
-            DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository,
             DocumentRecordRepository documentRecordRepository,
             ObjectAccessEvaluationService objectAccessEvaluationService,
             PasswordEncoder passwordEncoder,
@@ -106,8 +99,6 @@ public class ControlledCopyAuthorizationService {
         this.controlledCopyDistributionBatchRepository = controlledCopyDistributionBatchRepository;
         this.workflowActionPolicyRepository = workflowActionPolicyRepository;
         this.userAccessProfileRepository = userAccessProfileRepository;
-        this.accessProfileWorkflowRoleRepository = accessProfileWorkflowRoleRepository;
-        this.documentWorkflowPoolMemberRepository = documentWorkflowPoolMemberRepository;
         this.documentRecordRepository = documentRecordRepository;
         this.objectAccessEvaluationService = objectAccessEvaluationService;
         this.passwordEncoder = passwordEncoder;
@@ -127,15 +118,12 @@ public class ControlledCopyAuthorizationService {
             ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository,
             WorkflowActionPolicyRepository workflowActionPolicyRepository,
             UserAccessProfileRepository userAccessProfileRepository,
-            AccessProfileWorkflowRoleRepository accessProfileWorkflowRoleRepository,
-            DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository,
             DocumentRecordRepository documentRecordRepository
     ) {
         this(permissionEvaluationService, currentUserService, documentAuthorizationService,
                 controlledCopyPolicyService, secureFileAccessService, controlledCopyRepository,
                 controlledCopyDistributionBatchRepository, workflowActionPolicyRepository,
-                userAccessProfileRepository, accessProfileWorkflowRoleRepository,
-                documentWorkflowPoolMemberRepository, documentRecordRepository, null, null, null);
+                userAccessProfileRepository, documentRecordRepository, null, null, null);
     }
 
     /** Compatibility constructor retained for existing isolated policy tests. */
@@ -150,16 +138,13 @@ public class ControlledCopyAuthorizationService {
             ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository,
             WorkflowActionPolicyRepository workflowActionPolicyRepository,
             UserAccessProfileRepository userAccessProfileRepository,
-            AccessProfileWorkflowRoleRepository accessProfileWorkflowRoleRepository,
-            DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository,
             DocumentRecordRepository documentRecordRepository,
             ObjectAccessEvaluationService objectAccessEvaluationService
     ) {
         this(permissionEvaluationService, currentUserService, documentAuthorizationService,
                 controlledCopyPolicyService, secureFileAccessService, controlledCopyRepository,
                 controlledCopyDistributionBatchRepository, workflowActionPolicyRepository,
-                userAccessProfileRepository, accessProfileWorkflowRoleRepository,
-                documentWorkflowPoolMemberRepository, documentRecordRepository,
+                userAccessProfileRepository, documentRecordRepository,
                 objectAccessEvaluationService, null, null);
     }
 
@@ -353,6 +338,27 @@ public class ControlledCopyAuthorizationService {
         actions.put("uploadEvidence", toCapability(user, ControlledCopyWorkflowAction.UPLOAD_EVIDENCE, context));
         actions.put("expireCopy", toCapability(user, ControlledCopyWorkflowAction.EXPIRE_COPY, context));
         actions.put("cancelRequest", toCapability(user, ControlledCopyWorkflowAction.CANCEL_REQUEST, context));
+        // The recall / withdrawal notice is only meaningful once the copy is no longer valid; the server decides, the UI only shows it.
+        String noticeStatus = normalizeStatus(copy.getStatusCode());
+        if (!"OBSOLETED".equalsIgnoreCase(noticeStatus)) {
+            actions.put("withdrawalNotice", ControlledCopyActionCapabilityDecisionResponse.deny(
+                    "INVALID_CONTROLLED_COPY_STATE", "A notice is available only after the copy is no longer valid.",
+                    "documents.controlled_copy.recall", "WITHDRAWAL_NOTICE", "CONTROLLED_COPY", noticeStatus));
+        } else if (!permissionEvaluationService.hasPermission(user, "documents.controlled_copy.recall")) {
+            actions.put("withdrawalNotice", ControlledCopyActionCapabilityDecisionResponse.deny(
+                    "MISSING_PERMISSION", "You do not have permission to generate the withdrawal notice.",
+                    "documents.controlled_copy.recall", "WITHDRAWAL_NOTICE", "CONTROLLED_COPY", noticeStatus));
+        } else {
+            actions.put("withdrawalNotice", ControlledCopyActionCapabilityDecisionResponse.allow(
+                    "WITHDRAWAL_NOTICE", "CONTROLLED_COPY", noticeStatus, "documents.controlled_copy.recall"));
+        }
+
+        // The Document tab (read-only view of the copy's PDF, including a withdrawn copy); permission-based, decided here.
+        actions.put("viewDocument", permissionEvaluationService.hasPermission(user, "documents.controlled_copy.view_file")
+                ? ControlledCopyActionCapabilityDecisionResponse.allow("VIEW_DOCUMENT", "CONTROLLED_COPY", normalizeStatus(copy.getStatusCode()),
+                        "documents.controlled_copy.view_file")
+                : ControlledCopyActionCapabilityDecisionResponse.deny("MISSING_PERMISSION", "You do not have permission to view the copy's document.",
+                        "documents.controlled_copy.view_file", "VIEW_DOCUMENT", "CONTROLLED_COPY", normalizeStatus(copy.getStatusCode())));
 
         String previewObjectType = resolvePreviewObjectType(copy);
         String previewVersionToken = firstNonBlank(
@@ -436,7 +442,7 @@ public class ControlledCopyAuthorizationService {
         ControlledCopyAuthorizationContext context = buildCopyContext(copy);
         requireStatusAllowedForPreview(copy);
         if (!StringUtils.hasText(token) || !token.equals(copy.getAccessToken())) {
-            throw new AccessDeniedException("Controlled copy access denied");
+            throw new AccessDeniedException("The access token in this link is invalid, or a newer distribution link has since replaced it. Use the most recent distribution e-mail for this controlled copy.");
         }
         requireBaseAccess(user, copy);
         secureFileAccessService.require(
@@ -457,7 +463,7 @@ public class ControlledCopyAuthorizationService {
         ControlledCopyAuthorizationContext context = buildCopyContext(copy);
         requireStatusAllowedForDownload(copy);
         if (!StringUtils.hasText(token) || !token.equals(copy.getAccessToken())) {
-            throw new AccessDeniedException("Controlled copy access denied");
+            throw new AccessDeniedException("The access token in this link is invalid, or a newer distribution link has since replaced it. Use the most recent distribution e-mail for this controlled copy.");
         }
         secureFileAccessService.require(
                 user,
@@ -487,7 +493,7 @@ public class ControlledCopyAuthorizationService {
     public void requireTokenPreviewAccess(ControlledCopyRecord copy, String token, String password) {
         requireStatusAllowedForPreview(copy);
         if (!StringUtils.hasText(token) || !token.equals(copy.getAccessToken())) {
-            throw new AccessDeniedException("Controlled copy access denied");
+            throw new AccessDeniedException("The access token in this link is invalid, or a newer distribution link has since replaced it. Use the most recent distribution e-mail for this controlled copy.");
         }
         requireTokenNotExpired(copy);
         requirePreviewPassword(copy, password);
@@ -499,7 +505,7 @@ public class ControlledCopyAuthorizationService {
     public void requireTokenDownloadAccess(ControlledCopyRecord copy, String token, String password) {
         requireStatusAllowedForDownload(copy);
         if (!StringUtils.hasText(token) || !token.equals(copy.getAccessToken())) {
-            throw new AccessDeniedException("Controlled copy access denied");
+            throw new AccessDeniedException("The access token in this link is invalid, or a newer distribution link has since replaced it. Use the most recent distribution e-mail for this controlled copy.");
         }
         requireTokenNotExpired(copy);
         requirePreviewPassword(copy, password);
@@ -523,15 +529,26 @@ public class ControlledCopyAuthorizationService {
      * Second factor for the emailed preview link — a random password issued alongside the
      * access token. Copies issued before this feature (no password stored) skip the check for
      * backward compatibility; every newly-distributed copy always has one.
+     *
+     * BUGFIX: this used to throw "link has expired" whenever `expectedHash` was blank, which
+     * contradicts the comment above (and ControlledCopyPreviewView.tsx's own matching comment,
+     * "the backend accepts any (including blank) password") -- it permanently locked recipients
+     * out of every controlled copy distributed before this password feature shipped, with a
+     * message that misleadingly blamed link expiry instead of the real cause.
      */
     private void requirePreviewPassword(ControlledCopyRecord copy, String password) {
         String expectedHash = copy.getPreviewPasswordHash();
         if (!StringUtils.hasText(expectedHash)) {
-            throw new AccessDeniedException("This controlled-copy link has expired. Request a new distribution notification.");
+            return;
         }
         if (passwordEncoder == null || !StringUtils.hasText(password) || !passwordEncoder.matches(password.trim(), expectedHash)) {
-            throw new AccessDeniedException("Incorrect preview password");
+            throw new AccessDeniedException("Incorrect preview password. Check the password in the original distribution e-mail and try again.");
         }
+    }
+
+    /** The moment the copy stops being viewable because of its expiry date, or null when it has none. */
+    public Instant previewExpiryInstant(ControlledCopyRecord copy) {
+        return copy == null || copy.getExpiryDate() == null ? null : effectiveExpiryInstant(copy.getExpiryDate());
     }
 
     private void requireTokenNotExpired(ControlledCopyRecord copy) {
@@ -594,6 +611,36 @@ public class ControlledCopyAuthorizationService {
 
     public void requireCancelControlledCopy(UserAccount user, ControlledCopyDistributionBatch batch) {
         require(user, ControlledCopyWorkflowAction.CANCEL_REQUEST, buildBatchContext(batch));
+    }
+
+    /**
+     * Authorization for retrying only the FAILED items of a batch action that has already run
+     * (Distribute/Recall/Cancel Batch). requireDistributeControlledCopy/requireRecallControlledCopy/
+     * requireCancelControlledCopy above are the wrong check here: each is gated to the batch's
+     * PRE-action status via its WorkflowActionPolicy row (DISTRIBUTE_BATCH only has a policy for
+     * fromStatus=READY_FOR_DISTRIBUTION, RECALL_BATCH only for fromStatus=DISTRIBUTED,
+     * CANCEL_REQUEST only for fromStatus=READY_FOR_DISTRIBUTION) -- but the batch-level status
+     * already flips to the POST-action status (Distributed/Obsoleted/Closed - Cancelled)
+     * synchronously, before any per-copy processing (and therefore before a retry could ever be
+     * possible). Reusing that check made every retry call fail with FORBIDDEN unconditionally,
+     * regardless of the caller's actual permission (verified live: the same admin who just
+     * successfully distributed a batch could not retry its failed items). Retry needs the same
+     * base permission and document scope as the original action, without that now-stale status gate.
+     */
+    public void requireRetryControlledCopyBatchAction(UserAccount user, ControlledCopyDistributionBatch batch, ControlledCopyWorkflowAction action) {
+        String requiredPermissionCode = resolveRequiredPermissionCode(action);
+        if (user == null) {
+            throw new ControlledCopyAuthorizationException("AUTH_REQUIRED", "Authentication required.", requiredPermissionCode, action);
+        }
+        if (user.getStatus() != null && user.getStatus().name().equalsIgnoreCase("Inactive")) {
+            throw new ControlledCopyAuthorizationException("USER_INACTIVE", "Current user is inactive.", requiredPermissionCode, action);
+        }
+        if (!StringUtils.hasText(requiredPermissionCode) || !permissionEvaluationService.hasPermission(user, requiredPermissionCode)) {
+            throw new ControlledCopyAuthorizationException("MISSING_PERMISSION", "You do not have permission to perform this controlled copy action.", requiredPermissionCode, action);
+        }
+        if (!hasDocumentScope(user, buildBatchContext(batch))) {
+            throw new ControlledCopyAuthorizationException("OUT_OF_SCOPE", "You are outside the permitted scope for this controlled copy.", requiredPermissionCode, action);
+        }
     }
 
     public void requireUploadEvidence(UserAccount user, ControlledCopyRecord copy) {
@@ -700,6 +747,21 @@ public class ControlledCopyAuthorizationService {
             String objectType,
             String currentStatus
     ) {
+        if (context == null || !StringUtils.hasText(context.documentStatus()) || !StringUtils.hasText(context.revisionStatus())) {
+            return ControlledCopyAuthorizationDecision.denied(
+                    ControlledCopyWorkflowAction.DISTRIBUTE_BATCH, objectType, currentStatus,
+                    "WORKFLOW_POLICY_MISCONFIGURED", "Controlled copy distribution context is incomplete.", resolveRequiredPermissionCode(ControlledCopyWorkflowAction.DISTRIBUTE_BATCH));
+        }
+        if (!"ACTIVE".equalsIgnoreCase(normalizeStatus(context.documentStatus()))) {
+            return ControlledCopyAuthorizationDecision.denied(
+                    ControlledCopyWorkflowAction.DISTRIBUTE_BATCH, objectType, currentStatus,
+                    "DOCUMENT_NOT_ACTIVE", "Controlled copy distribution requires an active document.", resolveRequiredPermissionCode(ControlledCopyWorkflowAction.DISTRIBUTE_BATCH));
+        }
+        if (!"EFFECTIVE".equalsIgnoreCase(normalizeStatus(context.revisionStatus()))) {
+            return ControlledCopyAuthorizationDecision.denied(
+                    ControlledCopyWorkflowAction.DISTRIBUTE_BATCH, objectType, currentStatus,
+                    "REVISION_NOT_EFFECTIVE", "Controlled copy distribution requires an effective revision.", resolveRequiredPermissionCode(ControlledCopyWorkflowAction.DISTRIBUTE_BATCH));
+        }
         if (!isReadyForDistribution(context)) {
             return ControlledCopyAuthorizationDecision.denied(
                     ControlledCopyWorkflowAction.DISTRIBUTE_BATCH, objectType, currentStatus,
@@ -964,31 +1026,6 @@ public class ControlledCopyAuthorizationService {
         return userAccessProfileRepository.existsByUserIdAndProfileCode(user.getId(), profileCode);
     }
 
-    private boolean matchesWorkflowRole(UserAccount user, String workflowRole) {
-        if (!StringUtils.hasText(workflowRole)) {
-            return false;
-        }
-        return userAccessProfileRepository.findByUserId(user.getId()).stream()
-                .anyMatch(up -> accessProfileWorkflowRoleRepository.findByAccessProfileId(up.getAccessProfileId())
-                        .stream()
-                        .anyMatch(role -> workflowRole.equalsIgnoreCase(role.getWorkflowRole())));
-    }
-
-    private boolean matchesDocumentWorkflowPool(UserAccount user, String poolType) {
-        if (!StringUtils.hasText(poolType)) {
-            return false;
-        }
-        boolean legacyMatch = documentWorkflowPoolMemberRepository.findAllByPoolTypeAndActiveTrueOrderByCreatedAtAsc(poolType)
-                .stream()
-                .anyMatch(member -> member.getUser() != null && member.getUser().getId() != null && member.getUser().getId().equals(user.getId()));
-        if (legacyMatch) {
-            return true;
-        }
-        // New catalog path — see RevisionWorkflowAuthorizationService.matchesDocumentWorkflowPool
-        // for the rationale (OR, not cutover, during the 0.5a migration window).
-        return matchesWorkflowRole(user, com.eqms.config.WorkflowPoolMapping.toWorkflowRoleCode(poolType));
-    }
-
     ControlledCopyAuthorizationContext buildCopyContext(ControlledCopyRecord copy) {
         ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
         return ControlledCopyAuthorizationContext.forCopy(
@@ -1014,6 +1051,8 @@ public class ControlledCopyAuthorizationService {
                 batch == null ? null : batch.getId(),
                 batch == null || batch.getRevision() == null ? null : batch.getRevision().getId(),
                 batch == null || batch.getDocument() == null ? null : batch.getDocument().getId(),
+                batch == null || batch.getDocument() == null || batch.getDocument().getStatus() == null ? null : normalizeStatus(batch.getDocument().getStatus().getCode()),
+                batch == null || batch.getRevision() == null || batch.getRevision().getStatus() == null ? null : normalizeStatus(batch.getRevision().getStatus().getCode()),
                 batch == null ? null : normalizeStatus(batch.getStatusCode()),
                 batch == null || batch.getRequestedBy() == null ? null : batch.getRequestedBy().getId(),
                 batch == null || batch.getExpiryDate() == null ? null : effectiveExpiryInstant(batch.getExpiryDate())
@@ -1036,7 +1075,13 @@ public class ControlledCopyAuthorizationService {
         documentAuthorizationService.requireCanAccessControlledCopy(user, batch.getRevision());
     }
 
-    private void requireStatusAllowedForPreview(ControlledCopyRecord copy) {
+    // Public (not private): also called per-request from ControlledCopyService's
+    // requirePreviewAccess() -- the short-lived (15 min) preview-grant check used by every page
+    // fetch/file fetch/download/print within an already-open preview session. Without that second
+    // call site, a copy that gets Obsoleted/Cancelled while a recipient's preview session is
+    // already open would stay viewable for up to the remaining grant TTL, since the grant itself
+    // only verifies signature + expiry, never re-checks lifecycle status.
+    public void requireStatusAllowedForPreview(ControlledCopyRecord copy) {
         if (copy == null) {
             throw new AccessDeniedException("Controlled copy access denied");
         }

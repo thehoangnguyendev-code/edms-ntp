@@ -23,4 +23,19 @@ public class PublicBrandingController {
                 .cacheControl(CacheControl.noStore())
                 .body(systemConfigurationService.getPublicBranding());
     }
+
+    @GetMapping("/logo")
+    public ResponseEntity<byte[]> getLogo() {
+        String data = systemConfigurationService.getPublicBranding().systemLogo();
+        if (data == null || !data.startsWith("data:") || !data.contains(";base64,")) {
+            return ResponseEntity.notFound().build();
+        }
+        int i = data.indexOf(";base64,");
+        String mime = data.substring(5, i);
+        byte[] bytes = java.util.Base64.getDecoder().decode(data.substring(i + 8));
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(mime))
+                .cacheControl(CacheControl.noCache())
+                .body(bytes);
+    }
 }

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { AlertModal } from '@/components/ui/modal/AlertModal';
-import { Eye, EyeOff, Check, X, AlertTriangle, Calendar, Wand2, Lock, Key } from 'lucide-react';
+import { Eye, EyeOff, Check, X, Circle, AlertTriangle, Calendar, Wand2, Lock, Key } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { Button } from '@/components/ui/button/Button';
 import { cn } from '@/components/ui/utils';
 import { WarningBanner } from '@/components/ui/banner/WarningBanner';
 import { FormSection } from '@/components/ui/form/FormSection';
 import { Badge } from '@/components/ui/badge/Badge';
-import { authApi } from '@/services/api/auth';
+import { authApi, type PasswordPolicy } from '@/services/api/auth';
+import { evaluatePasswordPolicy } from '@/features/auth/passwordPolicyRules';
 import { IconCalendarEvent, IconPasswordUser, IconSparkles, IconWorldQuestion } from '@tabler/icons-react';
 
 interface PasswordTabProps {
@@ -28,6 +29,9 @@ interface PasswordTabProps {
     onTogglePasswordVisibility: (field: 'new' | 'confirm') => void;
     onLogoutAllSessionsChange: (checked: boolean) => void;
     passwordChangedAt?: string;
+    passwordPolicy: PasswordPolicy;
+    /** Username / e-mail name / name parts, for the "no user information" rule. */
+    userTokens?: string[];
 }
 
 export const PasswordTab: React.FC<PasswordTabProps> = ({
@@ -39,6 +43,8 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
     onTogglePasswordVisibility,
     onLogoutAllSessionsChange,
     passwordChangedAt,
+    passwordPolicy,
+    userTokens = [],
 }) => {
     const lastChangeText = passwordChangedAt || "Never";
     const [sessions, setSessions] = useState<{
@@ -62,17 +68,8 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
         loadSessions();
     }, []);
 
-    const validatePassword = (password: string) => {
-        return {
-            minLength: password.length >= 8,
-            hasUpperCase: /[A-Z]/.test(password),
-            hasLowerCase: /[a-z]/.test(password),
-            hasNumber: /[0-9]/.test(password),
-            hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
-        };
-    };
-
-    const passwordRequirements = passwordData.newPassword ? validatePassword(passwordData.newPassword) : null;
+    const passwordRequirements = evaluatePasswordPolicy(passwordData.newPassword, passwordPolicy, userTokens);
+    const hasTypedPassword = passwordData.newPassword.length > 0;
 
     // Calculate days until password expiry (default 90 days after last change)
     const getExpiryTextAndDays = () => {
@@ -105,21 +102,26 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
         const special = '!@#$%^&*()';
 
         const allChars = lowercase + uppercase + numbers + special;
-        let password = '';
-
-        // Ensure at least one character from each category
-        password += lowercase[Math.floor(Math.random() * lowercase.length)];
-        password += uppercase[Math.floor(Math.random() * uppercase.length)];
-        password += numbers[Math.floor(Math.random() * numbers.length)];
-        password += special[Math.floor(Math.random() * special.length)];
-
-        // Fill the rest randomly (total 12 characters)
-        for (let i = 4; i < 12; i++) {
-            password += allChars[Math.floor(Math.random() * allChars.length)];
+        const length = Math.max(12, passwordPolicy.passwordMinLength);
+        const pick = (chars: string) => {
+            const buffer = new Uint32Array(1);
+            crypto.getRandomValues(buffer);
+            return chars[buffer[0] % chars.length];
+        };
+        const build = () => {
+            const chars = [pick(lowercase), pick(uppercase), pick(numbers), pick(special)];
+            while (chars.length < length) chars.push(pick(allChars));
+            for (let i = chars.length - 1; i > 0; i -= 1) {
+                const j = Math.floor((crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32) * (i + 1));
+                [chars[i], chars[j]] = [chars[j], chars[i]];
+            }
+            return chars.join('');
+        };
+        // Retry until the candidate also satisfies the optional rules (repeats, sequences, ...).
+        let password = build();
+        for (let attempt = 0; attempt < 50 && !evaluatePasswordPolicy(password, passwordPolicy, userTokens).isValid; attempt += 1) {
+            password = build();
         }
-
-        // Shuffle the password
-        password = password.split('').sort(() => Math.random() - 0.5).join('');
 
         onPasswordChange('newPassword', password);
         onPasswordChange('confirmPassword', password);
@@ -175,18 +177,17 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left Column - Password Management */}
                 <div className="space-y-6">
-                    {/* Last Password Change Info */}
-                    <div className="p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2 sm:gap-3">
-                        <IconCalendarEvent className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                            <h4 className="text-xs sm:text-sm font-medium text-slate-900">Last Password Change</h4>
-                            <p className="text-xs sm:text-sm text-slate-600 mt-0.5 truncate">{lastChangeText}</p>
-                        </div>
-                    </div>
-
                     {/* Change Password Section */}
                     <FormSection title="Change Password" icon={<IconPasswordUser className="h-4 w-4" />}>
                         <div className="space-y-4">
+                            {/* Last Password Change Info */}
+                            <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                <IconCalendarEvent className="h-4 w-4 text-slate-600 flex-shrink-0" />
+                                <p className="text-xs sm:text-sm text-slate-600 truncate">
+                                    Last password change: <span className="font-medium text-slate-900">{lastChangeText}</span>
+                                </p>
+                            </div>
+
                             {/* New Password */}
                             <div>
                                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
@@ -265,51 +266,46 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                                 )}
                             </div>
 
-                            {/* Password Strength */}
-                            {passwordData.newPassword && (
-                                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                    <p className="text-xs sm:text-sm font-medium text-slate-700 mb-2">Password Strength:</p>
-                                    <div className="space-y-1.5">
-                                        {[
-                                            { key: 'minLength', label: 'At least 8 characters' },
-                                            { key: 'hasUpperCase', label: 'One uppercase letter (A-Z)' },
-                                            { key: 'hasLowerCase', label: 'One lowercase letter (a-z)' },
-                                            { key: 'hasNumber', label: 'One number (0-9)' },
-                                            { key: 'hasSpecialChar', label: 'One special character (!@#$%^&*)' },
-                                        ].map((req) => (
-                                            <div
-                                                key={req.key}
-                                                className={cn(
-                                                    "flex items-center gap-2 text-xs",
-                                                    passwordRequirements?.[req.key as keyof typeof passwordRequirements] ? "text-emerald-600" : "text-slate-500"
-                                                )}
-                                            >
-                                                {passwordRequirements?.[req.key as keyof typeof passwordRequirements] ? (
-                                                    <Check className="h-3.5 w-3.5" />
-                                                ) : (
-                                                    <X className="h-3.5 w-3.5" />
-                                                )}
-                                                <span>{req.label}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                            {/* Password Requirements (always visible so users know the rules before typing) */}
+                            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                <p className="text-xs sm:text-sm font-medium text-slate-700 mb-2">Password Requirements</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                                    {passwordRequirements.checks.map((req) => (
+                                        <div
+                                            key={req.key}
+                                            className={cn(
+                                                "flex items-center gap-2 text-xs",
+                                                !hasTypedPassword ? "text-slate-500" : req.met ? "text-emerald-600" : "text-red-500"
+                                            )}
+                                        >
+                                            {!hasTypedPassword ? (
+                                                <Circle className="h-3.5 w-3.5" />
+                                            ) : req.met ? (
+                                                <Check className="h-3.5 w-3.5" />
+                                            ) : (
+                                                <X className="h-3.5 w-3.5" />
+                                            )}
+                                            <span>{req.label}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            )}
-                        </div>
-                        {/* Password Options - Merged */}
-                        <div className="pt-4 mt-2 flex items-start gap-2">
-                            <Checkbox
-                                id="logoutAllSessions"
-                                checked={logoutAllSessions}
-                                onChange={onLogoutAllSessionsChange}
-                            />
-                            <div className="flex-1">
-                                <label htmlFor="logoutAllSessions" className="text-xs sm:text-sm font-medium text-slate-700 cursor-pointer block">
-                                    Log out from all sessions after password change
-                                </label>
-                                <p className="text-xs text-slate-600 mt-0.5">
-                                    When enabled, you will be logged out from all devices and browsers after successfully changing your password.
-                                </p>
+                            </div>
+
+                            {/* After-change option */}
+                            <div className="flex items-start gap-2">
+                                <Checkbox
+                                    id="logoutAllSessions"
+                                    checked={logoutAllSessions}
+                                    onChange={onLogoutAllSessionsChange}
+                                />
+                                <div className="flex-1">
+                                    <label htmlFor="logoutAllSessions" className="text-xs sm:text-sm font-medium text-slate-700 cursor-pointer block">
+                                        Log out from all sessions after password change
+                                    </label>
+                                    <p className="text-xs text-slate-600 mt-0.5">
+                                        When enabled, you will be logged out from all devices and browsers after successfully changing your password.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </FormSection>

@@ -69,14 +69,27 @@ public record ControlledCopyAuthorizationContext(
             UUID requesterUserId,
             Instant expiryAt
     ) {
+        return forBatch(batchId, revisionId, documentId, null, null, batchStatus, requesterUserId, expiryAt);
+    }
+
+    public static ControlledCopyAuthorizationContext forBatch(
+            UUID batchId,
+            UUID revisionId,
+            UUID documentId,
+            String documentStatus,
+            String revisionStatus,
+            String batchStatus,
+            UUID requesterUserId,
+            Instant expiryAt
+    ) {
         return new ControlledCopyAuthorizationContext(
                 null,
                 batchId,
                 null,
                 revisionId,
                 documentId,
-                null,
-                null,
+                documentStatus,
+                revisionStatus,
                 null,
                 null,
                 batchStatus,

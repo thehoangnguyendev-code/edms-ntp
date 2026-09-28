@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigateWithLoading, usePortalDropdown, useTableDragScroll } from "@/hooks";
 import { ROUTES } from "@/app/routes.constants";
@@ -12,19 +13,21 @@ import { FullPageLoading, SectionLoading } from "@/components/ui/loading/Loading
 import { cn } from "@/components/ui/utils";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import type { PortalDropdownMenuProps } from "@/components/ui/dropdown/PortalDropdownMenu";
-import { IconEye, IconInfoCircle, IconPencilMinus, IconPlus } from "@tabler/icons-react";
+import { IconInfoCircle, IconPencilMinus, IconPlus, IconHistory, IconSparkles, IconArrowRight, IconFileUpload, IconFilePlus } from "@tabler/icons-react";
 import { ChevronDown, ChevronUp, ChevronRight, Download, History, MoreVertical, Edit, FileStack } from "lucide-react";
 import { formatDateTimeLong, formatDateUS } from "@/utils/format";
 import { DocumentFilters } from "@/features/documents/shared/components/DocumentFilters";
 import { ExpandedDocumentRow } from "@/features/documents/shared/components/ExpandedDocumentRow";
 import { useDocumentServerTable } from "@/features/documents/hooks";
 import { useDocumentPermissions } from "@/features/documents/shared/useDocumentPermissions";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   buildControlledCopyRequestStateFromDocument,
   canRequestControlledCopyFromDocument,
   isDraftDocumentMaster,
 } from "@/features/documents/shared/controlledCopyRequest";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
+import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast";
 import { documentApi } from "@/services/api/documents";
 import { buildDocumentDetailSnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
@@ -102,13 +105,46 @@ const RowMenu: React.FC<RowMenuProps> = ({
   );
 };
 
+// "New Document" choice modal card -- a full-surface clickable option, Swiss/minimalist styling
+// (soft neutral by default, single accent color revealed only on hover/focus so the two options
+// read as equally weighted choices, not a pre-picked "recommended" one).
+const NewDocumentChoiceCard: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  cta: string;
+  onClick: () => void;
+}> = ({ icon, title, description, cta, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group flex flex-col rounded-xl border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:border-emerald-300 hover:shadow-md hover:shadow-emerald-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+  >
+    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition-colors duration-200 group-hover:bg-emerald-50 group-hover:text-emerald-600">
+      {icon}
+    </span>
+
+    <span className="mt-3 block text-sm font-semibold text-slate-900">{title}</span>
+    <span className="mt-1 block flex-1 text-xs leading-5 text-slate-500">{description}</span>
+
+    <span className="mt-3 flex items-center gap-1 border-t border-slate-100 pt-3 text-xs font-semibold text-slate-700 transition-colors duration-200 group-hover:text-emerald-700">
+      {cta}
+      <IconArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+    </span>
+  </button>
+);
+
 export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDocument }) => {
   const { user } = useAuth();
+  const location = useLocation();
   const { canCreateDocumentShell } = useDocumentPermissions();
+  const { hasPermissionAlias } = usePermissions();
+  const canLegacyImport = hasPermissionAlias("documents.legacy_import.manage");
   const { showToast } = useToast();
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
+  const [isNewDocChoiceOpen, setIsNewDocChoiceOpen] = useState(false);
   const [expandedDocumentId, setExpandedDocumentId] = React.useState<string | null>(null);
   const {
     searchQuery,
@@ -170,6 +206,10 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
   const showNewDocButton = viewType === "all";
   const canCreateDocument = canCreateDocumentShell;
   const canCurrentUserEditDocument = (doc: DocumentListItem) => {
+    // After the DCO saved "Edit Revision for Upgrade", the Author of that (Active) document gets
+    // "Edit Document" to go and Upload Revision. The backend decides (author, permission, no open
+    // revision, configuration saved); nothing is inferred here.
+    if (doc.canEditForUpgrade) return true;
     // Edit Document only applies to a Document Master that is still Draft and has never
     // had a revision created against it yet — once any revision exists, editing moves to
     // the revision workflow itself.
@@ -190,6 +230,8 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
       return;
     }
 
+    const returnTo = `${location.pathname}${location.search}`;
+
     try {
       await navigateToPrepared(
         tab === "audit" ? `${ROUTES.DOCUMENTS.DETAIL(documentId)}?tab=audit` : ROUTES.DOCUMENTS.DETAIL(documentId),
@@ -204,13 +246,13 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
             ...(auditTrail ? { preloadedDocumentAuditTrail: auditTrail } : {}),
           };
         },
-        { state: { fromOwned } },
+        { state: { fromOwned, returnTo } },
       );
     } catch (error) {
       console.error("Failed to preload document before navigation", error);
       navigateTo(
         tab === "audit" ? `${ROUTES.DOCUMENTS.DETAIL(documentId)}?tab=audit` : ROUTES.DOCUMENTS.DETAIL(documentId),
-        { state: { fromOwned } }
+        { state: { fromOwned, returnTo } }
       );
     }
   };
@@ -405,7 +447,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                 </>
               )}
             </Button>
-            {showNewDocButton && canCreateDocument && (
+            {showNewDocButton && canCreateDocument && !canLegacyImport && (
               <Button
                 onClick={() => {
                   clearNewDocumentDraftState();
@@ -418,90 +460,89 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                 New Document
               </Button>
             )}
+            {showNewDocButton && canCreateDocument && canLegacyImport && (
+              <Button onClick={() => setIsNewDocChoiceOpen(true)} size="sm" className="whitespace-nowrap gap-2">
+                <IconPlus className="h-4 w-4" />
+                New Document
+              </Button>
+            )}
           </>
         }
       />
+
+      <FormModal
+        isOpen={isNewDocChoiceOpen}
+        onClose={() => setIsNewDocChoiceOpen(false)}
+        title="New Document"
+        description="Choose how this document should be created."
+        showFooter={false}
+        size="xl"
+      >
+        <div className={cn("grid gap-3", canLegacyImport && "sm:grid-cols-2")}>
+          <NewDocumentChoiceCard
+            icon={<IconFilePlus className="h-5 w-5" />}
+            title="New Document"
+            description="Create a brand-new document and take it through the normal Draft, Review, Approval and Publishing workflow."
+            cta="Start from scratch"
+            onClick={() => {
+              setIsNewDocChoiceOpen(false);
+              clearNewDocumentDraftState();
+              navigateTo(ROUTES.DOCUMENTS.NEW);
+            }}
+          />
+
+          {canLegacyImport && (
+            <NewDocumentChoiceCard
+              icon={<IconFileUpload className="h-5 w-5" />}
+              title="Legacy Import"
+              description="Bring in a document that already exists outside the system (e.g. a paper original) — one revision, or its entire historical revision chain — publishing it directly as Effective."
+              cta="Import existing document"
+              onClick={() => {
+                setIsNewDocChoiceOpen(false);
+                navigateTo(ROUTES.DOCUMENTS.LEGACY_IMPORT);
+              }}
+            />
+          )}
+        </div>
+      </FormModal>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         <div className="p-4 md:p-5 flex-1 flex flex-col">
           <DocumentFilters
             searchQuery={searchQuery}
-            onSearchChange={(value) => {
-              setSearchQuery(value);
-              setCurrentPage(1);
-            }}
+            onSearchChange={setSearchQuery}
             statusFilter={statusFilter as any}
-            onStatusChange={(value) => {
-              setStatusFilter(value as any);
-              setCurrentPage(1);
-            }}
+            onStatusChange={(value) => setStatusFilter(value as any)}
             typeFilter={typeFilter as any}
-            onTypeChange={(value) => {
-              setTypeFilter(value as any);
-              setCurrentPage(1);
-            }}
+            onTypeChange={(value) => setTypeFilter(value as any)}
             departmentFilter={departmentFilter}
-            onDepartmentChange={(value) => {
-              setDepartmentFilter(value);
-              setCurrentPage(1);
-            }}
+            onDepartmentChange={setDepartmentFilter}
             relatedDocumentFilter={relatedDocumentFilter}
-            onRelatedDocumentFilterChange={(value) => {
-              setRelatedDocumentFilter(value);
-              setCurrentPage(1);
-            }}
+            onRelatedDocumentFilterChange={setRelatedDocumentFilter}
             correlatedDocumentFilter={correlatedDocumentFilter}
-            onCorrelatedDocumentFilterChange={(value) => {
-              setCorrelatedDocumentFilter(value);
-              setCurrentPage(1);
-            }}
+            onCorrelatedDocumentFilterChange={setCorrelatedDocumentFilter}
             templateFilter={templateFilter}
-            onTemplateFilterChange={(value) => {
-              setTemplateFilter(value);
-              setCurrentPage(1);
-            }}
+            onTemplateFilterChange={setTemplateFilter}
             authorFilter={authorFilter}
             onAuthorChange={(value) => {
               if (!authorFilterDisabled) {
                 setAuthorFilter(value);
-                setCurrentPage(1);
               }
             }}
             createdFromDate={createdFromDate}
-            onCreatedFromDateChange={(value) => {
-              setCreatedFromDate(value);
-              setCurrentPage(1);
-            }}
+            onCreatedFromDateChange={setCreatedFromDate}
             createdToDate={createdToDate}
-            onCreatedToDateChange={(value) => {
-              setCreatedToDate(value);
-              setCurrentPage(1);
-            }}
+            onCreatedToDateChange={setCreatedToDate}
             effectiveFromDate={effectiveFromDate}
-            onEffectiveFromDateChange={(value) => {
-              setEffectiveFromDate(value);
-              setCurrentPage(1);
-            }}
+            onEffectiveFromDateChange={setEffectiveFromDate}
             effectiveToDate={effectiveToDate}
-            onEffectiveToDateChange={(value) => {
-              setEffectiveToDate(value);
-              setCurrentPage(1);
-            }}
+            onEffectiveToDateChange={setEffectiveToDate}
             validFromDate={validFromDate}
-            onValidFromDateChange={(value) => {
-              setValidFromDate(value);
-              setCurrentPage(1);
-            }}
+            onValidFromDateChange={setValidFromDate}
             validToDate={validToDate}
-            onValidToDateChange={(value) => {
-              setValidToDate(value);
-              setCurrentPage(1);
-            }}
+            onValidToDateChange={setValidToDate}
             businessUnitFilter={businessUnitFilter}
-            onBusinessUnitChange={(value) => {
-              setBusinessUnitFilter(value);
-              setCurrentPage(1);
-            }}
+            onBusinessUnitChange={setBusinessUnitFilter}
             onClearFilters={clearFilters}
             authorFilterDisabled={authorFilterDisabled}
             statusOptions={statusOptions}
@@ -564,7 +605,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
             <tbody className="divide-y divide-slate-200 bg-white">
               {!isLoading && documents.length === 0 ? (
                 <tr>
-                  <td colSpan={tableColumns.length + 2} className="py-12 text-center">
+                  <td colSpan={tableColumns.length + 2} className="p-0">
                     <TableEmptyState
                       title={error ? "Unable to load documents" : "No Documents Found"}
                       description={error || "We couldn't find any documents matching your filters. Try adjusting your search criteria."}
@@ -604,7 +645,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                       {doc.documentName || "-"}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge color={getBadgeColor(doc.statusCode, doc.status)}>
+                      <Badge color={getBadgeColor(doc.statusCode, doc.status)} size="sm">
                         {doc.status}
                       </Badge>
                     </td>
@@ -652,6 +693,12 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                           void navigateToDocument(doc.id);
                         }}
                         onEdit={() => {
+                          // An Active document being upgraded is not an initial draft: the Author goes to its
+                          // detail page, where Upload Revision is offered once the DCO saved the configuration.
+                          if (doc.canEditForUpgrade) {
+                            void navigateToDocument(doc.id);
+                            return;
+                          }
                           void handleEditDocument(doc.id);
                         }}
                         onRequestControlledCopy={() => {
@@ -693,7 +740,6 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                     onPageChange={setCurrentPage}
                     onItemsPerPageChange={(value) => {
                       setItemsPerPage(value);
-                      setCurrentPage(1);
                     }}
                     itemsPerPageOptions={[10, 20, 50]}
                   />

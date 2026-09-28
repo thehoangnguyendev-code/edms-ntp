@@ -149,7 +149,7 @@ export const PermissionSplitExplorer: React.FC<
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search permissions by name, code, description…"
-              className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-8 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="h-10 w-full rounded-lg border border-slate-200 pl-9 pr-8 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 sm:h-9"
             />
             {search && (
               <button
@@ -206,18 +206,18 @@ export const PermissionSplitExplorer: React.FC<
                     type="button"
                     onClick={() => setActiveModule(module)}
                     className={cn(
-                      "min-w-fit rounded-lg border px-3 py-2 text-left transition-colors lg:block lg:w-full",
+                      "min-w-fit rounded-lg border px-3 py-2.5 text-left transition-colors lg:block lg:w-full",
                       isActive
                         ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                         : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white",
                     )}
                   >
-                    <span className="block truncate text-sm font-semibold">
+                    <span className="block truncate text-sm font-semibold leading-5">
                       {module}
                     </span>
                     <span
                       className={cn(
-                        "mt-0.5 block text-xs",
+                        "mt-0.5 block text-xs leading-4",
                         isActive ? "text-emerald-600" : "text-slate-400",
                       )}
                     >
@@ -229,7 +229,7 @@ export const PermissionSplitExplorer: React.FC<
             </div>
           </aside>
 
-          <div className="min-w-0 flex-1 overflow-y-auto p-2 md:p-3">
+          <div className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-4">
             {activeModuleGroups.map((group) => (
               <PermissionResourceGroup
                 key={group.id}
@@ -247,8 +247,8 @@ export const PermissionSplitExplorer: React.FC<
           </div>
 
           <aside className="border-t border-slate-200 bg-slate-50/40 lg:w-72 lg:shrink-0 lg:border-l lg:border-t-0">
-            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5">
-              <span className="text-xs font-semibold text-slate-600">Selected ({selectedPermissions.length})</span>
+            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5 sm:px-4">
+              <span className="text-sm font-semibold text-slate-700">Selected ({selectedPermissions.length})</span>
               {!readOnly && selectedPermissions.length > 0 && (
                 <button
                   type="button"
@@ -261,7 +261,7 @@ export const PermissionSplitExplorer: React.FC<
                 </button>
               )}
             </div>
-            <div className="max-h-56 space-y-1.5 overflow-y-auto p-2 lg:h-[calc(100%-42px)] lg:max-h-none">
+            <div className="max-h-56 space-y-2 overflow-y-auto p-3 lg:h-[calc(100%-46px)] lg:max-h-none">
               {selectedPermissions.length === 0 ? (
                 <p className="px-2 py-4 text-center text-xs text-slate-400">
                   Selected permissions will appear here.
@@ -270,12 +270,12 @@ export const PermissionSplitExplorer: React.FC<
                 selectedPermissions.map((permission) => {
                   const locked = lockedCodes?.has(permission.id) ?? false;
                   return (
-                    <div key={permission.id} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2">
+                    <div key={permission.id} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
                       <div className="flex items-start gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold text-emerald-800">{permission.label}</p>
-                          <p className="mt-0.5 break-all font-mono text-[10px] leading-tight text-emerald-600">{permission.id}</p>
-                          <p className="mt-1 truncate text-[10px] text-slate-500">{permission.module}</p>
+                          <p className="text-sm font-medium leading-5 text-emerald-800">{permission.label}</p>
+                          <p className="mt-0.5 break-all text-[11px] font-medium leading-4 text-emerald-700 sm:text-xs">{permission.id}</p>
+                          <p className="mt-1 text-xs text-slate-600">{permission.module}</p>
                         </div>
                         {!readOnly && !locked && (
                           <button

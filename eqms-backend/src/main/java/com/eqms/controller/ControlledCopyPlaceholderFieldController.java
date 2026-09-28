@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/settings/controlled-copy-placeholder-fields")
+@RequestMapping("/documents/administration/controlled-copies-policy/placeholder-fields")
 public class ControlledCopyPlaceholderFieldController {
 
     private final ControlledCopyPlaceholderFieldService service;
@@ -28,6 +28,13 @@ public class ControlledCopyPlaceholderFieldController {
     @GetMapping
     public ResponseEntity<List<ControlledCopyPlaceholderFieldResponse>> list() {
         return ResponseEntity.ok(service.list());
+    }
+
+    /** Placeholder keys the server fills in for every controlled copy; a custom field can never use one. */
+    @GetMapping("/reserved-keys")
+    public ResponseEntity<List<String>> reservedKeys() {
+        return ResponseEntity.ok(com.eqms.service.ControlledCopyPlaceholderValueBuilder.RESERVED_KEYS.stream()
+                .filter(key -> !key.startsWith("__")).sorted().toList());
     }
 
     @PostMapping

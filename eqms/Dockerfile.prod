@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1.7
+# Production image: static build served by nginx (minified + hashed assets, gzip, long-lived caching,
+# security headers). The default Dockerfile runs the Vite dev server and is meant for local development only.
+ARG NODE_IMAGE=mirror.gcr.io/library/node:22-alpine
+ARG NGINX_IMAGE=mirror.gcr.io/library/nginx:1.27-alpine
+
+FROM ${NODE_IMAGE} AS build
+WORKDIR /app
+COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+COPY . .
+# VITE_* values are baked into the bundle at build time.
+ARG VITE_API_BASE_URL
+ARG VITE_APP_URL
+ARG VITE_APP_ENV=production
+ARG VITE_ONLYOFFICE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_APP_URL=$VITE_APP_URL VITE_APP_ENV=$VITE_APP_ENV VITE_ONLYOFFICE_URL=$VITE_ONLYOFFICE_URL
+# `vite build` directly: the `npm run build` post-step zips dist for manual deployment and needs `zip`.
+RUN npx vite build
+
+FROM ${NGINX_IMAGE}
+# Origins used by the Content-Security-Policy; substituted into the template when the container starts.
+ENV API_ORIGIN=http://localhost:5000 ONLYOFFICE_ORIGIN=http://localhost:8082
+# The image renders every *.template under /etc/nginx/templates into /etc/nginx/conf.d (keeping sub-folders).
+COPY deploy/nginx/security-headers.conf /etc/nginx/templates/snippets/security-headers.conf.template
+COPY deploy/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1/healthz || exit 1

@@ -41,20 +41,29 @@ export const securityAuthorization = (navigate?: NavigateFn): BreadcrumbItem[] =
   { label: "Security & Authorization", isActive: true },
 ];
 
+// Document Administration moved from Document Control into System Administration.
 const documentControlBase = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...appSettingsBase(navigate),
-  { label: "Document Control" },
+  ...systemAdminBase(navigate),
+  { label: "Document Administration" },
+];
+
+/** Base breadcrumb path for the "User Administration" nested group (User Management,
+ *  Time-Limited User Roles, Logged in Users) -- a nav-only grouping label, not itself a page
+ *  (mirrors how "Advanced" works for security-advanced screens). */
+const userAdministrationBase = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...securityAuthorizationBase(navigate),
+  { label: "User Administration" },
 ];
 
 // --- Exported Breadcrumb Builders ---
 
 export const userManagement = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...securityAuthorizationBase(navigate),
+  ...userAdministrationBase(navigate),
   { label: "User Management", isActive: true },
 ];
 
 export const addUser = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...securityAuthorizationBase(navigate),
+  ...userAdministrationBase(navigate),
   { label: "User Management", onClick: () => navigate?.(ROUTES.SECURITY.USERS) },
   { label: "Add User", isActive: true },
 ];
@@ -63,7 +72,7 @@ export const editUser = (
   navigate?: NavigateFn,
   employeeId?: string
 ): BreadcrumbItem[] => [
-  ...securityAuthorizationBase(navigate),
+  ...userAdministrationBase(navigate),
   { label: "User Management", onClick: () => navigate?.(ROUTES.SECURITY.USERS) },
   { label: employeeId || "Edit User", isActive: true },
 ];
@@ -72,9 +81,41 @@ export const userProfile = (
   navigate?: NavigateFn,
   _fullName?: string
 ): BreadcrumbItem[] => [
-  ...securityAuthorizationBase(navigate),
+  ...userAdministrationBase(navigate),
   { label: "User Management", onClick: () => navigate?.(ROUTES.SECURITY.USERS) },
   { label: "User Profile", isActive: true },
+];
+
+export const timeLimitedUsers = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...userAdministrationBase(navigate),
+  { label: "Time-Limited User", isActive: true },
+];
+
+export const createTimeLimitedUser = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...userAdministrationBase(navigate),
+  { label: "Time-Limited User", onClick: () => navigate?.(ROUTES.SECURITY.TIME_LIMITED_USERS) },
+  { label: "New Time-Limited User", isActive: true },
+];
+
+export const timeLimitedUserDetail = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...userAdministrationBase(navigate),
+  { label: "Time-Limited User", onClick: () => navigate?.(ROUTES.SECURITY.TIME_LIMITED_USERS) },
+  { label: "Time-Limited User Details", isActive: true },
+];
+
+export const editTimeLimitedUser = (navigate?: NavigateFn, id?: string): BreadcrumbItem[] => [
+  ...userAdministrationBase(navigate),
+  { label: "Time-Limited User", onClick: () => navigate?.(ROUTES.SECURITY.TIME_LIMITED_USERS) },
+  {
+    label: "Time-Limited User Details",
+    onClick: id ? () => navigate?.(ROUTES.SECURITY.TIME_LIMITED_USERS_DETAIL(id)) : undefined,
+  },
+  { label: "Edit Time-Limited User", isActive: true },
+];
+
+export const loggedInUsers = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...userAdministrationBase(navigate),
+  { label: "Logged in Users", isActive: true },
 ];
 
 export const rolePermissions = (navigate?: NavigateFn): BreadcrumbItem[] => [
@@ -127,7 +168,7 @@ export const documentAdministration = (
 };
 
 export const systemInformation = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...systemAdminBase(navigate),
+  dashboard(navigate),
   { label: "System Information", isActive: true },
 ];
 
@@ -146,6 +187,33 @@ export const roleDetail = (
     { label: labels[mode || "view"] || roleName || "Access Profile Details", isActive: true },
   ];
 };
+
+export const countries = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...appSettingsBase(navigate),
+  { label: "Countries", isActive: true },
+];
+
+/** Base breadcrumb path for the "Education" nested group (Degree Levels, Schools). */
+const educationBase = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...appSettingsBase(navigate),
+  { label: "Education" },
+];
+
+export const educationDegreeLevels = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...educationBase(navigate),
+  { label: "Degree Levels", isActive: true },
+];
+
+export const educationSchools = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...educationBase(navigate),
+  { label: "Schools", isActive: true },
+];
+
+export const educationSchoolEditor = (navigate: NavigateFn | undefined, mode: "new" | "edit"): BreadcrumbItem[] => [
+  ...educationBase(navigate),
+  { label: "Schools", onClick: () => navigate?.(ROUTES.SETTINGS.EDUCATION_SCHOOLS) },
+  { label: mode === "new" ? "New School" : "Edit School", isActive: true },
+];
 
 export const dictionaries = (
   navigate?: NavigateFn,
@@ -231,17 +299,17 @@ export const publishingTemplates = (navigate?: NavigateFn): BreadcrumbItem[] => 
 
 export const publishingTemplateCreate = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...documentControlBase(navigate),
-  { label: "Publishing Templates", onClick: () => navigate?.(ROUTES.SETTINGS.PUBLISHING_TEMPLATES) },
+  { label: "Publishing Templates", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES) },
   { label: "New Publishing Template", isActive: true },
 ];
 
 export const publishingTemplateEdit = (
   navigate?: NavigateFn,
-  templateName?: string,
+  _templateName?: string,
 ): BreadcrumbItem[] => [
   ...documentControlBase(navigate),
-  { label: "Publishing Templates", onClick: () => navigate?.(ROUTES.SETTINGS.PUBLISHING_TEMPLATES) },
-  { label: templateName || "Edit Publishing Template", isActive: true },
+  { label: "Publishing Templates", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES) },
+  { label: "Edit Publishing Template", isActive: true },
 ];
 
 export const controlledCopiesPolicy = (navigate?: NavigateFn): BreadcrumbItem[] => [
@@ -249,8 +317,118 @@ export const controlledCopiesPolicy = (navigate?: NavigateFn): BreadcrumbItem[] 
   { label: "Controlled Copies Policy", isActive: true },
 ];
 
+export const documentProperties = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Document Properties", isActive: true },
+];
+
+export const documentNameFormats = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Document Name Formats", isActive: true },
+];
+
+export const documentNameFormatCreate = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Document Name Formats", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS) },
+  { label: "New Document Name Format", isActive: true },
+];
+
+export const documentNameFormatEdit = (navigate?: NavigateFn, _formatName?: string): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Document Name Formats", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS) },
+  { label: "Edit Document Name Format", isActive: true },
+];
+
+export const knowledgeComponents = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Knowledge Category Components", isActive: true },
+];
+
+export const knowledgeComponentCreate = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Knowledge Category Components", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS) },
+  { label: "New Knowledge Category Component", isActive: true },
+];
+
+export const knowledgeComponentEdit = (navigate?: NavigateFn, componentName?: string): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Knowledge Category Components", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS) },
+  { label: componentName || "Edit Knowledge Category Component", isActive: true },
+];
+
+export const knowledgeCategoryCreate = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Knowledge Categories Hierarchies", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES) },
+  { label: "New Knowledge Categories Hierarchy", isActive: true },
+];
+
+export const knowledgeCategoryEdit = (navigate?: NavigateFn, hierarchyName?: string): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Knowledge Categories Hierarchies", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES) },
+  { label: hierarchyName || "Edit Knowledge Categories Hierarchy", isActive: true },
+];
+
+export const documentComponentsAdmin = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Document Components", isActive: true },
+];
+
+export const documentComponentCreate = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Document Components", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS) },
+  { label: "New Document Component", isActive: true },
+];
+
+export const documentComponentEdit = (navigate?: NavigateFn, _componentName?: string): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Document Components", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS) },
+  { label: "Edit Document Component", isActive: true },
+];
+
+export const documentTypesAdmin = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Document Types", isActive: true },
+];
+
+export const documentSubTypesAdmin = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Document Sub-Types", isActive: true },
+];
+
+export const knowledgeCategories = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Knowledge Categories Hierarchies", isActive: true },
+];
+
+/** Base breadcrumb path for the "Training Administration" nested group (coming soon
+ *  sub-screens: Training Properties, Requirement Templates, Create a Quiz, Curriculums). */
+const trainingAdministrationBase = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...systemAdminBase(navigate),
+  { label: "Training Administration" },
+];
+
+export const trainingProperties = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...trainingAdministrationBase(navigate),
+  { label: "Training Properties", isActive: true },
+];
+
+export const requirementTemplates = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...trainingAdministrationBase(navigate),
+  { label: "Requirement Templates", isActive: true },
+];
+
+export const createQuiz = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...trainingAdministrationBase(navigate),
+  { label: "Create a Quiz", isActive: true },
+];
+
+export const curriculums = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...trainingAdministrationBase(navigate),
+  { label: "Curriculums", isActive: true },
+];
+
 export const electronicSignatureSettings = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...securityAuthorizationBase(navigate),
+  ...systemAdminBase(navigate),
   { label: "E-Sign Config", isActive: true },
 ];
 
@@ -307,12 +485,12 @@ export const workflowAuthorization = (navigate?: NavigateFn, activeTabLabel?: st
 export const authorizationDiagnostics = (navigate?: NavigateFn, activeTabLabel?: string): BreadcrumbItem[] =>
   activeTabLabel
     ? [
-        ...securityAuthorizationBase(navigate),
+        ...securityAdvancedBase(navigate),
         { label: "Engine Diagnostics", onClick: () => navigate?.(ROUTES.SECURITY.AUTHORIZATION_DIAGNOSTICS) },
         { label: activeTabLabel, isActive: true },
       ]
     : [
-        ...securityAuthorizationBase(navigate),
+        ...securityAdvancedBase(navigate),
         { label: "Engine Diagnostics", isActive: true },
       ];
 
@@ -321,7 +499,7 @@ export const authorizationDiagnostics = (navigate?: NavigateFn, activeTabLabel?:
  */
 export const lifecyclePoliciesSubPage = (
   navigate: NavigateFn | undefined,
-  tab: "Transitions" | "Capabilities",
+  tab: "Transition Policies" | "State Capabilities",
   leafLabel: string,
 ): BreadcrumbItem[] => [
   ...securityAuthorizationBase(navigate),
@@ -330,7 +508,7 @@ export const lifecyclePoliciesSubPage = (
     label: tab,
     onClick: () =>
       navigate?.(
-        tab === "Capabilities"
+        tab === "State Capabilities"
           ? `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}?tab=capabilities`
           : `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}?tab=transitions`,
       ),
@@ -353,13 +531,13 @@ export const objectAccessRules = (navigate?: NavigateFn, activeTabLabel?: string
 export const segregationOfDuties = (navigate?: NavigateFn, activeTabLabel?: string): BreadcrumbItem[] =>
   activeTabLabel
     ? [
-        ...securityAuthorizationBase(navigate),
-        { label: "Governance Rules", onClick: () => navigate?.(ROUTES.SECURITY.SOD) },
+        ...securityAdvancedBase(navigate),
+        { label: "Segregation of Duties", onClick: () => navigate?.(ROUTES.SECURITY.SOD) },
         { label: activeTabLabel, isActive: true },
       ]
     : [
-        ...securityAuthorizationBase(navigate),
-        { label: "Governance Rules", isActive: true },
+        ...securityAdvancedBase(navigate),
+        { label: "Segregation of Duties", isActive: true },
       ];
 
 export const accessReview = (navigate?: NavigateFn, campaignName?: string): BreadcrumbItem[] =>

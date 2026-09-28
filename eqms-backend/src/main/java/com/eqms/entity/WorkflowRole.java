@@ -6,8 +6,8 @@ import java.util.UUID;
 
 /**
  * Catalog entry for a "Workflow Role" — the extensible replacement for the
- * hardcoded {@code WorkflowRoleCode} enum and {@code WorkflowPoolTypes}
- * constants (see docs/SECURITY_AUTHORIZATION_IMPLEMENTATION_PLAN.md 0.5a).
+ * hardcoded {@code WorkflowRoleCode} enum and the retired Document Workflow Pool
+ * (see docs/SECURITY_AUTHORIZATION_IMPLEMENTATION_PLAN.md 0.5a).
  * Rows with {@code isSystem() == true} back the original 8 + 3 (deduped DCO)
  * roles and cannot be deleted.
  */

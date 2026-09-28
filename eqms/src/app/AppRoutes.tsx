@@ -30,11 +30,15 @@ import { securityRoutes } from './routes/SecurityRoutes';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { navigateBack } from '@/app/navigation/backNavigation';
 import { ROUTE_REDIRECT_EVENT, type RouteRedirectDetail } from '@/app/navigation/routeRedirect';
+import { SessionTimeoutGuard } from '@/features/auth/components';
 
 // ==================== CORE VIEWS ====================
-const DashboardView = lazy(() => import('@/features/dashboard').then(m => ({ default: m.DashboardView })));
+const DashboardView = lazy(() => import('@/features/self-service/dashboard').then(m => ({ default: m.DashboardView })));
 const ControlledCopyPreviewView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.ControlledCopyPreviewView })));
-const KnowledgeDocumentPreviewPage = lazy(() => import('@/features/documents/knowledge/KnowledgeDocumentPreviewPage').then(m => ({ default: m.KnowledgeDocumentPreviewPage })));
+const KnowledgeExplorerPage = lazy(() => import('@/features/self-service/knowledge/explorer/KnowledgeExplorerPage').then(m => ({ default: m.KnowledgeExplorerPage })));
+const KnowledgeDocumentPreviewPage = lazy(() => import('@/features/self-service/knowledge/KnowledgeDocumentPreviewPage').then(m => ({ default: m.KnowledgeDocumentPreviewPage })));
+const OnlyOfficeEditorPage = lazy(() => import('@/features/documents/shared/pages/OnlyOfficeEditorPage').then(m => ({ default: m.OnlyOfficeEditorPage })));
+const KnowledgeView = lazy(() => import('@/features/self-service/knowledge').then(m => ({ default: m.KnowledgeView })));
 const NotificationsView = lazy(() => import('@/features/notifications').then(m => ({ default: m.NotificationsView })));
 
 // ==================== MAIN ROUTES ====================
@@ -42,11 +46,19 @@ const NotificationsView = lazy(() => import('@/features/notifications').then(m =
 export const AppRoutes: React.FC = () => {
   const MFA_CHALLENGE_STORAGE_KEY = 'pending_mfa_challenge';
 
-  const resolvePostAuthRoute = (permissions?: string[], maintenanceMode?: boolean) => {
+  // Admin-set per-user preference (Settings > Users > create/edit > Account & Access Control).
+  // Unrecognized/missing values fall back to Dashboard -- same as before this setting existed.
+  const HOME_PAGE_ROUTES: Record<string, string> = {
+    DASHBOARD: ROUTES.DASHBOARD,
+    NOTIFICATIONS: ROUTES.NOTIFICATIONS,
+    KNOWLEDGE: ROUTES.SELF_SERVICE.KNOWLEDGE,
+  };
+
+  const resolvePostAuthRoute = (permissions?: string[], maintenanceMode?: boolean, homePage?: string) => {
     if (maintenanceMode && !canBypassMaintenance(permissions)) {
       return ROUTES.MAINTENANCE;
     }
-    return ROUTES.DASHBOARD;
+    return HOME_PAGE_ROUTES[homePage ?? ""] ?? ROUTES.DASHBOARD;
   };
 
   const resolveAuthenticatedLandingRouteForUser = (
@@ -55,6 +67,7 @@ export const AppRoutes: React.FC = () => {
       mfaSetupRequired?: boolean;
       permissions?: string[];
       maintenanceMode?: boolean;
+      homePage?: string;
     } | null,
   ) => {
     if (candidateUser?.requirePasswordChange) {
@@ -63,7 +76,7 @@ export const AppRoutes: React.FC = () => {
     if (candidateUser?.mfaSetupRequired) {
       return ROUTES.MFA_SETUP;
     }
-    return resolvePostAuthRoute(candidateUser?.permissions, candidateUser?.maintenanceMode);
+    return resolvePostAuthRoute(candidateUser?.permissions, candidateUser?.maintenanceMode, candidateUser?.homePage);
   };
 
   const resolveAuthenticatedLandingRoute = () => resolveAuthenticatedLandingRouteForUser(user);
@@ -255,13 +268,42 @@ export const AppRoutes: React.FC = () => {
         }
       />
       {/* Authenticated but layout-less standalone preview page, opened in a new browser tab from
-          the Knowledge Base — intentionally outside MainLayout: no sidebar/header/footer. */}
+          the Knowledge Base — intentionally outside MainLayout: no sidebar/header/footer. Since
+          MainLayout is what normally sends the real-interaction heartbeat and shows the idle-lock
+          modal (see SessionTimeoutGuard), these routes mount that guard themselves so Session
+          Timeout still applies exactly like everywhere else in the app. */}
+      <Route
+        path={ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER}
+        element={
+          <ProtectedRoute requiredPermissions={["documents.module.view"]}>
+            <SessionTimeoutGuard />
+            <Suspense fallback={<LoadingFallback />}>
+              <KnowledgeExplorerPage />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/documents/knowledge/preview/:documentId"
         element={
           <ProtectedRoute>
+            <SessionTimeoutGuard />
             <Suspense fallback={<LoadingFallback />}>
               <KnowledgeDocumentPreviewPage />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      {/* Authenticated but layout-less standalone page hosting the OnlyOffice editor, opened in a
+          new browser tab by "Edit File Online"/"Open File to Comment" when OnlyOffice is the
+          active provider — mirrors how Microsoft Graph's own Word Online flow opens a new tab. */}
+      <Route
+        path="/documents/revisions/:revisionId/onlyoffice-editor"
+        element={
+          <ProtectedRoute>
+            <SessionTimeoutGuard />
+            <Suspense fallback={<LoadingFallback />}>
+              <OnlyOfficeEditorPage />
             </Suspense>
           </ProtectedRoute>
         }
@@ -274,7 +316,7 @@ export const AppRoutes: React.FC = () => {
           !isChallengeHydrated ? (
             <LoadingFallback />
           ) : isAuthenticated ? (
-            <Navigate to={resolvePostAuthRoute(user?.permissions, user?.maintenanceMode)} replace />
+            <Navigate to={resolvePostAuthRoute(user?.permissions, user?.maintenanceMode, user?.homePage)} replace />
           ) : pendingChallenge ? (
             <TwoFactorView
               onVerify={handleVerify2FA}
@@ -346,7 +388,7 @@ export const AppRoutes: React.FC = () => {
           <MfaSetupView
               email={user?.email || 'user@example.com'}
               onBackToLogin={handleMfaSetupBackToLogin}
-              onComplete={() => navigateAfterStateFlush(resolvePostAuthRoute(user?.permissions, user?.maintenanceMode))}
+              onComplete={() => navigateAfterStateFlush(resolvePostAuthRoute(user?.permissions, user?.maintenanceMode, user?.homePage))}
             />
           ) : (
             <Navigate to={ROUTES.LOGIN} replace />
@@ -361,6 +403,9 @@ export const AppRoutes: React.FC = () => {
         {/* Dashboard & Notifications are baseline surfaces for every authenticated user — auth-only guard, no permission gate (same policy as Work Management) */}
         <Route path="dashboard" element={<ProtectedRoute requiredPermissions={["dashboard.module.view"]}><Suspense fallback={<LoadingFallback />}><DashboardView /></Suspense></ProtectedRoute>} />
         <Route path="notifications" element={<ProtectedRoute requiredPermissions={["notifications.module.view"]}><Suspense fallback={<LoadingFallback />}><NotificationsView /></Suspense></ProtectedRoute>} />
+        {/* Self-Service > Knowledge -- moved out of the Documents module; Dashboard above is also
+            a Self-Service child but keeps its long-standing top-level /dashboard path. */}
+        <Route path="self-service/knowledge" element={<ProtectedRoute requiredPermissions={["self_service.knowledge.view"]}><Suspense fallback={<LoadingFallback />}><KnowledgeView /></Suspense></ProtectedRoute>} />
 
         {/* ===== DOMAIN MODULES ===== */}
         {documentRoutes(navigate)}

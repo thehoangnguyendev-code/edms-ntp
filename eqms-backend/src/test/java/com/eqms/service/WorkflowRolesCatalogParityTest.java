@@ -28,26 +28,14 @@ import static org.mockito.Mockito.when;
  * Parity test for the workflow_roles catalog migration (V172,
  * docs/SECURITY_AUTHORIZATION_IMPLEMENTATION_PLAN.md 0.5a).
  *
- * <p>{@code DocumentAuthorizationService.canViewAllDocuments} previously granted the
- * DCO bypass purely from {@code document_workflow_pool_members} (pool_type = DCO).
- * It now ORs that legacy lookup with a new lookup over
- * {@code access_profile_workflow_roles} joined through {@code user_access_profiles}
- * (workflow role code "DCO"). This test asserts that for every combination of
- * legacy-membership / new-path-membership, a user who is a DCO by EITHER path is
- * granted the bypass, and a user who is a DCO by NEITHER path is not — i.e. the
- * migration's data copy (legacy pool -> Access Profile + Workflow Role) cannot
- * cause a currently-authorized DCO user to silently lose access (availability),
- * nor grant access to a user who was never a DCO by either mechanism (security
- * regression).
- *
- * <p>NOTE: this test uses mocked repositories, not a live/seeded database. It
- * proves the boolean OR wiring in {@code canViewAllDocuments} is correct. It does
- * NOT independently verify that the V172 SQL migration itself faithfully copies
- * every real production {@code document_workflow_pool_members} row into
- * {@code access_profile_workflow_roles} — that requires running the migration
- * against a real (or realistic snapshot) database and diffing the resulting DCO
- * user sets, which was not available in this environment. Flagged for follow-up
- * before merge/deploy.
+ * <p>{@code DocumentAuthorizationService.canViewAllDocuments} grants the blanket
+ * document-view bypass purely through explicit permission (e.g.
+ * {@code documents.document.view_all}), never through workflow-role/pool
+ * membership by itself -- confirmed by this test's assertions. The legacy
+ * Document Workflow Pool ({@code document_workflow_pool_members}) this class was
+ * originally written to compare against has since been fully retired (V398); the
+ * "legacy"/"new path" test names below predate that removal and now simply cover
+ * the permission-only behavior.
  */
 @ExtendWith(MockitoExtension.class)
 class WorkflowRolesCatalogParityTest {
@@ -61,6 +49,8 @@ class WorkflowRolesCatalogParityTest {
     @Mock private com.eqms.repository.DocumentRelationRepository documentRelationRepository;
     @Mock private DocumentMasterWorkflowAuthorizationService documentMasterWorkflowAuthorizationService;
     @Mock private RevisionWorkflowAuthorizationService revisionWorkflowAuthorizationService;
+    @Mock private com.eqms.repository.DocumentStakeholderHistoryRepository documentStakeholderHistoryRepository;
+    @Mock private SystemConfigurationService systemConfigurationService;
 
     private DocumentAuthorizationService service;
 
@@ -80,7 +70,9 @@ class WorkflowRolesCatalogParityTest {
                 lifecycleStatePolicyEvaluator,
                 documentRelationRepository,
                 documentMasterWorkflowAuthorizationService,
-                revisionWorkflowAuthorizationService
+                revisionWorkflowAuthorizationService,
+                documentStakeholderHistoryRepository,
+                systemConfigurationService
         );
 
         legacyOnlyUser = activeUser();

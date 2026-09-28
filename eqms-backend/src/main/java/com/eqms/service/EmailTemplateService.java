@@ -1,6 +1,7 @@
 package com.eqms.service;
 
 import com.eqms.auth.CurrentUserService;
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.email.EmailTemplatePreviewResponse;
 import com.eqms.dto.email.EmailTemplatePreviewDraftRequest;
 import com.eqms.dto.email.EmailTemplatePublishRequest;
@@ -11,6 +12,7 @@ import com.eqms.dto.email.EmailTemplateTestSendResponse;
 import com.eqms.dto.email.EmailTemplateVersionResponse;
 import com.eqms.dto.user.PageResponse;
 import com.eqms.dto.user.PaginationResponse;
+import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.EmailTemplate;
 import com.eqms.entity.EmailTemplateVersion;
 import com.eqms.entity.UserAccount;
@@ -190,7 +192,7 @@ public class EmailTemplateService {
         EmailTemplate saved = repository.save(template);
         createVersionSnapshot(saved, "Created template", currentUser, null, null);
         String reason = request.reason();
-        electronicSignatureService.createEntitySignature("EmailTemplate", saved.getId(), saved.getName(), currentUser, request.signatureToken(), "EMAIL_TEMPLATE_CREATED", reason, null, null, saved.getStatus());
+        ElectronicSignature signature = electronicSignatureService.createEntitySignature("EmailTemplate", saved.getId(), saved.getName(), currentUser, request.signatureToken(), "EMAIL_TEMPLATE_CREATED", reason, null, null, saved.getStatus());
         auditTrailService.logAs(
                 currentUser,
                 "EMAIL_TEMPLATE",
@@ -201,7 +203,9 @@ public class EmailTemplateService {
                 saved.getStatus(),
                 (reason != null && !reason.isBlank())
                         ? "Created email template: " + reason
-                        : "Created email template"
+                        : "Created email template",
+                List.of(),
+                signature.getId()
         );
         return toResponse(saved);
     }
@@ -214,6 +218,11 @@ public class EmailTemplateService {
                 .orElseThrow(() -> new EntityNotFoundException("Email template not found: " + id));
 
         String previousStatus = template.getStatus();
+        String previousName = template.getName();
+        String previousSubject = template.getSubject();
+        String previousContent = template.getContent();
+        String previousDescription = template.getDescription();
+
         template.setName(request.name());
         template.setType(normalizeTemplateType(request.type()));
         template.setSubject(request.subject());
@@ -230,7 +239,19 @@ public class EmailTemplateService {
 
         EmailTemplate saved = repository.save(template);
         createVersionSnapshot(saved, "Updated template", currentUser, null, null);
-        electronicSignatureService.createEntitySignature("EmailTemplate", saved.getId(), saved.getName(), currentUser, request.signatureToken(), "EMAIL_TEMPLATE_UPDATED", request.reason(), null, previousStatus, saved.getStatus());
+        ElectronicSignature signature = electronicSignatureService.createEntitySignature("EmailTemplate", saved.getId(), saved.getName(), currentUser, request.signatureToken(), "EMAIL_TEMPLATE_UPDATED", request.reason(), null, previousStatus, saved.getStatus());
+
+        // Previously recorded only the status with an empty changes list -- an inspector could
+        // see THAT a GxP-facing notification template was edited but never WHAT changed (subject
+        // line, body content, name...), which matters most for exactly this entity: every
+        // automated notification the system sends is rendered from this content.
+        List<AuditTrailChangeResponse> changes = new ArrayList<>();
+        addTemplateChange(changes, "Name", previousName, saved.getName());
+        addTemplateChange(changes, "Subject", previousSubject, saved.getSubject());
+        addTemplateChange(changes, "Content", previousContent, saved.getContent());
+        addTemplateChange(changes, "Description", previousDescription, saved.getDescription());
+        addTemplateChange(changes, "Status", previousStatus, saved.getStatus());
+
         auditTrailService.logAs(
                 currentUser,
                 "EMAIL_TEMPLATE",
@@ -239,9 +260,19 @@ public class EmailTemplateService {
                 ACTION_EMAIL_TEMPLATE_UPDATED,
                 previousStatus,
                 saved.getStatus(),
-                "Updated email template"
+                (request.reason() != null && !request.reason().isBlank())
+                        ? "Updated email template: " + request.reason()
+                        : "Updated email template",
+                changes,
+                signature.getId()
         );
         return toResponse(saved);
+    }
+
+    private void addTemplateChange(List<AuditTrailChangeResponse> changes, String field, String oldValue, String newValue) {
+        if (!java.util.Objects.equals(oldValue, newValue)) {
+            changes.add(new AuditTrailChangeResponse(field, oldValue, newValue));
+        }
     }
 
     @Transactional

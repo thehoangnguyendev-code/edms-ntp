@@ -11,6 +11,9 @@ public record DepartmentDictionaryResponse(
         boolean isActive,
         String createdDate,
         String modifiedDate,
-        long positionCount
+        long positionCount,
+        UUID departmentHeadId,
+        String departmentHeadName,
+        String primaryContactPhone
 ) {
 }

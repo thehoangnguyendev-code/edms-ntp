@@ -11,41 +11,14 @@ import { AUTH_UI } from "./auth-ui";
 import { AuthBackLink, AuthField, AuthLayout, AuthTopBackButton } from "./components";
 import { authApi } from "@/services/api";
 import { usePasswordPolicy } from "./usePasswordPolicy";
+import { evaluatePasswordPolicy } from "./passwordPolicyRules";
 
 interface ResetPasswordViewProps {
   onBackToLogin?: () => void;
 }
 
-const checkPasswordStrength = (password: string, policy: ReturnType<typeof usePasswordPolicy>) => {
-  const hasMinLength = password.length >= policy.passwordMinLength;
-  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  const hasNumber = /\d/.test(password);
-  const hasUpper = /[A-Z]/.test(password);
-  const hasLower = /[a-z]/.test(password);
-
-  const activeChecks = [
-    hasMinLength,
-    ...(policy.requireUppercase ? [hasUpper] : []),
-    ...(policy.requireLowercase ? [hasLower] : []),
-    ...(policy.requireNumbers ? [hasNumber] : []),
-    ...(policy.requireSpecialChars ? [hasSpecial] : []),
-  ];
-
-  return {
-    score: activeChecks.filter(Boolean).length,
-    maxScore: activeChecks.length,
-    hasMinLength,
-    hasSpecial,
-    hasNumber,
-    hasUpper,
-    hasLower,
-    isValid: hasMinLength
-      && (!policy.requireSpecialChars || hasSpecial)
-      && (!policy.requireNumbers || hasNumber)
-      && (!policy.requireUppercase || hasUpper)
-      && (!policy.requireLowercase || hasLower),
-  };
-};
+const checkPasswordStrength = (password: string, policy: ReturnType<typeof usePasswordPolicy>) =>
+  evaluatePasswordPolicy(password, policy);
 
 export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLogin }) => {
   const passwordPolicy = usePasswordPolicy();
@@ -296,11 +269,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                     ))}
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5">
-                    {renderStrengthCheck(`At least ${passwordPolicy.passwordMinLength} characters`, strength.hasMinLength)}
-                    {passwordPolicy.requireUppercase && renderStrengthCheck("One uppercase letter", strength.hasUpper)}
-                    {passwordPolicy.requireLowercase && renderStrengthCheck("One lowercase letter", strength.hasLower)}
-                    {passwordPolicy.requireNumbers && renderStrengthCheck("One number", strength.hasNumber)}
-                    {passwordPolicy.requireSpecialChars && renderStrengthCheck("One special character", strength.hasSpecial)}
+                    {strength.checks.map((check) => <React.Fragment key={check.key}>{renderStrengthCheck(check.label, check.met)}</React.Fragment>)}
                   </div>
                   </div>
 

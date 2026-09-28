@@ -28,6 +28,8 @@ export interface PublishingPlaceholderStyleConfig {
   numberFormat?: string | null;
   preserveLineBreaks?: boolean | null;
   maxLines?: number | null;
+  /** Where the placeholder is shown: BOTH (default), PUBLISH (published document only) or CONTROLLED_COPY. */
+  visibility?: 'BOTH' | 'PUBLISH' | 'CONTROLLED_COPY' | null;
 }
 
 export interface PublishingPlaceholderStyleResponse {

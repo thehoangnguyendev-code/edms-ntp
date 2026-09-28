@@ -1,25 +1,11 @@
-import React, { useState, createRef, useRef, useEffect, useMemo } from "react";
+import React, { useState, createRef, useRef, useEffect, useLayoutEffect, useMemo } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
-import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ROUTES } from '@/app/routes.constants';
-import {
-    Download,
-    ChevronUp,
-    ChevronDown,
-    Search,
-    Check,
-    X,
-    MoreVertical,
-    FileX,
-    Link2,
-    RotateCcw,
-    ArrowDownAZ,
-    ArrowDownZA,
-    History,
-    RefreshCw,
-} from "lucide-react";
-import { IconHandClick } from '@tabler/icons-react';
+import { Download, ChevronUp, ChevronDown, Search, Check, X, MoreVertical, FileX, History, RefreshCw } from "lucide-react";
+import { IconHandClick, IconX } from '@tabler/icons-react';
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
 import { Select } from "@/components/ui/select/Select";
@@ -27,20 +13,21 @@ import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { formatDateUS, formatDateTimeParts } from "@/utils/format";
+import { formatDateUS, formatDateTimeParts, formatDateTime } from "@/utils/format";
 import { useToast } from "@/components/ui/toast/Toast";
 import type { ControlledCopy, TableColumn } from "./types";
 import {IconArrowBackUp, IconFilter2, IconInfoCircle, IconShare3, IconShredder} from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { controlledCopies } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading } from "@/components/ui/loading/Loading";
-import { EmptyState } from "@/components/ui/page/EmptyState";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { usePortalDropdown, useNavigateWithLoading, useTableDragScroll, PortalDropdownPosition, useDebounce } from "@/hooks";
 import { documentApi } from "@/services/api/documents";
 import { buildControlledCopySnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import { buildControlledCopyRouteState } from "./controlledCopyNavigation";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import {
+  controlledCopyDisplayNumber,
   formatControlledCopyNumber,
   formatDocumentLabel,
   formatDocumentRevisionLabel,
@@ -71,7 +58,7 @@ import { ChevronRight } from "lucide-react";
 import { getStatusBadgeColor } from "@/utils/status";
 import { normalizeControlledCopyStatusLabel } from "./status";
 import { DestructionTypeSelectionModal } from "./components/DestructionTypeSelectionModal";
-import { RecallControlledCopyModal, type RecallControlledCopyValues } from "./components/RecallControlledCopyModal";
+import { RecallControlledCopyModal } from "./components/RecallControlledCopyModal";
 import {
   useControlledCopyActionCapabilities,
   useControlledCopyBatchActionCapabilities,
@@ -80,7 +67,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 
 // Default Columns Configuration
 const DEFAULT_COLUMNS: TableColumn[] = [
-  { id: "controlledCopyNumber", label: "Controlled Copy / Batch Number", visible: true, order: 1, locked: true },
+  { id: "controlledCopyNumber", label: "Document Number", visible: true, order: 1, locked: true },
   { id: "created", label: "Created", visible: true, order: 2 },
   { id: "openedBy", label: "Opened by", visible: true, order: 3 },
   { id: "name", label: "Controlled Copy Name", visible: true, order: 4 },
@@ -93,6 +80,10 @@ const DEFAULT_COLUMNS: TableColumn[] = [
   { id: "recallDate", label: "Recall Date", visible: true, order: 11 },
   { id: "recallReason", label: "Reason for Recall", visible: true, order: 12 },
   { id: "documentRevision", label: "Document Revision", visible: true, order: 13 },
+  // Click to sort by most-recent workflow action (Distribute/Recall/Cancel etc.) instead of the
+  // default "Created" sort -- so a long-standing batch that just changed status today can be
+  // surfaced rather than staying buried by its old creation date.
+  { id: "lastUpdated", label: "Last Updated", visible: true, order: 14 },
 ];
 
 // View types
@@ -194,6 +185,7 @@ const DropdownMenu: React.FC<{
   onViewDetails?: () => void;
   onCancel?: () => void;
   onDistribute?: () => void;
+  isDistributeBusy?: boolean;
   onRecall?: () => void;
   onReportLostDamaged?: () => void;
   onReissue?: () => void;
@@ -213,6 +205,7 @@ const DropdownMenu: React.FC<{
   onViewDetails,
   onCancel,
   onDistribute,
+  isDistributeBusy = false,
   onRecall,
   onReportLostDamaged,
   onReissue,
@@ -235,8 +228,8 @@ const DropdownMenu: React.FC<{
           {onDistribute && !isCapabilityLoading && distributeDecision?.allowed && (
             <DropdownMenuItem
               icon={<IconShare3 className="h-4 w-4" />}
-              disabled={isCapabilityLoading}
-              title={isCapabilityLoading ? "Capability information is still loading." : ""}
+              disabled={isCapabilityLoading || isDistributeBusy}
+              title={isCapabilityLoading ? "Capability information is still loading." : isDistributeBusy ? "A distribution is already being processed." : ""}
               onClick={() => { onDistribute!(); onClose(); }}
             >
               {isBatch ? "Distribute Batch" : "Distribute"}
@@ -270,7 +263,7 @@ const DropdownMenu: React.FC<{
           )}
           {(viewType === "ready" || viewType === "all") && onCancel && !isCapabilityLoading && cancelDecision?.allowed && (
             <DropdownMenuItem
-              icon={<FileX className="h-4 w-4" />}
+              icon={<IconX className="h-4 w-4" />}
               disabled={isCapabilityLoading}
               title={isCapabilityLoading ? "Capability information is still loading." : ""}
               onClick={() => { onCancel!(); onClose(); }}
@@ -291,6 +284,8 @@ interface ControlledCopiesViewProps {
 
 export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ viewType: propViewType = "all" }) => {
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
   const canReviewBatchDiscrepancies = hasPermissionAlias('documents.admin.view');
@@ -299,30 +294,35 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   const viewType = propViewType;
 
   // Filter states
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
+  const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") ?? "All");
   const [statusOptions, setStatusOptions] = useState<Array<{ label: string; value: string }>>([{ label: "All States", value: "All" }]);
-  const [createdFromDate, setCreatedFromDate] = useState("");
-  const [createdToDate, setCreatedToDate] = useState("");
-  const [validFromDate, setValidFromDate] = useState("");
-  const [validToDate, setValidToDate] = useState("");
-  const [expiryFromDate, setExpiryFromDate] = useState("");
-  const [expiryToDate, setExpiryToDate] = useState("");
-  const [recallFromDate, setRecallFromDate] = useState("");
-  const [recallToDate, setRecallToDate] = useState("");
+  const [createdFromDate, setCreatedFromDate] = useState(() => searchParams.get("createdFrom") ?? "");
+  const [createdToDate, setCreatedToDate] = useState(() => searchParams.get("createdTo") ?? "");
+  const [validFromDate, setValidFromDate] = useState(() => searchParams.get("validFrom") ?? "");
+  const [validToDate, setValidToDate] = useState(() => searchParams.get("validTo") ?? "");
+  const [expiryFromDate, setExpiryFromDate] = useState(() => searchParams.get("expiryFrom") ?? "");
+  const [expiryToDate, setExpiryToDate] = useState(() => searchParams.get("expiryTo") ?? "");
+  const [recallFromDate, setRecallFromDate] = useState(() => searchParams.get("recallFrom") ?? "");
+  const [recallToDate, setRecallToDate] = useState(() => searchParams.get("recallTo") ?? "");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["status", "dates"]));
 
   const [isLoading, setIsLoading] = useState(true);
+  // Whether the very first fetch (for the current filters/paging/sort) has completed, and what that
+  // combination was -- together these tell a later refetch triggered only by a realtime update apart
+  // from a genuine filter/page/sort change (see the fetch effect below).
+  const hasLoadedOnceRef = useRef(false);
+  const previousDepsKeyRef = useRef<string>("");
   const [controlledCopiesData, setControlledCopiesData] = useState<ControlledCopyRow[]>([]);
   const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, Number(searchParams.get("page")) || 1));
+  const [itemsPerPage, setItemsPerPage] = useState(() => Math.min(50, Math.max(1, Number(searchParams.get("limit")) || 10)));
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({
-    key: "created",
-    direction: "desc",
+    key: searchParams.get("sortBy") ?? "created",
+    direction: searchParams.get("sortDirection") === "asc" ? "asc" : "desc",
   });
   const [error, setError] = useState<string | null>(null);
   const [isReportLostDamagedModalOpen, setIsReportLostDamagedModalOpen] = useState(false);
@@ -330,6 +330,42 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   const [isReissueModalOpen, setIsReissueModalOpen] = useState(false);
   const [selectedCopyForReissue, setSelectedCopyForReissue] = useState<ControlledCopyRow | null>(null);
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  useLayoutEffect(() => {
+    setSearchQuery(searchParams.get("search") ?? "");
+    setStatusFilter(searchParams.get("status") ?? "All");
+    setCreatedFromDate(searchParams.get("createdFrom") ?? "");
+    setCreatedToDate(searchParams.get("createdTo") ?? "");
+    setValidFromDate(searchParams.get("validFrom") ?? "");
+    setValidToDate(searchParams.get("validTo") ?? "");
+    setExpiryFromDate(searchParams.get("expiryFrom") ?? "");
+    setExpiryToDate(searchParams.get("expiryTo") ?? "");
+    setRecallFromDate(searchParams.get("recallFrom") ?? "");
+    setRecallToDate(searchParams.get("recallTo") ?? "");
+    setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
+    setItemsPerPage(Math.min(50, Math.max(1, Number(searchParams.get("limit")) || 10)));
+    setSortConfig({ key: searchParams.get("sortBy") ?? "created", direction: searchParams.get("sortDirection") === "asc" ? "asc" : "desc" });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchQuery !== debouncedSearchQuery) return;
+    const params = new URLSearchParams();
+    if (debouncedSearchQuery.trim()) params.set("search", debouncedSearchQuery.trim());
+    if (viewType === "all" && statusFilter !== "All") params.set("status", statusFilter);
+    if (createdFromDate) params.set("createdFrom", createdFromDate);
+    if (createdToDate) params.set("createdTo", createdToDate);
+    if (validFromDate) params.set("validFrom", validFromDate);
+    if (validToDate) params.set("validTo", validToDate);
+    if (expiryFromDate) params.set("expiryFrom", expiryFromDate);
+    if (expiryToDate) params.set("expiryTo", expiryToDate);
+    if (recallFromDate) params.set("recallFrom", recallFromDate);
+    if (recallToDate) params.set("recallTo", recallToDate);
+    if (sortConfig.key !== "created") params.set("sortBy", sortConfig.key);
+    if (sortConfig.direction !== "desc") params.set("sortDirection", sortConfig.direction);
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (itemsPerPage !== 10) params.set("limit", String(itemsPerPage));
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [searchQuery, debouncedSearchQuery, statusFilter, createdFromDate, createdToDate, validFromDate, validToDate, expiryFromDate, expiryToDate, recallFromDate, recallToDate, sortConfig, currentPage, itemsPerPage, viewType, searchParams, setSearchParams]);
 
   useEffect(() => {
     let mounted = true;
@@ -367,9 +403,22 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     if (viewType !== "ready") {
       setExpandedBatchId(null);
     }
+    // A realtime update (e.g. every copy in a batch being distributed one by one) only bumps
+    // refreshToken -- everything else the user actually asked for (filters, paging, sort) is
+    // unchanged. Refetching then is a silent background refresh: it must never blank the whole
+    // page with the full-screen spinner, or a batch distribution in progress makes the entire UI
+    // flash/reload every time a copy finishes, on top of its own progress modal.
+    const depsKey = JSON.stringify([
+      currentPage, itemsPerPage, debouncedSearchQuery, statusFilter,
+      createdFromDate, createdToDate, validFromDate, validToDate,
+      expiryFromDate, expiryToDate, recallFromDate, recallToDate,
+      sortConfig.key, sortConfig.direction, viewType,
+    ]);
+    const isBackgroundRefresh = hasLoadedOnceRef.current && previousDepsKeyRef.current === depsKey;
+    previousDepsKeyRef.current = depsKey;
     const fetchCopies = async () => {
       try {
-        setIsLoading(true);
+        if (!isBackgroundRefresh) setIsLoading(true);
         setError(null);
         const res = await documentApi.getControlledCopyDistributionBatches({
           page: currentPage,
@@ -406,6 +455,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
           });
         }
       } finally {
+        hasLoadedOnceRef.current = true;
         if (mounted) setIsLoading(false);
       }
     };
@@ -423,6 +473,10 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     };
   }, [currentPage, itemsPerPage, debouncedSearchQuery, statusFilter, createdFromDate, createdToDate, validFromDate, validToDate, expiryFromDate, expiryToDate, recallFromDate, recallToDate, sortConfig.key, sortConfig.direction, viewType, showToast, refreshToken]);
 
+  // A controlled copy or batch was changed by anyone (distribute, recall, cancel, report lost/damaged ...):
+  // refetch the current page so the list is never stale until a manual reload.
+  useEntityChanged(["CONTROLLED_COPY", "CONTROLLED_COPY_BATCH"], () => setRefreshToken((token) => token + 1), { debounceMs: 1200 });
+
   // Modal states
   const [selectedCopyForCancel, setSelectedCopyForCancel] = useState<ControlledCopyRow | null>(null);
   const [isESignModalOpen, setisESignModalOpen] = useState(false);
@@ -431,7 +485,9 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   const [isRecallFormOpen, setIsRecallFormOpen] = useState(false);
   const [isRecallESignModalOpen, setIsRecallESignModalOpen] = useState(false);
   const [selectedCopyForRecall, setSelectedCopyForRecall] = useState<ControlledCopyRow | null>(null);
-  const [recallValues, setRecallValues] = useState<RecallControlledCopyValues | null>(null);
+  // Gates handleRecallESignConfirm on having actually gone through the confirm step -- no data to
+  // carry through it any more, the recall date is now stamped by the server at signature time.
+  const [hasConfirmedRecall, setHasConfirmedRecall] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [batchDistributeProgress, setBatchDistributeProgress] = useState<{
     batchId: string;
@@ -446,6 +502,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     total: number;
     succeeded: number;
     failed: number;
+    skipped: number;
     failedItems: DistributeBatchFailedItem[];
     isRetrying: boolean;
   } | null>(null);
@@ -461,6 +518,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     total: number;
     succeeded: number;
     failed: number;
+    skipped: number;
     failedItems: DistributeBatchFailedItem[];
     isRetrying: boolean;
   } | null>(null);
@@ -476,6 +534,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     total: number;
     succeeded: number;
     failed: number;
+    skipped: number;
     failedItems: DistributeBatchFailedItem[];
     isRetrying: boolean;
   } | null>(null);
@@ -552,20 +611,27 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     if (batchRecallProgress?.status !== "completed" && batchRecallProgress?.status !== "completed_with_errors") return;
     const batchId = batchRecallProgress.batchId;
     const timer = window.setTimeout(() => {
+      // Without this, the expanded child-copies table (cached the first time a row was expanded,
+      // e.g. while every copy still showed "Distributed") keeps serving that stale cache after a
+      // batch Recall -- the outer row refetches via refreshToken below and correctly flips to
+      // Recalled/Obsoleted, but re-expanding it would still show every child as "Distributed"
+      // until some unrelated action happened to invalidate the cache first.
+      invalidateControlledCopyChildren(batchId);
       setBatchRecallProgress(null);
       setRefreshToken(Date.now());
       void refreshSelectedCapabilities();
       void (async () => {
         try {
-          const status = await documentApi.getControlledCopyDistributionJobStatus(batchId, "RECALL");
+          const status = await documentApi.awaitSettledControlledCopyDistributionJobStatus(batchId, "RECALL");
           const failedItems = status.failed > 0
             ? await documentApi.getControlledCopyDistributionFailedItems(batchId, "RECALL")
             : [];
           setRecallResultModal({
             batchId,
             total: status.total,
-            succeeded: Math.max(status.total - status.failed, 0),
+            succeeded: status.succeeded,
             failed: status.failed,
+            skipped: status.skipped,
             failedItems,
             isRetrying: false,
           });
@@ -635,20 +701,24 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     if (batchCancelProgress?.status !== "completed" && batchCancelProgress?.status !== "completed_with_errors") return;
     const batchId = batchCancelProgress.batchId;
     const timer = window.setTimeout(() => {
+      // See the matching comment in the Recall completion effect above -- same stale-child-cache
+      // issue applies to batch Cancel.
+      invalidateControlledCopyChildren(batchId);
       setBatchCancelProgress(null);
       setRefreshToken(Date.now());
       void refreshSelectedCapabilities();
       void (async () => {
         try {
-          const status = await documentApi.getControlledCopyDistributionJobStatus(batchId, "CANCEL");
+          const status = await documentApi.awaitSettledControlledCopyDistributionJobStatus(batchId, "CANCEL");
           const failedItems = status.failed > 0
             ? await documentApi.getControlledCopyDistributionFailedItems(batchId, "CANCEL")
             : [];
           setCancelResultModal({
             batchId,
             total: status.total,
-            succeeded: Math.max(status.total - status.failed, 0),
+            succeeded: status.succeeded,
             failed: status.failed,
+            skipped: status.skipped,
             failedItems,
             isRetrying: false,
           });
@@ -742,15 +812,16 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         // and, if there are failures, the specific copies so the user can retry them.
         void (async () => {
           try {
-            const status = await documentApi.getControlledCopyDistributionJobStatus(batchId);
+            const status = await documentApi.awaitSettledControlledCopyDistributionJobStatus(batchId);
             const failedItems = status.failed > 0
               ? await documentApi.getControlledCopyDistributionFailedItems(batchId)
               : [];
             setDistributeResultModal({
               batchId,
               total: status.total,
-              succeeded: Math.max(status.total - status.failed, 0),
+              succeeded: status.succeeded,
               failed: status.failed,
+              skipped: status.skipped,
               failedItems,
               isRetrying: false,
             });
@@ -814,6 +885,16 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     setControlledCopiesData((prev) =>
       prev.map((copy) => (copy.id === updatedCopy.id ? { ...copy, ...updatedCopy } : copy)),
     );
+    // This patches the top-level rows list -- but a single-copy action (Cancel/Recall) can just as
+    // well target one member of an already-expanded batch. Its own row in the top-level list (if
+    // any) is fixed up above, but the SEPARATE expanded-children cache for its parent batch
+    // (populated the first time that batch row was expanded) is untouched, so re-expanding the
+    // batch would keep showing this copy's old status. Invalidate it too whenever the updated copy
+    // belongs to a batch.
+    const parentBatchId = (updatedCopy as ControlledCopy).distributionBatchId;
+    if (parentBatchId) {
+      invalidateControlledCopyChildren(parentBatchId);
+    }
   };
 
   const handleViewTypeChange = (nextViewType: string) => {
@@ -826,6 +907,11 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
 
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
+  const shouldReduceMotion = useReducedMotion();
+  const transitionConfig = useMemo(
+    () => (shouldReduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 90, damping: 16 }),
+    [shouldReduceMotion],
+  );
   const selectedCopy = useMemo(
     () => (openId ? controlledCopiesData.find((copy) => copy.id === openId) || null : null),
     [controlledCopiesData, openId],
@@ -970,9 +1056,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       });
       return;
     }
-    const fromPath = viewType === "ready" ? ROUTES.DOCUMENTS.CONTROLLED_COPIES.READY :
-      viewType === "distributed" ? ROUTES.DOCUMENTS.CONTROLLED_COPIES.DISTRIBUTED :
-        ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL;
+    const fromPath = `${location.pathname}${location.search}`;
     void navigateToPrepared(
       ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(detailId),
       async () => ({
@@ -996,9 +1080,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       });
       return;
     }
-    const fromPath = viewType === "ready" ? ROUTES.DOCUMENTS.CONTROLLED_COPIES.READY :
-      viewType === "distributed" ? ROUTES.DOCUMENTS.CONTROLLED_COPIES.DISTRIBUTED :
-        ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL;
+    const fromPath = `${location.pathname}${location.search}`;
     void navigateToPrepared(
       `${ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(detailId)}?tab=audit`,
       async () => ({
@@ -1121,6 +1203,10 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       return;
     }
 
+    // The signature step is already verified by the time this runs (ESignatureModal defers to us
+    // right after that, see deferConfirm below) -- close it immediately instead of leaving it up
+    // (blocking the progress-bar modal set up right after) for the whole distribute duration.
+    setisDistributeisESignModalOpen(false);
     try {
       setIsActionLoading(true);
       const payload = {
@@ -1170,6 +1256,14 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
           ...payload,
           signatureToken: data.signatureToken as string,
         });
+        // Same stale-child-cache issue as Cancel/Recall (see applyControlledCopyUpdate) -- this
+        // branch runs for an individual copy, which can be one member of an already-expanded
+        // batch. selectedCopyForDistribute is still in scope here (cleared only in `finally`
+        // below), so its parent batch id is available to invalidate before this closes out.
+        const parentBatchId = (selectedCopyForDistribute as ControlledCopy)?.distributionBatchId;
+        if (parentBatchId) {
+          invalidateControlledCopyChildren(parentBatchId);
+        }
         setBatchDistributeProgress((current) => current?.scope === "copy" && current.batchId === copyId
           ? { ...current, processed: 1, status: "completed" }
           : current);
@@ -1190,7 +1284,6 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         duration: 3500,
       });
     } finally {
-      setisDistributeisESignModalOpen(false);
       setSelectedCopyForDistribute(null);
       setIsActionLoading(false);
     }
@@ -1243,6 +1336,12 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         reason: data.reason,
         signatureToken: data.signatureToken as string,
       }) as ControlledCopy;
+      // Reissue also flips the ORIGINAL (Lost/Damaged) copy's own status -- same stale-child-cache
+      // concern as Cancel/Recall/Distribute if that original copy is a member of an expanded batch.
+      const parentBatchId = (selectedCopyForReissue as ControlledCopy)?.distributionBatchId;
+      if (parentBatchId) {
+        invalidateControlledCopyChildren(parentBatchId);
+      }
       setRefreshToken(Date.now());
       showToast({
         type: "success",
@@ -1285,14 +1384,14 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     close();
   };
 
-  const handleRecallFormConfirm = (values: RecallControlledCopyValues) => {
-    setRecallValues(values);
+  const handleRecallFormConfirm = () => {
+    setHasConfirmedRecall(true);
     setIsRecallFormOpen(false);
     setIsRecallESignModalOpen(true);
   };
 
   const handleRecallESignConfirm = async (data: { username: string; password: string; reason: string; signatureToken?: string }) => {
-    if (!selectedCopyForRecall || !recallValues) {
+    if (!selectedCopyForRecall || !hasConfirmedRecall) {
       setIsRecallESignModalOpen(false);
       return;
     }
@@ -1308,15 +1407,19 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       const updated = isBatch
         ? await documentApi.recallControlledCopyBatch(batchId, {
             recalledBy: data.username,
-            recallReason: recallValues.recallReason,
-            recallDate: recallValues.recallDate,
+            // The reason is captured once, in the e-signature step -- reused here as the
+            // recall reason too instead of asking for it a second time.
+            recallReason: data.reason,
+            // recallDate intentionally omitted -- the server stamps Instant.now() itself, at the
+            // exact moment this recall actually commits (right after the signature is verified).
             comment: data.reason,
             signatureToken: data.signatureToken as string,
           })
         : await documentApi.recallControlledCopy(batchId, {
             recalledBy: data.username,
-            recallReason: recallValues.recallReason,
-            recallDate: recallValues.recallDate,
+            recallReason: data.reason,
+            // recallDate intentionally omitted -- the server stamps Instant.now() itself, at the
+            // exact moment this recall actually commits (right after the signature is verified).
             comment: data.reason,
             signatureToken: data.signatureToken as string,
           });
@@ -1360,7 +1463,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     } finally {
       setIsRecallESignModalOpen(false);
       setSelectedCopyForRecall(null);
-      setRecallValues(null);
+      setHasConfirmedRecall(false);
       setIsActionLoading(false);
     }
   };
@@ -1368,7 +1471,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   const handleExport = () => {
     const csvEscape = (value: string | number | null | undefined) => `"${String(value ?? "").replace(/"/g, '""')}"`;
     const headers = [
-      "Controlled Copy / Batch Number",
+      "Document Number",
       "Requested At",
       "Requested By",
       "Quantity",
@@ -1384,6 +1487,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       "Location Code",
       "Distributed By",
       "Distributed At",
+      "Last Updated",
     ];
     const rows = controlledCopiesData.map((batch) => [
       batch.batchNumber || batch.controlledCopyNumber,
@@ -1402,6 +1506,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       batch.locationCode || "",
       batch.distributedBy || "",
       batch.distributedDate || "",
+      batch.lastUpdatedAt || "",
     ].map(csvEscape).join(","));
     const csv = [headers.map(csvEscape).join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -1415,7 +1520,9 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     URL.revokeObjectURL(url);
   };
 
-  if (isLoading || isNavigating || isActionLoading) return <SectionLoading minHeight="60vh" />;
+  // While a Distribute is in flight, batchDistributeProgress drives its own progress-bar modal
+  // (rendered further below) -- don't let the generic section spinner cover it up.
+  if (isLoading || isNavigating || (isActionLoading && !batchDistributeProgress)) return <SectionLoading minHeight="60vh" />;
 
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6 w-full flex-1">
@@ -1746,9 +1853,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                 <table className="w-full min-w-max border-spacing-0 text-left">
                   <thead>
                     <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-10">
-                        {" "}
-                      </th>
+                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-9" />
                       <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
                         No.
                       </th>
@@ -1782,7 +1887,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                           colSpan={DEFAULT_COLUMNS.filter((c) => c.visible).length + 3}
                           className="py-12 text-center border-b border-slate-200"
                         >
-                          <EmptyState
+                          <TableEmptyState
                             title={
                               error
                                 ? "Unable to load controlled copies"
@@ -1817,19 +1922,24 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                             <tr
                               className={cn("transition-colors group hover:bg-slate-50/80")}
                             >
-                              <td className={cn(tdClass, "text-center")}>
-                                {isExpandable && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      toggleBatchExpansion(expandableBatchId);
-                                    }}
-                                    className="inline-flex h-5 w-5 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                                    aria-label={isExpanded ? "Collapse batch" : "Expand batch"}
-                                  >
-                                  <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", isExpanded && "rotate-90")} />
+                              <td
+                                className="py-3 px-4 border-b border-slate-200 whitespace-nowrap"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isExpandable) toggleBatchExpansion(expandableBatchId);
+                                }}
+                              >
+                                {isExpandable ? (
+                                  <button className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors">
+                                    <motion.span
+                                      animate={{ rotate: isExpanded ? 90 : 0 }}
+                                      transition={transitionConfig}
+                                      className="inline-flex items-center justify-center"
+                                    >
+                                      <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500" />
+                                    </motion.span>
                                   </button>
-                                )}
+                                ) : null}
                               </td>
                               <td className={tdClass}>
                                 {rowNumber}
@@ -1841,7 +1951,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                                   className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left"
                                   title={isExpandable ? "Open controlled copy batch details" : "Open controlled copy details"}
                                 >
-                                  {formatControlledCopyNumber(copy.controlledCopyNumber)}
+                                  {controlledCopyDisplayNumber(copy, isExpandable)}
                                 </button>
                               </td>
                               <td className={tdClass}>
@@ -1886,6 +1996,9 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                               </td>
                               <td className={tdClass}>
                                 <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span>
+                              </td>
+                              <td className={tdClass}>
+                                {copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-"}
                               </td>
                               <td
                                 onClick={(e) => e.stopPropagation()}
@@ -1948,6 +2061,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
           position={position}
           isBatch={selectedIsBatch}
           isCapabilityLoading={isCapabilityLoading}
+          isDistributeBusy={batchDistributeProgress !== null}
           cancelDecision={selectedCancelDecision}
           distributeDecision={selectedDistributeDecision}
           recallDecision={selectedRecallDecision}
@@ -1973,7 +2087,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         meaningDisplayName="Controlled Copy Distribution Cancelled"
         meaningCode="CONTROLLED_COPY_DISTRIBUTION_CANCELLED"
         targetDetails={{
-          code: selectedCopyForCancel?.controlledCopyNumber || "N/A",
+          code: controlledCopyDisplayNumber(selectedCopyForCancel, isControlledCopyBatchRow(selectedCopyForCancel)) || "N/A",
           title: selectedCopyForCancel?.name || "N/A",
           revision: selectedCopyForCancel?.revisionNumber || "—"
         }}
@@ -1991,10 +2105,14 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         meaningDisplayName="Controlled Copy Distributed"
         meaningCode="CONTROLLED_COPY_DISTRIBUTED"
         targetDetails={{
-          code: selectedCopyForDistribute?.controlledCopyNumber || "N/A",
+          code: controlledCopyDisplayNumber(selectedCopyForDistribute, isControlledCopyBatchRow(selectedCopyForDistribute)) || "N/A",
           title: selectedCopyForDistribute?.name || "N/A",
           revision: selectedCopyForDistribute?.revisionNumber || "—"
         }}
+        // Distribute (especially a batch) can run long after the signature itself is verified --
+        // hand off to the progress-bar modal right away instead of covering it with "Processing
+        // signature..." for the whole thing. handleDistributeESignConfirm owns its own error handling.
+        deferConfirm
       />
 
       <RecallControlledCopyModal
@@ -2002,11 +2120,11 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         onClose={() => {
           setIsRecallFormOpen(false);
           setSelectedCopyForRecall(null);
-          setRecallValues(null);
+          setHasConfirmedRecall(false);
         }}
         onConfirm={handleRecallFormConfirm}
-        controlledCopyNumber={selectedCopyForRecall?.controlledCopyNumber}
-        isBatch={selectedCopyForRecall ? isControlledCopyBatchRow(selectedCopyForRecall) : false}
+        controlledCopyNumber={controlledCopyDisplayNumber(selectedCopyForRecall, isControlledCopyBatchRow(selectedCopyForRecall))}
+        isBatch={isControlledCopyBatchRow(selectedCopyForRecall)}
       />
 
       {/* ESignature Modal - Recall */}
@@ -2015,14 +2133,14 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         onClose={() => {
           setIsRecallESignModalOpen(false);
           setSelectedCopyForRecall(null);
-          setRecallValues(null);
+          setHasConfirmedRecall(false);
         }}
         onConfirm={handleRecallESignConfirm}
         transactionType="recall-distribution"
         meaningDisplayName="Controlled Copy Recalled"
         meaningCode="CONTROLLED_COPY_RECALLED"
         targetDetails={{
-          code: selectedCopyForRecall?.controlledCopyNumber || "N/A",
+          code: controlledCopyDisplayNumber(selectedCopyForRecall, isControlledCopyBatchRow(selectedCopyForRecall)) || "N/A",
           title: selectedCopyForRecall?.name || "N/A",
           revision: selectedCopyForRecall?.revisionNumber || "—"
         }}
@@ -2049,7 +2167,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         meaningDisplayName="Controlled Copy Reissued"
         meaningCode="CONTROLLED_COPY_REISSUED"
         targetDetails={{
-          code: selectedCopyForReissue?.controlledCopyNumber || "N/A",
+          code: controlledCopyDisplayNumber(selectedCopyForReissue, isControlledCopyBatchRow(selectedCopyForReissue)) || "N/A",
           title: selectedCopyForReissue?.name || "N/A",
           revision: selectedCopyForReissue?.revisionNumber || "—"
         }}
@@ -2068,6 +2186,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         total={distributeResultModal?.total ?? 0}
         succeeded={distributeResultModal?.succeeded ?? 0}
         failed={distributeResultModal?.failed ?? 0}
+        skipped={distributeResultModal?.skipped ?? 0}
         failedItems={distributeResultModal?.failedItems ?? []}
         isRetrying={distributeResultModal?.isRetrying ?? false}
         onRetryAllFailed={() => void handleRetryAllFailedDistribution()}
@@ -2088,6 +2207,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         total={recallResultModal?.total ?? 0}
         succeeded={recallResultModal?.succeeded ?? 0}
         failed={recallResultModal?.failed ?? 0}
+        skipped={recallResultModal?.skipped ?? 0}
         failedItems={recallResultModal?.failedItems ?? []}
         isRetrying={recallResultModal?.isRetrying ?? false}
         onRetryAllFailed={() => void handleRetryAllFailedRecall()}
@@ -2110,6 +2230,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         total={cancelResultModal?.total ?? 0}
         succeeded={cancelResultModal?.succeeded ?? 0}
         failed={cancelResultModal?.failed ?? 0}
+        skipped={cancelResultModal?.skipped ?? 0}
         failedItems={cancelResultModal?.failedItems ?? []}
         isRetrying={cancelResultModal?.isRetrying ?? false}
         onRetryAllFailed={() => void handleRetryAllFailedCancel()}

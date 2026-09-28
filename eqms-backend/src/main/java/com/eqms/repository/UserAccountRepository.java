@@ -27,6 +27,7 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
     long countByStatus(UserStatus status);
     java.util.List<UserAccount> findAllByStatus(UserStatus status);
     java.util.List<UserAccount> findAllByStatusOrderByFullNameAsc(UserStatus status);
+    java.util.List<UserAccount> findAllByStatusNotAndIdNotOrderByEmployeeCodeAsc(UserStatus status, UUID id);
 
     /**
      * Database-backed candidate lookup for workflow participant typeaheads.  Permission,
@@ -38,10 +39,11 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
             where u.status = :status
               and (
                 :search is null
-                or lower(u.fullName) like lower(concat('%', :search, '%'))
-                or lower(coalesce(u.employeeCode, '')) like lower(concat('%', :search, '%'))
-                or lower(coalesce(u.department, '')) like lower(concat('%', :search, '%'))
-                or lower(coalesce(u.position, '')) like lower(concat('%', :search, '%'))
+                or lower(u.fullName) like lower(concat('%', cast(:search as string), '%'))
+                or lower(coalesce(u.employeeCode, '')) like lower(concat('%', cast(:search as string), '%'))
+                or lower(coalesce(u.email, '')) like lower(concat('%', cast(:search as string), '%'))
+                or lower(coalesce(u.department, '')) like lower(concat('%', cast(:search as string), '%'))
+                or lower(coalesce(u.position, '')) like lower(concat('%', cast(:search as string), '%'))
               )
             """)
     Page<UserAccount> findParticipantCandidates(
@@ -50,12 +52,47 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
             Pageable pageable
     );
 
-    @Query("select u from UserAccount u where lower(u.businessUnit) in (lower(:first), lower(:second))")
-    java.util.List<UserAccount> findAllByBusinessUnitNameOrCode(@Param("first") String first, @Param("second") String second);
+    /** Database-paged active-user directory for generic person pickers. */
+    @Query("""
+            select u from UserAccount u
+            where u.status = :status
+              and (:department is null or lower(coalesce(u.department, '')) = lower(cast(:department as string)))
+              and (
+                :search is null
+                or lower(u.fullName) like lower(concat('%', cast(:search as string), '%'))
+                or lower(coalesce(u.email, '')) like lower(concat('%', cast(:search as string), '%'))
+                or lower(coalesce(u.employeeCode, '')) like lower(concat('%', cast(:search as string), '%'))
+                or lower(coalesce(u.department, '')) like lower(concat('%', cast(:search as string), '%'))
+                or lower(coalesce(u.position, '')) like lower(concat('%', cast(:search as string), '%'))
+              )
+            """)
+    Page<UserAccount> findMetadataLookupCandidates(
+            @Param("status") UserStatus status,
+            @Param("search") String search,
+            @Param("department") String department,
+            Pageable pageable
+    );
 
-    @Query("select u from UserAccount u where lower(u.department) in (lower(:first), lower(:second))")
-    java.util.List<UserAccount> findAllByDepartmentNameOrCode(@Param("first") String first, @Param("second") String second);
+    // Status-scoped deliberately: a Controlled Copy distributed by business-unit/department must
+    // only resolve to people who could actually receive and use it. Without this filter, a unit
+    // with any Suspended/Terminated/Inactive/Pending member would resolve MORE recipients here
+    // than the requester's own recipient-count preview (which is Active-only, matching
+    // MetadataController's /metadata/users lookup) -- causing every such request to fail
+    // server-side with "Sum(recipients.quantity) must equal Request.quantity." even though the
+    // requester did nothing wrong.
+    @Query("select u from UserAccount u where lower(u.businessUnit) in (lower(:first), lower(:second)) and u.status = :status")
+    java.util.List<UserAccount> findAllByBusinessUnitNameOrCodeAndStatus(@Param("first") String first, @Param("second") String second, @Param("status") UserStatus status);
+
+    @Query("select u from UserAccount u where lower(u.department) in (lower(:first), lower(:second)) and u.status = :status")
+    java.util.List<UserAccount> findAllByDepartmentNameOrCodeAndStatus(@Param("first") String first, @Param("second") String second, @Param("status") UserStatus status);
 
     @Query("select u from UserAccount u where lower(u.fullName) = lower(:fullName)")
     Optional<UserAccount> findByFullNameIgnoreCase(@Param("fullName") String fullName);
+
+    /** Employee-code-only projection for the New User Employee ID suggestion -- avoids pulling
+     *  every enriched column {@link #findAll()}/getUsers() would, since only the code string is
+     *  needed to compute the next suggested digits. Includes Terminated users deliberately: their
+     *  employeeCode remains uniqueness-constrained, so excluding them could suggest a colliding code. */
+    @Query("select u.employeeCode from UserAccount u where u.employeeCode is not null and u.employeeCode <> ''")
+    java.util.List<String> findAllEmployeeCodes();
 }

@@ -14,29 +14,49 @@ export interface TablePaginationProps {
   onItemsPerPageChange?: (itemsPerPage: number) => void;
   className?: string;
   showItemCount?: boolean;
+  /** Clickable page numbers between Previous/Next (hidden on narrow/mobile layouts). Default true. */
   showPageNumbers?: boolean;
-  maxPageButtons?: number;
   showItemsPerPageSelector?: boolean;
   itemsPerPageOptions?: number[];
 }
 
-const PAGE_BTN_BASE = 'h-7 w-7 text-xs sm:text-sm font-medium rounded-lg transition-all';
-const PAGE_BTN_ACTIVE = 'bg-emerald-600 text-white';
-const PAGE_BTN_INACTIVE = 'text-slate-700 hover:bg-slate-100';
+// Page numbers only ever render at lg+ (desktop) -- see the `hidden lg:flex` wrapper below -- so
+// this can target the Previous/Next buttons' actual lg+ rendered height directly: Button's own
+// `size="sm"` class list is `h-9 md:h-9 ...`, and since lg is always >= md, `md:h-9` (36px) is
+// always the winning height whenever these are visible. Wider padding/min-width so 3-digit page
+// numbers (e.g. 137) sit comfortably.
+const PAGE_BTN_BASE = 'h-9 min-w-[2.25rem] px-3 text-sm font-medium rounded-lg border transition-all flex items-center justify-center';
+const PAGE_BTN_ACTIVE = 'bg-emerald-600 text-white border-emerald-600';
+const PAGE_BTN_INACTIVE = 'text-slate-700 bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300';
 const ELLIPSIS = <span className="px-1 text-slate-400">...</span>;
 
 const DEFAULT_PER_PAGE_OPTIONS = [10, 20, 50];
 
-function getVisiblePages(current: number, total: number, max: number): number[] {
-  if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
+const BOUNDARY_COUNT = 3; // always-visible page numbers kept at each end (e.g. 1 2 3 ... 8 9 10)
+const SIBLING_COUNT = 1; // pages kept immediately around the current page
 
-  const half = Math.floor(max / 2);
-  let start = Math.max(1, current - half);
-  const end = Math.min(total, start + max - 1);
+/**
+ * Builds the page-button sequence: the first/last BOUNDARY_COUNT pages are always shown, plus
+ * SIBLING_COUNT pages on either side of the current page, with a single "..." wherever there's a
+ * gap. Falls back to every page when the total is small enough that nothing needs collapsing.
+ */
+function getVisiblePages(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= BOUNDARY_COUNT * 2 + SIBLING_COUNT * 2 + 1) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
 
-  if (end - start + 1 < max) start = Math.max(1, end - max + 1);
+  const shown = new Set<number>();
+  for (let p = 1; p <= Math.min(BOUNDARY_COUNT, total); p++) shown.add(p);
+  for (let p = Math.max(1, total - BOUNDARY_COUNT + 1); p <= total; p++) shown.add(p);
+  for (let p = Math.max(1, current - SIBLING_COUNT); p <= Math.min(total, current + SIBLING_COUNT); p++) shown.add(p);
 
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  const sorted = Array.from(shown).sort((a, b) => a - b);
+  const result: (number | 'ellipsis')[] = [];
+  sorted.forEach((page, index) => {
+    if (index > 0 && page - sorted[index - 1] > 1) result.push('ellipsis');
+    result.push(page);
+  });
+  return result;
 }
 
 export const TablePagination: React.FC<TablePaginationProps> = ({
@@ -49,8 +69,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   onItemsPerPageChange,
   className,
   showItemCount = true,
-  showPageNumbers = false,
-  maxPageButtons = 5,
+  showPageNumbers = true,
   showItemsPerPageSelector = true,
   itemsPerPageOptions = DEFAULT_PER_PAGE_OPTIONS,
 }) => {
@@ -58,8 +77,8 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   const pageNumbers = useMemo(
-    () => getVisiblePages(currentPage, totalPages, maxPageButtons),
-    [currentPage, totalPages, maxPageButtons]
+    () => getVisiblePages(currentPage, totalPages),
+    [currentPage, totalPages]
   );
 
   const goPrev = useCallback(() => onPageChange(Math.max(1, currentPage - 1)), [onPageChange, currentPage]);
@@ -77,9 +96,6 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
     () => itemsPerPageOptions.map((n) => ({ label: n.toString(), value: n })),
     [itemsPerPageOptions]
   );
-
-  const firstPage = pageNumbers[0];
-  const lastPage = pageNumbers[pageNumbers.length - 1];
 
   if (totalPages === 0) return null;
 
@@ -126,30 +142,27 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           Previous
         </Button>
 
+        {/* Desktop only -- collapses to the "current/total" text below on tablet and mobile. */}
         {showPageNumbers && (
-          <div className="hidden sm:flex items-center gap-1">
-            {firstPage > 1 && (
-              <>
-                <PageButton page={1} isActive={false} onClick={onPageChange} />
-                {firstPage > 2 && ELLIPSIS}
-              </>
-            )}
-
-            {pageNumbers.map((page) => (
-              <PageButton key={page} page={page} isActive={page === currentPage} onClick={onPageChange} />
-            ))}
-
-            {lastPage < totalPages && (
-              <>
-                {lastPage < totalPages - 1 && ELLIPSIS}
-                <PageButton page={totalPages} isActive={false} onClick={onPageChange} />
-              </>
+          <div className="hidden lg:flex items-center gap-1">
+            {pageNumbers.map((page, index) =>
+              page === 'ellipsis' ? (
+                <React.Fragment key={`ellipsis-${index}`}>{ELLIPSIS}</React.Fragment>
+              ) : (
+                <PageButton
+                  key={page}
+                  page={page}
+                  isActive={page === currentPage}
+                  onClick={onPageChange}
+                  disabled={isLoading}
+                />
+              )
             )}
           </div>
         )}
 
         {showPageNumbers && (
-          <span className="sm:hidden text-[10px] text-slate-500 px-1.5">
+          <span className="lg:hidden text-[10px] text-slate-500 px-1.5">
             {currentPage}/{totalPages}
           </span>
         )}
@@ -166,11 +179,12 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
 };
 
 /* ── Page number button ── */
-const PageButton: React.FC<{ page: number; isActive: boolean; onClick: (p: number) => void }> = React.memo(
-  ({ page, isActive, onClick }) => (
+const PageButton: React.FC<{ page: number; isActive: boolean; onClick: (p: number) => void; disabled?: boolean }> = React.memo(
+  ({ page, isActive, onClick, disabled }) => (
     <button
       onClick={() => onClick(page)}
-      className={cn(PAGE_BTN_BASE, isActive ? PAGE_BTN_ACTIVE : PAGE_BTN_INACTIVE)}
+      disabled={disabled || isActive}
+      className={cn(PAGE_BTN_BASE, isActive ? PAGE_BTN_ACTIVE : PAGE_BTN_INACTIVE, disabled && !isActive && 'opacity-50 cursor-not-allowed')}
     >
       {page}
     </button>

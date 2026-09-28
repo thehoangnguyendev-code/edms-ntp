@@ -1,9 +1,31 @@
 import { useEffect, useState } from "react";
 import { SECURITY_CONFIG_STORAGE_KEY } from "@/config/security";
 
+export interface PdfPreviewSettings {
+  defaultZoom?: "page-fit" | "page-width" | "actual-size";
+  showThumbnailSidebar?: boolean;
+  showSearch?: boolean;
+  showPageNavigation?: boolean;
+  showZoomControls?: boolean;
+  showFullScreen?: boolean;
+  showThemeSwitch?: boolean;
+  allowTextSelection?: boolean;
+}
+
+const readPdfPreviewSettings = (): PdfPreviewSettings => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY);
+    return (raw ? (JSON.parse(raw) as SystemConfigLike).documents?.pdfPreview : undefined) ?? {};
+  } catch {
+    return {};
+  }
+};
+
 interface SystemConfigLike {
   documents?: {
     allowDownload?: boolean;
+    pdfPreview?: PdfPreviewSettings;
   };
 }
 
@@ -30,9 +52,12 @@ export const useDocumentPreviewSettings = () => {
     readAllowDownloadSetting(),
   );
 
+  const [pdfPreview, setPdfPreview] = useState<PdfPreviewSettings>(() => readPdfPreviewSettings());
+
   useEffect(() => {
     const syncFromStorage = () => {
       setAllowDownloadAndPrint(readAllowDownloadSetting());
+      setPdfPreview(readPdfPreviewSettings());
     };
 
     syncFromStorage();
@@ -56,5 +81,5 @@ export const useDocumentPreviewSettings = () => {
     };
   }, []);
 
-  return { allowDownloadAndPrint };
+  return { allowDownloadAndPrint, pdfPreview };
 };

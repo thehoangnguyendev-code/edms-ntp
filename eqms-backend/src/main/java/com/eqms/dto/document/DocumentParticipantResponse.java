@@ -10,6 +10,7 @@ public record DocumentParticipantResponse(
         Integer sequenceOrder,
         String actionStatus,
         String actedAt,
-        String actionComment
+        String actionComment,
+        String userStatus
 ) {
 }

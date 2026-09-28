@@ -24,4 +24,5 @@ public interface DocumentTypeRepository extends JpaRepository<DocumentType, UUID
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select documentType from DocumentType documentType where documentType.id = :id")
     Optional<DocumentType> findByIdForNumberAllocation(@Param("id") UUID id);
+    java.util.List<com.eqms.entity.DocumentType> findAllByNameFormat_Id(java.util.UUID nameFormatId);
 }

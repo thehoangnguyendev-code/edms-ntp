@@ -50,6 +50,12 @@ export interface PasswordPolicy {
   requireLowercase: boolean;
   requireNumbers: boolean;
   requireSpecialChars: boolean;
+  minUniqueChars?: number;
+  maxRepeatedChars?: number;
+  disallowSequentialChars?: boolean;
+  disallowCommonPasswords?: boolean;
+  disallowUserInfo?: boolean;
+  disallowWhitespace?: boolean;
 }
 
 export type LoginResult = AuthResponse | LoginChallengeResponse;
@@ -66,6 +72,9 @@ export interface AuthUser {
   fullName: string;
   email: string;
   role: string;
+  /** Real Access Profile names actually granting this user's entitlement -- NOT `role` above
+   *  (the legacy app_users.role_name free-text label). Empty means no Access Profile assigned. */
+  accessProfileNames?: string[];
   department?: string;
   permissions: string[];
   avatar?: string;
@@ -77,6 +86,8 @@ export interface AuthUser {
   emailNotificationsEnabled?: boolean;
   notificationPreferences?: NotificationPreferences;
   mfaSetupRequired?: boolean;
+  /** Admin-mandated per-user MFA requirement (see User.mfaRequiredByAdmin in types/user.ts). */
+  mfaRequiredByAdmin?: boolean;
   maintenanceMode?: boolean;
   phone?: string;
   employeeCode?: string;
@@ -108,6 +119,9 @@ export interface AuthUser {
   terminationDate?: string;
   firstName?: string;
   lastName?: string;
+  /** DASHBOARD / NOTIFICATIONS / KNOWLEDGE -- landing page immediately after login, read by
+   *  AppRoutes.tsx's resolvePostAuthRoute straight off this login response. */
+  homePage?: string;
   educationList?: Array<{
     id: string;
     degree: string;

@@ -8,13 +8,16 @@ import { TabNav } from "@/components/ui/tabs/TabNav";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast/Toast";
+import { getApiErrorMessage } from "@/utils/apiError";
+import { CopyDocumentTab } from "./tabs/CopyDocumentTab";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import { documentApi } from "@/services/api/documents";
 import { controlledCopyPolicyApi, type ControlledCopyPlaceholderField } from "@/services/api/controlledCopyPolicy";
 import { ControlledCopy, ControlledCopyDistributionBatch } from "../types";
+import { controlledCopyDisplayNumber } from "../display";
 import { DestructionTypeSelectionModal } from "../components/DestructionTypeSelectionModal";
-import { RecallControlledCopyModal, type RecallControlledCopyValues } from "../components/RecallControlledCopyModal";
+import { RecallControlledCopyModal } from "../components/RecallControlledCopyModal";
 import { DistributeBatchProgressModal } from "../components/DistributeBatchProgressModal";
 import { DistributeBatchResultModal, type DistributeBatchFailedItem } from "../components/DistributeBatchResultModal";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -34,6 +37,7 @@ import {
   refreshDetailAfterSnapshot,
 } from "@/features/documents/shared/detailSnapshotHelpers";
 import { getControlledCopyActionTargetId } from "../controlledCopyActions";
+import { invalidateControlledCopyChildren } from "../components/ExpandControlledCopiesRow";
 import {
   mergeControlledCopyAuditTrailRows,
   normalizeControlledCopyBatchDetail,
@@ -48,12 +52,13 @@ import {
 } from "@/hooks";
 import { resolveTerminalProgressStep } from "@/features/documents/shared/statusMapping";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { startControlledCopyJobStatusPolling } from "../jobStatusPolling";
 import { buildControlledCopyRouteState } from "../controlledCopyNavigation";
 import type { ControlledCopyRouteState } from "../controlledCopyNavigation";
 
 // Tab Type
-type TabType = "document" | "distribution" | "signatures" | "audit" | "evidence";
+type TabType = "document" | "file" | "distribution" | "signatures" | "audit" | "evidence";
 
 // Main Component
 interface ControlledCopyDetailViewProps {
@@ -82,7 +87,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRecallFormOpen, setIsRecallFormOpen] = useState(false);
   const [isRecallESignModalOpen, setIsRecallESignModalOpen] = useState(false);
-  const [recallValues, setRecallValues] = useState<RecallControlledCopyValues | null>(null);
+  // Gates handleRecallSuccess on having actually gone through the confirm step -- no data to carry
+  // through it any more, the recall date is now stamped by the server at signature time.
+  const [hasConfirmedRecall, setHasConfirmedRecall] = useState(false);
   const [isReportLostDamagedModalOpen, setIsReportLostDamagedModalOpen] = useState(false);
   const [isReissueModalOpen, setIsReissueModalOpen] = useState(false);
   const [auditTrailRows, setAuditTrailRows] = useState<any[]>([]);
@@ -102,6 +109,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     total: number;
     succeeded: number;
     failed: number;
+    skipped: number;
     failedItems: DistributeBatchFailedItem[];
     isRetrying: boolean;
   } | null>(null);
@@ -117,6 +125,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     total: number;
     succeeded: number;
     failed: number;
+    skipped: number;
     failedItems: DistributeBatchFailedItem[];
     isRetrying: boolean;
   } | null>(null);
@@ -132,6 +141,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     total: number;
     succeeded: number;
     failed: number;
+    skipped: number;
     failedItems: DistributeBatchFailedItem[];
     isRetrying: boolean;
   } | null>(null);
@@ -156,13 +166,54 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   const distributeDecision = getControlledCopyActionDecision(activeCapabilities, isBatchParent ? "distributeBatch" : "distributeCopy");
   const recallDecision = getControlledCopyActionDecision(activeCapabilities, isBatchParent ? "recallBatch" : "recallCopy");
   const reportLostDamagedDecision = getControlledCopyActionDecision(activeCapabilities, "reportLostDamaged");
+  const noticeDecision = getControlledCopyActionDecision(activeCapabilities, "withdrawalNotice");
+  const viewDocumentDecision = getControlledCopyActionDecision(activeCapabilities, "viewDocument");
+  const [isDownloadingNotice, setIsDownloadingNotice] = React.useState(false);
+  const handleDownloadWithdrawalNotice = async () => {
+    setIsDownloadingNotice(true);
+    try {
+      const blob = await documentApi.downloadControlledCopyWithdrawalNotice(controlledCopy.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Withdrawal-Notice-${controlledCopy.controlledCopyNumber || controlledCopy.id}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Notice failed",
+        message: getApiErrorMessage(error, "Unable to generate the notice."),
+      });
+    } finally {
+      setIsDownloadingNotice(false);
+    }
+  };
   const reissueDecision = getControlledCopyActionDecision(activeCapabilities, "replaceLostDamaged");
   const terminalProgressStep = React.useMemo(
     () => resolveTerminalProgressStep(controlledCopy.status, auditTrailRows as any[]),
     [auditTrailRows, controlledCopy.status],
   );
 
-  const loadAuditTrail = useCallback(async (entityType: string, entityId: string, childIds: string[] = []) => {
+  // Set to the batch entityId once its per-member audit rows have been fanned-out and merged, so
+  // switching to the Audit tab a second time doesn't re-fire N requests; cleared whenever a
+  // batch-only reload happens (an action completed while the Audit tab wasn't open).
+  const auditChildrenLoadedForRef = React.useRef<string | null>(null);
+  const activeTabRef = React.useRef<TabType>(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  const loadAuditTrail = useCallback(async (
+    entityType: string,
+    entityId: string,
+    childIds: string[] = [],
+    // A batch's Audit tab shows a merged timeline (batch rows + every member copy's own rows),
+    // which for a departmental batch is up to CHILD_PAGE_SIZE extra /audit-trail requests. The
+    // stepper and the Signatures tab only ever use the batch's own rows, so the member fan-out is
+    // deferred until the Audit tab is actually opened -- see the effect below.
+    includeChildren = false,
+  ) => {
     if (!entityId) {
       setAuditTrailRows([]);
       return;
@@ -172,7 +223,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       const batchResponse = await auditTrailApi.getByEntity(entityType, entityId);
       const batchRows = Array.isArray(batchResponse) ? batchResponse : (batchResponse as any)?.data || [];
 
-      if (entityType !== "Controlled Copy Distribution Batch" || childIds.length === 0) {
+      if (entityType !== "Controlled Copy Distribution Batch" || childIds.length === 0 || !includeChildren) {
         setAuditTrailRows(batchRows);
         return;
       }
@@ -223,12 +274,30 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   }, []);
 
   const refreshDetailRelatedData = useCallback(async (entityType: string, entityId: string, childIds: string[] = []) => {
+    const isBatch = entityType === "Controlled Copy Distribution Batch";
+    // Only pay the per-member audit fan-out cost if the user is currently looking at the Audit
+    // tab; otherwise reload batch-only and let the tab-switch effect fan out later if needed.
+    const includeChildren = isBatch && activeTabRef.current === "audit" && childIds.length > 0;
+    auditChildrenLoadedForRef.current = includeChildren ? entityId : null;
     await Promise.all([
-      loadAuditTrail(entityType, entityId, childIds),
+      loadAuditTrail(entityType, entityId, childIds, includeChildren),
       loadSignatureRows(entityId),
-      loadEvidenceRows(entityId, entityType === "Controlled Copy Distribution Batch"),
+      loadEvidenceRows(entityId, isBatch),
     ]);
   }, [loadAuditTrail, loadSignatureRows, loadEvidenceRows]);
+
+  // Fan out the per-member audit rows the first time the Audit tab is opened for a batch (or
+  // after a batch-only reload cleared the marker). Non-batch records and the other tabs never
+  // trigger this.
+  useEffect(() => {
+    if (activeTab !== "audit" || !isBatchParent) return;
+    const entityId = controlledCopy.distributionBatchId || controlledCopy.id;
+    const childIds = controlledCopy.copyIds || [];
+    if (!entityId || childIds.length === 0) return;
+    if (auditChildrenLoadedForRef.current === entityId) return;
+    auditChildrenLoadedForRef.current = entityId;
+    void loadAuditTrail("Controlled Copy Distribution Batch", entityId, childIds, true);
+  }, [activeTab, isBatchParent, controlledCopy.distributionBatchId, controlledCopy.id, controlledCopy.copyIds, loadAuditTrail]);
 
   const refreshDetailCapabilities = useCallback(async () => {
     const refreshers: Array<() => Promise<any>> = [];
@@ -261,6 +330,19 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       isBatchParent ? refreshed.copyIds || [] : [],
     );
   }, [controlledCopy.distributionBatchId, controlledCopy.id, isBatchParent, refreshDetailRelatedData]);
+
+  // This copy/batch (or a member of the batch) was changed by anyone: refresh the detail and the actions in place.
+  useEntityChanged(
+    ["CONTROLLED_COPY", "CONTROLLED_COPY_BATCH"],
+    () => {
+      void refreshDistributionDetail().catch(() => undefined);
+      void refreshDetailCapabilities().catch(() => undefined);
+    },
+    {
+      ids: [controlledCopy.id, controlledCopy.distributionBatchId, ...(controlledCopy.copyIds || [])],
+      debounceMs: 800,
+    },
+  );
 
   useEffect(() => {
     const unsubscribe = subscribeNotificationRealtime((event) => {
@@ -333,20 +415,28 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     if (batchRecallProgress?.status !== "completed" && batchRecallProgress?.status !== "completed_with_errors") return;
     const batchId = batchRecallProgress.batchId;
     const timer = window.setTimeout(() => {
+      // Same stale-cache issue as ControlledCopiesView's list/expand rows: the "Distribution
+      // Information" tab's Recipients table reads from this SAME shared module-level cache, keyed
+      // by batchId, populated the first time it was rendered. refreshDistributionDetail() below
+      // refetches the batch header/status but never touches this cache, so without invalidating it
+      // here the Recipients table (on this very page) would keep showing every member as
+      // "Distributed" even after they've all just been recalled.
+      invalidateControlledCopyChildren(batchId);
       setBatchRecallProgress(null);
       void refreshDetailCapabilities();
       void refreshDistributionDetail();
       void (async () => {
         try {
-          const status = await documentApi.getControlledCopyDistributionJobStatus(batchId, "RECALL");
+          const status = await documentApi.awaitSettledControlledCopyDistributionJobStatus(batchId, "RECALL");
           const failedItems = status.failed > 0
             ? await documentApi.getControlledCopyDistributionFailedItems(batchId, "RECALL")
             : [];
           setRecallResultModal({
             batchId,
             total: status.total,
-            succeeded: Math.max(status.total - status.failed, 0),
+            succeeded: status.succeeded,
             failed: status.failed,
+            skipped: status.skipped,
             failedItems,
             isRetrying: false,
           });
@@ -413,20 +503,24 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     if (batchCancelProgress?.status !== "completed" && batchCancelProgress?.status !== "completed_with_errors") return;
     const batchId = batchCancelProgress.batchId;
     const timer = window.setTimeout(() => {
+      // See the matching comment in the Recall completion effect above -- same stale-child-cache
+      // issue applies to batch Cancel on this detail page.
+      invalidateControlledCopyChildren(batchId);
       setBatchCancelProgress(null);
       void refreshDetailCapabilities();
       void refreshDistributionDetail();
       void (async () => {
         try {
-          const status = await documentApi.getControlledCopyDistributionJobStatus(batchId, "CANCEL");
+          const status = await documentApi.awaitSettledControlledCopyDistributionJobStatus(batchId, "CANCEL");
           const failedItems = status.failed > 0
             ? await documentApi.getControlledCopyDistributionFailedItems(batchId, "CANCEL")
             : [];
           setCancelResultModal({
             batchId,
             total: status.total,
-            succeeded: Math.max(status.total - status.failed, 0),
+            succeeded: status.succeeded,
             failed: status.failed,
+            skipped: status.skipped,
             failedItems,
             isRetrying: false,
           });
@@ -499,6 +593,12 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     const scope = distributeProgress.scope;
     const batchId = distributeProgress.batchId;
     const timer = window.setTimeout(() => {
+      // See the matching comment in the Recall completion effect above -- same stale-child-cache
+      // issue applies to batch Distribute on this detail page. Guarded to scope === "batch" since
+      // a single-copy distribute from this page has no batch-children cache to invalidate.
+      if (scope === "batch") {
+        invalidateControlledCopyChildren(batchId);
+      }
       setDistributeProgress(null);
       void refreshDetailCapabilities();
       void refreshDistributionDetail();
@@ -506,15 +606,16 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       if (scope === "batch") {
         void (async () => {
           try {
-            const status = await documentApi.getControlledCopyDistributionJobStatus(batchId);
+            const status = await documentApi.awaitSettledControlledCopyDistributionJobStatus(batchId);
             const failedItems = status.failed > 0
               ? await documentApi.getControlledCopyDistributionFailedItems(batchId)
               : [];
             setDistributeResultModal({
               batchId,
               total: status.total,
-              succeeded: Math.max(status.total - status.failed, 0),
+              succeeded: status.succeeded,
               failed: status.failed,
+              skipped: status.skipped,
               failedItems,
               isRetrying: false,
             });
@@ -669,6 +770,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   // Tabs configuration
   const tabs = [
     { id: "document" as TabType, label: "Document Information" },
+    ...(!isBatchParent && viewDocumentDecision?.allowed ? [{ id: "file" as TabType, label: "Document" }] : []),
     { id: "distribution" as TabType, label: "Distribution Information" },
     ...(evidenceRows.length > 0 || Boolean(controlledCopy.destructionType)
       ? [{ id: "evidence" as TabType, label: "Evidence" }]
@@ -702,6 +804,10 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   };
 
   const handleDistributeSuccess = async (data: { username: string; password: string; reason: string; signatureToken?: string }) => {
+    // The signature step is already verified by the time this runs (ESignatureModal defers to us
+    // right after that, see deferConfirm below) -- close it immediately instead of leaving it up
+    // (blocking the progress-bar modal set up right after) for the whole distribute duration.
+    setIsDistributeModalOpen(false);
     setIsActionLoading(true);
     try {
       const targetId = isBatchParent
@@ -768,7 +874,6 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         duration: 3500,
       });
     } finally {
-      setIsDistributeModalOpen(false);
       setIsActionLoading(false);
     }
   };
@@ -781,8 +886,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     setIsRecallFormOpen(true);
   };
 
-  const handleRecallFormConfirm = (values: RecallControlledCopyValues) => {
-    setRecallValues(values);
+  const handleRecallFormConfirm = () => {
+    setHasConfirmedRecall(true);
     setIsRecallFormOpen(false);
     setIsRecallESignModalOpen(true);
   };
@@ -847,7 +952,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   };
 
   const handleRecallSuccess = async (data: { username: string; password: string; reason: string; signatureToken?: string }) => {
-    if (!recallValues) {
+    if (!hasConfirmedRecall) {
       setIsRecallESignModalOpen(false);
       return;
     }
@@ -856,15 +961,19 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       const updated = isBatchParent
         ? await documentApi.recallControlledCopyBatch(controlledCopy.id, {
             recalledBy: data.username,
-            recallReason: recallValues.recallReason,
-            recallDate: recallValues.recallDate,
+            // The reason is captured once, in the e-signature step -- reused here as the
+            // recall reason too instead of asking for it a second time.
+            recallReason: data.reason,
+            // recallDate intentionally omitted -- the server stamps Instant.now() itself, at the
+            // exact moment this recall actually commits (right after the signature is verified).
             comment: data.reason,
             signatureToken: data.signatureToken as string,
           })
         : await documentApi.recallControlledCopy(getControlledCopyActionTargetId(controlledCopy), {
             recalledBy: data.username,
-            recallReason: recallValues.recallReason,
-            recallDate: recallValues.recallDate,
+            recallReason: data.reason,
+            // recallDate intentionally omitted -- the server stamps Instant.now() itself, at the
+            // exact moment this recall actually commits (right after the signature is verified).
             comment: data.reason,
             signatureToken: data.signatureToken as string,
           });
@@ -917,7 +1026,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       });
     } finally {
       setIsRecallESignModalOpen(false);
-      setRecallValues(null);
+      setHasConfirmedRecall(false);
       setIsActionLoading(false);
     }
   };
@@ -978,7 +1087,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     }
   };
 
-  if (isLoadingDetail || isActionLoading) {
+  // While a Distribute is in flight, distributeProgress drives its own progress-bar modal
+  // (rendered further below) -- don't let the generic full-page spinner cover it up.
+  if (isLoadingDetail || (isActionLoading && !distributeProgress)) {
     return <FullPageLoading text="Loading..." />;
   }
 
@@ -1032,7 +1143,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   variant="outline-emerald"
                   size="sm"
                   className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
-                  disabled={isCapabilityLoading}
+                  disabled={isCapabilityLoading || distributeProgress !== null}
                   title={isCapabilityLoading ? "Capability information is still loading." : ""}
                 >
                   {isBatchParent ? "Distribute Batch" : "Distribute"}
@@ -1048,6 +1159,17 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   title={isCapabilityLoading ? "Capability information is still loading." : ""}
                 >
                   {isBatchParent ? "Recall Batch Immediately" : "Recall Immediately"}
+                </Button>
+              )}
+              {!isBatchParent && !isCapabilityLoading && noticeDecision?.allowed && (
+                <Button
+                  onClick={handleDownloadWithdrawalNotice}
+                  variant="outline-emerald"
+                  size="sm"
+                  className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
+                  disabled={isDownloadingNotice}
+                >
+                  {isDownloadingNotice ? "Preparing..." : "Recall / Withdrawal Notice"}
                 </Button>
               )}
               {!isBatchParent && !isCapabilityLoading && reportLostDamagedDecision?.allowed && (
@@ -1100,9 +1222,17 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
               onNavigateToLinkedCopy={(id) => navigate(ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(id))}
             />
           </div>
+          {activeTab === "file" && !isBatchParent && viewDocumentDecision?.allowed && (
+            <CopyDocumentTab
+              controlledCopyId={controlledCopy.id}
+              versionKey={`${controlledCopy.statusCode || controlledCopy.status || ""}:${activeCapabilities?.previewVersionToken || ""}`}
+            />
+          )}
           <div className={cn(activeTab !== "distribution" && "hidden")}>
             <DistributionInformationTab
               controlledCopy={controlledCopy}
+              isBatchParent={isBatchParent}
+              onNavigateToLinkedCopy={(id) => navigate(ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(id))}
             />
           </div>
           <div className={cn(activeTab !== "signatures" && "hidden")}>
@@ -1110,6 +1240,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
               controlledCopy={controlledCopy}
               records={signatureRows}
               auditTrailRecords={auditTrailRows as any}
+              isBatchParent={isBatchParent}
             />
           </div>
           <div className={cn(activeTab !== "audit" && "hidden")}>
@@ -1182,7 +1313,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             variant="outline-emerald"
             size="sm"
             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
-            disabled={isCapabilityLoading}
+            disabled={isCapabilityLoading || distributeProgress !== null}
             title={isCapabilityLoading ? "Capability information is still loading." : ""}
           >
             {isBatchParent ? "Distribute Batch" : "Distribute"}
@@ -1265,8 +1396,12 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         targetDetails={{
           code: controlledCopy.controlledCopyNumber,
           title: controlledCopy.name,
-          revision: controlledCopy.revisionNumber 
+          revision: controlledCopy.revisionNumber
         }}
+        // Distribute (especially a batch) can run long after the signature itself is verified --
+        // hand off to the progress-bar modal right away instead of covering it with "Processing
+        // signature..." for the whole thing. handleDistributeSuccess owns its own error handling.
+        deferConfirm
       />
 
       <DistributeBatchProgressModal
@@ -1282,6 +1417,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         total={distributeResultModal?.total ?? 0}
         succeeded={distributeResultModal?.succeeded ?? 0}
         failed={distributeResultModal?.failed ?? 0}
+        skipped={distributeResultModal?.skipped ?? 0}
         failedItems={distributeResultModal?.failedItems ?? []}
         isRetrying={distributeResultModal?.isRetrying ?? false}
         onRetryAllFailed={() => void handleRetryAllFailedDistribution()}
@@ -1302,6 +1438,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         total={recallResultModal?.total ?? 0}
         succeeded={recallResultModal?.succeeded ?? 0}
         failed={recallResultModal?.failed ?? 0}
+        skipped={recallResultModal?.skipped ?? 0}
         failedItems={recallResultModal?.failedItems ?? []}
         isRetrying={recallResultModal?.isRetrying ?? false}
         onRetryAllFailed={() => void handleRetryAllFailedRecall()}
@@ -1324,6 +1461,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         total={cancelResultModal?.total ?? 0}
         succeeded={cancelResultModal?.succeeded ?? 0}
         failed={cancelResultModal?.failed ?? 0}
+        skipped={cancelResultModal?.skipped ?? 0}
         failedItems={cancelResultModal?.failedItems ?? []}
         isRetrying={cancelResultModal?.isRetrying ?? false}
         onRetryAllFailed={() => void handleRetryAllFailedCancel()}
@@ -1341,9 +1479,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         meaningDisplayName="Controlled Copy Distribution Cancelled"
         meaningCode="CONTROLLED_COPY_DISTRIBUTION_CANCELLED"
         targetDetails={{
-          code: controlledCopy.controlledCopyNumber,
+          code: controlledCopyDisplayNumber(controlledCopy, isBatchParent),
           title: controlledCopy.name,
-          revision: controlledCopy.revisionNumber 
+          revision: controlledCopy.revisionNumber
         }}
       />
 
@@ -1351,10 +1489,10 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         isOpen={isRecallFormOpen}
         onClose={() => {
           setIsRecallFormOpen(false);
-          setRecallValues(null);
+          setHasConfirmedRecall(false);
         }}
         onConfirm={handleRecallFormConfirm}
-        controlledCopyNumber={controlledCopy.controlledCopyNumber}
+        controlledCopyNumber={controlledCopyDisplayNumber(controlledCopy, isBatchParent)}
         isBatch={isBatchParent}
       />
 
@@ -1362,14 +1500,14 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         isOpen={isRecallESignModalOpen}
         onClose={() => {
           setIsRecallESignModalOpen(false);
-          setRecallValues(null);
+          setHasConfirmedRecall(false);
         }}
         onConfirm={handleRecallSuccess}
         transactionType="recall-distribution"
         meaningDisplayName="Controlled Copy Recalled"
         meaningCode="CONTROLLED_COPY_RECALLED"
         targetDetails={{
-          code: controlledCopy.controlledCopyNumber,
+          code: controlledCopyDisplayNumber(controlledCopy, isBatchParent),
           title: controlledCopy.name,
           revision: controlledCopy.revisionNumber
         }}
@@ -1394,7 +1532,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         meaningDisplayName="Controlled Copy Reissued"
         meaningCode="CONTROLLED_COPY_REISSUED"
         targetDetails={{
-          code: controlledCopy.controlledCopyNumber,
+          code: controlledCopyDisplayNumber(controlledCopy, isBatchParent),
           title: controlledCopy.name,
           revision: controlledCopy.revisionNumber
         }}

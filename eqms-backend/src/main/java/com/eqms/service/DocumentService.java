@@ -2,6 +2,10 @@ package com.eqms.service;
 
 import com.eqms.auth.TokenService;
 import com.eqms.auth.CurrentUserService;
+import com.eqms.exception.DocumentLifecycleConflictException;
+import com.eqms.dto.security.FileAccessContext;
+import com.eqms.enums.FileAccessAction;
+import com.eqms.enums.FileObjectType;
 import com.eqms.dto.audittrail.AuditTrailRecordResponse;
 import com.eqms.dto.document.DocumentFiltersResponse;
 import com.eqms.dto.document.DocumentDraftCreateRequest;
@@ -14,8 +18,10 @@ import com.eqms.dto.document.DocumentAuditTrailResponse;
 import com.eqms.dto.document.DocumentAuditTrailUserResponse;
 import com.eqms.dto.document.DocumentParticipantResponse;
 import com.eqms.dto.document.DocumentRelationResponse;
+import com.eqms.dto.document.DocumentRelationPageRequest;
 import com.eqms.dto.document.DocumentRevisionSummaryResponse;
 import com.eqms.dto.document.DocumentListItemResponse;
+import com.eqms.dto.document.LegacyBatchImportResponse;
 import com.eqms.dto.document.SignatureResponse;
 import com.eqms.dto.document.StatusResponse;
 import com.eqms.dto.document.KnowledgeBaseDocumentResponse;
@@ -28,7 +34,9 @@ import com.eqms.dto.user.PaginationResponse;
 import com.eqms.entity.BusinessUnit;
 import com.eqms.entity.Department;
 import com.eqms.entity.DocumentRecord;
+import com.eqms.entity.DocumentStakeholderHistory;
 import com.eqms.entity.DocumentRelation;
+import com.eqms.entity.RevisionPublishingMetadata;
 import com.eqms.entity.AuditLog;
 import com.eqms.entity.DocumentStatusDefinition;
 import com.eqms.entity.DocumentType;
@@ -46,6 +54,7 @@ import com.eqms.entity.ControlledCopyRecord;
 import com.eqms.repository.BusinessUnitRepository;
 import com.eqms.repository.DepartmentRepository;
 import com.eqms.repository.DocumentRevisionRepository;
+import com.eqms.repository.DocumentStakeholderHistoryRepository;
 import com.eqms.repository.DocumentRecordRepository;
 import com.eqms.repository.DocumentRelationRepository;
 import com.eqms.repository.AuditLogRepository;
@@ -53,7 +62,6 @@ import com.eqms.repository.DocumentStatusDefinitionRepository;
 import com.eqms.repository.DocumentTypeRepository;
 import com.eqms.repository.DocumentSubTypeRepository;
 import com.eqms.repository.DocumentWorkflowParticipantRepository;
-import com.eqms.repository.DocumentWorkflowPoolMemberRepository;
 import com.eqms.repository.DocumentWorkflowSettingRepository;
 import com.eqms.repository.RevisionWorkflowParticipantRepository;
 import com.eqms.repository.UserAccountRepository;
@@ -74,6 +82,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.pdfbox.Loader;
@@ -115,6 +124,16 @@ public class DocumentService {
     private static final DateTimeFormatter DMY_DATETIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
 
+    // Field-injected (not added to the constructor below) -- same pattern already used elsewhere
+    // in this codebase to add a dependency without churning a very large existing constructor.
+    // Phase 2 of the Document Name Formats feature: generateDocumentNumber() below uses this
+    // instead of a second hardcoded "%s.%04d" (the DictionaryManagementService preview copy of
+    // that same literal had already drifted once before this was centralized).
+    @org.springframework.beans.factory.annotation.Autowired
+    private DocumentComponentResolver documentComponentResolver;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.repository.DocumentNameFormatRepository documentNameFormatRepository;
+
     private final DocumentRecordRepository documentRepository;
     private final DocumentStatusDefinitionRepository statusRepository;
     private final DocumentTypeRepository documentTypeRepository;
@@ -124,11 +143,11 @@ public class DocumentService {
     private final UserAccountRepository userAccountRepository;
     private final DocumentRevisionRepository documentRevisionRepository;
     private final DocumentWorkflowParticipantRepository documentWorkflowParticipantRepository;
+    private final DocumentStakeholderHistoryRepository documentStakeholderHistoryRepository;
     private final RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
     private final DocumentRelationRepository documentRelationRepository;
     private final AuditLogRepository auditLogRepository;
     private final DocumentWorkflowSettingRepository documentWorkflowSettingRepository;
-    private final DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     private final AuditTrailService auditTrailService;
     private final DocumentAuthorizationService documentAuthorizationService;
     private final CurrentUserService currentUserService;
@@ -137,16 +156,37 @@ public class DocumentService {
     private final RevisionWorkflowHistoryRepository revisionWorkflowHistoryRepository;
     private final ControlledCopyRepository controlledCopyRepository;
     private final FileStorageService fileStorageService;
-    private final MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService;
     private final SystemConfigurationService systemConfigurationService;
     private final RevisionPublishingMetadataRepository publishingMetadataRepository;
     private final ControlledCopyBatchStatusService controlledCopyBatchStatusService;
+
+    // Field-injected (not constructor-injected) to avoid widening the already-large constructor
+    // below; see TBR-DOC-013/014 -- canonical Controlled-Copy-obsolescence operation shared with
+    // RevisionService's publish-supersede cascade.
+    @org.springframework.beans.factory.annotation.Autowired
+    private ControlledCopyLifecycleObsolescenceService controlledCopyLifecycleObsolescenceService;
+
+    // TBR-DOC-016: publishes DocumentObsoletedEvent only after obsoleteDocument's own transaction
+    // commits (Spring's default event-publish timing is immediate/synchronous within the current
+    // transaction; the AFTER_COMMIT contract is enforced on the LISTENER side via
+    // @TransactionalEventListener(phase = AFTER_COMMIT) in DocumentObsoleteNotificationService, not
+    // here -- publishing here only queues the event for that listener).
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
     private final PermissionEvaluationService permissionEvaluationService;
     private final AuthorizationShadowEvaluationService shadowEvaluationService;
     private final com.eqms.service.authorization.AuthorizationEngineService authorizationEngineService;
     private final com.eqms.service.authorization.AuthorizationCutoverFlags cutoverFlags;
     private final ElectronicSignatureService electronicSignatureService;
     private final RevisionService revisionService;
+    private final WorkflowParticipantEligibilityService workflowParticipantEligibilityService;
+    private final SecureFileAccessService secureFileAccessService;
+    private final SignatureTokenConsumptionService signatureTokenConsumptionService;
+
+    // Field-injected for the same reason as RevisionService's own objectMapper field -- used only
+    // by createLegacyImportDocumentAndRevisions to parse the "document" JSON multipart part.
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     public DocumentService(
             DocumentRecordRepository documentRepository,
@@ -158,11 +198,11 @@ public class DocumentService {
             UserAccountRepository userAccountRepository,
             DocumentRevisionRepository documentRevisionRepository,
             DocumentWorkflowParticipantRepository documentWorkflowParticipantRepository,
+            DocumentStakeholderHistoryRepository documentStakeholderHistoryRepository,
             RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository,
             DocumentRelationRepository documentRelationRepository,
             AuditLogRepository auditLogRepository,
             DocumentWorkflowSettingRepository documentWorkflowSettingRepository,
-            DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository,
             AuditTrailService auditTrailService,
             DocumentAuthorizationService documentAuthorizationService,
             CurrentUserService currentUserService,
@@ -171,7 +211,6 @@ public class DocumentService {
             RevisionWorkflowHistoryRepository revisionWorkflowHistoryRepository,
             ControlledCopyRepository controlledCopyRepository,
             FileStorageService fileStorageService,
-            MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService,
             SystemConfigurationService systemConfigurationService,
             RevisionPublishingMetadataRepository publishingMetadataRepository,
             ControlledCopyBatchStatusService controlledCopyBatchStatusService,
@@ -180,7 +219,10 @@ public class DocumentService {
             @org.springframework.context.annotation.Lazy com.eqms.service.authorization.AuthorizationEngineService authorizationEngineService,
             com.eqms.service.authorization.AuthorizationCutoverFlags cutoverFlags,
             ElectronicSignatureService electronicSignatureService,
-            @org.springframework.context.annotation.Lazy RevisionService revisionService
+            @org.springframework.context.annotation.Lazy RevisionService revisionService,
+            WorkflowParticipantEligibilityService workflowParticipantEligibilityService,
+            SecureFileAccessService secureFileAccessService,
+            SignatureTokenConsumptionService signatureTokenConsumptionService
     ) {
         this.documentRepository = documentRepository;
         this.statusRepository = statusRepository;
@@ -191,11 +233,11 @@ public class DocumentService {
         this.userAccountRepository = userAccountRepository;
         this.documentRevisionRepository = documentRevisionRepository;
         this.documentWorkflowParticipantRepository = documentWorkflowParticipantRepository;
+        this.documentStakeholderHistoryRepository = documentStakeholderHistoryRepository;
         this.revisionWorkflowParticipantRepository = revisionWorkflowParticipantRepository;
         this.documentRelationRepository = documentRelationRepository;
         this.auditLogRepository = auditLogRepository;
         this.documentWorkflowSettingRepository = documentWorkflowSettingRepository;
-        this.documentWorkflowPoolMemberRepository = documentWorkflowPoolMemberRepository;
         this.auditTrailService = auditTrailService;
         this.documentAuthorizationService = documentAuthorizationService;
         this.currentUserService = currentUserService;
@@ -204,7 +246,6 @@ public class DocumentService {
         this.revisionWorkflowHistoryRepository = revisionWorkflowHistoryRepository;
         this.controlledCopyRepository = controlledCopyRepository;
         this.fileStorageService = fileStorageService;
-        this.microsoftGraphOfficeOnlineService = microsoftGraphOfficeOnlineService;
         this.systemConfigurationService = systemConfigurationService;
         this.publishingMetadataRepository = publishingMetadataRepository;
         this.controlledCopyBatchStatusService = controlledCopyBatchStatusService;
@@ -214,6 +255,9 @@ public class DocumentService {
         this.cutoverFlags = cutoverFlags;
         this.electronicSignatureService = electronicSignatureService;
         this.revisionService = revisionService;
+        this.workflowParticipantEligibilityService = workflowParticipantEligibilityService;
+        this.secureFileAccessService = secureFileAccessService;
+        this.signatureTokenConsumptionService = signatureTokenConsumptionService;
     }
 
     /**
@@ -522,6 +566,7 @@ public class DocumentService {
                 document.getDescription(),
                 document.getKnowledgeBase(),
                 document.getSubType(),
+                resolveDocumentReviewRequirement(document).name(),
                 resolvePeriodicReviewCycle(document),
                 resolvePeriodicReviewNotification(document),
                 document.getLanguage(),
@@ -545,8 +590,29 @@ public class DocumentService {
                 documentAuthorizationService.canStartNewRevisionUpload(currentUser, document),
                 canRequestControlledCopy(currentUser, document, revisionRecords),
                 revisionService.resolveNextDraftRevisionNumberForDocument(documentId),
-                document.getAuthor() == null ? null : document.getAuthor().getId().toString()
+                document.getAuthor() == null ? null : document.getAuthor().getId().toString(),
+                resolvePreviewVersionToken(revisionRecords)
         );
+    }
+
+    /** Same EFFECTIVE-revision resolution as {@link #resolveActiveRevision}, but null-safe (no
+     *  revisions yet is a normal state for this read-only summary, not an error) and returning
+     *  the published PDF's own storage path (MinIO URIs are version-scoped, e.g.
+     *  {@code ...?versionId=...}) as a cheap, always-correct change-detection token -- avoids
+     *  needing a dedicated version counter, since the storage path itself already changes on
+     *  every regeneration. */
+    private String resolvePreviewVersionToken(List<DocumentRevisionRecord> sortedRevisions) {
+        DocumentRevisionRecord effective = sortedRevisions.stream()
+                .filter(r -> r.getStatus() != null && "EFFECTIVE".equalsIgnoreCase(r.getStatus().getCode()))
+                .findFirst()
+                .orElse(sortedRevisions.isEmpty() ? null : sortedRevisions.get(0));
+        if (effective == null) {
+            return null;
+        }
+        return publishingMetadataRepository.findByRevision_Id(effective.getId())
+                .map(RevisionPublishingMetadata::getPublishedPdfPath)
+                .filter(StringUtils::hasText)
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
@@ -575,6 +641,112 @@ public class DocumentService {
                 .toList();
 
         return revisions;
+    }
+
+    /**
+     * One page of a document's revisions, searched and sorted by the server. Same visibility rule as
+     * {@link #getDocumentRevisions}; the set per document is small, so it is filtered in memory and only the requested page
+     * is mapped to summaries (which include a per-revision capability check).
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<DocumentRevisionSummaryResponse> getDocumentRevisionsPage(
+            UUID documentId, String search, String sortBy, String sortDirection, int page, int limit
+    ) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        DocumentRecord document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+        ensureCurrentUserCanViewDocument(document, currentUser);
+
+        String query = normalize(search);
+        List<DocumentRevisionRecord> records = new ArrayList<>(documentRevisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId));
+        records.removeIf(r -> StringUtils.hasText(query) && !(
+                containsIgnoreCase(r.getRevisionNumber(), query)
+                        || containsIgnoreCase(r.getRevisionName(), query)
+                        || containsIgnoreCase(r.getOpenedBy() == null ? null : r.getOpenedBy().getFullName(), query)));
+
+        Comparator<String> text = Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER);
+        boolean descending = !"asc".equalsIgnoreCase(sortDirection);
+        Comparator<DocumentRevisionRecord> comparator;
+        switch (sortBy == null ? "" : sortBy) {
+            case "created" -> comparator = Comparator.comparing(DocumentRevisionRecord::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
+            case "openedBy" -> comparator = Comparator.comparing(r -> r.getOpenedBy() == null ? null : r.getOpenedBy().getFullName(), text);
+            case "revisionName" -> comparator = Comparator.comparing(DocumentRevisionRecord::getRevisionName, text);
+            case "status" -> comparator = Comparator.comparing(r -> StatusMapper.label(r.getStatus()), text);
+            default -> {
+                // Revision number. REVISION_COMPARATOR is newest first, i.e. already the descending order.
+                comparator = descending ? REVISION_COMPARATOR : REVISION_COMPARATOR.reversed();
+                descending = false;
+            }
+        }
+        if (descending) {
+            comparator = comparator.reversed();
+        }
+        records.sort(comparator.thenComparing(REVISION_COMPARATOR));
+
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        int safePage = Math.max(page, 1);
+        int from = Math.min((safePage - 1) * safeLimit, records.size());
+        List<DocumentRevisionSummaryResponse> data = records.subList(from, Math.min(from + safeLimit, records.size()))
+                .stream().map(this::toRevisionSummary).toList();
+        int totalPages = Math.max(1, (int) Math.ceil(records.size() / (double) safeLimit));
+        return new PageResponse<>(data, new PaginationResponse(safePage, safeLimit, records.size(), totalPages));
+    }
+
+    /**
+     * One page of the Related / Correlated documents a user has selected. Only documents the caller may view are ever
+     * returned, so the endpoint cannot be used to read metadata of arbitrary document ids.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<DocumentRelationResponse> getDocumentRelationsPage(DocumentRelationPageRequest request) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        String relationType = "CORRELATED".equalsIgnoreCase(request.relationType()) ? "CORRELATED" : "RELATED";
+        List<UUID> ids = request.ids() == null ? List.of() : request.ids().stream()
+                .map(this::tryParseUuid).filter(Objects::nonNull).distinct().limit(500).toList();
+        String query = normalize(request.search());
+
+        List<DocumentRecord> targets = new ArrayList<>(documentRepository.findAllById(ids));
+        targets.removeIf(d -> !documentAuthorizationService.canViewDocument(currentUser, d));
+        targets.removeIf(d -> StringUtils.hasText(query) && !(
+                containsIgnoreCase(d.getDocumentNumber(), query)
+                        || containsIgnoreCase(d.getDocumentName(), query)
+                        || containsIgnoreCase(d.getOpenedBy() == null ? null : d.getOpenedBy().getFullName(), query)
+                        || containsIgnoreCase(d.getAuthor() == null ? null : d.getAuthor().getFullName(), query)
+                        || containsIgnoreCase(d.getDepartment() == null ? null : d.getDepartment().getName(), query)
+                        || containsIgnoreCase(d.getDocumentType() == null ? null : d.getDocumentType().getName(), query)));
+
+        Comparator<String> text = Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER);
+        Comparator<DocumentRecord> comparator = switch (request.sortBy() == null ? "" : request.sortBy()) {
+            case "documentName" -> Comparator.comparing(DocumentRecord::getDocumentName, text);
+            case "created" -> Comparator.comparing(DocumentRecord::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
+            case "openedBy" -> Comparator.comparing(d -> d.getOpenedBy() == null ? null : d.getOpenedBy().getFullName(), text);
+            case "status" -> Comparator.comparing(d -> d.getStatus() == null ? null : d.getStatus().getLabel(), text);
+            case "type" -> Comparator.comparing(d -> d.getDocumentType() == null ? null : d.getDocumentType().getName(), text);
+            case "department" -> Comparator.comparing(d -> d.getDepartment() == null ? null : d.getDepartment().getName(), text);
+            case "author" -> Comparator.comparing(d -> d.getAuthor() == null ? null : d.getAuthor().getFullName(), text);
+            case "effectiveDate" -> Comparator.comparing(DocumentRecord::getEffectiveDate, Comparator.nullsLast(Comparator.naturalOrder()));
+            case "validUntil" -> Comparator.comparing(DocumentRecord::getValidUntil, Comparator.nullsLast(Comparator.naturalOrder()));
+            default -> Comparator.comparing(DocumentRecord::getDocumentNumber, text);
+        };
+        if ("desc".equalsIgnoreCase(request.sortDirection())) {
+            comparator = comparator.reversed();
+        }
+        targets.sort(comparator.thenComparing(DocumentRecord::getDocumentNumber, text));
+
+        int safeLimit = Math.min(Math.max(request.limit() == null ? 10 : request.limit(), 1), 100);
+        int safePage = Math.max(request.page() == null ? 1 : request.page(), 1);
+        int from = Math.min((safePage - 1) * safeLimit, targets.size());
+        List<DocumentRelationResponse> data = targets.subList(from, Math.min(from + safeLimit, targets.size())).stream()
+                .map(target -> {
+                    DocumentRelation relation = new DocumentRelation();
+                    relation.setTargetDocument(target);
+                    return toRelationResponse(relation, relationType);
+                }).toList();
+        int totalPages = Math.max(1, (int) Math.ceil(targets.size() / (double) safeLimit));
+        return new PageResponse<>(data, new PaginationResponse(safePage, safeLimit, targets.size(), totalPages));
+    }
+
+    private static boolean containsIgnoreCase(String value, String lowerCaseQuery) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(lowerCaseQuery);
     }
 
     @Transactional(readOnly = true)
@@ -791,16 +963,37 @@ public class DocumentService {
         );
     }
 
+    /**
+     * Legacy Import only: realtime availability check as the user types the Document Number, so a
+     * collision is caught before Submit instead of only surfacing as a create failure. Read-only,
+     * gated on the same permission as the import itself -- it exists purely to back this one field.
+     */
+    @Transactional(readOnly = true)
+    public boolean isLegacyDocumentNumberAvailable(String documentNumber) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        if (!permissionEvaluationService.hasPermission(currentUser, "documents.legacy_import.manage")) {
+            throw new AccessDeniedException("Only Legacy Import is permitted to check a document number this way.");
+        }
+        if (!StringUtils.hasText(documentNumber)) {
+            return false;
+        }
+        return !documentRepository.existsByDocumentNumber(documentNumber.trim());
+    }
+
     @Transactional
     public DocumentListItemResponse createDocumentDraft(DocumentDraftCreateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        documentAuthorizationService.requireCanManageDocumentWorkspace(currentUser);
-        if (request != null && Boolean.TRUE.equals(request.isTemplate())) {
-            requireTemplateManage(currentUser);
-        }
+        documentAuthorizationService.requireCanCreateDocument(currentUser);
+        // Marking a document as a Template rides on the same create permission -- a Template is a
+        // Document like any other (same workflow, same file-upload step), just flagged for reuse.
+        // No separate documents.template.manage gate any more (see requireTemplateManage removal).
         DocumentRecord document = new DocumentRecord();
         applyDraftFields(document, request, currentUser, true);
         documentRepository.save(document);
+        // applyDraftFields' own recordStakeholderHistory call for the Author no-ops for a brand-new
+        // Document: it runs before this save, while document.getId() is still null. Record it here
+        // instead, now that the id is assigned (idempotent -- a no-op if already recorded).
+        recordStakeholderHistory(document, document.getAuthor(), "AUTHOR");
         saveDraftAssignments(document, request);
         auditTrailService.logAs(
                 currentUser,
@@ -816,21 +1009,96 @@ public class DocumentService {
         return toListItem(document);
     }
 
+    /**
+     * Legacy Import: creates the Draft document record AND its historical revision batch in one
+     * physical transaction. Previously the frontend called {@link #createDocumentDraft} and
+     * {@link RevisionService#createLegacyImportRevisionsBatch} as two separate requests -- if the
+     * second one failed (bad file, validation error, etc.) the already-committed Draft document
+     * was left behind, permanently holding the legacy document number and blocking every retry
+     * with "Document number already in use" even though nothing was actually imported. Calling
+     * both from here means an exception from the revisions step (default REQUIRED propagation)
+     * rolls back the document insert too, so a failed attempt leaves nothing behind.
+     */
+    @Transactional
+    public LegacyBatchImportResponse createLegacyImportDocumentAndRevisions(
+            String documentJson,
+            String revisionsJson,
+            List<MultipartFile> files,
+            String legacyJustification,
+            String signatureToken
+    ) {
+        DocumentDraftCreateRequest documentRequest = parseDocumentDraftCreateRequest(documentJson);
+        // This request carries the regulatory justification TWICE -- once embedded in `document`
+        // (persisted permanently on DocumentRecord.legacyJustification) and once as this top-level
+        // field (the reason attached to every revision's signed audit trail entry via
+        // RevisionService#createLegacyImportRevisionsBatch). They must be the same justification;
+        // silently allowing them to differ would let the permanent record disagree with what the
+        // signature actually attested to -- a real GMP traceability defect, not a cosmetic one.
+        String documentJustification = documentRequest.legacyJustification() == null ? "" : documentRequest.legacyJustification().trim();
+        String auditJustification = legacyJustification == null ? "" : legacyJustification.trim();
+        if (!documentJustification.equals(auditJustification)) {
+            throw new IllegalArgumentException(
+                    "Migration Justification must be the same on the document and the signed import request."
+            );
+        }
+        DocumentListItemResponse created = createDocumentDraft(documentRequest);
+        return revisionService.createLegacyImportRevisionsBatch(
+                UUID.fromString(created.id()), revisionsJson, files, legacyJustification, signatureToken
+        );
+    }
+
+    /** Mirrors RevisionService#parseLegacyBatchSections -- a plain JSON string multipart part,
+     *  deserialized here, is the proven pattern already used for the "revisions" part on this same
+     *  endpoint; binding a part straight to a POJO via @RequestPart depends on the browser sending
+     *  an exact Content-Type the multipart resolver accepts for that part, which is far more
+     *  fragile than this. */
+    private DocumentDraftCreateRequest parseDocumentDraftCreateRequest(String documentJson) {
+        if (!StringUtils.hasText(documentJson)) {
+            throw new IllegalArgumentException("Document details are required.");
+        }
+        try {
+            return objectMapper.readValue(documentJson, DocumentDraftCreateRequest.class);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid document payload: " + ex.getMessage());
+        }
+    }
+
     @Transactional
     public DocumentListItemResponse updateDocumentDraft(UUID documentId, DocumentDraftCreateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         DocumentRecord document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new IllegalArgumentException("Document not found"));
         documentAuthorizationService.requireCanEditInitialDocumentDraft(currentUser, document);
-        if (document.isTemplate() || (request != null && Boolean.TRUE.equals(request.isTemplate()))) {
-            requireTemplateManage(currentUser);
-        }
-        
+
         if (isDraftUnchanged(document, request)) {
             return toListItem(document);
         }
+        String previousSubType = document.getSubType();
         DocumentDraftAuditSnapshot beforeSnapshot = captureDocumentDraftAuditSnapshot(document);
         applyDraftFields(document, request, currentUser, false);
+        boolean subTypeChanged = !Objects.equals(previousSubType, document.getSubType());
+        // saveDraftAssignments() below only re-validates Reviewers when reviewerUserIds is part
+        // of THIS request -- a Sub-Type-only save (the normal "Save & Next" flow, which never
+        // includes reviewerUserIds) would otherwise persist a Sub-Type whose review requirement
+        // no longer matches the Reviewers already saved from an earlier step, with nothing
+        // catching the mismatch until/unless Reviewers happen to be touched again. Fail this save
+        // immediately and clearly instead, matching the same defensive re-check already done for
+        // Author/Co-Author changes against existing Reviewers in updateActiveWorkflowConfiguration.
+        if (subTypeChanged && request.reviewerUserIds() == null) {
+            List<String> existingReviewerIds = documentWorkflowParticipantRepository
+                    .findAllByDocument_IdAndParticipantTypeOrderBySequenceOrderAsc(document.getId(), "REVIEWER")
+                    .stream()
+                    .map(participant -> participant.getUser().getId().toString())
+                    .toList();
+            if (!existingReviewerIds.isEmpty()) {
+                List<String> existingCoAuthorIds = documentWorkflowParticipantRepository
+                        .findAllByDocument_IdAndParticipantTypeOrderBySequenceOrderAsc(document.getId(), "CO_AUTHOR")
+                        .stream()
+                        .map(participant -> participant.getUser().getId().toString())
+                        .toList();
+                validateReviewerRules(resolveDocumentReviewRequirement(document), document.getAuthor(), existingCoAuthorIds, existingReviewerIds);
+            }
+        }
         documentRepository.save(document);
         saveDraftAssignments(document, request);
         auditTrailService.logAs(
@@ -880,6 +1148,11 @@ public class DocumentService {
         LocalDate requestedReviewDate = request == null || !StringUtils.hasText(request.reviewDate())
                 ? document.getReviewDate()
                 : parseDate(request.reviewDate());
+        // Review Date is required when configuring the next (upgrade) revision: it is entered manually and
+        // never calculated, so a document without one cannot be prepared for upgrade.
+        if (requestedReviewDate == null) {
+            throw new IllegalArgumentException("Review Date is required");
+        }
         boolean reviewDateChanged = !Objects.equals(document.getReviewDate(), requestedReviewDate);
 
         boolean previousRequiresTraining = document.isRequiresTraining();
@@ -982,8 +1255,19 @@ public class DocumentService {
         boolean metadataChanged = reviewDateChanged || trainingChanged || authorChanged || coAuthorsChanged
                 || periodicReviewCycleChanged || periodicReviewNotificationChanged || descriptionChanged;
 
+        // Saving this configuration -- even with nothing changed, i.e. the DCO confirms the existing
+        // setup -- is what unlocks Upload Revision for the Author (cleared again by the upload itself).
+        document.setNextRevisionConfiguredAt(Instant.now());
         if (!reviewersChanged && !approversChanged && !relatedDocumentsChanged && !correlatedDocumentsChanged
                 && !metadataChanged) {
+            documentRepository.save(document);
+            auditTrailService.logAs(
+                    currentUser, "DOCUMENT", formatDocumentLabel(document), document.getId(),
+                    "UPDATE_WORKFLOW_CONFIGURATION", "ACTIVE", "ACTIVE",
+                    "Confirmed the next-revision configuration without changes; the Author may now upload the revision.",
+                    List.of()
+            );
+            notifyAuthorUpgradeReady(document, currentUser);
             return getDocumentDetail(documentId);
         }
 
@@ -1013,6 +1297,7 @@ public class DocumentService {
         // internal SoD validation) sees the up-to-date author/co-author set, not the stale one.
         if (authorChanged) {
             document.setAuthor(requestedAuthor);
+            recordStakeholderHistory(document, requestedAuthor, "AUTHOR");
         }
         if (coAuthorsChanged) {
             replaceCoAuthors(document, requestedCoAuthorIds);
@@ -1049,7 +1334,8 @@ public class DocumentService {
         documentRepository.save(document);
 
         if (authorChanged || coAuthorsChanged || reviewersChanged || approversChanged
-                || periodicReviewCycleChanged || periodicReviewNotificationChanged || trainingChanged) {
+                || periodicReviewCycleChanged || periodicReviewNotificationChanged || trainingChanged
+                || relatedDocumentsChanged || correlatedDocumentsChanged) {
             // Keep an already-open Draft revision's own snapshot (author/co-author/reviewer/approver/
             // periodic cycle/training) from silently going stale relative to the Document -- see
             // RevisionService.syncDraftRevisionWithDocument for why this can't just be read live.
@@ -1107,7 +1393,33 @@ public class DocumentService {
                 "Updated the next-revision configuration.",
                 changes
         );
+        notifyAuthorUpgradeReady(document, currentUser);
         return getDocumentDetail(documentId);
+    }
+
+    // Optional: a missing dispatcher must never block saving the configuration.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private NotificationDispatcher upgradeNotificationDispatcher;
+
+    /** Tells the document's Author that the DCO configured the upgrade, so Upload Revision is now open to them. */
+    private void notifyAuthorUpgradeReady(DocumentRecord document, UserAccount configuredBy) {
+        UserAccount author = document == null ? null : document.getAuthor();
+        if (upgradeNotificationDispatcher == null || author == null || author.getStatus() != UserStatus.Active) {
+            return;
+        }
+        if (configuredBy != null && Objects.equals(author.getId(), configuredBy.getId())) {
+            return; // the person who just saved it does not need to be told
+        }
+        try {
+            Map<String, String> variables = new java.util.HashMap<>();
+            variables.put("documentNumber", Objects.toString(document.getDocumentNumber(), ""));
+            variables.put("documentTitle", Objects.toString(document.getDocumentName(), ""));
+            variables.put("revisionNumber", Objects.toString(document.getVersion(), ""));
+            variables.put("actionUrl", "/documents/" + document.getId());
+            upgradeNotificationDispatcher.dispatch("document.upgrade_ready", List.of(author), variables);
+        } catch (Exception ex) {
+            log.warn("Upgrade-ready notification failed for document {}", document.getId(), ex);
+        }
     }
 
     /** Co-authors carry no reviewer/approver permission requirement, unlike
@@ -1258,6 +1570,16 @@ public class DocumentService {
             return "Cannot configure the next revision: revision " + inProgress.getRevisionNumber()
                     + " has already been uploaded to Office Online for editing.";
         }
+        // completeEditing() locks the source and records the Author's PREPARED e-signature while the
+        // revision status stays DRAFT, and it does NOT require an Office Online working copy (a
+        // MinIO-only source revision reaches editingStatus=COMPLETED / sourceLocked=true with no
+        // storageItemId). syncDraftRevisionWithDocument() then refuses to propagate later changes to
+        // such a Draft, so allowing them here would silently diverge the Document from the revision
+        // the Author already signed off.
+        if ("COMPLETED".equals(inProgress.getEditingStatus()) || inProgress.isSourceLocked()) {
+            return "Cannot configure the next revision: revision " + inProgress.getRevisionNumber()
+                    + " has already completed authoring and its source is locked.";
+        }
         return null;
     }
 
@@ -1293,6 +1615,21 @@ public class DocumentService {
         ensureNoDuplicateResolvedDocuments(resolved, relationType);
         for (DocumentLookupResult target : resolved) {
             saveRelation(document, target.document(), relationType);
+        }
+        // Keep the denormalised has_related_documents / has_correlated_documents flags on `documents`
+        // (read by the document + revision list columns and the "Related Document = Yes/No" filter)
+        // in step with the actual document_relations rows -- otherwise editing relations on an
+        // already-Active document via the next-revision configuration path leaves the list showing
+        // "No" while the expandable detail shows the relation.
+        applyRelationPresenceFlag(document, relationType, !resolved.isEmpty());
+    }
+
+    /** Sets the matching has_*_documents flag for one relation type. */
+    private void applyRelationPresenceFlag(DocumentRecord document, String relationType, boolean present) {
+        if ("RELATED".equals(relationType)) {
+            document.setHasRelatedDocuments(present);
+        } else if ("CORRELATED".equals(relationType)) {
+            document.setHasCorrelatedDocuments(present);
         }
     }
 
@@ -1492,8 +1829,19 @@ public class DocumentService {
         return changes;
     }
 
+    /**
+     * A creation snapshot: there is no real "before" (the document didn't exist), so the row only
+     * has meaning when a value was actually set. Previously this unconditionally emitted a row even
+     * when the field was left blank, producing a "Not specified -> Not specified" no-op for every
+     * optional field skipped on creation (Training Period, Review Date, Reason for Skipping
+     * Training, ...) -- every single Document creation was littered with several of these
+     * meaningless rows in the Field Modifications table.
+     */
     private void addCreatedAuditValue(List<AuditTrailChangeResponse> changes, String field, Object value) {
-        changes.add(new AuditTrailChangeResponse(field, "Not specified", value == null || String.valueOf(value).isBlank() ? "Not specified" : String.valueOf(value)));
+        if (value == null || String.valueOf(value).isBlank()) {
+            return;
+        }
+        changes.add(new AuditTrailChangeResponse(field, null, String.valueOf(value)));
     }
 
     private record DocumentDraftAuditSnapshot(Map<String, String> values) { }
@@ -1562,6 +1910,28 @@ public class DocumentService {
                 .orElseThrow(() -> new IllegalArgumentException("Document not found"));
         documentAuthorizationService.requireDocumentMasterLifecycleAction(currentUser, document, "CANCEL");
 
+        // Cancel Document Master is only meaningful for a Document that never had a real Revision --
+        // once a Revision exists (Draft or otherwise), the Document is no longer a "never started"
+        // record; obsoleting is the correct disposition for that case. Without this guard, a direct
+        // API call (or a stale/racing request) could close the Document Master while its Revision(s)
+        // remain live and still editable, leaving them orphaned.
+        if (documentRevisionRepository.existsByDocument_Id(documentId)) {
+            throw new DocumentLifecycleConflictException(
+                    "DOCUMENT_CANCEL_NOT_ALLOWED",
+                    "Document cannot be cancelled because it already has a Revision. Obsolete the Document instead."
+            );
+        }
+
+        // TBR-DOC-007: Reason/Activity Summary is mandatory. The DTO's @NotBlank already rejects
+        // null/empty/whitespace-only at the API boundary; trim here so the persisted value is the
+        // actor-entered text with no leading/trailing whitespace and never a silently-substituted
+        // default (previously firstNonBlank(..., "Document cancelled") could mask a blank reason).
+        String activitySummary = request == null ? null : request.activitySummary();
+        if (activitySummary == null || activitySummary.trim().isEmpty()) {
+            throw new IllegalArgumentException("Activity summary is required");
+        }
+        String trimmedActivitySummary = activitySummary.trim();
+
         String fromStatus = document.getStatus() == null ? null : document.getStatus().getCode();
         DocumentStatusDefinition closedCancelled = statusRepository.findById("CLOSED_CANCELLED")
                 .orElseThrow(() -> new IllegalStateException("Closed cancelled status not configured"));
@@ -1581,7 +1951,7 @@ public class DocumentService {
                 "CANCEL",
                 fromStatus,
                 "CLOSED_CANCELLED",
-                firstNonBlank(request == null ? null : request.activitySummary(), "Document cancelled")
+                trimmedActivitySummary
         );
 
         return getDocumentDetail(documentId);
@@ -1595,13 +1965,28 @@ public class DocumentService {
         documentAuthorizationService.requireDocumentMasterLifecycleAction(currentUser, document, "OBSOLETE");
         UUID signatureSessionId = requireValidSignatureToken(request, currentUser);
 
+        // TBR-DOC-007 applies equally to Obsolete's reason: the DTO's @NotBlank already rejects
+        // null/empty/whitespace-only at the API boundary; trim so the persisted value is exactly
+        // what the actor entered, never a silently-substituted default.
+        String reason = request == null ? null : request.reason();
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new IllegalArgumentException("Obsolete reason is required");
+        }
+        String trimmedReason = reason.trim();
+
         String fromStatus = document.getStatus() == null ? null : document.getStatus().getCode();
         if (!"ACTIVE".equalsIgnoreCase(fromStatus)) {
-            throw new IllegalStateException("Only active documents can be obsoleted");
+            throw new DocumentLifecycleConflictException(
+                    "DOCUMENT_OBSOLETE_NOT_ACTIVE",
+                    "Only active documents can be obsoleted"
+            );
         }
 
         documentRevisionRepository.findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(documentId, "EFFECTIVE")
-                .orElseThrow(() -> new IllegalStateException("Document cannot be obsoleted because no effective revision exists"));
+                .orElseThrow(() -> new DocumentLifecycleConflictException(
+                        "DOCUMENT_OBSOLETE_NO_EFFECTIVE_REVISION",
+                        "Document cannot be obsoleted because no effective revision exists"
+                ));
 
         List<String> inProgressRevisionStatuses = List.of(
                 "DRAFT",
@@ -1610,17 +1995,25 @@ public class DocumentService {
                 "PENDING_TRAINING",
                 "READY_FOR_PUBLISHING"
         );
-        if (documentRevisionRepository.existsByDocument_IdAndStatus_CodeIn(documentId, inProgressRevisionStatuses)) {
-            throw new IllegalStateException(
-                    "Document cannot be obsoleted while revisions are still in progress. Please complete or cancel all open revisions first."
-            );
-        }
+        requireNoRevisionInProgress(documentId, inProgressRevisionStatuses);
 
         DocumentStatusDefinition obsoletedStatus = statusRepository.findById("OBSOLETED")
                 .orElseThrow(() -> new IllegalStateException("Obsoleted status not configured"));
         RevisionStatusDefinition obsoletedRevisionStatus = revisionStatusRepository.findById("OBSOLETED")
                 .orElseThrow(() -> new IllegalStateException("Obsoleted revision status not configured"));
         Instant obsoletedAt = parseDateOrNow(request == null ? null : request.obsoleteDate());
+
+        // TBR-DOC-015 concurrency mechanism: a plain re-query (even a fresh EXISTS) only closes the
+        // window up to the moment it runs -- a concurrent upgradeRevision could still commit a new
+        // in-progress Revision between this re-check and this transaction's own commit. Verified by
+        // TC-DOC-051/052 (DocumentObsoleteConcurrencyTest): the double-EXISTS-check alone did NOT
+        // fully close the race. The fix is a row-level PESSIMISTIC_WRITE lock on the Document
+        // shared with RevisionService.upgradeRevision (the only Revision mutation that can
+        // introduce a brand-new in-progress Revision when this method's initial check saw none) --
+        // whichever transaction acquires the lock first serializes the other, without introducing
+        // SERIALIZABLE isolation or locking any other table. The lock is held until commit/rollback.
+        documentRepository.findByIdForUpdate(documentId);
+        requireNoRevisionInProgress(documentId, inProgressRevisionStatuses);
 
         document.setStatus(obsoletedStatus);
         document.setObsoletedBy(currentUser);
@@ -1651,45 +2044,32 @@ public class DocumentService {
         List<DocumentRevisionRecord> revisions = documentRevisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId);
         for (DocumentRevisionRecord revision : revisions) {
             String revisionStatus = revision.getStatus() == null ? null : revision.getStatus().getCode();
-            if ("OBSOLETED".equalsIgnoreCase(revisionStatus) || "CLOSED_CANCELLED".equalsIgnoreCase(revisionStatus)) {
-                continue;
+            if (!"OBSOLETED".equalsIgnoreCase(revisionStatus) && !"CLOSED_CANCELLED".equalsIgnoreCase(revisionStatus)) {
+                // Delegates the full status-change + history + audit sequence to RevisionService so
+                // each obsoleted Revision leaves the same GMP-traceable RevisionWorkflowHistory/audit
+                // trail entry a direct Revision action would -- previously this loop only flipped
+                // status fields with a plain save(), with no per-Revision history/audit at all.
+                revisionService.obsoleteRevisionAsPartOfDocumentObsolete(
+                        revision, obsoletedRevisionStatus, currentUser, obsoletedAt, signatureSessionId
+                );
             }
-            revision.setStatus(obsoletedRevisionStatus);
-            revision.setObsoletedBy(currentUser);
-            revision.setObsoletedAt(obsoletedAt);
-            revision.setOpenedBy(currentUser);
-            revision.setLastModifiedBy(currentUser);
-            documentRevisionRepository.save(revision);
-        }
-
-        List<ControlledCopyRecord> controlledCopies = controlledCopyRepository.findAllByRevision_Document_IdOrderByCreatedAtDesc(documentId);
-        for (ControlledCopyRecord copy : controlledCopies) {
-            boolean distributed = "DISTRIBUTED".equalsIgnoreCase(copy.getStatusCode())
-                    || "DISTRIBUTED".equalsIgnoreCase(copy.getCurrentStage());
-            if (!distributed) {
-                continue;
-            }
-            String copyFromStatus = copy.getStatusCode();
-            copy.setStatus("Obsoleted");
-            copy.setStatusCode("OBSOLETED");
-            copy.setCurrentStage("Obsoleted");
-            copy.setObsoleteReason("DOCUMENT_OBSOLETED");
-            copy.setObsoletedBy(currentUser);
-            copy.setObsoletedAt(obsoletedAt);
-            controlledCopyRepository.save(copy);
-            auditTrailService.logAs(
+            // TBR-DOC-013: Controlled-Copy cascade now goes through the canonical operation shared
+            // with RevisionService's publish-supersede cascade (TBR-DOC-014), instead of an
+            // independent inline loop over the whole document's copies. Called unconditionally per
+            // revision (not gated on the terminal-status skip above) to match the AS-IS behavior of
+            // scanning every revision's copies regardless of that revision's own status -- a
+            // revision already terminal simply has no remaining Ready/Distributed copies left to
+            // obsolete, so this is a no-op for it.
+            controlledCopyLifecycleObsolescenceService.obsoleteControlledCopiesForRevision(
+                    revision,
                     currentUser,
-                    "Controlled Copy",
-                    copy.getControlledCopyNumber(),
-                    copy.getId(),
-                    "OBSOLETE",
-                    copyFromStatus,
-                    "Obsoleted",
+                    obsoletedAt,
+                    ControlledCopyLifecycleObsolescenceService.REASON_DOCUMENT_OBSOLETED,
                     "Controlled Copy Auto Obsoleted By Document Obsolete; Reason: DOCUMENT_OBSOLETED; Document: "
-                            + document.getDocumentNumber()
+                            + document.getDocumentNumber(),
+                    signatureSessionId
             );
         }
-        controlledCopyBatchStatusService.synchronize(controlledCopies);
 
         auditTrailService.logAs(
                 currentUser,
@@ -1699,28 +2079,46 @@ public class DocumentService {
                 "OBSOLETE",
                 fromStatus,
                 "OBSOLETED",
-                firstNonBlank(request == null ? null : request.reason(), "Document obsoleted"),
+                trimmedReason,
                 List.of(
-                        new AuditTrailChangeResponse("Reason", "-", firstNonBlank(request == null ? null : request.reason(), "-"))
+                        new AuditTrailChangeResponse("Reason", "-", trimmedReason)
                 ),
                 signatureSessionId
         );
 
+        // TBR-DOC-016: queued for after-commit dispatch only -- see DocumentObsoleteNotificationService.
+        applicationEventPublisher.publishEvent(new com.eqms.event.DocumentObsoletedEvent(document.getId(), currentUser.getId()));
+
         return getDocumentDetail(documentId);
+    }
+
+    /**
+     * TBR-DOC-015: re-runs the "no Revision in an in-progress status" check via a derived
+     * boolean-projection query (a genuine SQL EXISTS, not a cached managed-entity read), so it
+     * reflects any Revision state committed by another transaction since the previous check.
+     */
+    private void requireNoRevisionInProgress(UUID documentId, List<String> inProgressRevisionStatuses) {
+        if (documentRevisionRepository.existsByDocument_IdAndStatus_CodeIn(documentId, inProgressRevisionStatuses)) {
+            throw new DocumentLifecycleConflictException(
+                    "DOCUMENT_OBSOLETE_REVISION_IN_PROGRESS",
+                    "Document cannot be obsoleted while revisions are still in progress. Please complete or cancel all open revisions first."
+            );
+        }
     }
 
     private UUID requireValidSignatureToken(DocumentObsoleteRequest request, UserAccount currentUser) {
         if (request == null || !StringUtils.hasText(request.signatureToken())) {
             throw new IllegalArgumentException("Electronic signature is required to obsolete a document");
         }
-        var parsed = tokenService.parseSignatureToken(request.signatureToken())
-                .orElseThrow(() -> new IllegalArgumentException("Electronic signature is invalid or expired"));
-        if (!Objects.equals(parsed.principal().userId(), currentUser.getId())) {
-            throw new IllegalArgumentException("Electronic signature must belong to the current user");
-        }
-        return parsed.principal().sessionId();
+        return signatureTokenConsumptionService.requireAndConsume(request.signatureToken(), currentUser);
     }
 
+    // TBR-DOC-015: was missing @Transactional -- loading UserAccount here (for the Author filter
+    // list) triggers Hibernate to stream UserAccount.avatar (@Lob) via Postgres's Large Object
+    // API, which requires a real (non-autocommit) transaction. Without one, every call failed with
+    // "Large Objects may not be used in auto-commit mode" (HTTP 500), which the frontend silently
+    // downgraded to "every filter dropdown shows only All" instead of surfacing the error.
+    @Transactional(readOnly = true)
     public DocumentFiltersResponse getFilters() {
         List<LookupItemResponse> statuses = statusRepository.findAllByOrderBySortOrderAsc().stream()
                 .map(status -> new LookupItemResponse(
@@ -1775,14 +2173,36 @@ public class DocumentService {
         return new DocumentFiltersResponse(statuses, documentTypes, businessUnits, departments, authors);
     }
 
+    /** A visible Effective document together with the revision that is Effective now. */
+    public record KnowledgeEntry(DocumentRecord document, DocumentRevisionRecord revision) {
+    }
+
+    /**
+     * The documents the current user may see in the Knowledge portal: Effective, non-template, scoped
+     * to the user's own Department unless they may view every department (DC-XF-68).
+     */
     @Transactional(readOnly = true)
-    public KnowledgeBaseResponse getKnowledgeBase() {
+    public List<KnowledgeEntry> visibleKnowledgeEntries() {
+        // DC-XF-68: previously scoped by nothing -- any authenticated user could browse every
+        // Department's Effective documents/folders, including passing an arbitrary {departmentId}
+        // path param to the two methods below that derive from this result. Scope to the current
+        // user's own Department (resolved to its stable id, not the mutable display name/code
+        // string), same cross-department bypass every other object-access check in this codebase
+        // already grants DCO/Document Admin.
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        boolean canViewAllDepartments = documentAuthorizationService.canViewAllDocuments(currentUser);
+        UUID currentUserDepartmentId = canViewAllDepartments ? null : resolveUserDepartmentId(currentUser);
+
         List<DocumentRecord> activeDocuments = documentRepository.findAllByStatus_CodeOrderByDepartment_CodeAscDocumentNameAsc("ACTIVE")
                 .stream()
                 .filter(document -> !document.isTemplate())
+                .filter(document -> canViewAllDepartments
+                        || (currentUserDepartmentId != null
+                                && document.getDepartment() != null
+                                && currentUserDepartmentId.equals(document.getDepartment().getId())))
                 .toList();
         if (activeDocuments.isEmpty()) {
-            return new KnowledgeBaseResponse(0, List.of());
+            return List.of();
         }
 
         List<UUID> documentIds = activeDocuments.stream()
@@ -1802,6 +2222,26 @@ public class DocumentService {
                 latestEffectiveRevisionByDocumentId.put(documentId, revision);
             }
         }
+
+        List<KnowledgeEntry> entries = new ArrayList<>();
+        for (DocumentRecord document : activeDocuments) {
+            DocumentRevisionRecord effectiveRevision = latestEffectiveRevisionByDocumentId.get(document.getId());
+            if (effectiveRevision != null) {
+                entries.add(new KnowledgeEntry(document, effectiveRevision));
+            }
+        }
+        return entries;
+    }
+
+    @Transactional(readOnly = true)
+    public KnowledgeBaseResponse getKnowledgeBase() {
+        List<KnowledgeEntry> entries = visibleKnowledgeEntries();
+        if (entries.isEmpty()) {
+            return new KnowledgeBaseResponse(0, List.of());
+        }
+        List<DocumentRecord> activeDocuments = entries.stream().map(KnowledgeEntry::document).toList();
+        Map<UUID, DocumentRevisionRecord> latestEffectiveRevisionByDocumentId = new LinkedHashMap<>();
+        entries.forEach(entry -> latestEffectiveRevisionByDocumentId.put(entry.document().getId(), entry.revision()));
 
         Map<UUID, KnowledgeBaseFolderBuilder> folders = new LinkedHashMap<>();
         int totalDocuments = 0;
@@ -2033,6 +2473,22 @@ public class DocumentService {
         documentAuthorizationService.requireCanViewDocument(currentUser, document);
     }
 
+    /** Resolves the current user's own Department to its stable id -- user.getDepartment() only
+     *  stores the Department's code (a mutable display value), matching the resolution convention
+     *  already used elsewhere in this codebase (DepartmentRepository.findByCodeIgnoreCase). */
+    private UUID resolveUserDepartmentId(UserAccount user) {
+        if (user == null || !StringUtils.hasText(user.getDepartment())) {
+            return null;
+        }
+        // The user profile stores the department's display name (e.g. "Quality Assurance"); older data may
+        // hold its code ("QA"). Resolve either, otherwise a scoped user silently sees no documents.
+        String value = user.getDepartment().trim();
+        return departmentRepository.findByCodeIgnoreCase(value)
+                .or(() -> departmentRepository.findByNameIgnoreCase(value))
+                .map(Department::getId)
+                .orElse(null);
+    }
+
     private void addLookupPredicate(
             List<Predicate> predicates,
             jakarta.persistence.criteria.CriteriaBuilder cb,
@@ -2182,17 +2638,11 @@ public class DocumentService {
     }
 
     private void requireTemplateUse(UserAccount user) {
-        if (user == null || !(
-                permissionEvaluationService.hasPermission(user, "documents.template.use")
-                        || permissionEvaluationService.hasPermission(user, "documents.template.manage")
-        )) {
+        // Selecting an existing template to start a revision from is just another way of supplying the revision's source
+        // file, so it rides on the upload permission (documents.template.use was retired). Creating/marking a document
+        // as a Template rides on the ordinary document-create permission (see DocumentService#createDocumentDraft).
+        if (user == null || !permissionEvaluationService.hasPermission(user, "documents.revision.upload_source")) {
             throw new AccessDeniedException("Current user is not allowed to use controlled document templates");
-        }
-    }
-
-    private void requireTemplateManage(UserAccount user) {
-        if (user == null || !permissionEvaluationService.hasPermission(user, "documents.template.manage")) {
-            throw new AccessDeniedException("Current user is not allowed to manage controlled document templates");
         }
     }
 
@@ -2257,7 +2707,11 @@ public class DocumentService {
                 relatedDocuments,
                 correlatedDocuments,
                 hasAnyRevision,
-                canStartInitialAuthoring
+                canStartInitialAuthoring,
+                resolveDocumentReviewRequirement(document).name(),
+                document.getStatus() != null && "ACTIVE".equalsIgnoreCase(document.getStatus().getCode())
+                        && document.getNextRevisionConfiguredAt() != null
+                        && documentAuthorizationService.canStartNewRevisionUpload(currentUser, document)
         );
     }
 
@@ -2273,7 +2727,8 @@ public class DocumentService {
                 sequenceOrder,
                 null,
                 null,
-                null
+                null,
+                user == null || user.getStatus() == null ? null : user.getStatus().name()
         );
     }
 
@@ -2536,6 +2991,24 @@ public class DocumentService {
         return document.getId() == null ? "-" : document.getId().toString();
     }
 
+    // Optional so constructors used by unit tests stay valid; always injected in the application.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private KnowledgeHierarchyService knowledgeHierarchyService;
+
+    private String resolveDerivedKnowledgeBase(DocumentRecord document) {
+        if (knowledgeHierarchyService == null) {
+            return null;
+        }
+        com.eqms.entity.KnowledgeCategoryHierarchy hierarchy = knowledgeHierarchyService.defaultHierarchyOrNull();
+        if (hierarchy == null) {
+            return null;
+        }
+        return com.eqms.enums.KnowledgeField.parse(hierarchy.getDeterminatorField())
+                .map(field -> field.valueOf(document))
+                .map(com.eqms.enums.KnowledgeField.Value::label)
+                .orElse(null);
+    }
+
     private void applyDraftFields(DocumentRecord document, DocumentDraftCreateRequest request, UserAccount currentUser, boolean isNew) {
         if (isNew) {
             if (!StringUtils.hasText(request.documentName())) {
@@ -2605,6 +3078,7 @@ public class DocumentService {
             author = resolveUser(request.author());
             if (author != null) {
                 document.setAuthor(author);
+                recordStakeholderHistory(document, author, "AUTHOR");
             }
         }
 
@@ -2612,8 +3086,38 @@ public class DocumentService {
                 .orElseThrow(() -> new IllegalStateException("Draft status not configured"));
 
         if (isNew && !StringUtils.hasText(document.getDocumentNumber())) {
-            document.setDocumentNumber(generateDocumentNumber(documentType, department));
-            document.setVersion("0.0.1");
+            if (StringUtils.hasText(request.legacyDocumentNumber())) {
+                // Legacy Import path: the caller supplies the document number that already
+                // exists outside the system (e.g. on the paper original) instead of the
+                // auto-generated sequence. Gated on its own permission so an ordinary Author can
+                // never influence numbering, and validated for uniqueness the same as the normal
+                // generator's own collision check.
+                if (!permissionEvaluationService.hasPermission(currentUser, "documents.legacy_import.manage")) {
+                    throw new AccessDeniedException("Only Legacy Import is permitted to set a document number directly.");
+                }
+                String legacyNumber = request.legacyDocumentNumber().trim();
+                requireLegacyDocumentNumberFormat(legacyNumber, documentType);
+                if (documentRepository.existsByDocumentNumber(legacyNumber)) {
+                    throw new IllegalArgumentException("Document number '" + legacyNumber + "' is already in use.");
+                }
+                document.setDocumentNumber(legacyNumber);
+                document.setLegacyImport(true);
+                document.setLegacyImportedBy(currentUser);
+                document.setLegacyImportedAt(Instant.now());
+                if (StringUtils.hasText(request.legacyOriginalEffectiveDate())) {
+                    document.setOriginalEffectiveDate(parseLegacyEffectiveInstant(request.legacyOriginalEffectiveDate()));
+                }
+                if (StringUtils.hasText(request.legacyJustification())) {
+                    document.setLegacyJustification(request.legacyJustification().trim());
+                }
+                // The initial Revision number (e.g. the paper original's own "4.0.0") is set by
+                // the Legacy Import screen's revision-creation step, not here -- this Document
+                // draft alone stays fully valid at the configured seed even before that step runs.
+                document.setVersion(systemConfigurationService.getRevisionNumberSeed());
+            } else {
+                document.setDocumentNumber(generateDocumentNumber(documentType, department));
+                document.setVersion(systemConfigurationService.getRevisionNumberSeed());
+            }
         }
         if (request.documentName() != null) {
             document.setDocumentName(request.documentName().trim());
@@ -2630,7 +3134,13 @@ public class DocumentService {
         if (request.description() != null) {
             document.setDescription(StringUtils.hasText(request.description()) ? request.description().trim() : null);
         }
-        if (request.knowledgeBase() != null) {
+        // The Knowledge Base is derived from the default Knowledge Categories Hierarchy's determinator
+        // field (for example the Business Unit) and is never typed by the user. Without a hierarchy the
+        // legacy request value is kept so existing behaviour does not change.
+        String derivedKnowledgeBase = resolveDerivedKnowledgeBase(document);
+        if (derivedKnowledgeBase != null) {
+            document.setKnowledgeBase(derivedKnowledgeBase);
+        } else if (request.knowledgeBase() != null) {
             document.setKnowledgeBase(StringUtils.hasText(request.knowledgeBase()) ? request.knowledgeBase().trim() : null);
         }
         if (request.isTemplate() != null) {
@@ -2651,7 +3161,12 @@ public class DocumentService {
         if (request.subType() != null) {
             String normalizedSubType = StringUtils.hasText(request.subType()) ? request.subType().trim() : null;
             if (normalizedSubType == null) {
+                // "No Sub-Type" selected. Review is still REQUIRED (see change record D1/D5): the
+                // snapshot follows the current selection, so a Draft moving BACK to no-Sub-Type
+                // re-freezes at REQUIRED. No reviewer guard needed -- REQUIRED never forbids them.
                 document.setSubType(null);
+                document.setSubTypeId(null);
+                document.setReviewRequirement(ReviewRequirement.REQUIRED);
             } else {
                 if (documentType == null) {
                     throw new IllegalArgumentException("Document type is required before selecting a sub-type");
@@ -2662,8 +3177,30 @@ public class DocumentService {
                 if (!resolvedSubType.isActive()) {
                     throw new IllegalArgumentException("Sub-Type is not valid for the selected document type");
                 }
+                ReviewRequirement newRequirement = resolvedSubType.getReviewRequirement() != null
+                        ? resolvedSubType.getReviewRequirement()
+                        : ReviewRequirement.REQUIRED;
+                // Decision D3: do NOT auto-remove reviewers. If the Draft already has SAVED
+                // reviewers, refuse to switch it to a Sub-Type that does not use review -- the
+                // reviewers must be removed first (that removal itself requires an e-signature).
+                if (newRequirement == ReviewRequirement.NONE
+                        && document.getId() != null
+                        && documentWorkflowParticipantRepository
+                                .countByDocument_IdAndParticipantType(document.getId(), "REVIEWER") > 0) {
+                    throw new IllegalArgumentException(
+                            "REVIEWERS_MUST_BE_REMOVED_FIRST: remove the saved reviewers (requires e-signature) "
+                                    + "before switching to a Sub-Type that does not use review");
+                }
+                // Snapshot the Sub-Type reference (id -- rename-safe) and its review policy now.
+                // Never recomputed from a later Sub-Type edit (decision D1/D2).
                 document.setSubType(resolvedSubType.getName());
+                document.setSubTypeId(resolvedSubType.getId());
+                document.setReviewRequirement(newRequirement);
             }
+        }
+        // Legacy/new Drafts that never went through the Sub-Type block still need a frozen value.
+        if (document.getReviewRequirement() == null) {
+            document.setReviewRequirement(ReviewRequirement.REQUIRED);
         }
         if (request.language() != null) {
             document.setLanguage(StringUtils.hasText(request.language()) ? request.language().trim() : null);
@@ -2800,6 +3337,9 @@ public class DocumentService {
             for (DocumentLookupResult relatedDocument : resolvedRelatedDocuments) {
                 saveRelation(document, relatedDocument.document(), "RELATED");
             }
+            // Keep the denormalised flag consistent with the rows just written, regardless of
+            // whether applyDraftFields also ran for this request.
+            applyRelationPresenceFlag(document, "RELATED", !resolvedRelatedDocuments.isEmpty());
         }
 
         if (request.correlatedDocumentIds() != null) {
@@ -2811,6 +3351,7 @@ public class DocumentService {
             for (DocumentLookupResult correlatedDocument : resolvedCorrelatedDocuments) {
                 saveRelation(document, correlatedDocument.document(), "CORRELATED");
             }
+            applyRelationPresenceFlag(document, "CORRELATED", !resolvedCorrelatedDocuments.isEmpty());
         }
     }
 
@@ -2878,6 +3419,31 @@ public class DocumentService {
         participant.setParticipantType(participantType);
         participant.setSequenceOrder(sequenceOrder);
         documentWorkflowParticipantRepository.save(participant);
+        recordStakeholderHistory(document, user, participantType);
+    }
+
+    /**
+     * Always writes a permanent {@code document_stakeholder_history} row (see V458) for this
+     * Document/user/role combination, regardless of whether the "Retain visibility for removed
+     * participants" setting is currently on -- so enabling the setting later still protects any
+     * Author/Co-Author/Reviewer/Approver reassignment that happens from that point forward, not
+     * only ones made after the setting was flipped. Only
+     * {@link DocumentAuthorizationService#isDirectStakeholder} reading from it is gated by the
+     * setting. Idempotent: a user reassigned back to a role they held before does not duplicate.
+     */
+    private void recordStakeholderHistory(DocumentRecord document, UserAccount user, String participantType) {
+        if (document == null || document.getId() == null || user == null || user.getId() == null) {
+            return;
+        }
+        if (documentStakeholderHistoryRepository.existsByDocument_IdAndUser_IdAndParticipantType(
+                document.getId(), user.getId(), participantType)) {
+            return;
+        }
+        DocumentStakeholderHistory history = new DocumentStakeholderHistory();
+        history.setDocument(document);
+        history.setUser(user);
+        history.setParticipantType(participantType);
+        documentStakeholderHistoryRepository.save(history);
     }
 
     private void saveRelation(DocumentRecord sourceDocument, DocumentRecord targetDocument, String relationType) {
@@ -2910,21 +3476,10 @@ public class DocumentService {
                 && permissionEvaluationService.hasPermission(user, "documents.controlled_copy.request");
     }
 
-    /** Author/co-author/workflow-coordinator exclusions are enforced separately; this only confirms the
-     *  candidate actually holds the permission that lets them act as REVIEWER/APPROVER —
-     *  resolved from their Access Profile, not the retired document_workflow_pool_members
-     *  table (see V172__workflow_roles_catalog.sql, which migrated pool membership into the
-     *  Access Profile + Permission Set model). */
+    /** Delegates to the single shared rule ({@link WorkflowParticipantEligibilityService}) so
+     *  Document Master and Revision participant assignment can never silently diverge. */
     private void requirePoolMembership(String poolType, UserAccount user) {
-        if (user == null || user.getId() == null) {
-            throw new IllegalArgumentException(poolType + " user not found");
-        }
-        String requiredPermission = "APPROVER".equalsIgnoreCase(poolType)
-                ? "documents.revision.approve"
-                : "documents.revision.review";
-        if (!permissionEvaluationService.hasPermission(user, requiredPermission)) {
-            throw new IllegalArgumentException("Selected " + poolType.toLowerCase(Locale.ROOT) + " does not have the required permission");
-        }
+        workflowParticipantEligibilityService.requirePoolMembership(poolType, user);
     }
 
     private void validateSoD(DocumentRecord document, DocumentDraftCreateRequest request) {
@@ -2962,21 +3517,12 @@ public class DocumentService {
 
     private void validateReviewerRules(ReviewRequirement requirement, UserAccount author, List<String> coAuthorIds, List<String> reviewerUserIds) {
         DocumentWorkflowSetting setting = requireDocumentWorkflowSetting();
-        ReviewRequirement effectiveRequirement = requirement == null ? ReviewRequirement.SINGLE : requirement;
+        ReviewRequirement effectiveRequirement = requirement == null ? ReviewRequirement.REQUIRED : requirement;
         if (effectiveRequirement == ReviewRequirement.NONE && !reviewerUserIds.isEmpty()) {
             throw new IllegalArgumentException("REVIEW_NOT_REQUIRED: this Sub-Type does not allow Reviewer assignments");
         }
-        if (effectiveRequirement == ReviewRequirement.SINGLE && reviewerUserIds.size() != 1) {
-            throw new IllegalArgumentException("EXACTLY_ONE_REVIEWER_REQUIRED: this Sub-Type requires exactly one Reviewer");
-        }
-        if (effectiveRequirement == ReviewRequirement.MULTIPLE && reviewerUserIds.size() < 2) {
-            throw new IllegalArgumentException("MULTIPLE_REVIEWERS_REQUIRED: this Sub-Type requires at least two Reviewers");
-        }
-        if (effectiveRequirement == ReviewRequirement.FLEXIBLE && reviewerUserIds.isEmpty()) {
+        if (effectiveRequirement == ReviewRequirement.REQUIRED && reviewerUserIds.isEmpty()) {
             throw new IllegalArgumentException("AT_LEAST_ONE_REVIEWER_REQUIRED: at least one Reviewer is required");
-        }
-        if (effectiveRequirement == ReviewRequirement.MULTIPLE && setting.isRequireTwoReviewers() && reviewerUserIds.size() < 2) {
-            throw new IllegalArgumentException("At least two reviewers are required for controlled documents");
         }
         if (setting.isSameUserCannotHoldMultipleWorkflowRoles()) {
             ensureNoOverlap(coAuthorIds, reviewerUserIds, "Co-author and Reviewer cannot be the same user");
@@ -2992,23 +3538,29 @@ public class DocumentService {
         }
     }
 
+    /**
+     * The Draft's review requirement is a <em>snapshot</em> frozen on {@code documents.review_requirement}
+     * when the Sub-Type is set/changed (see {@link #applyDraftFields} and change record
+     * docs/decisions/review-requirement-snapshot-and-subtype-fk-change-record.md, decision D1).
+     * It is never re-resolved live from the Sub-Type, so an admin editing a Sub-Type's policy does
+     * not retroactively change the rules for Drafts already in progress. Null (legacy rows created
+     * before V408, or unit-test fixtures) falls back to the safer REQUIRED -- "unclassified" must
+     * never be read as "review waived".
+     */
     private ReviewRequirement resolveDocumentReviewRequirement(DocumentRecord document) {
-        if (document == null || document.getDocumentType() == null || !StringUtils.hasText(document.getSubType())) {
-            // No Sub-Type chosen ("None") -- at least one Reviewer, but not pinned to an exact
-            // count the way a real Sub-Type would be. A Sub-Type that WAS selected but can't be
-            // found below is a data-integrity edge case, not "None", so it stays conservative.
-            return ReviewRequirement.FLEXIBLE;
+        if (document == null || document.getReviewRequirement() == null) {
+            return ReviewRequirement.REQUIRED;
         }
-        return documentSubTypeRepository
-                .findByDocumentType_IdAndNameIgnoreCase(document.getDocumentType().getId(), document.getSubType().trim())
-                .map(DocumentSubType::getReviewRequirement)
-                .orElse(ReviewRequirement.SINGLE);
+        return document.getReviewRequirement();
     }
 
     private void validateApproverRules(UserAccount author, List<String> coAuthorIds, List<String> reviewerUserIds, List<String> approverUserIds) {
         validateAuthorAndCoAuthorApprovalIndependence(author, coAuthorIds, approverUserIds);
         DocumentWorkflowSetting setting = requireDocumentWorkflowSetting();
-        if (setting.isRequireOneApprover() && approverUserIds.size() != 1) {
+        // Unconditional GMP floor, not a togglable SoD rule: the business always requires exactly
+        // one Approver, and the FE never offers a way to select more than one (product decision,
+        // 2026-09-03 -- see the removed DocumentWorkflowSetting.requireOneApprover toggle).
+        if (approverUserIds.size() != 1) {
             throw new IllegalArgumentException("There is only one approver allowed in the document");
         }
         if (setting.isSameUserCannotHoldMultipleWorkflowRoles()) {
@@ -3032,11 +3584,10 @@ public class DocumentService {
     private void validateSoD(UserAccount author, List<String> coAuthorIds, List<String> reviewerUserIds, List<String> approverUserIds) {
         validateAuthorAndCoAuthorApprovalIndependence(author, coAuthorIds, approverUserIds);
         DocumentWorkflowSetting setting = requireDocumentWorkflowSetting();
-
-        if (setting.isRequireTwoReviewers() && reviewerUserIds.size() < 2) {
-            throw new IllegalArgumentException("At least two reviewers are required for controlled documents");
-        }
-        if (setting.isRequireOneApprover() && approverUserIds.size() != 1) {
+        // Unconditional GMP floor, not a togglable SoD rule: the business always requires exactly
+        // one Approver, and the FE never offers a way to select more than one (product decision,
+        // 2026-09-03 -- see the removed DocumentWorkflowSetting.requireOneApprover toggle).
+        if (approverUserIds.size() != 1) {
             throw new IllegalArgumentException("There is only one approver allowed in the document");
         }
 
@@ -3115,6 +3666,36 @@ public class DocumentService {
         }
     }
 
+    /**
+     * Legacy Import only. The Document Number prefix is always forced to the selected Document
+     * Type's short code (LegacyImportView.tsx never lets the user edit it), so the only free-form
+     * part is the serial suffix -- which must still be exactly Document Properties > Digits of
+     * the Serial Number numeric digits, the same width the normal auto-generator would have used
+     * (see generateDocumentNumber's "%0Nd" formatting), so a Legacy Import number stays consistent
+     * with the system's configured numbering even though it is typed in rather than generated.
+     */
+    private void requireLegacyDocumentNumberFormat(String legacyNumber, DocumentType documentType) {
+        if (documentType == null) {
+            throw new IllegalArgumentException("Document type is required before a legacy document number can be validated");
+        }
+        String typeCode = StringUtils.hasText(documentType.getShortCode())
+                ? documentType.getShortCode().trim().toUpperCase(Locale.ROOT)
+                : "DOC";
+        int serialDigits = Math.max(systemConfigurationService.getSerialNumberDigits(), 1);
+        String expectedPrefix = typeCode + ".";
+        if (!legacyNumber.toUpperCase(Locale.ROOT).startsWith(expectedPrefix)) {
+            throw new IllegalArgumentException(
+                    "Document number must start with \"" + expectedPrefix + "\" for the selected Document Type.");
+        }
+        String suffix = legacyNumber.substring(expectedPrefix.length());
+        if (!suffix.matches("\\d{" + serialDigits + "}")) {
+            throw new IllegalArgumentException(
+                    "Document number must have exactly " + serialDigits + " digit(s) after \"" + expectedPrefix
+                            + "\" (Settings > Document Properties > Digits of the Serial Number), e.g. \""
+                            + expectedPrefix + String.format("%0" + serialDigits + "d", 1) + "\".");
+        }
+    }
+
     private String generateDocumentNumber(DocumentType documentType, Department department) {
         if (documentType == null || documentType.getId() == null) {
             throw new IllegalArgumentException("Document type is required before a document number can be generated");
@@ -3126,9 +3707,28 @@ public class DocumentService {
                 : "DOC";
         int issuedSequence = documentRepository.findMaxDocumentSequenceByPrefix(typeCode);
         int nextSequence = Math.max(Math.max(lockedDocumentType.getCurrentSequence(), 0), issuedSequence) + 1;
+        // Phase 2 of the Document Name Formats feature: compose through the Format/Component
+        // engine instead of a hardcoded literal, when an eligible Format is available (see
+        // DocumentComponentResolver#isEligibleAsDocumentNumberFormat for why only the legacy
+        // 2-component "TYPE.NNNN" shape qualifies today). Preference order: this Document Type's
+        // own assigned Format, then the system-wide default (Document Properties screen), then
+        // the exact literal this always was -- so a mis-migrated or not-yet-configured Document
+        // Type never blocks document creation.
+        com.eqms.entity.DocumentNameFormat effectiveFormat = lockedDocumentType.getNameFormat();
+        if (effectiveFormat == null) {
+            java.util.UUID defaultFormatId = systemConfigurationService.getDefaultDocumentNameFormatId();
+            if (defaultFormatId != null) {
+                effectiveFormat = documentNameFormatRepository.findById(defaultFormatId).orElse(null);
+            }
+        }
+        boolean useEngine = effectiveFormat != null
+                && documentComponentResolver.isEligibleAsDocumentNumberFormat(effectiveFormat);
+        com.eqms.entity.DocumentNameFormat resolvedFormat = effectiveFormat;
         String candidate;
         do {
-            candidate = String.format("%s.%04d", typeCode, nextSequence);
+            candidate = useEngine
+                    ? documentComponentResolver.composeDocumentNumber(resolvedFormat, lockedDocumentType, department, nextSequence)
+                    : String.format("%s.%04d", typeCode, nextSequence);
             nextSequence++;
         } while (documentRepository.existsByDocumentNumber(candidate));
         lockedDocumentType.setCurrentSequence(nextSequence - 1);
@@ -3156,6 +3756,30 @@ public class DocumentService {
         return trimmed.substring(0, lastDot);
     }
 
+    /**
+     * Legacy Import only. Accepts the DateTimePicker's own "dd/MM/yyyy" (no time) and
+     * "dd/MM/yyyy HH:mm" (with time) output, plus a plain ISO instant, and always returns a
+     * concrete instant -- the date-only form is midnight in the server's zone.
+     */
+    private Instant parseLegacyEffectiveInstant(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        try {
+            if (trimmed.length() == 16 && trimmed.charAt(2) == '/' && trimmed.charAt(5) == '/' && trimmed.charAt(10) == ' ') {
+                return java.time.LocalDateTime.parse(trimmed, DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                        .atZone(SYSTEM_ZONE).toInstant();
+            }
+            if (trimmed.length() == 10 && trimmed.charAt(2) == '/' && trimmed.charAt(5) == '/') {
+                return LocalDate.parse(trimmed, DMY_DATE).atStartOfDay(SYSTEM_ZONE).toInstant();
+            }
+            return Instant.parse(trimmed);
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
     private LocalDate parseDate(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -3174,10 +3798,28 @@ public class DocumentService {
         }
     }
 
+    /**
+     * Only used for obsoleteDate. Falls back to now() ONLY when the caller genuinely did not send a
+     * value -- if a value IS sent but fails to parse, that must fail loudly (IllegalArgumentException)
+     * rather than silently substituting the current time, which previously discarded whatever date
+     * the user actually chose on the UI without any error. Tries ISO instant first: that is the
+     * literal format the FE sends today (`Date.prototype.toISOString()`), which the shared
+     * `parseDate()` date-only formats never matched -- explaining why the UI-selected date was being
+     * silently ignored on every real call before this fix.
+     */
     private Instant parseDateOrNow(String value) {
-        LocalDate parsed = parseDate(value);
-        if (parsed == null) {
+        if (!StringUtils.hasText(value)) {
             return Instant.now();
+        }
+        String trimmed = value.trim();
+        try {
+            return Instant.parse(trimmed);
+        } catch (DateTimeParseException ignored) {
+            // Not an ISO instant -- fall through to the date-only formats below.
+        }
+        LocalDate parsed = parseDate(trimmed);
+        if (parsed == null) {
+            throw new IllegalArgumentException("Invalid obsolete date: " + value);
         }
         return parsed.atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
@@ -3218,14 +3860,7 @@ public class DocumentService {
     }
 
     private String csv(String value) {
-        if (value == null) {
-            return "";
-        }
-        String escaped = value.replace("\"", "\"\"");
-        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
-            return "\"" + escaped + "\"";
-        }
-        return escaped;
+        return com.eqms.util.CsvSafety.escapeCell(value);
     }
 
     private String firstNonBlank(String... values) {
@@ -3241,14 +3876,19 @@ public class DocumentService {
     }
 
     private DocumentAuditTrailResponse toAuditTrailResponse(AuditLog auditLog) {
+        // Prefer the point-in-time snapshot stored on the row itself (audit fidelity: this must
+        // show the actor's attributes AS THEY WERE when they acted, not drift if their profile
+        // changes later) -- fall back to the live relation only for rows written before that
+        // snapshot existed.
         UserAccount actedBy = auditLog.getActedBy();
         DocumentAuditTrailUserResponse user = new DocumentAuditTrailUserResponse(
-                actedBy == null ? null : actedBy.getId().toString(),
-                actedBy == null ? null : actedBy.getFullName(),
-                actedBy == null ? null : actedBy.getEmployeeCode(),
-                actedBy == null ? null : actedBy.getRoleName(),
-                actedBy == null ? null : actedBy.getPosition(),
-                actedBy == null ? null : actedBy.getDepartment()
+                auditLog.getUserId() != null ? auditLog.getUserId().toString() : actedBy == null ? null : actedBy.getId().toString(),
+                firstNonBlank(auditLog.getUserFullName(), actedBy == null ? null : actedBy.getFullName()),
+                firstNonBlank(auditLog.getEmployeeCode(), actedBy == null ? null : actedBy.getEmployeeCode()),
+                firstNonBlank(auditLog.getRoleName(), actedBy == null ? null : actedBy.getRoleName()),
+                firstNonBlank(auditLog.getPositionName(), actedBy == null ? null : actedBy.getPosition()),
+                firstNonBlank(auditLog.getDepartmentName(), actedBy == null ? null : actedBy.getDepartment()),
+                auditLog.getAccessProfileNames() == null ? List.of() : List.of(auditLog.getAccessProfileNames())
         );
 
         String actionType = auditLog.getActionType() == null ? null : auditLog.getActionType().trim().toUpperCase(Locale.ROOT);
@@ -3433,35 +4073,6 @@ public class DocumentService {
         }
     }
 
-    private String getContentTypeForFileName(String fileName) {
-        if (!StringUtils.hasText(fileName)) {
-            return "application/octet-stream";
-        }
-        String lower = fileName.toLowerCase(Locale.ROOT);
-        if (lower.endsWith(".pdf")) {
-            return "application/pdf";
-        }
-        if (lower.endsWith(".docx")) {
-            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        }
-        if (lower.endsWith(".doc")) {
-            return "application/msword";
-        }
-        if (lower.endsWith(".xlsx")) {
-            return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-        }
-        if (lower.endsWith(".xls")) {
-            return "application/vnd.ms-excel";
-        }
-        if (lower.endsWith(".pptx")) {
-            return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-        }
-        if (lower.endsWith(".ppt")) {
-            return "application/vnd.ms-powerpoint";
-        }
-        return "application/octet-stream";
-    }
-
     @Transactional(readOnly = true)
     public DocumentFileResult previewDocumentFile(UUID documentId) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
@@ -3470,6 +4081,20 @@ public class DocumentService {
         ensureCurrentUserCanViewDocument(document, currentUser);
 
         DocumentRevisionRecord revision = resolveActiveRevision(document);
+        // resolveActiveRevision() falls back to the latest-created revision (possibly Draft) when
+        // no EFFECTIVE one exists. Gate the actual file serving through the dedicated file
+        // authorization service -- its PUBLISHED_PDF business rule only allows EFFECTIVE/OBSOLETED,
+        // so a Draft fallback is rejected here instead of silently serving unreviewed source.
+        // GMP decision (HDR-AUTH-001): a direct stakeholder (already passed
+        // ensureCurrentUserCanViewDocument above) bypasses the separate preview permission.
+        boolean isDirectStakeholder = documentAuthorizationService.isDirectStakeholder(currentUser, revision);
+        secureFileAccessService.require(
+                currentUser,
+                FileAccessAction.VIEW_PREVIEW,
+                FileObjectType.PUBLISHED_PDF,
+                revision.getId(),
+                FileAccessContext.ofRevision(revision, isDirectStakeholder)
+        );
 
         byte[] bytes;
         String fileName = "preview.pdf";
@@ -3508,52 +4133,6 @@ public class DocumentService {
         return new DocumentFileResult(bytes, fileName, "application/pdf");
     }
 
-    @Transactional(readOnly = true)
-    public DocumentFileResult downloadDocumentFile(UUID documentId) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRecord document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
-        ensureCurrentUserCanViewDocument(document, currentUser);
-
-        DocumentRevisionRecord revision = resolveActiveRevision(document);
-
-        byte[] bytes;
-        String fileName = revision.getFileName() != null ? revision.getFileName() : "document.bin";
-        String filePath = revision.getFilePath();
-        if (!StringUtils.hasText(filePath)) {
-            throw new IllegalArgumentException("Document file path is not specified");
-        }
-        try {
-            bytes = readDocumentBytesWithIntegrityCheck(revision, filePath);
-        } catch (IOException ex) {
-            handleDocumentIntegrityIssue(document, revision, currentUser, "Failed to read document file for download", ex);
-            throw new IllegalStateException("Failed to read document file for download", ex);
-        }
-
-        String contentType = getContentTypeForFileName(fileName);
-        auditTrailService.logAs(
-                currentUser,
-                "DOCUMENT",
-                document.getDocumentNumber() + " - " + document.getDocumentName(),
-                document.getId(),
-                "DOWNLOAD",
-                revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                "Downloaded revision file " + revision.getRevisionNumber()
-        );
-        return new DocumentFileResult(bytes, fileName, contentType);
-    }
-
-    private byte[] readDocumentBytesWithIntegrityCheck(DocumentRevisionRecord revision, String filePath) throws IOException {
-        if (revision == null || !StringUtils.hasText(filePath)) {
-            throw new IllegalArgumentException("Document file path is not specified");
-        }
-        if (StringUtils.hasText(revision.getSourceFileChecksum())) {
-            return fileStorageService.readFile(filePath, revision.getSourceFileChecksum());
-        }
-        return fileStorageService.readFile(filePath);
-    }
-
     private void verifyRevisionChecksum(byte[] bytes, DocumentRevisionRecord revision) throws IOException {
         if (revision == null || !StringUtils.hasText(revision.getSourceFileChecksum()) || bytes == null) {
             return;
@@ -3567,24 +4146,6 @@ public class DocumentService {
         } catch (java.security.NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 is unavailable", ex);
         }
-    }
-
-    private void handleDocumentIntegrityIssue(DocumentRecord document, DocumentRevisionRecord revision, UserAccount currentUser, String actionMessage, Exception ex) {
-        if (revision != null) {
-            revision.setStorageSyncStatus("INTEGRITY_BREACH");
-            revision.setStorageLastSyncedAt(Instant.now());
-            documentRevisionRepository.save(revision);
-        }
-        auditTrailService.logAs(
-                currentUser,
-                "DOCUMENT",
-                document == null ? "Document" : document.getDocumentNumber() + " - " + document.getDocumentName(),
-                document == null ? null : document.getId(),
-                "DATA_INTEGRITY_BREACH",
-                revision == null || revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                revision == null || revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                actionMessage + ": " + ex.getMessage()
-        );
     }
 
     public record DocumentFileResult(

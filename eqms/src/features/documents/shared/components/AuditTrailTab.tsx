@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MoreVertical, Download, X, ChevronRight, ShieldAlert } from "lucide-react";
+import { Search, MoreVertical, Download, X, ChevronRight, ShieldAlert, ChevronUp, ChevronDown } from "lucide-react";
 import { usePortalDropdown, useTableDragScroll, useDebounce, PortalDropdownPosition } from "@/hooks";
 import { Button } from "@/components/ui/button/Button";
+import { Badge } from "@/components/ui/badge/Badge";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { cn } from "@/components/ui/utils";
@@ -80,7 +81,15 @@ const normalizeText = (value: unknown) => String(value ?? "").toLowerCase().trim
 
 const buildChangeSummary = (record: AuditTrailRecord) => {
   if (record.changes && record.changes.length > 0) {
-    return record.changes
+    const rendered = record.changes
+      // Drop a no-op "status" entry (old === new, or one side blank) -- older audit rows
+      // persisted a synthetic "Obsoleted -> Obsoleted" for non-mutating actions like View.
+      .filter((change) => {
+        if (!/status|state/i.test(change.field || "")) return true;
+        const o = (change.oldValue ?? "").trim();
+        const n = (change.newValue ?? "").trim();
+        return o !== "" && n !== "" && o.toLowerCase() !== n.toLowerCase();
+      })
       .map((change) => {
         const field = change.field || "Field";
         const isStatusField = /status|state/i.test(field);
@@ -89,6 +98,7 @@ const buildChangeSummary = (record: AuditTrailRecord) => {
         return `${field}: ${oldValue} → ${newValue}`;
       })
       .join("; ");
+    if (rendered) return rendered;
   }
   return record.description || record.reason || record.metadata?.reason || record.metadata?.comment || "-";
 };
@@ -190,6 +200,23 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   ]);
   const [isUserOptionsLoading, setIsUserOptionsLoading] = useState(false);
   const [eSignatureFilter, setESignatureFilter] = useState<"All" | "Yes" | "No">("All");
+  // Same sort keys/columns as the standalone All Audit Trail screen (AuditTrailView.tsx), so this
+  // embedded tab behaves identically. Sorted server-side via auditTrailApi.getAuditTrail's
+  // sortBy/sortDirection whenever this tab fetches its own data; when a parent instead supplies
+  // pre-fetched `records`/`auditEntries` (e.g. a merged batch + child-copies timeline that no
+  // single server query can produce), the exact same key/direction is applied client-side instead
+  // so the header behavior stays consistent either way.
+  const [sortConfig, setSortConfig] = useState<{ key: "timestamp" | "user" | "action"; direction: "asc" | "desc" }>({
+    key: "timestamp",
+    direction: "desc",
+  });
+  const handleSort = (key: typeof sortConfig.key) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+    setCurrentPage(1);
+  };
   const defaultAuditTrailDateRange = useMemo(() => getDefaultAuditTrailDateRange(), []);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -239,6 +266,8 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
         documentNumber,
         entityId: scopedEntityId || undefined,
         module: entityType as AuditModule | string | undefined,
+        sortBy: sortConfig.key,
+        sortDirection: sortConfig.direction,
       })
       .then((response) => {
         if (!alive) return;
@@ -273,6 +302,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     documentNumber,
     scopedEntityId,
     entityType,
+    sortConfig,
   ]);
 
   useEffect(() => {
@@ -429,10 +459,31 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     });
   }, [shouldFetchServer, sourceRecords, actionFilter, userFilter, eSignatureFilter, dateFrom, dateTo, debouncedSearchQuery]);
 
-  const totalItemsClient = filteredRecords.length;
+  // Only reached when a parent supplies pre-fetched records/auditEntries (shouldFetchServer is
+  // false) -- there is no server round-trip to sort on in that case, so apply the exact same
+  // key/direction here instead, keeping header behavior identical either way.
+  const sortedRecords = useMemo(() => {
+    if (shouldFetchServer) return filteredRecords;
+    const direction = sortConfig.direction === "asc" ? 1 : -1;
+    return [...filteredRecords].sort((a, b) => {
+      if (sortConfig.key === "timestamp") {
+        return (new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) * direction;
+      }
+      if (sortConfig.key === "user") {
+        const left = a.user?.fullName || a.fullName || "";
+        const right = b.user?.fullName || b.fullName || "";
+        return left.localeCompare(right) * direction;
+      }
+      const left = a.action || "";
+      const right = b.action || "";
+      return left.localeCompare(right) * direction;
+    });
+  }, [shouldFetchServer, filteredRecords, sortConfig]);
+
+  const totalItemsClient = sortedRecords.length;
   const totalPagesClient = Math.max(1, Math.ceil(totalItemsClient / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedRecords = sortedRecords.slice(startIndex, startIndex + itemsPerPage);
 
   const recordsList = shouldFetchServer ? internalRecords : paginatedRecords;
   const displayTotalItems = shouldFetchServer ? totalItems : totalItemsClient;
@@ -577,25 +628,45 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                       No.
                     </th>
                     {[
-                      "Timestamp",
-                      "User",
-                      "Employee ID",
-                      "Role",
-                      "Position",
-                      "Department",
-                      "Action",
-                      "Entity",
-                      "Change Summary",
-                      "E-Signature",
-                      "IP Address",
-                      "Device / Browser",
-                    ].map((label) => (
+                      { label: "Timestamp", key: "timestamp" as const },
+                      { label: "User", key: "user" as const },
+                      { label: "Employee ID" },
+                      { label: "Access Profile" },
+                      { label: "Position" },
+                      { label: "Department" },
+                      { label: "Action", key: "action" as const },
+                      { label: "Entity" },
+                      { label: "Change Summary" },
+                      { label: "E-Signature" },
+                      { label: "IP Address" },
+                      { label: "Device / Browser" },
+                    ].map(({ label, key }) => (
                       <th
                         key={label}
-                        className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-left"
+                        onClick={key ? () => handleSort(key) : undefined}
+                        className={cn(
+                          "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-left",
+                          key && "cursor-pointer transition-colors hover:bg-slate-100 hover:text-slate-700 group",
+                        )}
                       >
                         <div className="flex items-center justify-between gap-2 w-full">
                           <span className="truncate">{label}</span>
+                          {key && (
+                            <div className="flex flex-shrink-0 flex-col text-slate-500 transition-colors group-hover:text-slate-700">
+                              <ChevronUp
+                                className={cn(
+                                  "-mb-1 h-3 w-3",
+                                  sortConfig.key === key && sortConfig.direction === "asc" && "text-emerald-600",
+                                )}
+                              />
+                              <ChevronDown
+                                className={cn(
+                                  "h-3 w-3",
+                                  sortConfig.key === key && sortConfig.direction === "desc" && "text-emerald-600",
+                                )}
+                              />
+                            </div>
+                          )}
                         </div>
                       </th>
                     ))}
@@ -611,7 +682,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                     const fullName = user?.fullName || record.fullName || "-";
                     const employeeId = user?.employeeCode || record.userId || "-";
                     const profileId = user?.id || "";
-                    const role = user?.role || "-";
+                    const accessProfileNames = user?.accessProfileNames ?? [];
                     const position = user?.position || "-";
                     const department = user?.department || "-";
                     const action = record.action || "-";
@@ -650,7 +721,20 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                         </td>
 
                         <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                          {role}
+                          {accessProfileNames.length === 0 ? (
+                            <Badge size="sm" color="amber" title="No Access Profile was assigned at the time of this event.">
+                              Unassigned
+                            </Badge>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Badge size="sm" color="slate">
+                                {accessProfileNames[0]}
+                              </Badge>
+                              {accessProfileNames.length > 1 && (
+                                <span className="text-2xs text-slate-500 font-medium">+{accessProfileNames.length - 1}</span>
+                              )}
+                            </span>
+                          )}
                         </td>
 
                         <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">

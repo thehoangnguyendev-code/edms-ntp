@@ -124,7 +124,21 @@ export const MainLayout: React.FC = () => {
 
     const hydrateSecurityConfig = async () => {
       try {
-        const config = await settingsApi.getSystemConfiguration();
+        let config: Record<string, any>;
+        try {
+          config = await settingsApi.getSystemConfiguration();
+        } catch {
+          // Users without Settings > Configuration access still need the operational Documents policy
+          // (PDF preview options, download/print) -- keep the last cached sections and refresh only that one.
+          const documents = await settingsApi.getDocumentsOperationalConfig();
+          let cached: Record<string, any> = {};
+          try {
+            cached = JSON.parse(window.localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || '{}');
+          } catch {
+            cached = {};
+          }
+          config = { ...cached, documents };
+        }
         if (!isActive) {
           return;
         }

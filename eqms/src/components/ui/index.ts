@@ -23,6 +23,7 @@ export * from './tabs';
 export * from './modal';
 export * from './toast';
 export * from './badge';
+export * from './avatar';
 export * from './icon-tile';
 export * from './popover';
 export * from './loading';

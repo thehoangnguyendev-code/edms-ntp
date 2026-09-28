@@ -72,6 +72,17 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  // Callers very often pass onSearch as a fresh inline arrow function on every render (it
+  // legitimately needs to close over current form state, e.g. to exclude the already-picked
+  // Author from the Co-Author search). Depending on that unstable reference directly in the
+  // debounce effect below would re-run — and reset asyncOptions/isSearching, flashing the
+  // dropdown back to "Searching..." — on every parent re-render, including the one caused by
+  // ticking a checkbox here (onChange -> parent state update -> new onSearch identity). Route
+  // through a ref instead so only an actual searchQuery/isOpen change re-triggers the search.
+  const onSearchRef = useRef(onSearch);
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
 
   const safeOptions = options.filter(Boolean) as MultiSelectOption[];
 
@@ -113,7 +124,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
 
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const results = await onSearch(searchQuery);
+        const results = await onSearchRef.current!(searchQuery);
         setAsyncOptions(results);
       } catch (error) {
         console.error('Search failed:', error);
@@ -128,7 +139,8 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchQuery, onSearch, debounceMs, minSearchLength, isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSearch intentionally excluded, see onSearchRef above
+  }, [searchQuery, debounceMs, minSearchLength, isOpen]);
 
   const selectedOptions = displayOptions.filter((opt) => value.includes(opt.value));
   const visibleTags = selectedOptions.slice(0, maxVisibleTags);

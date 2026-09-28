@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { ROUTES } from "@/app/routes.constants";
 import {
@@ -121,6 +122,7 @@ interface PendingDocumentsViewProps {
 }
 
 export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ viewType, onViewDocument }) => {
+  const location = useLocation();
   const { user } = useAuth();
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
   const [columns] = useState<TableColumn[]>(() => [...DEFAULT_COLUMNS]);
@@ -210,11 +212,11 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
         async () => ({
           ...buildRevisionDetailSnapshotState(await documentApi.getRevisionByIdSnapshot(revisionId)),
         }),
-        { state: { from } },
+        { state: { from, returnTo: `${location.pathname}${location.search}` } },
       );
     } catch (error) {
       console.error("Failed to preload revision before navigation", error);
-      navigateTo(route, { state: { from } });
+      navigateTo(route, { state: { from, returnTo: `${location.pathname}${location.search}` } });
     }
   };
 
@@ -282,7 +284,7 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
         return <span className="font-medium text-slate-900">{revision.revisionName}</span>;
       case "state":
         return (
-          <Badge color={getBadgeColor(revision.statusCode, revision.state)}>
+          <Badge color={getBadgeColor(revision.statusCode, revision.state)} size="sm">
             {revision.state}
           </Badge>
         );

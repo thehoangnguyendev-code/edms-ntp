@@ -170,6 +170,27 @@ public class DocumentController {
         return ResponseEntity.ok(documentService.getDocumentRevisions(id));
     }
 
+    /** Paged, searchable, sortable revision list of one document (search, sort and paging are done by the server). */
+    @GetMapping("/{id}/revisions/page")
+    public ResponseEntity<PageResponse<DocumentRevisionSummaryResponse>> getDocumentRevisionsPage(
+            @PathVariable java.util.UUID id,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "revisionNumber") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        return ResponseEntity.ok(documentService.getDocumentRevisionsPage(id, search, sortBy, sortDirection, page, limit));
+    }
+
+    /** Paged, searchable, sortable page of the Related / Correlated documents the caller has selected (ids in the body). */
+    @PostMapping("/relations/page")
+    public ResponseEntity<PageResponse<com.eqms.dto.document.DocumentRelationResponse>> getDocumentRelationsPage(
+            @RequestBody com.eqms.dto.document.DocumentRelationPageRequest request
+    ) {
+        return ResponseEntity.ok(documentService.getDocumentRelationsPage(request));
+    }
+
     @GetMapping("/templates")
     public ResponseEntity<List<DocumentListItemResponse>> listSelectableTemplates(
             @RequestParam(required = false) String search,
@@ -212,13 +233,59 @@ public class DocumentController {
             @PathVariable java.util.UUID id,
             @RequestPart(value = "file", required = false) MultipartFile file,
             @RequestPart(value = "changeDescription", required = false) String changeDescription,
-            @RequestPart(value = "revisionType", required = false) String revisionType,
             @RequestPart(value = "templateRevisionId", required = false) String templateRevisionId
     ) {
         return ResponseEntity.ok(revisionService.createRevisionAndUploadFile(
                 id,
                 file,
-                new RevisionCreationRequest(changeDescription, revisionType, templateRevisionId)
+                new RevisionCreationRequest(changeDescription, templateRevisionId)
+        ));
+    }
+
+    @GetMapping("/legacy-import/check-document-number")
+    public ResponseEntity<java.util.Map<String, Boolean>> checkLegacyDocumentNumberAvailable(
+            @RequestParam("documentNumber") String documentNumber
+    ) {
+        return ResponseEntity.ok(java.util.Map.of("available", documentService.isLegacyDocumentNumberAvailable(documentNumber)));
+    }
+
+    /**
+     * Legacy Import: creates a document's entire revision chain (e.g. just 1.0, or 1.0 -> 4.0) in
+     * one atomic transaction -- a single revision is simply a batch of one, so there is no separate
+     * single-revision endpoint. "revisions" is a JSON array (see LegacyBatchRevisionSectionRequest);
+     * "files" is the parallel list of source files for sections whose hasFile=true, in the same
+     * relative order as those sections.
+     */
+    @PostMapping(value = "/{id}/revisions/legacy-import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<com.eqms.dto.document.LegacyBatchImportResponse> createLegacyImportRevisionsBatch(
+            @PathVariable java.util.UUID id,
+            @RequestPart(value = "revisions") String revisionsJson,
+            @RequestPart(value = "files", required = false) java.util.List<MultipartFile> files,
+            @RequestPart(value = "legacyJustification") String legacyJustification,
+            @RequestPart(value = "signatureToken", required = false) String signatureToken
+    ) {
+        return ResponseEntity.ok(revisionService.createLegacyImportRevisionsBatch(
+                id, revisionsJson, files, legacyJustification, signatureToken
+        ));
+    }
+
+    /**
+     * Legacy Import: creates the Draft document AND its revision batch (above) in one request, so
+     * both happen inside one physical transaction -- a batch failure (bad file, validation error)
+     * rolls back the document insert too, instead of leaving an orphaned Draft that permanently
+     * holds the legacy document number and blocks every retry. Prefer this over calling POST
+     * /documents then POST /{id}/revisions/legacy-import separately.
+     */
+    @PostMapping(value = "/legacy-import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<com.eqms.dto.document.LegacyBatchImportResponse> createLegacyImportDocumentAndRevisions(
+            @RequestPart(value = "document") String documentJson,
+            @RequestPart(value = "revisions") String revisionsJson,
+            @RequestPart(value = "files", required = false) java.util.List<MultipartFile> files,
+            @RequestPart(value = "legacyJustification") String legacyJustification,
+            @RequestPart(value = "signatureToken", required = false) String signatureToken
+    ) {
+        return ResponseEntity.ok(documentService.createLegacyImportDocumentAndRevisions(
+                documentJson, revisionsJson, files, legacyJustification, signatureToken
         ));
     }
 
@@ -303,12 +370,4 @@ public class DocumentController {
                 .body(result.bytes());
     }
 
-    @GetMapping("/{id}/download")
-    public ResponseEntity<byte[]> downloadDocument(@PathVariable UUID id) {
-        DocumentService.DocumentFileResult result = documentService.downloadDocumentFile(id);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + result.fileName() + "\"")
-                .contentType(MediaType.parseMediaType(result.contentType()))
-                .body(result.bytes());
-    }
 }

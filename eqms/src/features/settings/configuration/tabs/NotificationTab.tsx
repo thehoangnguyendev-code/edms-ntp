@@ -1,4 +1,5 @@
 ﻿import React, { useState } from 'react';
+import { FormSection } from '@/components/ui/form/FormSection';
 import { useEffect } from 'react';
 import { NotificationConfig } from '../types';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
@@ -16,19 +17,6 @@ interface NotificationTabProps {
   onChange: (config: NotificationConfig) => void;
 }
 
-const SettingsCard: React.FC<{
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}> = ({ title, icon, children }) => (
-  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div className="flex items-center gap-2.5 px-4 md:px-5 py-4 border-b border-slate-100">
-      <span className="text-emerald-600">{icon}</span>
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-    </div>
-    <div className="p-4 md:p-5">{children}</div>
-  </div>
-);
 
 export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChange }) => {
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
@@ -150,7 +138,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
   return (
     <div className="p-4 md:p-5 space-y-4">
       {/* Notification Channels */}
-      <SettingsCard title="Notification Channels" icon={<Bell className="h-4 w-4" />}>
+      <FormSection title="Notification Channels" icon={<Bell className="h-4 w-4" />}>
         <div className="space-y-3">
           <div>
             <Checkbox
@@ -164,9 +152,9 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
             </p>
           </div>
         </div>
-      </SettingsCard>
+      </FormSection>
 
-      <SettingsCard title="Delivery Failures" icon={<Bell className="h-4 w-4" />}>
+      <FormSection title="Delivery Failures" icon={<Bell className="h-4 w-4" />}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="text-xs text-slate-500">Recent failed deliveries are stored by the server. Retry reuses the saved, redacted event payload and the active template.</p>
           <Button size="sm" variant="outline-emerald" onClick={() => void loadDeliveryFailures(true)} disabled={isLoadingDeliveryFailures} className="shrink-0 gap-1.5">
@@ -193,10 +181,10 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
             </table>
           </div>
         )}
-      </SettingsCard>
+      </FormSection>
 
       {/* Email Configuration */}
-      <SettingsCard title="Email Notifications (SMTP)" icon={<img src={gmailLogo} alt="Gmail" className="h-4 w-4 object-contain brightness-110" />}>
+      <FormSection title="Email Notifications (SMTP)" icon={<img src={gmailLogo} alt="Gmail" className="h-4 w-4 object-contain brightness-110" />}>
         <div className="space-y-4">
           <Checkbox
             id="enableEmailNotifications"
@@ -342,7 +330,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
             </div>
           )}
         </div>
-      </SettingsCard>
+      </FormSection>
 
     </div>
   );

@@ -81,9 +81,8 @@ class RevisionActionCapabilityServiceTest {
         revision.setFilePath("/minio/source.docx");
         revision.setFileName("source.docx");
         revision.setPreviewFilePath("/minio/review.pdf");
-        revision.setStorageEditUrl("https://office.example/edit");
-        revision.setStorageItemId("item-1");
-        revision.setStorageDriveId("drive-1");
+        revision.setSourceFileChecksum("sha256:deadbeef");
+        revision.setSourceStorageObjectKey("documents/source.docx");
 
         lenient().when(currentUserService.requireCurrentUser()).thenReturn(user);
         lenient().doNothing().when(documentAuthorizationService).requireCanViewRevision(eq(user), any());
@@ -122,7 +121,7 @@ class RevisionActionCapabilityServiceTest {
             case OPEN_PUBLISHING_WORKSPACE -> "documents.revision.open_publishing_workspace";
             case SUBMIT_FOR_REVIEW -> "documents.revision.submit_review";
             case UPLOAD_SOURCE -> "documents.revision.upload_source";
-            case GENERATE_REVIEW_SNAPSHOT, REGENERATE_SNAPSHOT -> "documents.revision.generate_preview";
+            case GENERATE_REVIEW_SNAPSHOT, REGENERATE_SNAPSHOT -> "documents.revision.submit_review";
             case COMPLETE_REVIEW -> "documents.revision.review";
             case REJECT_REVIEW -> "documents.revision.reject_review";
             case COMPLETE_APPROVAL -> "documents.revision.approve";
@@ -145,7 +144,6 @@ class RevisionActionCapabilityServiceTest {
         assertThat(response.documentId()).isEqualTo(revision.getDocument().getId());
         assertThat(response.actions()).containsKeys(
                 "preview",
-                "downloadSource",
                 "editOnline",
                 "uploadSource",
                 "replaceSource",
@@ -154,8 +152,6 @@ class RevisionActionCapabilityServiceTest {
                 "completeAuthoring",
                 "updateDraftMetadata",
                 "openPublishingWorkspace",
-                "generateReviewSnapshot",
-                "regenerateSnapshot",
                 "submitForReview",
                 "completeReview",
                 "rejectReview",
@@ -171,7 +167,6 @@ class RevisionActionCapabilityServiceTest {
         assertThat(response.actions().get("completeReview").requiredPermissionCode()).isEqualTo("documents.revision.review");
         assertThat(response.actions().get("completeApproval").requiredPermissionCode()).isEqualTo("documents.revision.approve");
         assertThat(response.actions().get("completeTraining").requiredPermissionCode()).isEqualTo("documents.revision.complete_training");
-        assertThat(response.actions().get("downloadSource").requiredPermissionCode()).isEqualTo("documents.revision.download_source");
         assertThat(response.actions().get("updateDraftMetadata").requiredPermissionCode()).isEqualTo("documents.revision.update_draft_metadata");
     }
 
@@ -204,9 +199,8 @@ class RevisionActionCapabilityServiceTest {
 
     @Test
     void getCapabilities_deniesEditOnlineWhenOfficeWorkspaceMissing() {
-        revision.setStorageEditUrl(null);
-        revision.setStorageItemId(null);
-        revision.setStorageDriveId(null);
+        revision.setSourceFileChecksum(null);
+        revision.setSourceStorageObjectKey(null);
         when(documentRevisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
 
         RevisionActionCapabilitiesResponse response = service.getCapabilities(revisionId);
@@ -239,6 +233,7 @@ class RevisionActionCapabilityServiceTest {
         revision.setFilePath(null);
         revision.setStorageEditUrl(null);
         revision.setStorageViewUrl(null);
+        revision.setSourceStorageObjectKey(null);
         when(documentRevisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
 
         RevisionActionCapabilitiesResponse response = service.getCapabilities(revisionId);

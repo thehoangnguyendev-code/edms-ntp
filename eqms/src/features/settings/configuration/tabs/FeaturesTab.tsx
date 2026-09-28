@@ -1,4 +1,5 @@
 ﻿import React, { useMemo, useState } from "react";
+import { FormSection } from '@/components/ui/form/FormSection';
 import { ToggleLeft, CheckCircle2, XCircle, AlertTriangle, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -12,20 +13,6 @@ interface FeaturesTabProps {
   onChange: (features: FeatureFlag[]) => void;
 }
 
-const SettingsCard: React.FC<{
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-}> = ({ title, icon, children, className }) => (
-  <div className={cn("bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden", className)}>
-    <div className="flex items-center gap-2.5 px-4 md:px-5 py-4 border-b border-slate-100">
-      <span className="text-emerald-600">{icon}</span>
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-    </div>
-    <div className="p-4 md:p-5">{children}</div>
-  </div>
-);
 
 export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) => {
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>(() => {
@@ -67,10 +54,10 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
   const disabledCount = features.length - enabledCount;
 
   return (
-    <div className="p-4 md:p-5 space-y-6">
+    <div className="p-4 md:p-5 space-y-4">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500 mb-1">Total Features</p>
@@ -81,7 +68,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
             </div>
           </div>
         </div>
-        <div className="bg-white border border-emerald-200 rounded-xl p-4 md:p-5 shadow-sm">
+        <div className="bg-white border border-emerald-200 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-emerald-600 mb-1">Enabled / Active</p>
@@ -92,7 +79,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
             </div>
           </div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500 mb-1">Disabled / Inactive</p>
@@ -106,15 +93,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
       </div>
 
       {/* Main Features List */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2.5 px-4 md:px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-          <span className="text-emerald-600">
-            <ToggleLeft className="h-4 w-4" />
-          </span>
-          <h3 className="text-sm font-semibold text-slate-900">Module Capabilities</h3>
-        </div>
-
-        <div className="divide-y divide-slate-100">
+      <FormSection title="Module Capabilities" icon={<ToggleLeft className="h-4 w-4" />} contentClassName="divide-y divide-slate-100">
           {features.length > 0 ? (
             features.filter(f => !f.parentId).map((rootFeature) => {
               const children = features.filter(f => f.parentId === rootFeature.id);
@@ -262,8 +241,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
               <p className="text-sm text-slate-400 italic">No features found in the system.</p>
             </div>
           )}
-        </div>
-      </div>
+      </FormSection>
     </div>
   );
 };

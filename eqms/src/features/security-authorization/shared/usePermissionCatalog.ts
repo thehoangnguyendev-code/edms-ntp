@@ -36,6 +36,7 @@ export const mapCatalogGroup = (group: PermissionCatalogGroupResponse): Permissi
       requiresESign: Boolean(permission.requiresESign),
       systemDefined: permission.systemDefined !== false,
       active: permission.active !== false,
+      lifecycleUsages: permission.lifecycleUsages,
     };
   }),
 });

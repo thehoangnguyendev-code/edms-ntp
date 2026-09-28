@@ -1,0 +1,13 @@
+-- role_permissions (direct Role -> Permission grants, bypassing the Access Profile -> Permission
+-- Set -> Permission chain) has been documented as retired since EffectivePermissionService's
+-- entitlement resolver never reads it (only user_access_profiles -> access_profile_permission_sets
+-- -> permission_set_items is consulted). Application code that wrote to it (the legacy
+-- /settings/roles/** CRUD surface and SettingsSeedBootstrap's non-functional sample-role seed,
+-- which never linked Permission Sets either) has been removed as part of the same cleanup.
+--
+-- The `roles` table itself (RoleDefinition) is NOT legacy -- it is the live storage for Access
+-- Profiles, managed via /security/access-profiles/** and still required by AccessProfileService,
+-- SodConstraintService, ObjectAccessRuleService, ObjectAccessEvaluationService,
+-- AccessEffectiveService, UserAuthorizationSummaryService, and PermissionSetService. Only the
+-- orphaned direct-grant side table is dropped here.
+DROP TABLE IF EXISTS role_permissions;

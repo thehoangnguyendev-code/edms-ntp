@@ -44,6 +44,11 @@ public record AuthUserResponse(
         String suspendReason,
         String suspendedUntil,
         String terminationReason,
-        String terminationDate
+        String terminationDate,
+        /** DASHBOARD / NOTIFICATIONS / KNOWLEDGE -- read by AppRoutes.tsx's post-login redirect,
+         *  which must have it right off the login response (no extra /auth/me round trip). */
+        String homePage,
+        /** Admin-mandated per-user MFA requirement (see UserAccount#mfaRequiredByAdmin). */
+        boolean mfaRequiredByAdmin
 ) {
 }

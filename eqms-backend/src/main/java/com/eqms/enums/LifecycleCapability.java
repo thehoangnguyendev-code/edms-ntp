@@ -10,8 +10,6 @@ package com.eqms.enums;
 public enum LifecycleCapability {
     VIEW,
     PREVIEW,
-    DOWNLOAD_SOURCE,
-    DOWNLOAD_PUBLISHED,
     EDIT_METADATA,
     OBSOLETE,
     CANCEL

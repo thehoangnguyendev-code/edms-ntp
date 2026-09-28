@@ -7,6 +7,7 @@ import com.eqms.service.PermissionEvaluationService;
 import com.eqms.service.PublishingWorkspaceJobProcessorService;
 import com.eqms.service.PublishingWorkspaceJobService;
 import com.eqms.service.PublishingWorkspaceService;
+import com.eqms.service.SignatureTokenConsumptionService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.CacheControl;
@@ -24,19 +25,22 @@ public class PublishingWorkspaceController {
     private final PublishingWorkspaceJobProcessorService jobProcessorService;
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
+    private final SignatureTokenConsumptionService signatureTokenConsumptionService;
 
     public PublishingWorkspaceController(
             PublishingWorkspaceService service,
             PublishingWorkspaceJobService jobService,
             PublishingWorkspaceJobProcessorService jobProcessorService,
             CurrentUserService currentUserService,
-            PermissionEvaluationService permissionEvaluationService
+            PermissionEvaluationService permissionEvaluationService,
+            SignatureTokenConsumptionService signatureTokenConsumptionService
     ) {
         this.service = service;
         this.jobService = jobService;
         this.jobProcessorService = jobProcessorService;
         this.currentUserService = currentUserService;
         this.permissionEvaluationService = permissionEvaluationService;
+        this.signatureTokenConsumptionService = signatureTokenConsumptionService;
     }
 
     @GetMapping
@@ -92,6 +96,13 @@ public class PublishingWorkspaceController {
     ) {
         requirePublishPermission();
         var currentUser = currentUserService.requireCurrentUser();
+        // DC-XF-84: the actual signature validation/consumption only happened deep inside the async
+        // worker (PublishingWorkspaceService.completePublish -> RevisionService.publishRevision),
+        // potentially minutes after this request was accepted if the queue is backed up. Reject an
+        // already-invalid/expired/replayed token immediately instead of only discovering it later,
+        // after the caller has already been told 202 Accepted. Does not consume the token here --
+        // the worker still performs the real, once-only consumption when it actually signs.
+        signatureTokenConsumptionService.requireValidWithoutConsuming(request == null ? null : request.signatureToken(), currentUser);
         var job = jobService.createPublishJob(id, currentUser.getId(), request);
         jobProcessorService.processPublishJob(job.getId(), id, request, currentUser.getId());
         return ResponseEntity.accepted().body(service.getWorkspace(id));

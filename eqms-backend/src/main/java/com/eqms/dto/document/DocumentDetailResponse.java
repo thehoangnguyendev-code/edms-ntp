@@ -23,6 +23,9 @@ public record DocumentDetailResponse(
         String description,
         String knowledgeBase,
         String subType,
+        /** NONE/SINGLE/MULTIPLE/FLEXIBLE resolved from the Sub-Type's configured requirement --
+         * lets the client show "Not Required" instead of an ambiguous empty reviewer list. */
+        String reviewRequirement,
         Integer periodicReviewCycle,
         Integer periodicReviewNotification,
         String language,
@@ -46,6 +49,11 @@ public record DocumentDetailResponse(
         boolean canUploadRevision,
         boolean canRequestControlledCopy,
         String nextDraftRevisionNumber,
-        String authorId
+        String authorId,
+        /** Changes whenever the published PDF this Document's "Document" preview tab serves
+         *  changes (a new Revision becomes EFFECTIVE, or its published PDF is regenerated) -- lets
+         *  the FE detect a stale-showing preview without re-downloading the PDF bytes just to
+         *  compare them. Null when there is no published PDF yet (no cache-busting needed). */
+        String previewVersionToken
 ) {
 }

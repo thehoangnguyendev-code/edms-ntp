@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDocumentPermissions } from "@/features/documents/shared/useDocumentPermissions";
+import { useDocumentControlledCopies } from "@/features/documents/shared/useDocumentControlledCopies";
 import { cn } from "@/components/ui/utils";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { TabNav } from "@/components/ui/tabs/TabNav";
@@ -35,6 +36,8 @@ import { UploadRevisionModal } from "@/features/documents/document-list/document
 import { documentApi } from "@/services/api/documents";
 import { securityApi, type ResourceCapabilities } from "@/services/api/security";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
+import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
 import {
   buildControlledCopySnapshotState,
   buildRevisionDetailSnapshotState,
@@ -216,6 +219,11 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     coAuthorNames: [],
     coAuthors: [],
   }));
+  // Only the total is needed for the tab badge (limit 1); the tab itself loads and pages its own list.
+  const { pagination: controlledCopiesPagination } = useDocumentControlledCopies(
+    document.id || undefined,
+    { limit: 1 },
+  );
   const initialReviewDateRef = useRef("");
   const [reviewDateDraft, setReviewDateDraft] = useState("");
   type TrainingDraft = {
@@ -637,6 +645,42 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     };
   }, [documentId, revisions]);
 
+  // TBR-DOC-018: on a 403/409/410 from a Document lifecycle mutation, immediately refetch Document
+  // detail (which also carries the Revision summary embedded in the response, refreshing both in
+  // one call) plus lifecycle capabilities, then let the normal render re-derive available actions
+  // from the fresh state -- no manual reload required. Mirrors the pattern already used by
+  // ControlledCopiesView.tsx for Controlled Copy actions.
+  const getHttpStatus = (error: unknown): number | null => {
+    const candidate = error as any;
+    return candidate?.response?.status || candidate?.status || candidate?.response?.data?.status || null;
+  };
+
+  const refreshLifecycleState = React.useCallback(async () => {
+    if (!documentId) return;
+    try {
+      const [detail, auditTrailResponse] = await Promise.all([
+        documentApi.getDocumentDetailSnapshot(documentId),
+        documentApi.getDocumentAuditTrail(documentId).catch(() => []),
+      ]);
+      applyDocumentDetail(detail, auditTrailResponse as unknown as AuditEntry[]);
+    } catch {
+      // Best-effort refresh; if the Document itself is unreachable the capability call below
+      // (which also swallows its own errors) is still attempted.
+    }
+    try {
+      const capabilities = await securityApi.getResourceCapabilities("DOCUMENT_MASTER", documentId);
+      setDocumentMasterCapabilities(capabilities);
+    } catch {
+      // Best-effort refresh; keep whatever capabilities are already loaded.
+    }
+  }, [documentId, applyDocumentDetail]);
+
+  // The document (or one of its revisions) was changed by anyone -- e.g. a Reviewer completes review, an Author
+  // uploads, a DCO publishes: refetch detail + capabilities in place instead of staying stale until a reload.
+  useEntityChanged(["DOCUMENT", "REVISION"], () => {
+    void refreshLifecycleState();
+  }, { documentId, enabled: Boolean(documentId), debounceMs: 800 });
+
   const [activeTab, setActiveTab] = useState<TabType>(initialActiveTab);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [isDocumentFileLoading, setIsDocumentFileLoading] = useState(false);
@@ -645,7 +689,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   >(null);
 
   useEffect(() => {
-    if (activeTab !== "document" || !documentId) {
+    // A controlled-document template is never converted to PDF: its Document tab views the Word file in
+    // OnlyOffice (rendered below), so there is no published PDF to fetch here.
+    if (activeTab !== "document" || !documentId || document.isTemplate) {
       return;
     }
 
@@ -687,7 +733,40 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [activeTab, documentId, document.previewVersionToken]);
+  }, [activeTab, documentId, document.previewVersionToken, document.isTemplate]);
+
+  // Light polling: while the Document tab is open, periodically check (cheap JSON call, not the
+  // PDF bytes) whether the published PDF changed underneath the viewer -- e.g. someone else
+  // regenerated it from the Revision page, or a new Revision became EFFECTIVE, while this tab
+  // stayed open. A change updates document.previewVersionToken, which the effect above already
+  // reacts to by re-fetching the actual PDF. Bounded to only run while the tab is active, and
+  // stops immediately on unmount/tab switch -- no polling happens otherwise.
+  useEffect(() => {
+    if (activeTab !== "document" || !documentId) {
+      return;
+    }
+    let isMounted = true;
+    const intervalId = window.setInterval(() => {
+      documentApi
+        .getDocumentDetailSnapshot(documentId)
+        .then((fresh) => {
+          if (!isMounted) return;
+          setDocument((current) =>
+            fresh.previewVersionToken !== current.previewVersionToken
+              ? { ...current, previewVersionToken: fresh.previewVersionToken }
+              : current,
+          );
+        })
+        .catch(() => {
+          // Best-effort background check -- the currently-shown preview is still valid; just
+          // skip this tick and try again on the next interval.
+        });
+    }, 20000);
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [activeTab, documentId]);
 
   useEffect(() => {
     setActiveTab(searchParams.get("tab") === "audit" ? "audit" : initialTab);
@@ -751,16 +830,23 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     [revisions],
   );
 
-  const publishableRevision = useMemo(
+  // An upgrade revision that has already been started (Draft) but is not yet locked -- the backend
+  // capability check still reports the next revision as configurable in this window. When it exists,
+  // "Edit Revision for Upgrade" is no longer "start an upgrade" but "adjust the config of the
+  // upgrade already in progress", so the button/modal wording is switched accordingly.
+  const hasInProgressUpgradeDraft = useMemo(
     () =>
-      revisions.find(
+      revisions.some(
         (rev) =>
           String(rev.status || "")
             .toLowerCase()
-            .replace(/ /g, "") === "readyforpublishing",
+            .replace(/ /g, "") === "draft",
       ),
     [revisions],
   );
+  const upgradeConfigActionLabel = hasInProgressUpgradeDraft
+    ? "Adjust Upgrade Configuration"
+    : "Edit Revision for Upgrade";
 
   // The capability endpoint is authoritative: it evaluates permissions, document state,
   // revision state, assignment and lifecycle policy on the server. This view only renders it.
@@ -780,15 +866,19 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   const canConfigureNextRevisionCorrelatedDocuments = Boolean(
     documentMasterCapabilities?.actions.configureNextCorrelatedDocuments?.allowed,
   );
-  const canManageReviewCycle = Boolean(
-    documentMasterCapabilities?.actions.manageReviewCycle?.allowed,
+  // Despite the name, this one permission (documents.document.configure_next_metadata) covers far
+  // more than "review cycle": Author, Co-Author, Training and Description too -- see
+  // DocumentMasterActionCapabilityService#getCapabilities. Named after its full scope, not just its
+  // first field, to avoid misleading anyone reading this as "only touches the review date/cycle".
+  const canConfigureNextRevisionMetadata = Boolean(
+    documentMasterCapabilities?.actions.configureNextMetadata?.allowed,
   );
   const canConfigureNextRevision =
     canConfigureNextRevisionReviewers ||
     canConfigureNextRevisionApprovers ||
     canConfigureNextRevisionRelatedDocuments ||
     canConfigureNextRevisionCorrelatedDocuments ||
-    canManageReviewCycle;
+    canConfigureNextRevisionMetadata;
   const canObsoleteCurrentDocument = Boolean(documentMasterCapabilities?.actions.obsolete?.allowed);
 
   // "Now" = permission granted AND the DCO explicitly unlocked edit mode via "Edit Revision for
@@ -798,7 +888,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   const canConfigureNextRevisionApproversNow = isEditModeActive && canConfigureNextRevisionApprovers;
   const canConfigureNextRevisionRelatedDocumentsNow = isEditModeActive && canConfigureNextRevisionRelatedDocuments;
   const canConfigureNextRevisionCorrelatedDocumentsNow = isEditModeActive && canConfigureNextRevisionCorrelatedDocuments;
-  const canManageReviewCycleNow = isEditModeActive && canManageReviewCycle;
+  const canConfigureNextRevisionMetadataNow = isEditModeActive && canConfigureNextRevisionMetadata;
   const canConfigureNextRevisionNow = isEditModeActive && canConfigureNextRevision;
 
   const [isRevisionUploadLoading, setIsRevisionUploadLoading] = useState(false);
@@ -965,7 +1055,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   const handleSaveWorkflowConfiguration = () => {
     if (!canConfigureNextRevisionNow || !document.id) return;
     if (
-      canManageReviewCycleNow &&
+      canConfigureNextRevisionMetadataNow &&
       (document.periodicReviewCycle === null ||
         document.periodicReviewCycle === undefined ||
         document.periodicReviewNotification === null ||
@@ -984,15 +1074,18 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       });
       return;
     }
-    if (isGeneralConfigurationUnchanged()) {
+    if (canConfigureNextRevisionMetadataNow && !(reviewDateDraft || "").trim()) {
+      // Review Date is required while preparing an upgrade (marked with * in the General tab).
       showToast({
-        type: "info",
-        title: "No changes to save",
-        message: "The existing next-revision configuration remains unchanged.",
-        duration: 2500,
+        type: "error",
+        title: "Missing required field",
+        message: "Review Date is required.",
+        duration: 3500,
       });
       return;
     }
+    // Even with nothing changed the save still goes through: saving is how the DCO confirms the
+    // configuration, and only then does the Author get Upload Revision.
     setShowSaveConfirmModal(true);
   };
 
@@ -1146,6 +1239,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         duration: 3000,
       });
     } catch (error) {
+      if ([403, 409, 410].includes(getHttpStatus(error) as number)) {
+        await refreshLifecycleState();
+      }
       showToast({
         type: "error",
         title: "Unable to obsolete document",
@@ -1572,7 +1668,11 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       label: "Approvers",
       count: approvers.length,
     },
-    { id: "controlledCopies" as SubTabType, label: "Controlled Copies" },
+    {
+      id: "controlledCopies" as SubTabType,
+      label: "Controlled Copies",
+      count: controlledCopiesPagination.total,
+    },
     {
       id: "relatedDocuments" as SubTabType,
       label: "Related Documents",
@@ -1643,10 +1743,10 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             <GeneralInformationTab
               document={document as any}
               isReadOnly={false}
-              canEditReviewDate={canConfigureNextRevisionNow && canManageReviewCycleNow}
-              canEditMetadata={canConfigureNextRevisionNow && canManageReviewCycleNow}
+              canEditReviewDate={canConfigureNextRevisionNow && canConfigureNextRevisionMetadataNow}
+              canEditMetadata={canConfigureNextRevisionNow && canConfigureNextRevisionMetadataNow}
               reviewDateInputValue={
-                canConfigureNextRevisionNow && canManageReviewCycleNow
+                canConfigureNextRevisionNow && canConfigureNextRevisionMetadataNow
                   ? reviewDateDraft
                   : undefined
               }
@@ -1672,8 +1772,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           )}
           {activeTab === "training" && (
             <TrainingInformationTab
+              isTemplate={Boolean(document.isTemplate)}
               data={
-                canConfigureNextRevisionNow && canManageReviewCycleNow
+                canConfigureNextRevisionNow && canConfigureNextRevisionMetadataNow
                   ? trainingDraft
                   : {
                       isRequired: document.requiresTraining,
@@ -1681,7 +1782,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                       reasonForSkippingTraining: document.reasonForSkippingTraining,
                     }
               }
-              isReadOnly={!(canConfigureNextRevisionNow && canManageReviewCycleNow)}
+              isReadOnly={!(canConfigureNextRevisionNow && canConfigureNextRevisionMetadataNow)}
               onChange={(next) =>
                 setTrainingDraft({
                   isRequired: Boolean(next.isRequired),
@@ -1691,7 +1792,16 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
               }
             />
           )}
-          {activeTab === "document" &&
+          {activeTab === "document" && document.isTemplate && (
+            (latestEffectiveRevision?.id || revisions[0]?.id) ? (
+              <OnlyOfficeDocumentViewer revisionId={String(latestEffectiveRevision?.id || revisions[0]?.id)} />
+            ) : (
+              <div className="w-full border rounded-xl flex items-center justify-center bg-slate-50 text-sm text-slate-500" style={{ minHeight: "320px" }}>
+                This template has no revision file yet.
+              </div>
+            )
+          )}
+          {activeTab === "document" && !document.isTemplate &&
             (isDocumentFileLoading ? (
               <div
                 className="w-full border rounded-xl flex items-center justify-center bg-slate-50"
@@ -1751,7 +1861,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             className="whitespace-nowrap"
             onClick={() => setShowEditModeConfirmModal(true)}
           >
-            Edit Revision for Upgrade
+            {upgradeConfigActionLabel}
           </Button>
         )}
         {canConfigureNextRevisionNow &&
@@ -1759,7 +1869,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             canConfigureNextRevisionApproversNow ||
             canConfigureNextRevisionRelatedDocumentsNow ||
             canConfigureNextRevisionCorrelatedDocumentsNow ||
-            canManageReviewCycleNow) && (
+            canConfigureNextRevisionMetadataNow) && (
             <Button
               size="sm"
               variant="outline-emerald"
@@ -1857,26 +1967,6 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             )}
           </>
         )}
-        {publishableRevision?.id && (
-          <Button
-            size="sm"
-            variant="outline-emerald"
-            className="whitespace-nowrap gap-2"
-            onClick={() => {
-              navigateTo(
-                ROUTES.DOCUMENTS.REVISIONS.PUBLISHING(publishableRevision.id),
-                {
-                  state: {
-                    from: location.pathname + location.search,
-                    returnTo: location.pathname + location.search,
-                  },
-                },
-              );
-            }}
-          >
-            Open Publishing Template
-          </Button>
-        )}
       </div>
 
       {/* Sub-tabs (separate card, shown on General tab) */}
@@ -1915,9 +2005,10 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                   onReviewersChange={setReviewers}
                   isModalOpen={isReviewerModalOpen}
                   onModalClose={() => setIsReviewerModalOpen(false)}
+                  reviewRequirement={document.reviewRequirement}
                 />
               ) : (
-                <ReadOnlyReviewersTable reviewers={reviewers} />
+                <ReadOnlyReviewersTable reviewers={reviewers} reviewRequirement={document.reviewRequirement} />
               )
             )}
             {activeSubTab === "approvers" && (
@@ -2057,8 +2148,12 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           setShowEditModeConfirmModal(false);
         }}
         type="warning"
-        title="Edit Revision for Upgrade?"
-        description="You are about to configure the next revision (Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification, Training). Nothing is saved until you explicitly click Save. Continue?"
+        title={hasInProgressUpgradeDraft ? "Adjust Upgrade Configuration?" : "Edit Revision for Upgrade?"}
+        description={
+          hasInProgressUpgradeDraft
+            ? "A Draft upgrade revision is already in progress. These changes (Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification, Training) will be applied to that in-progress Draft. Nothing is saved until you explicitly click Save. Continue?"
+            : "You are about to configure the next revision (Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification, Training). Nothing is saved until you explicitly click Save. Continue?"
+        }
       />
 
       <UploadRevisionModal

@@ -20,7 +20,12 @@ export const auditTrail = (navigate?: NavigateFn): BreadcrumbItem[] => [
   { label: "All Records", isActive: true },
 ];
 
-export const auditTrailDetail = (navigate?: NavigateFn): BreadcrumbItem[] => [
+export const backupRestore = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  dashboard(navigate),
+  { label: "Backup & Restore", isActive: true },
+];
+
+export const auditTrailDetail =(navigate?: NavigateFn): BreadcrumbItem[] => [
   dashboard(navigate),
   { label: "Audit Trail", onClick: () => navigate?.(ROUTES.AUDIT_TRAIL) },
   { label: "All Records", onClick: () => navigate?.(ROUTES.AUDIT_TRAIL) },
@@ -37,13 +42,13 @@ export const auditTrailReviewCampaignDetail = (navigate?: NavigateFn, campaignNa
   dashboard(navigate),
   { label: "Audit Trail", onClick: () => navigate?.(ROUTES.AUDIT_TRAIL) },
   { label: "Audit Trail Review", onClick: () => navigate?.(ROUTES.AUDIT_TRAIL_REVIEW) },
-  { label: campaignName || "Audit Trail Review Campaign", isActive: true },
+  { label: "Audit Trail Review Campaign", isActive: true },
 ];
 
 export const report = (navigate?: NavigateFn, subLabel?: string): BreadcrumbItem[] => {
   const items = [dashboard(navigate)];
   if (subLabel) {
-    items.push({ label: "Reports & Analytics" });
+    items.push({ label: "Reports & Analytics", onClick: () => navigate?.(ROUTES.REPORT.TEMPLATES) });
     items.push({ label: subLabel, isActive: true });
   } else {
     items.push({ label: "Reports & Analytics", isActive: true });

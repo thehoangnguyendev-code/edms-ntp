@@ -50,6 +50,11 @@ public class RevisionWorkflowAuthorizationService {
     private final AuditTrailService auditTrailService;
     private final WorkflowParticipantRepository workflowParticipantRepository;
     private final AuthorizationEngineService authorizationEngineService;
+    private final SystemConfigurationService systemConfigurationService;
+
+    // Optional so the 4-arg constructor stays valid for unit tests; in the app it is always injected.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private WorkflowDeniedAuditService workflowDeniedAuditService;
 
     public RevisionWorkflowAuthorizationService(
             AuditTrailService auditTrailService,
@@ -57,11 +62,13 @@ public class RevisionWorkflowAuthorizationService {
             // @Lazy breaks the circular dependency: AuthorizationEngineService resolves REVISION
             // requests via RevisionResourceAdapter, which itself calls this class's package-visible
             // assignment helpers (isRevisionAuthor etc.) -- same pattern used for DOCUMENT.
-            @Lazy AuthorizationEngineService authorizationEngineService
+            @Lazy AuthorizationEngineService authorizationEngineService,
+            SystemConfigurationService systemConfigurationService
     ) {
         this.auditTrailService = auditTrailService;
         this.workflowParticipantRepository = workflowParticipantRepository;
         this.authorizationEngineService = authorizationEngineService;
+        this.systemConfigurationService = systemConfigurationService;
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -124,6 +131,13 @@ public class RevisionWorkflowAuthorizationService {
         WorkflowAuthorizationDecision decision = check(user, revision, action, context);
         if (!decision.allowed()) {
             logDeniedAudit(user, revision, action, decision.reasonCode(), decision.permissionCode());
+            if (isStateMismatchReason(decision.reasonCode()) && isInvolvedInRevision(user, revision)) {
+                // A participant who lost a race (someone else just completed/rejected/cancelled) is told
+                // the state changed; uninvolved users keep the generic 403 so status is not disclosed.
+                throw new com.eqms.exception.RevisionLifecycleConflictException(
+                        "REVISION_STATE_CHANGED",
+                        "This revision is now '" + decision.currentStatus() + "'. Someone else may have just acted on it, so your action was not applied. Refresh the page to see the latest state.");
+            }
             throw new WorkflowAuthorizationDeniedException(
                     decision.reasonCode(),
                     decision.message() != null
@@ -176,6 +190,14 @@ public class RevisionWorkflowAuthorizationService {
             }
             case OPEN_PUBLISHING_WORKSPACE -> {
                 if (!isReadyForPublishing) yield stateError(action, revisionId, currentStatus, "READY_FOR_PUBLISHING");
+                // A controlled-document template is kept and used as its Word file, never composed into a
+                // PDF: it has no Publishing Workspace step and is published directly by Document Control.
+                if (revision.getDocument() != null && revision.getDocument().isTemplate()) {
+                    yield WorkflowAuthorizationDecision.denied(
+                            "TEMPLATE_HAS_NO_PUBLISHING_WORKSPACE",
+                            "A controlled document template is published directly; it has no Publishing Workspace.",
+                            null, action, revisionId, currentStatus);
+                }
                 yield null;
             }
             case SUBMIT_FOR_REVIEW -> {
@@ -250,6 +272,24 @@ public class RevisionWorkflowAuthorizationService {
     // Package-visible: RevisionResourceAdapter#resolveMatchedRelations calls these four directly
     // as the engine's AUTHOR/CO_AUTHOR/ASSIGNED_REVIEWER/ASSIGNED_APPROVER relation facts.
 
+    // The policy table has no row for (action, current status) once a revision has moved on, so the
+    // engine reports POLICY_NOT_CONFIGURED rather than INVALID_WORKFLOW_STATE for a lost race.
+    private static boolean isStateMismatchReason(String reasonCode) {
+        return "INVALID_WORKFLOW_STATE".equals(reasonCode) || "POLICY_NOT_CONFIGURED".equals(reasonCode);
+    }
+
+    private boolean isInvolvedInRevision(UserAccount user, DocumentRevisionRecord revision) {
+        if (user == null || user.getId() == null || revision == null || revision.getId() == null) return false;
+        if (isRevisionAuthor(user, revision)) return true;
+        for (String type : java.util.List.of("CO_AUTHOR", "REVIEWER", "APPROVER")) {
+            if (workflowParticipantRepository.findByObjectTypeAndObjectIdAndParticipantTypeAndUser_Id(
+                    "DOCUMENT_REVISION", revision.getId(), type, user.getId()).isPresent()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     boolean isRevisionAuthor(UserAccount user, DocumentRevisionRecord revision) {
         if (user == null || user.getId() == null || revision == null) return false;
         UUID authorId = revision.getAuthor() == null ? null : revision.getAuthor().getId();
@@ -264,18 +304,38 @@ public class RevisionWorkflowAuthorizationService {
                 .isPresent();
     }
 
-    /** F-06: PENDING alone is not enough — the user must also be the next one the configured
-     * sequence allows to act, mirroring RevisionService.requirePendingParticipant's mutation-time
-     * gate. Without this, a Reviewer #2 saw "Complete Review" enabled by the capability API and
-     * only found out sequence blocked them after submitting. */
+    /** F-06: PENDING alone is not enough — by default (sequential mode) the user must also be the
+     * next one the configured sequence allows to act, mirroring RevisionService
+     * .requirePendingParticipant's mutation-time gate. Without this, a Reviewer #2 saw
+     * "Complete Review" enabled by the capability API and only found out sequence blocked them
+     * after submitting.
+     *
+     * When Document Properties' "Parallel Review" is enabled (SystemConfigurationService
+     * #isParallelReviewEnabled), the sequence restriction is dropped entirely: any PENDING
+     * Reviewer may act in any order. Nothing else changes -- RevisionService#completeReview
+     * already only transitions the Revision once every Reviewer participant has reviewed
+     * (order-independent), and a single Reject already resets every participant and returns the
+     * Revision to Draft, so both already match parallel semantics without further changes. */
     boolean isPendingReviewer(UserAccount user, DocumentRevisionRecord revision) {
-        if (user == null || user.getId() == null || revision == null || revision.getId() == null) return false;
-        return isNextPendingInSequence(revision.getId(), "REVIEWER", user.getId());
+        return isPendingParticipantOfType(user, revision, "REVIEWER");
     }
 
+    /** See {@link #isPendingReviewer}. Approvers are always sequence-gated: there is no Parallel
+     * Approval option (exactly one Approver is allowed). */
     boolean isPendingApprover(UserAccount user, DocumentRevisionRecord revision) {
+        return isPendingParticipantOfType(user, revision, "APPROVER");
+    }
+
+    private boolean isPendingParticipantOfType(UserAccount user, DocumentRevisionRecord revision, String participantType) {
         if (user == null || user.getId() == null || revision == null || revision.getId() == null) return false;
-        return isNextPendingInSequence(revision.getId(), "APPROVER", user.getId());
+        Boolean frozen = ReviewFlowMode.sequenceEnforcedOrNull(participantType, revision.getReviewFlowMode());
+        boolean sequenceEnforced = frozen != null
+                ? frozen
+                : systemConfigurationService.isSequenceEnforcedForParticipantType(participantType);
+        if (!sequenceEnforced) {
+            return isPendingGenericParticipant("DOCUMENT_REVISION", revision.getId(), participantType, user.getId());
+        }
+        return isNextPendingInSequence(revision.getId(), participantType, user.getId());
     }
 
     private boolean isNextPendingInSequence(UUID revisionId, String participantType, UUID userId) {
@@ -339,8 +399,12 @@ public class RevisionWorkflowAuthorizationService {
             String comment = "Workflow action denied. action=" + action
                     + " reason=" + reasonCode
                     + (permissionCode != null ? " permission=" + permissionCode : "");
-            auditTrailService.logAs(user, "REVISION", entityName, entityId,
-                    "WORKFLOW_ACCESS_DENIED", currentStatus, currentStatus, comment);
+            if (workflowDeniedAuditService != null) {
+                workflowDeniedAuditService.recordDenied(user, "REVISION", entityName, entityId, "WORKFLOW_ACCESS_DENIED", currentStatus, comment);
+            } else {
+                auditTrailService.logAs(user, "REVISION", entityName, entityId,
+                        "WORKFLOW_ACCESS_DENIED", currentStatus, currentStatus, comment);
+            }
         } catch (Exception ex) {
             log.warn("[SECURITY] Failed to log denied workflow action audit: {}", ex.getMessage());
         }

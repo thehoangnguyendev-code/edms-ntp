@@ -2,6 +2,7 @@ package com.eqms.dto.user;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public record UpdateUserRequest(
         @Pattern(regexp = "^(?:$|NTP\\.\\d{4})$", message = "Invalid employee ID") String employeeCode,
@@ -32,6 +33,13 @@ public record UpdateUserRequest(
         String areaOfExpertise,
         String yearsOfExperience,
         String previousEmployer,
-        String avatar
+        // Same defensive cap as UpdateProfileRequest.avatar -- see that record's comment.
+        @Size(max = 2_000_000, message = "Avatar image is too large") String avatar,
+        /** DASHBOARD / NOTIFICATIONS / KNOWLEDGE -- null/omitted means "leave unchanged", same
+         *  partial-update convention as every other field here. */
+        String homePage,
+        /** Admin-mandated MFA requirement for this user (see CreateUserRequest#mfaRequiredByAdmin).
+         *  Null/omitted means "leave unchanged". */
+        Boolean mfaRequiredByAdmin
 ) {
 }

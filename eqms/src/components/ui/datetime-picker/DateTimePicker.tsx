@@ -101,7 +101,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({ opacity: 0 });
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
 
   // Live region text for screen reader month/year announcements
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
@@ -124,18 +124,39 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   // ── Popover positioning (no rAF — useLayoutEffect runs before paint) ─────────
   useLayoutEffect(() => {
     if (!isOpen || !triggerRef.current) return;
-    const updatePosition = () => {
+    const updatePosition = (reveal: boolean) => {
       if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
       const { innerWidth: sw, innerHeight: sh } = window;
       const popoverWidth = 280;
       const popoverHeight = popoverRef.current?.offsetHeight || 370;
+      // `visibility`, not `opacity` -- framer-motion's own `animate={{ opacity: 1 }}` on the dialog
+      // (see the entrance fade below) drives that property directly every frame and would
+      // fight/override a plain inline `opacity`, defeating this hide-until-positioned trick.
+      const visibility: React.CSSProperties['visibility'] = reveal ? 'visible' : 'hidden';
+
+      // On narrow viewports (mobile/tablet, e.g. inside FilterDrawer) an anchored popover can run
+      // off-screen or get clipped by a scrolling ancestor. Center it on the viewport instead, same
+      // as DateRangePicker already does.
+      if (sw < 1024) {
+        setPopoverStyle({
+          position: 'fixed',
+          zIndex: 9999,
+          visibility,
+          left: Math.max(16, Math.round((sw - popoverWidth) / 2)),
+          top: Math.max(16, Math.round((sh - popoverHeight) / 2)),
+          right: 'auto',
+          bottom: 'auto',
+        });
+        return;
+      }
+
       let left = rect.left;
       if (left + popoverWidth > sw - 20) left = sw - popoverWidth - 20;
       if (left < 20) left = 20;
       const spaceBelow = sh - rect.bottom - 8;
       const spaceAbove = rect.top - 8;
-      const style: React.CSSProperties = { position: 'fixed', zIndex: 9999, opacity: 1, left };
+      const style: React.CSSProperties = { position: 'fixed', zIndex: 9999, visibility, left };
       if (spaceBelow < popoverHeight && spaceAbove > spaceBelow) {
         style.bottom = sh - rect.top + 8;
         style.top = 'auto';
@@ -145,12 +166,20 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
       }
       setPopoverStyle(style);
     };
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    // The popover hasn't committed to the DOM in this same synchronous pass yet, so the first call
+    // always falls back to the guessed popoverHeight instead of the real one -- stay hidden for
+    // that first, only-estimated pass, and only reveal on the second pass (next frame), once the
+    // real height is measurable -- otherwise the popover flashes at the wrong spot for a frame
+    // before jumping to the correct one.
+    updatePosition(false);
+    const raf = requestAnimationFrame(() => updatePosition(true));
+    const onReposition = () => updatePosition(true);
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
     return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
     };
   }, [isOpen, viewMode, viewDate]);
 
@@ -634,7 +663,13 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
           htmlFor={`${pickerId}-trigger`}
           className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block"
         >
-          {label}
+          {typeof label === "string" && /\*\s*$/.test(label) ? (
+            <>
+              {label.replace(/\s*\*\s*$/, "")} <span className="text-red-500">*</span>
+            </>
+          ) : (
+            label
+          )}
         </label>
       )}
 

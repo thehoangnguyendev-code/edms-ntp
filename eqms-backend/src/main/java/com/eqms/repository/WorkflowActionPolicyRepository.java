@@ -5,11 +5,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface WorkflowActionPolicyRepository extends JpaRepository<WorkflowActionPolicy, UUID> {
+
+    /**
+     * All active policies whose required_permission_code is one of the given codes -- used to build
+     * the "which lifecycle states does this permission apply to" hint surfaced in the Permission
+     * Catalog / permission-picker / Access Profile permission-set drawer. Single batched IN(...) query,
+     * not per-permission, to avoid N+1 when rendering a full catalog page.
+     */
+    List<WorkflowActionPolicy> findAllByRequiredPermissionCodeInAndActiveTrue(Collection<String> codes);
 
     /** Resolve policy for a specific document type (document-type-specific override). */
     @Query("""

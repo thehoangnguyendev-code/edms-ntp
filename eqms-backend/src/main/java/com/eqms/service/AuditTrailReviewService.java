@@ -227,7 +227,8 @@ public class AuditTrailReviewService {
 
         auditTrailService.logAs(actor, ENTITY_TYPE, campaign.getName(), campaign.getId(),
                 "AUDIT_TRAIL_REVIEW_CAMPAIGN_COMPLETED", "In Progress", "Completed",
-                "Completed audit trail review campaign. Signature: " + signature.getSignatureId());
+                "Completed audit trail review campaign. Signature: " + signature.getSignatureId(),
+                List.of(), signature.getId());
         return getCampaignInternal(id);
     }
 
@@ -264,16 +265,14 @@ public class AuditTrailReviewService {
 
     private void requireView() {
         UserAccount u = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(u)
-                && !permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Audit trail review view permission required");
         }
     }
 
     private UserAccount requireManage() {
         UserAccount u = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(u)
-                && !permissionEvaluationService.hasPermission(u, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasPermission(u, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Audit trail review management permission required");
         }
         return u;

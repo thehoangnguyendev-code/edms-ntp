@@ -235,24 +235,16 @@ export const securityApi = {
     return response.data;
   },
 
-  getAuthorizationShadowMismatches: async (
-    limit = 50,
-  ): Promise<AuthorizationShadowMismatch[]> => {
-    const response = await api.get<AuthorizationShadowMismatch[]>(
-      "/security/authorization-shadow-mismatches",
-      {
-        params: { limit },
-      },
-    );
-    return response.data;
-  },
-
-  /** Per-resource-type totals for the Engine Health summary cards. */
+  /**
+   * Per-resource-type totals for the Engine Health summary cards. `cutoverComplete` marks
+   * resource types whose legacy evaluator was physically removed (not flag-gated) -- their
+   * totals are a frozen historical snapshot, not evidence of ongoing live monitoring.
+   */
   getAuthorizationShadowMismatchSummary: async (): Promise<
-    { resourceType: string; total: number; mismatches: number }[]
+    { resourceType: string; total: number; mismatches: number; cutoverComplete: boolean }[]
   > => {
     const response = await api.get<
-      { resourceType: string; total: number; mismatches: number }[]
+      { resourceType: string; total: number; mismatches: number; cutoverComplete: boolean }[]
     >("/security/authorization-shadow-mismatches/summary");
     return response.data;
   },

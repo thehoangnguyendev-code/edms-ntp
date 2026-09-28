@@ -17,10 +17,11 @@ import { useToast } from "@/components/ui/toast";
 import { useNavigateWithLoading } from "@/hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDocumentPermissions } from "@/features/documents/shared/useDocumentPermissions";
+import { useDocumentControlledCopies } from "@/features/documents/shared/useDocumentControlledCopies";
 import { documentApi } from "@/services/api/documents";
 import { dictionaryApi } from "@/services/api/dictionary";
 import { settingsApi } from "@/services/api/settings";
-import { securityApi } from "@/services/api/security";
+import { securityApi, type ResourceCapabilities } from "@/services/api/security";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import { secureStorage } from "@/utils/security";
 import { collectExcludedWorkflowParticipantIds } from "@/features/documents/shared/workflowParticipantFilters";
@@ -53,7 +54,6 @@ import {
   mapRevisionSummaryFromApi,
   normalizeDocumentStatusForStepper,
 } from "@/features/documents/shared/statusMapping";
-import { canObsoleteDocumentWithRevisionHistory } from "@/features/documents/shared/documentLifecycleActions";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { newDocument } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import {
@@ -61,6 +61,40 @@ import {
   loadPdfPreviewFile,
   resolveRevisionPreviewVersionToken,
 } from "@/features/documents/shared/previewHelpers";
+
+// Server-side review-requirement / reviewer guardrails throw messages shaped as
+// "MACHINE_CODE: human sentence" (DocumentService.applyDraftFields,
+// RevisionService.submitForReview). Map the stable code to a self-contained toast so operators
+// get an actionable instruction instead of a raw code. Unknown codes fall through to the
+// server's own sentence.
+const REVIEW_ERROR_CODE_MESSAGES: Record<string, string> = {
+  REVIEWERS_MUST_BE_REMOVED_FIRST:
+    "This Sub-Type does not use review. Remove the saved reviewers first (that removal needs an e-signature), then switch the Sub-Type.",
+  REVIEW_REQUIREMENT_CHANGED:
+    "The review requirement changed after this revision was created. Re-open the revision to re-sync, then submit again.",
+  REVIEWER_REQUIRED: "Assign and save at least one Reviewer before continuing.",
+  APPROVER_REQUIRED: "Assign and save an Approver before continuing.",
+};
+
+// True when a save/submit failed on a review-requirement / reviewer guardrail (server messages
+// shaped "MACHINE_CODE: ..."). The caller reconciles by refetching Document detail so the
+// Reviewers UI and the authoritative reviewRequirement snapshot stop showing stale state.
+const isReviewRequirementError = (error: unknown): boolean => {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as {
+    response?: { data?: { error?: { message?: string; code?: string }; message?: string } };
+    message?: string;
+  };
+  const code = candidate.response?.data?.error?.code || "";
+  const text =
+    candidate.response?.data?.error?.message ||
+    candidate.response?.data?.message ||
+    candidate.message ||
+    "";
+  return Object.keys(REVIEW_ERROR_CODE_MESSAGES).some(
+    (known) => code === known || text.startsWith(known + ":") || text.includes(known),
+  );
+};
 
 const extractApiMessage = (error: unknown, fallback: string): string => {
   if (typeof error !== "object" || error === null) {
@@ -70,19 +104,26 @@ const extractApiMessage = (error: unknown, fallback: string): string => {
   const candidate = error as {
     response?: {
       data?: {
-        error?: { message?: string };
+        error?: { message?: string; code?: string };
         message?: string;
       };
     };
     message?: string;
   };
 
-  return (
+  const raw =
     candidate.response?.data?.error?.message ||
     candidate.response?.data?.message ||
     candidate.message ||
-    fallback
-  );
+    fallback;
+
+  const codeToken =
+    candidate.response?.data?.error?.code ||
+    (typeof raw === "string" && raw.includes(":") ? raw.split(":", 1)[0].trim() : "");
+  if (codeToken && REVIEW_ERROR_CODE_MESSAGES[codeToken]) {
+    return REVIEW_ERROR_CODE_MESSAGES[codeToken];
+  }
+  return raw;
 };
 
 // --- Types ---
@@ -120,7 +161,7 @@ type DocumentTypeLookupOption = LookupOption & {
 type SubTypeLookupOption = LookupOption & {
   documentTypeId: string;
   documentType: string;
-  reviewRequirement: "NONE" | "SINGLE" | "MULTIPLE";
+  reviewRequirement: "NONE" | "REQUIRED";
 };
 
 type DepartmentLookupOption = LookupOption & {
@@ -387,7 +428,10 @@ export const NewDocumentView: React.FC = () => {
   const {
     canAdministerDocumentWorkspace,
     canConfigureInitialDocumentWorkflow,
-    canManageDocumentTemplate: canManageTemplates,
+    // Marking a new document as a Template rides on the same permission as creating the document
+    // itself -- a Template is a Document like any other, not a separately governed capability.
+    // documents.template.manage was retired (see DocumentService#createDocumentDraft).
+    canCreateDocumentShell: canManageTemplates,
     canUseDocumentTemplate: canUseTemplate,
   } = useDocumentPermissions();
   const storedUser = readStoredUser();
@@ -510,6 +554,11 @@ export const NewDocumentView: React.FC = () => {
   );
   const [documentStatus, setDocumentStatus] = useState<DocumentStatus>(initialData?.status || "Draft");
   const [documentId, setDocumentId] = useState<string | null>(initialData?.id || null);
+  // Only the total is needed for the tab badge (limit 1); the tab itself loads and pages its own list.
+  const { pagination: controlledCopiesPagination } = useDocumentControlledCopies(documentId ?? undefined, {
+    limit: 1,
+    enabled: isSaved && Boolean(documentId),
+  });
   const [canCancelDocument, setCanCancelDocument] = useState(false);
   const [canObsoleteDocument, setCanObsoleteDocument] = useState(false);
   const [maxRevisionFileSizeMB, setMaxRevisionFileSizeMB] = useState(25);
@@ -575,8 +624,8 @@ export const NewDocumentView: React.FC = () => {
     let mounted = true;
     const loadDocumentSettings = async () => {
       try {
-        const config = await settingsApi.getSystemConfiguration();
-        const maxSize = Number(config?.documents?.maxFileSizeMB);
+        const documentsConfig = await settingsApi.getDocumentsOperationalConfig();
+        const maxSize = Number(documentsConfig?.maxFileSizeMB);
         if (mounted && Number.isFinite(maxSize) && maxSize > 0) {
           setMaxRevisionFileSizeMB(maxSize);
         }
@@ -630,8 +679,12 @@ export const NewDocumentView: React.FC = () => {
   ]
     .map((value) => String(value || "").trim().toLowerCase())
     .filter(Boolean);
+  // Upload Revision is the Author's action, never the DCO's -- canStartInitialAuthoring (really
+  // "can edit the Document's draft metadata", documents.document.edit_metadata) used to let any
+  // DCO who set up the Document bypass the assigned-Author check below. That contradicted the
+  // very error toast this flag also gates ("Only the assigned document author can upload the
+  // revision file") -- fixed to a pure identity check against the currently-selected Author.
   const canCurrentUserUploadRevision =
-    canStartInitialAuthoring ||
     normalizedCurrentUserIds.some((value) => normalizedSelectedAuthorIds.includes(value));
   const canManageDocumentSetup =
     canConfigureInitialDocumentWorkflow && !isWorkflowSaved;
@@ -687,7 +740,12 @@ export const NewDocumentView: React.FC = () => {
       businessUnit: normalizedBusinessUnit || formData.businessUnit,
       department: normalizedDepartment || formData.department,
       knowledgeBase: selectedKnowledgeBase || undefined,
-      subType: formData.subType.trim() || undefined,
+      // Deliberately never `|| undefined` here: the backend treats an OMITTED subType as "leave
+      // unchanged" but an explicit "" as "clear it to None" (DocumentService#applyDraftFields).
+      // Since this form always has an opinion about Sub-Type (it's a real field on this screen,
+      // not an optional partial-update field), always send it -- including "" -- or picking "--
+      // None --" and saving silently left the previous Sub-Type in place server-side.
+      subType: formData.subType.trim(),
       periodicReviewCycle: formData.periodicReviewCycle || undefined,
       periodicReviewNotification: formData.periodicReviewNotification || undefined,
       language: formData.language || undefined,
@@ -977,11 +1035,26 @@ export const NewDocumentView: React.FC = () => {
     setDocumentOwner(detail.owner || "");
     setDocumentStatus(mapDocumentStatusToLocal(detail.status, detail.statusInfo));
     setOpenedBy(detail.openedBy || "");
-    setCanCancelDocument(Boolean(detail.canCancel));
-    setCanObsoleteDocument(Boolean(detail.canObsolete));
-    // This capability is calculated by the API from the Author assignment.
-    // It avoids deriving authorization from a mutable profile/role display name.
-    setCanStartInitialAuthoring(Boolean(detail.canStartInitialAuthoring));
+    // Cancel/Obsolete/editInitialDraft capabilities are NOT fields on DocumentDetailResponse --
+    // they must be fetched from the dedicated capability endpoint (same one DetailDocumentView
+    // uses), which evaluates permission + document/revision state + lifecycle policy server-side.
+    // The server remains authoritative; do not restore client-side permission inference if this
+    // request fails.
+    if (detail.id) {
+      void securityApi
+        .getResourceCapabilities("DOCUMENT_MASTER", detail.id)
+        .then((capabilities: ResourceCapabilities) => {
+          setCanCancelDocument(Boolean(capabilities.actions.cancel?.allowed));
+          setCanObsoleteDocument(Boolean(capabilities.actions.obsolete?.allowed));
+          setCanStartInitialAuthoring(Boolean(capabilities.actions.editInitialDraft?.allowed));
+        })
+        .catch(() => {
+          setCanCancelDocument(false);
+          setCanObsoleteDocument(false);
+          setCanStartInitialAuthoring(false);
+        });
+    }
+    setServerReviewRequirement(detail.reviewRequirement ?? null);
     setIsSaved(true);
     setIsWorkflowSaved(
       (reviewRequirement === "NONE" || Boolean(detail.reviewers?.length)) && Boolean(detail.approvers?.length),
@@ -1098,6 +1171,15 @@ export const NewDocumentView: React.FC = () => {
   // logView=true (the default, used on genuine page-open) hits the endpoint that records a
   // VIEW audit entry and marks the document opened; refreshes after an action (save, upload,
   // obsolete, ...) should pass false to avoid flooding the audit trail with non-view events.
+  // TBR-DOC-018: on a 403/409/410 from a Document lifecycle mutation, immediately refetch Document
+  // detail (which also refreshes the Revision summary and lifecycle capabilities, via
+  // applyDocumentDetail/hydrateDocumentFromBackend below) rather than leaving stale state on
+  // screen -- mirrors the pattern already used by ControlledCopiesView.tsx.
+  const getHttpStatus = (error: unknown): number | null => {
+    const candidate = error as any;
+    return candidate?.response?.status || candidate?.status || candidate?.response?.data?.status || null;
+  };
+
   const hydrateDocumentFromBackend = async (id: string, logView: boolean = true) => {
     const detail = logView
       ? await documentApi.getDocumentById(id)
@@ -1247,17 +1329,44 @@ export const NewDocumentView: React.FC = () => {
     const mapped = allowedOptions.map((item) => ({ label: item.label, value: item.value }));
     const currentValue = String(formData.subType || "").trim();
     if (!currentValue || mapped.some((option) => option.value === currentValue || option.label === currentValue)) {
-      return [{ label: "-- None --", value: "" }, ...mapped];
+      return [{ label: "— No Sub-Type (review required) —", value: "" }, ...mapped];
     }
-    return [{ label: "-- None --", value: "" }, ...mapped, { label: currentValue, value: currentValue }];
+    return [{ label: "— No Sub-Type (review required) —", value: "" }, ...mapped, { label: currentValue, value: currentValue }];
   }, [documentTypeLookupOptions, formData.subType, formData.type, subTypeLookupOptions]);
 
-  const reviewRequirement = useMemo<"NONE" | "SINGLE" | "MULTIPLE">(() => {
+  // Instant, pre-Save feedback only: mirrors DocumentService#resolveDocumentReviewRequirement as
+  // closely as a client-side snapshot of the Sub-Type Dictionary can, so the Reviewer picker's
+  // cap/floor react the moment the user changes the Sub-Type dropdown, without waiting on a round
+  // trip. This is a prediction, not the source of truth -- see serverReviewRequirement below.
+  const clientPredictedReviewRequirement = useMemo<"NONE" | "REQUIRED">(() => {
+    // No Sub-Type selected ("None") still requires a review -- "unclassified" is not "waived".
+    if (!String(formData.subType || "").trim()) return "REQUIRED";
     const selected = subTypeLookupOptions.find((item) => item.value === formData.subType || item.label === formData.subType);
-    return selected?.reviewRequirement ?? "SINGLE";
+    return selected?.reviewRequirement ?? "REQUIRED";
   }, [formData.subType, subTypeLookupOptions]);
 
+  // Authoritative once a save has happened: DocumentService#resolveDocumentReviewRequirement
+  // itself, read straight from the server's response (hydrateDocumentFromBackend below), not
+  // re-derived on the client. Reset to null the moment the Sub-Type dropdown changes so the
+  // client prediction above takes back over immediately -- it would otherwise keep showing the
+  // PRE-change requirement (from the last save) until the next save completes.
+  const [serverReviewRequirement, setServerReviewRequirement] = useState<
+    "NONE" | "REQUIRED" | null
+  >(null);
   useEffect(() => {
+    setServerReviewRequirement(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.subType]);
+
+  const reviewRequirement = serverReviewRequirement ?? clientPredictedReviewRequirement;
+
+  useEffect(() => {
+    // Keep the locally-picked (not yet saved) Reviewer roster in sync whenever the Sub-Type
+    // changes what's actually allowed, so the user never has to notice a stale selection and hit
+    // the backend's own re-validation error (DocumentService#updateDocumentDraft) at Save time.
+    // NONE drops the roster entirely; REQUIRED only has a floor (>=1), never a cap, so an
+    // under-selection is left alone -- the picker modal already surfaces "select 1 more" and
+    // Save's own validation still catches it if the user tries to submit zero.
     if (reviewRequirement === "NONE" && reviewers.length > 0) {
       setReviewers([]);
     }
@@ -1364,8 +1473,13 @@ export const NewDocumentView: React.FC = () => {
   ]);
 
   const revisionsForDisplay = useMemo(() => revisions, [revisions]);
-  const canObsoleteCurrentDocument =
-    canObsoleteDocument && canObsoleteDocumentWithRevisionHistory(documentStatus, revisionsForDisplay);
+  // TBR-DOC-017: the server capability (canObsoleteDocument, from getResourceCapabilities) is now
+  // the sole authoritative source for Obsolete availability -- no client-side re-derivation of the
+  // ACTIVE + has-EFFECTIVE-revision + no-revision-in-progress preconditions. This matches
+  // DetailDocumentView.tsx, which already deferred purely to the server capability. The
+  // documentLifecycleActions.ts helper (canObsoleteDocumentWithRevisionHistory) is intentionally
+  // NOT deleted -- it remains available for other call sites outside this change's scope.
+  const canObsoleteCurrentDocument = canObsoleteDocument;
   const selectedDocumentTypeShortCode = useMemo(() => {
     const matched = documentTypeLookupOptions.find(
       (item) => item.value === formData.type || item.label === formData.type,
@@ -1415,6 +1529,9 @@ export const NewDocumentView: React.FC = () => {
       navigateTo(ROUTES.DOCUMENTS.ALL);
     } catch (error) {
       console.error("Error cancelling document:", error);
+      if (documentId && [403, 409, 410].includes(getHttpStatus(error) as number)) {
+        await hydrateDocumentFromBackend(documentId, false);
+      }
       const message = extractApiMessage(error, "Unable to cancel the document.");
       showToast({
         type: "error",
@@ -1482,7 +1599,12 @@ export const NewDocumentView: React.FC = () => {
         businessUnit: normalizedBusinessUnit || formData.businessUnit,
         department: normalizedDepartment || formData.department,
         knowledgeBase: selectedKnowledgeBase || undefined,
-        subType: formData.subType.trim() || undefined,
+        // Deliberately never `|| undefined` here: the backend treats an OMITTED subType as "leave
+      // unchanged" but an explicit "" as "clear it to None" (DocumentService#applyDraftFields).
+      // Since this form always has an opinion about Sub-Type (it's a real field on this screen,
+      // not an optional partial-update field), always send it -- including "" -- or picking "--
+      // None --" and saving silently left the previous Sub-Type in place server-side.
+      subType: formData.subType.trim(),
         periodicReviewCycle: formData.periodicReviewCycle || undefined,
         periodicReviewNotification: formData.periodicReviewNotification || undefined,
         language: formData.language || undefined,
@@ -1605,6 +1727,16 @@ export const NewDocumentView: React.FC = () => {
       return true;
     } catch (error) {
       console.error("Error saving document:", error);
+      // Reviewer / review-requirement guardrail: the Sub-Type policy on the server no longer
+      // matches what this screen assumed. Refetch detail so the Reviewers tab and the
+      // authoritative reviewRequirement stop showing stale state before the user retries.
+      if (documentId && isReviewRequirementError(error)) {
+        try {
+          await hydrateDocumentFromBackend(documentId, false);
+        } catch (hydrateError) {
+          console.error("Could not reconcile document after a review-requirement error", hydrateError);
+        }
+      }
       showToast({
         type: "error",
         title: "Save failed",
@@ -1666,6 +1798,9 @@ export const NewDocumentView: React.FC = () => {
         duration: 3000,
       });
     } catch (error) {
+      if (documentId && [403, 409, 410].includes(getHttpStatus(error) as number)) {
+        await hydrateDocumentFromBackend(documentId, false);
+      }
       showToast({
         type: "error",
         title: "Unable to obsolete document",
@@ -1766,7 +1901,6 @@ export const NewDocumentView: React.FC = () => {
     try {
       const revisionResponse = await documentApi.createRevisionWithUpload(documentId, file, {
         changeDescription: note?.trim() || undefined,
-        revisionType: "Minor",
         templateRevisionId: useTemplate ? templateRevisionId : undefined,
       });
       try {
@@ -2209,9 +2343,9 @@ export const NewDocumentView: React.FC = () => {
           <TabNav
             tabs={[
               { id: "revisions", label: "Document Revisions" },
-              ...(reviewRequirement === "NONE" ? [] : [{ id: "reviewers", label: "Reviewers", count: reviewers.length }]),
+              { id: "reviewers", label: "Reviewers", count: reviewRequirement === "NONE" ? undefined : reviewers.length },
               { id: "approvers", label: "Approvers", count: approvers.length },
-              { id: "copies", label: "Controlled Copies" },
+              { id: "copies", label: "Controlled Copies", count: controlledCopiesPagination.total },
               { id: "related", label: "Related Documents", count: relationshipDocs.length },
               { id: "correlated", label: "Correlated Documents", count: correlatedDocuments.length },
             ]}
@@ -2238,19 +2372,39 @@ export const NewDocumentView: React.FC = () => {
                 correlatedDocuments={correlatedDocuments}
               />
             )}
-            {activeSubtab === "reviewers" && reviewRequirement !== "NONE" && (
-              <ReviewersTab
-                reviewers={reviewers}
-                onReviewersChange={(next) => {
-                  setReviewers(next);
-                  markWorkflowDirty();
-                }}
-                isModalOpen={isReviewerModalOpen}
-                onModalClose={() => setIsReviewerModalOpen(false)}
-                isReadOnly={!canManageDocumentSetup}
-                excludedUserIds={excludedWorkflowUserIds}
-                isLocked={Boolean(lastSavedPayload?.reviewerUserIds?.length)}
-              />
+            {activeSubtab === "reviewers" && (
+              reviewRequirement === "NONE" ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
+                  <p>Review is not required for this Document Type and Sub-Type.</p>
+                  {documentId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void hydrateDocumentFromBackend(documentId, false).catch((error) =>
+                          console.error("Re-check review requirement failed", error),
+                        );
+                      }}
+                      className="mt-3 inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Re-check requirement
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <ReviewersTab
+                  reviewers={reviewers}
+                  onReviewersChange={(next) => {
+                    setReviewers(next);
+                    markWorkflowDirty();
+                  }}
+                  isModalOpen={isReviewerModalOpen}
+                  onModalClose={() => setIsReviewerModalOpen(false)}
+                  isReadOnly={!canManageDocumentSetup}
+                  excludedUserIds={excludedWorkflowUserIds}
+                  isLocked={Boolean(lastSavedPayload?.reviewerUserIds?.length)}
+                  reviewRequirement={reviewRequirement}
+                />
+              )
             )}
             {activeSubtab === "approvers" && (
               <ApproversTab

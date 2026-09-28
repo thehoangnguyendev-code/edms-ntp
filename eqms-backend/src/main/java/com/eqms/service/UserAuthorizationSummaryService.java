@@ -52,8 +52,7 @@ public class UserAuthorizationSummaryService {
     public UserAuthorizationSummaryResponse getSummary(UUID userId) {
         UserAccount actor = currentUserService.requireCurrentUser();
         boolean self = actor.getId() != null && actor.getId().equals(userId);
-        if (!self && !permissionEvaluationService.isSuperAdmin(actor)
-                && !permissionEvaluationService.hasPermission(actor, "settings.user.view")) {
+        if (!self && !permissionEvaluationService.hasPermission(actor, "settings.user.view")) {
             throw new AccessDeniedException("User view permission required");
         }
         UserAccount user = userRepository.findById(userId)

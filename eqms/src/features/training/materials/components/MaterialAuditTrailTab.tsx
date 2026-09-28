@@ -1,5 +1,5 @@
 ﻿import React, { useState, useMemo } from "react";
-import { History, Search, Monitor, Info, Check, X } from "lucide-react";
+import { Search, Monitor, Check, X } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { parseDMYStart, parseDMYEnd } from "@/lib/date";
 import { Button } from "@/components/ui/button/Button";
@@ -7,6 +7,7 @@ import { Select, SelectOption } from "@/components/ui/select/Select";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { useTableDragScroll, useNavigateWithLoading } from "@/hooks";
 import { USER_MANAGEMENT_ROUTES } from "@/features/security-authorization/user-management/constants";
@@ -412,18 +413,12 @@ export const MaterialAuditTrailTab: React.FC<MaterialAuditTrailTabProps> = ({
             <tbody className="divide-y divide-slate-200 bg-white">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-16 text-center">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <History className="h-12 w-12 text-slate-300" />
-                      <div>
-                        <p className="text-xs sm:text-sm font-medium text-slate-700">No audit entries found</p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {searchQuery || selectedAction !== "all"
-                            ? "Try adjusting your filters or search query"
-                            : emptyMessage}
-                        </p>
-                      </div>
-                    </div>
+                  <td colSpan={10} className="p-0">
+                    <TableEmptyState
+                     
+                      title="No audit entries found"
+                      description={searchQuery || selectedAction !== "all" ? "Try adjusting your filters or search query" : emptyMessage}
+                    />
                   </td>
                 </tr>
               ) : (

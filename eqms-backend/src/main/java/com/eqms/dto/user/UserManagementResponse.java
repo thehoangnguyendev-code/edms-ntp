@@ -10,10 +10,19 @@ public record UserManagementResponse(
         String email,
         String phone,
         String role,
+        /** Real Access Profile names actually granting this user's entitlement (user_access_profiles),
+         *  ordered by assignedAt -- NOT the legacy `role` string above. Empty means the user has zero
+         *  Access Profiles and cannot use any permission-gated function until an admin assigns one. */
+        List<String> accessProfileNames,
         String position,
         String businessUnit,
         String department,
         String status,
+        /** True while lockedUntil is set and in the future -- i.e. handleFailedLogin() has
+         * actually locked the account out of login. Separate from `status` because there is no
+         * UserStatus.Locked value: a lockout can happen to an otherwise-Active account and must
+         * not be confused with (or silently overwrite) Suspended/Terminated. */
+        boolean accountLocked,
         boolean inSession,
         boolean online,
         String lastLogin,
@@ -57,6 +66,10 @@ public record UserManagementResponse(
         String externalProvisioningStatus,
         String externalProvisioningEmail,
         String externalProvisioningStatusLabel,
-        String externalProvisioningStatusColor
+        String externalProvisioningStatusColor,
+        /** DASHBOARD / NOTIFICATIONS / KNOWLEDGE -- landing page immediately after login. */
+        String homePage,
+        /** Admin-mandated per-user MFA requirement (see UserAccount#mfaRequiredByAdmin). */
+        boolean mfaRequiredByAdmin
 ) {
 }

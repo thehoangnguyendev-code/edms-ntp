@@ -12,7 +12,9 @@ export type ControlledCopyActionCode =
   | "uploadEvidence"
   | "expireCopy"
   | "cancelRequest"
-  | "cancelBatch";
+  | "cancelBatch"
+  | "withdrawalNotice"
+  | "viewDocument";
 
 export interface ControlledCopyActionDecision {
   allowed: boolean;

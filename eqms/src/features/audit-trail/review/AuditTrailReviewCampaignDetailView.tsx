@@ -468,7 +468,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
         <div className="flex flex-col px-4 pt-4 md:p-5">
           <div className="-mx-1.5 mb-[-0.375rem] px-1.5 pb-1.5">
             <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
-              <label className={labelClass}>Search audit entries</label>
+              <label className={labelClass}>Search</label>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3.5 h-4 w-4 text-slate-400" />

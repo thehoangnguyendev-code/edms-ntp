@@ -1,5 +1,6 @@
 import React from "react";
 import { Worker, Viewer, type RenderPageProps } from "@react-pdf-viewer/core";
+import { SpecialZoomLevel } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
 import { Loader2 } from "lucide-react";
@@ -62,7 +63,7 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
   renderPageOverlay,
   onJumpToPageReady,
 }) => {
-  const { allowDownloadAndPrint: systemAllowsDownloadAndPrint } = useDocumentPreviewSettings();
+  const { allowDownloadAndPrint: systemAllowsDownloadAndPrint, pdfPreview } = useDocumentPreviewSettings();
   const effectiveAllowDownload = systemAllowsDownloadAndPrint && (allowDownload ?? true) && !forceHideDownloadAndPrint;
   const effectiveAllowPrint = systemAllowsDownloadAndPrint && (allowPrint ?? true) && !forceHideDownloadAndPrint;
 
@@ -75,7 +76,54 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
   };
 
   // React PDF Viewer plugins use hooks internally and must run on every render.
+  const textSelectClass = pdfPreview.allowTextSelection === true && effectiveAllowDownload ? "" : "select-none";
+  const hide = (flag: boolean | undefined) => flag === false;
+  const zoomSetting = pdfPreview.defaultZoom;
+  const defaultScale =
+    zoomSetting === "page-fit" ? SpecialZoomLevel.PageFit
+    : zoomSetting === "page-width" ? SpecialZoomLevel.PageWidth
+    : 1;
+  const sidebarHidden = pdfPreview.showThumbnailSidebar === false && !showThumbnailSidebar;
   const defaultLayoutPluginInstance = defaultLayoutPlugin({
+    sidebarTabs: (defaultTabs) => (sidebarHidden ? [] : defaultTabs),
+    renderToolbar: (Toolbar) => (
+      <Toolbar>
+        {(slots) => {
+          const Empty = () => <></>;
+          const {
+            CurrentPageInput, GoToNextPage, GoToPreviousPage, NumberOfPages,
+            ShowSearchPopover, EnterFullScreen, SwitchTheme,
+            Zoom, ZoomIn, ZoomOut, Download, Print,
+          } = slots;
+          const Nav = hide(pdfPreview.showPageNavigation) ? Empty : null;
+          return (
+            <div className="flex w-full items-center gap-1 px-2">
+              {!hide(pdfPreview.showSearch) && <ShowSearchPopover />}
+              {Nav === null && (
+                <>
+                  <GoToPreviousPage />
+                  <CurrentPageInput /> / <NumberOfPages />
+                  <GoToNextPage />
+                </>
+              )}
+              <div className="flex-1" />
+              {!hide(pdfPreview.showZoomControls) && (
+                <>
+                  <ZoomOut />
+                  <Zoom />
+                  <ZoomIn />
+                </>
+              )}
+              <div className="flex-1" />
+              {!hide(pdfPreview.showThemeSwitch) && <SwitchTheme />}
+              {!hide(pdfPreview.showFullScreen) && <EnterFullScreen />}
+              {effectiveAllowDownload && <Download />}
+              {effectiveAllowPrint && <Print />}
+            </div>
+          );
+        }}
+      </Toolbar>
+    ),
     toolbarPlugin: {
       printPlugin: {
         enableShortcuts: effectiveAllowPrint,
@@ -148,7 +196,7 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
     <Worker workerUrl={config.pdf.workerUrl}>
       {previewControlsStyle}
       <div
-        className="eqms-document-pdf-viewer relative flex h-full min-h-0 overflow-hidden select-none"
+        className={`eqms-document-pdf-viewer relative flex h-full min-h-0 overflow-hidden ${textSelectClass}`}
         onContextMenu={(e) => { if (!allowContextMenu) e.preventDefault(); }}
       >
         {isLoading && (
@@ -176,7 +224,7 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
             key={fileUrl}
             fileUrl={fileUrl}
             plugins={[defaultLayoutPluginInstance, pageNavigationPluginInstance]}
-            defaultScale={1}
+            defaultScale={defaultScale}
             onDocumentLoad={handleDocumentLoad}
             renderPage={
               renderPageOverlay
@@ -204,7 +252,7 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
 
   return (
     <div
-      className={`eqms-document-pdf-viewer w-full bg-white border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden select-none ${className}`.trim()}
+      className={`eqms-document-pdf-viewer w-full bg-white border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden ${textSelectClass} ${className}`.trim()}
       style={{ height, minHeight }}
       onContextMenu={(e) => { if (!allowContextMenu) e.preventDefault(); }}
     >

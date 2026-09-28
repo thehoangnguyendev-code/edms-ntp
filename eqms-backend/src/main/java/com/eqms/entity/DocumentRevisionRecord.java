@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
+@jakarta.persistence.EntityListeners(EntityChangeListener.class)
 @Table(name = "document_revisions")
 public class DocumentRevisionRecord {
 
@@ -117,7 +118,7 @@ public class DocumentRevisionRecord {
     /** Snapshot of the Sub-Type workflow rule; never recompute for an in-flight revision. */
     @Enumerated(EnumType.STRING)
     @Column(name = "review_requirement", nullable = false, length = 16)
-    private ReviewRequirement reviewRequirement = ReviewRequirement.SINGLE;
+    private ReviewRequirement reviewRequirement = ReviewRequirement.REQUIRED;
 
     @Column(length = 100)
     private String language;
@@ -130,6 +131,43 @@ public class DocumentRevisionRecord {
 
     @Column(name = "reason_for_skipping_training", length = 1024)
     private String reasonForSkippingTraining;
+
+    /**
+     * Legacy Import (see RevisionService#createLegacyImportRevisionsBatch): who reviewed/approved
+     * the paper original, as plain reference text -- never a {@code RevisionWorkflowParticipant}
+     * row and never an electronic signature, so it can never be mistaken for an EQMS-executed
+     * electronic review/approval.
+     *
+     * <p><b>Architectural note for anyone adding a feature that reads revision participants</b>
+     * (segregation-of-duties checks, reviewer/approver display, notifications, reporting, etc.):
+     * a Legacy Import revision has NO real {@code RevisionWorkflowParticipant} rows at all -- these
+     * two free-text fields are the only record of who reviewed/approved it. Code that assumes
+     * every Effective revision has at least one real Approver participant (a safe assumption for
+     * every OTHER revision, which always goes through the electronic Review/Approval workflow)
+     * will silently see none here. Check {@code DocumentRecord#isLegacyImport()} (or that this
+     * revision's status history contains a {@code LEGACY_IMPORT}/{@code DOCUMENT_LEGACY_IMPORTED}
+     * entry) before assuming participant rows exist, and fall back to these text fields for
+     * display purposes instead.</p>
+     */
+    @Column(name = "legacy_historical_reviewers", columnDefinition = "TEXT")
+    private String legacyHistoricalReviewers;
+
+    @Column(name = "legacy_historical_approver", columnDefinition = "TEXT")
+    private String legacyHistoricalApprover;
+
+    /** Reference-only dates for when the paper original was historically reviewed/approved (see
+     *  V457) -- same non-signature status as the two fields above. Optional: many paper originals
+     *  do not record an exact date. */
+    @Column(name = "legacy_historical_review_date")
+    private LocalDate legacyHistoricalReviewDate;
+
+    @Column(name = "legacy_historical_approval_date")
+    private LocalDate legacyHistoricalApprovalDate;
+
+    /** Reference-only date for when the paper original was historically authored/drafted (see
+     *  V464, Legacy Batch Import) -- same non-signature status as the fields above. */
+    @Column(name = "legacy_historical_authored_date")
+    private LocalDate legacyHistoricalAuthoredDate;
 
     @Column(name = "training_planned_date")
     private LocalDate trainingPlannedDate;
@@ -196,6 +234,15 @@ public class DocumentRevisionRecord {
 
     @Column(name = "snapshot_source_checksum", length = 128)
     private String snapshotSourceChecksum;
+
+    @Column(name = "snapshot_retry_count", nullable = false)
+    private int snapshotRetryCount = 0;
+
+    /** SEQUENTIAL or PARALLEL, frozen when the revision is submitted for review so a later change
+     *  to the Document Properties switch cannot alter the rules of a review already in flight.
+     *  Null on revisions submitted before this column existed (they follow the live setting). */
+    @Column(name = "review_flow_mode", length = 12)
+    private String reviewFlowMode;
 
     @Column(name = "storage_provider", length = 60)
     private String storageProvider;
@@ -525,11 +572,11 @@ public class DocumentRevisionRecord {
     }
 
     public ReviewRequirement getReviewRequirement() {
-        return reviewRequirement == null ? ReviewRequirement.SINGLE : reviewRequirement;
+        return reviewRequirement == null ? ReviewRequirement.REQUIRED : reviewRequirement;
     }
 
     public void setReviewRequirement(ReviewRequirement reviewRequirement) {
-        this.reviewRequirement = reviewRequirement == null ? ReviewRequirement.SINGLE : reviewRequirement;
+        this.reviewRequirement = reviewRequirement == null ? ReviewRequirement.REQUIRED : reviewRequirement;
     }
 
     public String getLanguage() {
@@ -562,6 +609,46 @@ public class DocumentRevisionRecord {
 
     public void setReasonForSkippingTraining(String reasonForSkippingTraining) {
         this.reasonForSkippingTraining = reasonForSkippingTraining;
+    }
+
+    public String getLegacyHistoricalReviewers() {
+        return legacyHistoricalReviewers;
+    }
+
+    public void setLegacyHistoricalReviewers(String legacyHistoricalReviewers) {
+        this.legacyHistoricalReviewers = legacyHistoricalReviewers;
+    }
+
+    public String getLegacyHistoricalApprover() {
+        return legacyHistoricalApprover;
+    }
+
+    public void setLegacyHistoricalApprover(String legacyHistoricalApprover) {
+        this.legacyHistoricalApprover = legacyHistoricalApprover;
+    }
+
+    public LocalDate getLegacyHistoricalReviewDate() {
+        return legacyHistoricalReviewDate;
+    }
+
+    public void setLegacyHistoricalReviewDate(LocalDate legacyHistoricalReviewDate) {
+        this.legacyHistoricalReviewDate = legacyHistoricalReviewDate;
+    }
+
+    public LocalDate getLegacyHistoricalApprovalDate() {
+        return legacyHistoricalApprovalDate;
+    }
+
+    public LocalDate getLegacyHistoricalAuthoredDate() {
+        return legacyHistoricalAuthoredDate;
+    }
+
+    public void setLegacyHistoricalAuthoredDate(LocalDate legacyHistoricalAuthoredDate) {
+        this.legacyHistoricalAuthoredDate = legacyHistoricalAuthoredDate;
+    }
+
+    public void setLegacyHistoricalApprovalDate(LocalDate legacyHistoricalApprovalDate) {
+        this.legacyHistoricalApprovalDate = legacyHistoricalApprovalDate;
     }
 
     public LocalDate getTrainingPlannedDate() {
@@ -738,6 +825,22 @@ public class DocumentRevisionRecord {
 
     public void setSnapshotSourceChecksum(String snapshotSourceChecksum) {
         this.snapshotSourceChecksum = snapshotSourceChecksum;
+    }
+
+    public int getSnapshotRetryCount() {
+        return snapshotRetryCount;
+    }
+
+    public void setSnapshotRetryCount(int snapshotRetryCount) {
+        this.snapshotRetryCount = snapshotRetryCount;
+    }
+
+    public String getReviewFlowMode() {
+        return reviewFlowMode;
+    }
+
+    public void setReviewFlowMode(String reviewFlowMode) {
+        this.reviewFlowMode = reviewFlowMode;
     }
 
     public String getStorageProvider() {

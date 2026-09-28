@@ -1,18 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import {
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  FileType,
-  MoreVertical,
-  Power,
-  PowerOff,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Power, PowerOff, Search, X } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -22,13 +10,15 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
 import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
-import { dictionaryApi } from "@/services/api";
+import { dictionaryApi, documentNameFormatApi } from "@/services/api";
 import { usePortalDropdown } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
 import { extractApiMessage } from "../utils";
 import type { DocumentTypeItem } from "../types";
+import type { DocumentNameFormatItem } from "@/features/settings/document-administration/documentNameFormatTypes";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -45,18 +35,18 @@ type DocumentTypeFormData = {
   currentSequence: number;
   description: string;
   isActive: boolean;
+  nameFormatId: string | null;
 };
 
 export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>((_, ref) => {
   const { openId: openDropdownId, position: dropdownPosition, getRef: getButtonRef, toggle: handleDropdownToggle, close: closeDropdown } = usePortalDropdown();
   const { hasPermissionAlias } = usePermissions();
-  const canManage = hasPermissionAlias("settings.dictionary.manage");
+  const canManage = hasPermissionAlias("documents.admin.document_types.manage");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedItem, setSelectedItem] = useState<DocumentTypeItem | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
@@ -156,6 +146,7 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
         currentSequence: item.currentSequence,
         description: item.description,
         isActive: !item.isActive,
+        nameFormatId: item.nameFormatId,
       });
       setShowToggleModal(false);
       reload();
@@ -170,37 +161,6 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
         type: "error",
         title: "Document Type Status Update Failed",
         message: extractApiMessage(error, "Unable to update document type status."),
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDelete = (item: DocumentTypeItem) => {
-    setSelectedItem(item);
-    setShowDeleteModal(true);
-    closeDropdown();
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!selectedItem) return;
-    setIsSubmitting(true);
-    try {
-      await dictionaryApi.deleteDocumentType(selectedItem.id);
-      setShowDeleteModal(false);
-      reload();
-      showToast({
-        type: "success",
-        title: "Document Type Deleted",
-        message: `Document type "${selectedItem.name}" has been deleted successfully.`,
-      });
-      setSelectedItem(null);
-    } catch (error) {
-      setShowDeleteModal(false);
-      showToast({
-        type: "error",
-        title: "Document Type Delete Failed",
-        message: extractApiMessage(error, "Unable to delete document type."),
       });
     } finally {
       setIsSubmitting(false);
@@ -407,9 +367,9 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
                     <td className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-md truncate">{item.description || "-"}</td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                       {item.isActive ? (
-                        <Badge color="emerald" size="sm" showDot pill>Active</Badge>
+                        <Badge color="emerald" size="sm" >Active</Badge>
                       ) : (
-                        <Badge color="slate" size="sm" showDot pill>Inactive</Badge>
+                        <Badge color="slate" size="sm" >Inactive</Badge>
                       )}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{item.modifiedDate}</td>
@@ -432,14 +392,8 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-slate-500">
-                      <div className="bg-slate-50 p-4 rounded-full mb-3">
-                        <FileType className="h-8 w-8 text-slate-400" />
-                      </div>
-                      <p className="text-base font-medium text-slate-900">No items found</p>
-                      <p className="text-sm mt-1">Try adjusting your search</p>
-                    </div>
+                  <td colSpan={8} className="p-0">
+                    <TableEmptyState title="No items found" description="Try adjusting your search" />
                   </td>
                 </tr>
               )}
@@ -494,17 +448,6 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
               </>
             )}
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const item = items.find((current) => current.id === openDropdownId);
-              if (item) handleDelete(item);
-            }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
-          </button>
         </div>
       </PortalDropdownMenu>
 
@@ -518,34 +461,6 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
         item={selectedItem}
         isEdit={showEditModal}
         onSave={handleSave}
-      />
-
-      <AlertModal
-        isOpen={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false);
-          setSelectedItem(null);
-        }}
-        onConfirm={handleConfirmDelete}
-        type="warning"
-        title="Delete Document Type?"
-        description={
-          <div className="space-y-3">
-            <p>
-              Are you sure you want to delete <strong>{selectedItem?.name}</strong>?
-            </p>
-            <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-amber-800">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> This action cannot be undone.
-              </p>
-            </div>
-          </div>
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        isLoading={isSubmitting}
-        showCancel
       />
 
       <AlertModal
@@ -661,8 +576,26 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
     currentSequence: item?.currentSequence || 0,
     description: item?.description || "",
     isActive: item?.isActive ?? true,
+    nameFormatId: item?.nameFormatId ?? null,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [eligibleFormats, setEligibleFormats] = useState<DocumentNameFormatItem[]>([]);
+
+  // The backend rejects a Short Code change once any document number has been issued for this
+  // type (the code is frozen into every document/revision/controlled-copy number).
+  const shortCodeLocked =
+    isEdit && (!!item?.lastIssuedDocumentNumber || (item?.currentSequence ?? 0) > 0);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    documentNameFormatApi.getFormats().then((formats) => {
+      // Only a Format eligible for real document-number generation is offered here -- see
+      // DocumentComponentResolver#isEligibleAsDocumentNumberFormat. Richer formats stay usable
+      // for preview/cataloging (Document Name Formats screen) but would be silently rejected by
+      // the backend if picked here, so they're filtered out rather than shown and then failing.
+      setEligibleFormats(formats.filter((f) => f.isActive && f.eligibleForDocumentNumber));
+    });
+  }, [isOpen]);
 
   useEffect(() => {
     if (item) {
@@ -672,6 +605,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
         currentSequence: item.currentSequence,
         description: item.description || "",
         isActive: item.isActive,
+        nameFormatId: item.nameFormatId ?? null,
       });
     } else {
       setFormData({
@@ -680,6 +614,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
         currentSequence: 0,
         description: "",
         isActive: true,
+        nameFormatId: null,
       });
     }
   }, [item, isOpen]);
@@ -724,18 +659,29 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
 
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-            Short Code (3-4 characters)<span className="text-red-500 ml-1">*</span>
+            Short Code<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
             value={formData.shortCode}
-            onChange={(e) => setFormData({ ...formData, shortCode: e.target.value.toUpperCase() })}
+            onChange={(e) =>
+              !shortCodeLocked && setFormData({ ...formData, shortCode: e.target.value.toUpperCase().replace(/[^A-Z0-9_/-]/g, "") })
+            }
             maxLength={20}
-            className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+            className={cn(
+              "w-full h-9 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500",
+              shortCodeLocked && "bg-slate-50 text-slate-500 cursor-not-allowed"
+            )}
             placeholder="e.g., SOP, POL"
             required
-            disabled={isSaving}
+            readOnly={shortCodeLocked}
+            disabled={isSaving || shortCodeLocked}
           />
+          <p className="mt-1 text-xs text-slate-500">
+            {shortCodeLocked
+              ? "Locked — a document number has already been issued for this Document Type, so the code is frozen into existing document / revision numbers."
+              : "Uppercase letters and digits (hyphen, underscore, slash allowed; no spaces or dots), up to 20 characters. Appears in every document number (e.g. SOP.0006) and cannot be changed once the first document number is issued."}
+          </p>
         </div>
 
         <div>
@@ -760,6 +706,20 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
               Issued Sequence is managed automatically when a document number is allocated.
             </p>
           )}
+        </div>
+
+        <div>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Document Number Format</label>
+          <Select
+            value={formData.nameFormatId ?? ""}
+            onChange={(v) => setFormData({ ...formData, nameFormatId: v || null })}
+            options={eligibleFormats.map((f) => ({ label: `${f.name} (e.g. ${f.previewExample})`, value: f.id }))}
+            placeholder="Use default (Standard)"
+            disabled={isSaving}
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Only formats composed of Document Type + Serial Number are eligible for real numbering today. Manage the full catalog under Document Name Formats.
+          </p>
         </div>
 
         <div>

@@ -8,7 +8,8 @@
     "dev:docker": "vite --host 0.0.0.0 --port 3000 --strictPort --force",
     "build": "vite build",
     "postbuild": "node scripts/zip-dist.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@lexical/code": "^0.42.0",
@@ -30,6 +31,7 @@
     "framer-motion": "^12.23.26",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
+    "konva": "^9.3.22",
     "lexical": "^0.42.0",
     "lucide-react": "^0.562.0",
     "motion": "^12.38.0",
@@ -37,6 +39,7 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-konva": "^19.2.0",
     "react-router": "^7.11.0",
     "react-router-dom": "^7.11.0",
     "recharts": "^3.6.0",
@@ -48,11 +51,17 @@
     "react-dom": "$react-dom"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.5",
     "@types/dompurify": "^3.0.5",
     "@types/node": "^22.14.0",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/ui": "^4.1.11",
+    "jsdom": "^28.1.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vitest": "^4.1.11"
   }
 }

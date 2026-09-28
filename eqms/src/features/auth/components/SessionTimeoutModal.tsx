@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
+import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
 import { ButtonLoading, FullPageLoading } from "@/components/ui/loading/Loading";
 import { authApi } from "@/services/api/auth";
@@ -43,6 +44,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   const [timeoutMinutes, setTimeoutMinutes] = useState(DEFAULT_TIMEOUT_MINUTES);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [error, setError] = useState("");
@@ -91,6 +93,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
       setPassword("");
       setError("");
       setShowPassword(false);
+      setIsCapsLockOn(false);
       setIsLoading(false);
       setIsLoggingOut(false);
       setIsOpen(true);
@@ -101,6 +104,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
       setPassword("");
       setError("");
       setShowPassword(false);
+      setIsCapsLockOn(false);
       setIsLoading(false);
       setIsLoggingOut(false);
     };
@@ -141,6 +145,10 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
     navigate(ROUTES.LOGIN, { replace: true });
   };
 
+  const handleCapsLockCheck = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    setIsCapsLockOn(event.getModifierState("CapsLock"));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password.trim()) {
@@ -171,6 +179,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
       setPassword("");
       setError("");
       setShowPassword(false);
+      setIsCapsLockOn(false);
     } catch (err) {
       const httpStatus = typeof err === "object" && err && "response" in err
         ? (err as any).response?.status
@@ -226,9 +235,9 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
             className="relative w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/5"
           >
             <div className="flex flex-col items-center border-b border-slate-100 p-5 text-center">
-              <h2 className="text-md md:text-lg font-semibold text-slate-900">Session Timeout</h2>
+              <h2 className="text-md md:text-lg font-semibold text-slate-900">Session Expired</h2>
               <p className="mt-1 text-xs md:text-sm text-slate-500">
-                Session expired due to inactivity. Please enter your password to continue.
+                Required to provide Auth information
               </p>
             </div>
 
@@ -261,17 +270,28 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                         setPassword(e.target.value);
                         setError("");
                       }}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 pr-10 text-sm outline-none transition-all focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                      onKeyDown={handleCapsLockCheck}
+                      onKeyUp={handleCapsLockCheck}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 pr-20 text-sm outline-none transition-all focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
                       placeholder="Enter your password"
                       autoFocus
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      {isCapsLockOn && (
+                        <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
+                          <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" aria-hidden="true" />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        className="flex items-center p-1 text-slate-400 transition-colors hover:text-slate-600 focus:outline-none focus:text-slate-700"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 

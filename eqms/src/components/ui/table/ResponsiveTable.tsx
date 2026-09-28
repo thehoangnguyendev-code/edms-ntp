@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../utils';
+import { TableEmptyState as SharedTableEmptyState } from './TableEmptyState';
 
 /**
  * Responsive Table Component System
@@ -110,16 +111,8 @@ export const TableEmptyState: React.FC<TableEmptyStateProps> = ({
 }) => {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-4 py-16 text-center">
-        <div className="flex flex-col items-center justify-center gap-3">
-          {icon && <div className="text-slate-300">{icon}</div>}
-          <div>
-            <p className="text-sm md:text-base font-medium text-slate-700">{title}</p>
-            {description && (
-              <p className="text-xs md:text-sm text-slate-500 mt-1">{description}</p>
-            )}
-          </div>
-        </div>
+      <td colSpan={colSpan} className="p-0">
+        <SharedTableEmptyState title={title} description={description} />
       </td>
     </tr>
   );

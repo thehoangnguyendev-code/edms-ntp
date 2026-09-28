@@ -11,7 +11,6 @@ import com.eqms.enums.FileAccessAction;
 import com.eqms.enums.FileObjectType;
 import com.eqms.repository.DocumentRevisionRepository;
 import com.eqms.repository.DocumentWorkflowParticipantRepository;
-import com.eqms.repository.DocumentWorkflowPoolMemberRepository;
 import com.eqms.repository.RevisionWorkflowParticipantRepository;
 import com.eqms.service.AuditTrailService;
 import com.eqms.service.DocumentAuthorizationService;
@@ -45,13 +44,13 @@ import static org.mockito.Mockito.when;
 class StrictParticipantVisibilityTest {
 
     // ── DocumentAuthorizationService fixture ─────────────────────────────────
-    @Mock DocumentWorkflowPoolMemberRepository poolMemberRepository;
     @Mock DocumentWorkflowParticipantRepository documentParticipantRepository;
     @Mock RevisionWorkflowParticipantRepository revisionParticipantRepository;
     @Mock DocumentRevisionRepository documentRevisionRepository;
     @Mock PermissionEvaluationService permissionEvaluationService;
     @Mock ObjectAccessEvaluationService objectAccessEvaluationService;
     @Mock com.eqms.repository.UserAccessProfileRepository userAccessProfileRepository;
+    @Mock com.eqms.service.SystemConfigurationService systemConfigurationService;
 
     @InjectMocks DocumentAuthorizationService documentAuthorizationService;
 
@@ -75,7 +74,6 @@ class StrictParticipantVisibilityTest {
         lenient().when(objectAccessEvaluationService.canViewRevision(any(), any())).thenReturn(true);
         lenient().when(objectAccessEvaluationService.canViewDocument(any(), any())).thenReturn(true);
         lenient().when(permissionEvaluationService.hasAnyPermission(any(), any(String[].class))).thenReturn(false);
-        lenient().when(poolMemberRepository.findAllByPoolTypeAndActiveTrueOrderByCreatedAtAsc(any())).thenReturn(List.of());
         lenient().when(userAccessProfileRepository.findUserIdsByWorkflowRole(any())).thenReturn(List.of());
         lenient().when(documentParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(any())).thenReturn(List.of());
         lenient().when(revisionParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(any(), any()))

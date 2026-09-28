@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
-import { ClipboardList, Clock3, Eye, MousePointerClick, PenTool, Search } from "lucide-react";
+import {
+  CalendarClock,
+  ClipboardList,
+  Clock3,
+  Eye,
+  FilePenLine,
+  MousePointerClick,
+  PenTool,
+  Search,
+} from "lucide-react";
 import { useNavigateWithLoading } from "@/hooks/useNavigateWithLoading";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { useDebounce } from "@/hooks";
@@ -20,6 +29,7 @@ import {
   electronicSignatureSettingsApi,
 } from "@/services/api/electronicSignatureSettings";
 import { usePermissions } from "@/hooks/usePermissions";
+import { IconCalendarTime } from "@tabler/icons-react";
 
 const defaultSettings: ElectronicSignatureSettings = {
   signatureTimestampFormat: "dd-MMM-uuuu HH:mm:ss",
@@ -34,20 +44,65 @@ const TIMESTAMP_FORMAT_OPTIONS = [
   { value: "MM/dd/uuuu hh:mm:ss a", label: "07/17/2026 03:30:45 PM" },
 ];
 
-const TIMEZONE_OPTIONS = [
-  { value: "Asia/Ho_Chi_Minh", label: "Vietnam (UTC+7)" },
-  { value: "UTC", label: "UTC" },
-  { value: "Asia/Singapore", label: "Singapore (UTC+8)" },
-  { value: "Asia/Tokyo", label: "Japan (UTC+9)" },
-  { value: "Europe/London", label: "United Kingdom" },
+const FALLBACK_TIMEZONES = [
+  "UTC",
+  "Asia/Ho_Chi_Minh",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Europe/London",
 ];
+
+/** "GMT+7" style offset of an IANA zone right now, from the browser's own Intl data (no network call). */
+const timezoneOffsetLabel = (zone: string): string => {
+  try {
+    const part = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      timeZoneName: "shortOffset",
+    })
+      .formatToParts(new Date())
+      .find((p) => p.type === "timeZoneName");
+    return part?.value?.replace("GMT", "UTC") ?? "";
+  } catch {
+    return "";
+  }
+};
+
+/**
+ * Every IANA timezone the browser knows (Intl.supportedValuesOf -- a built-in standard API, so the list
+ * is complete and needs no request or hand-maintained table). The backend accepts any of them (java
+ * ZoneId), and the current value is always included so an existing setting never disappears.
+ */
+const buildTimezoneOptions = (current?: string) => {
+  let zones: string[] = FALLBACK_TIMEZONES;
+  try {
+    const supported = (
+      Intl as unknown as { supportedValuesOf?: (key: string) => string[] }
+    ).supportedValuesOf?.("timeZone");
+    if (supported && supported.length > 0) zones = supported;
+  } catch {
+    // older browsers: keep the short fallback list
+  }
+  const all = new Set<string>(["UTC", ...zones]);
+  if (current) all.add(current);
+  return Array.from(all)
+    .sort((a, b) => a.localeCompare(b))
+    .map((zone) => {
+      const offset = timezoneOffsetLabel(zone);
+      return {
+        value: zone,
+        label: offset && zone !== "UTC" ? `${zone} (${offset})` : zone,
+      };
+    });
+};
 
 export const ElectronicSignatureSettingsView: React.FC = () => {
   const { navigateTo } = useNavigateWithLoading();
   const { showToast } = useToast();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { hasPermissionAlias } = usePermissions();
-  const canManageConfiguration = hasPermissionAlias('settings.configuration.manage') || hasPermissionAlias('settings.configuration.edit');
+  const canManageConfiguration = hasPermissionAlias(
+    "settings.configuration.manage",
+  );
   const [settings, setSettings] =
     useState<ElectronicSignatureSettings>(defaultSettings);
   const [savedSettings, setSavedSettings] =
@@ -60,8 +115,15 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const [meaningSearch, setMeaningSearch] = useState("");
   const debouncedMeaningSearch = useDebounce(meaningSearch, 400);
-  const [meaningSearchResults, setMeaningSearchResults] = useState<ElectronicSignatureMeaning[] | null>(null);
+  const [meaningSearchResults, setMeaningSearchResults] = useState<
+    ElectronicSignatureMeaning[] | null
+  >(null);
   const [meaningSearchLoading, setMeaningSearchLoading] = useState(false);
+
+  const timezoneOptions = useMemo(
+    () => buildTimezoneOptions(settings.signatureTimezone),
+    [settings.signatureTimezone],
+  );
 
   const breadcrumbItems = useMemo(
     () => electronicSignatureSettingsBreadcrumbs(navigateTo),
@@ -124,13 +186,19 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
   // unsaved local edit (keyed by code, stable across search/no-search) so typing in a row and
   // then searching doesn't visually discard what the admin just typed but hasn't saved yet.
   const displayedMeanings = useMemo(() => {
-    const base = meaningSearchResults === null ? settings.meanings : meaningSearchResults;
+    const base =
+      meaningSearchResults === null ? settings.meanings : meaningSearchResults;
     const localByCode = new Map(settings.meanings.map((m) => [m.code, m]));
     return base.map((m) => localByCode.get(m.code) ?? m);
   }, [meaningSearchResults, settings.meanings]);
 
-  const updateMeaning = (code: string, patch: Partial<ElectronicSignatureMeaning>) => {
-    const next = settings.meanings.map((m) => (m.code === code ? { ...m, ...patch } : m));
+  const updateMeaning = (
+    code: string,
+    patch: Partial<ElectronicSignatureMeaning>,
+  ) => {
+    const next = settings.meanings.map((m) =>
+      m.code === code ? { ...m, ...patch } : m,
+    );
     update("meanings", next);
   };
 
@@ -142,7 +210,8 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
   };
 
   const timestampConfigurationChanged =
-    settings.signatureTimestampFormat !== savedSettings.signatureTimestampFormat ||
+    settings.signatureTimestampFormat !==
+      savedSettings.signatureTimestampFormat ||
     settings.signatureTimezone !== savedSettings.signatureTimezone;
 
   useEffect(() => {
@@ -183,11 +252,17 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
   ]);
 
   const save = async () => {
-    const sig = await requestSignature("Update Electronic Signature Settings", "Security Configuration Change");
+    const sig = await requestSignature(
+      "Update Electronic Signature Settings",
+      "Security Configuration Change",
+    );
     if (!sig) return;
     setSaving(true);
     try {
-      const saved = await electronicSignatureSettingsApi.saveSettings(settings, sig);
+      const saved = await electronicSignatureSettingsApi.saveSettings(
+        settings,
+        sig,
+      );
       const normalized = { ...defaultSettings, ...saved };
       setSettings(normalized);
       setSavedSettings(normalized);
@@ -198,7 +273,8 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
       });
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
         (err instanceof Error ? err.message : null) ||
         "Failed to save settings. Please try again.";
       showToast({
@@ -250,22 +326,38 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-3">
             <p className="text-sm text-slate-600">
-              This page controls how electronic signatures are displayed and what
-              the signing modal asks from users. After you save, every workflow
-              screen will use the same server-side configuration.
+              This page controls how electronic signatures are displayed and
+              what the signing modal asks from users. After you save, every
+              workflow screen will use the same server-side configuration.
             </p>
             <div className="space-y-2 text-sm text-slate-700">
               <div className="flex gap-2">
-                <span className="shrink-0 font-semibold text-emerald-600">1</span>
-                <span>Edit the <strong>Signature Meaning Configuration</strong> table to rename the label shown for each system-defined signing action.</span>
+                <span className="shrink-0 font-semibold text-emerald-600">
+                  1
+                </span>
+                <span>
+                  Edit the <strong>Signature Meaning Configuration</strong>{" "}
+                  table to rename the label shown for each system-defined
+                  signing action.
+                </span>
               </div>
               <div className="flex gap-2">
-                <span className="shrink-0 font-semibold text-emerald-600">2</span>
-                <span>Every signature always requires a password and a free-text reason — this is not configurable per GMP/21 CFR Part 11.</span>
+                <span className="shrink-0 font-semibold text-emerald-600">
+                  2
+                </span>
+                <span>
+                  Every signature always requires a password and a free-text
+                  reason — this is not configurable per GMP/21 CFR Part 11.
+                </span>
               </div>
               <div className="flex gap-2">
-                <span className="shrink-0 font-semibold text-emerald-600">3</span>
-                <span>Click <strong>Save Changes</strong>. The modal reloads the latest settings automatically.</span>
+                <span className="shrink-0 font-semibold text-emerald-600">
+                  3
+                </span>
+                <span>
+                  Click <strong>Save Changes</strong>. The modal reloads the
+                  latest settings automatically.
+                </span>
               </div>
             </div>
           </div>
@@ -299,52 +391,66 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[70%_30%]">
         <div className="space-y-4">
-                    <FormSection
+          <FormSection
             title="Signature Timestamp"
-            icon={<Clock3 className="h-4 w-4" />}
+            icon={<IconCalendarTime className="h-4 w-4" />}
           >
             <div className="grid gap-4 lg:grid-cols-2">
               <div>
-                <label className={cn(COMPONENT_PRESETS.formLabel, "mb-1.5 block")}>
+                <label
+                  className={cn(COMPONENT_PRESETS.formLabel, "mb-1.5 block")}
+                >
                   Timestamp Format
                 </label>
                 <Select
                   value={settings.signatureTimestampFormat}
-                  onChange={(value) => update(
-                    "signatureTimestampFormat",
-                    value as ElectronicSignatureSettings["signatureTimestampFormat"],
-                  )}
+                  onChange={(value) =>
+                    update(
+                      "signatureTimestampFormat",
+                      value as ElectronicSignatureSettings["signatureTimestampFormat"],
+                    )
+                  }
                   options={TIMESTAMP_FORMAT_OPTIONS}
                 />
               </div>
               <div>
-                <label className={cn(COMPONENT_PRESETS.formLabel, "mb-1.5 block")}>
+                <label
+                  className={cn(COMPONENT_PRESETS.formLabel, "mb-1.5 block")}
+                >
                   Timezone
                 </label>
                 <Select
                   value={settings.signatureTimezone}
                   onChange={(value) => update("signatureTimezone", value)}
-                  options={TIMEZONE_OPTIONS}
+                  options={timezoneOptions}
+                  searchPlaceholder="Search timezone..."
                 />
               </div>
             </div>
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs sm:text-sm leading-5 text-amber-900">
-              This configuration is effective only for electronic signatures and signature blocks created after the change is saved. Existing signatures, released DOCX/PDF files, and stored previews are not regenerated or overwritten.
+              This configuration is effective only for electronic signatures and
+              signature blocks created after the change is saved. Existing
+              signatures, released DOCX/PDF files, and stored previews are not
+              regenerated or overwritten.
             </div>
             {settings.timestampFormatEffectiveFrom && (
               <p className="mt-3 text-xs text-slate-500">
-                Current configuration effective from: {new Date(settings.timestampFormatEffectiveFrom).toLocaleString()}
+                Current configuration effective from:{" "}
+                {new Date(
+                  settings.timestampFormatEffectiveFrom,
+                ).toLocaleString()}
               </p>
             )}
           </FormSection>
           <FormSection
             title="Signature Meaning Configuration"
-            icon={<ClipboardList className="h-4 w-4" />}
+            icon={<FilePenLine className="h-4 w-4" />}
           >
             <p className="mb-3 text-xs sm:text-sm text-slate-600">
-              One row per system-defined signing action. <strong>Code</strong> is fixed by the
-              application and cannot be changed; <strong>Display Name</strong> is the only editable
-              field and controls the label shown to the signer in the signing modal.
+              One row per system-defined signing action. <strong>Code</strong>{" "}
+              is fixed by the application and cannot be changed;{" "}
+              <strong>Display Name</strong> is the only editable field and
+              controls the label shown to the signer in the signing modal.
             </p>
             <div className="relative mb-3">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -373,8 +479,14 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                   <thead>
                     <tr>
                       {[
-                        { label: "Code", hint: "System-defined code the workflow reads (e.g. PREPARED). Not shown to the signer, cannot be edited." },
-                        { label: "Display Name", hint: "Readable label shown in the signing modal (e.g. Prepared)." },
+                        {
+                          label: "Code",
+                          hint: "System-defined code the workflow reads (e.g. PREPARED). Not shown to the signer, cannot be edited.",
+                        },
+                        {
+                          label: "Display Name",
+                          hint: "Readable label shown in the signing modal (e.g. Prepared).",
+                        },
                       ].map((col) => (
                         <th
                           key={col.label}
@@ -403,19 +515,28 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                     <tbody className="divide-y divide-slate-200 bg-white">
                       {meaningSearchLoading ? (
                         <tr>
-                          <td colSpan={2} className="px-4 py-6 text-center text-sm text-slate-400">
+                          <td
+                            colSpan={2}
+                            className="px-4 py-6 text-center text-sm text-slate-400"
+                          >
                             Searching...
                           </td>
                         </tr>
                       ) : displayedMeanings.length === 0 ? (
                         <tr>
-                          <td colSpan={2} className="px-4 py-6 text-center text-sm text-slate-400">
+                          <td
+                            colSpan={2}
+                            className="px-4 py-6 text-center text-sm text-slate-400"
+                          >
                             No signature meanings match "{meaningSearch}".
                           </td>
                         </tr>
                       ) : (
                         displayedMeanings.map((meaning) => (
-                          <tr key={meaning.code} className="hover:bg-slate-50/80 transition-colors">
+                          <tr
+                            key={meaning.code}
+                            className="hover:bg-slate-50/80 transition-colors"
+                          >
                             <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900 align-middle truncate">
                               {meaning.code}
                             </td>
@@ -423,7 +544,11 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                               <input
                                 className="w-full min-w-[100px] h-9 rounded-lg border border-slate-200 px-2.5 text-xs sm:text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                 value={meaning.displayName}
-                                onChange={(e) => updateMeaning(meaning.code, { displayName: e.target.value })}
+                                onChange={(e) =>
+                                  updateMeaning(meaning.code, {
+                                    displayName: e.target.value,
+                                  })
+                                }
                               />
                             </td>
                           </tr>
@@ -434,10 +559,6 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                 </div>
               </div>
             )}
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs sm:text-sm leading-5 text-slate-600">
-              A password and a free-text reason are always required to complete any electronic
-              signature — per GMP/21 CFR Part 11 there is no alternative, so this isn't configurable.
-            </div>
           </FormSection>
         </div>
 
@@ -452,9 +573,13 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                 : "This is the active electronic signature display format used in new DOCX and PDF outputs."}
             </p>
             <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-              <pre className="whitespace-pre-wrap text-sm leading-6 text-slate-800 font-mono">
+              <pre className="whitespace-pre-wrap text-sm leading-6 text-slate-800">
                 {(() => {
-                  return timestampPreview || settings.previewBlock || "Nguyen Van A\nElectronically Signed\n29-Jul-2026 13:22:09 (UTC+7)\nMeaning: Approved\nReason: Document Approval\nSignature ID: SIG-2026-8F3A9B";
+                  return (
+                    timestampPreview ||
+                    settings.previewBlock ||
+                    "Nguyen Van A\nElectronically Signed\n29-Jul-2026 13:22:09 (UTC+7)\nMeaning: Approved\nReason: Document Approval\nSignature ID: SIG-2026-8F3A9B"
+                  );
                 })()}
               </pre>
             </div>
@@ -464,9 +589,13 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
               </p>
             )}
             <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs leading-5 text-emerald-800 space-y-1">
-              <p className="font-semibold">21 CFR Part 11 & EU-GMP Annex 11 Compliance</p>
+              <p className="font-semibold">
+                21 CFR Part 11 & EU-GMP Annex 11 Compliance
+              </p>
               <p>
-                Signature ID (Unique Electronic Signature Reference) is permanently embedded in all signature blocks and Audit Trail logs for full GxP traceability.
+                Signature ID (Unique Electronic Signature Reference) is
+                permanently embedded in all signature blocks and Audit Trail
+                logs for full GxP traceability.
               </p>
             </div>
           </FormSection>
@@ -484,12 +613,18 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
         description={
           <div className="space-y-3">
             <p>
-              The new timestamp format and timezone will apply only to electronic signatures and signature blocks created after this configuration is saved.
+              The new timestamp format and timezone will apply only to
+              electronic signatures and signature blocks created after this
+              configuration is saved.
             </p>
             <p className="font-medium text-amber-900">
-              Previously signed records, released DOCX/PDF files, and existing stored previews will remain unchanged.
+              Previously signed records, released DOCX/PDF files, and existing
+              stored previews will remain unchanged.
             </p>
-            <p>This global security configuration change requires your electronic signature and will be recorded in the Audit Trail.</p>
+            <p>
+              This global security configuration change requires your electronic
+              signature and will be recorded in the Audit Trail.
+            </p>
           </div>
         }
         confirmText="Continue to Sign & Save"

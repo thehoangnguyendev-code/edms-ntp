@@ -33,6 +33,14 @@ public record DocumentListItemResponse(
         List<DocumentRelationResponse> relatedDocuments,
         List<DocumentRelationResponse> correlatedDocuments,
         boolean hasAnyRevision,
-        boolean canStartInitialAuthoring
+        boolean canStartInitialAuthoring,
+        /** NONE/REQUIRED resolved server-side from the Sub-Type Dictionary
+         * (DocumentService#resolveDocumentReviewRequirement) -- authoritative, so the FE never
+         * has to re-derive it from a client-side Sub-Type lookup snapshot that can go stale the
+         * moment the user re-selects a different Sub-Type and saves. */
+        String reviewRequirement,
+        /** True for the Author of an Active document whose upgrade the DCO has already configured
+         *  ("Edit Revision for Upgrade" saved), so "Edit Document" (-> Upload Revision) may be offered. */
+        boolean canEditForUpgrade
 ) {
 }

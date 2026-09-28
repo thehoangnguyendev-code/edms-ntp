@@ -143,6 +143,10 @@ public class PublishingTemplate {
     @Column(name = "published_at")
     private Instant publishedAt;
 
+    /** The template this one was created from as a new version (null for an original template). */
+    @Column(name = "supersedes_template_id")
+    private java.util.UUID supersedesTemplateId;
+
     @Column(name = "published_by", length = 100)
     private String publishedBy;
 
@@ -496,5 +500,13 @@ public class PublishingTemplate {
 
     public void setPublishedBy(String publishedBy) {
         this.publishedBy = publishedBy;
+    }
+
+    public java.util.UUID getSupersedesTemplateId() {
+        return supersedesTemplateId;
+    }
+
+    public void setSupersedesTemplateId(java.util.UUID supersedesTemplateId) {
+        this.supersedesTemplateId = supersedesTemplateId;
     }
 }

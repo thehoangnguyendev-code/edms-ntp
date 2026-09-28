@@ -56,6 +56,7 @@ public class ElectronicSignatureService {
     private final TokenService tokenService;
     private final AuditTrailService auditTrailService;
     private final ElectronicSignatureRendererService signatureRendererService;
+    private final SignatureTokenConsumptionService signatureTokenConsumptionService;
 
     public ElectronicSignatureService(
             ElectronicSignatureRepository signatureRepository,
@@ -65,7 +66,8 @@ public class ElectronicSignatureService {
             CurrentUserService currentUserService,
             TokenService tokenService,
             AuditTrailService auditTrailService,
-            ElectronicSignatureRendererService signatureRendererService
+            ElectronicSignatureRendererService signatureRendererService,
+            SignatureTokenConsumptionService signatureTokenConsumptionService
     ) {
         this.signatureRepository = signatureRepository;
         this.settingRepository = settingRepository;
@@ -75,6 +77,7 @@ public class ElectronicSignatureService {
         this.tokenService = tokenService;
         this.auditTrailService = auditTrailService;
         this.signatureRendererService = signatureRendererService;
+        this.signatureTokenConsumptionService = signatureTokenConsumptionService;
     }
 
     @Transactional(readOnly = true)
@@ -105,7 +108,10 @@ public class ElectronicSignatureService {
                 null,
                 null,
                 "Updated electronic signature settings.",
-                List.of(
+                // change() unconditionally builds an entry -- filter to fields that actually
+                // differ, so saving settings with only ONE field touched doesn't also show every
+                // untouched field as a misleading "X -> X" no-op.
+                buildSettingsChanges(
                         change("Signature Timestamp Format", safeText(previousTimestampFormat), safeText(setting.getSignatureTimestampFormat())),
                         change("Signature Timezone", safeText(previousTimezone), safeText(setting.getSignatureTimezone())),
                         change("Meaning Count", String.valueOf(previousMeanings.size()), String.valueOf(currentMeanings.size())),
@@ -165,36 +171,15 @@ public class ElectronicSignatureService {
         signature.setStatus("SIGNED");
         ElectronicSignature saved = signatureRepository.save(signature);
 
-        auditTrailService.logAs(
-                user,
-                "REVISION",
-                revision.getRevisionName(),
-                revision.getId(),
-                "DOCUMENT_ELECTRONICALLY_SIGNED",
-                oldStatus,
-                newStatus,
-                "Electronic signature applied: " + saved.getSignatureId(),
-                List.of(
-                        change("Document Number", revision.getDocumentNumber()),
-                        change("Revision Number", revision.getRevisionNumber()),
-                        change("User ID", user.getId().toString()),
-                        change("Username", user.getUsername()),
-                        change("Full Name", user.getFullName()),
-                        change("Meaning", normalizedMeaning),
-                        change("Reason", reason),
-                        change("Comment", comment),
-                        change("Signed At", saved.getSignedAt().toString()),
-                        change("Auth Method", saved.getAuthenticationMethod()),
-                        change("Signature ID", saved.getSignatureId()),
-                        change("IP Address", saved.getIpAddress()),
-                        change("User Agent", saved.getUserAgent()),
-                        change("Checksum Before Sign", checksumBefore),
-                        change("Checksum After Sign", checksumAfter),
-                        change("Old Status", oldStatus),
-                        change("New Status", newStatus)
-                ),
-                saved.getId()
-        );
+        // Deliberately NOT a separate "DOCUMENT_ELECTRONICALLY_SIGNED" audit trail row of its own.
+        // Electronic signing is a step that accompanies the real business action (Review, Approve,
+        // Publish, ...) -- that action's own auditTrailService.logAs() call already records
+        // `signatureSessionId` (saved.getId(), passed through as the caller's signatureSessionId
+        // argument), which sets electronicSignatureApplied=true and the Signature ID directly on
+        // that one row (see AuditTrailService#logAs). The full signature detail (meaning, reason,
+        // checksums, IP, timestamp...) remains fully recorded here on the ElectronicSignature
+        // entity and stays visible in the dedicated Signatures tab -- nothing is lost, only the
+        // duplicate "3 rows for 1 action" Audit Trail entry that used to repeat the same facts.
         return saved;
     }
 
@@ -241,37 +226,12 @@ public class ElectronicSignatureService {
         signature.setStatus("SIGNED");
         ElectronicSignature saved = signatureRepository.save(signature);
 
-        auditTrailService.logAs(
-                user,
-                entityType,
-                entityName,
-                entityId,
-                "ENTITY_ELECTRONICALLY_SIGNED",
-                // fromStatus/toStatus are short lifecycle-state codes (DB column varchar(40)), not a
-                // place for free-text oldValue/newValue -- those are already captured below as the
-                // "Old Value"/"New Value" change entries. Passing oldValue/newValue here overflowed
-                // the column and crashed the INSERT for any signed action with a description longer
-                // than 40 chars (e.g. AccessProfileService.removeUser's "Assigned <full name> (<uuid>)").
-                null,
-                null,
-                "Electronic signature applied: " + saved.getSignatureId(),
-                List.of(
-                        change("Entity Type", entityType),
-                        change("Entity ID", entityId.toString()),
-                        change("User ID", user.getId().toString()),
-                        change("Username", user.getUsername()),
-                        change("Full Name", user.getFullName()),
-                        change("Meaning", normalizedMeaning),
-                        change("Reason", reason),
-                        change("Comment", comment),
-                        change("Signed At", saved.getSignedAt().toString()),
-                        change("Auth Method", saved.getAuthenticationMethod()),
-                        change("Signature ID", saved.getSignatureId()),
-                        change("Old Value", oldValue),
-                        change("New Value", newValue)
-                ),
-                saved.getId()
-        );
+        // Deliberately NOT a separate "ENTITY_ELECTRONICALLY_SIGNED" audit trail row of its own --
+        // same reasoning as createRevisionSignature() above. The caller's own action-specific
+        // auditTrailService.logAs() call (RECALL/APPROVE/CANCEL/...) already records
+        // `signatureSessionId` (saved.getId()), which sets electronicSignatureApplied=true and the
+        // Signature ID directly on that one row -- the E-Signature column and that row's own detail
+        // are the single source of truth for "was this action signed", not a duplicate log entry.
         return saved;
     }
 
@@ -404,7 +364,10 @@ public class ElectronicSignatureService {
         try { java.time.ZoneId.of(zone); }
         catch (Exception ex) { throw new IllegalArgumentException("Unsupported signature timezone: " + zone); }
         preview.setSignatureTimezone(zone);
-        return signatureRendererService.formatTimestampSnapshot(Instant.now(), preview);
+        // The whole signature block (name, "Electronically Signed", time, reason, signature id ...) rendered with the
+        // UNSAVED format/timezone -- returning only the formatted timestamp made every other line disappear from the
+        // preview as soon as the format was changed.
+        return signatureRendererService.renderPreviewText(preview);
     }
 
     public Double getDisplayFontSizePt() {
@@ -437,11 +400,9 @@ public class ElectronicSignatureService {
     }
 
     private void validateSigningRules(String signatureToken, UserAccount user, String reason) {
-        var parsed = tokenService.parseSignatureToken(signatureToken)
-                .orElseThrow(() -> new UnauthorizedException("Electronic signature is invalid or expired"));
-        if (!parsed.principal().userId().equals(user.getId())) {
-            throw new UnauthorizedException("Electronic signature must belong to the current user");
-        }
+        // Consumes the token (once per transaction -- see SignatureTokenConsumptionService's
+        // javadoc for why a second call with the same token in the same action is not a replay).
+        signatureTokenConsumptionService.requireAndConsume(signatureToken, user);
         if (!StringUtils.hasText(reason)) {
             throw new IllegalArgumentException("Signing reason is required");
         }
@@ -547,12 +508,15 @@ public class ElectronicSignatureService {
         return StringUtils.hasText(value) ? value : "";
     }
 
-    private AuditTrailChangeResponse change(String field, String value) {
-        return new AuditTrailChangeResponse(field, "-", valueOrDash(value));
-    }
-
     private AuditTrailChangeResponse change(String field, String oldValue, String newValue) {
         return new AuditTrailChangeResponse(field, valueOrDash(oldValue), valueOrDash(newValue));
+    }
+
+    /** Drops any entry whose old/new value came out identical (change() itself doesn't filter). */
+    private List<AuditTrailChangeResponse> buildSettingsChanges(AuditTrailChangeResponse... entries) {
+        return java.util.Arrays.stream(entries)
+                .filter(c -> !java.util.Objects.equals(c.oldValue(), c.newValue()))
+                .toList();
     }
 
     private String nextSignatureId() {

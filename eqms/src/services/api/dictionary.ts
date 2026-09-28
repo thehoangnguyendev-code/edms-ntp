@@ -31,6 +31,7 @@ export type PositionDictionaryListParams = DictionaryListParams & {
 
 export type DocumentSubTypeDictionaryListParams = DictionaryListParams & {
   documentType?: string;
+  reviewRequirement?: 'REQUIRED' | 'NONE';
 };
 
 type PageResponse<T> = {
@@ -64,12 +65,14 @@ type ApiDepartment = {
   createdDate: string;
   modifiedDate: string;
   positionCount: number;
+  departmentHeadId?: string | null;
+  departmentHeadName?: string | null;
+  primaryContactPhone?: string | null;
 };
 
 type ApiPosition = {
   id: string;
   name: string;
-  abbreviation: string;
   businessUnit: string;
   department: string;
   description?: string | null;
@@ -89,6 +92,8 @@ type ApiDocumentType = {
   isActive: boolean;
   createdDate: string;
   modifiedDate: string;
+  nameFormatId?: string | null;
+  nameFormatName?: string | null;
 };
 
 type ApiDocumentSubType = {
@@ -97,7 +102,7 @@ type ApiDocumentSubType = {
   documentTypeId: string;
   documentType: string;
   description?: string | null;
-  reviewRequirement?: "NONE" | "SINGLE" | "MULTIPLE";
+  reviewRequirement?: "NONE" | "REQUIRED";
   isActive: boolean;
   createdDate: string;
   modifiedDate: string;
@@ -130,6 +135,7 @@ type ApiLanguage = {
   value: string;
 };
 
+
 export type DictionaryBusinessUnitPayload = {
   name: string;
   abbreviation: string;
@@ -143,11 +149,12 @@ export type DictionaryDepartmentPayload = {
   businessUnit: string;
   description?: string;
   isActive: boolean;
+  departmentHeadId?: string | null;
+  primaryContactPhone?: string | null;
 };
 
 export type DictionaryPositionPayload = {
   name: string;
-  abbreviation: string;
   businessUnit: string;
   department: string;
   description?: string;
@@ -160,13 +167,14 @@ export type DictionaryDocumentTypePayload = {
   currentSequence: number;
   description?: string;
   isActive: boolean;
+  nameFormatId?: string | null;
 };
 
 export type DictionaryDocumentSubTypePayload = {
   name: string;
   documentTypeId: string;
   description?: string;
-  reviewRequirement?: "NONE" | "SINGLE" | "MULTIPLE";
+  reviewRequirement?: "NONE" | "REQUIRED";
   isActive: boolean;
 };
 
@@ -182,6 +190,7 @@ export type DictionaryRetentionPolicyPayload = {
   retentionDays?: number | null;
   isActive: boolean;
 };
+
 
 const mapBusinessUnit = (item: ApiBusinessUnit): BusinessUnitItem => ({
   id: item.id,
@@ -202,12 +211,14 @@ const mapDepartment = (item: ApiDepartment): DepartmentItem => ({
   isActive: item.isActive,
   createdDate: item.createdDate,
   modifiedDate: item.modifiedDate,
+  departmentHeadId: item.departmentHeadId ?? null,
+  departmentHeadName: item.departmentHeadName ?? null,
+  primaryContactPhone: item.primaryContactPhone ?? null,
 });
 
 const mapPosition = (item: ApiPosition): PositionItem => ({
   id: item.id,
   name: item.name,
-  abbreviation: item.abbreviation,
   businessUnit: item.businessUnit as PositionItem['businessUnit'],
   department: item.department,
   description: item.description ?? "",
@@ -227,6 +238,8 @@ const mapDocumentType = (item: ApiDocumentType): DocumentTypeItem => ({
   isActive: item.isActive,
   createdDate: item.createdDate,
   modifiedDate: item.modifiedDate,
+  nameFormatId: item.nameFormatId ?? null,
+  nameFormatName: item.nameFormatName ?? null,
 });
 
 const mapDocumentSubType = (item: ApiDocumentSubType): DocumentSubTypeItem => ({
@@ -235,7 +248,7 @@ const mapDocumentSubType = (item: ApiDocumentSubType): DocumentSubTypeItem => ({
   documentTypeId: item.documentTypeId,
   documentType: item.documentType,
   description: item.description ?? "",
-  reviewRequirement: item.reviewRequirement ?? "SINGLE",
+  reviewRequirement: item.reviewRequirement ?? "REQUIRED",
   isActive: item.isActive,
   createdDate: item.createdDate,
   modifiedDate: item.modifiedDate,
@@ -259,6 +272,7 @@ const mapRetentionPolicy = (item: ApiRetentionPolicy): RetentionPolicyItem => ({
   createdDate: item.createdDate,
   modifiedDate: item.modifiedDate,
 });
+
 
 const pendingBusinessUnitsRequests = new Map<string, Promise<BusinessUnitItem[]>>();
 const pendingDepartmentsRequests = new Map<string, Promise<DepartmentItem[]>>();
@@ -387,7 +401,7 @@ export const dictionaryApi = {
     if (cachedRequest) {
       return cachedRequest;
     }
-    const request = api.get<ApiDocumentType[]>('/settings/dictionaries/document-types')
+    const request = api.get<ApiDocumentType[]>('/documents/administration/document-types')
       .then((response) => response.data.map(mapDocumentType))
       .finally(() => {
         pendingDocumentTypesRequests.delete(cacheKey);
@@ -402,7 +416,7 @@ export const dictionaryApi = {
     if (cachedRequest) {
       return cachedRequest;
     }
-    const request = api.get<ApiDocumentSubType[]>('/settings/dictionaries/sub-types')
+    const request = api.get<ApiDocumentSubType[]>('/documents/administration/document-sub-types')
       .then((response) => response.data.map(mapDocumentSubType))
       .finally(() => {
         pendingDocumentSubTypesRequests.delete(cacheKey);
@@ -412,7 +426,7 @@ export const dictionaryApi = {
   },
 
   getSubTypesPage: async (params: DocumentSubTypeDictionaryListParams): Promise<PageResponse<DocumentSubTypeItem>> => {
-    const response = await api.get<PageResponse<ApiDocumentSubType>>('/settings/dictionaries/sub-types/page', { params });
+    const response = await api.get<PageResponse<ApiDocumentSubType>>('/documents/administration/document-sub-types/page', { params });
     return {
       data: response.data.data.map(mapDocumentSubType),
       pagination: response.data.pagination,
@@ -420,21 +434,17 @@ export const dictionaryApi = {
   },
 
   createSubType: async (payload: DictionaryDocumentSubTypePayload): Promise<DocumentSubTypeItem> => {
-    const response = await api.post<ApiDocumentSubType>('/settings/dictionaries/sub-types', payload);
+    const response = await api.post<ApiDocumentSubType>('/documents/administration/document-sub-types', payload);
     return mapDocumentSubType(response.data);
   },
 
   updateSubType: async (id: string, payload: DictionaryDocumentSubTypePayload): Promise<DocumentSubTypeItem> => {
-    const response = await api.put<ApiDocumentSubType>(`/settings/dictionaries/sub-types/${id}`, payload);
+    const response = await api.put<ApiDocumentSubType>(`/documents/administration/document-sub-types/${id}`, payload);
     return mapDocumentSubType(response.data);
   },
 
-  deleteSubType: async (id: string): Promise<void> => {
-    await api.delete(`/settings/dictionaries/sub-types/${id}`);
-  },
-
   getDocumentTypesPage: async (params: DictionaryListParams): Promise<PageResponse<DocumentTypeItem>> => {
-    const response = await api.get<PageResponse<ApiDocumentType>>('/settings/dictionaries/document-types/page', { params });
+    const response = await api.get<PageResponse<ApiDocumentType>>('/documents/administration/document-types/page', { params });
     return {
       data: response.data.data.map(mapDocumentType),
       pagination: response.data.pagination,
@@ -442,17 +452,13 @@ export const dictionaryApi = {
   },
 
   createDocumentType: async (payload: DictionaryDocumentTypePayload): Promise<DocumentTypeItem> => {
-    const response = await api.post<ApiDocumentType>('/settings/dictionaries/document-types', payload);
+    const response = await api.post<ApiDocumentType>('/documents/administration/document-types', payload);
     return mapDocumentType(response.data);
   },
 
   updateDocumentType: async (id: string, payload: Partial<DictionaryDocumentTypePayload>): Promise<DocumentTypeItem> => {
-    const response = await api.put<ApiDocumentType>(`/settings/dictionaries/document-types/${id}`, payload);
+    const response = await api.put<ApiDocumentType>(`/documents/administration/document-types/${id}`, payload);
     return mapDocumentType(response.data);
-  },
-
-  deleteDocumentType: async (id: string): Promise<void> => {
-    await api.delete(`/settings/dictionaries/document-types/${id}`);
   },
 
   getStorageLocations: async (): Promise<StorageLocationItem[]> => {
@@ -546,4 +552,5 @@ export const dictionaryApi = {
   deleteRetentionPolicy: async (id: string): Promise<void> => {
     await api.delete(`/settings/dictionaries/retention-policies/${id}`);
   },
+
 };

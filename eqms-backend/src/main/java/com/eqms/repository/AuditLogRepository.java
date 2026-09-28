@@ -10,12 +10,31 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID>, JpaSpecificationExecutor<AuditLog> {
-    List<AuditLog> findAllByEntityTypeAndEntityIdOrderByCreatedAtDesc(String entityType, UUID entityId);
-
+    // Separator/case-insensitive on entity_type (which has no single historical spelling --
+    // DOCUMENT/documents/DocumentRecord, "Controlled Copy"/CONTROLLED_COPY/ControlledCopyRecord).
+    // entityId equality keeps the match unambiguous.
     @Query("""
             select auditLog
             from AuditLog auditLog
-            where replace(upper(auditLog.entityType), ' ', '_') = replace(upper(:entityType), ' ', '_')
+            where replace(replace(upper(auditLog.entityType), ' ', ''), '_', '')
+                  = replace(replace(upper(:entityType), ' ', ''), '_', '')
+              and auditLog.entityId = :entityId
+            order by auditLog.createdAt desc
+            """)
+    List<AuditLog> findAllByEntityTypeAndEntityIdOrderByCreatedAtDesc(
+            @Param("entityType") String entityType,
+            @Param("entityId") UUID entityId
+    );
+
+    // entity_type has no single historical convention (DOCUMENT / documents / DocumentRecord,
+    // "Controlled Copy" / ControlledCopyRecord, ...). Strip BOTH spaces and underscores and
+    // upper-case before comparing so every spelling of the same concept matches; entityId equality
+    // keeps it unambiguous.
+    @Query("""
+            select auditLog
+            from AuditLog auditLog
+            where replace(replace(upper(auditLog.entityType), ' ', ''), '_', '')
+                  = replace(replace(upper(:entityType), ' ', ''), '_', '')
               and auditLog.entityId = :entityId
             order by auditLog.createdAt desc
             """)
@@ -28,9 +47,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID>, JpaSp
 
     List<AuditLog> findAllByCreatedAtBetweenOrderByCreatedAtAsc(java.time.Instant start, java.time.Instant end);
 
+    // Match the canonical stored spellings (see AuditTrailService.ENTITY_TYPE_STORAGE_CANONICAL);
+    // 'DOCUMENT_REVISION' never matched a real row (revisions store 'REVISION').
     @Query("""
             SELECT a FROM AuditLog a
-            WHERE a.entityType IN ('DOCUMENT', 'DOCUMENT_REVISION', 'CONTROLLED_COPY')
+            WHERE a.entityType IN ('DOCUMENT', 'REVISION', 'CONTROLLED_COPY', 'CONTROLLED_COPY_DISTRIBUTION_BATCH')
             ORDER BY a.eventTime DESC
             LIMIT 20
             """)

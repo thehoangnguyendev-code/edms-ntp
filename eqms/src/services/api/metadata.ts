@@ -17,6 +17,23 @@ export interface ModuleMetadata {
   [key: string]: SelectOption[] | undefined;
 }
 
+export interface MetadataUserLookup {
+  id: string;
+  username?: string;
+  fullName: string;
+  accessProfiles: { id: string; code: string; name: string }[];
+  department?: string;
+  businessUnit?: string;
+  position?: string;
+  employeeCode?: string;
+  email?: string;
+}
+
+export interface PagedMetadataUserLookup {
+  data: MetadataUserLookup[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}
+
 export const metadataApi = {
   /**
    * Lấy tất cả các danh sách options cho dropdown bộ lọc của 1 module cụ thể.
@@ -60,17 +77,20 @@ export const metadataApi = {
         if (v) query.set(k, v);
       });
     }
-    const response = await api.get<{
-      id: string;
-      username?: string;
-      fullName: string;
-      accessProfiles: { id: string; code: string; name: string }[];
-      department?: string;
-      businessUnit?: string;
-      position?: string;
-      employeeCode?: string;
-      email?: string;
-    }[]>(`/metadata/users?${query}`);
+    const response = await api.get<MetadataUserLookup[]>(`/metadata/users?${query}`);
+    return response.data;
+  },
+
+  /** Server-side search, sorting and pagination for high-cardinality person pickers. */
+  getUsersLookupPaged: async (params: {
+    page: number;
+    limit: number;
+    search?: string;
+    department?: string;
+    sortBy?: "fullName" | "email" | "employeeCode" | "department" | "position";
+    sortDir?: "asc" | "desc";
+  }): Promise<PagedMetadataUserLookup> => {
+    const response = await api.get<PagedMetadataUserLookup>("/metadata/users/paged", { params });
     return response.data;
   },
 

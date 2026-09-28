@@ -515,7 +515,7 @@ export const RoleSetupWizardView: React.FC = () => {
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="text-xs sm:text-sm font-medium text-slate-800">{role.label}</span>
-                      <span className="text-2xs font-mono text-slate-400">{role.code}</span>
+                      <span className="text-2xs  text-slate-400">{role.code}</span>
                       <Badge color="slate" size="xs">{role.moduleKey}</Badge>
                     </span>
                     {role.description && (
@@ -633,7 +633,7 @@ export const RoleSetupWizardView: React.FC = () => {
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm font-medium text-slate-800">
                         {u.fullName}
-                        <span className="font-mono text-2xs font-medium text-slate-500">{u.employeeCode}</span>
+                        <span className=" text-2xs font-medium text-slate-500">{u.employeeCode}</span>
                       </span>
                       <span className="mt-1 grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs text-slate-500 sm:grid-cols-3">
                         <span><span className="text-slate-400">Department:</span> {u.department || "—"}</span>

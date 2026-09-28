@@ -16,14 +16,16 @@ import {
   Activity,
   Layers,
   ShieldCheck,
+  PenTool,
 } from "lucide-react";
-import { IconExchange, IconMessage2, IconScanTraces } from "@tabler/icons-react";
+import { IconExchange, IconLabel, IconMessage2, IconScanTraces, IconSourceCode } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { auditTrailDetail } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
 import { FormSection } from "@/components/ui/form";
 import { Badge, type BadgeColor } from "@/components/ui/badge/Badge";
+import { Avatar } from "@/components/ui/avatar";
 import { formatDateTime } from "@/utils/format";
 import { AuditExportModal } from "./components/AuditExportModal";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -70,7 +72,7 @@ const getActionBadgeColor = (action: string): BadgeColor => {
     case "revision file uploaded to office online":
     case "edit online synced back to minio":
     case "edit online session closed": return "blue";
-    case "delete": case "reject": case "disable": case "failed login": case "destroy": return "red";
+    case "delete": case "reject": case "disable": case "failed login": case "destroy": case "account locked": return "red";
     case "archive": case "restore": case "cancel": case "obsolete": return "amber";
     default: return "slate";
   }
@@ -92,13 +94,6 @@ const formatAuditLabel = (value?: string): string => {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
-};
-
-const getUserInitials = (name?: string): string => {
-  if (!name) return "U";
-  const parts = name.trim().split(" ");
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 };
 
 const buildEntityLabel = (r: AuditTrailRecord): string => {
@@ -287,11 +282,10 @@ export const AuditTrailDetailView: React.FC<{
     : formatAuditLabel(r?.action);
   const profileId = r?.user?.id || "";
   const userName = r?.user?.fullName || r?.fullName || "System User";
-  const userInitials = getUserInitials(userName);
   const isDestroyAction = r ? isControlledCopyDestroyAction(r) : false;
 
   const destructionDetails = isDestroyAction && r ? [
-    { label: "Controlled Copy Number", value: getMetadataValue(r.metadata, "controlledCopyNumber", "copyNumber", "objectCode", "entityLabel", "entityName") },
+    { label: "Document Number", value: getMetadataValue(r.metadata, "controlledCopyNumber", "copyNumber", "objectCode", "entityLabel", "entityName") },
     { label: "Document", value: getMetadataValue(r.metadata, "documentNumber", "document_number", "documentDisplayLabel", "documentName") },
     { label: "Revision", value: getMetadataValue(r.metadata, "revisionNumber", "revision_number", "revisionName") },
     { label: "Destruction Type", value: getMetadataValue(r.metadata, "destructionType", "destruction_type") },
@@ -304,10 +298,23 @@ export const AuditTrailDetailView: React.FC<{
 
   const evidenceFiles = isDestroyAction && Array.isArray(r?.metadata?.evidenceFiles) ? r.metadata.evidenceFiles : [];
   const evidenceCount = isDestroyAction
-    ? (evidenceFiles.length || Number(getMetadataValue(r.metadata, "evidenceCount", "evidence_count")) || 0)
+    ? (evidenceFiles.length || Number(getMetadataValue(r?.metadata, "evidenceCount", "evidence_count")) || 0)
     : 0;
 
-  const fieldChanges = changes.filter(c => c.field !== "Permission Granted" && c.field !== "Permission Revoked");
+  // Drop a genuinely no-op "status"/"state" entry (old === new, or no destination value at
+  // all). Older audit rows persisted a synthetic "Obsoleted -> Obsoleted" for non-mutating
+  // actions (View, Login), which would otherwise surface here as a meaningless "Field
+  // Modifications" row. A blank OLD value with a real NEW one is a creation (e.g. Controlled
+  // Copy REQUEST) -- that IS meaningful ("None -> Ready for Distribution") and must stay.
+  const isNoOpStatusChange = (c: { field?: string | null; oldValue?: string | null; newValue?: string | null }) => {
+    if (!/status|state/i.test(c.field || "")) return false;
+    const o = (c.oldValue ?? "").trim();
+    const n = (c.newValue ?? "").trim();
+    return n === "" || (o !== "" && o.toLowerCase() === n.toLowerCase());
+  };
+  const fieldChanges = changes.filter(
+    c => c.field !== "Permission Granted" && c.field !== "Permission Revoked" && !isNoOpStatusChange(c),
+  );
   const permissionChanges = changes.filter(c => c.field === "Permission Granted" || c.field === "Permission Revoked");
 
   return (
@@ -352,10 +359,6 @@ export const AuditTrailDetailView: React.FC<{
                   {entityLabel}
                 </h2>
                 <p className="text-xs sm:text-sm mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {r.objectCode && (
-                    <span className="text-emerald-700 font-semibold">{r.objectCode}</span>
-                  )}
-                  {r.objectCode && <span className="text-slate-400">&middot;</span>}
                   <span className="text-slate-500">{formatDateTime(r.timestamp) || "-"}</span>
                 </p>
                 <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
@@ -370,11 +373,6 @@ export const AuditTrailDetailView: React.FC<{
                       {r.severity} Severity
                     </Badge>
                   )}
-                  {r.signatureId && (
-                    <span className="text-xs text-slate-600 font-medium whitespace-nowrap" title={`Full UUID: ${r.signatureId}`}>
-                      Sig ID: {formatSignatureId(r.signatureId)}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -386,17 +384,12 @@ export const AuditTrailDetailView: React.FC<{
             <FormSection title="User & Security Context" icon={<UserIcon className="h-4 w-4" />}>
               <div className="space-y-1">
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50/80 mb-3 border border-slate-100">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white font-bold text-sm shadow-sm overflow-hidden border border-emerald-100">
-                    {(r.user?.avatar || (r as any).avatar || r.metadata?.userAvatar) ? (
-                      <img
-                        src={r.user?.avatar || (r as any).avatar || r.metadata?.userAvatar}
-                        alt={userName}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      userInitials
-                    )}
-                  </div>
+                  <Avatar
+                    name={userName}
+                    src={r.user?.avatar || (r as any).avatar || r.metadata?.userAvatar}
+                    tone="solid"
+                    className="h-10 w-10 text-sm font-bold shadow-sm"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
@@ -413,15 +406,30 @@ export const AuditTrailDetailView: React.FC<{
                       )}
                     </div>
                     <p className="text-xs text-slate-500 truncate mt-0.5">
-                      {[r.user?.role, r.user?.department].filter(Boolean).join(" • ") || "User Record"}
+                      {[r.user?.accessProfileNames?.[0], r.user?.department].filter(Boolean).join(" • ") || "User Record"}
                     </p>
                   </div>
                 </div>
 
                 <DetailItem
                   icon={<Shield className="h-3.5 w-3.5" />}
-                  label="Role"
-                  value={r.user?.role || "-"}
+                  label="Access Profile"
+                  value={
+                    !r.user?.accessProfileNames?.length ? (
+                      <Badge size="sm" color="amber" title="No Access Profile was assigned at the time of this event.">
+                        Unassigned
+                      </Badge>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Badge size="sm" color="slate">
+                          {r.user.accessProfileNames[0]}
+                        </Badge>
+                        {r.user.accessProfileNames.length > 1 && (
+                          <span className="text-2xs text-slate-500 font-medium">+{r.user.accessProfileNames.length - 1}</span>
+                        )}
+                      </span>
+                    )
+                  }
                 />
                 <DetailItem
                   icon={<UserIcon className="h-3.5 w-3.5" />}
@@ -470,7 +478,7 @@ export const AuditTrailDetailView: React.FC<{
                   value={r.module || "-"}
                 />
                 <DetailItem
-                  icon={<FileText className="h-3.5 w-3.5" />}
+                  icon={<IconLabel className="h-3.5 w-3.5" />}
                   label="Entity Name"
                   value={entityLabel}
                 />
@@ -483,30 +491,44 @@ export const AuditTrailDetailView: React.FC<{
                 )}
                 {r.objectCode && (
                   <DetailItem
-                    icon={<Hash className="h-3.5 w-3.5" />}
+                    icon={<IconSourceCode className="h-3.5 w-3.5" />}
                     label="Object Code"
                     value={r.objectCode}
                   />
                 )}
-                {(r.fromStatus || r.toStatus) && (
-                  <DetailItem
-                    icon={<IconExchange className="h-3.5 w-3.5" />}
-                    label="Status Transition"
-                    value={
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                          {formatWorkflowStatusLabel(r.fromStatus)}
-                        </span>
-                        <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />
-                        <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                          {formatWorkflowStatusLabel(r.toStatus)}
-                        </span>
-                      </div>
-                    }
-                  />
-                )}
+                {(() => {
+                  const fromRaw = (r.fromStatus ?? "").trim();
+                  const toRaw = (r.toStatus ?? "").trim();
+                  // A blank fromStatus with a real toStatus is a creation (e.g. Controlled Copy
+                  // REQUEST) -- the record simply didn't exist before, which is itself meaningful
+                  // ("None -> Ready for Distribution"). Symmetrically, a real fromStatus with a
+                  // blank toStatus is a deletion (e.g. Access Profile DELETE) -- also meaningful
+                  // ("Active -> None"), not something to hide. Only hide when NEITHER side carries
+                  // a status at all (Login/View -- no status concept applies) or both sides are the
+                  // same real value (a genuine no-op).
+                  if (fromRaw === "" && toRaw === "") return null;
+                  const isNoOp = fromRaw !== "" && toRaw !== "" && fromRaw.toLowerCase() === toRaw.toLowerCase();
+                  if (isNoOp) return null;
+                  return (
+                    <DetailItem
+                      icon={<IconExchange className="h-3.5 w-3.5" />}
+                      label="Status Transition"
+                      value={
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                            {fromRaw === "" ? "None" : formatWorkflowStatusLabel(r.fromStatus)}
+                          </span>
+                          <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />
+                          <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                            {toRaw === "" ? "None" : formatWorkflowStatusLabel(r.toStatus)}
+                          </span>
+                        </div>
+                      }
+                    />
+                  );
+                })()}
                 <DetailItem
-                  icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                  icon={<PenTool className="h-3.5 w-3.5 -rotate-[90deg]"/>}
                   label="E-Signature Status"
                   value={<Badge color={signature.color} size="sm">{signature.label}</Badge>}
                   last={!r.signatureId}
@@ -527,13 +549,28 @@ export const AuditTrailDetailView: React.FC<{
             </FormSection>
           </div>
 
-          {/* GxP Reason / Comment Box */}
+          {/* GxP Reason / Comment Box -- a structured comment (e.g. "Controlled Copy CANCEL
+              (Record); Copy Number: X; Document: Y; Reason: ...", see
+              buildControlledCopyRecordActionComment) packs several distinct fields into one
+              "; "-joined string. Rendered inline that reads as one long, hard-to-scan line; break
+              each field onto its own line instead. A plain free-text reason (no "; ") is
+              unaffected. */}
           {reason !== "-" && (
             <FormSection title="GxP Reason / Description" icon={<IconMessage2 className="h-4 w-4" />}>
               <div className="rounded-xl bg-gradient-to-r from-slate-50 to-emerald-50/40 p-4 border border-slate-200/80">
-                <p className="leading-relaxed text-xs sm:text-sm font-medium text-slate-800 whitespace-pre-wrap">
-                  {reason}
-                </p>
+                {reason.includes("; ") ? (
+                  <div className="space-y-1.5">
+                    {reason.split("; ").map((segment, index) => (
+                      <p key={index} className="leading-relaxed text-xs sm:text-sm font-medium text-slate-800 break-words">
+                        {segment}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="leading-relaxed text-xs sm:text-sm font-medium text-slate-800 whitespace-pre-wrap">
+                    {reason}
+                  </p>
+                )}
               </div>
             </FormSection>
           )}
@@ -661,7 +698,7 @@ export const AuditTrailDetailView: React.FC<{
         </div>
       )}
 
-      {isExportModalOpen && (
+      {isExportModalOpen && r && (
         <AuditExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} record={r} />
       )}
 

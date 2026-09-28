@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,11 +49,7 @@ public class PublishingWorkspaceJobService {
                 "READY_FOR_PUBLISHING",
                 "READY_FOR_PUBLISHING",
                 "Queued publishing package generation and publish processing.",
-                List.of(
-                        new AuditTrailChangeResponse("Selected Template ID", "-", request == null || !StringUtils.hasText(request.publishingTemplateId()) ? "-" : request.publishingTemplateId()),
-                        new AuditTrailChangeResponse("Selected Layout", "-", request == null || !StringUtils.hasText(request.selectedLayout()) ? "-" : request.selectedLayout()),
-                        new AuditTrailChangeResponse("Change Summary", "-", request == null || !StringUtils.hasText(request.changeSummary()) ? "-" : request.changeSummary())
-                )
+                buildQueuedSelectionChanges(request)
         );
 
         return saved;
@@ -76,14 +73,30 @@ public class PublishingWorkspaceJobService {
                 "DRAFT",
                 "DRAFT",
                 "Queued publishing workspace preview generation.",
-                List.of(
-                        new AuditTrailChangeResponse("Selected Template ID", "-", request == null || !StringUtils.hasText(request.publishingTemplateId()) ? "-" : request.publishingTemplateId()),
-                        new AuditTrailChangeResponse("Selected Layout", "-", request == null || !StringUtils.hasText(request.selectedLayout()) ? "-" : request.selectedLayout()),
-                        new AuditTrailChangeResponse("Change Summary", "-", request == null || !StringUtils.hasText(request.changeSummary()) ? "-" : request.changeSummary())
-                )
+                buildQueuedSelectionChanges(request)
         );
 
         return saved;
+    }
+
+    /**
+     * A queued job has no real "before" for these fields, so a row is only meaningful when the
+     * request actually carried a value. Unconditionally emitting a row for every field regardless
+     * produced a "Selected Template ID: - -> -" no-op (and likewise for Layout/Change Summary)
+     * whenever the workspace was opened without pre-selecting one -- the common case.
+     */
+    private List<AuditTrailChangeResponse> buildQueuedSelectionChanges(PublishingWorkspaceRequest request) {
+        List<AuditTrailChangeResponse> changes = new ArrayList<>();
+        if (request != null && StringUtils.hasText(request.publishingTemplateId())) {
+            changes.add(new AuditTrailChangeResponse("Selected Template ID", null, request.publishingTemplateId()));
+        }
+        if (request != null && StringUtils.hasText(request.selectedLayout())) {
+            changes.add(new AuditTrailChangeResponse("Selected Layout", null, request.selectedLayout()));
+        }
+        if (request != null && StringUtils.hasText(request.changeSummary())) {
+            changes.add(new AuditTrailChangeResponse("Change Summary", null, request.changeSummary()));
+        }
+        return changes;
     }
 
     @Transactional(readOnly = true)

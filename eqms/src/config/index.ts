@@ -56,6 +56,11 @@ export const config = {
     workerUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
   },
 
+  // OnlyOffice Document Server (browser-reachable address for the DocsAPI script + editor iframe)
+  onlyOffice: {
+    documentServerUrl: import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8082',
+  },
+
   // Date Formats
   dateFormats: {
     display: 'MMM DD, YYYY',

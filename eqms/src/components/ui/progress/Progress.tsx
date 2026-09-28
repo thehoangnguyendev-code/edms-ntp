@@ -17,6 +17,13 @@ export interface ProgressProps {
   size?: "xs" | "sm" | "md" | "lg";
   /** Whether to animate the progress change */
   animated?: boolean;
+  /**
+   * No real incremental value to report (e.g. a single synchronous action with no partial
+   * progress signal from the backend) -- shows a bar continuously sliding back and forth instead
+   * of a value-based fill, so it never sits frozen at 0% while work is actually happening.
+   * `value`/`max` are ignored while this is set.
+   */
+  indeterminate?: boolean;
 }
 
 const variantStyles = {
@@ -45,6 +52,7 @@ export const Progress: React.FC<ProgressProps> = ({
   variant = "default",
   size = "md",
   animated = true,
+  indeterminate = false,
 }) => {
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
@@ -56,11 +64,17 @@ export const Progress: React.FC<ProgressProps> = ({
         className
       )}
       role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={max}
-      aria-valuenow={value}
+      aria-valuemin={indeterminate ? undefined : 0}
+      aria-valuemax={indeterminate ? undefined : max}
+      aria-valuenow={indeterminate ? undefined : value}
     >
-      {animated ? (
+      {indeterminate ? (
+        <motion.div
+          className={cn("h-full w-1/3 rounded-full", variantStyles[variant], indicatorClassName)}
+          animate={{ x: ["-100%", "300%"] }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+        />
+      ) : animated ? (
         <motion.div
           className={cn(
             "h-full rounded-full relative overflow-hidden",

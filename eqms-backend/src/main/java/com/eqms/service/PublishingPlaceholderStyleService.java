@@ -281,19 +281,19 @@ public class PublishingPlaceholderStyleService {
 
     private PublishingPlaceholderStyleConfig parseStyle(String styleJson) {
         if (!StringUtils.hasText(styleJson)) {
-            return new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null);
+            return new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH");
         }
         try {
             PublishingPlaceholderStyleConfig config = objectMapper.readValue(styleJson, PublishingPlaceholderStyleConfig.class);
-            return config == null ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null) : config;
+            return config == null ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH") : config;
         } catch (Exception ex) {
-            return new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null);
+            return new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH");
         }
     }
 
     private String serializeStyle(PublishingPlaceholderStyleConfig style) {
         try {
-            return objectMapper.writeValueAsString(style == null ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null) : style);
+            return objectMapper.writeValueAsString(style == null ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH") : style);
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize placeholder style", ex);
         }
@@ -301,7 +301,7 @@ public class PublishingPlaceholderStyleService {
 
     private PublishingPlaceholderStyleConfig sanitiseStyle(String placeholderType, PublishingPlaceholderStyleConfig style) {
         PublishingPlaceholderStyleConfig safe = style == null
-                ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null)
+                ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH")
                 : style;
         boolean signature = "SIGNATURE".equalsIgnoreCase(placeholderType);
         List<String> transforms = signature ? List.of() : safe.transforms();
@@ -316,7 +316,12 @@ public class PublishingPlaceholderStyleService {
         String numberFormat = signature ? null : safe.numberFormat();
         Boolean preserveLineBreaks = safe.preserveLineBreaks() == null || safe.preserveLineBreaks();
         Integer maxLines = safe.maxLines() != null && safe.maxLines() > 0 ? safe.maxLines() : null;
-        return new PublishingPlaceholderStyleConfig(transforms, fontFamily, fontSizePt, bold, italic, underline, color, alignment, dateFormat, numberFormat, preserveLineBreaks, maxLines);
+        String visibility = StringUtils.hasText(safe.visibility()) ? safe.visibility().trim().toUpperCase(Locale.ROOT) : PublishingPlaceholderStyleConfig.VISIBILITY_BOTH;
+        if (!java.util.List.of(PublishingPlaceholderStyleConfig.VISIBILITY_BOTH, PublishingPlaceholderStyleConfig.VISIBILITY_PUBLISH,
+                PublishingPlaceholderStyleConfig.VISIBILITY_CONTROLLED_COPY).contains(visibility)) {
+            throw new IllegalArgumentException("Placeholder visibility must be BOTH, PUBLISH or CONTROLLED_COPY");
+        }
+        return new PublishingPlaceholderStyleConfig(transforms, fontFamily, fontSizePt, bold, italic, underline, color, alignment, dateFormat, numberFormat, preserveLineBreaks, maxLines, visibility);
     }
 
     private String normalizeComponentType(String value) {

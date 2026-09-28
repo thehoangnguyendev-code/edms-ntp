@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { securityApi } from "@/services/api/security";
+import { settingsApi } from "@/services/api/settings";
 import { filterOutExcludedWorkflowParticipants } from "@/features/documents/shared/workflowParticipantFilters";
 import type { User as AppUser } from "@/types";
 
@@ -32,6 +33,10 @@ export interface ParticipantRosterTabProps {
     onModalClose?: () => void;
     isReadOnly?: boolean;
     excludedUserIds?: string[];
+    /** Reviewer-only: the Sub-Type's resolved requirement. REQUIRED drives a minimum of 1
+     * directly in the picker modal, instead of letting the user under-select and only finding
+     * out when the server rejects the Save. No maximum exists in either state. */
+    reviewRequirement?: "NONE" | "REQUIRED" | null;
 }
 
 const UserSelectionModal: React.FC<{
@@ -44,7 +49,14 @@ const UserSelectionModal: React.FC<{
     multiSelect: boolean;
     existingIds: string[];
     excludedUserIds?: string[];
-}> = ({ isOpen, onClose, onConfirm, roleLabel, permissionCode, revisionId, multiSelect, existingIds, excludedUserIds }) => {
+    /** Remaining slots left before the Sub-Type's Reviewer cap is hit (SINGLE = 1 total).
+     * undefined = no cap (MULTIPLE/FLEXIBLE have a minimum, not a maximum). */
+    maxSelectable?: number;
+    /** Sub-Type's total Reviewer floor (existing + newly selected must reach this to confirm).
+     * undefined = no floor beyond "at least one" (already enforced by confirmDisabled below). */
+    minRequiredTotal?: number;
+    requirementHint?: string;
+}> = ({ isOpen, onClose, onConfirm, roleLabel, permissionCode, revisionId, multiSelect, existingIds, excludedUserIds, maxSelectable, minRequiredTotal, requirementHint }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -133,7 +145,11 @@ const UserSelectionModal: React.FC<{
 
     const handleToggleUser = (userId: string) => {
         if (multiSelect) {
-            setSelectedIds((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
+            setSelectedIds((prev) => {
+                if (prev.includes(userId)) return prev.filter((id) => id !== userId);
+                if (maxSelectable !== undefined && prev.length >= maxSelectable) return prev;
+                return [...prev, userId];
+            });
         } else {
             setSelectedIds((prev) => (prev[0] === userId ? [] : [userId]));
         }
@@ -151,6 +167,10 @@ const UserSelectionModal: React.FC<{
         onClose();
     };
 
+    const totalAfterConfirm = existingIds.length + selectedIds.length;
+    const belowMinimum = minRequiredTotal !== undefined && totalAfterConfirm < minRequiredTotal;
+    const atMax = maxSelectable !== undefined && selectedIds.length >= maxSelectable;
+
     return (
         <FormModal
             isOpen={isOpen}
@@ -159,10 +179,23 @@ const UserSelectionModal: React.FC<{
             title={multiSelect ? `Setup ${roleLabel}s` : `Setup ${roleLabel}`}
             description={multiSelect ? `Select users who will ${roleLabel.toLowerCase()} this document.` : `Select the final ${roleLabel.toLowerCase()} for this document.`}
             confirmText={multiSelect ? `Update ${roleLabel}s (${selectedIds.length})` : "Commit Selection"}
-            confirmDisabled={selectedIds.length === 0}
+            confirmDisabled={selectedIds.length === 0 || belowMinimum}
             size="lg"
         >
             <div className="space-y-4">
+                {requirementHint && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        {requirementHint}
+                        {belowMinimum && (
+                            <span className="block mt-0.5 font-medium">
+                                Currently selecting {totalAfterConfirm} of {minRequiredTotal} required — select {minRequiredTotal - totalAfterConfirm} more.
+                            </span>
+                        )}
+                        {atMax && !belowMinimum && (
+                            <span className="block mt-0.5 font-medium">Limit reached — remove a selection to change it.</span>
+                        )}
+                    </div>
+                )}
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
@@ -188,16 +221,19 @@ const UserSelectionModal: React.FC<{
                             {filteredUsers.map((user, index) => {
                                 const isAlreadyAdded = existingIds.includes(user.id);
                                 const isSelected = selectedIds.includes(user.id);
+                                const isCappedOut = !isSelected && maxSelectable !== undefined && selectedIds.length >= maxSelectable;
+                                const isDisabled = isAlreadyAdded || isCappedOut;
                                 return (
                                     <button
                                         key={user.id}
-                                        onClick={() => !isAlreadyAdded && handleToggleUser(user.id)}
-                                        disabled={isAlreadyAdded}
+                                        onClick={() => !isDisabled && handleToggleUser(user.id)}
+                                        disabled={isDisabled}
+                                        title={isCappedOut ? "Selection limit reached for this Sub-Type" : undefined}
                                         className={cn(
                                             "w-full flex items-center gap-3 py-2.5 px-3 rounded-lg transition-all group text-left border",
                                             isSelected
                                                 ? "bg-emerald-50 border-emerald-200 shadow-sm"
-                                                : isAlreadyAdded
+                                                : isDisabled
                                                     ? "bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed"
                                                     : "bg-white border-slate-200 hover:border-emerald-500/30 hover:shadow-sm"
                                         )}
@@ -266,10 +302,36 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
     onModalClose: externalModalClose,
     isReadOnly = false,
     excludedUserIds = [],
+    reviewRequirement,
 }) => {
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const isModalOpen = externalModalOpen !== undefined ? externalModalOpen : internalModalOpen;
+
+    // Reviewer-only: surface whether Document Properties currently has Parallel or Sequential
+    // Review enabled (see DocumentPropertiesView.tsx "Review & Approval Workflow") right on this
+    // roster, since the Sequence column/order-by-drag only actually matters -- and the numbers
+    // are only enforced one-at-a-time -- in Sequential mode. No permission gate: same public
+    // config every document-creation view already reads for other operational settings.
+    const [parallelReviewEnabled, setParallelReviewEnabled] = useState<boolean | null>(null);
+    useEffect(() => {
+        if (roleLabel !== "Reviewer") return;
+        let alive = true;
+        settingsApi.getDocumentsOperationalConfig()
+            .then((config) => { if (alive) setParallelReviewEnabled(Boolean(config?.parallelReviewEnabled)); })
+            .catch(() => { if (alive) setParallelReviewEnabled(null); });
+        return () => { alive = false; };
+    }, [roleLabel]);
+
+    // Only Reviewer rosters are Sub-Type-gated; Approver has its own fixed "exactly one" rule
+    // via multiSelect=false, unrelated to reviewRequirement. reviewRequirement is now a plain
+    // Required/Not-Required toggle (no more exactly-1 / at-least-2 split) -- Required only ever
+    // means "at least one Reviewer", never a maximum, so there is no maxSelectable to compute.
+    const maxSelectable: number | undefined = undefined;
+    const minRequiredTotal = roleLabel === "Reviewer" && reviewRequirement === "REQUIRED" ? 1 : undefined;
+    const requirementHint = roleLabel === "Reviewer" && reviewRequirement === "REQUIRED"
+        ? "This Sub-Type requires at least 1 Reviewer."
+        : undefined;
 
     const handleModalClose = () => {
         if (externalModalClose) externalModalClose();
@@ -320,6 +382,19 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
 
     return (
         <div className="space-y-4">
+            {roleLabel === "Reviewer" && parallelReviewEnabled !== null && (
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span>Review mode:</span>
+                    <Badge color={parallelReviewEnabled ? "blue" : "emerald"} size="sm">
+                        {parallelReviewEnabled ? "Parallel" : "Sequential"}
+                    </Badge>
+                    <span>
+                        {parallelReviewEnabled
+                            ? "— any Reviewer may act in any order"
+                            : "— Reviewers must act one at a time, in the order below"}
+                    </span>
+                </div>
+            )}
             {sorted.length > 0 ? (
                 <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
@@ -369,7 +444,7 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
                                                     </span>
                                                 </div>
                                             ) : (
-                                                <Badge color="emerald">{roleLabel}</Badge>
+                                                <Badge color="emerald" size="sm">{roleLabel}</Badge>
                                             )}
                                         </td>
                                         {allowRemove && (
@@ -411,6 +486,9 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
                     multiSelect={multiSelect}
                     existingIds={participants.map((p) => p.id)}
                     excludedUserIds={excludedUserIds}
+                    maxSelectable={maxSelectable}
+                    minRequiredTotal={minRequiredTotal}
+                    requirementHint={requirementHint}
                 />
             )}
         </div>

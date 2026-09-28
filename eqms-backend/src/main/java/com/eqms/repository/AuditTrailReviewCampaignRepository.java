@@ -17,9 +17,9 @@ public interface AuditTrailReviewCampaignRepository extends JpaRepository<AuditT
             SELECT campaign FROM AuditTrailReviewCampaign campaign
             LEFT JOIN campaign.reviewer reviewer
             WHERE (:search IS NULL
-                    OR LOWER(campaign.name) LIKE LOWER(CONCAT('%', :search, '%'))
-                    OR LOWER(COALESCE(campaign.description, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                    OR LOWER(COALESCE(reviewer.fullName, '')) LIKE LOWER(CONCAT('%', :search, '%')))
+                    OR LOWER(campaign.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                    OR LOWER(COALESCE(campaign.description, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                    OR LOWER(COALESCE(reviewer.fullName, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
               AND (:status IS NULL OR campaign.status = :status)
             """)
     Page<AuditTrailReviewCampaign> search(

@@ -4,7 +4,10 @@ import { LoadingFallback } from './LoadingFallback';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
 
 // ==================== LAZY LOADED ====================
-const ReportView = lazy(() => import('@/features/report').then(m => ({ default: m.ReportView })));
+const ReportTemplatesView = lazy(() => import('@/features/report').then(m => ({ default: m.ReportTemplatesView })));
+const ReportHistoryView = lazy(() => import('@/features/report').then(m => ({ default: m.ReportHistoryView })));
+const ScheduledReportsView = lazy(() => import('@/features/report').then(m => ({ default: m.ScheduledReportsView })));
+const BackupRestoreView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupRestoreView })));
 const AuditTrailView = lazy(() => import('@/features/audit-trail').then(m => ({ default: m.AuditTrailView })));
 const AuditTrailDetailView = lazy(() => import('@/features/audit-trail').then(m => ({ default: m.AuditTrailDetailView })));
 const AuditTrailReviewView = lazy(() => import('@/features/audit-trail').then(m => ({ default: m.AuditTrailReviewView })));
@@ -21,7 +24,11 @@ export function qualityRoutes() {
   return (
     <>
       <Route path="report" element={<Navigate to="/report/templates" replace />} />
-      <Route path="report/:tab" element={protectedElement("report.module.view", <ReportView />)} />
+      <Route path="report/templates" element={protectedElement("report.module.view", <ReportTemplatesView />)} />
+      <Route path="report/history" element={protectedElement("report.module.view", <ReportHistoryView />)} />
+      <Route path="report/scheduled" element={protectedElement("report.module.view", <ScheduledReportsView />)} />
+      <Route path="report/*" element={<Navigate to="/report/templates" replace />} />
+      <Route path="backup-restore" element={protectedElement("backup.module.view", <BackupRestoreView />)} />
       <Route path="audit-trail" element={protectedElement("audittrail.module.view", <AuditTrailView />)} />
       <Route path="audit-trail/:recordId" element={protectedElement("audittrail.module.view", <AuditTrailDetailView />)} />
       <Route path="audit-trail/reviews" element={protectedElement("audit.review.view", <AuditTrailReviewView />)} />

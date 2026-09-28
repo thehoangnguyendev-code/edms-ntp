@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +44,26 @@ public class ClamAvScanService {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    /**
+     * #11: RevisionUploadFileValidator/ControlledCopyService/PublishingTemplateService/
+     * UserManagementService all check {@link #isEnabled()} and silently skip scanning when it is
+     * false -- correct behavior for local development, but if this flips to false in a live
+     * environment (misconfiguration, an env var dropped during a deploy) every subsequent upload
+     * across the whole application goes unscanned with nothing surfacing that fact anywhere.
+     * Alarm loudly at startup so an operator sees it in logs/monitoring, mirroring the MinIO
+     * default-credential warning this session already added for the same class of "silently
+     * running in a weaker posture than intended" gap.
+     */
+    @PostConstruct
+    private void alarmIfDisabled() {
+        if (!enabled) {
+            log.warn("Malware scanning is DISABLED (app.security.virus-scan.enabled=false) -- "
+                    + "revision source files, Controlled Copy evidence, Publishing Template assets, and "
+                    + "user certification uploads are all being stored WITHOUT a virus scan. This is fine "
+                    + "for local development only; it MUST be enabled before this environment stores real data.");
+        }
     }
 
     public record ScanResult(boolean clean, String signatureName) {

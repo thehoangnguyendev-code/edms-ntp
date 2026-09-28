@@ -395,6 +395,34 @@ public class EmailTemplateBootstrap implements ApplicationRunner {
                         "Seeded sample template for controlled copy recall notifications"
                 ),
                 new TemplateSeed(
+                        "Controlled Copy Obsoleted Notification",
+                        "controlled-copy-obsoleted-notification",
+                        "{{controlledCopyNumber}} - Controlled Copy Obsoleted",
+                        """
+                                <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;">
+                                  <p>Hello {{recipientName}},</p>
+                                  <p>The source document/revision for this controlled copy has been made Obsolete, so this controlled copy is no longer valid for use.</p>
+                                  <div style="padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;">
+                                    <p><strong>Controlled Copy:</strong> {{controlledCopyNumber}}</p>
+                                    <p><strong>Document:</strong> {{documentTitle}}</p>
+                                    <p><strong>Revision Number:</strong> {{revisionNumber}}</p>
+                                    <p><strong>Status:</strong> {{controlledCopyStatus}}</p>
+                                    <p><strong>Reason:</strong> {{workflowComment}}</p>
+                                    <p><strong>Detail:</strong> <a href="{{controlledCopyUrl}}">{{controlledCopyUrl}}</a></p>
+                                  </div>
+                                  <p style="margin-top: 16px;">Please stop using this controlled copy immediately.</p>
+                                  <p>Best regards,<br/>{{systemName}}</p>
+                                </div>
+                                """,
+                        "Controlled copy obsoleted notification",
+                        vars(
+                                "recipientName", "controlledCopyNumber", "documentTitle",
+                                "revisionNumber", "controlledCopyStatus", "workflowComment", "controlledCopyUrl",
+                                "systemName"
+                        ),
+                        "Seeded sample template for controlled copy obsoleted (source revision/document obsoleted) notifications"
+                ),
+                new TemplateSeed(
                         "Controlled Copy Expiry Notification",
                         "controlled-copy-expiry-notification",
                         "{{controlledCopyNumber}} - Controlled Copy Expiry Reminder",

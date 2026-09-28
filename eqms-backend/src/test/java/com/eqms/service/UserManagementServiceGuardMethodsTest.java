@@ -13,6 +13,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
+import com.eqms.dto.user.UpdateUserRequest;
+import org.springframework.test.util.ReflectionTestUtils;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,10 +48,8 @@ class UserManagementServiceGuardMethodsTest {
     @Mock private UserLanguageRepository userLanguageRepository;
     @Mock private RoleDefinitionRepository roleRepository;
     @Mock private PermissionRepository permissionRepository;
-    @Mock private RolePermissionRepository rolePermissionRepository;
     @Mock private PermissionEvaluationService permissionEvaluationService;
     @Mock private DocumentWorkflowSettingRepository documentWorkflowSettingRepository;
-    @Mock private DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     @Mock private AuthSessionRepository sessionRepository;
     @Mock private AuthAuditService auditService;
     @Mock private CurrentUserService currentUserService;
@@ -59,6 +61,8 @@ class UserManagementServiceGuardMethodsTest {
     @Mock private FileStorageService fileStorageService;
     @Mock private AuthorizationEngineService authorizationEngineService;
     @Mock private NotificationDispatcher notificationDispatcher;
+    @Mock private com.eqms.repository.UserAccessProfileRepository userAccessProfileRepository;
+    @Mock private com.eqms.service.SodConstraintService sodConstraintService;
 
     @InjectMocks
     private UserManagementService userManagementService;
@@ -126,5 +130,47 @@ class UserManagementServiceGuardMethodsTest {
     void checkLastActiveAdminGuard_notAGuardedAction_returnsEmptyWithoutLookup() {
         assertTrue(userManagementService.checkLastActiveAdminGuard(targetId, "UPDATE").isEmpty());
         verify(userRepository, never()).findById(any());
+    }
+
+    /**
+     * Regression: the raw base64 avatar payload must never be written into the audit trail --
+     * only a redacted marker. Covers the Admin-edits-another-user path
+     * (UserManagementService.detectUserChanges); AuthService.updateProfile (self-service) has the
+     * equivalent redaction inline, covered separately.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void detectUserChanges_avatarChanged_logsRedactedMarker_notRawBase64() {
+        target.setAvatar("data:image/png;base64," + "A".repeat(50_000));
+        UpdateUserRequest request = new UpdateUserRequest(
+                null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                "data:image/png;base64," + "B".repeat(50_000), null, null);
+
+        List<AuditTrailChangeResponse> changes = (List<AuditTrailChangeResponse>)
+                ReflectionTestUtils.invokeMethod(userManagementService, "detectUserChanges", target, request);
+
+        assertEquals(1, changes.size());
+        AuditTrailChangeResponse change = changes.get(0);
+        assertEquals("avatar", change.field());
+        assertEquals("(previous image)", change.oldValue());
+        assertEquals("(new image)", change.newValue());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void detectUserChanges_avatarUnchanged_noEntryLogged() {
+        String same = "data:image/png;base64," + "A".repeat(50_000);
+        target.setAvatar(same);
+        UpdateUserRequest request = new UpdateUserRequest(
+                null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, same, null, null);
+
+        List<AuditTrailChangeResponse> changes = (List<AuditTrailChangeResponse>)
+                ReflectionTestUtils.invokeMethod(userManagementService, "detectUserChanges", target, request);
+
+        assertTrue(changes.isEmpty());
     }
 }

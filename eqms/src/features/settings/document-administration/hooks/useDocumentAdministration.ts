@@ -5,8 +5,6 @@ import type { DocumentAdministrationRule, DocumentAdministrationSettings } from 
 
 const RULE_DEFAULTS: Record<string, boolean> = {
   "reviewer-no-approve": false,
-  "require-two-reviewers": false,
-  "require-one-approver": true,
   "author-cannot-be-reviewer-or-approver": false,
   "co-author-cannot-be-reviewer-or-approver": false,
   "same-user-cannot-hold-multiple-workflow-roles": false,
@@ -24,8 +22,6 @@ const toRules = (settings: DocumentAdministrationSettings): Record<string, boole
   return {
     ...RULE_DEFAULTS,
     "reviewer-no-approve": settings.reviewerNoApprove,
-    "require-two-reviewers": settings.requireTwoReviewers,
-    "require-one-approver": settings.requireOneApprover,
     "author-cannot-be-reviewer-or-approver": settings.authorCannotBeReviewerOrApprover,
     "co-author-cannot-be-reviewer-or-approver": settings.coAuthorCannotBeReviewerOrApprover,
     "same-user-cannot-hold-multiple-workflow-roles": settings.sameUserCannotHoldMultipleWorkflowRoles,
@@ -79,8 +75,6 @@ export const useDocumentAdministration = () => {
     if (!snapshot) throw new Error("Revision integrity rules have not loaded yet.");
     const response = await settingsApi.updateDocumentAdministration({
       reviewerNoApprove: !!rules["reviewer-no-approve"],
-      requireTwoReviewers: !!rules["require-two-reviewers"],
-      requireOneApprover: !!rules["require-one-approver"],
       authorCannotBeReviewerOrApprover: !!rules["author-cannot-be-reviewer-or-approver"],
       coAuthorCannotBeReviewerOrApprover: !!rules["co-author-cannot-be-reviewer-or-approver"],
       sameUserCannotHoldMultipleWorkflowRoles: !!rules["same-user-cannot-hold-multiple-workflow-roles"],

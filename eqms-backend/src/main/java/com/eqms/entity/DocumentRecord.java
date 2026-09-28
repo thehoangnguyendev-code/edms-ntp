@@ -2,6 +2,8 @@ package com.eqms.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,6 +20,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
+@jakarta.persistence.EntityListeners(EntityChangeListener.class)
 @Table(name = "documents")
 public class DocumentRecord {
 
@@ -103,6 +106,10 @@ public class DocumentRecord {
     @Column(name = "review_date")
     private LocalDate reviewDate;
 
+    /** When the DCO last saved the next-revision (upgrade) configuration; cleared once the upload creates the revision. */
+    @Column(name = "next_revision_configured_at")
+    private java.time.Instant nextRevisionConfiguredAt;
+
     @Column(name = "periodic_review_cycle")
     private Integer periodicReviewCycle;
 
@@ -111,6 +118,17 @@ public class DocumentRecord {
 
     @Column(name = "sub_type", length = 255)
     private String subType;
+
+    /** FK to {@code document_sub_types.id}. Authoritative reference; {@link #subType} is the
+     *  denormalised display name. Null when no Sub-Type is selected. */
+    @Column(name = "sub_type_id")
+    private UUID subTypeId;
+
+    /** Snapshot of the Sub-Type's review policy taken when the Sub-Type is set/changed on this
+     *  Draft. Never recomputed from a later Sub-Type edit. Null defaults to REQUIRED. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_requirement", length = 16)
+    private com.eqms.entity.ReviewRequirement reviewRequirement;
 
     @Column(length = 100)
     private String language;
@@ -143,6 +161,28 @@ public class DocumentRecord {
 
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
+
+    /**
+     * Groundwork for the Legacy Import feature (Phase 1 of 2, see V453). Not yet set by any
+     * code path -- ordinary document creation leaves all four of these null/false. Phase 2 wires
+     * the Legacy Import screen to populate them.
+     */
+    @Column(name = "is_legacy_import", nullable = false)
+    private boolean legacyImport = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "legacy_imported_by")
+    private UserAccount legacyImportedBy;
+
+    @Column(name = "legacy_imported_at")
+    private Instant legacyImportedAt;
+
+    /** The paper original's own effective date and time, distinct from this record's own createdAt. */
+    @Column(name = "original_effective_date")
+    private Instant originalEffectiveDate;
+
+    @Column(name = "legacy_justification", columnDefinition = "TEXT")
+    private String legacyJustification;
 
     @PrePersist
     void onCreate() {
@@ -324,6 +364,14 @@ public class DocumentRecord {
         this.validUntil = validUntil;
     }
 
+    public java.time.Instant getNextRevisionConfiguredAt() {
+        return nextRevisionConfiguredAt;
+    }
+
+    public void setNextRevisionConfiguredAt(java.time.Instant nextRevisionConfiguredAt) {
+        this.nextRevisionConfiguredAt = nextRevisionConfiguredAt;
+    }
+
     public LocalDate getReviewDate() {
         return reviewDate;
     }
@@ -354,6 +402,22 @@ public class DocumentRecord {
 
     public void setSubType(String subType) {
         this.subType = subType;
+    }
+
+    public UUID getSubTypeId() {
+        return subTypeId;
+    }
+
+    public void setSubTypeId(UUID subTypeId) {
+        this.subTypeId = subTypeId;
+    }
+
+    public com.eqms.entity.ReviewRequirement getReviewRequirement() {
+        return reviewRequirement;
+    }
+
+    public void setReviewRequirement(com.eqms.entity.ReviewRequirement reviewRequirement) {
+        this.reviewRequirement = reviewRequirement;
     }
 
     public String getLanguage() {
@@ -434,6 +498,46 @@ public class DocumentRecord {
 
     public void setCancelledAt(Instant cancelledAt) {
         this.cancelledAt = cancelledAt;
+    }
+
+    public boolean isLegacyImport() {
+        return legacyImport;
+    }
+
+    public void setLegacyImport(boolean legacyImport) {
+        this.legacyImport = legacyImport;
+    }
+
+    public UserAccount getLegacyImportedBy() {
+        return legacyImportedBy;
+    }
+
+    public void setLegacyImportedBy(UserAccount legacyImportedBy) {
+        this.legacyImportedBy = legacyImportedBy;
+    }
+
+    public Instant getLegacyImportedAt() {
+        return legacyImportedAt;
+    }
+
+    public void setLegacyImportedAt(Instant legacyImportedAt) {
+        this.legacyImportedAt = legacyImportedAt;
+    }
+
+    public Instant getOriginalEffectiveDate() {
+        return originalEffectiveDate;
+    }
+
+    public void setOriginalEffectiveDate(Instant originalEffectiveDate) {
+        this.originalEffectiveDate = originalEffectiveDate;
+    }
+
+    public String getLegacyJustification() {
+        return legacyJustification;
+    }
+
+    public void setLegacyJustification(String legacyJustification) {
+        this.legacyJustification = legacyJustification;
     }
 
 }

@@ -23,12 +23,6 @@ public class DocumentWorkflowSetting {
     @Column(name = "reviewer_no_approve", nullable = false)
     private boolean reviewerNoApprove = false;
 
-    @Column(name = "require_two_reviewers", nullable = false)
-    private boolean requireTwoReviewers = false;
-
-    @Column(name = "require_one_approver", nullable = false)
-    private boolean requireOneApprover = true;
-
     @Column(name = "author_cannot_be_reviewer_or_approver", nullable = false)
     private boolean authorCannotBeReviewerOrApprover = false;
 
@@ -83,22 +77,6 @@ public class DocumentWorkflowSetting {
 
     public void setReviewerNoApprove(boolean reviewerNoApprove) {
         this.reviewerNoApprove = reviewerNoApprove;
-    }
-
-    public boolean isRequireTwoReviewers() {
-        return requireTwoReviewers;
-    }
-
-    public void setRequireTwoReviewers(boolean requireTwoReviewers) {
-        this.requireTwoReviewers = requireTwoReviewers;
-    }
-
-    public boolean isRequireOneApprover() {
-        return requireOneApprover;
-    }
-
-    public void setRequireOneApprover(boolean requireOneApprover) {
-        this.requireOneApprover = requireOneApprover;
     }
 
     public boolean isAuthorCannotBeReviewerOrApprover() {

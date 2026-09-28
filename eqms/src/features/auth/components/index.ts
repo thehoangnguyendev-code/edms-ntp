@@ -4,3 +4,4 @@ export * from "./AuthBackLink";
 export * from "./AuthTopBackButton";
 export * from "./AuthField";
 export * from "./SessionTimeoutModal";
+export * from "./SessionTimeoutGuard";

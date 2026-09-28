@@ -16,7 +16,7 @@ export const EffectiveActionRow: React.FC<EffectiveActionRowProps> = ({ row }) =
           <span className="text-xs font-semibold text-slate-800 sm:text-sm">{row.actionLabel}</span>
           <Badge color="blue" size="xs">{row.statusLabel}</Badge>
           {row.requiredPermissionCode && (
-            <span className="inline-flex min-w-0 items-center gap-1 font-mono text-[10px] leading-none text-slate-500 sm:text-xs">
+            <span className="inline-flex min-w-0 items-center gap-1  text-[10px] leading-none text-slate-500 sm:text-xs">
               <KeyRound className="h-3.5 w-3.5 shrink-0 text-slate-400" />
               <span className="break-all">{row.requiredPermissionCode}</span>
             </span>

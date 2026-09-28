@@ -1,25 +1,35 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { BookMarked, ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { useTableDragScroll, useDebounce } from "@/hooks";
+import { useTableDragScroll, useDebounce, usePortalDropdown } from "@/hooks";
 import { cn } from "@/components/ui/utils";
-import { settingsApi, type PermissionCatalogFlatItem } from "@/services/api/settings";
+import { settingsApi, type PermissionCatalogFlatItem, type PermissionLifecycleUsage } from "@/services/api/settings";
 
 type SortKey = "code" | "name" | "module" | "groupName";
 
-const TABLE_COLS: { id: SortKey | "no" | "audit" | "description"; label: string; sortable: boolean }[] = [
+const TABLE_COLS: { id: SortKey | "no" | "audit" | "lifecycle" | "description"; label: string; sortable: boolean }[] = [
   { id: "no", label: "No.", sortable: false },
   { id: "code", label: "Code", sortable: true },
   { id: "name", label: "Name", sortable: true },
   { id: "module", label: "Module", sortable: true },
   { id: "groupName", label: "Group", sortable: true },
   { id: "audit", label: "Audit", sortable: false },
+  { id: "lifecycle", label: "Lifecycle", sortable: false },
   { id: "description", label: "Description", sortable: false },
 ];
+
+const formatLifecycleState = (u: PermissionLifecycleUsage) =>
+  `${u.objectTypeLabel} · ${u.fromStatusLabel ?? u.fromStatus ?? "Any state"}`;
+// Includes the action -- two entries can share the same object type + status (e.g. distributing a
+// single Controlled Copy vs. a Controlled Copy Batch both apply "Ready for Distribution"), so the
+// action is what tells them apart and must be visible wherever more than one entry is listed together.
+const formatLifecycleUsage = (u: PermissionLifecycleUsage) =>
+  `${formatLifecycleState(u)} (${u.actionLabel})`;
 
 const thBase =
   "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors group";
@@ -32,6 +42,7 @@ const thBase =
  */
 export const PermissionCatalogTab: React.FC = () => {
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
+  const { openId: openLifecycleId, position: lifecyclePosition, getRef: getLifecycleRef, toggle: toggleLifecycle, close: closeLifecycle } = usePortalDropdown();
 
   const [items, setItems] = useState<PermissionCatalogFlatItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -181,12 +192,12 @@ export const PermissionCatalogTab: React.FC = () => {
                   <tbody className="divide-y divide-slate-200 bg-white">
                     {!loading && items.length === 0 ? (
                       <tr>
-                        <td colSpan={TABLE_COLS.length} className="py-12 text-center">
+                        <td colSpan={TABLE_COLS.length} className="p-0">
                           {error ? (
                             <TableEmptyState title="Failed to Load" description={error} />
                           ) : (
                             <TableEmptyState
-                              icon={<BookMarked className="h-10 w-10 text-slate-300" />}
+                             
                               title="No Permissions Found"
                               description={hasFilters ? "Try adjusting your search or filters." : "No permissions match this filter."}
                             />
@@ -196,24 +207,45 @@ export const PermissionCatalogTab: React.FC = () => {
                     ) : (
                       items.map((p, idx) => (
                         <tr key={p.code} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4 align-top text-center text-xs text-slate-500 whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
-                          <td className="py-3 px-4 align-top whitespace-nowrap">
-                            <span className="font-mono text-xs sm:text-sm font-medium text-slate-800">{p.code}</span>
+                          <td className="py-3 px-4 align-middle text-center text-xs text-slate-500 whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
+                          <td className="py-3 px-4 align-middle whitespace-nowrap">
+                            <span className="text-xs sm:text-sm font-medium text-slate-800">{p.code}</span>
                           </td>
-                          <td className="py-3 px-4 align-top text-xs sm:text-sm text-slate-700 whitespace-nowrap">{p.name}</td>
-                          <td className="py-3 px-4 align-top whitespace-nowrap">
-                            <Badge semantic="info" size="xs">{p.module}</Badge>
+                          <td className="py-3 px-4 align-middle text-xs sm:text-sm text-slate-700 whitespace-nowrap">{p.name}</td>
+                          <td className="py-3 px-4 align-middle whitespace-nowrap">
+                            <Badge semantic="info" size="sm">{p.module}</Badge>
                           </td>
-                          <td className="py-3 px-4 align-top text-xs text-slate-500 whitespace-nowrap">{p.groupName}</td>
-                          <td className="py-3 px-4 align-top whitespace-nowrap">
+                          <td className="py-3 px-4 align-middle text-xs sm:text-sm text-slate-500 whitespace-nowrap">{p.groupName}</td>
+                          <td className="py-3 px-4 align-middle whitespace-nowrap">
                             {p.requiresAudit ? (
-                              <Badge semantic="warning" size="xs">Audited</Badge>
+                              <Badge semantic="warning" size="sm">Audited</Badge>
                             ) : (
-                              <span className="text-2xs text-slate-300">—</span>
+                              <span className="text-sm text-slate-300">—</span>
                             )}
                           </td>
-                          <td className="py-3 px-4 align-top text-xs text-slate-500 max-w-[320px]">
-                            <p className="line-clamp-2">{p.description || "—"}</p>
+                          <td className="py-3 px-4 align-middle whitespace-nowrap">
+                            {p.lifecycleUsages && p.lifecycleUsages.length > 0 ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Badge semantic="info" size="sm" title={formatLifecycleUsage(p.lifecycleUsages[0])}>
+                                  {formatLifecycleState(p.lifecycleUsages[0])}
+                                </Badge>
+                                {p.lifecycleUsages.length > 1 && (
+                                  <button
+                                    ref={getLifecycleRef(p.code)}
+                                    type="button"
+                                    onClick={(e) => toggleLifecycle(p.code, e, { menuHeight: Math.min(40 + p.lifecycleUsages!.length * 24, 280), menuWidth: 260 })}
+                                    className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline transition-colors"
+                                  >
+                                    +{p.lifecycleUsages.length - 1} more
+                                  </button>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-slate-300">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 align-middle text-xs sm:text-sm text-slate-500 whitespace-nowrap">
+                            {p.description || "—"}
                           </td>
                         </tr>
                       ))
@@ -239,6 +271,27 @@ export const PermissionCatalogTab: React.FC = () => {
           </>
         )}
       </div>
+
+      {openLifecycleId && (() => {
+        const activeItem = items.find((p) => p.code === openLifecycleId);
+        const usages: PermissionLifecycleUsage[] = activeItem?.lifecycleUsages ?? [];
+        return createPortal(
+          <>
+            <div className="fixed inset-0 z-40" onClick={closeLifecycle} />
+            <div
+              className="fixed z-50 w-[260px] max-h-[280px] overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg py-1.5"
+              style={lifecyclePosition.style}
+            >
+              {usages.map((u, i) => (
+                <div key={i} className="px-3 py-1.5 text-xs text-slate-600">
+                  {formatLifecycleUsage(u)}
+                </div>
+              ))}
+            </div>
+          </>,
+          document.body
+        );
+      })()}
     </div>
   );
 };

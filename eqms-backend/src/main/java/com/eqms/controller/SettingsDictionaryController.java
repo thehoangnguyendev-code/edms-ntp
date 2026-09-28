@@ -4,10 +4,6 @@ import com.eqms.dto.dictionary.BusinessUnitDictionaryRequest;
 import com.eqms.dto.dictionary.BusinessUnitDictionaryResponse;
 import com.eqms.dto.dictionary.DepartmentDictionaryRequest;
 import com.eqms.dto.dictionary.DepartmentDictionaryResponse;
-import com.eqms.dto.dictionary.DocumentTypeDictionaryRequest;
-import com.eqms.dto.dictionary.DocumentTypeDictionaryResponse;
-import com.eqms.dto.dictionary.DocumentSubTypeDictionaryRequest;
-import com.eqms.dto.dictionary.DocumentSubTypeDictionaryResponse;
 import com.eqms.dto.dictionary.PositionDictionaryRequest;
 import com.eqms.dto.dictionary.PositionDictionaryResponse;
 import com.eqms.dto.dictionary.RetentionPolicyDictionaryRequest;
@@ -150,76 +146,8 @@ public class SettingsDictionaryController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/document-types")
-    public ResponseEntity<List<DocumentTypeDictionaryResponse>> listDocumentTypes() {
-        return ResponseEntity.ok(service.listDocumentTypes());
-    }
-
-    @GetMapping("/document-types/page")
-    public ResponseEntity<PageResponse<DocumentTypeDictionaryResponse>> listDocumentTypesPage(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String modifiedFrom,
-            @RequestParam(required = false) String modifiedTo,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int limit,
-            @RequestParam(defaultValue = "name") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDirection
-    ) {
-        return ResponseEntity.ok(service.listDocumentTypesPage(search, status, modifiedFrom, modifiedTo, page, limit, sortBy, sortDirection));
-    }
-
-    @PostMapping("/document-types")
-    public ResponseEntity<DocumentTypeDictionaryResponse> createDocumentType(@Valid @RequestBody DocumentTypeDictionaryRequest request) {
-        return ResponseEntity.ok(service.createDocumentType(request));
-    }
-
-    @PutMapping("/document-types/{id}")
-    public ResponseEntity<DocumentTypeDictionaryResponse> updateDocumentType(@PathVariable UUID id, @Valid @RequestBody DocumentTypeDictionaryRequest request) {
-        return ResponseEntity.ok(service.updateDocumentType(id, request));
-    }
-
-    @DeleteMapping("/document-types/{id}")
-    public ResponseEntity<Void> deleteDocumentType(@PathVariable UUID id) {
-        service.deleteDocumentType(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/sub-types")
-    public ResponseEntity<List<DocumentSubTypeDictionaryResponse>> listDocumentSubTypes() {
-        return ResponseEntity.ok(service.listDocumentSubTypes());
-    }
-
-    @GetMapping("/sub-types/page")
-    public ResponseEntity<PageResponse<DocumentSubTypeDictionaryResponse>> listDocumentSubTypesPage(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String documentType,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String modifiedFrom,
-            @RequestParam(required = false) String modifiedTo,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int limit,
-            @RequestParam(defaultValue = "name") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDirection
-    ) {
-        return ResponseEntity.ok(service.listDocumentSubTypesPage(search, documentType, status, modifiedFrom, modifiedTo, page, limit, sortBy, sortDirection));
-    }
-
-    @PostMapping("/sub-types")
-    public ResponseEntity<DocumentSubTypeDictionaryResponse> createDocumentSubType(@Valid @RequestBody DocumentSubTypeDictionaryRequest request) {
-        return ResponseEntity.ok(service.createDocumentSubType(request));
-    }
-
-    @PutMapping("/sub-types/{id}")
-    public ResponseEntity<DocumentSubTypeDictionaryResponse> updateDocumentSubType(@PathVariable UUID id, @Valid @RequestBody DocumentSubTypeDictionaryRequest request) {
-        return ResponseEntity.ok(service.updateDocumentSubType(id, request));
-    }
-
-    @DeleteMapping("/sub-types/{id}")
-    public ResponseEntity<Void> deleteDocumentSubType(@PathVariable UUID id) {
-        service.deleteDocumentSubType(id);
-        return ResponseEntity.noContent().build();
-    }
+    // Document Types & Sub-Types moved to DocumentTypeAdminController
+    // (/documents/administration/document-types, /documents/administration/document-sub-types).
 
     @GetMapping("/storage-locations")
     public ResponseEntity<List<StorageLocationDictionaryResponse>> listStorageLocations() {
@@ -295,4 +223,5 @@ public class SettingsDictionaryController {
         service.deleteRetentionPolicy(id);
         return ResponseEntity.noContent().build();
     }
+
 }

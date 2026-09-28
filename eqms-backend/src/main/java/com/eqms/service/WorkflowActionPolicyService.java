@@ -1,11 +1,11 @@
 package com.eqms.service;
 
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.security.*;
 import com.eqms.dto.security.WorkflowActionPolicyPreviewResponse.PolicyChange;
 import com.eqms.dto.security.WorkflowActionPolicyPreviewResponse.PolicyWarning;
 import com.eqms.dto.security.WorkflowActionPolicyPreviewResponse.WouldAffect;
 import com.eqms.entity.*;
-import com.eqms.config.WorkflowPoolTypes;
 import com.eqms.enums.RevisionWorkflowAction;
 import com.eqms.enums.WorkflowActorType;
 import com.eqms.exception.WorkflowPolicyException;
@@ -191,21 +191,43 @@ public class WorkflowActionPolicyService {
             String moduleKey, String workflowKey, String objectType,
             String actionCode, String fromStatus, UUID documentTypeId) {
 
+        workflowRegistryService.requireAction(moduleKey, workflowKey, objectType, actionCode);
+        List<WorkflowActionPolicyResolutionTrace> trace = new ArrayList<>();
+
         if (documentTypeId != null) {
             List<WorkflowActionPolicy> specific = policyRepo.findActivePoliciesForDocumentType(
                     moduleKey, workflowKey, objectType, actionCode, fromStatus, documentTypeId);
             if (!specific.isEmpty()) {
+                WorkflowActionPolicy winner = specific.get(0);
+                trace.add(new WorkflowActionPolicyResolutionTrace(winner.getId(), "DOCUMENT_TYPE_OVERRIDE",
+                        "SELECTED", "DOCUMENT_TYPE_MATCHED",
+                        "An active policy matching the selected document type takes precedence over the global policy."));
                 return new WorkflowActionPolicyEffectiveResponse(
-                        "DOCUMENT_TYPE_OVERRIDE", toResponse(specific.get(0), null), false);
+                        "DOCUMENT_TYPE_OVERRIDE", toResponse(winner, null), false, trace,
+                        "POLICY_RESOLVED", "A document-type override was selected.");
             }
+            trace.add(new WorkflowActionPolicyResolutionTrace(null, "DOCUMENT_TYPE_OVERRIDE", "NOT_FOUND",
+                    "NO_DOCUMENT_TYPE_OVERRIDE", "No active override matches the selected document type."));
         }
         List<WorkflowActionPolicy> global = policyRepo.findActiveGlobalPolicies(
                 moduleKey, workflowKey, objectType, actionCode, fromStatus);
         if (!global.isEmpty()) {
+            WorkflowActionPolicy winner = global.get(0);
+            trace.add(new WorkflowActionPolicyResolutionTrace(winner.getId(), "GLOBAL", "SELECTED",
+                    documentTypeId == null ? "GLOBAL_POLICY_MATCHED" : "GLOBAL_FALLBACK",
+                    documentTypeId == null
+                            ? "The active global policy matches this workflow action."
+                            : "No document-type override matched, so the active global policy was selected."));
             return new WorkflowActionPolicyEffectiveResponse(
-                    "GLOBAL", toResponse(global.get(0), null), false);
+                    "GLOBAL", toResponse(winner, null), documentTypeId != null, trace,
+                    "POLICY_RESOLVED", documentTypeId == null
+                            ? "A global policy was selected."
+                            : "No document-type override matched; the global policy was selected.");
         }
-        return new WorkflowActionPolicyEffectiveResponse("NOT_CONFIGURED", null, false);
+        trace.add(new WorkflowActionPolicyResolutionTrace(null, "GLOBAL", "NOT_FOUND", "NO_ACTIVE_POLICY",
+                "No active global policy matches this workflow action and status."));
+        return new WorkflowActionPolicyEffectiveResponse("NOT_CONFIGURED", null, false, trace,
+                "NO_ACTIVE_POLICY", "No active policy matches this workflow action. The action will be denied.");
     }
 
     // ── Options metadata ──────────────────────────────────────────────────────
@@ -302,12 +324,12 @@ public class WorkflowActionPolicyService {
         buildActors(policy, request.actors(), actor);
 
         WorkflowActionPolicy saved = policyRepo.save(policy);
-        auditSafely(actor, saved.getId(), "WORKFLOW_ACTION_POLICY_CREATED",
-                null, summarize(saved), request.changeReason());
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 "WORKFLOW_ACTION_POLICY", saved.getId(), saved.getActionCode(), request.changeReason(),
                 null, summarize(saved));
+        auditSafely(actor, saved.getId(), "WORKFLOW_ACTION_POLICY_CREATED",
+                null, summarize(saved), request.changeReason(), esig == null ? null : esig.getId());
         return toResponse(saved, null);
     }
 
@@ -356,12 +378,12 @@ public class WorkflowActionPolicyService {
         buildActors(override, actorRequests, actor);
 
         WorkflowActionPolicy saved = policyRepo.save(override);
-        auditSafely(actor, saved.getId(), "WORKFLOW_ACTION_POLICY_OVERRIDE_CREATED",
-                null, summarize(saved), request.changeReason());
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 "WORKFLOW_ACTION_POLICY", saved.getId(), saved.getActionCode(), request.changeReason(),
                 null, summarize(saved));
+        auditSafely(actor, saved.getId(), "WORKFLOW_ACTION_POLICY_OVERRIDE_CREATED",
+                null, summarize(saved), request.changeReason(), esig == null ? null : esig.getId());
         return toResponse(saved, null);
     }
 
@@ -405,12 +427,12 @@ public class WorkflowActionPolicyService {
         buildActors(copy, actorRequests, actor);
 
         WorkflowActionPolicy saved = policyRepo.save(copy);
-        auditSafely(actor, saved.getId(), "WORKFLOW_ACTION_POLICY_DUPLICATED",
-                "sourceId=" + sourceId, summarize(saved), request.changeReason());
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 "WORKFLOW_ACTION_POLICY", saved.getId(), saved.getActionCode(), request.changeReason(),
                 "sourceId=" + sourceId, summarize(saved));
+        auditSafely(actor, saved.getId(), "WORKFLOW_ACTION_POLICY_DUPLICATED",
+                "sourceId=" + sourceId, summarize(saved), request.changeReason(), esig == null ? null : esig.getId());
         return toResponse(saved, null);
     }
 
@@ -442,12 +464,12 @@ public class WorkflowActionPolicyService {
         replaceActors(policy, request.actors(), actor);
 
         WorkflowActionPolicy saved = policyRepo.save(policy);
-        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_UPDATED",
-                oldValue, summarize(saved), request.changeReason());
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 "WORKFLOW_ACTION_POLICY", saved.getId(), saved.getActionCode(), request.changeReason(),
                 oldValue, summarize(saved));
+        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_UPDATED",
+                oldValue, summarize(saved), request.changeReason(), esig == null ? null : esig.getId());
         return toResponse(saved, null);
     }
 
@@ -487,14 +509,14 @@ public class WorkflowActionPolicyService {
         }
 
         WorkflowActionPolicyResponse response = toResponse(policy, null);
-        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_RELATIONS_UPDATED",
-                oldValue, summarize(policy) + " relations=" + response.relations().stream()
-                        .map(WorkflowActionPolicyRelationResponse::relationCode).toList(),
-                changeReason);
-        securityChangeSignatureService.record(actor, signatureToken,
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, signatureToken,
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 "WORKFLOW_ACTION_POLICY", id, policy.getActionCode(), changeReason,
                 oldValue, summarize(policy));
+        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_RELATIONS_UPDATED",
+                oldValue, summarize(policy) + " relations=" + response.relations().stream()
+                        .map(WorkflowActionPolicyRelationResponse::relationCode).toList(),
+                changeReason, esig == null ? null : esig.getId());
         return response;
     }
 
@@ -580,11 +602,11 @@ public class WorkflowActionPolicyService {
         policy.setActive(true);
         policy.setUpdatedBy(actor != null ? actor.getId() : null);
         WorkflowActionPolicy saved = policyRepo.save(policy);
-        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_ACTIVATED", old, summarize(saved), signature.reason());
-        securityChangeSignatureService.record(actor, signature.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, signature.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 "WORKFLOW_ACTION_POLICY", saved.getId(), saved.getActionCode(), signature.reason(),
                 old, summarize(saved));
+        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_ACTIVATED", old, summarize(saved), signature.reason(), esig == null ? null : esig.getId());
         return toResponse(saved, null);
     }
 
@@ -615,11 +637,11 @@ public class WorkflowActionPolicyService {
         policy.setActive(false);
         policy.setUpdatedBy(actor != null ? actor.getId() : null);
         WorkflowActionPolicy saved = policyRepo.save(policy);
-        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_DEACTIVATED", old, summarize(saved), signature.reason());
-        securityChangeSignatureService.record(actor, signature.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, signature.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 "WORKFLOW_ACTION_POLICY", saved.getId(), saved.getActionCode(), signature.reason(),
                 old, summarize(saved));
+        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_DEACTIVATED", old, summarize(saved), signature.reason(), esig == null ? null : esig.getId());
         return toResponse(saved, null);
     }
 
@@ -664,11 +686,11 @@ public class WorkflowActionPolicyService {
         }
 
         WorkflowActionPolicy saved = policyRepo.save(policy);
-        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_RESET_TO_DEFAULT", old, summarize(saved), reason);
-        securityChangeSignatureService.record(actor, signatureToken,
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, signatureToken,
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 "WORKFLOW_ACTION_POLICY", saved.getId(), saved.getActionCode(), reason,
                 old, summarize(saved));
+        auditSafely(actor, id, "WORKFLOW_ACTION_POLICY_RESET_TO_DEFAULT", old, summarize(saved), reason, esig == null ? null : esig.getId());
         return toResponse(saved, null);
     }
 
@@ -880,11 +902,20 @@ public class WorkflowActionPolicyService {
     }
 
     private void auditSafely(UserAccount actor, UUID policyId, String actionType,
-                              String oldVal, String newVal, String changeReason) {
+                              String oldVal, String newVal, String changeReason, UUID signatureId) {
         try {
-            String combined = newVal + (changeReason != null ? " | reason=" + changeReason : "");
+            // oldVal/newVal are summarize() dumps (action=/fromStatus=/permission=/actors=...) --
+            // they must NOT go into fromStatus/toStatus (audit_logs.from_status/to_status are
+            // varchar(40); a real policy summary overflows that and fails the save outright, same
+            // class of bug already fixed for ControlledCopyPolicyService/ControlledCopyExpiryLimit-
+            // Service). Route the unbounded snapshot through old_value/new_value instead, via a
+            // single synthetic change entry. changeReason -- the reason typed in the e-signature
+            // modal -- was previously glued onto newVal (" | reason=...") and never shown as its
+            // own thing; it now goes into the comment, same as every other action in the app.
+            String comment = (changeReason != null && !changeReason.isBlank()) ? "Reason: " + changeReason : null;
             auditTrailService.logAs(actor, "WORKFLOW_ACTION_POLICY", actionType, policyId,
-                    actionType, oldVal, combined, null);
+                    actionType, null, null, comment,
+                    List.of(new AuditTrailChangeResponse("policy", oldVal, newVal)), signatureId);
         } catch (Exception ex) {
             log.warn("[AUDIT] Failed to log policy audit event: {}", ex.getMessage());
         }

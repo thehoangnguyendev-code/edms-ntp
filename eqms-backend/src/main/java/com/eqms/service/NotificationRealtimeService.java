@@ -67,6 +67,18 @@ public class NotificationRealtimeService {
         }
     }
 
+    /** Broadcasts a non-sensitive event with a payload (ids only, never document data) to every connected client. */
+    public void publishGlobalEvent(String eventName, Object payload) {
+        if (eventName == null || eventName.isBlank() || payload == null) return;
+        emittersByUser.values().forEach(emitters -> emitters.forEach(emitter -> {
+            try {
+                emitter.send(SseEmitter.event().name(eventName).data(payload));
+            } catch (IOException error) {
+                emitters.remove(emitter);
+            }
+        }));
+    }
+
     /** Broadcasts a non-sensitive invalidation signal to connected clients. */
     public void publishGlobalEvent(String eventName) {
         if (eventName == null || eventName.isBlank()) return;

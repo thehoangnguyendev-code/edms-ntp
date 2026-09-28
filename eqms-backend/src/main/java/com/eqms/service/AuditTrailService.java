@@ -55,10 +55,12 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -73,6 +75,122 @@ public class AuditTrailService {
     private static final String AUDIT_VIEW_PERMISSION = "audit.view";
     private static final String AUDIT_EXPORT_PERMISSION = "audit.export";
 
+    /**
+     * {@code audit_logs.entity_type} was written with no single convention over time -- the same
+     * concept appears as {@code DOCUMENT}/{@code documents}/{@code DocumentRecord},
+     * {@code "Controlled Copy"}/{@code ControlledCopyRecord}, etc. Every read path (module filter,
+     * entity-snapshot lookup, module label) normalises the value the same way -- upper-case, then
+     * strip spaces and underscores -- and maps it through this table so a stored spelling and a
+     * filter value always compare equal. Keys and values are already in the stripped-canonical
+     * form. Anything not listed keeps its own stripped form.
+     */
+    private static final Map<String, String> ENTITY_TYPE_CANONICAL_ALIASES = Map.ofEntries(
+            Map.entry("DOCUMENTS", "DOCUMENT"),
+            Map.entry("DOCUMENTRECORD", "DOCUMENT"),
+            Map.entry("DOCUMENTREVISION", "REVISION"),
+            Map.entry("DOCUMENTREVISIONRECORD", "REVISION"),
+            Map.entry("CONTROLLEDCOPYRECORD", "CONTROLLEDCOPY"),
+            Map.entry("CONTROLLEDCOPYDISTRIBUTIONBATCHRECORD", "CONTROLLEDCOPYDISTRIBUTIONBATCH"),
+            Map.entry("USERACCOUNT", "USER"),
+            Map.entry("EMAILTEMPLATE", "EMAILTEMPLATE"),
+            Map.entry("AUDITTRAIL", "AUDITTRAIL")
+    );
+
+    /** FE module value (upper, spaces/underscores stripped) -> stripped-canonical entity_type(s). */
+    private static final Map<String, java.util.Set<String>> MODULE_ENTITY_TYPE_ALIASES = Map.ofEntries(
+            Map.entry("DOCUMENT", java.util.Set.of("DOCUMENT")),
+            Map.entry("REVISION", java.util.Set.of("REVISION")),
+            Map.entry("USER", java.util.Set.of("USER")),
+            Map.entry("ROLE", java.util.Set.of("ROLE")),
+            Map.entry("PROMPT", java.util.Set.of("PROMPTSPECIFICATION", "PROMPTGENERATIONRUN", "GENERATEDARTIFACT")),
+            Map.entry("CAPA", java.util.Set.of("CAPA")),
+            Map.entry("DEVIATION", java.util.Set.of("DEVIATION")),
+            Map.entry("TRAINING", java.util.Set.of("TRAINING")),
+            Map.entry("CONTROLLEDCOPY", java.util.Set.of("CONTROLLEDCOPY")),
+            Map.entry("CONTROLLEDCOPYDISTRIBUTIONBATCH", java.util.Set.of("CONTROLLEDCOPYDISTRIBUTIONBATCH")),
+            Map.entry("SETTINGS", java.util.Set.of("SETTINGS", "SYSTEMCONFIGURATION", "SYSTEM"))
+    );
+
+    /**
+     * The canonical UPPER_SNAKE spelling to STORE for a concept, keyed by stripped form. Applied at
+     * write time (persistAudit / logExternal) so new rows stop drifting -- historically the same
+     * concept was written as DOCUMENT / documents / DocumentRecord, "Controlled Copy" /
+     * ControlledCopyRecord, USER / UserAccount, ... An unlisted value is stored trimmed but
+     * otherwise unchanged (already-consistent codes like ACCESS_PROFILE, PUBLISHING_TEMPLATE).
+     * Decision Log: agreed with QA to converge the machine value going forward; existing rows are
+     * left untouched (immutable audit store) and remain resolvable via the strip-tolerant reads.
+     */
+    private static final Map<String, String> ENTITY_TYPE_STORAGE_CANONICAL = Map.ofEntries(
+            Map.entry("DOCUMENT", "DOCUMENT"),
+            Map.entry("DOCUMENTS", "DOCUMENT"),
+            Map.entry("DOCUMENTRECORD", "DOCUMENT"),
+            Map.entry("REVISION", "REVISION"),
+            Map.entry("DOCUMENTREVISION", "REVISION"),
+            Map.entry("DOCUMENTREVISIONRECORD", "REVISION"),
+            Map.entry("USER", "USER"),
+            Map.entry("USERACCOUNT", "USER"),
+            Map.entry("CONTROLLEDCOPY", "CONTROLLED_COPY"),
+            Map.entry("CONTROLLEDCOPYRECORD", "CONTROLLED_COPY"),
+            Map.entry("CONTROLLEDCOPYDISTRIBUTIONBATCH", "CONTROLLED_COPY_DISTRIBUTION_BATCH"),
+            Map.entry("CONTROLLEDCOPYDISTRIBUTIONBATCHRECORD", "CONTROLLED_COPY_DISTRIBUTION_BATCH"),
+            Map.entry("CONTROLLEDCOPYEXPIRYLIMIT", "CONTROLLED_COPY_EXPIRY_LIMIT"),
+            Map.entry("EMAILTEMPLATE", "EMAIL_TEMPLATE"),
+            Map.entry("AUDITTRAIL", "AUDIT_TRAIL")
+    );
+
+    private static String stripEntityTypeKey(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT).replace(" ", "").replace("_", "");
+    }
+
+    /** Canonical spelling to persist for a concept; unlisted values pass through trimmed. */
+    private static String canonicalEntityTypeForStorage(String entityType) {
+        if (!StringUtils.hasText(entityType)) {
+            return entityType;
+        }
+        String canonical = ENTITY_TYPE_STORAGE_CANONICAL.get(stripEntityTypeKey(entityType));
+        return canonical != null ? canonical : entityType.trim();
+    }
+
+    /** Stripped-canonical form of a stored/incoming entity_type, e.g. "Controlled Copy" -> "CONTROLLEDCOPY". */
+    private static String canonicalEntityTypeKey(String value) {
+        String stripped = stripEntityTypeKey(value);
+        return ENTITY_TYPE_CANONICAL_ALIASES.getOrDefault(stripped, stripped);
+    }
+
+    /**
+     * A module filter that survives the entity_type spelling drift: it strips spaces/underscores
+     * and upper-cases the stored value in SQL, then matches the module's known canonical form(s).
+     * Returns {@code null} for "All"/blank so the caller adds no predicate.
+     */
+    private static Predicate buildModuleFilterPredicate(
+            jakarta.persistence.criteria.CriteriaBuilder builder,
+            jakarta.persistence.criteria.Root<AuditLog> root,
+            String module
+    ) {
+        if (!StringUtils.hasText(module) || "All".equalsIgnoreCase(module.trim())) {
+            return null;
+        }
+        String moduleKey = stripEntityTypeKey(module);
+        Expression<String> canon = builder.function("replace", String.class,
+                builder.function("replace", String.class,
+                        builder.upper(root.get("entityType")),
+                        builder.literal(" "), builder.literal("")),
+                builder.literal("_"), builder.literal(""));
+        if ("SYSTEM".equals(moduleKey)) {
+            return builder.or(
+                    canon.in("SESSION", "AUTH", "AUTHENTICATION"),
+                    builder.isNull(root.get("entityType")),
+                    builder.equal(root.get("entityType"), "")
+            );
+        }
+        java.util.Set<String> aliases = MODULE_ENTITY_TYPE_ALIASES.get(moduleKey);
+        if (aliases == null || aliases.isEmpty()) {
+            // Unknown module -- exact match on the normalised value itself (e.g. ACCESS_PROFILE).
+            return builder.equal(canon, moduleKey);
+        }
+        return canon.in(aliases);
+    }
+
     private final AuditLogRepository auditLogRepository;
     private final AuditLogChangeRepository auditLogChangeRepository;
     private final CurrentUserService currentUserService;
@@ -81,7 +199,12 @@ public class AuditTrailService {
     private final DocumentRevisionRepository documentRevisionRepository;
     private final ControlledCopyRepository controlledCopyRepository;
     private final ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository;
+    private final com.eqms.repository.ControlledCopyExpiryLimitRepository controlledCopyExpiryLimitRepository;
     private final PermissionEvaluationService permissionEvaluationService;
+    // Field-injected for the same reason as other lightweight helper dependencies added
+    // incrementally to this service -- only used by buildActorSnapshot's Access Profile snapshot.
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.repository.UserAccessProfileRepository userAccessProfileRepository;
     /**
      * Resolve lazily because document authorization itself records/reads audit
      * information.  Eager constructor injection creates a Spring bean cycle
@@ -89,6 +212,9 @@ public class AuditTrailService {
      * workflow policy -> AuditTrailService).
      */
     private final ObjectProvider<DocumentAuthorizationService> documentAuthorizationServiceProvider;
+
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
 
     @org.springframework.beans.factory.annotation.Autowired
     private com.eqms.auth.TokenService tokenService;
@@ -108,6 +234,7 @@ public class AuditTrailService {
             DocumentRevisionRepository documentRevisionRepository,
             ControlledCopyRepository controlledCopyRepository,
             ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository,
+            com.eqms.repository.ControlledCopyExpiryLimitRepository controlledCopyExpiryLimitRepository,
             PermissionEvaluationService permissionEvaluationService,
             ObjectProvider<DocumentAuthorizationService> documentAuthorizationServiceProvider
     ) {
@@ -119,6 +246,7 @@ public class AuditTrailService {
         this.documentRevisionRepository = documentRevisionRepository;
         this.controlledCopyRepository = controlledCopyRepository;
         this.controlledCopyDistributionBatchRepository = controlledCopyDistributionBatchRepository;
+        this.controlledCopyExpiryLimitRepository = controlledCopyExpiryLimitRepository;
         this.permissionEvaluationService = permissionEvaluationService;
         this.documentAuthorizationServiceProvider = documentAuthorizationServiceProvider;
     }
@@ -232,52 +360,10 @@ public class AuditTrailService {
                 predicates.add(builder.or(searchPredicates.toArray(new Predicate[0])));
             }
 
-            // 2. Module filter
-            if (StringUtils.hasText(module) && !"All".equalsIgnoreCase(module)) {
-                String normalizedModule = module.trim().toUpperCase(Locale.ROOT);
-                Expression<String> entityTypeUpper = builder.upper(root.get("entityType"));
-                switch (normalizedModule) {
-                    case "DOCUMENT":
-                        predicates.add(builder.equal(entityTypeUpper, "DOCUMENT"));
-                        break;
-                    case "REVISION":
-                        predicates.add(builder.equal(entityTypeUpper, "REVISION"));
-                        break;
-                    case "USER":
-                        predicates.add(entityTypeUpper.in("USER", "USER_ACCOUNT"));
-                        break;
-                    case "ROLE":
-                        predicates.add(builder.equal(entityTypeUpper, "ROLE"));
-                        break;
-                    case "PROMPT":
-                        predicates.add(entityTypeUpper.in("PROMPT_SPECIFICATION", "PROMPT_GENERATION_RUN", "GENERATED_ARTIFACT"));
-                        break;
-                    case "CAPA":
-                        predicates.add(builder.equal(entityTypeUpper, "CAPA"));
-                        break;
-                    case "DEVIATION":
-                        predicates.add(builder.equal(entityTypeUpper, "DEVIATION"));
-                        break;
-                    case "TRAINING":
-                        predicates.add(builder.equal(entityTypeUpper, "TRAINING"));
-                        break;
-                    case "CONTROLLED COPY":
-                        predicates.add(builder.equal(entityTypeUpper, "CONTROLLED_COPY"));
-                        break;
-                    case "SETTINGS":
-                        predicates.add(entityTypeUpper.in("SETTINGS", "SYSTEM_CONFIGURATION", "SYSTEM"));
-                        break;
-                    case "SYSTEM":
-                        predicates.add(builder.or(
-                            entityTypeUpper.in("SESSION", "AUTH", "AUTHENTICATION"),
-                            builder.isNull(root.get("entityType")),
-                            builder.equal(root.get("entityType"), "")
-                        ));
-                        break;
-                    default:
-                        predicates.add(builder.equal(entityTypeUpper, normalizedModule));
-                        break;
-                }
+            // 2. Module filter -- normalisation-tolerant (see buildModuleFilterPredicate)
+            Predicate modulePredicate = buildModuleFilterPredicate(builder, root, module);
+            if (modulePredicate != null) {
+                predicates.add(modulePredicate);
             }
 
             // 3. Action filter
@@ -526,9 +612,7 @@ public class AuditTrailService {
         };
 
         Page<AuditLog> pageResult = auditLogRepository.findAll(spec, pageable);
-        List<AuditTrailRecordResponse> data = pageResult.getContent().stream()
-                .map(this::toResponse)
-                .toList();
+        List<AuditTrailRecordResponse> data = mapRows(pageResult.getContent());
 
         return new PageResponse<>(
                 data,
@@ -587,8 +671,39 @@ public class AuditTrailService {
             }
             return;
         }
-        requireAuditView();
+        // GMP decision (HDR-AUTH-001): a direct stakeholder of the Document/Revision (Author,
+        // Co-author, Reviewer/Approver, or Admin/DCO) automatically sees its Audit Trail tab --
+        // no separate documents.document.view_audit / global audit.view permission required.
+        // Indirect/broad viewers (visible only via the strict-visibility grant) still need it.
+        if (!resolveIsDirectStakeholder(normalized, entityId, actor)) {
+            // DOCUMENT has its own scoped "documents.document.view_audit" permission -- the exact
+            // permission CapabilityService already uses to decide whether the FE even shows this
+            // tab. Requiring the separate, admin-only Audit Trail *module* permission on top of that
+            // (as this used to do unconditionally) meant the tab could be visible yet 403 for any
+            // document-module user who was never separately granted Security & Authorization access.
+            boolean hasScopedDocumentAuditView = normalized.equals("DOCUMENT")
+                    && permissionEvaluationService.hasPermission(actor, "documents.document.view_audit");
+            if (!hasScopedDocumentAuditView) {
+                requireAuditView();
+            }
+        }
         requireScopedEntityView(module, entityId.toString());
+    }
+
+    /** See {@link DocumentAuthorizationService#isDirectStakeholder(UserAccount, DocumentRecord)}. */
+    private boolean resolveIsDirectStakeholder(String normalizedModule, UUID entityId, UserAccount actor) {
+        DocumentAuthorizationService authorization = documentAuthorizationServiceProvider.getObject();
+        if (normalizedModule.equals("DOCUMENT")) {
+            return documentRecordRepository.findById(entityId)
+                    .map(document -> authorization.isDirectStakeholder(actor, document))
+                    .orElse(false);
+        }
+        if (normalizedModule.equals("REVISION")) {
+            return documentRevisionRepository.findById(entityId)
+                    .map(revision -> authorization.isDirectStakeholder(actor, revision))
+                    .orElse(false);
+        }
+        return false;
     }
 
     /**
@@ -649,92 +764,73 @@ public class AuditTrailService {
      * separate prevents the document detail audit tab from becoming a system-wide audit permission.
      */
     List<AuditTrailRecordResponse> getByEntityForAuthorizedDocument(String module, UUID entityId) {
-        return auditLogRepository.findAllByNormalizedEntityTypeAndEntityId(module, entityId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return mapRows(auditLogRepository.findAllByNormalizedEntityTypeAndEntityId(module, entityId));
     }
 
     @Transactional(readOnly = true)
     public List<AuditTrailUserOptionResponse> listUsers(String module, String documentNumber, String entityId) {
         requireAuditView();
-        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
-        Specification<AuditLog> spec = (root, query, builder) -> {
-            List<Predicate> predicates = new ArrayList<>();
 
-            if (StringUtils.hasText(module) && !"All".equalsIgnoreCase(module)) {
-                String normalizedModule = module.trim().toUpperCase(Locale.ROOT);
-                Expression<String> entityTypeUpper = builder.upper(root.get("entityType"));
-                switch (normalizedModule) {
-                    case "DOCUMENT" -> predicates.add(builder.equal(entityTypeUpper, "DOCUMENT"));
-                    case "REVISION" -> predicates.add(builder.equal(entityTypeUpper, "REVISION"));
-                    case "USER" -> predicates.add(entityTypeUpper.in("USER", "USER_ACCOUNT"));
-                    case "ROLE" -> predicates.add(builder.equal(entityTypeUpper, "ROLE"));
-                    case "PROMPT" -> predicates.add(entityTypeUpper.in("PROMPT_SPECIFICATION", "PROMPT_GENERATION_RUN", "GENERATED_ARTIFACT"));
-                    case "CAPA" -> predicates.add(builder.equal(entityTypeUpper, "CAPA"));
-                    case "DEVIATION" -> predicates.add(builder.equal(entityTypeUpper, "DEVIATION"));
-                    case "TRAINING" -> predicates.add(builder.equal(entityTypeUpper, "TRAINING"));
-                    case "CONTROLLED COPY" -> predicates.add(builder.equal(entityTypeUpper, "CONTROLLED_COPY"));
-                    case "SETTINGS" -> predicates.add(entityTypeUpper.in("SETTINGS", "SYSTEM_CONFIGURATION", "SYSTEM"));
-                    case "SYSTEM" -> predicates.add(builder.or(
-                            entityTypeUpper.in("SESSION", "AUTH", "AUTHENTICATION"),
-                            builder.isNull(root.get("entityType")),
-                            builder.equal(root.get("entityType"), "")
-                    ));
-                    default -> predicates.add(builder.equal(entityTypeUpper, normalizedModule));
-                }
+        // Previously: auditLogRepository.findAll(spec, sort) hydrated EVERY matching audit row (the
+        // whole table for the common "no filter" case, and growing) plus a findById per row via
+        // resolveActorSnapshot, just to derive the distinct actor list for a filter dropdown. This
+        // selects only the four stored actor columns, DISTINCT, in one query -- no entity
+        // hydration, no per-row lookups. The stored snapshot columns are what the dropdown needs;
+        // live re-enrichment was never required here.
+        jakarta.persistence.criteria.CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        jakarta.persistence.criteria.CriteriaQuery<jakarta.persistence.Tuple> cq = cb.createTupleQuery();
+        jakarta.persistence.criteria.Root<AuditLog> root = cq.from(AuditLog.class);
+        List<Predicate> predicates = new ArrayList<>();
+
+        Predicate modulePredicate = buildModuleFilterPredicate(cb, root, module);
+        if (modulePredicate != null) {
+            predicates.add(modulePredicate);
+        }
+        if (StringUtils.hasText(documentNumber)) {
+            String likePattern = "%" + documentNumber.toLowerCase(Locale.ROOT) + "%";
+            List<Predicate> documentPredicates = new ArrayList<>();
+            documentPredicates.add(cb.like(cb.lower(root.get("entityName")), likePattern));
+            documentPredicates.add(cb.like(cb.lower(root.get("comment")), likePattern));
+            documentPredicates.add(cb.like(cb.lower(root.get("documentNumber")), likePattern));
+            try {
+                documentPredicates.add(cb.equal(root.get("entityId"), UUID.fromString(documentNumber.trim())));
+            } catch (IllegalArgumentException ignored) {
+                // not a UUID
             }
-
-            if (StringUtils.hasText(documentNumber)) {
-                String likePattern = "%" + documentNumber.toLowerCase(Locale.ROOT) + "%";
-                List<Predicate> documentPredicates = new ArrayList<>();
-                documentPredicates.add(builder.like(builder.lower(root.get("entityName")), likePattern));
-                documentPredicates.add(builder.like(builder.lower(root.get("comment")), likePattern));
-                documentPredicates.add(builder.like(builder.lower(root.get("documentNumber")), likePattern));
-                try {
-                    UUID parsedEntityId = UUID.fromString(documentNumber.trim());
-                    documentPredicates.add(builder.equal(root.get("entityId"), parsedEntityId));
-                } catch (IllegalArgumentException ignored) {
-                    // ignore invalid UUID
-                }
-                predicates.add(builder.or(documentPredicates.toArray(new Predicate[0])));
+            predicates.add(cb.or(documentPredicates.toArray(new Predicate[0])));
+        }
+        if (StringUtils.hasText(entityId)) {
+            try {
+                predicates.add(cb.equal(root.get("entityId"), UUID.fromString(entityId.trim())));
+            } catch (IllegalArgumentException ignored) {
+                // not a UUID
             }
+        }
 
-            if (StringUtils.hasText(entityId)) {
-                try {
-                    UUID parsedEntityId = UUID.fromString(entityId.trim());
-                    predicates.add(builder.equal(root.get("entityId"), parsedEntityId));
-                } catch (IllegalArgumentException ignored) {
-                    // ignore invalid UUID
-                }
-            }
+        cq.multiselect(
+                root.get("userId"),
+                root.get("username"),
+                root.get("employeeCode"),
+                root.get("userFullName")
+        ).distinct(true);
+        if (!predicates.isEmpty()) {
+            cq.where(predicates.toArray(new Predicate[0]));
+        }
 
-            return builder.and(predicates.toArray(new Predicate[0]));
-        };
-
-        List<AuditLog> logs = auditLogRepository.findAll(spec, sort);
         Map<String, AuditTrailUserOptionResponse> unique = new LinkedHashMap<>();
-        for (AuditLog log : logs) {
-            AuditActorSnapshot snapshot = resolveActorSnapshot(log);
-            String value = firstNonBlank(
-                    snapshot.employeeCode(),
-                    snapshot.username(),
-                    snapshot.fullName(),
-                    log.getEmployeeCode(),
-                    log.getUsername(),
-                    log.getUserFullName(),
-                    log.getUserId() == null ? null : log.getUserId().toString()
-            );
+        for (jakarta.persistence.Tuple row : entityManager.createQuery(cq).getResultList()) {
+            UUID userId = row.get(0, UUID.class);
+            String username = row.get(1, String.class);
+            String employeeCode = row.get(2, String.class);
+            String fullName = row.get(3, String.class);
+            String value = firstNonBlank(employeeCode, username, fullName, userId == null ? null : userId.toString());
             if (!StringUtils.hasText(value)) {
                 continue;
             }
             String label = firstNonBlank(
-                    formatUserLabel(snapshot.employeeCode(), snapshot.fullName()),
-                    formatUserLabel(log.getEmployeeCode(), log.getUserFullName()),
-                    snapshot.fullName(),
-                    log.getUserFullName(),
-                    snapshot.username(),
-                    log.getUsername(),
+                    formatUserLabel(employeeCode, fullName),
+                    fullName,
+                    username,
                     value
             );
             unique.putIfAbsent(value.trim().toLowerCase(Locale.ROOT), new AuditTrailUserOptionResponse(label, value));
@@ -918,30 +1014,30 @@ public class AuditTrailService {
         log.setEventTime(now);
         log.setCreatedAt(now);
         log.setUpdatedAt(now);
-        log.setEntityType(entityType);
-        log.setEntityName(StringUtils.hasText(entityName) ? entityName : entitySnapshot.entityName());
+        log.setEntityType(clampColumn(canonicalEntityTypeForStorage(entityType), 40));
+        log.setEntityName(clampColumn(StringUtils.hasText(entityName) ? entityName : entitySnapshot.entityName(), 255));
         log.setEntityId(entityId);
-        log.setActionType(actionType);
-        log.setAction(actionType);
-        log.setFromStatus(fromStatus);
-        log.setToStatus(toStatus);
+        log.setActionType(clampColumn(actionType, 50));
+        log.setAction(clampColumn(actionType, 80));
+        log.setFromStatus(clampColumn(fromStatus, 40));
+        log.setToStatus(clampColumn(toStatus, 40));
         log.setComment(comment);
         log.setReason(comment);
-        log.setIpAddress(requestSnapshot.ipAddress());
-        log.setUserAgent(requestSnapshot.userAgent());
-        log.setDeviceBrowser(requestSnapshot.deviceBrowser());
-        log.setDeviceModel(requestSnapshot.deviceModel());
-        log.setDevicePlatform(requestSnapshot.devicePlatform());
-        log.setDevicePlatformVersion(requestSnapshot.devicePlatformVersion());
-        log.setDeviceName(requestSnapshot.deviceName());
+        log.setIpAddress(clampColumn(requestSnapshot.ipAddress(), 80));
+        log.setUserAgent(clampColumn(requestSnapshot.userAgent(), 512));
+        log.setDeviceBrowser(clampColumn(requestSnapshot.deviceBrowser(), 80));
+        log.setDeviceModel(clampColumn(requestSnapshot.deviceModel(), 120));
+        log.setDevicePlatform(clampColumn(requestSnapshot.devicePlatform(), 80));
+        log.setDevicePlatformVersion(clampColumn(requestSnapshot.devicePlatformVersion(), 40));
+        log.setDeviceName(clampColumn(requestSnapshot.deviceName(), 255));
         log.setProcessingDurationSeconds(resolveRequestDurationSeconds());
-        log.setUsername(actor);
-        log.setUserFullName(actor);
+        log.setUsername(clampColumn(actor, 120));
+        log.setUserFullName(clampColumn(actor, 255));
         log.setRoleName("External recipient");
-        log.setEntityCode(entitySnapshot.entityCode());
-        log.setDocumentNumber(entitySnapshot.documentNumber());
-        log.setRevisionNumber(entitySnapshot.revisionNumber());
-        log.setEntityStatus(entitySnapshot.entityStatus());
+        log.setEntityCode(clampColumn(entitySnapshot.entityCode(), 255));
+        log.setDocumentNumber(clampColumn(entitySnapshot.documentNumber(), 80));
+        log.setRevisionNumber(clampColumn(entitySnapshot.revisionNumber(), 40));
+        log.setEntityStatus(clampColumn(entitySnapshot.entityStatus(), 80));
         persistChanges(log, null, fromStatus, toStatus);
         auditLogRepository.save(log);
     }
@@ -968,39 +1064,45 @@ public class AuditTrailService {
         log.setEventTime(now);
         log.setCreatedAt(now);
         log.setUpdatedAt(now);
-        log.setEntityType(entityType);
-        log.setEntityName(entityName);
+        // Bounded metadata varchar columns (type / action / status / codes / device) are clamped so
+        // an over-long value can never abort the audit INSERT -- which for the throwing log()/logAs()
+        // variants rolls back the business transaction, and for logSafely() silently drops the row.
+        // comment/reason are TEXT (V412) so free text is never truncated.
+        log.setEntityType(clampColumn(canonicalEntityTypeForStorage(entityType), 40));
+        log.setEntityName(clampColumn(entityName, 255));
         log.setEntityId(entityId);
-        log.setActionType(actionType);
-        log.setAction(actionType);
-        log.setFromStatus(fromStatus);
-        log.setToStatus(toStatus);
+        log.setActionType(clampColumn(actionType, 50));
+        log.setAction(clampColumn(actionType, 80));
+        log.setFromStatus(clampColumn(fromStatus, 40));
+        log.setToStatus(clampColumn(toStatus, 40));
         log.setComment(comment);
         log.setReason(comment);
         log.setOldValue(oldValue);
         log.setNewValue(newValue);
-        log.setIpAddress(requestSnapshot.ipAddress());
-        log.setUserAgent(requestSnapshot.userAgent());
-        log.setDeviceBrowser(requestSnapshot.deviceBrowser());
-        log.setDeviceModel(requestSnapshot.deviceModel());
-        log.setDevicePlatform(requestSnapshot.devicePlatform());
-        log.setDevicePlatformVersion(requestSnapshot.devicePlatformVersion());
-        log.setDeviceName(requestSnapshot.deviceName());
+        log.setIpAddress(clampColumn(requestSnapshot.ipAddress(), 80));
+        log.setUserAgent(clampColumn(requestSnapshot.userAgent(), 512));
+        log.setDeviceBrowser(clampColumn(requestSnapshot.deviceBrowser(), 80));
+        log.setDeviceModel(clampColumn(requestSnapshot.deviceModel(), 120));
+        log.setDevicePlatform(clampColumn(requestSnapshot.devicePlatform(), 80));
+        log.setDevicePlatformVersion(clampColumn(requestSnapshot.devicePlatformVersion(), 40));
+        log.setDeviceName(clampColumn(requestSnapshot.deviceName(), 255));
         log.setProcessingDurationSeconds(resolveRequestDurationSeconds());
         log.setActedBy(actor);
         log.setUserId(actor.getId());
-        log.setUsername(actor.getUsername());
-        log.setUserFullName(actorSnapshot.fullName());
-        log.setEmployeeCode(actorSnapshot.employeeCode());
-        log.setRoleName(actorSnapshot.roleName());
-        log.setPositionName(actorSnapshot.positionName());
-        log.setDepartmentName(actorSnapshot.departmentName());
+        log.setUsername(clampColumn(actor.getUsername(), 120));
+        log.setUserFullName(clampColumn(actorSnapshot.fullName(), 255));
+        log.setEmployeeCode(clampColumn(actorSnapshot.employeeCode(), 80));
+        log.setRoleName(clampColumn(actorSnapshot.roleName(), 80));
+        log.setPositionName(clampColumn(actorSnapshot.positionName(), 120));
+        log.setDepartmentName(clampColumn(actorSnapshot.departmentName(), 120));
+        log.setAccessProfileNames(actorSnapshot.accessProfileNames().isEmpty()
+                ? null : actorSnapshot.accessProfileNames().toArray(new String[0]));
         log.setSignatureId(signatureId);
         log.setElectronicSignatureApplied(signatureId != null);
-        log.setEntityCode(entitySnapshot.entityCode());
-        log.setDocumentNumber(entitySnapshot.documentNumber());
-        log.setRevisionNumber(entitySnapshot.revisionNumber());
-        log.setEntityStatus(entitySnapshot.entityStatus());
+        log.setEntityCode(clampColumn(entitySnapshot.entityCode(), 255));
+        log.setDocumentNumber(clampColumn(entitySnapshot.documentNumber(), 80));
+        log.setRevisionNumber(clampColumn(entitySnapshot.revisionNumber(), 40));
+        log.setEntityStatus(clampColumn(entitySnapshot.entityStatus(), 80));
         if (!StringUtils.hasText(log.getEntityName()) && StringUtils.hasText(entitySnapshot.entityName())) {
             log.setEntityName(entitySnapshot.entityName());
         }
@@ -1026,7 +1128,11 @@ public class AuditTrailService {
             return;
         }
         List<AuditTrailChangeResponse> normalizedChanges = changes == null ? new ArrayList<>() : new ArrayList<>(changes);
-        if (normalizedChanges.isEmpty() && (StringUtils.hasText(fromStatus) || StringUtils.hasText(toStatus))) {
+        // Only synthesise a "Status" change row for a REAL transition (both sides present and
+        // different). Otherwise a non-mutating action -- VIEW, LOGIN, DOWNLOAD, PREVIEW, a
+        // metadata-only edit -- ended up with a fabricated "Obsoleted -> Obsoleted" /
+        // "Not Specified -> Active" row that told an inspector nothing.
+        if (normalizedChanges.isEmpty() && isRealStatusTransition(fromStatus, toStatus)) {
             normalizedChanges.add(new AuditTrailChangeResponse("Status", fromStatus, toStatus));
         }
         for (int i = 0; i < normalizedChanges.size(); i++) {
@@ -1036,7 +1142,7 @@ public class AuditTrailService {
             }
             AuditLogChange entity = new AuditLogChange();
             entity.setAuditLog(log);
-            entity.setFieldName(change.field());
+            entity.setFieldName(clampColumn(change.field(), 120));
             entity.setOldValue(change.oldValue());
             entity.setNewValue(change.newValue());
             entity.setChangeOrder(i);
@@ -1046,9 +1152,8 @@ public class AuditTrailService {
 
     private void requireAuditView() {
         UserAccount actor = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(actor)
-                && !permissionEvaluationService.hasAnyPermission(
-                        actor, AUDIT_VIEW_PERMISSION, "audittrail.module.view", "VIEW_AUDIT_TRAIL")) {
+        if (!permissionEvaluationService.hasAnyPermission(
+                actor, AUDIT_VIEW_PERMISSION, "audittrail.module.view", "VIEW_AUDIT_TRAIL")) {
             throw new AccessDeniedException("Audit trail view permission required");
         }
     }
@@ -1075,9 +1180,8 @@ public class AuditTrailService {
     private UserAccount requireAuditExport() {
         requireAuditView();
         UserAccount actor = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(actor)
-                && !permissionEvaluationService.hasAnyPermission(
-                        actor, AUDIT_EXPORT_PERMISSION, "audittrail.module.export", "EXPORT_AUDIT_TRAIL")) {
+        if (!permissionEvaluationService.hasAnyPermission(
+                actor, AUDIT_EXPORT_PERMISSION, "EXPORT_AUDIT_TRAIL")) {
             throw new AccessDeniedException("Audit trail export permission required");
         }
         return actor;
@@ -1138,6 +1242,49 @@ public class AuditTrailService {
             return log.getComment();
         }
         return normalizedDescription;
+    }
+
+    /**
+     * Per-request resolution cache for a page of audit rows. {@link #toResponse(AuditLog)} otherwise
+     * re-runs {@code buildEntitySnapshot} (a findById) for every row of the same entity, a findById
+     * per row for the actor, and a {@code audit_log_changes} query per row -- ~3x N extra queries
+     * per page. Populated by {@link #mapRows(List)}; consulted by the cached wrappers below.
+     */
+    private static final class AuditResolveCache {
+        final Map<String, AuditEntitySnapshot> entitySnapshots = new HashMap<>();
+        final Map<String, AuditActorSnapshot> actorSnapshots = new HashMap<>();
+        final Map<UUID, List<AuditTrailChangeResponse>> changesByLog = new HashMap<>();
+        boolean changesPreloaded;
+    }
+
+    private final ThreadLocal<AuditResolveCache> resolveCache = new ThreadLocal<>();
+
+    /** Maps a whole page/list of audit rows with one batched changes query and memoised lookups. */
+    private List<AuditTrailRecordResponse> mapRows(List<AuditLog> logs) {
+        if (logs == null || logs.isEmpty()) {
+            return List.of();
+        }
+        AuditResolveCache cache = new AuditResolveCache();
+        List<UUID> ids = logs.stream().map(AuditLog::getId).filter(Objects::nonNull).toList();
+        if (!ids.isEmpty()) {
+            for (UUID id : ids) {
+                cache.changesByLog.put(id, new ArrayList<>());
+            }
+            for (AuditLogChange change : auditLogChangeRepository
+                    .findAllByAuditLogIdInOrderByAuditLogIdAscChangeOrderAscCreatedAtAsc(ids)) {
+                UUID logId = change.getAuditLog() == null ? null : change.getAuditLog().getId();
+                if (logId != null) {
+                    cache.changesByLog.computeIfAbsent(logId, k -> new ArrayList<>()).add(toDisplayChange(change));
+                }
+            }
+            cache.changesPreloaded = true;
+        }
+        resolveCache.set(cache);
+        try {
+            return logs.stream().map(this::toResponse).toList();
+        } finally {
+            resolveCache.remove();
+        }
     }
 
     private AuditTrailRecordResponse toResponse(AuditLog log) {
@@ -1235,8 +1382,16 @@ public class AuditTrailService {
                 changeSummary,
                 changes,
                 resolvedReason,
-                StringUtils.hasText(log.getFromStatus()) ? log.getFromStatus() : entitySnapshot.entityStatus(),
-                StringUtils.hasText(log.getToStatus()) ? log.getToStatus() : entitySnapshot.entityStatus(),
+                // Do NOT fall back to the entity's current live status when the stored value is
+                // blank -- that fabricated a fake "X -> X" transition for every CREATE-type action
+                // (e.g. Controlled Copy REQUEST: fromStatus is genuinely null because the record
+                // didn't exist before, but the live entityStatus lookup returned its current status
+                // and got used for both sides, rendering as "Ready for Distribution -> Ready for
+                // Distribution"). A null fromStatus with a real toStatus means "did not exist yet",
+                // not "unknown, assume unchanged" -- the raw stored value is passed through as-is
+                // and the frontend renders the null side as "None" for a creation.
+                log.getFromStatus(),
+                log.getToStatus(),
                 log.getOldValue(),
                 log.getNewValue(),
                 log.getIpAddress(),
@@ -1315,13 +1470,26 @@ public class AuditTrailService {
                 snapshot.roleName(),
                 snapshot.positionName(),
                 snapshot.departmentName(),
-                snapshot.avatar()
+                snapshot.avatar(),
+                snapshot.accessProfileNames()
         );
+    }
+
+    private List<String> accessProfileNamesOf(UserAccount actor) {
+        if (actor == null || actor.getId() == null) {
+            return List.of();
+        }
+        return userAccessProfileRepository.findByUserId(actor.getId()).stream()
+                .map(com.eqms.entity.UserAccessProfile::getAccessProfile)
+                .filter(java.util.Objects::nonNull)
+                .map(com.eqms.entity.RoleDefinition::getName)
+                .filter(StringUtils::hasText)
+                .toList();
     }
 
     private AuditActorSnapshot buildActorSnapshot(UserAccount actor) {
         if (actor == null) {
-            return new AuditActorSnapshot(null, null, null, null, null, null, null, null);
+            return new AuditActorSnapshot(null, null, null, null, null, null, null, null, List.of());
         }
         return new AuditActorSnapshot(
                 actor.getId() == null ? null : actor.getId().toString(),
@@ -1331,14 +1499,18 @@ public class AuditTrailService {
                 actor.getRoleName(),
                 actor.getPosition(),
                 actor.getDepartment(),
-                actor.getAvatar()
+                actor.getAvatar(),
+                accessProfileNamesOf(actor)
         );
     }
 
     private AuditActorSnapshot resolveActorSnapshot(AuditLog log) {
         if (log == null) {
-            return new AuditActorSnapshot(null, null, null, null, null, null, null, null);
+            return new AuditActorSnapshot(null, null, null, null, null, null, null, null, List.of());
         }
+        // Per-row stored snapshot is always used as-is (audit fidelity: each row shows the actor's
+        // attributes as recorded then). Only the LIVE user lookup below is memoised per user, since
+        // that is identical for every row of the same actor and is the actual findById cost.
         AuditActorSnapshot storedSnapshot = new AuditActorSnapshot(
                 log.getUserId() == null ? null : log.getUserId().toString(),
                 log.getUsername(),
@@ -1347,19 +1519,35 @@ public class AuditTrailService {
                 log.getRoleName(),
                 log.getPositionName(),
                 log.getDepartmentName(),
-                null
+                null,
+                log.getAccessProfileNames() == null ? List.of() : java.util.Arrays.asList(log.getAccessProfileNames())
         );
-        UserAccount currentUser = log.getActedBy();
-        if (currentUser == null && log.getUserId() != null) {
-            currentUser = userAccountRepository.findById(log.getUserId()).orElse(null);
+        AuditResolveCache cache = resolveCache.get();
+        String cacheKey = log.getUserId() != null ? "id:" + log.getUserId()
+                : StringUtils.hasText(log.getUsername()) ? "un:" + log.getUsername().toLowerCase(Locale.ROOT)
+                : null;
+        AuditActorSnapshot currentSnapshot = null;
+        boolean cached = false;
+        if (cache != null && cacheKey != null && cache.actorSnapshots.containsKey(cacheKey)) {
+            currentSnapshot = cache.actorSnapshots.get(cacheKey); // may be null (no live account)
+            cached = true;
         }
-        if (currentUser == null && StringUtils.hasText(log.getUsername())) {
-            currentUser = userAccountRepository.findByUsername(log.getUsername()).orElse(null);
+        if (!cached) {
+            UserAccount currentUser = log.getActedBy();
+            if (currentUser == null && log.getUserId() != null) {
+                currentUser = userAccountRepository.findById(log.getUserId()).orElse(null);
+            }
+            if (currentUser == null && StringUtils.hasText(log.getUsername())) {
+                currentUser = userAccountRepository.findByUsername(log.getUsername()).orElse(null);
+            }
+            currentSnapshot = currentUser == null ? null : buildActorSnapshot(currentUser);
+            if (cache != null && cacheKey != null) {
+                cache.actorSnapshots.put(cacheKey, currentSnapshot);
+            }
         }
-        if (currentUser == null) {
+        if (currentSnapshot == null) {
             return storedSnapshot;
         }
-        AuditActorSnapshot currentSnapshot = buildActorSnapshot(currentUser);
         return new AuditActorSnapshot(
                 firstNonBlank(storedSnapshot.id(), currentSnapshot.id()),
                 firstNonBlank(storedSnapshot.username(), currentSnapshot.username()),
@@ -1368,11 +1556,30 @@ public class AuditTrailService {
                 firstNonBlank(storedSnapshot.roleName(), currentSnapshot.roleName()),
                 firstNonBlank(storedSnapshot.positionName(), currentSnapshot.positionName()),
                 firstNonBlank(storedSnapshot.departmentName(), currentSnapshot.departmentName()),
-                currentSnapshot.avatar()
+                currentSnapshot.avatar(),
+                storedSnapshot.accessProfileNames().isEmpty() ? currentSnapshot.accessProfileNames() : storedSnapshot.accessProfileNames()
         );
     }
 
     private AuditEntitySnapshot buildEntitySnapshot(String entityType, UUID entityId, String fallbackEntityName) {
+        // Memoise the findById-backed lookups within one page/list render: every row of the same
+        // entity resolves to the same snapshot. Keyed by canonical type + id; the per-row
+        // fallbackEntityName only matters when the entity no longer exists, so cache hits are safe.
+        AuditResolveCache cache = resolveCache.get();
+        if (cache == null || entityId == null) {
+            return buildEntitySnapshotUncached(entityType, entityId, fallbackEntityName);
+        }
+        String key = canonicalEntityTypeKey(entityType) + "|" + entityId;
+        AuditEntitySnapshot hit = cache.entitySnapshots.get(key);
+        if (hit != null) {
+            return hit;
+        }
+        AuditEntitySnapshot resolved = buildEntitySnapshotUncached(entityType, entityId, fallbackEntityName);
+        cache.entitySnapshots.put(key, resolved);
+        return resolved;
+    }
+
+    private AuditEntitySnapshot buildEntitySnapshotUncached(String entityType, UUID entityId, String fallbackEntityName) {
         if (!StringUtils.hasText(entityType) || entityId == null) {
             String fallbackLabel = StringUtils.hasText(fallbackEntityName) ? fallbackEntityName : humanizeField(entityType);
             return new AuditEntitySnapshot(
@@ -1383,7 +1590,9 @@ public class AuditTrailService {
                     null
             );
         }
-        String normalizedType = entityType.trim().toUpperCase(Locale.ROOT);
+        // Stripped-canonical key so a drifted spelling (documents / ControlledCopyRecord / ...)
+        // still resolves its readable name instead of falling through to the raw UUID.
+        String normalizedType = canonicalEntityTypeKey(entityType);
         if ("DOCUMENT".equals(normalizedType)) {
             return documentRecordRepository.findById(entityId)
                     .map(document -> new AuditEntitySnapshot(
@@ -1407,7 +1616,7 @@ public class AuditTrailService {
                     ))
                     .orElseGet(() -> fallbackEntitySnapshot(entityType, entityId, fallbackEntityName));
         }
-        if ("USER".equals(normalizedType) || "USER_ACCOUNT".equals(normalizedType)) {
+        if ("USER".equals(normalizedType)) {
             return userAccountRepository.findById(entityId)
                     .map(user -> new AuditEntitySnapshot(
                             user.getFullName(),
@@ -1418,7 +1627,61 @@ public class AuditTrailService {
                     ))
                     .orElseGet(() -> fallbackEntitySnapshot(entityType, entityId, fallbackEntityName));
         }
+        // Without a case here, "Object Code" fell all the way back to the raw entity UUID
+        // (resolveEntitySnapshot's last-resort fallback) for every Controlled Copy audit entry --
+        // the one identifier a reviewer can actually recognize (the copy number, e.g.
+        // CC.SOP.0007.003) was right there on the record but never looked up.
+        if ("CONTROLLEDCOPY".equals(normalizedType)) {
+            return controlledCopyRepository.findById(entityId)
+                    .map(copy -> new AuditEntitySnapshot(
+                            StringUtils.hasText(copy.getControlledCopyNumber()) ? copy.getControlledCopyNumber() : fallbackEntityName,
+                            StringUtils.hasText(copy.getControlledCopyNumber()) ? copy.getControlledCopyNumber() : fallbackEntityName,
+                            copy.getControlledCopyNumber(),
+                            copy.getDocumentNumber(),
+                            copy.getStatusCode(),
+                            copy.getRevisionNumber()
+                    ))
+                    .orElseGet(() -> fallbackEntitySnapshot(entityType, entityId, fallbackEntityName));
+        }
+        if ("CONTROLLEDCOPYDISTRIBUTIONBATCH".equals(normalizedType)) {
+            return controlledCopyDistributionBatchRepository.findById(entityId)
+                    .map(batch -> new AuditEntitySnapshot(
+                            StringUtils.hasText(batch.getBatchNumber()) ? batch.getBatchNumber() : fallbackEntityName,
+                            StringUtils.hasText(batch.getBatchNumber()) ? batch.getBatchNumber() : fallbackEntityName,
+                            batch.getBatchNumber(),
+                            batch.getDocumentNumber(),
+                            batch.getStatusCode(),
+                            batch.getRevisionNumber()
+                    ))
+                    .orElseGet(() -> fallbackEntitySnapshot(entityType, entityId, fallbackEntityName));
+        }
+        // Without a case here, every expiry rule (Global Default, per-document-type, per-department,
+        // per-combination) fell back to the same generic "Controlled Copy Expiry Rule" name/code --
+        // impossible to tell WHICH rule an entry was about once more than one exists.
+        if ("CONTROLLEDCOPYEXPIRYLIMIT".equals(normalizedType)) {
+            return controlledCopyExpiryLimitRepository.findById(entityId)
+                    .map(limit -> {
+                        String scope = describeExpiryLimitScope(limit);
+                        return new AuditEntitySnapshot(scope, scope, scope, null, null);
+                    })
+                    .orElseGet(() -> fallbackEntitySnapshot(entityType, entityId, fallbackEntityName));
+        }
         return fallbackEntitySnapshot(entityType, entityId, fallbackEntityName);
+    }
+
+    private String describeExpiryLimitScope(com.eqms.entity.ControlledCopyExpiryLimit limit) {
+        boolean hasType = limit.getDocumentType() != null;
+        boolean hasDept = limit.getDepartment() != null;
+        if (!hasType && !hasDept) {
+            return "Global Default";
+        }
+        if (hasType && hasDept) {
+            return limit.getDocumentType().getName() + " / " + limit.getDepartment().getName();
+        }
+        if (hasType) {
+            return limit.getDocumentType().getName() + " (Any Department)";
+        }
+        return limit.getDepartment().getName() + " (Any Document Type)";
     }
 
     private AuditEntitySnapshot resolveEntitySnapshot(AuditLog log, String module) {
@@ -1437,10 +1700,18 @@ public class AuditTrailService {
     private AuditEntitySnapshot fallbackEntitySnapshot(String entityType, UUID entityId, String fallbackEntityName) {
         String entityName = StringUtils.hasText(fallbackEntityName) ? fallbackEntityName : null;
         String entityLabel = entityName != null ? entityName : humanizeField(entityType);
+        // Prefer the human-readable name callers already pass at write time (role/template/rule
+        // name, controlled-copy number, etc.) over the raw entity UUID -- for every entity type
+        // without its own case in buildEntitySnapshot above (most of Security & Administration:
+        // Access Profile, Permission Set, SoD Constraint, Object Access Rule, Workflow Action
+        // Policy/Role, Email Template...), "Object Code" used to always be the bare UUID even
+        // though the readable name was sitting right there as entityName. Only fall back to the
+        // UUID when no name was ever recorded at all.
+        String entityCode = entityName != null ? entityName : (entityId == null ? null : entityId.toString());
         return new AuditEntitySnapshot(
                 entityName,
                 entityLabel,
-                entityId == null ? null : entityId.toString(),
+                entityCode,
                 null,
                 null
         );
@@ -1466,8 +1737,8 @@ public class AuditTrailService {
                     .map(change -> humanizeField(change.field()) + ": " + defaultValue(change.oldValue()) + " -> " + defaultValue(change.newValue()))
                     .collect(Collectors.joining("; "));
         }
-        if (StringUtils.hasText(log.getFromStatus()) || StringUtils.hasText(log.getToStatus())) {
-            return "Status: " + defaultValue(log.getFromStatus()) + " -> " + defaultValue(log.getToStatus());
+        if (isRealStatusTransition(log.getFromStatus(), log.getToStatus())) {
+            return "Status: " + log.getFromStatus() + " -> " + log.getToStatus();
         }
         if (StringUtils.hasText(log.getComment())) {
             return abbreviate(log.getComment(), 180);
@@ -1478,6 +1749,13 @@ public class AuditTrailService {
     private List<AuditTrailChangeResponse> loadChanges(AuditLog log) {
         if (log == null || log.getId() == null) {
             return buildLegacyStatusChanges(log);
+        }
+        AuditResolveCache cache = resolveCache.get();
+        if (cache != null && cache.changesPreloaded) {
+            List<AuditTrailChangeResponse> preloaded = cache.changesByLog.get(log.getId());
+            if (preloaded != null) {
+                return preloaded.isEmpty() ? buildLegacyStatusChanges(log) : preloaded;
+            }
         }
         List<AuditLogChange> changeEntities = auditLogChangeRepository.findAllByAuditLogIdOrderByChangeOrderAscCreatedAtAsc(log.getId());
         if (changeEntities == null || changeEntities.isEmpty()) {
@@ -1526,14 +1804,16 @@ public class AuditTrailService {
 
     private List<AuditTrailChangeResponse> buildLegacyStatusChanges(AuditLog log) {
         List<AuditTrailChangeResponse> changes = new ArrayList<>();
-        if (log != null && (StringUtils.hasText(log.getFromStatus()) || StringUtils.hasText(log.getToStatus()))) {
-            changes.add(new AuditTrailChangeResponse(
-                    "status",
-                    log.getFromStatus() == null ? "" : log.getFromStatus(),
-                    log.getToStatus() == null ? "" : log.getToStatus()
-            ));
+        if (log != null && isRealStatusTransition(log.getFromStatus(), log.getToStatus())) {
+            changes.add(new AuditTrailChangeResponse("status", log.getFromStatus(), log.getToStatus()));
         }
         return changes;
+    }
+
+    /** A meaningful status change: both sides present and actually different. */
+    private static boolean isRealStatusTransition(String from, String to) {
+        return StringUtils.hasText(from) && StringUtils.hasText(to)
+                && !from.trim().equalsIgnoreCase(to.trim());
     }
 
     private String abbreviate(String text, int maxLength) {
@@ -1541,6 +1821,14 @@ public class AuditTrailService {
             return text;
         }
         return text.substring(0, Math.max(0, maxLength - 1)) + "...";
+    }
+
+    /** Hard cap for a bounded varchar column -- returns the value unchanged when it already fits. */
+    private static String clampColumn(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 
     private String defaultValue(String value) {
@@ -1790,17 +2078,21 @@ public class AuditTrailService {
         if (!StringUtils.hasText(entityType)) {
             return "System";
         }
-        return switch (entityType.trim().toUpperCase(Locale.ROOT)) {
+        // Switch on the stripped-canonical key so every historical spelling of the same concept
+        // ("DOCUMENT"/"documents"/"DocumentRecord", "Controlled Copy"/"ControlledCopyRecord", ...)
+        // maps to one display label.
+        return switch (canonicalEntityTypeKey(entityType)) {
             case "DOCUMENT" -> "Document";
             case "REVISION" -> "Revision";
-            case "USER", "USER_ACCOUNT" -> "User";
+            case "USER" -> "User";
             case "ROLE" -> "Role";
-            case "PROMPT_SPECIFICATION", "PROMPT_GENERATION_RUN", "GENERATED_ARTIFACT" -> "Prompt";
+            case "PROMPTSPECIFICATION", "PROMPTGENERATIONRUN", "GENERATEDARTIFACT" -> "Prompt";
             case "CAPA" -> "CAPA";
             case "DEVIATION" -> "Deviation";
             case "TRAINING" -> "Training";
-            case "CONTROLLED_COPY" -> "Controlled Copy";
-            case "SETTINGS", "SYSTEM_CONFIGURATION", "SYSTEM" -> "Settings";
+            case "CONTROLLEDCOPY" -> "Controlled Copy";
+            case "CONTROLLEDCOPYDISTRIBUTIONBATCH" -> "Controlled Copy Distribution Batch";
+            case "SETTINGS", "SYSTEMCONFIGURATION", "SYSTEM" -> "Settings";
             case "SESSION", "AUTH", "AUTHENTICATION" -> "System";
             default -> entityType;
         };
@@ -2123,7 +2415,8 @@ public class AuditTrailService {
             String roleName,
             String positionName,
             String departmentName,
-            String avatar
+            String avatar,
+            List<String> accessProfileNames
     ) {
     }
 

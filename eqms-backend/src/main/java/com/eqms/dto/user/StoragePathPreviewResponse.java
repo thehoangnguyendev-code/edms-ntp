@@ -5,7 +5,6 @@ package com.eqms.dto.user;
  * Placeholder segments make the configured structure understandable without exposing a real object key.
  */
 public record StoragePathPreviewResponse(
-        String officeOnlineWorkspace,
         String documents,
         String controlledCopies,
         String templates,

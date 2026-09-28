@@ -1,18 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  LockKeyhole,
-  MoreVertical,
-  Pencil,
-  Plus,
-  Search,
-  Shield,
-  X,
-} from "lucide-react";
-import { IconFilter2 } from "@tabler/icons-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Check, ChevronDown, ChevronUp, LockKeyhole, MoreVertical, Plus, Search, Shield, X } from "lucide-react";
+import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -33,7 +22,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { api } from "@/services/api/client";
 import { workflowRoleCatalog as workflowRoleCatalogBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
-import { usePortalDropdown, useTableDragScroll } from "@/hooks";
+import { useDebounce, usePortalDropdown, useTableDragScroll } from "@/hooks";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { formatDateTime } from "@/utils/format";
 
@@ -97,6 +86,7 @@ const statusOptions: SelectOption[] = [
 /** Advanced, database-backed catalog of workflow participant types. */
 export const WorkflowRolesView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
   const canView = hasPermissionAlias("security.workflow_authorization.view");
@@ -134,6 +124,40 @@ export const WorkflowRolesView: React.FC = () => {
     field: SortField;
     direction: "asc" | "desc";
   }>({ field: "displayOrder", direction: "asc" });
+  const debouncedSearch = useDebounce(search, 300);
+
+  React.useLayoutEffect(() => {
+    const sortBy = searchParams.get("sortBy");
+    const allowedSortFields: SortField[] = ["displayOrder", "code", "label", "moduleKey", "createdAt", "updatedAt"];
+    setSearch(searchParams.get("search") ?? "");
+    setModuleFilter(searchParams.get("module") ?? "ALL");
+    setTypeFilter(searchParams.get("type") ?? "ALL");
+    setStatusFilter(searchParams.get("status") ?? "ALL");
+    setCreatedFrom(searchParams.get("createdFrom") ?? "");
+    setCreatedTo(searchParams.get("createdTo") ?? "");
+    setUpdatedFrom(searchParams.get("updatedFrom") ?? "");
+    setUpdatedTo(searchParams.get("updatedTo") ?? "");
+    setSort({ field: allowedSortFields.includes(sortBy as SortField) ? sortBy as SortField : "displayOrder", direction: searchParams.get("sortDir") === "desc" ? "desc" : "asc" });
+    setPagination((current) => ({ ...current, page: Math.max(1, Number(searchParams.get("page")) || 1), limit: Math.max(1, Number(searchParams.get("limit")) || 10) }));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (search !== debouncedSearch) return;
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (moduleFilter !== "ALL") params.set("module", moduleFilter);
+    if (typeFilter !== "ALL") params.set("type", typeFilter);
+    if (statusFilter !== "ALL") params.set("status", statusFilter);
+    if (createdFrom) params.set("createdFrom", createdFrom);
+    if (createdTo) params.set("createdTo", createdTo);
+    if (updatedFrom) params.set("updatedFrom", updatedFrom);
+    if (updatedTo) params.set("updatedTo", updatedTo);
+    if (sort.field !== "displayOrder") params.set("sortBy", sort.field);
+    if (sort.direction !== "asc") params.set("sortDir", sort.direction);
+    if (pagination.page > 1) params.set("page", String(pagination.page));
+    if (pagination.limit !== 10) params.set("limit", String(pagination.limit));
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [search, debouncedSearch, moduleFilter, typeFilter, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sort, pagination.page, pagination.limit, searchParams, setSearchParams]);
 
   const moduleOptions: SelectOption[] = [
     { label: "All Modules", value: "ALL" },
@@ -592,7 +616,7 @@ export const WorkflowRolesView: React.FC = () => {
                             sort={sort}
                             onSort={toggleSort}
                           />
-                          <th className="sticky top-0 z-20 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                          <th className="sticky top-0 z-20 w-[28rem] min-w-[18rem] border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
                             Description
                           </th>
                           <th className="sticky top-0 z-20 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
@@ -643,7 +667,7 @@ export const WorkflowRolesView: React.FC = () => {
                                   1}
                               </td>
                               <td
-                                className={`${tdClass} font-mono font-medium`}
+                                className={`${tdClass} font-medium`}
                               >
                                 {role.code}
                               </td>
@@ -653,7 +677,7 @@ export const WorkflowRolesView: React.FC = () => {
                                 {role.label}
                               </td>
                               <td className={tdClass}>{role.moduleKey}</td>
-                              <td className={`${tdClass} max-w-xs truncate`}>
+                              <td className={`${tdClass} w-[28rem] min-w-[18rem] whitespace-normal break-words align-top leading-5`}>
                                 {role.description || "-"}
                               </td>
                               <td className={tdClass}>
@@ -673,10 +697,14 @@ export const WorkflowRolesView: React.FC = () => {
                                 </Badge>
                               </td>
                               <td className={tdClass}>
-                                {formatDateTime(role.createdAt)}
+                                {role.createdAt
+                                  ? formatDateTime(role.createdAt)
+                                  : "-"}
                               </td>
                               <td className={tdClass}>
-                                {formatDateTime(role.updatedAt)}
+                                {role.updatedAt
+                                  ? formatDateTime(role.updatedAt)
+                                  : "-"}
                               </td>
                               <td className="sticky right-0 z-10 whitespace-nowrap border-b border-slate-200 bg-white px-4 py-3 text-center shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 transition-colors group-hover:bg-slate-50">
                                 <button
@@ -727,7 +755,7 @@ export const WorkflowRolesView: React.FC = () => {
         <div className="py-1">
           {canManage && selectedRole && (
             <DropdownMenuItem
-              icon={<Pencil className="h-4 w-4" />}
+              icon={<IconPencilMinus className="h-4 w-4" />}
               onClick={() => {
                 openEdit(selectedRole);
                 close();

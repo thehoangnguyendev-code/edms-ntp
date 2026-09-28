@@ -4,6 +4,10 @@ import com.eqms.entity.UserAccount;
 import com.eqms.entity.UserStatus;
 import com.eqms.repository.UserAccessProfileRepository;
 import com.eqms.repository.UserAccountRepository;
+import com.eqms.dto.user.PageResponse;
+import com.eqms.dto.user.PaginationResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -15,6 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Lightweight, read-only lookup data shared across modules — the same design principle as the
@@ -102,5 +109,67 @@ public class MetadataController {
                 .toList();
 
         return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Server-paged counterpart to {@code /metadata/users}. New high-cardinality person pickers
+     * must use this endpoint so filtering, sorting and paging stay off the browser. The existing
+     * list endpoint remains for backwards compatibility with small static lookup consumers.
+     */
+    @GetMapping("/users/paged")
+    @Transactional(readOnly = true)
+    public ResponseEntity<PageResponse<UserLookupResponse>> getUsersLookupPaged(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String department,
+            @RequestParam(defaultValue = "fullName") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir
+    ) {
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        String normalizedSearch = StringUtils.hasText(search) ? search.trim() : null;
+        String normalizedDepartment = StringUtils.hasText(department) ? department.trim() : null;
+        String safeSortBy = switch (sortBy == null ? "fullName" : sortBy) {
+            case "email", "employeeCode", "department", "position" -> sortBy;
+            default -> "fullName";
+        };
+        Sort.Direction direction = "desc".equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort sort = Sort.by(direction, safeSortBy);
+        if (!"fullName".equals(safeSortBy)) {
+            sort = sort.and(Sort.by(Sort.Direction.ASC, "fullName"));
+        }
+
+        var userPage = userAccountRepository.findMetadataLookupCandidates(
+                UserStatus.Active,
+                normalizedSearch,
+                normalizedDepartment,
+                PageRequest.of(safePage - 1, safeLimit, sort)
+        );
+        List<UUID> userIds = userPage.getContent().stream().map(UserAccount::getId).toList();
+        Map<UUID, List<AccessProfileLookupResponse>> profilesByUser = (userIds.isEmpty()
+                ? List.<com.eqms.entity.UserAccessProfile>of()
+                : userAccessProfileRepository.findByUserIdInOrderByAssignedAtAsc(userIds))
+                .stream()
+                .filter(assignment -> assignment.getAccessProfile() != null)
+                .collect(Collectors.groupingBy(
+                        assignment -> assignment.getUserId(),
+                        Collectors.mapping(assignment -> new AccessProfileLookupResponse(
+                                assignment.getAccessProfileId().toString(),
+                                assignment.getAccessProfile().getCode(),
+                                assignment.getAccessProfile().getName()), Collectors.toList())
+                ));
+
+        List<UserLookupResponse> data = userPage.getContent().stream()
+                .map(user -> toLookupResponse(user, profilesByUser.getOrDefault(user.getId(), List.of())))
+                .toList();
+        return ResponseEntity.ok(new PageResponse<>(data, new PaginationResponse(
+                safePage, safeLimit, userPage.getTotalElements(), userPage.getTotalPages())));
+    }
+
+    private UserLookupResponse toLookupResponse(UserAccount user, List<AccessProfileLookupResponse> accessProfiles) {
+        return new UserLookupResponse(
+                user.getId().toString(), user.getUsername(), user.getFullName(), accessProfiles,
+                user.getDepartment(), user.getBusinessUnit(), user.getPosition(), user.getEmployeeCode(), user.getEmail());
     }
 }

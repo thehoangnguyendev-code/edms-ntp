@@ -87,7 +87,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                     if (sessionOptional.isPresent()) {
                         AuthSession session = sessionOptional.get();
                         if (session.getRevokedAt() != null) {
-                            filterChain.doFilter(request, response);
+                            writeSessionRevokedResponse(response);
                             return;
                         }
 
@@ -171,14 +171,25 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
 
 
-                        if (!isReauthenticateRequest) {
-                            session.setLastActivityAt(now);
-                            session.setStatus(AuthSession.SessionStatus.ACTIVE);
-                            sessionRepository.save(session);
-                        }
+                        // Deliberately NOT refreshing lastActivityAt on every authenticated request here.
+                        // The frontend has background polling (Sidebar.tsx: navigation + notification
+                        // summary, every 30s while the tab is visible) that fires regardless of whether
+                        // the user is actually interacting with the page. If any authenticated request
+                        // counted as "activity", those polls would keep this session's idle clock at
+                        // ~0 forever, so a genuinely idle user (per the client's own real-interaction
+                        // timer -- mousedown/keydown/scroll/touchstart/pointerdown/input/click, see
+                        // MainLayout.tsx) would never actually cross the server-side idle threshold: the
+                        // client shows the "Session Timeout" lock modal off its own clock, but the
+                        // server -- still seeing "recent" activity from the last poll -- never flips the
+                        // session to LOCKED, so a correctly-entered password at unlock time is rejected
+                        // with "Session is not locked" (AuthService.reauthenticate). The dedicated
+                        // touchSession heartbeat below (AuthController POST /auth/touch), which the
+                        // frontend calls only from that same real-interaction listener, is the sole
+                        // source of truth for "the user is active" and status ACTIVE is otherwise never
+                        // stale here (a LOCKED session already returned above; EXPIRED/REVOKED too).
 
-                        // F-02: permission-based overload — exemption is `security.maintenance.bypass`
-                        // (or SYSTEM_SUPER_ADMIN), never a display role name. `user` is already
+                        // F-02: permission-based overload — exemption is purely `security.maintenance.bypass`,
+                        // never a display role name or hardcoded profile identity. `user` is already
                         // resolved and confirmed Active above.
                         if (isMaintenanceBlocked(request.getRequestURI(), claims.principal(), user)) {
                             writeMaintenanceModeResponse(response);
@@ -250,6 +261,28 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * A force logout revokes the server-side session before the browser learns about it.
+     * Return a stable authentication error rather than continuing as an anonymous request, so
+     * every active client clears its local credentials and redirects to sign-in on its next call.
+     */
+    private void writeSessionRevokedResponse(HttpServletResponse response) {
+        if (response.isCommitted()) {
+            return;
+        }
+        response.setStatus(401);
+        response.setContentType("application/json");
+        try {
+            response.getWriter().write(objectMapper.writeValueAsString(Map.of(
+                    "code", "SESSION_REVOKED",
+                    "message", "Your session has been signed out. Please sign in again."
+            )));
+            response.flushBuffer();
+        } catch (IOException ignored) {
+            // Fall through without extra handling.
+        }
+    }
+
     private void writePasswordExpiredResponse(HttpServletResponse response) {
         if (response.isCommitted()) {
             return;
@@ -285,10 +318,10 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     }
 
     /**
-     * F-02: maintenance exemption is permission-based (`security.maintenance.bypass`, or
-     * SYSTEM_SUPER_ADMIN) — display role names are never consulted. `principal.permissions()`
-     * is a fast path using the JWT's embedded snapshot; the `permissionEvaluationService` calls
-     * are the authoritative fallback against the caller's live, fully-resolved account.
+     * F-02: maintenance exemption is purely permission-based (`security.maintenance.bypass`) --
+     * display role names and hardcoded profile identities are never consulted. `principal.permissions()`
+     * is a fast path using the JWT's embedded snapshot; the `permissionEvaluationService` call
+     * is the authoritative fallback against the caller's live, fully-resolved account.
      */
     private boolean isMaintenanceBlocked(String requestUri, AuthenticatedUser principal, UserAccount user) {
         if (!systemConfigurationService.isMaintenanceModeEnabled()) {
@@ -300,8 +333,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         boolean principalHasBypass = principal != null && principal.permissions() != null
                 && principal.permissions().stream().anyMatch(permission ->
                 "security.maintenance.bypass".equalsIgnoreCase(permission));
-        if (principalHasBypass || (user != null && (permissionEvaluationService.hasPermission(user, "security.maintenance.bypass")
-                || permissionEvaluationService.isSuperAdmin(user)))) {
+        if (principalHasBypass || (user != null && permissionEvaluationService.hasPermission(user, "security.maintenance.bypass"))) {
             return false;
         }
         return true;

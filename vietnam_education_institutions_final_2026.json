@@ -1,0 +1,3288 @@
+{
+  "metadata": {
+    "dataset_name": "Vietnam education institutions - verified public-source database seed",
+    "version": "2026-09-16-final-public-source",
+    "generated_at": "2026-09-16",
+    "language": "vi",
+    "intended_use": "Database seed/reference. Record-level source URLs retained for audit.",
+    "record_count": 213,
+    "coverage_status": "verified_public_source_subset_not_certified_exhaustive_for_all_vocational_centers",
+    "coverage_explanation": "Các cơ sở giáo dục đại học được đối chiếu chủ yếu từ danh sách cơ sở giáo dục của Bộ GD&ĐT. Phần giáo dục nghề nghiệp sử dụng các nguồn công khai có thể truy xuất và danh mục tổng hợp 2026. Không gắn nhãn exhaustive=true vì hiện không có một tệp/endpoint công khai quốc gia duy nhất có thể tải ra toàn bộ trung tâm GDNN và mọi cơ sở/doanh nghiệp được phép đào tạo nghề; việc tự suy đoán để lấp khoảng trống sẽ làm giảm độ chính xác.",
+    "external_reference_counts": {
+      "gf_huong_nghiep_2026": {
+        "total": 580,
+        "higher_education": 171,
+        "vocational_education": 409,
+        "cao_dang": 223,
+        "trung_cap": 185,
+        "trung_tam_gdnn": 1,
+        "provinces_covered": 30,
+        "provinces_total": 34,
+        "officially_cross_checked": 558
+      }
+    },
+    "counts_in_this_file": {
+      "by_institution_type": {
+        "dai_hoc": 12,
+        "hoc_vien": 12,
+        "truong_dai_hoc": 146,
+        "cao_dang": 36,
+        "trung_cap": 5,
+        "co_so_nuoc_ngoai": 2
+      },
+      "by_ownership": {
+        "cong_lap": 156,
+        "tu_thuc": 52,
+        "khong_xac_dinh": 3,
+        "co_von_dau_tu_nuoc_ngoai": 2
+      }
+    },
+    "allowed_values": {
+      "ownership": [
+        "cong_lap",
+        "tu_thuc",
+        "dan_lap",
+        "co_von_dau_tu_nuoc_ngoai",
+        "khong_xac_dinh"
+      ],
+      "institution_type": [
+        "dai_hoc",
+        "truong_dai_hoc",
+        "hoc_vien",
+        "cao_dang",
+        "trung_cap",
+        "trung_tam_gdnn",
+        "co_so_nuoc_ngoai"
+      ]
+    },
+    "quality_rules": [
+      "Không suy đoán tên viết tắt: để null nếu không đủ căn cứ.",
+      "Không suy đoán loại hình sở hữu khi nguồn chưa rõ.",
+      "Slug chuẩn hóa Unicode và xử lý đúng ký tự Đ/đ.",
+      "Mỗi bản ghi giữ source_urls để truy vết."
+    ],
+    "validation": {
+      "duplicate_name_count": 0,
+      "duplicate_slug_count": 0
+    },
+    "primary_sources": [
+      {
+        "name": "Bộ GD&ĐT - Danh sách các cơ sở giáo dục",
+        "url": "https://moet.gov.vn/co-so-giao-duc/danh-sach-cac-co-so-giao-duc"
+      },
+      {
+        "name": "Cục Quản lý Chất lượng - Bộ GD&ĐT",
+        "url": "https://vqa.moet.gov.vn/"
+      },
+      {
+        "name": "Quyết định 1871/QĐ-BGDĐT ngày 30/06/2026",
+        "url": "https://thuvienphapluat.vn/van-ban/Cong-nghe-thong-tin/Quyet-dinh-1871-QD-BGDDT-2026-Danh-muc-du-lieu-goc-nganh-giao-duc-va-dao-tao-712801.aspx"
+      },
+      {
+        "name": "Quyết định 111/QĐ-BLĐTBXH năm 2025 - danh mục dữ liệu mở GDNN",
+        "url": "https://thuvienphapluat.vn/van-ban/Cong-nghe-thong-tin/Quyet-dinh-111-QD-BLDTBXH-2025-Danh-muc-du-lieu-mo-640191.aspx"
+      },
+      {
+        "name": "GF Hướng nghiệp - danh mục trường 2026",
+        "url": "https://huongnghiep.gf.edu.vn/truong"
+      }
+    ]
+  },
+  "institutions": [
+    {
+      "id": "vn-edu-0001",
+      "name": "Đại học Bách khoa Hà Nội",
+      "abbreviation": "HUST",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-bach-khoa-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0002",
+      "name": "Đại học Cần Thơ",
+      "abbreviation": "CTU",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-can-tho",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0003",
+      "name": "Đại học Công nghiệp Hà Nội",
+      "abbreviation": "HaUI",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-cong-nghiep-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0004",
+      "name": "Đại học Công nghiệp Thành phố Hồ Chí Minh",
+      "abbreviation": "IUH",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-cong-nghiep-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0005",
+      "name": "Đại học Đà Nẵng",
+      "abbreviation": "UDN",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-da-nang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0006",
+      "name": "Đại học Duy Tân",
+      "abbreviation": "DTU",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "dai-hoc-duy-tan",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0007",
+      "name": "Đại học Huế",
+      "abbreviation": "HU",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0008",
+      "name": "Đại học Kinh tế Quốc dân",
+      "abbreviation": "NEU",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-kinh-te-quoc-dan",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0009",
+      "name": "Đại học Kinh tế Thành phố Hồ Chí Minh",
+      "abbreviation": "UEH",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-kinh-te-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0010",
+      "name": "Đại học Quốc gia Hà Nội",
+      "abbreviation": "VNU",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-quoc-gia-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0011",
+      "name": "Đại học Quốc gia Thành phố Hồ Chí Minh",
+      "abbreviation": "VNU-HCM",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-quoc-gia-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0012",
+      "name": "Đại học Thái Nguyên",
+      "abbreviation": "TNU",
+      "institution_type": "dai_hoc",
+      "institution_type_label": "Đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "dai-hoc-thai-nguyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0013",
+      "name": "Học viện Báo chí và Tuyên truyền",
+      "abbreviation": "AJC",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-bao-chi-va-tuyen-truyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0014",
+      "name": "Học viện Chính sách và Phát triển",
+      "abbreviation": "APD",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-chinh-sach-va-phat-trien",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0015",
+      "name": "Học viện Công nghệ Bưu chính Viễn thông",
+      "abbreviation": "PTIT",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-cong-nghe-buu-chinh-vien-thong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0016",
+      "name": "Học viện Hành chính và Quản trị công",
+      "abbreviation": "NAPA",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-hanh-chinh-va-quan-tri-cong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0017",
+      "name": "Học viện Ngân hàng",
+      "abbreviation": "BA",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-ngan-hang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0018",
+      "name": "Học viện Ngoại giao",
+      "abbreviation": "DAV",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-ngoai-giao",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0019",
+      "name": "Học viện Nông nghiệp Việt Nam",
+      "abbreviation": "VNUA",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-nong-nghiep-viet-nam",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0020",
+      "name": "Học viện Phụ nữ Việt Nam",
+      "abbreviation": "VWA",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-phu-nu-viet-nam",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0021",
+      "name": "Học viện Quản lý Giáo dục",
+      "abbreviation": "NAEM",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-quan-ly-giao-duc",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0022",
+      "name": "Học viện Tài chính",
+      "abbreviation": "AOF",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-tai-chinh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0023",
+      "name": "Học viện Thanh thiếu niên Việt Nam",
+      "abbreviation": "VYA",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-thanh-thieu-nien-viet-nam",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0024",
+      "name": "Học viện Tòa án",
+      "abbreviation": "VCA",
+      "institution_type": "hoc_vien",
+      "institution_type_label": "Học viện",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "hoc-vien-toa-an",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0025",
+      "name": "Trường Đại học An Giang - ĐHQG Thành phố Hồ Chí Minh",
+      "abbreviation": "AGU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-an-giang-dhqg-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0026",
+      "name": "Trường Đại học Bà Rịa - Vũng Tàu",
+      "abbreviation": "BVU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-ba-ria-vung-tau",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0027",
+      "name": "Trường Đại học Bạc Liêu",
+      "abbreviation": "BLU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-bac-lieu",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0028",
+      "name": "Trường Đại học Bách khoa - Đại học Đà Nẵng",
+      "abbreviation": "DUT",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-bach-khoa-dai-hoc-da-nang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0029",
+      "name": "Trường Đại học Bách khoa - ĐHQG Thành phố Hồ Chí Minh",
+      "abbreviation": "HCMUT",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-bach-khoa-dhqg-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0030",
+      "name": "Trường Đại học Bình Dương",
+      "abbreviation": "BDU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-binh-duong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0031",
+      "name": "Trường Đại học CMC",
+      "abbreviation": "CMCU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-cmc",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0032",
+      "name": "Trường Đại học Công nghệ - ĐHQG Hà Nội",
+      "abbreviation": "VNU-UET",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-cong-nghe-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0033",
+      "name": "Trường Đại học Công nghệ Đông Á",
+      "abbreviation": "EAUT",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-cong-nghe-dong-a",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0034",
+      "name": "Trường Đại học Công nghệ Đồng Nai",
+      "abbreviation": "DNTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-cong-nghe-dong-nai",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0035",
+      "name": "Trường Đại học Công nghệ Giao thông Vận tải",
+      "abbreviation": "UTT",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-cong-nghe-giao-thong-van-tai",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0036",
+      "name": "Trường Đại học Công nghệ Sài Gòn",
+      "abbreviation": "STU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-cong-nghe-sai-gon",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0037",
+      "name": "Trường Đại học Công nghệ Thành phố Hồ Chí Minh",
+      "abbreviation": "HUTECH",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-cong-nghe-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0038",
+      "name": "Trường Đại học Công nghệ Thông tin - ĐHQG Thành phố Hồ Chí Minh",
+      "abbreviation": "UIT",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-cong-nghe-thong-tin-dhqg-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0039",
+      "name": "Trường Đại học Công nghệ Thông tin và Truyền thông - Đại học Thái Nguyên",
+      "abbreviation": "ICTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-cong-nghe-thong-tin-va-truyen-thong-dai-hoc-thai-nguyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0040",
+      "name": "Trường Đại học Công nghệ Thông tin và Truyền thông Việt - Hàn - Đại học Đà Nẵng",
+      "abbreviation": "VKU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-cong-nghe-thong-tin-va-truyen-thong-viet-han-dai-hoc-da-nang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0041",
+      "name": "Trường Đại học Công nghệ và Quản lý Hữu nghị",
+      "abbreviation": "UTM",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-cong-nghe-va-quan-ly-huu-nghi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0042",
+      "name": "Trường Đại học Công nghiệp Việt - Hung",
+      "abbreviation": "VIU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-cong-nghiep-viet-hung",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0043",
+      "name": "Trường Đại học Công Thương Thành phố Hồ Chí Minh",
+      "abbreviation": "HUIT",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-cong-thuong-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0044",
+      "name": "Trường Đại học Cửu Long",
+      "abbreviation": "MKU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-cuu-long",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0045",
+      "name": "Trường Đại học Đà Lạt",
+      "abbreviation": "DLU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-da-lat",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0046",
+      "name": "Trường Đại học Đại Nam",
+      "abbreviation": "DNU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-dai-nam",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0047",
+      "name": "Trường Đại học Điện lực",
+      "abbreviation": "EPU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-dien-luc",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0048",
+      "name": "Trường Đại học Đông Á",
+      "abbreviation": "UDA",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-dong-a",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0049",
+      "name": "Trường Đại học Đông Đô",
+      "abbreviation": "HDIU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-dong-do",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0050",
+      "name": "Trường Đại học Đồng Tháp",
+      "abbreviation": "DThU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-dong-thap",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0051",
+      "name": "Trường Đại học Dược Hà Nội",
+      "abbreviation": "HUP",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-duoc-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0052",
+      "name": "Trường Đại học FPT",
+      "abbreviation": "FPTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-fpt",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0053",
+      "name": "Trường Đại học Gia Định",
+      "abbreviation": "GDU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-gia-dinh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0054",
+      "name": "Trường Đại học Giáo dục - ĐHQG Hà Nội",
+      "abbreviation": "VNU-UEd",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-giao-duc-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0055",
+      "name": "Trường Đại học Giao thông Vận tải",
+      "abbreviation": "UTC",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-giao-thong-van-tai",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0056",
+      "name": "Trường Đại học Giao thông Vận tải Thành phố Hồ Chí Minh",
+      "abbreviation": "UTH",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-giao-thong-van-tai-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0057",
+      "name": "Trường Đại học Hạ Long",
+      "abbreviation": "UHL",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-ha-long",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0058",
+      "name": "Trường Đại học Hà Nội",
+      "abbreviation": "HANU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0059",
+      "name": "Trường Đại học Hải Dương",
+      "abbreviation": "UHD",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-hai-duong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0060",
+      "name": "Trường Đại học Hải Phòng",
+      "abbreviation": "DHHP",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-hai-phong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0061",
+      "name": "Trường Đại học Hòa Bình",
+      "abbreviation": "HBU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-hoa-binh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0062",
+      "name": "Trường Đại học Hoa Lư",
+      "abbreviation": "HLUV",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-hoa-lu",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0063",
+      "name": "Trường Đại học Hoa Sen",
+      "abbreviation": "HSU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-hoa-sen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0064",
+      "name": "Trường Đại học Hồng Đức",
+      "abbreviation": "HDU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-hong-duc",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0065",
+      "name": "Trường Đại học Hùng Vương",
+      "abbreviation": "HVU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-hung-vuong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0066",
+      "name": "Trường Đại học Hùng Vương Thành phố Hồ Chí Minh",
+      "abbreviation": "DHV",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-hung-vuong-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0067",
+      "name": "Trường Đại học Khoa học - Đại học Huế",
+      "abbreviation": "HUSC",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-khoa-hoc-dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0068",
+      "name": "Trường Đại học Khoa học - Đại học Thái Nguyên",
+      "abbreviation": "TNUS",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-khoa-hoc-dai-hoc-thai-nguyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0069",
+      "name": "Trường Đại học Khoa học Sức khỏe - ĐHQG Thành phố Hồ Chí Minh",
+      "abbreviation": "UHS",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-khoa-hoc-suc-khoe-dhqg-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0070",
+      "name": "Trường Đại học Khoa học Tự nhiên - ĐHQG Hà Nội",
+      "abbreviation": "VNU-HUS",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-khoa-hoc-tu-nhien-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0071",
+      "name": "Trường Đại học Khoa học Tự nhiên - ĐHQG Thành phố Hồ Chí Minh",
+      "abbreviation": "HCMUS",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-khoa-hoc-tu-nhien-dhqg-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0072",
+      "name": "Trường Đại học Khoa học Xã hội và Nhân văn - ĐHQG Hà Nội",
+      "abbreviation": "VNU-USSH",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-khoa-hoc-xa-hoi-va-nhan-van-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0073",
+      "name": "Trường Đại học Khoa học Xã hội và Nhân văn - ĐHQG Thành phố Hồ Chí Minh",
+      "abbreviation": "HCMUSSH",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-khoa-hoc-xa-hoi-va-nhan-van-dhqg-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0074",
+      "name": "Trường Đại học Kiên Giang",
+      "abbreviation": "KGU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-kien-giang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0075",
+      "name": "Trường Đại học Kiến trúc Đà Nẵng",
+      "abbreviation": "DAU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-kien-truc-da-nang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0076",
+      "name": "Trường Đại học Kiến trúc Hà Nội",
+      "abbreviation": "HAU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-kien-truc-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0077",
+      "name": "Trường Đại học Kiến trúc Thành phố Hồ Chí Minh",
+      "abbreviation": "UAH",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-kien-truc-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0078",
+      "name": "Trường Đại học Kinh Bắc",
+      "abbreviation": "UKB",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-kinh-bac",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0079",
+      "name": "Trường Đại học Kinh doanh và Công nghệ Hà Nội",
+      "abbreviation": "HUBT",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-kinh-doanh-va-cong-nghe-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0080",
+      "name": "Trường Đại học Kinh tế - Đại học Đà Nẵng",
+      "abbreviation": "DUE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-kinh-te-dai-hoc-da-nang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0081",
+      "name": "Trường Đại học Kinh tế - Đại học Huế",
+      "abbreviation": "HCE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-kinh-te-dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0082",
+      "name": "Trường Đại học Kinh tế - ĐHQG Hà Nội",
+      "abbreviation": "VNU-UEB",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-kinh-te-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0083",
+      "name": "Trường Đại học Kinh tế - Kỹ thuật Bình Dương",
+      "abbreviation": "BETU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-kinh-te-ky-thuat-binh-duong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0084",
+      "name": "Trường Đại học Kinh tế - Kỹ thuật Công nghiệp",
+      "abbreviation": "UNETI",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-kinh-te-ky-thuat-cong-nghiep",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0085",
+      "name": "Trường Đại học Kinh tế - Luật - ĐHQG Thành phố Hồ Chí Minh",
+      "abbreviation": "UEL",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-kinh-te-luat-dhqg-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0086",
+      "name": "Trường Đại học Kinh tế - Tài chính Thành phố Hồ Chí Minh",
+      "abbreviation": "UEF",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-kinh-te-tai-chinh-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0087",
+      "name": "Trường Đại học Kinh tế và Quản trị Kinh doanh - Đại học Thái Nguyên",
+      "abbreviation": "TUEBA",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-kinh-te-va-quan-tri-kinh-doanh-dai-hoc-thai-nguyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0088",
+      "name": "Trường Đại học Kỹ thuật Công nghiệp - Đại học Thái Nguyên",
+      "abbreviation": "TNUT",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-ky-thuat-cong-nghiep-dai-hoc-thai-nguyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0089",
+      "name": "Trường Đại học Lạc Hồng",
+      "abbreviation": "LHU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-lac-hong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0090",
+      "name": "Trường Đại học Lao động - Xã hội",
+      "abbreviation": "ULSA",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-lao-dong-xa-hoi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0091",
+      "name": "Trường Đại học Luật - Đại học Huế",
+      "abbreviation": "HUL",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-luat-dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0092",
+      "name": "Trường Đại học Luật - ĐHQG Hà Nội",
+      "abbreviation": "VNU-UL",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-luat-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0093",
+      "name": "Trường Đại học Luật Hà Nội",
+      "abbreviation": "HLU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-luat-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0094",
+      "name": "Trường Đại học Luật Thành phố Hồ Chí Minh",
+      "abbreviation": "ULAW",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-luat-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0095",
+      "name": "Trường Đại học Mỏ - Địa chất",
+      "abbreviation": "HUMG",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-mo-dia-chat",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0096",
+      "name": "Trường Đại học Mở Hà Nội",
+      "abbreviation": "HOU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-mo-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0097",
+      "name": "Trường Đại học Mở Thành phố Hồ Chí Minh",
+      "abbreviation": "HCMOU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-mo-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0098",
+      "name": "Trường Đại học Mỹ thuật Công nghiệp",
+      "abbreviation": "UAD",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-my-thuat-cong-nghiep",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0099",
+      "name": "Trường Đại học Mỹ thuật Việt Nam",
+      "abbreviation": "VNUFA",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-my-thuat-viet-nam",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0100",
+      "name": "Trường Đại học Nam Cần Thơ",
+      "abbreviation": "DNC",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-nam-can-tho",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0101",
+      "name": "Trường Đại học Nghệ thuật - Đại học Huế",
+      "abbreviation": "HUFA",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-nghe-thuat-dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0102",
+      "name": "Trường Đại học Ngoại ngữ - Đại học Đà Nẵng",
+      "abbreviation": "UFLS",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-ngoai-ngu-dai-hoc-da-nang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0103",
+      "name": "Trường Đại học Ngoại ngữ - Đại học Huế",
+      "abbreviation": "HUFLIS",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-ngoai-ngu-dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0104",
+      "name": "Trường Đại học Ngoại ngữ - ĐHQG Hà Nội",
+      "abbreviation": "VNU-ULIS",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-ngoai-ngu-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0105",
+      "name": "Trường Đại học Ngoại ngữ - Tin học Thành phố Hồ Chí Minh",
+      "abbreviation": "HUFLIT",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-ngoai-ngu-tin-hoc-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0106",
+      "name": "Trường Đại học Ngoại thương",
+      "abbreviation": "FTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-ngoai-thuong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0107",
+      "name": "Trường Đại học Nguyễn Tất Thành",
+      "abbreviation": "NTTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-nguyen-tat-thanh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0108",
+      "name": "Trường Đại học Nguyễn Trãi",
+      "abbreviation": "NTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-nguyen-trai",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0109",
+      "name": "Trường Đại học Nha Trang",
+      "abbreviation": "NTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-nha-trang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0110",
+      "name": "Trường Đại học Nội vụ Hà Nội",
+      "abbreviation": "HUHA",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-noi-vu-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0111",
+      "name": "Trường Đại học Nông Lâm - Đại học Huế",
+      "abbreviation": "HUAF",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-nong-lam-dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0112",
+      "name": "Trường Đại học Nông Lâm - Đại học Thái Nguyên",
+      "abbreviation": "TUAF",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-nong-lam-dai-hoc-thai-nguyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0113",
+      "name": "Trường Đại học Nông Lâm Thành phố Hồ Chí Minh",
+      "abbreviation": "NLU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-nong-lam-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0114",
+      "name": "Trường Đại học Phan Châu Trinh",
+      "abbreviation": "PCTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-phan-chau-trinh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0115",
+      "name": "Trường Đại học Phenikaa",
+      "abbreviation": "Phenikaa",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-phenikaa",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0116",
+      "name": "Trường Đại học Phú Xuân",
+      "abbreviation": "PXU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-phu-xuan",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0117",
+      "name": "Trường Đại học Phú Yên",
+      "abbreviation": "PYU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-phu-yen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0118",
+      "name": "Trường Đại học Quang Trung",
+      "abbreviation": "QTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-quang-trung",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0119",
+      "name": "Trường Đại học Quốc tế Bắc Hà",
+      "abbreviation": "BHIU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-quoc-te-bac-ha",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0120",
+      "name": "Trường Đại học Quốc tế - ĐHQG Thành phố Hồ Chí Minh",
+      "abbreviation": "IU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-quoc-te-dhqg-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0121",
+      "name": "Trường Đại học Quốc tế Hồng Bàng",
+      "abbreviation": "HIU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-quoc-te-hong-bang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0122",
+      "name": "Trường Đại học Quốc tế Miền Đông",
+      "abbreviation": "EIU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-quoc-te-mien-dong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0123",
+      "name": "Trường Đại học Quốc tế Sài Gòn",
+      "abbreviation": "SIU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-quoc-te-sai-gon",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0124",
+      "name": "Trường Đại học Quy Nhơn",
+      "abbreviation": "QNU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-quy-nhon",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0125",
+      "name": "Trường Đại học Sài Gòn",
+      "abbreviation": "SGU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-sai-gon",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0126",
+      "name": "Trường Đại học Sân khấu - Điện ảnh Hà Nội",
+      "abbreviation": "SKDA",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-san-khau-dien-anh-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0127",
+      "name": "Trường Đại học Sư phạm - Đại học Đà Nẵng",
+      "abbreviation": "UED",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-dai-hoc-da-nang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0128",
+      "name": "Trường Đại học Sư phạm - Đại học Huế",
+      "abbreviation": "HUCEd",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0129",
+      "name": "Trường Đại học Sư phạm - Đại học Thái Nguyên",
+      "abbreviation": "TNUE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-dai-hoc-thai-nguyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0130",
+      "name": "Trường Đại học Sư phạm Hà Nội",
+      "abbreviation": "HNUE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0131",
+      "name": "Trường Đại học Sư phạm Kỹ thuật - Đại học Đà Nẵng",
+      "abbreviation": "UTE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-ky-thuat-dai-hoc-da-nang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0132",
+      "name": "Trường Đại học Sư phạm Kỹ thuật Thành phố Hồ Chí Minh",
+      "abbreviation": "HCMUTE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-ky-thuat-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0133",
+      "name": "Trường Đại học Sư phạm Nghệ thuật Trung ương",
+      "abbreviation": "NUAE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-nghe-thuat-trung-uong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0134",
+      "name": "Trường Đại học Sư phạm Thành phố Hồ Chí Minh",
+      "abbreviation": "HCMUE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0135",
+      "name": "Trường Đại học Sư phạm Thể dục Thể thao Hà Nội",
+      "abbreviation": "HUPES",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-the-duc-the-thao-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0136",
+      "name": "Trường Đại học Sư phạm Thể dục Thể thao Thành phố Hồ Chí Minh",
+      "abbreviation": "UPES",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-su-pham-the-duc-the-thao-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0137",
+      "name": "Trường Đại học Tài chính - Marketing",
+      "abbreviation": "UFM",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-tai-chinh-marketing",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0138",
+      "name": "Trường Đại học Tài chính - Ngân hàng Hà Nội",
+      "abbreviation": "FBU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-tai-chinh-ngan-hang-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0139",
+      "name": "Trường Đại học Tài nguyên và Môi trường Thành phố Hồ Chí Minh",
+      "abbreviation": "HCMUNRE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-tai-nguyen-va-moi-truong-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0140",
+      "name": "Trường Đại học Tân Trào",
+      "abbreviation": "TQU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-tan-trao",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0141",
+      "name": "Trường Đại học Tây Bắc",
+      "abbreviation": "UTB",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-tay-bac",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0142",
+      "name": "Trường Đại học Tây Đô",
+      "abbreviation": "TDU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-tay-do",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0143",
+      "name": "Trường Đại học Tây Nguyên",
+      "abbreviation": "TNU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-tay-nguyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0144",
+      "name": "Trường Đại học Thăng Long",
+      "abbreviation": "TLU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-thang-long",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0145",
+      "name": "Trường Đại học Thành Đô",
+      "abbreviation": "TDU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-thanh-do",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0146",
+      "name": "Trường Đại học Thương mại",
+      "abbreviation": "TMU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-thuong-mai",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0147",
+      "name": "Trường Đại học Thủy lợi",
+      "abbreviation": "TLU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-thuy-loi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0148",
+      "name": "Trường Đại học Trà Vinh",
+      "abbreviation": "TVU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-tra-vinh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0149",
+      "name": "Trường Đại học Văn Hiến",
+      "abbreviation": "VHU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-van-hien",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0150",
+      "name": "Trường Đại học Văn hóa Hà Nội",
+      "abbreviation": "HUC",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-van-hoa-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0151",
+      "name": "Trường Đại học Văn hóa Thành phố Hồ Chí Minh",
+      "abbreviation": "HCMUC",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-van-hoa-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0152",
+      "name": "Trường Đại học Văn Lang",
+      "abbreviation": "VLU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-van-lang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0153",
+      "name": "Trường Đại học Việt Đức",
+      "abbreviation": "VGU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-viet-duc",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0154",
+      "name": "Trường Đại học Vinh",
+      "abbreviation": "VinhUni",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-vinh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0155",
+      "name": "Trường Đại học VinUni",
+      "abbreviation": "VinUni",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-vinuni",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0156",
+      "name": "Trường Đại học Võ Trường Toản",
+      "abbreviation": "VTTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-vo-truong-toan",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0157",
+      "name": "Trường Đại học Xây dựng Hà Nội",
+      "abbreviation": "HUCE",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-xay-dung-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0158",
+      "name": "Trường Đại học Y - Dược - Đại học Huế",
+      "abbreviation": "HUMP",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-y-duoc-dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0159",
+      "name": "Trường Đại học Y - Dược - Đại học Thái Nguyên",
+      "abbreviation": "TUMP",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-y-duoc-dai-hoc-thai-nguyen",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0160",
+      "name": "Trường Đại học Y Dược - ĐHQG Hà Nội",
+      "abbreviation": "VNU-UMP",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-y-duoc-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0161",
+      "name": "Trường Đại học Y Dược Hải Phòng",
+      "abbreviation": "HPMU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-y-duoc-hai-phong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0162",
+      "name": "Trường Đại học Y Dược Thái Bình",
+      "abbreviation": "TBUMP",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-y-duoc-thai-binh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0163",
+      "name": "Trường Đại học Y Dược Thành phố Hồ Chí Minh",
+      "abbreviation": "UMP",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-y-duoc-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0164",
+      "name": "Trường Đại học Y Hà Nội",
+      "abbreviation": "HMU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-y-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0165",
+      "name": "Trường Đại học Y khoa Phạm Ngọc Thạch",
+      "abbreviation": "PNTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-y-khoa-pham-ngoc-thach",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0166",
+      "name": "Trường Đại học Y tế Công cộng",
+      "abbreviation": "HUPH",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-dai-hoc-y-te-cong-cong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0167",
+      "name": "Trường Đại học Yersin Đà Lạt",
+      "abbreviation": "YDU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-dai-hoc-yersin-da-lat",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0168",
+      "name": "Trường Du lịch - Đại học Huế",
+      "abbreviation": "HTU",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-du-lich-dai-hoc-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0169",
+      "name": "Trường Quản trị và Kinh doanh - ĐHQG Hà Nội",
+      "abbreviation": "HSB",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-quan-tri-va-kinh-doanh-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0170",
+      "name": "Trường Quốc tế - ĐHQG Hà Nội",
+      "abbreviation": "VNU-IS",
+      "institution_type": "truong_dai_hoc",
+      "institution_type_label": "Trường đại học",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-quoc-te-dhqg-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0171",
+      "name": "Trường Cao đẳng Bách Việt",
+      "abbreviation": "BVC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-cao-dang-bach-viet",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0172",
+      "name": "Trường Cao đẳng Cần Thơ",
+      "abbreviation": "CTC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-can-tho",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0173",
+      "name": "Trường Cao đẳng Cơ điện Hà Nội",
+      "abbreviation": "HCEM",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-co-dien-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0174",
+      "name": "Trường Cao đẳng Cộng đồng Hà Nội",
+      "abbreviation": "HNCC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-cong-dong-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0175",
+      "name": "Trường Cao đẳng Cộng đồng Hà Tây",
+      "abbreviation": "HTCC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-cong-dong-ha-tay",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0176",
+      "name": "Trường Cao đẳng Công nghệ Quốc tế LILAMA 2",
+      "abbreviation": "LILAMA2",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-cong-nghe-quoc-te-lilama-2",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0177",
+      "name": "Trường Cao đẳng Công nghệ thông tin iSPACE",
+      "abbreviation": "iSPACE",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-cao-dang-cong-nghe-thong-tin-ispace",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0178",
+      "name": "Trường Cao đẳng Công nghệ Thủ Đức",
+      "abbreviation": "TDC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-cong-nghe-thu-duc",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0179",
+      "name": "Trường Cao đẳng Công Thương Thành phố Hồ Chí Minh",
+      "abbreviation": "HITC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-cong-thuong-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0180",
+      "name": "Trường Cao đẳng Đại Việt Sài Gòn",
+      "abbreviation": "DVSG",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-cao-dang-dai-viet-sai-gon",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0181",
+      "name": "Trường Cao đẳng Dầu khí",
+      "abbreviation": "PV College",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-dau-khi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0182",
+      "name": "Trường Cao đẳng Du lịch Cần Thơ",
+      "abbreviation": "CTTC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-du-lich-can-tho",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0183",
+      "name": "Trường Cao đẳng Du lịch Đà Nẵng",
+      "abbreviation": "DVTC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-du-lich-da-nang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0184",
+      "name": "Trường Cao đẳng Du lịch Hà Nội",
+      "abbreviation": "HTC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-du-lich-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0185",
+      "name": "Trường Cao đẳng Du lịch Huế",
+      "abbreviation": "HUETC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-du-lich-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0186",
+      "name": "Trường Cao đẳng Du lịch Nha Trang",
+      "abbreviation": "NTC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-du-lich-nha-trang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0187",
+      "name": "Trường Cao đẳng Giao thông Vận tải Trung ương I",
+      "abbreviation": "CCT1",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-giao-thong-van-tai-trung-uong-i",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0188",
+      "name": "Trường Cao đẳng Giao thông Vận tải Trung ương III",
+      "abbreviation": "CCT3",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-giao-thong-van-tai-trung-uong-iii",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0189",
+      "name": "Trường Cao đẳng Giao thông Vận tải Trung ương VI",
+      "abbreviation": "CCT6",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-giao-thong-van-tai-trung-uong-vi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0190",
+      "name": "Trường Cao đẳng Kinh tế Đối ngoại",
+      "abbreviation": "COFER",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-kinh-te-doi-ngoai",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0191",
+      "name": "Trường Cao đẳng Kinh tế Thành phố Hồ Chí Minh",
+      "abbreviation": "HCE",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-kinh-te-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0192",
+      "name": "Trường Cao đẳng Kỹ nghệ II",
+      "abbreviation": "HVCT",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-ky-nghe-ii",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0193",
+      "name": "Trường Cao đẳng Kỹ thuật Cao Thắng",
+      "abbreviation": "CTC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-ky-thuat-cao-thang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0194",
+      "name": "Trường Cao đẳng nghề Công nghệ cao Hà Nội",
+      "abbreviation": "HHT",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-nghe-cong-nghe-cao-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0195",
+      "name": "Trường Cao đẳng nghề Du lịch Sài Gòn",
+      "abbreviation": "STC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-cao-dang-nghe-du-lich-sai-gon",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0196",
+      "name": "Trường Cao đẳng Sư phạm Trung ương",
+      "abbreviation": "NCE",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-su-pham-trung-uong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0197",
+      "name": "Trường Cao đẳng Sư phạm Trung ương Nha Trang",
+      "abbreviation": "NCE-NhaTrang",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-su-pham-trung-uong-nha-trang",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0198",
+      "name": "Trường Cao đẳng Sư phạm Trung ương Thành phố Hồ Chí Minh",
+      "abbreviation": "NCE-HCM",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-su-pham-trung-uong-thanh-pho-ho-chi-minh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0199",
+      "name": "Trường Cao đẳng Y Dược Pasteur",
+      "abbreviation": "Pasteur College",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-cao-dang-y-duoc-pasteur",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0200",
+      "name": "Trường Cao đẳng Y Dược Sài Gòn",
+      "abbreviation": "SYP",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-cao-dang-y-duoc-sai-gon",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0201",
+      "name": "Trường Cao đẳng Y khoa Phạm Ngọc Thạch",
+      "abbreviation": "PNTC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "tu_thuc",
+      "ownership_label": "Tư thục",
+      "slug": "truong-cao-dang-y-khoa-pham-ngoc-thach",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0202",
+      "name": "Trường Cao đẳng Y tế Cần Thơ",
+      "abbreviation": "CTMC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-y-te-can-tho",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0203",
+      "name": "Trường Cao đẳng Y tế Hà Nội",
+      "abbreviation": "HMC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-y-te-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0204",
+      "name": "Trường Cao đẳng Y tế Hải Phòng",
+      "abbreviation": "HPMC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-y-te-hai-phong",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0205",
+      "name": "Trường Cao đẳng Y tế Huế",
+      "abbreviation": "HMC-Hue",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-y-te-hue",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0206",
+      "name": "Trường Cao đẳng Y tế Long An",
+      "abbreviation": "LAYC",
+      "institution_type": "cao_dang",
+      "institution_type_label": "Cao đẳng",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-cao-dang-y-te-long-an",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0207",
+      "name": "Trường Trung cấp Công nghệ Thăng Long",
+      "abbreviation": "TLTC",
+      "institution_type": "trung_cap",
+      "institution_type_label": "Trung cấp",
+      "ownership": "khong_xac_dinh",
+      "ownership_label": null,
+      "slug": "truong-trung-cap-cong-nghe-thang-long",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "partial_verification",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0208",
+      "name": "Trường Trung cấp Du lịch và Khách sạn Saigontourist",
+      "abbreviation": "STHC",
+      "institution_type": "trung_cap",
+      "institution_type_label": "Trung cấp",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-trung-cap-du-lich-va-khach-san-saigontourist",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0209",
+      "name": "Trường Trung cấp Kinh tế - Kỹ thuật Bắc Thăng Long",
+      "abbreviation": "BTLTC",
+      "institution_type": "trung_cap",
+      "institution_type_label": "Trung cấp",
+      "ownership": "khong_xac_dinh",
+      "ownership_label": null,
+      "slug": "truong-trung-cap-kinh-te-ky-thuat-bac-thang-long",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "partial_verification",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0210",
+      "name": "Trường Trung cấp Kinh tế - Kỹ thuật Nguyễn Hữu Cảnh",
+      "abbreviation": "NHCTC",
+      "institution_type": "trung_cap",
+      "institution_type_label": "Trung cấp",
+      "ownership": "cong_lap",
+      "ownership_label": "Công lập",
+      "slug": "truong-trung-cap-kinh-te-ky-thuat-nguyen-huu-canh",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0211",
+      "name": "Trường Trung cấp Y Dược Tuệ Tĩnh Hà Nội",
+      "abbreviation": "TTYDHN",
+      "institution_type": "trung_cap",
+      "institution_type_label": "Trung cấp",
+      "ownership": "khong_xac_dinh",
+      "ownership_label": null,
+      "slug": "truong-trung-cap-y-duoc-tue-tinh-ha-noi",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "partial_verification",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0212",
+      "name": "Trường Đại học Anh Quốc Việt Nam",
+      "abbreviation": "BUV",
+      "institution_type": "co_so_nuoc_ngoai",
+      "institution_type_label": "Cơ sở giáo dục nước ngoài",
+      "ownership": "co_von_dau_tu_nuoc_ngoai",
+      "ownership_label": "Có vốn đầu tư nước ngoài",
+      "slug": "truong-dai-hoc-anh-quoc-viet-nam",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    },
+    {
+      "id": "vn-edu-0213",
+      "name": "Trường Đại học RMIT Việt Nam",
+      "abbreviation": "RMIT Vietnam",
+      "institution_type": "co_so_nuoc_ngoai",
+      "institution_type_label": "Cơ sở giáo dục nước ngoài",
+      "ownership": "co_von_dau_tu_nuoc_ngoai",
+      "ownership_label": "Có vốn đầu tư nước ngoài",
+      "slug": "truong-dai-hoc-rmit-viet-nam",
+      "verified_as_of": "2026-09-16",
+      "verification_status": "verified_public_source",
+      "source_urls": [
+        "https://huongnghiep.gf.edu.vn/truong"
+      ]
+    }
+  ]
+}

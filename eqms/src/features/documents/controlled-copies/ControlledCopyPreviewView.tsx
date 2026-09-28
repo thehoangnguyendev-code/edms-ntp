@@ -1,15 +1,21 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Clock, Download, Eye, EyeOff, FileWarning, Lock, Printer } from "lucide-react";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
+import {
+  Clock,
+  Download,
+  Eye,
+  EyeOff,
+  FileWarning,
+  Lock,
+  Printer,
+} from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { documentApi } from "@/services/api/documents";
-import { ROUTES } from "@/app/routes.constants";
-import { navigateBack } from "@/app/navigation/backNavigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useControlledCopyPreviewAvailability } from "./useControlledCopyPreviewAvailability";
 import logo from "@/assets/images/logo_nobg.png";
-import type { ControlledCopyRouteState } from "./controlledCopyNavigation";
+import { IconFiles } from "@tabler/icons-react";
 
 type PreviewManifest = {
   id: string;
@@ -25,6 +31,8 @@ type PreviewManifest = {
   downloadOnce?: boolean;
   printOnce?: boolean;
   expiryDate?: string | null;
+  /** When this viewing session ends; the page locks then and the recipient must re-open the e-mail link. */
+  sessionExpiresAt?: string | null;
 };
 
 const buildWatermarkDataUri = (lines: string[]) => {
@@ -33,7 +41,10 @@ const buildWatermarkDataUri = (lines: string[]) => {
   const tileWidth = 460;
   const tileHeight = 260;
   const text = lines
-    .map((line, index) => `<tspan x="0" dy="${index === 0 ? 0 : 18}">${escape(line)}</tspan>`)
+    .map(
+      (line, index) =>
+        `<tspan x="0" dy="${index === 0 ? 0 : 18}">${escape(line)}</tspan>`,
+    )
     .join("");
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileWidth}" height="${tileHeight}">
     <text x="20" y="${tileHeight / 2}" font-size="13" font-family="sans-serif" fill="rgba(15,23,42,0.09)" transform="rotate(-28 ${tileWidth / 2} ${tileHeight / 2})">${text}</text>
@@ -41,16 +52,44 @@ const buildWatermarkDataUri = (lines: string[]) => {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
+/** Headline for a copy that stopped being valid while its viewer was open (Obsoleted or Closed - Cancelled). */
+const describeUnavailableCopy = (
+  status?: string | null,
+  reason?: string | null,
+): { title: string; tone: "danger" | "warning" } => {
+  if ((status || "").toUpperCase() === "CLOSED_CANCELLED") {
+    return { title: "This controlled copy request was cancelled", tone: "warning" };
+  }
+  switch ((reason || status || "").toUpperCase()) {
+    case "EXPIRED":
+      return { title: "This controlled copy has expired", tone: "warning" };
+    case "RECALLED":
+      return { title: "This controlled copy was recalled", tone: "danger" };
+    case "NEW_REVISION_PUBLISHED":
+      return { title: "This controlled copy was replaced by a newer revision", tone: "warning" };
+    case "REVISION_OBSOLETED":
+    case "DOCUMENT_OBSOLETED":
+      return { title: "This document is now obsolete", tone: "danger" };
+    case "LOST":
+      return { title: "This controlled copy was reported lost", tone: "danger" };
+    case "DAMAGED":
+      return { title: "This controlled copy was reported damaged", tone: "danger" };
+    case "DESTROYED":
+      return { title: "This controlled copy was destroyed", tone: "danger" };
+    default:
+      return { title: "This controlled copy is no longer available", tone: "danger" };
+  }
+};
+
 export const ControlledCopyPreviewView: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const { id = "" } = useParams();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") || new URLSearchParams(location.hash.replace(/^#/, "")).get("token") || "";
-  const { isAuthenticated } = useAuth();
+  const token =
+    searchParams.get("token") ||
+    new URLSearchParams(location.hash.replace(/^#/, "")).get("token") ||
+    "";
   const startedAtRef = useRef<number>(Date.now());
-  const navigationState = (location.state as ControlledCopyRouteState | null) || null;
-  const handleBack = () => navigateBack(navigate, navigationState, ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL);
 
   const [manifest, setManifest] = useState<PreviewManifest | null>(null);
   const [manifestError, setManifestError] = useState<string | null>(null);
@@ -60,11 +99,64 @@ export const ControlledCopyPreviewView: React.FC = () => {
   const [previewGrant, setPreviewGrant] = useState<string | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [showPasswordInput, setShowPasswordInput] = useState(false);
-  const [passwordSubmitError, setPasswordSubmitError] = useState<string | null>(null);
+  const [passwordSubmitError, setPasswordSubmitError] = useState<string | null>(
+    null,
+  );
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Distribution links use a fragment so the token is never sent in the initial HTTP request.
+  // Remove it from the visible URL immediately after reading it as an additional protection
+  // against history sharing or a user copying the browser address later in the session.
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const hasQueryToken = query.has("token");
+    const hasHashToken = hash.has("token");
+    if (!hasQueryToken && !hasHashToken) return;
+
+    query.delete("token");
+    hash.delete("token");
+    const nextQuery = query.toString();
+    const nextHash = hash.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${location.pathname}${nextQuery ? `?${nextQuery}` : ""}${nextHash ? `#${nextHash}` : ""}`,
+    );
+  }, [location.hash, location.pathname, location.search]);
+
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  // Set when the server tells us, while the page is open, that the copy was recalled / cancelled / made obsolete / expired.
+  const [unavailable, setUnavailable] = useState<{
+    title: string;
+    message: string;
+    tone: "danger" | "warning";
+    at: Date;
+  } | null>(null);
+
+  // Set when the viewing session ends (time limit from the Controlled Copies Policy, or the session is no longer valid).
+  const [sessionEnded, setSessionEnded] = useState(false);
+
+  useControlledCopyPreviewAvailability(id, previewGrant, {
+    sessionExpiresAt: manifest?.sessionExpiresAt,
+    onState: (state) => {
+      if (state.available) return;
+      const notice = describeUnavailableCopy(state.status, state.reason);
+      setUnavailable({
+        title: notice.title,
+        tone: notice.tone,
+        message: state.message || "This controlled copy is no longer available.",
+        at: state.occurredAt ? new Date(state.occurredAt) : new Date(),
+      });
+      // Drop the loaded document at once so nothing stays readable on this page.
+      setBlobUrl(null);
+    },
+    onSessionEnded: () => {
+      setSessionEnded(true);
+      setBlobUrl(null);
+    },
+  });
   const [isLoadingFile, setIsLoadingFile] = useState(true);
   const [fileError, setFileError] = useState(false);
   const [openedAt] = useState(() => new Date());
@@ -86,7 +178,9 @@ export const ControlledCopyPreviewView: React.FC = () => {
       link.download = `${manifest?.controlledCopyNumber || "controlled-copy"}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
-      setManifest((current) => current ? { ...current, allowDownload: false } : current);
+      setManifest((current) =>
+        current ? { ...current, allowDownload: false } : current,
+      );
     } finally {
       setIsActionRunning(false);
     }
@@ -98,7 +192,9 @@ export const ControlledCopyPreviewView: React.FC = () => {
     try {
       await documentApi.consumeControlledCopyPreviewPrint(id, previewGrant);
       window.print();
-      setManifest((current) => current ? { ...current, allowPrint: false } : current);
+      setManifest((current) =>
+        current ? { ...current, allowPrint: false } : current,
+      );
     } finally {
       setIsActionRunning(false);
     }
@@ -111,7 +207,9 @@ export const ControlledCopyPreviewView: React.FC = () => {
   }, [manifest?.recipientName, openedAt]);
 
   useEffect(() => {
-    document.title = manifest?.documentTitle ? `${manifest.documentTitle} — Controlled Copy` : "Controlled Copy Preview";
+    document.title = manifest?.documentTitle
+      ? `${manifest.documentTitle} — Controlled Copy`
+      : "Controlled Copy Preview";
   }, [manifest?.documentTitle]);
 
   // The password modal is required before anything opens — nothing is fetched until the user
@@ -119,7 +217,16 @@ export const ControlledCopyPreviewView: React.FC = () => {
   // backend accepts any (including blank) password, so submitting the form once is still enough.
   useEffect(() => {
     if (!id || !token) {
-      setManifestError("Access token is required.");
+      // Not a token that failed to validate -- there is no token in the URL at all. The most
+      // common cause: this exact page already ran once in this browser tab, and the effect above
+      // already stripped the token from the address bar as a security measure, so a refresh,
+      // browser-history revisit, or a link the token-strip already removed all land here with
+      // nothing left to read. A copied/forwarded link never had a token to begin with.
+      setManifestError(
+        "No access token found in this link. If you already opened this controlled copy once in this " +
+          "browser tab, the token was intentionally removed from the address bar after that first open " +
+          "for security -- reopen the original link from the distribution e-mail to view it again.",
+      );
       return;
     }
     setShowPasswordInput(true);
@@ -131,14 +238,18 @@ export const ControlledCopyPreviewView: React.FC = () => {
     setIsSubmittingPassword(true);
     setPasswordSubmitError(null);
     try {
-      const response = await documentApi.openControlledCopyPreview(id, token, passwordInput.trim());
+      const response = await documentApi.openControlledCopyPreview(
+        id,
+        token,
+        passwordInput.trim(),
+      );
       setManifest(response as PreviewManifest);
       setPreviewGrant((response as PreviewManifest).token);
-      window.history.replaceState(null, "", `${location.pathname}${location.search}`);
       setShowPasswordInput(false);
     } catch (err: any) {
       setPasswordSubmitError(
-        err?.response?.data?.message || "Incorrect password. Please check the distribution email and try again.",
+        err?.response?.data?.message ||
+          "Incorrect password. Please check the distribution email and try again.",
       );
     } finally {
       setIsSubmittingPassword(false);
@@ -186,7 +297,10 @@ export const ControlledCopyPreviewView: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      const blocked = (key === "p" && !allowPrint) || (key === "s" && !allowDownload) || ["c", "a"].includes(key);
+      const blocked =
+        (key === "p" && !allowPrint) ||
+        (key === "s" && !allowDownload) ||
+        ["c", "a"].includes(key);
       if ((event.ctrlKey || event.metaKey) && blocked) {
         event.preventDefault();
       }
@@ -202,7 +316,11 @@ export const ControlledCopyPreviewView: React.FC = () => {
     const close = () => {
       if (!manifest?.id || !token) return;
       const spent = Math.max(Date.now() - startedAtRef.current, 0);
-      void documentApi.closeControlledCopyPreview(manifest.id, previewGrant || "", spent);
+      void documentApi.closeControlledCopyPreview(
+        manifest.id,
+        previewGrant || "",
+        spent,
+      );
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") close();
@@ -216,6 +334,75 @@ export const ControlledCopyPreviewView: React.FC = () => {
     };
   }, [manifest?.id, previewGrant]);
 
+  if (sessionEnded && !unavailable) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="max-w-lg w-full bg-white border-2 border-amber-300 rounded-xl shadow-sm p-6 space-y-4"
+        >
+          <div className="mx-auto h-14 w-14 rounded-full bg-amber-50 flex items-center justify-center">
+            <Clock className="h-7 w-7 text-amber-600" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-xl font-semibold text-slate-900">Your viewing session has ended</h1>
+            <p className="text-sm text-slate-700 mt-2">
+              For security, a controlled copy can only be kept open for a limited time. The document has been closed on this
+              page.
+            </p>
+          </div>
+          <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-left text-xs sm:text-sm text-slate-700 space-y-2">
+            <p className="font-semibold text-slate-800">To view it again:</p>
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>Open the distribution email you received for this controlled copy.</li>
+              <li>Click the link in the email.</li>
+              <li>Enter the password that is included in the same email.</li>
+            </ol>
+          </div>
+          <p className="text-center text-2xs sm:text-xs text-slate-400">
+            If you cannot find the email, contact Document Control.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (unavailable) {
+    const danger = unavailable.tone === "danger";
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className={`max-w-lg w-full bg-white border-2 rounded-xl shadow-sm p-6 text-center space-y-4 ${
+            danger ? "border-red-300" : "border-amber-300"
+          }`}
+        >
+          <div
+            className={`mx-auto h-14 w-14 rounded-full flex items-center justify-center ${
+              danger ? "bg-red-50" : "bg-amber-50"
+            }`}
+          >
+            <FileWarning className={`h-7 w-7 ${danger ? "text-red-600" : "text-amber-600"}`} />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">{unavailable.title}</h1>
+            <p className="text-sm text-slate-700 mt-2">{unavailable.message}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-left text-xs sm:text-sm text-slate-600 space-y-1">
+            <p className="font-semibold text-slate-800">This copy must no longer be used.</p>
+            <p>
+              The document you were viewing has been closed on this page. Do not rely on any printed or saved version of
+              it. Contact Document Control if you need the current version.
+            </p>
+          </div>
+          <p className="text-2xs sm:text-xs text-slate-400">Updated {unavailable.at.toLocaleString()}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (manifestError) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -224,14 +411,11 @@ export const ControlledCopyPreviewView: React.FC = () => {
             <Lock className="h-6 w-6 text-rose-600" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-slate-900">Access Denied</h1>
+            <h1 className="text-lg font-semibold text-slate-900">
+              Access Denied
+            </h1>
             <p className="text-sm text-slate-600 mt-2">{manifestError}</p>
           </div>
-          {isAuthenticated && (
-            <Button variant="outline-emerald" onClick={handleBack}>
-              Back
-            </Button>
-          )}
         </div>
       </div>
     );
@@ -248,15 +432,26 @@ export const ControlledCopyPreviewView: React.FC = () => {
             <Lock className="h-6 w-6 text-emerald-600" />
           </div>
           <div className="text-center">
-            <h1 className="text-lg font-semibold text-slate-900">Password Required</h1>
+            <h1 className="text-lg font-semibold text-slate-900">
+              Password Required
+            </h1>
             <p className="text-sm text-slate-600 mt-2">
-              Enter the preview password from the distribution email to open this controlled copy.
+              Enter the preview password from the distribution email to open
+              this controlled copy.
             </p>
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="preview-password" className="text-xs font-medium text-slate-700">
+            {/* <label
+              htmlFor="preview-password"
+              className="text-xs font-medium text-slate-700"
+            >
               Preview Password
-            </label>
+            </label> */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs sm:text-sm font-medium text-slate-700">
+                Preview Password
+              </span>
+            </div>
             <div className="relative">
               <input
                 id="preview-password"
@@ -276,14 +471,22 @@ export const ControlledCopyPreviewView: React.FC = () => {
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </button>
             </div>
             {passwordSubmitError && (
               <p className="text-xs text-rose-600">{passwordSubmitError}</p>
             )}
           </div>
-          <Button type="submit" className="w-full" disabled={isSubmittingPassword || !passwordInput.trim()}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmittingPassword || !passwordInput.trim()}
+          >
             {isSubmittingPassword ? "Verifying..." : "Open Preview"}
           </Button>
         </form>
@@ -312,18 +515,24 @@ export const ControlledCopyPreviewView: React.FC = () => {
         />
         <div className="relative z-10 min-w-0 flex items-center gap-2 md:gap-3 max-w-[55%] sm:max-w-[38%]">
           <div className="h-8 w-8 md:h-9 md:w-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-            <Lock className="h-4 w-4 md:h-4.5 md:w-4.5 text-emerald-600" />
+            <IconFiles className="h-4 w-4 md:h-4.5 md:w-4.5 text-emerald-600" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs md:text-sm font-semibold text-slate-900 truncate">{manifest.documentTitle}</p>
-            <p className="text-2xs md:text-xs text-slate-500 truncate">{subtitle}</p>
+            <p className="text-xs md:text-sm font-semibold text-slate-900 truncate">
+              {manifest.documentTitle}
+            </p>
+            <p className="text-2xs md:text-xs text-slate-500 truncate">
+              {subtitle}
+            </p>
           </div>
         </div>
         <div className="relative z-10 flex items-center gap-2 shrink-0">
           {expiryDate && (
             <div
               className={`hidden md:flex items-center gap-1.5 text-2xs md:text-xs px-2.5 py-1 rounded-full ${
-                isExpired ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"
+                isExpired
+                  ? "bg-rose-50 text-rose-700"
+                  : "bg-amber-50 text-amber-700"
               }`}
             >
               <Clock className="h-3.5 w-3.5" />
@@ -331,18 +540,23 @@ export const ControlledCopyPreviewView: React.FC = () => {
             </div>
           )}
           {downloadOnce && allowDownload && (
-            <Button variant="outline-emerald" size="sm" onClick={() => void downloadOnceFromServer()} disabled={isActionRunning}>
+            <Button
+              variant="outline-emerald"
+              size="sm"
+              onClick={() => void downloadOnceFromServer()}
+              disabled={isActionRunning}
+            >
               <Download className="h-4 w-4 mr-1.5" /> Download
             </Button>
           )}
           {printOnce && allowPrint && (
-            <Button variant="outline-emerald" size="sm" onClick={() => void printOnceFromServer()} disabled={isActionRunning}>
+            <Button
+              variant="outline-emerald"
+              size="sm"
+              onClick={() => void printOnceFromServer()}
+              disabled={isActionRunning}
+            >
               <Printer className="h-4 w-4 mr-1.5" /> Print
-            </Button>
-          )}
-          {isAuthenticated && (
-            <Button variant="outline-emerald" size="sm" onClick={handleBack}>
-              Back
             </Button>
           )}
         </div>
@@ -352,7 +566,9 @@ export const ControlledCopyPreviewView: React.FC = () => {
         {fileError || (!isLoadingFile && !blobUrl) ? (
           <div className="h-full flex flex-col items-center justify-center gap-3">
             <FileWarning className="h-10 w-10 text-red-300" />
-            <p className="text-sm font-medium text-red-500">Unable to load this controlled copy's preview</p>
+            <p className="text-sm font-medium text-red-500">
+              Unable to load this controlled copy's preview
+            </p>
           </div>
         ) : isLoadingFile || !blobUrl ? (
           <FullPageLoading text="Loading preview..." />
@@ -362,13 +578,19 @@ export const ControlledCopyPreviewView: React.FC = () => {
             withFrame={false}
             allowDownload={downloadOnce ? false : allowDownload}
             allowPrint={printOnce ? false : allowPrint}
-            allowContextMenu={(downloadOnce ? false : allowDownload) || (printOnce ? false : allowPrint)}
+            allowContextMenu={
+              (downloadOnce ? false : allowDownload) ||
+              (printOnce ? false : allowPrint)
+            }
           />
         )}
         {blobUrl && !isLoadingFile && (
           <div
             className="pointer-events-none absolute inset-0 z-10"
-            style={{ backgroundImage: `url("${watermarkUrl}")`, backgroundRepeat: "repeat" }}
+            style={{
+              backgroundImage: `url("${watermarkUrl}")`,
+              backgroundRepeat: "repeat",
+            }}
           />
         )}
       </div>

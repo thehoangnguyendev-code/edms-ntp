@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { useToast } from "@/components/ui/toast";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -63,13 +64,13 @@ export const WorkflowTab: React.FC<{
   };
 
   return <div className="space-y-4">
-    <div className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 p-3"><p className="text-xs text-blue-700">Workflow eligibility determines which workflow steps users assigned this Access Profile can participate in. The catalog and allowed actions are configured in Workflow Authorization. Changes are applied when you click <b>Save</b>.</p></div>
-    {!canAssign && <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{deniedReason || "You can preview workflow eligibility, but cannot change assignments."}</div>}
+    <WarningBanner variant="info" description={<>Workflow eligibility determines which workflow steps users assigned this Access Profile can participate in. The catalog and allowed actions are configured in Workflow Authorization. Changes are applied when you click <b>Save</b>.</>} />
+    {!canAssign && <WarningBanner variant="warning" description={deniedReason || "You can preview workflow eligibility, but cannot change assignments."} />}
     <div className="flex flex-wrap items-center gap-2"><Badge color="emerald" size="sm">{assigned.length} assigned</Badge><span className="text-xs text-slate-500">{roles.length} workflow role(s) available. Click a role to see its persisted policy references.</span></div>
     <div className="max-w-3xl divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
       {roles.length === 0 ? <p className="px-4 py-8 text-center text-sm text-slate-500">No active workflow roles are configured in the catalog.</p> : roles.map((role) => <div key={role.code} className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50">
         <Checkbox id={`profile-wf-${role.code}`} checked={assignedSet.has(role.code)} onChange={() => handleToggle(role.code)} disabled={!canAssign} />
-        <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setPreviewRole(role)} title="View role details"><span className="flex flex-wrap items-center gap-2"><span className="text-xs font-medium text-slate-800 sm:text-sm">{role.label}</span><span className="text-2xs font-mono text-slate-400">{role.code}</span></span>{role.description && <span className="mt-0.5 block text-xs text-slate-500">{role.description}</span>}</button>
+        <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setPreviewRole(role)} title="View role details"><span className="flex flex-wrap items-center gap-2"><span className="text-xs font-medium text-slate-800 sm:text-sm">{role.label}</span><span className="text-2xs  text-slate-400">{role.code}</span></span>{role.description && <span className="mt-0.5 block text-xs text-slate-500">{role.description}</span>}</button>
         <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />
       </div>)}
     </div>

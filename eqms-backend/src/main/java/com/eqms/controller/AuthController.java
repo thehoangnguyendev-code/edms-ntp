@@ -104,7 +104,7 @@ public class AuthController {
     }
 
     @PutMapping("/me/profile")
-    public ResponseEntity<UserProfileResponse> updateProfile(@RequestBody UpdateProfileRequest request) {
+    public ResponseEntity<UserProfileResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
         return ResponseEntity.ok(authService.updateProfile(request));
     }
 

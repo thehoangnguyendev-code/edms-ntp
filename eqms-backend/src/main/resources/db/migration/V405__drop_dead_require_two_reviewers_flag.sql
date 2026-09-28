@@ -1,0 +1,11 @@
+-- require_two_reviewers is a leftover from a superseded design where Reviewer requirement had a
+-- fixed headcount (SINGLE/MULTIPLE/FLEXIBLE). That was replaced by ReviewRequirement
+-- (NONE/REQUIRED only -- see the entity's own Javadoc) -- reviewer count is no longer a business
+-- rule, only "is a review required at all". Confirmed dead end-to-end: no service ever reads this
+-- column (every sibling SoD flag on the same Document Administration screen -- author/co-author/
+-- DCO-cannot-review, same-user-cannot-hold-multiple-roles, reviewer/approver different
+-- departments -- is enforced in DocumentService/RevisionService; this one never is), and the
+-- frontend never wires a checkbox to it (its "require-two-reviewers" rules key is never set by
+-- any UI control, so it is always sent as false). Product decision, 2026-09-03: remove entirely
+-- rather than implement enforcement for a headcount rule the business no longer wants.
+ALTER TABLE document_workflow_settings DROP COLUMN IF EXISTS require_two_reviewers;

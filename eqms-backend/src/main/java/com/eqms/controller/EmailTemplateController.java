@@ -174,16 +174,22 @@ public class EmailTemplateController {
         }
     }
 
+    // settings.configuration.* remains the documented Settings super-admin fallback (same pattern
+    // as DictionaryManagementService/DocumentNameFormatService/ElectronicSignatureSettingsController)
+    // alongside the dedicated settings.email_template.* pair, so Email Templates can be delegated
+    // independently of full System Configuration access.
     private void requireViewPermission() {
         var user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasPermission(user, "settings.configuration.view")) {
+        if (!permissionEvaluationService.hasAnyPermission(user,
+                "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view")) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to view email templates");
         }
     }
 
     private void requireEditPermission() {
         var user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasPermission(user, "settings.configuration.edit")) {
+        if (!permissionEvaluationService.hasAnyPermission(user,
+                "settings.email_template.manage", "settings.configuration.manage")) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to edit email templates");
         }
     }

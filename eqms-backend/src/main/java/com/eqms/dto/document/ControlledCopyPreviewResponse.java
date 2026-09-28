@@ -12,6 +12,8 @@ public record ControlledCopyPreviewResponse(
         boolean allowDownload,
         boolean allowPrint,
         boolean downloadOnce,
-        boolean printOnce
+        boolean printOnce,
+        /** When the recipient's viewing session ends (ISO-8601); the viewer locks then. */
+        String sessionExpiresAt
 ) {
 }

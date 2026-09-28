@@ -39,8 +39,6 @@ class ControlledCopyInvariantPreconditionTest {
     @Mock private ControlledCopyDistributionBatchRepository controlledCopyDistributionBatchRepository;
     @Mock private WorkflowActionPolicyRepository workflowActionPolicyRepository;
     @Mock private UserAccessProfileRepository userAccessProfileRepository;
-    @Mock private AccessProfileWorkflowRoleRepository accessProfileWorkflowRoleRepository;
-    @Mock private DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     @Mock private DocumentRecordRepository documentRecordRepository;
 
     private ControlledCopyAuthorizationService service;
@@ -52,8 +50,7 @@ class ControlledCopyInvariantPreconditionTest {
                 permissionEvaluationService, currentUserService, documentAuthorizationService,
                 controlledCopyPolicyService, secureFileAccessService, controlledCopyRepository,
                 controlledCopyDistributionBatchRepository, workflowActionPolicyRepository,
-                userAccessProfileRepository, accessProfileWorkflowRoleRepository,
-                documentWorkflowPoolMemberRepository, documentRecordRepository
+                userAccessProfileRepository, documentRecordRepository
         );
         policy = new ControlledCopyPolicySetting();
         policy.setAllowDownload(true);
@@ -174,6 +171,31 @@ class ControlledCopyInvariantPreconditionTest {
                 ControlledCopyWorkflowAction.RECALL_BATCH, context, "CONTROLLED_COPY_BATCH");
 
         assertThat(reason).isEmpty();
+    }
+
+    @Test
+    void distributeCopy_parentDocumentNotActive_denied() {
+        ControlledCopyAuthorizationContext context = ControlledCopyAuthorizationContext.forCopy(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                "OBSOLETED", "EFFECTIVE", "READY_FOR_DISTRIBUTION", null,
+                UUID.randomUUID(), UUID.randomUUID(), null, true, true, false);
+
+        Optional<String> reason = service.checkInvariantPrecondition(
+                ControlledCopyWorkflowAction.DISTRIBUTE_COPY, context, "CONTROLLED_COPY");
+
+        assertThat(reason).contains("DOCUMENT_NOT_ACTIVE");
+    }
+
+    @Test
+    void distributeBatch_parentRevisionNotEffective_denied() {
+        ControlledCopyAuthorizationContext context = ControlledCopyAuthorizationContext.forBatch(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                "ACTIVE", "OBSOLETED", "READY_FOR_DISTRIBUTION", UUID.randomUUID(), null);
+
+        Optional<String> reason = service.checkInvariantPrecondition(
+                ControlledCopyWorkflowAction.DISTRIBUTE_BATCH, context, "CONTROLLED_COPY_BATCH");
+
+        assertThat(reason).contains("REVISION_NOT_EFFECTIVE");
     }
 
     @Test

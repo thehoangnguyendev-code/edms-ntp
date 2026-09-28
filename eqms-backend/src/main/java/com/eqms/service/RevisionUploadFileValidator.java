@@ -37,6 +37,7 @@ public class RevisionUploadFileValidator {
 
     public static final String DOCX_MIME_TYPE =
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    public static final String PDF_MIME_TYPE = "application/pdf";
 
     private static final int MAX_ZIP_ENTRIES = 10_000;
     private static final long MAX_UNCOMPRESSED_DOCX_BYTES = 200L * 1024L * 1024L;
@@ -64,22 +65,55 @@ public class RevisionUploadFileValidator {
     }
 
     public ValidatedRevisionFile validate(MultipartFile file) {
+        return validate(file, false);
+    }
+
+    /**
+     * @param allowPdf Legacy Import only: a paper original's most faithful digitization is often
+     *                 already a scanned/exported PDF, so that flow (and only that flow -- ordinary
+     *                 revisions stay DOCX-only for Office Online editing) may also submit a PDF.
+     */
+    public ValidatedRevisionFile validate(MultipartFile file, boolean allowPdf) {
         if (file == null || file.isEmpty()) {
             throw new RevisionUploadValidationException("REVISION_FILE_REQUIRED", "A DOCX source file is required.");
         }
 
         validateSize(file.getSize());
         String originalFileName = file.getOriginalFilename();
-        validateDocxExtension(originalFileName);
 
         final byte[] content;
         try {
             content = file.getBytes();
         } catch (IOException ex) {
-            throw new RevisionUploadValidationException("REVISION_FILE_READ_FAILED", "The selected DOCX file could not be read.");
+            throw new RevisionUploadValidationException("REVISION_FILE_READ_FAILED", "The selected file could not be read.");
         }
 
+        if (allowPdf && normalizeFileName(originalFileName).toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+            return validatePdfContent(originalFileName, content);
+        }
+
+        validateDocxExtension(originalFileName);
         return validateContent(originalFileName, content);
+    }
+
+    private ValidatedRevisionFile validatePdfContent(String originalFileName, byte[] content) {
+        if (content.length < 5
+                || content[0] != '%' || content[1] != 'P' || content[2] != 'D' || content[3] != 'F' || content[4] != '-') {
+            throw new RevisionUploadValidationException("INVALID_PDF_SIGNATURE", "The selected file is not a valid PDF document.");
+        }
+
+        boolean malwareScanPerformed = clamAvScanService.isEnabled();
+        ClamAvScanService.ScanResult scanResult = clamAvScanService.scan(content);
+        if (!scanResult.clean()) {
+            throw new RevisionUploadValidationException("MALWARE_DETECTED", "The PDF file was rejected by the malware scanner.");
+        }
+
+        return new ValidatedRevisionFile(
+                normalizeFileName(originalFileName),
+                PDF_MIME_TYPE,
+                sha256(content),
+                malwareScanPerformed
+        );
     }
 
     /** Validates a stored template before it is copied into a new revision. */

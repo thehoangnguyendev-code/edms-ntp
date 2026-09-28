@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/settings/publishing-templates")
+@RequestMapping("/documents/administration/publishing-templates")
 public class PublishingTemplateController {
 
     private final PublishingTemplateService service;
@@ -106,6 +106,7 @@ public class PublishingTemplateController {
             @RequestBody List<PublishingPlaceholderStyleRequest> request
     ) {
         requireEditPermission();
+        service.requireEditable(id);
         return ResponseEntity.ok(placeholderStyleService.upsertStyles(id, request));
     }
 
@@ -117,6 +118,7 @@ public class PublishingTemplateController {
             @PathVariable String placeholderKey
     ) {
         requireEditPermission();
+        service.requireEditable(id);
         placeholderStyleService.deleteStyle(id, componentType, layout, placeholderKey);
         return ResponseEntity.noContent().build();
     }
@@ -137,6 +139,12 @@ public class PublishingTemplateController {
     public ResponseEntity<PublishingTemplateResponse> duplicateTemplate(@PathVariable UUID id) {
         requireEditPermission();
         return ResponseEntity.ok(service.duplicateTemplate(id));
+    }
+
+    @PostMapping("/{id}/new-version")
+    public ResponseEntity<PublishingTemplateResponse> createNewVersion(@PathVariable UUID id) {
+        requireEditPermission();
+        return ResponseEntity.ok(service.createNewVersion(id));
     }
 
     @PostMapping("/{id}/toggle-status")
@@ -220,10 +228,10 @@ public class PublishingTemplateController {
         var user = currentUserService.requireCurrentUser();
         if (!permissionEvaluationService.hasAnyPermission(
                 user,
-                "settings.publishing_template.view",
-                "settings.publishing_template.manage",
+                "documents.admin.publishing_templates.view",
+                "documents.admin.publishing_templates.manage",
                 "settings.configuration.view",
-                "settings.configuration.edit"
+                "settings.configuration.manage"
         )) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to view publishing templates");
         }
@@ -231,7 +239,7 @@ public class PublishingTemplateController {
 
     private void requireEditPermission() {
         var user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasAnyPermission(user, "settings.publishing_template.manage", "settings.configuration.edit")) {
+        if (!permissionEvaluationService.hasAnyPermission(user, "documents.admin.publishing_templates.manage", "settings.configuration.manage")) {
             throw new org.springframework.security.access.AccessDeniedException("Current user is not allowed to edit publishing templates");
         }
     }

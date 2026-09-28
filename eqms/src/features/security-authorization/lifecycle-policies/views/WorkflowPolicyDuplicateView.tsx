@@ -103,7 +103,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
       <div className="space-y-4 md:space-y-6">
         <PageHeader
           title="Duplicate Policy"
-          breadcrumbItems={lifecyclePoliciesSubPage(navigate, "Transitions", "Duplicate Policy")}
+          breadcrumbItems={lifecyclePoliciesSubPage(navigate, "Transition Policies", "Duplicate Policy")}
           actions={<Button variant="outline-emerald" size="sm" onClick={handleBack}>Back</Button>}
         />
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 flex flex-col items-center text-center gap-3">
@@ -120,7 +120,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
       {signatureModal}
       <PageHeader
         title="Duplicate Policy"
-        breadcrumbItems={lifecyclePoliciesSubPage(navigate, "Transitions", "Duplicate Policy")}
+        breadcrumbItems={lifecyclePoliciesSubPage(navigate, "Transition Policies", "Duplicate Policy")}
         actions={
           <>
             <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">

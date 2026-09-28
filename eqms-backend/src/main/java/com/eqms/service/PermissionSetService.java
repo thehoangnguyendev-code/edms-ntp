@@ -6,6 +6,7 @@ import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.user.PermissionSetCapabilitiesResponse;
 import com.eqms.dto.user.PermissionSetRequest;
 import com.eqms.dto.user.PermissionSetResponse;
+import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.Permission;
 import com.eqms.entity.PermissionSet;
 import com.eqms.entity.PermissionSetItem;
@@ -162,20 +163,21 @@ public class PermissionSetService {
         addChange(changes, "Status", null, ps.isActive() ? "Active" : "Inactive");
         addChange(changes, "Permissions", null, formatCodes(assignedCodes));
 
-        auditTrailService.log(
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
+                SecurityChangeSignatureService.MEANING_PERMISSION_SET_CHANGE,
+                ENTITY_TYPE, ps.getId(), ps.getName(), request.reason(),
+                null, formatCodes(assignedCodes));
+
+        auditTrailService.logAs(
+                actor,
                 ENTITY_TYPE,
                 ps.getName(),
                 ps.getId(),
                 "CREATED",
                 null,
                 "Active",
-                "Created permission set with " + assignedCodes.size() + " permissions",
-                changes);
-
-        securityChangeSignatureService.record(actor, request.signatureToken(),
-                SecurityChangeSignatureService.MEANING_PERMISSION_SET_CHANGE,
-                ENTITY_TYPE, ps.getId(), ps.getName(), request.reason(),
-                null, formatCodes(assignedCodes));
+                withReason("Created permission set with " + assignedCodes.size() + " permissions", request.reason()),
+                changes, esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
         return toResponse(permissionSetRepository.findById(ps.getId()).orElseThrow());
     }
@@ -218,20 +220,21 @@ public class PermissionSetService {
         addChange(changes, "Status", oldActive ? "Active" : "Inactive", ps.isActive() ? "Active" : "Inactive");
         addChange(changes, "Permissions", formatCodes(oldCodes), formatCodes(newCodes));
 
-        auditTrailService.log(
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
+                SecurityChangeSignatureService.MEANING_PERMISSION_SET_CHANGE,
+                ENTITY_TYPE, ps.getId(), ps.getName(), request.reason(),
+                formatCodes(oldCodes), formatCodes(newCodes));
+
+        auditTrailService.logAs(
+                actor,
                 ENTITY_TYPE,
                 ps.getName(),
                 ps.getId(),
                 "UPDATED",
                 oldActive ? "Active" : "Inactive",
                 ps.isActive() ? "Active" : "Inactive",
-                "Updated permission set",
-                changes);
-
-        securityChangeSignatureService.record(actor, request.signatureToken(),
-                SecurityChangeSignatureService.MEANING_PERMISSION_SET_CHANGE,
-                ENTITY_TYPE, ps.getId(), ps.getName(), request.reason(),
-                formatCodes(oldCodes), formatCodes(newCodes));
+                withReason("Updated permission set", request.reason()),
+                changes, esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
         return toResponse(permissionSetRepository.save(ps));
     }
@@ -256,20 +259,21 @@ public class PermissionSetService {
                 new AuditTrailChangeResponse("Code", ps.getCode(), null),
                 new AuditTrailChangeResponse("Permissions", formatCodes(oldCodes), null)
         );
-        auditTrailService.log(
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
+                SecurityChangeSignatureService.MEANING_PERMISSION_SET_CHANGE,
+                ENTITY_TYPE, id, ps.getName(), sig.reason(),
+                formatCodes(oldCodes), null);
+        auditTrailService.logAs(
+                actor,
                 ENTITY_TYPE,
                 ps.getName(),
                 ps.getId(),
                 "DELETED",
                 ps.isActive() ? "Active" : "Inactive",
                 null,
-                "Deleted permission set",
-                changes);
+                withReason("Deleted permission set", sig.reason()),
+                changes, esig == null ? null : esig.getId());
         permissionSetRepository.delete(ps);
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
-                SecurityChangeSignatureService.MEANING_PERMISSION_SET_CHANGE,
-                ENTITY_TYPE, id, ps.getName(), sig.reason(),
-                formatCodes(oldCodes), null);
         permissionEvaluationService.clearCache();
     }
 
@@ -560,5 +564,15 @@ public class PermissionSetService {
         } catch (DateTimeParseException ignored) {
             return null;
         }
+    }
+
+    /**
+     * The reason typed into the e-signature modal is otherwise only persisted on the
+     * ElectronicSignature row (via securityChangeSignatureService.record's reason param) and never
+     * surfaced in the Audit Trail's own comment/description -- a reviewer reading the Audit Trail
+     * detail saw no trace of it. Fold it into the action's own comment so it's visible there too.
+     */
+    private String withReason(String comment, String reason) {
+        return StringUtils.hasText(reason) ? comment + " Reason: " + reason : comment;
     }
 }

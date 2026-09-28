@@ -53,10 +53,8 @@ class UserManagementServiceSelfEscalationGuardTest {
     @Mock private UserLanguageRepository userLanguageRepository;
     @Mock private RoleDefinitionRepository roleRepository;
     @Mock private PermissionRepository permissionRepository;
-    @Mock private RolePermissionRepository rolePermissionRepository;
     @Mock private PermissionEvaluationService permissionEvaluationService;
     @Mock private DocumentWorkflowSettingRepository documentWorkflowSettingRepository;
-    @Mock private DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     @Mock private AuthSessionRepository sessionRepository;
     @Mock private AuthAuditService auditService;
     @Mock private CurrentUserService currentUserService;
@@ -68,6 +66,10 @@ class UserManagementServiceSelfEscalationGuardTest {
     @Mock private FileStorageService fileStorageService;
     @Mock private AuthorizationEngineService authorizationEngineService;
     @Mock private NotificationDispatcher notificationDispatcher;
+    @Mock private ElectronicSignatureService electronicSignatureService;
+    @Mock private com.eqms.repository.RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
+    @Mock private com.eqms.repository.UserAccessProfileRepository userAccessProfileRepository;
+    @Mock private com.eqms.service.SodConstraintService sodConstraintService;
 
     @InjectMocks
     private UserManagementService userManagementService;
@@ -79,6 +81,13 @@ class UserManagementServiceSelfEscalationGuardTest {
 
     @BeforeEach
     void setUp() {
+        // electronicSignatureService is an @Autowired field (not a constructor arg), so
+        // @InjectMocks does not populate it — set it explicitly.
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                userManagementService, "electronicSignatureService", electronicSignatureService);
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                userManagementService, "revisionWorkflowParticipantRepository", revisionWorkflowParticipantRepository);
+
         targetId = UUID.randomUUID();
         target = new UserAccount();
         target.setId(targetId);

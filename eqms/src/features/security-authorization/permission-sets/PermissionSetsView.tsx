@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, Download, Import, Plus, Search, Trash2, X, Check, MoreVertical, ChevronUp, ChevronDown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { IconFilter2, IconInfoCircle, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
@@ -51,6 +51,7 @@ const TYPE_OPTIONS: SelectOption[] = [
 
 export const PermissionSetsView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"sets" | "catalog">("sets");
   const { showToast } = useToast();
   const { requestSignature, signatureModal } = useSecurityESign();
@@ -83,6 +84,41 @@ export const PermissionSetsView: React.FC = () => {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  React.useLayoutEffect(() => {
+    setSearch(searchParams.get("search") ?? "");
+    setStatusFilter(searchParams.get("status") ?? "ALL");
+    setTypeFilter(searchParams.get("type") ?? "ALL");
+    setModuleFilter(searchParams.get("module") ?? "ALL");
+    setCategoryFilter(searchParams.get("category") ?? "ALL");
+    setCreatedFrom(searchParams.get("createdFrom") ?? "");
+    setCreatedTo(searchParams.get("createdTo") ?? "");
+    setUpdatedFrom(searchParams.get("updatedFrom") ?? "");
+    setUpdatedTo(searchParams.get("updatedTo") ?? "");
+    setSortKey(searchParams.get("sortBy") ?? "name");
+    setSortDir(searchParams.get("sortDir") === "desc" ? "desc" : "asc");
+    setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
+    setItemsPerPage(Math.max(1, Number(searchParams.get("limit")) || 10));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (search !== debouncedSearch) return;
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (statusFilter !== "ALL") params.set("status", statusFilter);
+    if (typeFilter !== "ALL") params.set("type", typeFilter);
+    if (moduleFilter !== "ALL") params.set("module", moduleFilter);
+    if (categoryFilter !== "ALL") params.set("category", categoryFilter);
+    if (createdFrom) params.set("createdFrom", createdFrom);
+    if (createdTo) params.set("createdTo", createdTo);
+    if (updatedFrom) params.set("updatedFrom", updatedFrom);
+    if (updatedTo) params.set("updatedTo", updatedTo);
+    if (sortKey !== "name") params.set("sortBy", sortKey);
+    if (sortDir !== "asc") params.set("sortDir", sortDir);
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (itemsPerPage !== 10) params.set("limit", String(itemsPerPage));
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [search, debouncedSearch, statusFilter, typeFilter, moduleFilter, categoryFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, currentPage, itemsPerPage, searchParams, setSearchParams]);
 
   // Dropdown values come from the server.
   const [listOptions, setListOptions] = useState<Record<string, string[]>>({});
@@ -482,7 +518,7 @@ export const PermissionSetsView: React.FC = () => {
                   <tbody className="divide-y divide-slate-200 bg-white">
                     {!loading && sets.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="py-12 text-center">
+                        <td colSpan={11} className="p-0">
                           <TableEmptyState
                             title="No Shared Permission Sets Found"
                             description="We couldn't find any shared permission sets matching your filters. Try adjusting your search criteria."
@@ -507,7 +543,7 @@ export const PermissionSetsView: React.FC = () => {
                             <div className="font-semibold text-slate-900">{ps.name}</div>
                             <div className="mt-0.5 text-xs text-slate-400">{ps.code}</div>
                           </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-[280px]">
+                          <td className="py-3 px-4 text-xs sm:text-sm text-slate-600">
                             <p className="line-clamp-2">{ps.description || "—"}</p>
                           </td>
                           <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
@@ -520,7 +556,7 @@ export const PermissionSetsView: React.FC = () => {
                             {ps.category ?? "—"}
                           </td>
                           <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={ps.active ? "emerald" : "slate"} size="sm" showDot pill>
+                            <Badge color={ps.active ? "emerald" : "slate"} size="sm" >
                               {ps.active ? "Active" : "Inactive"}
                             </Badge>
                           </td>

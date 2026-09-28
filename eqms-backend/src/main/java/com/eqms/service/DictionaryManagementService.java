@@ -6,10 +6,6 @@ import com.eqms.dto.dictionary.BusinessUnitDictionaryRequest;
 import com.eqms.dto.dictionary.BusinessUnitDictionaryResponse;
 import com.eqms.dto.dictionary.DepartmentDictionaryRequest;
 import com.eqms.dto.dictionary.DepartmentDictionaryResponse;
-import com.eqms.dto.dictionary.DocumentTypeDictionaryRequest;
-import com.eqms.dto.dictionary.DocumentTypeDictionaryResponse;
-import com.eqms.dto.dictionary.DocumentSubTypeDictionaryRequest;
-import com.eqms.dto.dictionary.DocumentSubTypeDictionaryResponse;
 import com.eqms.dto.dictionary.PositionDictionaryRequest;
 import com.eqms.dto.dictionary.PositionDictionaryResponse;
 import com.eqms.dto.dictionary.RetentionPolicyDictionaryRequest;
@@ -19,16 +15,11 @@ import com.eqms.dto.dictionary.StorageLocationDictionaryResponse;
 import com.eqms.dto.user.LookupItemResponse;
 import com.eqms.entity.BusinessUnit;
 import com.eqms.entity.Department;
-import com.eqms.entity.DocumentType;
-import com.eqms.entity.DocumentSubType;
-import com.eqms.entity.ReviewRequirement;
 import com.eqms.entity.Position;
 import com.eqms.entity.RetentionPolicy;
 import com.eqms.entity.StorageLocation;
 import com.eqms.repository.BusinessUnitRepository;
 import com.eqms.repository.DepartmentRepository;
-import com.eqms.repository.DocumentTypeRepository;
-import com.eqms.repository.DocumentSubTypeRepository;
 import com.eqms.repository.DocumentRecordRepository;
 import com.eqms.repository.DocumentRevisionRepository;
 import com.eqms.repository.ControlledCopyExpiryLimitRepository;
@@ -59,8 +50,6 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.UUID;
 import java.util.function.Function;
 import org.springframework.http.HttpStatus;
@@ -78,35 +67,38 @@ public class DictionaryManagementService {
     private static final String ACTION_POSITION_CREATED = "POSITION_CREATED";
     private static final String ACTION_POSITION_UPDATED = "POSITION_UPDATED";
     private static final String ACTION_POSITION_DELETED = "POSITION_DELETED";
-    private static final String ACTION_DOCUMENT_TYPE_CREATED = "DOCUMENT_TYPE_CREATED";
-    private static final String ACTION_DOCUMENT_TYPE_UPDATED = "DOCUMENT_TYPE_UPDATED";
-    private static final String ACTION_DOCUMENT_TYPE_DELETED = "DOCUMENT_TYPE_DELETED";
-    private static final String ACTION_DOCUMENT_SUB_TYPE_CREATED = "DOCUMENT_SUB_TYPE_CREATED";
-    private static final String ACTION_DOCUMENT_SUB_TYPE_UPDATED = "DOCUMENT_SUB_TYPE_UPDATED";
-    private static final String ACTION_DOCUMENT_SUB_TYPE_DELETED = "DOCUMENT_SUB_TYPE_DELETED";
+    // Document Type / Sub-Type audit action constants moved to DocumentTypeAdminService.
     private static final String ACTION_STORAGE_LOCATION_CREATED = "STORAGE_LOCATION_CREATED";
     private static final String ACTION_STORAGE_LOCATION_UPDATED = "STORAGE_LOCATION_UPDATED";
     private static final String ACTION_STORAGE_LOCATION_DELETED = "STORAGE_LOCATION_DELETED";
     private static final String ACTION_RETENTION_POLICY_CREATED = "RETENTION_POLICY_CREATED";
     private static final String ACTION_RETENTION_POLICY_UPDATED = "RETENTION_POLICY_UPDATED";
     private static final String ACTION_RETENTION_POLICY_DELETED = "RETENTION_POLICY_DELETED";
+    // Education (Degree Levels, Schools) audit action constants moved to EducationManagementService.
 
     // F-17: dictionary master data (Document Type, Business Unit, Department, Storage Location,
     // Retention Policy...) drives the authorization model itself — Document Type is the key
     // workflow_action_policies.document_type_id is keyed on, and Business Unit/Department feed
     // ObjectAccessEvaluationService's scope matching. This was previously reachable by any
     // authenticated user with no permission check at either the controller or service layer.
-    private static final String VIEW_PERMISSION = "settings.dictionary.view";
-    private static final String MANAGE_PERMISSION = "settings.dictionary.manage";
+    private static final String BUSINESS_UNIT_VIEW = "settings.business_unit.view";
+    private static final String BUSINESS_UNIT_MANAGE = "settings.business_unit.manage";
+    private static final String DEPARTMENT_VIEW = "settings.department.view";
+    private static final String DEPARTMENT_MANAGE = "settings.department.manage";
+    private static final String POSITION_VIEW = "settings.position.view";
+    private static final String POSITION_MANAGE = "settings.position.manage";
+    private static final String STORAGE_LOCATION_VIEW = "settings.storage_location.view";
+    private static final String STORAGE_LOCATION_MANAGE = "settings.storage_location.manage";
+    private static final String RETENTION_POLICY_VIEW = "settings.retention_policy.view";
+    private static final String RETENTION_POLICY_MANAGE = "settings.retention_policy.manage";
+    // Education permission constants moved to EducationManagementService.
 
     private final BusinessUnitRepository businessUnitRepository;
     private final DepartmentRepository departmentRepository;
     private final PositionRepository positionRepository;
-    private final DocumentTypeRepository documentTypeRepository;
     private final DocumentRecordRepository documentRecordRepository;
     private final DocumentRevisionRepository documentRevisionRepository;
     private final ControlledCopyExpiryLimitRepository controlledCopyExpiryLimitRepository;
-    private final DocumentSubTypeRepository documentSubTypeRepository;
     private final StorageLocationRepository storageLocationRepository;
     private final RetentionPolicyRepository retentionPolicyRepository;
     private final UserLanguageRepository userLanguageRepository;
@@ -114,15 +106,21 @@ public class DictionaryManagementService {
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
 
+    // Field-injected -- same pattern used in DocumentService, to avoid churning this class's
+    // already-large constructor.
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.eqms.repository.UserAccountRepository userAccountRepository;
+    // EducationDegreeLevelRepository/SchoolRepository moved to EducationManagementService.
+    // DocumentTypeRepository/DocumentSubTypeRepository/DocumentNameFormatRepository/
+    // DocumentComponentResolver moved to DocumentTypeAdminService.
+
     public DictionaryManagementService(
             BusinessUnitRepository businessUnitRepository,
             DepartmentRepository departmentRepository,
             PositionRepository positionRepository,
-            DocumentTypeRepository documentTypeRepository,
             DocumentRecordRepository documentRecordRepository,
             DocumentRevisionRepository documentRevisionRepository,
             ControlledCopyExpiryLimitRepository controlledCopyExpiryLimitRepository,
-            DocumentSubTypeRepository documentSubTypeRepository,
             StorageLocationRepository storageLocationRepository,
             RetentionPolicyRepository retentionPolicyRepository,
             UserLanguageRepository userLanguageRepository,
@@ -133,11 +131,9 @@ public class DictionaryManagementService {
         this.businessUnitRepository = businessUnitRepository;
         this.departmentRepository = departmentRepository;
         this.positionRepository = positionRepository;
-        this.documentTypeRepository = documentTypeRepository;
         this.documentRecordRepository = documentRecordRepository;
         this.documentRevisionRepository = documentRevisionRepository;
         this.controlledCopyExpiryLimitRepository = controlledCopyExpiryLimitRepository;
-        this.documentSubTypeRepository = documentSubTypeRepository;
         this.storageLocationRepository = storageLocationRepository;
         this.retentionPolicyRepository = retentionPolicyRepository;
         this.userLanguageRepository = userLanguageRepository;
@@ -146,23 +142,31 @@ public class DictionaryManagementService {
         this.permissionEvaluationService = permissionEvaluationService;
     }
 
-    private void requireView() {
+    private void requireView(String viewPermission, String managePermission) {
         UserAccount actor = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasAnyPermission(actor, VIEW_PERMISSION, MANAGE_PERMISSION)) {
-            throw new AccessDeniedException("Dictionary view permission required");
+        if (!permissionEvaluationService.hasAnyPermission(actor, viewPermission, managePermission)) {
+            throw new AccessDeniedException("View permission required");
         }
     }
 
-    private void requireManage() {
+    private void requireManage(String managePermission) {
         UserAccount actor = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.hasPermission(actor, MANAGE_PERMISSION)) {
-            throw new AccessDeniedException("Dictionary management permission required");
+        if (!permissionEvaluationService.hasPermission(actor, managePermission)) {
+            throw new AccessDeniedException("Management permission required");
         }
     }
 
+    // Document Types / Sub-Types admin permission gate moved to DocumentTypeAdminService.
+
+    // Deliberately no permission gate: this unpaginated "give me the full active list" form is
+    // read-only reference data consumed to populate ordinary dropdowns across unrelated modules
+    // (document creation, user creation, controlled copies policy, ...) -- it is not the
+    // Settings admin screen (that's the *Page() variant below, which requires its own
+    // function-specific view/manage permission). Requiring a Settings-module permission just to
+    // read a Business Unit name for a form field was blocking ordinary users (e.g. DCO) from
+    // ever loading these dropdowns.
     @Transactional(readOnly = true)
     public List<BusinessUnitDictionaryResponse> listBusinessUnits() {
-        requireView();
         return businessUnitRepository.findAllByOrderByNameAsc()
                 .stream()
                 .map(this::toBusinessUnitResponse)
@@ -180,7 +184,7 @@ public class DictionaryManagementService {
             String sortBy,
             String sortDirection
     ) {
-        requireView();
+        requireView(BUSINESS_UNIT_VIEW, BUSINESS_UNIT_MANAGE);
         Page<BusinessUnit> result = businessUnitRepository.findAll(
                 buildBusinessUnitSpecification(search, status, modifiedFrom, modifiedTo),
                 buildPageable(page, limit, sortBy, sortDirection, "name", "modifiedDate")
@@ -190,7 +194,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public BusinessUnitDictionaryResponse createBusinessUnit(BusinessUnitDictionaryRequest request) {
-        requireManage();
+        requireManage(BUSINESS_UNIT_MANAGE);
         validateUniqueBusinessUnit(null, request.name(), request.abbreviation());
         BusinessUnit businessUnit = new BusinessUnit();
         applyBusinessUnit(businessUnit, request);
@@ -202,7 +206,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public BusinessUnitDictionaryResponse updateBusinessUnit(UUID id, BusinessUnitDictionaryRequest request) {
-        requireManage();
+        requireManage(BUSINESS_UNIT_MANAGE);
         BusinessUnit businessUnit = requireBusinessUnit(id);
         String before = describeBusinessUnit(businessUnit);
         validateUniqueBusinessUnit(id, request.name(), request.abbreviation());
@@ -214,7 +218,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public void deleteBusinessUnit(UUID id) {
-        requireManage();
+        requireManage(BUSINESS_UNIT_MANAGE);
         BusinessUnit businessUnit = requireBusinessUnit(id);
         if (departmentRepository.countByBusinessUnit_Id(id) > 0
                 || positionRepository.countByBusinessUnit_Id(id) > 0
@@ -232,7 +236,6 @@ public class DictionaryManagementService {
     // parent Business Unit's name.
     @Transactional(readOnly = true)
     public List<DepartmentDictionaryResponse> listDepartments() {
-        requireView();
         return departmentRepository.findAllByOrderByNameAsc()
                 .stream()
                 .map(this::toDepartmentResponse)
@@ -251,7 +254,7 @@ public class DictionaryManagementService {
             String sortBy,
             String sortDirection
     ) {
-        requireView();
+        requireView(DEPARTMENT_VIEW, DEPARTMENT_MANAGE);
         Page<Department> result = departmentRepository.findAll(
                 buildDepartmentSpecification(search, businessUnit, status, modifiedFrom, modifiedTo),
                 buildPageable(page, limit, sortBy, sortDirection, "name", "modifiedDate")
@@ -261,7 +264,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public DepartmentDictionaryResponse createDepartment(DepartmentDictionaryRequest request) {
-        requireManage();
+        requireManage(DEPARTMENT_MANAGE);
         BusinessUnit businessUnit = requireBusinessUnitByName(request.businessUnit());
         validateUniqueDepartment(null, request.name(), request.abbreviation());
         Department department = new Department();
@@ -274,7 +277,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public DepartmentDictionaryResponse updateDepartment(UUID id, DepartmentDictionaryRequest request) {
-        requireManage();
+        requireManage(DEPARTMENT_MANAGE);
         Department department = requireDepartment(id);
         String before = describeDepartment(department);
         BusinessUnit businessUnit = requireBusinessUnitByName(request.businessUnit());
@@ -287,7 +290,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public void deleteDepartment(UUID id) {
-        requireManage();
+        requireManage(DEPARTMENT_MANAGE);
         Department department = requireDepartment(id);
         if (positionRepository.countByDepartment_Id(id) > 0
                 || documentRecordRepository.existsByDepartment_Id(id)
@@ -302,7 +305,6 @@ public class DictionaryManagementService {
 
     @Transactional(readOnly = true)
     public List<PositionDictionaryResponse> listPositions() {
-        requireView();
         return positionRepository.findAllByOrderByNameAsc()
                 .stream()
                 .map(this::toPositionResponse)
@@ -322,7 +324,7 @@ public class DictionaryManagementService {
             String sortBy,
             String sortDirection
     ) {
-        requireView();
+        requireView(POSITION_VIEW, POSITION_MANAGE);
         Page<Position> result = positionRepository.findAll(
                 buildPositionSpecification(search, businessUnit, department, status, modifiedFrom, modifiedTo),
                 buildPageable(page, limit, sortBy, sortDirection, "name", "modifiedDate")
@@ -332,11 +334,11 @@ public class DictionaryManagementService {
 
     @Transactional
     public PositionDictionaryResponse createPosition(PositionDictionaryRequest request) {
-        requireManage();
+        requireManage(POSITION_MANAGE);
         BusinessUnit businessUnit = requireBusinessUnitByName(request.businessUnit());
         Department department = requireDepartmentByName(request.department());
         validateDepartmentMatchesBusinessUnit(department, businessUnit);
-        validateUniquePosition(null, request.name(), request.abbreviation());
+        validateUniquePosition(null, request.name());
         Position position = new Position();
         applyPosition(position, request, businessUnit, department);
         positionRepository.save(position);
@@ -347,13 +349,13 @@ public class DictionaryManagementService {
 
     @Transactional
     public PositionDictionaryResponse updatePosition(UUID id, PositionDictionaryRequest request) {
-        requireManage();
+        requireManage(POSITION_MANAGE);
         Position position = requirePosition(id);
         String before = describePosition(position);
         BusinessUnit businessUnit = requireBusinessUnitByName(request.businessUnit());
         Department department = requireDepartmentByName(request.department());
         validateDepartmentMatchesBusinessUnit(department, businessUnit);
-        validateUniquePosition(id, request.name(), request.abbreviation());
+        validateUniquePosition(id, request.name());
         applyPosition(position, request, businessUnit, department);
         auditTrailService.logSafely("SETTINGS", position.getName(), position.getId(), ACTION_POSITION_UPDATED, null, null,
                 buildUpdateComment("Position", before, describePosition(position)));
@@ -362,154 +364,19 @@ public class DictionaryManagementService {
 
     @Transactional
     public void deletePosition(UUID id) {
-        requireManage();
+        requireManage(POSITION_MANAGE);
         Position position = requirePosition(id);
         auditTrailService.logSafely("SETTINGS", position.getName(), position.getId(), ACTION_POSITION_DELETED, null, null,
                 buildDeleteComment("Position", describePosition(position)));
         positionRepository.delete(position);
     }
 
-    @Transactional(readOnly = true)
-    public List<DocumentTypeDictionaryResponse> listDocumentTypes() {
-        requireView();
-        Map<String, Integer> issuedSequences = loadIssuedDocumentSequences();
-        return documentTypeRepository.findAllByOrderByNameAsc()
-                .stream()
-                .map(documentType -> toDocumentTypeResponse(documentType, issuedSequences))
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public PageResponse<DocumentTypeDictionaryResponse> listDocumentTypesPage(
-            String search,
-            String status,
-            String modifiedFrom,
-            String modifiedTo,
-            int page,
-            int limit,
-            String sortBy,
-            String sortDirection
-    ) {
-        requireView();
-        Page<DocumentType> result = documentTypeRepository.findAll(
-                buildDocumentTypeSpecification(search, status, modifiedFrom, modifiedTo),
-                buildPageable(page, limit, sortBy, sortDirection, "name", "modifiedDate")
-        );
-        Map<String, Integer> issuedSequences = loadIssuedDocumentSequences();
-        return toPageResponse(result, documentType -> toDocumentTypeResponse(documentType, issuedSequences));
-    }
-
-    @Transactional
-    public DocumentTypeDictionaryResponse createDocumentType(DocumentTypeDictionaryRequest request) {
-        requireManage();
-        validateUniqueDocumentType(null, request.name(), request.shortCode());
-        DocumentType documentType = new DocumentType();
-        applyDocumentType(documentType, request, true);
-        documentTypeRepository.save(documentType);
-        auditTrailService.logSafely("SETTINGS", documentType.getName(), documentType.getId(), ACTION_DOCUMENT_TYPE_CREATED, null, null,
-                buildCreateComment("Document Type", documentType.getName(), documentType.getShortCode()));
-        return toDocumentTypeResponse(documentType);
-    }
-
-    @Transactional
-    public DocumentTypeDictionaryResponse updateDocumentType(UUID id, DocumentTypeDictionaryRequest request) {
-        requireManage();
-        DocumentType documentType = requireDocumentType(id);
-        String before = describeDocumentType(documentType);
-        validateUniqueDocumentType(id, request.name(), request.shortCode());
-        applyDocumentType(documentType, request, false);
-        auditTrailService.logSafely("SETTINGS", documentType.getName(), documentType.getId(), ACTION_DOCUMENT_TYPE_UPDATED, null, null,
-                buildUpdateComment("Document Type", before, describeDocumentType(documentType)));
-        return toDocumentTypeResponse(documentType);
-    }
-
-    @Transactional
-    public void deleteDocumentType(UUID id) {
-        requireManage();
-        DocumentType documentType = requireDocumentType(id);
-        if (!documentSubTypeRepository.findAllByDocumentType_IdOrderByNameAsc(id).isEmpty()
-                || documentRecordRepository.existsByDocumentType_Id(id)
-                || documentRevisionRepository.existsByDocumentType_Id(id)
-                || controlledCopyExpiryLimitRepository.existsByDocumentType_Id(id)) {
-            throw dictionaryInUse("Document Type", documentType.getName());
-        }
-        auditTrailService.logSafely("SETTINGS", documentType.getName(), documentType.getId(), ACTION_DOCUMENT_TYPE_DELETED, null, null,
-                buildDeleteComment("Document Type", describeDocumentType(documentType)));
-        documentTypeRepository.delete(documentType);
-    }
-
-    @Transactional(readOnly = true)
-    public List<DocumentSubTypeDictionaryResponse> listDocumentSubTypes() {
-        requireView();
-        return documentSubTypeRepository.findAllByOrderByNameAsc()
-                .stream()
-                .map(this::toDocumentSubTypeResponse)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public PageResponse<DocumentSubTypeDictionaryResponse> listDocumentSubTypesPage(
-            String search,
-            String documentType,
-            String status,
-            String modifiedFrom,
-            String modifiedTo,
-            int page,
-            int limit,
-            String sortBy,
-            String sortDirection
-    ) {
-        requireView();
-        Page<DocumentSubType> result = documentSubTypeRepository.findAll(
-                buildDocumentSubTypeSpecification(search, documentType, status, modifiedFrom, modifiedTo),
-                buildPageable(page, limit, sortBy, sortDirection, "name", "updatedAt")
-        );
-        return toPageResponse(result, this::toDocumentSubTypeResponse);
-    }
-
-    @Transactional
-    public DocumentSubTypeDictionaryResponse createDocumentSubType(DocumentSubTypeDictionaryRequest request) {
-        requireManage();
-        DocumentType documentType = requireDocumentTypeById(request.documentTypeId());
-        validateUniqueDocumentSubType(null, documentType.getId(), request.name());
-        DocumentSubType subType = new DocumentSubType();
-        applyDocumentSubType(subType, request, documentType);
-        documentSubTypeRepository.save(subType);
-        auditTrailService.logSafely("SETTINGS", subType.getName(), subType.getId(), ACTION_DOCUMENT_SUB_TYPE_CREATED, null, null,
-                buildCreateComment("Document Sub-Type", subType.getName(), documentType.getName()));
-        return toDocumentSubTypeResponse(subType);
-    }
-
-    @Transactional
-    public DocumentSubTypeDictionaryResponse updateDocumentSubType(UUID id, DocumentSubTypeDictionaryRequest request) {
-        requireManage();
-        DocumentSubType subType = requireDocumentSubType(id);
-        String before = describeDocumentSubType(subType);
-        DocumentType documentType = requireDocumentTypeById(request.documentTypeId());
-        validateUniqueDocumentSubType(id, documentType.getId(), request.name());
-        applyDocumentSubType(subType, request, documentType);
-        auditTrailService.logSafely("SETTINGS", subType.getName(), subType.getId(), ACTION_DOCUMENT_SUB_TYPE_UPDATED, null, null,
-                buildUpdateComment("Document Sub-Type", before, describeDocumentSubType(subType)));
-        return toDocumentSubTypeResponse(subType);
-    }
-
-    @Transactional
-    public void deleteDocumentSubType(UUID id) {
-        requireManage();
-        DocumentSubType subType = requireDocumentSubType(id);
-        if (subType.getDocumentType() != null
-                && documentRecordRepository.existsByDocumentType_IdAndSubTypeIgnoreCase(
-                        subType.getDocumentType().getId(), subType.getName())) {
-            throw dictionaryInUse("Document Sub-Type", subType.getName());
-        }
-        auditTrailService.logSafely("SETTINGS", subType.getName(), subType.getId(), ACTION_DOCUMENT_SUB_TYPE_DELETED, null, null,
-                buildDeleteComment("Document Sub-Type", describeDocumentSubType(subType)));
-        documentSubTypeRepository.delete(subType);
-    }
+    // Document Types / Sub-Types moved to DocumentTypeAdminService -- see that class (part of the
+    // Document Control module's "Document Administration" area, not Settings > Dictionaries).
 
     @Transactional(readOnly = true)
     public List<StorageLocationDictionaryResponse> listStorageLocations() {
-        requireView();
+        requireView(STORAGE_LOCATION_VIEW, STORAGE_LOCATION_MANAGE);
         return storageLocationRepository.findAllByOrderByNameAsc()
                 .stream()
                 .map(this::toStorageLocationResponse)
@@ -527,7 +394,7 @@ public class DictionaryManagementService {
             String sortBy,
             String sortDirection
     ) {
-        requireView();
+        requireView(STORAGE_LOCATION_VIEW, STORAGE_LOCATION_MANAGE);
         Page<StorageLocation> result = storageLocationRepository.findAll(
                 buildStorageLocationSpecification(search, status, modifiedFrom, modifiedTo),
                 buildPageable(page, limit, sortBy, sortDirection, "name", "modifiedDate")
@@ -537,7 +404,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public StorageLocationDictionaryResponse createStorageLocation(StorageLocationDictionaryRequest request) {
-        requireManage();
+        requireManage(STORAGE_LOCATION_MANAGE);
         validateUniqueStorageLocation(null, request.name());
         StorageLocation storageLocation = new StorageLocation();
         applyStorageLocation(storageLocation, request);
@@ -549,7 +416,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public StorageLocationDictionaryResponse updateStorageLocation(UUID id, StorageLocationDictionaryRequest request) {
-        requireManage();
+        requireManage(STORAGE_LOCATION_MANAGE);
         StorageLocation storageLocation = requireStorageLocation(id);
         String before = describeStorageLocation(storageLocation);
         validateUniqueStorageLocation(id, request.name());
@@ -561,16 +428,21 @@ public class DictionaryManagementService {
 
     @Transactional
     public void deleteStorageLocation(UUID id) {
-        requireManage();
+        requireManage(STORAGE_LOCATION_MANAGE);
         StorageLocation storageLocation = requireStorageLocation(id);
         auditTrailService.logSafely("SETTINGS", storageLocation.getName(), storageLocation.getId(), ACTION_STORAGE_LOCATION_DELETED, null, null,
                 buildDeleteComment("Storage Location", describeStorageLocation(storageLocation)));
         storageLocationRepository.delete(storageLocation);
     }
 
+    // Countries: no longer a DB-managed dictionary here -- Application Settings > Countries is
+    // live-sourced from REST Countries v5 via CountryManagementService/RestCountriesClient. See
+    // those classes; the countries table/Country entity/CountryRepository have been removed.
+
+    // Education (Degree Levels, Schools) moved to EducationManagementService -- see that class.
+
     @Transactional(readOnly = true)
     public List<RetentionPolicyDictionaryResponse> listRetentionPolicies() {
-        requireView();
         return retentionPolicyRepository.findAllByOrderByNameAsc()
                 .stream()
                 .map(this::toRetentionPolicyResponse)
@@ -579,7 +451,6 @@ public class DictionaryManagementService {
 
     @Transactional(readOnly = true)
     public List<LookupItemResponse> listLanguages() {
-        requireView();
         return userLanguageRepository.findAllByActiveTrueOrderBySortOrderAscNameAsc()
                 .stream()
                 .map(language -> new LookupItemResponse(
@@ -603,7 +474,7 @@ public class DictionaryManagementService {
             String sortBy,
             String sortDirection
     ) {
-        requireView();
+        requireView(RETENTION_POLICY_VIEW, RETENTION_POLICY_MANAGE);
         Page<RetentionPolicy> result = retentionPolicyRepository.findAll(
                 buildRetentionPolicySpecification(search, status, modifiedFrom, modifiedTo),
                 buildPageable(page, limit, sortBy, sortDirection, "name", "modifiedDate")
@@ -613,7 +484,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public RetentionPolicyDictionaryResponse createRetentionPolicy(RetentionPolicyDictionaryRequest request) {
-        requireManage();
+        requireManage(RETENTION_POLICY_MANAGE);
         validateUniqueRetentionPolicy(null, request.name());
         RetentionPolicy retentionPolicy = new RetentionPolicy();
         applyRetentionPolicy(retentionPolicy, request);
@@ -625,7 +496,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public RetentionPolicyDictionaryResponse updateRetentionPolicy(UUID id, RetentionPolicyDictionaryRequest request) {
-        requireManage();
+        requireManage(RETENTION_POLICY_MANAGE);
         RetentionPolicy retentionPolicy = requireRetentionPolicy(id);
         String before = describeRetentionPolicy(retentionPolicy);
         validateUniqueRetentionPolicy(id, request.name());
@@ -637,7 +508,7 @@ public class DictionaryManagementService {
 
     @Transactional
     public void deleteRetentionPolicy(UUID id) {
-        requireManage();
+        requireManage(RETENTION_POLICY_MANAGE);
         RetentionPolicy retentionPolicy = requireRetentionPolicy(id);
         auditTrailService.logSafely("SETTINGS", retentionPolicy.getName(), retentionPolicy.getId(), ACTION_RETENTION_POLICY_DELETED, null, null,
                 buildDeleteComment("Retention Policy", describeRetentionPolicy(retentionPolicy)));
@@ -706,13 +577,6 @@ public class DictionaryManagementService {
                 + " / " + safeText(position.getDepartment() == null ? null : position.getDepartment().getName());
     }
 
-    private String describeDocumentType(DocumentType documentType) {
-        if (documentType == null) {
-            return null;
-        }
-        return documentType.getName() + " (" + safeText(documentType.getShortCode()) + ")";
-    }
-
     private String describeStorageLocation(StorageLocation storageLocation) {
         return storageLocation == null ? null : storageLocation.getName();
     }
@@ -738,39 +602,49 @@ public class DictionaryManagementService {
         department.setBusinessUnit(businessUnit);
         department.setDescription(trimToNull(request.description()));
         department.setActive(request.isActive() == null || request.isActive());
+        department.setDepartmentHead(request.departmentHeadId() == null ? null
+                : userAccountRepository.findById(request.departmentHeadId())
+                        .orElseThrow(() -> new EntityNotFoundException("Selected Department Head user not found")));
+        department.setPrimaryContactPhone(trimToNull(request.primaryContactPhone()));
     }
 
     private void applyPosition(Position position, PositionDictionaryRequest request, BusinessUnit businessUnit, Department department) {
-        position.setName(request.name().trim());
-        position.setCode(normalizeCode(request.abbreviation()));
+        String previousName = position.getName();
+        String trimmedName = request.name().trim();
+        position.setName(trimmedName);
+        // Abbreviation is not a user-facing concept for Position (only Business Unit/Department
+        // still expose it) -- the `code` column is still NOT NULL + UNIQUE at the DB level (it
+        // feeds audit-trail descriptions), so it's auto-derived from the name instead of asked
+        // for. Only regenerate on an actual name change so an edit that leaves the name alone
+        // never causes the code to silently drift.
+        if (position.getCode() == null || !trimmedName.equalsIgnoreCase(previousName)) {
+            position.setCode(generateUniquePositionCode(trimmedName, position.getId()));
+        }
         position.setBusinessUnit(businessUnit);
         position.setDepartment(department);
         position.setDescription(trimToNull(request.description()));
         position.setActive(request.isActive() == null || request.isActive());
     }
 
-    private void applyDocumentType(DocumentType documentType, DocumentTypeDictionaryRequest request, boolean isNew) {
-        String normalizedShortCode = normalizeCode(request.shortCode());
-        if (!isNew) {
-            int issuedSequence = documentRecordRepository.findMaxDocumentSequenceByPrefix(documentType.getShortCode());
-            int effectiveCurrentSequence = Math.max(documentType.getCurrentSequence(), issuedSequence);
-            if (request.currentSequence() != null && request.currentSequence() != effectiveCurrentSequence) {
-                throw new IllegalArgumentException("Current Sequence is system-managed and cannot be changed manually");
+    private String generateUniquePositionCode(String name, UUID excludeId) {
+        String initials = java.util.Arrays.stream(name.replaceAll("[^A-Za-z0-9 ]", " ").trim().split("\\s+"))
+                .filter(StringUtils::hasText)
+                .map(word -> word.substring(0, 1).toUpperCase())
+                .reduce("", String::concat);
+        String candidateBase = initials.isEmpty() ? "POS" : initials.length() > 10 ? initials.substring(0, 10) : initials;
+        String candidate = candidateBase;
+        int suffix = 1;
+        while (true) {
+            String finalCandidate = candidate;
+            boolean taken = positionRepository.findByCodeIgnoreCase(finalCandidate)
+                    .filter(found -> excludeId == null || !found.getId().equals(excludeId))
+                    .isPresent();
+            if (!taken) {
+                return candidate;
             }
-            if (!normalizedShortCode.equals(documentType.getShortCode())
-                    && documentRecordRepository.existsByDocumentType_Id(documentType.getId())) {
-                throw new IllegalArgumentException("Short Code cannot be changed after a document number has been issued for this Document Type");
-            }
-            // Heal an old cache value during a normal, audited dictionary update.
-            documentType.setCurrentSequence(effectiveCurrentSequence);
+            suffix++;
+            candidate = candidateBase + suffix;
         }
-        documentType.setName(request.name().trim());
-        documentType.setShortCode(normalizedShortCode);
-        if (isNew) {
-            documentType.setCurrentSequence(request.currentSequence() == null ? 0 : request.currentSequence());
-        }
-        documentType.setDescription(trimToNull(request.description()));
-        documentType.setActive(request.isActive() == null || request.isActive());
     }
 
     private void applyStorageLocation(StorageLocation storageLocation, StorageLocationDictionaryRequest request) {
@@ -809,7 +683,10 @@ public class DictionaryManagementService {
                 department.isActive(),
                 formatDateTime(department.getCreatedAt()),
                 formatDateTime(department.getUpdatedAt()),
-                positionRepository.countByDepartment_Id(department.getId())
+                positionRepository.countByDepartment_Id(department.getId()),
+                department.getDepartmentHead() == null ? null : department.getDepartmentHead().getId(),
+                department.getDepartmentHead() == null ? null : department.getDepartmentHead().getFullName(),
+                department.getPrimaryContactPhone()
         );
     }
 
@@ -817,7 +694,6 @@ public class DictionaryManagementService {
         return new PositionDictionaryResponse(
                 position.getId(),
                 position.getName(),
-                position.getCode(),
                 position.getBusinessUnit() == null ? null : position.getBusinessUnit().getName(),
                 position.getDepartment() == null ? null : position.getDepartment().getName(),
                 position.getDescription(),
@@ -827,64 +703,11 @@ public class DictionaryManagementService {
         );
     }
 
-    private DocumentTypeDictionaryResponse toDocumentTypeResponse(DocumentType documentType) {
-        return toDocumentTypeResponse(documentType, loadIssuedDocumentSequences());
-    }
-
-    private DocumentTypeDictionaryResponse toDocumentTypeResponse(
-            DocumentType documentType,
-            Map<String, Integer> issuedSequences
-    ) {
-        int sequenceFromIssuedNumbers = issuedSequences.getOrDefault(normalizeCode(documentType.getShortCode()), 0);
-        int effectiveCurrentSequence = Math.max(documentType.getCurrentSequence(), sequenceFromIssuedNumbers);
-        return new DocumentTypeDictionaryResponse(
-                documentType.getId(),
-                documentType.getName(),
-                documentType.getShortCode(),
-                effectiveCurrentSequence,
-                documentType.getDescription(),
-                documentType.isActive(),
-                formatDateTime(documentType.getCreatedAt()),
-                formatDateTime(documentType.getUpdatedAt()),
-                effectiveCurrentSequence == 0 ? null : formatDocumentNumber(documentType.getShortCode(), effectiveCurrentSequence),
-                formatDocumentNumber(documentType.getShortCode(), effectiveCurrentSequence + 1)
-        );
-    }
-
-    private String formatDocumentNumber(String shortCode, int sequence) {
-        return "%s.%04d".formatted(normalizeCode(shortCode), Math.max(sequence, 1));
-    }
-
-    private Map<String, Integer> loadIssuedDocumentSequences() {
-        Map<String, Integer> sequences = new HashMap<>();
-        for (Object[] row : documentRecordRepository.findMaxDocumentSequencesByPrefix()) {
-            if (row == null || row.length < 2 || row[0] == null || row[1] == null) {
-                continue;
-            }
-            sequences.put(row[0].toString().trim().toUpperCase(Locale.ROOT), ((Number) row[1]).intValue());
-        }
-        return sequences;
-    }
-
     private ResponseStatusException dictionaryInUse(String dictionaryLabel, String dictionaryName) {
         return new ResponseStatusException(
                 HttpStatus.CONFLICT,
                 "%s '%s' is in use and cannot be deleted. Deactivate it instead to preserve regulated history."
                         .formatted(dictionaryLabel, dictionaryName)
-        );
-    }
-
-    private DocumentSubTypeDictionaryResponse toDocumentSubTypeResponse(DocumentSubType documentSubType) {
-        return new DocumentSubTypeDictionaryResponse(
-                documentSubType.getId(),
-                documentSubType.getName(),
-                documentSubType.getDocumentType() == null ? null : documentSubType.getDocumentType().getId(),
-                documentSubType.getDocumentType() == null ? null : documentSubType.getDocumentType().getName(),
-                documentSubType.getDescription(),
-                documentSubType.getReviewRequirement().name(),
-                documentSubType.isActive(),
-                formatDateTime(documentSubType.getCreatedAt()),
-                formatDateTime(documentSubType.getUpdatedAt())
         );
     }
 
@@ -941,43 +764,15 @@ public class DictionaryManagementService {
         });
     }
 
-    private void validateUniquePosition(UUID currentId, String name, String abbreviation) {
+    private void validateUniquePosition(UUID currentId, String name) {
         String normalizedName = normalizeName(name);
-        String normalizedCode = normalizeCode(abbreviation);
         positionRepository.findByNameIgnoreCase(normalizedName).ifPresent(found -> {
             if (currentId == null || !found.getId().equals(currentId)) {
                 throw new IllegalArgumentException("Position name already exists");
             }
         });
-        positionRepository.findByCodeIgnoreCase(normalizedCode).ifPresent(found -> {
-            if (currentId == null || !found.getId().equals(currentId)) {
-                throw new IllegalArgumentException("Position abbreviation already exists");
-            }
-        });
-    }
-
-    private void validateUniqueDocumentType(UUID currentId, String name, String shortCode) {
-        String normalizedName = normalizeName(name);
-        String normalizedCode = normalizeCode(shortCode);
-        documentTypeRepository.findByNameIgnoreCase(normalizedName).ifPresent(found -> {
-            if (currentId == null || !found.getId().equals(currentId)) {
-                throw new IllegalArgumentException("Document type name already exists");
-            }
-        });
-        documentTypeRepository.findByShortCodeIgnoreCase(normalizedCode).ifPresent(found -> {
-            if (currentId == null || !found.getId().equals(currentId)) {
-                throw new IllegalArgumentException("Document type short code already exists");
-            }
-        });
-    }
-
-    private void validateUniqueDocumentSubType(UUID currentId, UUID documentTypeId, String name) {
-        String normalizedName = normalizeName(name);
-        documentSubTypeRepository.findByDocumentType_IdAndNameIgnoreCase(documentTypeId, normalizedName).ifPresent(found -> {
-            if (currentId == null || !found.getId().equals(currentId)) {
-                throw new IllegalArgumentException("Sub-type name already exists for the selected document type");
-            }
-        });
+        // No separate code-uniqueness check here: the code is auto-derived from the name
+        // (generateUniquePositionCode), which already guarantees uniqueness itself.
     }
 
     private void validateUniqueStorageLocation(UUID currentId, String name) {
@@ -1019,21 +814,6 @@ public class DictionaryManagementService {
                 .orElseThrow(() -> new EntityNotFoundException("Position not found"));
     }
 
-    private DocumentType requireDocumentType(UUID id) {
-        return documentTypeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Document type not found"));
-    }
-
-    private DocumentType requireDocumentTypeById(String documentTypeId) {
-        UUID id = parseUuid(documentTypeId, "Document type not found");
-        return requireDocumentType(id);
-    }
-
-    private DocumentSubType requireDocumentSubType(UUID id) {
-        return documentSubTypeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Document sub-type not found"));
-    }
-
     private StorageLocation requireStorageLocation(UUID id) {
         return storageLocationRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Storage location not found"));
@@ -1064,14 +844,6 @@ public class DictionaryManagementService {
         return value == null ? null : value.trim().toUpperCase();
     }
 
-    private UUID parseUuid(String value, String message) {
-        try {
-            return UUID.fromString(normalizeName(value));
-        } catch (Exception ex) {
-            throw new EntityNotFoundException(message);
-        }
-    }
-
     private String trimToNull(String value) {
         if (value == null) {
             return null;
@@ -1098,7 +870,7 @@ public class DictionaryManagementService {
 
     private Pageable buildPageable(int page, int limit, String sortBy, String sortDirection, String defaultSortKey, String modifiedDateSortKey) {
         int safePage = Math.max(page, 1);
-        int safeLimit = Math.max(limit, 1);
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
         String resolvedSortBy = resolveSortField(sortBy, defaultSortKey, modifiedDateSortKey);
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
         return PageRequest.of(safePage - 1, safeLimit, Sort.by(direction, resolvedSortBy));
@@ -1121,11 +893,18 @@ public class DictionaryManagementService {
         if ("documentType".equalsIgnoreCase(normalized)) {
             return "documentType.name";
         }
+        // departmentHeadName is deliberately NOT sortable here: departmentHead is nullable and a
+        // nested-property Sort on a to-one association makes Spring Data JPA emit an inner join,
+        // which would silently drop every department with no Department Head from the sorted
+        // page. Only primaryContactPhone (a plain column) is sortable below.
         return switch (normalized) {
-            case "name", "abbreviation", "shortCode", "currentSequence", "description", "isActive" -> normalized;
+            case "name", "abbreviation", "shortCode", "currentSequence", "description", "isActive", "primaryContactPhone" -> normalized;
             default -> defaultSortKey;
         };
     }
+
+    // buildPageable(..., Map<String,String> allowedSortFields) overload was Education-only;
+    // moved to DictionaryQuerySupport.buildPageable alongside EducationManagementService.
 
     private Specification<BusinessUnit> buildBusinessUnitSpecification(String search, String status, String modifiedFrom, String modifiedTo) {
         return (root, query, cb) -> {
@@ -1165,28 +944,7 @@ public class DictionaryManagementService {
         };
     }
 
-    private Specification<DocumentType> buildDocumentTypeSpecification(String search, String status, String modifiedFrom, String modifiedTo) {
-        return (root, query, cb) -> {
-            List<Predicate> predicates = new java.util.ArrayList<>();
-            addSearchPredicate(predicates, cb, search, root.get("name"), root.get("shortCode"), root.get("description"));
-            addStatusPredicate(predicates, cb, root.get("active"), status);
-            addUpdatedAtRangePredicate(predicates, cb, root.get("updatedAt"), modifiedFrom, modifiedTo);
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-    }
-
-    private Specification<DocumentSubType> buildDocumentSubTypeSpecification(String search, String documentType, String status, String modifiedFrom, String modifiedTo) {
-        return (root, query, cb) -> {
-            query.distinct(true);
-            Join<DocumentSubType, DocumentType> documentTypeJoin = root.join("documentType", JoinType.LEFT);
-            List<Predicate> predicates = new java.util.ArrayList<>();
-            addSearchPredicate(predicates, cb, search, root.get("name"), root.get("description"), documentTypeJoin.get("name"), documentTypeJoin.get("shortCode"));
-            addStatusPredicate(predicates, cb, root.get("active"), status);
-            addUpdatedAtRangePredicate(predicates, cb, root.get("updatedAt"), modifiedFrom, modifiedTo);
-            addDocumentTypePredicate(predicates, cb, documentTypeJoin, documentType);
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-    }
+    // Document Type / Sub-Type specification builders moved to DocumentTypeAdminService.
 
     private Specification<StorageLocation> buildStorageLocationSpecification(String search, String status, String modifiedFrom, String modifiedTo) {
         return (root, query, cb) -> {
@@ -1262,7 +1020,10 @@ public class DictionaryManagementService {
             return null;
         }
         try {
-            return LocalDate.parse(value.trim(), DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ENGLISH));
+            String normalized = value.trim();
+            return normalized.matches("\\d{4}-\\d{2}-\\d{2}")
+                    ? LocalDate.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE)
+                    : LocalDate.parse(normalized, DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ENGLISH));
         } catch (Exception ex) {
             return null;
         }
@@ -1272,54 +1033,5 @@ public class DictionaryManagementService {
         return value == null ? null : value.trim().toLowerCase();
     }
 
-    private void applyDocumentSubType(DocumentSubType subType, DocumentSubTypeDictionaryRequest request, DocumentType documentType) {
-        subType.setName(request.name().trim());
-        subType.setDocumentType(documentType);
-        subType.setDescription(trimToNull(request.description()));
-        // PATCH-style updates omit untouched fields; keep the immutable
-        // configuration value rather than silently resetting it to SINGLE.
-        if (StringUtils.hasText(request.reviewRequirement()) || subType.getReviewRequirement() == null) {
-            subType.setReviewRequirement(parseReviewRequirement(request.reviewRequirement()));
-        }
-        subType.setActive(request.isActive() == null || request.isActive());
-    }
-
-    private ReviewRequirement parseReviewRequirement(String value) {
-        if (!StringUtils.hasText(value)) {
-            return ReviewRequirement.SINGLE;
-        }
-        try {
-            return ReviewRequirement.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Review requirement must be NONE, SINGLE, or MULTIPLE");
-        }
-    }
-
-    private String describeDocumentSubType(DocumentSubType subType) {
-        return subType.getName()
-                + " | Document Type: " + (subType.getDocumentType() == null ? "-" : subType.getDocumentType().getName())
-                + " | Review Requirement: " + subType.getReviewRequirement().name()
-                + " | Status: " + (subType.isActive() ? "Active" : "Inactive")
-                + (StringUtils.hasText(subType.getDescription()) ? " | Description: " + subType.getDescription() : "");
-    }
-
-    private void addDocumentTypePredicate(
-            List<Predicate> predicates,
-            jakarta.persistence.criteria.CriteriaBuilder cb,
-            Join<DocumentSubType, DocumentType> documentTypeJoin,
-            String documentTypeValue
-    ) {
-        String normalized = normalizeSearch(documentTypeValue);
-        if (normalized == null || "all".equalsIgnoreCase(normalized)) {
-            return;
-        }
-        try {
-            predicates.add(cb.equal(documentTypeJoin.get("id"), UUID.fromString(documentTypeValue.trim())));
-        } catch (Exception ex) {
-            predicates.add(cb.or(
-                    cb.equal(cb.lower(documentTypeJoin.get("name")), normalized),
-                    cb.equal(cb.lower(documentTypeJoin.get("shortCode")), normalized)
-            ));
-        }
-    }
+    // Document Sub-Type mapping/validation/predicate helpers moved to DocumentTypeAdminService.
 }

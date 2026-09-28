@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { Input, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { Select } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch/Switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FullPageLoading, Loading } from "@/components/ui/loading";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
@@ -404,7 +404,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       return;
     }
     navigate(
-      `${ROUTES.SETTINGS.PUBLISHING_TEMPLATES_EDIT(selectedTemplateId)}?revisionId=${encodeURIComponent(revisionId)}`,
+      `${ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(selectedTemplateId)}?revisionId=${encodeURIComponent(revisionId)}`,
       {
         state: {
           from: `${location.pathname}${location.search}`,
@@ -611,101 +611,6 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       }
     };
   }, [previewUrl]);
-
-  useEffect(() => {
-    let alive = true;
-    const activeTemplateId = selectedTemplate?.id;
-
-    const loadComponentPreviews = async () => {
-      const requestedComponents = availablePreviewComponents.filter((component) => componentPreviewVisibility[component]);
-      const hasCachedPreview = requestedComponents.some((component) => Boolean(componentPreviewUrls[component]));
-      if (
-        componentPreviewSignatureRef.current === componentPreviewSignature &&
-        hasCachedPreview
-      ) {
-        return;
-      }
-      componentPreviewSignatureRef.current = componentPreviewSignature;
-      setComponentPreviewLoadingMap((prev) => ({
-        ...prev,
-        cover: requestedComponents.includes("cover"),
-        header: requestedComponents.includes("header"),
-        footer: requestedComponents.includes("footer"),
-      }));
-      try {
-        if (!activeTemplateId) {
-          setComponentPreviewUrls((prev) => {
-            const next = { ...prev };
-            requestedComponents.forEach((component) => {
-              next[component] = null;
-            });
-            return next;
-          });
-          return;
-        }
-
-        const entries: Array<["cover" | "header" | "footer", string | null | undefined]> = [
-          ["cover", templateComponentFileName("cover") || selectedTemplate.coverFileName],
-          ["header", templateComponentFileName("header") || selectedTemplate.headerFileName],
-          ["footer", templateComponentFileName("footer") || selectedTemplate.footerFileName],
-        ];
-
-        const nextUrls: Record<string, string | null> = {};
-        await Promise.all(entries.map(async ([component, fileName]) => {
-          if (!fileName) {
-            nextUrls[component] = null;
-            return;
-          }
-          try {
-            const blob = await documentApi.getPublishingWorkspaceComponentPreview(
-              revisionId,
-              activeTemplateId,
-              component,
-              normalizedSelectedLayout.toLowerCase() as "portrait" | "landscape",
-            );
-            if (!alive) {
-              return;
-            }
-            nextUrls[component] = replaceObjectUrlPreview(nextUrls[component], blob);
-          } catch (error) {
-            console.error(`Failed to load ${component} preview`, error);
-            nextUrls[component] = null;
-          }
-        }));
-
-        if (!alive) {
-          Object.values(nextUrls).forEach((url) => revokeObjectUrl(url));
-          return;
-        }
-
-        setComponentPreviewUrls((prev) => {
-          Object.values(prev).forEach((url) => revokeObjectUrl(url));
-          return nextUrls;
-        });
-      } finally {
-        if (alive) {
-          setComponentPreviewLoadingMap({
-            cover: false,
-            header: false,
-            footer: false,
-          });
-        }
-      }
-    };
-
-    void loadComponentPreviews();
-
-    return () => {
-      alive = false;
-    };
-  }, [
-    componentPreviewSignature,
-    selectedTemplate?.id,
-    normalizedSelectedLayout,
-    componentPreviewVisibility.cover,
-    componentPreviewVisibility.header,
-    componentPreviewVisibility.footer,
-  ]);
 
   useEffect(() => {
     return () => {
@@ -940,41 +845,6 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         </div>
       )}
 
-      <FormSection title="Revision Summary" icon={<BookmarkCheck className="h-4 w-4" />}>
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">Document Number</label>
-              <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">{revision?.documentNumber || "-"}</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">Document Name</label>
-              <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">{revision?.documentName || "-"}</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">Revision Number</label>
-              <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">{revision?.revisionNumber || "-"}</p>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">Revision Status</label>
-              <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">{revision?.status || "-"}</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">Source File</label>
-              <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">{workspace.sourceFileName || revision?.fileName || "-"}</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0">Page Count</label>
-              <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">{workspace.previewPageCount ?? "-"}</p>
-            </div>
-          </div>
-
-        </div>
-      </FormSection>
-
       <div className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)] xl:gap-6">
         <div className="space-y-4">
           <FormSection title="Configuration" icon={<Layers3 className="h-4 w-4" />}>
@@ -1005,15 +875,14 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
               {selectedTemplateId && availablePreviewComponents.length > 0 && (
                 <div>
                   <label className={COMPONENT_PRESETS.formLabel}>Include in PDF</label>
-                  <div className="mt-1.5 flex flex-wrap gap-3">
+                  <div className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
                     {availablePreviewComponents.map((component) => (
-                      <label key={component} className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 cursor-pointer select-none">
-                        <Switch
-                          checked={componentEnabled[component]}
-                          onChange={(checked) => setComponentEnabled((prev) => ({ ...prev, [component]: checked }))}
-                        />
-                        <span className="capitalize">{component}</span>
-                      </label>
+                      <Checkbox
+                        key={component}
+                        checked={componentEnabled[component]}
+                        onChange={(checked) => setComponentEnabled((prev) => ({ ...prev, [component]: checked }))}
+                        label={component.charAt(0).toUpperCase() + component.slice(1)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -1032,118 +901,78 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                     disabled={availableLayouts.length === 0}
                   />
                 ) : (
-                  <div className={cn("flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2")}>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900">
-                        {singleAvailableLayout ? formatPublishingLayout(singleAvailableLayout) : "No layout configured"}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {singleAvailableLayout
-                          ? "Only this layout is configured for the selected publishing template."
-                          : "No layout configured for the selected publishing template."}
-                      </p>
-                    </div>
-                    {singleAvailableLayout && (
-                      <Badge color="emerald">{formatPublishingLayout(singleAvailableLayout)}</Badge>
-                    )}
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                    <span className="font-medium text-slate-900">
+                      {singleAvailableLayout ? formatPublishingLayout(singleAvailableLayout) : "No layout configured"}
+                    </span>
+                    {singleAvailableLayout && <span className="text-xs text-slate-500">· only layout for this template</span>}
                   </div>
                 )}
-                {selectedTemplateId && (
-                  <p className="mt-1 text-xs text-slate-500">
-                    This template currently uses {selectedLayoutLabel.toLowerCase()} layout for preview and publish.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className={COMPONENT_PRESETS.formLabel}>Change Summary</label>
-                <Textarea value={changeSummary} onChange={(e) => setChangeSummary(e.target.value)} rows={4} />
               </div>
             </div>
           </FormSection>
 
           <FormSection title="Page Range Custom" icon={<IconFileOrientation className="h-4 w-4" />}>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <p className={TYPOGRAPHY.helpText}>
                 {coverEnabled
-                  ? "Cover is locked to page 1. Body source always starts from page 1. In the final PDF, the cover becomes page 1 and header/footer start from page 2 when cover is enabled."
-                  : "No cover - body source always starts from page 1. Header and footer also start from page 1. Toggle the Cover switch above to enable cover."}
+                  ? "Cover is page 1 of the final PDF; header and footer start from page 2. Leave \"To\" blank for \"to end\". Use Regenerate Preview at the top to apply changes."
+                  : "No cover: header and footer start from page 1. Leave \"To\" blank for \"to end\". Use Regenerate Preview at the top to apply changes. Enable Cover above to add one."}
               </p>
 
-              <div className="space-y-3">
-                <div className={cn(BORDER_RADIUS.card, COLORS.bg.secondary, "border border-dashed border-slate-200 p-3")}>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm">
-                    <div className="flex items-center gap-1.5">
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-semibold text-emerald-700">Cover</span>
-                      <span className="text-slate-600">
-                        page {pageRangeDraft.coverSourcePageFrom}–{pageRangeDraft.coverSourcePageTo}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-semibold text-slate-700">Body</span>
-                      <span className="text-slate-600">
-                        page {pageRangeDraft.bodySourcePageFrom}–{pageRangeDraft.bodySourcePageTo || "end"}
-                      </span>
-                    </div>
-                    <span className="text-2xs text-slate-400">Locked, not editable</span>
-                  </div>
-                </div>
-
-                <div className={cn(BORDER_RADIUS.card, COLORS.bg.secondary, "border border-slate-200 p-3")}>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className={TYPOGRAPHY.cardSectionTitle}>Header</p>
-                    <span className="rounded-full bg-blue-50 px-2 py-1 text-2xs font-semibold text-blue-700">From locked to page {bodyStartPage}</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={COMPONENT_PRESETS.formLabel}>From</label>
-                      <Input value={bodyStartPage} readOnly disabled />
-                    </div>
-                    <div>
-                      <label className={COMPONENT_PRESETS.formLabel}>To</label>
-                      <Input
-                        type="number"
-                        min={bodyStartPage}
-                        value={pageRangeDraft.headerPageTo}
-                        onChange={(event) => setPageRangeDraft((prev) => ({ ...prev, headerPageTo: event.target.value }))}
-                        placeholder="end"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className={cn(BORDER_RADIUS.card, COLORS.bg.secondary, "border border-slate-200 p-3")}>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className={TYPOGRAPHY.cardSectionTitle}>Footer</p>
-                    <span className="rounded-full bg-amber-50 px-2 py-1 text-2xs font-semibold text-amber-700">From locked to page {bodyStartPage}</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={COMPONENT_PRESETS.formLabel}>From</label>
-                      <Input value={bodyStartPage} readOnly disabled />
-                    </div>
-                    <div>
-                      <label className={COMPONENT_PRESETS.formLabel}>To</label>
-                      <Input
-                        type="number"
-                        min={bodyStartPage}
-                        value={pageRangeDraft.footerPageTo}
-                        onChange={(event) => setPageRangeDraft((prev) => ({ ...prev, footerPageTo: event.target.value }))}
-                        placeholder="end"
-                      />
-                    </div>
-                  </div>
-                </div>
+              <div className={cn(BORDER_RADIUS.card, COLORS.bg.secondary, "overflow-hidden border border-slate-200")}>
+                <table className="w-full text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="px-3 py-2">Layer</th>
+                      <th className="px-3 py-2">From</th>
+                      <th className="px-3 py-2">To</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    <tr>
+                      <td className="px-3 py-2 font-medium text-slate-700">Cover</td>
+                      <td className="px-3 py-2 text-slate-600">{pageRangeDraft.coverSourcePageFrom}</td>
+                      <td className="px-3 py-2 text-slate-600">{pageRangeDraft.coverSourcePageTo}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-medium text-slate-700">Body</td>
+                      <td className="px-3 py-2 text-slate-600">{pageRangeDraft.bodySourcePageFrom}</td>
+                      <td className="px-3 py-2 text-slate-600">{pageRangeDraft.bodySourcePageTo || "end"}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-medium text-slate-700">Header</td>
+                      <td className="px-3 py-2 text-slate-600">{bodyStartPage}</td>
+                      <td className="px-3 py-1.5">
+                        <Input
+                          type="number"
+                          min={bodyStartPage}
+                          value={pageRangeDraft.headerPageTo}
+                          onChange={(event) => setPageRangeDraft((prev) => ({ ...prev, headerPageTo: event.target.value }))}
+                          placeholder="end"
+                          aria-label="Header to page"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-medium text-slate-700">Footer</td>
+                      <td className="px-3 py-2 text-slate-600">{bodyStartPage}</td>
+                      <td className="px-3 py-1.5">
+                        <Input
+                          type="number"
+                          min={bodyStartPage}
+                          value={pageRangeDraft.footerPageTo}
+                          onChange={(event) => setPageRangeDraft((prev) => ({ ...prev, footerPageTo: event.target.value }))}
+                          placeholder="end"
+                          aria-label="Footer to page"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="border-t border-slate-200 px-3 py-1.5 text-2xs text-slate-400">Cover, Body and the From column are locked.</p>
               </div>
 
-              <div className={cn(BORDER_RADIUS.card, COLORS.bg.secondary, "border border-dashed border-slate-300 p-3 text-xs text-slate-600")}>
-                If a range end is left blank, the backend treats it as "to end". Cover is merged as page 1 of the final PDF. When cover is enabled, header/footer start from page 2 in the final PDF, while body source always starts from page 1.
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" size="sm" variant="default" onClick={handleGeneratePreview}>
-                  Apply ranges and regenerate
-                </Button>
-              </div>
             </div>
           </FormSection>
 
@@ -1152,132 +981,6 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         <div className="min-w-0 space-y-4">
           <FormSection title="PDF Preview" icon={<IconFileTypePdf className="h-4 w-4" />}>
             <div className="space-y-4">
-              {hasComponentPreviewSlots && selectedTemplate ? (
-                <div className="space-y-3 pb-2">
-                  <button
-                    type="button"
-                    onClick={() => setComponentPreviewExpanded((prev) => !prev)}
-                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-emerald-200 hover:bg-emerald-50"
-                  >
-                    <div className="min-w-0">
-                      <p className={TYPOGRAPHY.cardSectionTitle}>Component Range Preview</p>
-                      <p className={cn(TYPOGRAPHY.helpText, "hidden sm:block")}>
-                        Individual cover/header/footer previews with their page ranges.
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Badge color="slate">{availablePreviewComponents.length}</Badge>
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4 text-slate-400 transition-transform duration-300",
-                          componentPreviewExpanded && "rotate-180",
-                        )}
-                      />
-                    </div>
-                  </button>
-
-                  <AnimatePresence initial={false}>
-                  {componentPreviewExpanded && (
-                  <motion.div
-                    key="component-range-preview-body"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={collapseTransition}
-                    className="overflow-hidden"
-                  >
-                  <div className="space-y-3">
-                    {showComponentPreviewControls && (
-                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-                        <span className="font-semibold text-slate-700">Preview toggles:</span>
-                        {availablePreviewComponents.map((component) => (
-                          <label key={component} className="flex items-center gap-2">
-                            <Switch
-                              checked={componentPreviewVisibility[component]}
-                              onChange={(checked) =>
-                                setComponentPreviewVisibility((prev) => ({
-                                  ...prev,
-                                  [component]: checked,
-                                }))
-                              }
-                            />
-                            <span className="capitalize text-slate-700">{component}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-
-                  <div className="mt-1 space-y-3">
-                    <motion.div layout className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                      <AnimatePresence initial={false} mode="popLayout">
-                      {availablePreviewComponents.filter((c) => componentPreviewVisibility[c]).map((component) => {
-                        const fileName =
-                          component === "cover"
-                            ? templateComponentFileName("cover") || selectedTemplate.coverFileName
-                            : component === "header"
-                              ? templateComponentFileName("header") || selectedTemplate.headerFileName
-                              : templateComponentFileName("footer") || selectedTemplate.footerFileName;
-                        const range =
-                          component === "cover"
-                            ? `${selectedTemplate.coverSourcePageFrom || 1} - ${selectedTemplate.coverSourcePageTo || selectedTemplate.coverSourcePageFrom || 1}`
-                            : component === "header"
-                              ? `${selectedTemplate.headerPageFrom || 1} - ${selectedTemplate.headerPageTo || "end"}`
-                              : `${selectedTemplate.footerPageFrom || 1} - ${selectedTemplate.footerPageTo || "end"}`;
-                        const isCover = component === "cover";
-                        const isActive = component === activePreviewComponent;
-                        const isLoadingCard = componentPreviewLoadingMap[component];
-                        const url = componentPreviewUrls[component];
-
-                        return (
-                          <motion.div
-                            key={component}
-                            layout
-                            initial={{ opacity: 0, scale: 0.97, y: 12 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.96, y: -8 }}
-                            transition={{
-                              layout: { type: "spring", stiffness: 340, damping: 30 },
-                              opacity: { duration: 0.2, ease: "easeOut" },
-                              scale: { type: "spring", stiffness: 380, damping: 28 },
-                              y: { type: "spring", stiffness: 380, damping: 28 },
-                            }}
-                            className={cn(BORDER_RADIUS.card, "border p-3", isCover ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50")}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className={TYPOGRAPHY.cardSectionTitle}>{component.charAt(0).toUpperCase() + component.slice(1)}</p>
-                                <p className={cn(TYPOGRAPHY.helpText, "break-words")}>{fileName || "No file uploaded"}</p>
-                              </div>
-                              <span className={cn("shrink-0 rounded-full px-2 py-1 text-xs", isLoadingCard ? "bg-amber-50 text-amber-700" : isActive ? "bg-emerald-600 text-white" : "bg-white text-slate-600")}>Range: {range}</span>
-                            </div>
-                            <div className={cn("mt-3 overflow-hidden border border-slate-200 bg-white")}>
-                              <div className="relative">
-                                {url && !isLoadingCard ? (
-                                  <DocumentPdfViewer fileUrl={url} height="220px" />
-                                ) : (
-                                  <div className="flex h-[220px] items-center justify-center text-sm text-slate-500">
-                                    {isLoadingCard ? <Loading size="sm" text="Loading preview" /> : "No preview available."}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                      </AnimatePresence>
-                    </motion.div>
-                  </div>
-                  </div>
-                  </motion.div>
-                  )}
-                  </AnimatePresence>
-                </div>
-              ) : (
-                <div className={cn(BORDER_RADIUS.card, COLORS.bg.secondary, "border border-dashed border-slate-300 p-4 text-sm text-slate-600")}>
-                  This template is configured without cover/header/footer components, so the workspace uses a body-only publishing preview.
-                </div>
-              )}
-
               {previewUrl ? (
                 <div className={cn(COLORS.bg.primary, SHADOW.sm, "overflow-hidden border border-slate-200")}>
                   <DocumentPdfViewer

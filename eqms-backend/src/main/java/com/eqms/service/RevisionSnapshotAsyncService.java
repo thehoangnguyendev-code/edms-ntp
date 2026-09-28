@@ -71,12 +71,13 @@ public class RevisionSnapshotAsyncService {
                 log.info("Discarding stale rendered review snapshot {} for revision {}", event.requestId(), event.revisionId());
                 return;
             }
-            latest.setPreviewFilePath(stored.storedPath());
-            latest.setStoragePdfUrl(stored.storedPath());
-            latest.setSnapshotStatus("READY");
-            latest.setSnapshotSourceChecksum(event.sourceChecksum());
-            latest.setSnapshotError(null);
-            revisionRepository.save(latest);
+            if (revisionRepository.markReviewSnapshotReady(
+                    event.revisionId(), event.requestId(), event.sourceChecksum(), stored.storedPath()) == 0) {
+                log.info("Discarding review snapshot {} for revision {}: superseded while it was being stored",
+                        event.requestId(), event.revisionId());
+                return;
+            }
+            latest = revisionRepository.getReferenceById(event.revisionId());
 
             RevisionSnapshotHistory history = new RevisionSnapshotHistory();
             history.setId(snapshotId);
@@ -113,12 +114,10 @@ public class RevisionSnapshotAsyncService {
     }
 
     private void markFailed(RevisionSnapshotEvent event, String error) {
-        DocumentRevisionRecord revision = revisionRepository.findById(event.revisionId()).orElse(null);
-        // A stale task must never turn a newer snapshot request into FAILED.
-        if (revision == null || !isCurrentRequest(revision, event)) return;
-        revision.setSnapshotStatus("FAILED");
-        revision.setSnapshotError(error == null ? "Review snapshot generation failed" : error.substring(0, Math.min(error.length(), 1000)));
-        revisionRepository.save(revision);
+        // A stale task must never turn a newer snapshot request into FAILED (the query is guarded by
+        // the request id), and it must not depend on a possibly stale managed entity.
+        revisionRepository.markReviewSnapshotFailed(event.revisionId(), event.requestId(),
+                error == null ? "Review snapshot generation failed" : error.substring(0, Math.min(error.length(), 1000)));
     }
 
     private String status(DocumentRevisionRecord revision) {

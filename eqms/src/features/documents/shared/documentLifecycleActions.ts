@@ -1,5 +1,3 @@
-import type { DocumentStatus } from "@/features/documents/types";
-
 const normalizeStatus = (status?: string | null) =>
   String(status || "")
     .trim()
@@ -22,19 +20,6 @@ type RevisionLikeStatus = {
     code?: string | null;
     label?: string | null;
   } | null;
-};
-
-export const REVISION_CANCELABLE_STATUSES: DocumentStatus[] = [
-  "Draft",
-  "Pending Review",
-  "Pending Approval",
-  "Pending Training",
-  "Ready for Publishing",
-];
-
-export const canCancelRevisionStatus = (status?: string | null) => {
-  const normalized = normalizeStatus(status);
-  return REVISION_CANCELABLE_STATUSES.some((allowed) => normalizeStatus(allowed) === normalized);
 };
 
 export const canObsoleteDocumentStatus = (status?: string | null) => normalizeStatus(status) === "ACTIVE";

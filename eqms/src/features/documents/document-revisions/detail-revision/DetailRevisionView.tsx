@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/components/ui/utils";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { TabNav } from "@/components/ui/tabs/TabNav";
+import { ReplaceAssigneeBanner } from "./components/ReplaceAssigneeBanner";
 import {
   GeneralInformationTab,
   WorkingNotesTab,
@@ -21,6 +22,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { useNavigateWithLoading } from "@/hooks";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { OriginalDocumentTab } from "@/features/documents/document-revisions/workspace-tabs";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
@@ -67,6 +69,7 @@ import { Badge } from "@/components/ui/badge";
 import { FormSection } from "@/components/ui";
 import { formatDateTime } from "@/utils";
 import { Shield } from "lucide-react";
+import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
 
 // --- Types ---
 type TabType =
@@ -271,12 +274,21 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
   const isReadyForPublishing = currentStatus === "Ready for Publishing";
 
   const revisionActionCapabilities = useRevisionActionCapabilities(currentRevision?.id ?? null);
+  // Refresh in place when anyone changes this revision (status, signatures, actions ...) without a manual reload.
+  useEntityChanged(["REVISION"], () => {
+    void documentApi.getRevisionByIdSnapshot(revisionId, { force: true }).then((live) => {
+      if (!live) return;
+      setRevision({ ...live, signatures: live.signatures || [] });
+    }).catch(() => undefined);
+  }, { ids: [revisionId] });
   const canCancelCurrentRevision =
     !revisionActionCapabilities.loading &&
     revisionActionCapabilities.can("cancel");
   const canPublishCurrentRevision =
     !revisionActionCapabilities.loading &&
     revisionActionCapabilities.can("publish");
+  // A controlled-document template has no Publishing Workspace: it is published directly and kept as its Word file.
+  const isTemplateRevision = Boolean(currentRevision?.isTemplate);
   const canOpenPublishingWorkspace =
     isReadyForPublishing &&
     !revisionActionCapabilities.loading &&
@@ -338,12 +350,18 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       }
 
       const serverPreviewStatus = String(detail?.previewStatus || "").trim().toUpperCase();
-      const snapshotIsGenerating = isSnapshotGenerating(detail?.snapshotStatus)
-        || serverPreviewStatus === "GENERATING";
+      const snapshotIsGenerating = isSnapshotGenerating(detail?.snapshotStatus, detail?.previewStatus);
       const snapshotFailed = String(detail?.snapshotStatus || "").trim().toUpperCase() === "FAILED"
         || serverPreviewStatus === "FAILED";
+      // Bug fix: previewType alone flips to REVIEW_PDF as soon as a PRIOR round's
+      // previewFilePath exists on the revision -- requestReviewSnapshotGeneration (backend)
+      // deliberately never clears it while a newer round is GENERATING, so relying on
+      // previewType/previewStatus alone here would serve the stale prior round's PDF while a
+      // resubmission's snapshot is still being regenerated. Must also gate on snapshotStatus.
       const canRequestPreview = isRevisionPdfPreviewType(detail?.previewType)
-        && (serverPreviewStatus === "READY" || !serverPreviewStatus);
+        && (serverPreviewStatus === "READY" || !serverPreviewStatus)
+        && !snapshotIsGenerating
+        && !snapshotFailed;
 
       if (!canRequestPreview) {
         if (requestSequence !== previewRequestSequenceRef.current) return;
@@ -1036,7 +1054,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                   Cancel
                 </Button>
               )}
-              {(canOpenPublishingWorkspace || (isReadyForPublishing && canPublishCurrentRevision)) && (
+              {!isTemplateRevision && (canOpenPublishingWorkspace || (isReadyForPublishing && canPublishCurrentRevision)) && (
                 <Button
                   size="sm"
                   variant="outline-emerald"
@@ -1044,6 +1062,16 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                   onClick={handleOpenPublishingWorkspace}
                 >
                   Open Publishing Template
+                </Button>
+              )}
+              {isTemplateRevision && isReadyForPublishing && canPublishCurrentRevision && (
+                <Button
+                  size="sm"
+                  variant="outline-emerald"
+                  className="whitespace-nowrap gap-2"
+                  onClick={() => setShowESignModal(true)}
+                >
+                  Publish
                 </Button>
               )}
               {canRequestControlledCopy && (
@@ -1068,6 +1096,22 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
           currentStepIndex={currentStepIndex}
           skippedSteps={skippedSteps}
           terminalProgressStep={terminalProgressStep}
+        />
+      )}
+
+      {currentRevision && (
+        <ReplaceAssigneeBanner
+          revisionId={currentRevision.id}
+          status={currentRevision.status}
+          documentNumber={currentRevision.documentNumber}
+          documentName={currentRevision.documentName}
+          revisionNumber={currentRevision.revisionNumber}
+          reviewers={currentRevision.reviewers}
+          approvers={currentRevision.approvers}
+          onReplaced={async () => {
+            const latest = await documentApi.getRevisionByIdSnapshot(currentRevision.id, { force: true });
+            setRevision({ ...latest, signatures: latest.signatures || [] });
+          }}
         />
       )}
 
@@ -1103,6 +1147,9 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                 businessUnit: currentRevision?.businessUnit || "",
                 department: currentRevision?.department || "",
                 subType: currentRevision?.subType || "",
+                type: currentRevision?.type || "",
+                effectiveDate: currentRevision?.effectiveDate,
+                validUntil: currentRevision?.validUntil,
                 knowledgeBase: currentRevision?.knowledgeBase || "",
                 periodicReviewCycle: currentRevision?.periodicReviewCycle ?? 0,
                 periodicReviewNotification:
@@ -1111,6 +1158,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                 description: currentRevision?.description || "",
                 titleLocalLanguage: currentRevision?.titleLocalLanguage || "",
               }}
+              legacyImportInfo={currentRevision?.legacyImportInfo}
             />
           )}
           {activeTab === "workingNotes" && (
@@ -1140,6 +1188,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
           {activeTab === "training" && (
             <TrainingInformationTab
               isReadOnly
+              isTemplate={Boolean(currentRevision?.isTemplate)}
               data={{
                 trainingPlannedDate: currentRevision?.trainingPlannedDate,
                 trainingPeriodEndDate: currentRevision?.trainingPeriodEndDate,
@@ -1148,14 +1197,23 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             />
           )}
           {activeTab === "reviewers" && (
-            <ReviewersTab reviewers={reviewerRows} reviewRequirement={currentRevision?.reviewRequirement} />
+            <ReviewersTab
+              reviewers={reviewerRows}
+              reviewRequirement={currentRevision?.reviewRequirement}
+              legacyHistoricalReviewers={currentRevision?.legacyImportInfo?.historicalReviewers}
+              legacyHistoricalReviewDate={currentRevision?.legacyImportInfo?.historicalReviewDate}
+            />
           )}
           {activeTab === "approvers" && (
-            <ApproversTab approvers={approverRows} />
+            <ApproversTab
+              approvers={approverRows}
+              legacyHistoricalApprover={currentRevision?.legacyImportInfo?.historicalApprover}
+              legacyHistoricalApprovalDate={currentRevision?.legacyImportInfo?.historicalApprovalDate}
+            />
           )}
           {activeTab === "document" && (
             <>
-              {canPublishCurrentRevision && ["EFFECTIVE", "PUBLISHED", "OBSOLETED", "OBSOLETE"].includes(
+              {!isTemplateRevision && canPublishCurrentRevision && ["EFFECTIVE", "PUBLISHED", "OBSOLETED", "OBSOLETE"].includes(
                 String(currentRevision?.status ?? "").toUpperCase()
               ) && (
                 <div className="flex justify-end mb-2">
@@ -1175,6 +1233,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
               )}
               <DocumentTab
                 documentFile={revisionFile}
+                liveViewRevisionId={isLiveViewStage(revision) ? revisionId : null}
                 previewStatus={previewStatus}
                 previewMessage={previewMessage}
                 revisionId={revisionId}
@@ -1215,7 +1274,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             Cancel
           </Button>
         )}
-        {(canOpenPublishingWorkspace || (isReadyForPublishing && canPublishCurrentRevision)) && (
+        {!isTemplateRevision && (canOpenPublishingWorkspace || (isReadyForPublishing && canPublishCurrentRevision)) && (
           <Button
             size="sm"
             variant="outline-emerald"
@@ -1223,6 +1282,16 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             onClick={handleOpenPublishingWorkspace}
           >
             Open Publishing Template
+          </Button>
+        )}
+        {isTemplateRevision && isReadyForPublishing && canPublishCurrentRevision && (
+          <Button
+            size="sm"
+            variant="default"
+            className="whitespace-nowrap gap-2"
+            onClick={() => setShowESignModal(true)}
+          >
+            Publish
           </Button>
         )}
         {canRequestControlledCopy && (

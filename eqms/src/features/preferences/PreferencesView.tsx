@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Globe, BellRing, ShieldCheck, ChevronLeft } from 'lucide-react';
+import { Globe, BellRing, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button/Button';
@@ -23,7 +23,6 @@ export const PreferencesView: React.FC = () => {
             : 'localization';
     };
     const [activeTab, setActiveTab] = useState<PreferenceTabId>(getTabFromSearchParams);
-    const [mobileListView, setMobileListView] = useState<boolean>(() => !searchParams.get('tab'));
     const { showToast } = useToast();
     const [isSaving, setIsSaving] = useState(false);
     const [saveHandler, setSaveHandler] = useState<null | (() => Promise<void>)>(null);
@@ -116,49 +115,29 @@ export const PreferencesView: React.FC = () => {
             />
 
             {/* Main Content Card */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 md:flex md:items-stretch">
-                <div className={`md:w-72 md:shrink-0 md:border-r md:border-slate-200 p-2 md:p-3 ${mobileListView ? 'block' : 'hidden md:block'}`}>
-                    <TabNav
-                        variant="vertical"
-                        tabs={TABS}
-                        activeTab={activeTab}
-                        onChange={(id) => {
-                            const nextTab = id as PreferenceTabId;
-                            setActiveTab(nextTab);
-                            setSearchParams(nextTab === 'localization' ? {} : { tab: nextTab }, { replace: true });
-                            setMobileListView(false);
-                        }}
-                        ariaLabel="Preference sections"
-                        compactVertical
-                    />
-                </div>
-                <div className={mobileListView ? "hidden md:block min-w-0 flex-1" : "block min-w-0 flex-1"}>
-                    <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 md:hidden">
-                        <button
-                            type="button"
-                            onClick={() => setMobileListView(true)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
-                            aria-label="Back to preferences list"
-                        >
-                            <ChevronLeft className="h-5 w-5" />
-                        </button>
-                        <p className="text-sm font-semibold text-slate-900">
-                            {TABS.find((tab) => tab.id === activeTab)?.label}
-                        </p>
-                    </div>
-                    <AnimatePresence mode="wait" initial={false}>
-                        <motion.div
-                            key={`${activeTab}-${resetVersion}`}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -8 }}
-                            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                            className="p-4 md:p-5"
-                        >
-                            {renderTabContent()}
-                        </motion.div>
-                    </AnimatePresence>
-                </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1">
+                <TabNav
+                    tabs={TABS}
+                    activeTab={activeTab}
+                    onChange={(id) => {
+                        const nextTab = id as PreferenceTabId;
+                        setActiveTab(nextTab);
+                        setSearchParams(nextTab === 'localization' ? {} : { tab: nextTab }, { replace: true });
+                    }}
+                    ariaLabel="Preference sections"
+                />
+                <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                        key={`${activeTab}-${resetVersion}`}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        className="p-4 md:p-5"
+                    >
+                        {renderTabContent()}
+                    </motion.div>
+                </AnimatePresence>
             </div>
 
             {isSaving && <FullPageLoading text="Saving changes..." />}

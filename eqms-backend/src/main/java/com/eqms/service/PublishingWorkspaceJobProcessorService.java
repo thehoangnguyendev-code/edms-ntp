@@ -14,7 +14,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -79,11 +81,10 @@ public class PublishingWorkspaceJobProcessorService {
                     "READY_FOR_PUBLISHING",
                     "READY_FOR_PUBLISHING",
                     message,
-                    List.of(
-                            new AuditTrailChangeResponse("Selected Template ID", "-", request == null || request.publishingTemplateId() == null ? "-" : request.publishingTemplateId()),
-                            new AuditTrailChangeResponse("Selected Layout", "-", request == null || request.selectedLayout() == null ? "-" : request.selectedLayout()),
-                            new AuditTrailChangeResponse("Error", "-", message)
-                    )
+                    buildFailureSelectionChanges(
+                            request == null ? null : request.publishingTemplateId(),
+                            request == null ? null : request.selectedLayout(),
+                            message)
             );
         } finally {
             SecurityContextHolder.setContext(previousContext);
@@ -110,13 +111,30 @@ public class PublishingWorkspaceJobProcessorService {
                     "DRAFT",
                     "DRAFT",
                     message,
-                    List.of(
-                            new AuditTrailChangeResponse("Selected Template ID", "-", event.request() == null || event.request().publishingTemplateId() == null ? "-" : event.request().publishingTemplateId()),
-                            new AuditTrailChangeResponse("Selected Layout", "-", event.request() == null || event.request().selectedLayout() == null ? "-" : event.request().selectedLayout()),
-                            new AuditTrailChangeResponse("Error", "-", message)
-                    )
+                    buildFailureSelectionChanges(
+                            event.request() == null ? null : event.request().publishingTemplateId(),
+                            event.request() == null ? null : event.request().selectedLayout(),
+                            message)
             );
         }
+    }
+
+    /**
+     * Selected Template ID / Selected Layout are only meaningful when the request actually
+     * carried one -- unconditionally emitting both regardless produced a "Selected Template ID:
+     * - -> -" no-op whenever the workspace was opened without pre-selecting one (the common case).
+     * Error always has a real value (the failure that triggered this row) so it is unconditional.
+     */
+    private List<AuditTrailChangeResponse> buildFailureSelectionChanges(String templateId, String layout, String errorMessage) {
+        List<AuditTrailChangeResponse> changes = new ArrayList<>();
+        if (StringUtils.hasText(templateId)) {
+            changes.add(new AuditTrailChangeResponse("Selected Template ID", null, templateId));
+        }
+        if (StringUtils.hasText(layout)) {
+            changes.add(new AuditTrailChangeResponse("Selected Layout", null, layout));
+        }
+        changes.add(new AuditTrailChangeResponse("Error", null, errorMessage));
+        return changes;
     }
 
     private String extractMessage(Throwable error) {

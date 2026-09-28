@@ -22,6 +22,32 @@ public interface ControlledCopyRepository extends JpaRepository<ControlledCopyRe
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update ControlledCopyRecord c set c.printCount = c.printCount + 1 where c.id = :id and (:once = false or c.printCount < 1)")
     int consumePrint(@Param("id") UUID id, @Param("once") boolean once);
+    /**
+     * findById() leaves every @ManyToOne (distributionBatch, requestedBy, distributedBy,
+     * destroyedBy, recalledBy, cancelledBy, approvedBy, printedBy, recipientUser) as an
+     * uninitialized lazy proxy -- fine within a request's own session, but
+     * ControlledCopyNotificationAsyncService.notifyControlledCopyStakeholders() reads the copy on
+     * a fresh @Async thread with no surrounding transaction (deliberately, so a slow SMTP send
+     * never holds a DB connection open -- see that class's javadoc), and that method touches
+     * every one of these (building the stakeholder list, resolving the recipient) -- each one
+     * throws LazyInitializationException ("no session") the moment it's actually read, silently
+     * swallowed by the caller's try/catch, which was dropping the ENTIRE notification (not just
+     * one field) the first time any of them was hit. All are single-valued (@ManyToOne), so
+     * JOIN FETCHing every one of them together is still exactly one row, no result multiplication.
+     */
+    @Query("select c from ControlledCopyRecord c"
+            + " left join fetch c.distributionBatch"
+            + " left join fetch c.requestedBy"
+            + " left join fetch c.distributedBy"
+            + " left join fetch c.destroyedBy"
+            + " left join fetch c.recalledBy"
+            + " left join fetch c.cancelledBy"
+            + " left join fetch c.approvedBy"
+            + " left join fetch c.printedBy"
+            + " left join fetch c.recipientUser"
+            + " where c.id = :id")
+    Optional<ControlledCopyRecord> findByIdWithDistributionBatch(@Param("id") UUID id);
+
     List<ControlledCopyRecord> findAllByRevision_IdOrderByCopyNumberAsc(UUID revisionId);
     List<ControlledCopyRecord> findAllByRevision_Document_IdOrderByCreatedAtDesc(UUID documentId);
     List<ControlledCopyRecord> findAllByDistributionBatch_IdOrderByCopyNumberAsc(UUID distributionBatchId);

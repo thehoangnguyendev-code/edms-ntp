@@ -1,27 +1,10 @@
-import React, { useMemo } from "react";
-import { Select } from "@/components/ui/select/Select";
-import { MultiSelect } from "@/components/ui/select/MultiSelect";
+import React from "react";
 import { Popover } from "@/components/ui/popover/Popover";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
-
-const DOCUMENT_BU_DEPARTMENTS: Record<string, string[]> = {
-  "Operation Unit": ["Production", "Warehouse", "Logistics", "Maintenance"],
-  "QA Unit": ["Quality Assurance", "Regulatory Affairs"],
-  "QC Unit": ["Quality Control", "Laboratory"],
-  "HR Unit": [
-    "Human Resources & Administrator",
-    "IT Department",
-    "Finance",
-    "Legal",
-  ],
-};
-
-const AUTHOR_OPTIONS = [
-  { label: "Shani Rosenbilt", value: "Shani Rosenbilt" },
-  { label: "John Smith", value: "John Smith" },
-  { label: "Mary Williams", value: "Mary Williams" },
-  { label: "Robert Brown", value: "Robert Brown" },
-];
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { formatDocumentTypeSelectLabel } from "@/features/documents/shared/documentTypeDisplay";
+import { formatDate } from "@/utils/format";
 
 export interface GeneralInformationDocumentDetail {
   documentNumber: string;
@@ -45,18 +28,37 @@ export interface GeneralInformationDocumentDetail {
   titleLocalLanguage?: string;
   type?: any;
   subType?: string;
+  /** Set when the revision is published (Effective); empty before that. */
+  effectiveDate?: string | null;
+  validUntil?: string | null;
 }
+
+/** Dates arrive as ISO strings; unset or unparsable values show as empty rather than "Invalid Date". */
+const formatOptionalDate = (value?: string | null) => {
+  if (!value) return "";
+  const formatted = formatDate(value);
+  return formatted === "Invalid Date" ? String(value) : formatted;
+};
 
 interface GeneralInformationTabProps {
   document: GeneralInformationDocumentDetail;
   isReadOnly?: boolean;
   onFormChange?: (formData: GeneralInformationDocumentDetail) => void;
+  /** Legacy Import reference-only info -- present only for a revision created via Legacy Import.
+   *  Never a real electronic signature; see the Reviewers/Approvers tabs for the historical
+   *  Reviewer/Approver annotations, and Signatures for the actual e-signature that authorized
+   *  the import. */
+  legacyImportInfo?: {
+    legacyJustification?: string | null;
+    historicalAuthoredDate?: string | null;
+  } | null;
 }
 
 export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
   document,
   isReadOnly = false,
   onFormChange,
+  legacyImportInfo,
 }) => {
   const revisionDisplayName =
     String(document.revisionName ?? '').trim() ||
@@ -74,17 +76,6 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
     onFormChange?.(updatedDocument);
   };
 
-  const handleChanges = (patch: Partial<GeneralInformationDocumentDetail>) => {
-    if (isReadOnly) return;
-    onFormChange?.({ ...document, ...patch });
-  };
-
-  const departmentOptions = useMemo(() => {
-    if (!document.businessUnit) return [];
-    const departments = DOCUMENT_BU_DEPARTMENTS[document.businessUnit] || [];
-    return departments.map((dept) => ({ label: dept, value: dept }));
-  }, [document.businessUnit]);
-
   const readonlyInputClassName = CONTROL_STATE_CLASSES.readonlyField;
   const readonlyTextareaClassName = CONTROL_STATE_CLASSES.readonlyTextarea;
 
@@ -92,12 +83,36 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
     ? document.coAuthor.filter(Boolean)
     : Array.isArray(document.coAuthorDisplayNames)
       ? document.coAuthorDisplayNames.filter(Boolean)
-    : [];
+      // Review/Approval views pass co-author names in `coAuthors` (already mapped to fullName);
+      // without this fallback the read-only field showed "Select Co-Authors..." even when the
+      // revision had co-authors.
+      : Array.isArray(document.coAuthors)
+        ? document.coAuthors.filter((v): v is string => typeof v === "string" && v.trim() !== "" && !/^[0-9a-f-]{36}$/i.test(v))
+        : [];
   const visibleCoAuthors = coAuthorDisplayNames.slice(0, 2);
   const hiddenCoAuthors = coAuthorDisplayNames.slice(2);
 
   return (
     <div className="space-y-4 md:space-y-5">
+      {legacyImportInfo && (
+        <>
+          <WarningBanner
+            variant="warning"
+            title="Legacy Import"
+            description="This revision was brought into the system from an existing (e.g. paper-based) original -- the fields below are reference-only, recorded from the paper record, not electronic signatures. See the Reviewers/Approvers tabs for the historical names, and Signatures for the actual e-signature that authorized this import."
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs sm:text-sm font-medium text-slate-700">Historical Authored Date</label>
+              <input type="text" value={legacyImportInfo.historicalAuthoredDate || "-"} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
+            </div>
+            <div className="flex flex-col gap-1.5 md:col-span-1">
+              <label className="text-xs sm:text-sm font-medium text-slate-700">Migration Justification</label>
+              <input type="text" value={legacyImportInfo.legacyJustification || "-"} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
+            </div>
+          </div>
+        </>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700">
@@ -143,82 +158,59 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
             <label className="text-xs sm:text-sm font-medium text-slate-700">
               Author<span className="text-red-500 ml-1">*</span>
             </label>
-            {isReadOnly ? (
-              <input
-                type="text"
-                value={document.author || "-"}
-                readOnly
-                className={readonlyInputClassName}
-                placeholder=""
-              />
-            ) : (
-              <Select
-                value={document.author}
-                onChange={(value) => handleChange("author", value)}
-                options={AUTHOR_OPTIONS}
-                enableSearch={true}
-                placeholder="Select author..."
-                disabled={isReadOnly}
-              />
-            )}
+            <input
+              type="text"
+              value={document.author || "-"}
+              readOnly
+              className={readonlyInputClassName}
+              placeholder=""
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs sm:text-sm font-medium text-slate-700">
               Co-Author(s)
             </label>
-            {isReadOnly ? (
-              <div className={CONTROL_STATE_CLASSES.readonlyContainer}>
-                <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-                  {coAuthorDisplayNames.length > 0 ? (
-                    <>
-                      {visibleCoAuthors.map((name) => (
-                        <span
-                          key={name}
-                          className="inline-flex min-w-0 max-w-full shrink items-center gap-1 rounded-full py-0 pl-1.5 pr-0.5 text-2xs bg-emerald-50 text-emerald-700 border border-emerald-100"
-                        >
-                          <span className="truncate">{name}</span>
-                        </span>
-                      ))}
-                    </>
-                  ) : (
-                    <span className="text-slate-400 text-left truncate">Select Co-Authors...</span>
-                  )}
-                </div>
-                <div className="ml-1 flex shrink-0 items-center gap-1.5">
-                  {hiddenCoAuthors.length > 0 && (
-                    <Popover
-                      title="Selected"
-                      placement="top"
-                      triggerAriaLabel={`View ${hiddenCoAuthors.length} more selected items`}
-                      trigger={<span className="text-2xs font-medium">+{hiddenCoAuthors.length}</span>}
-                      triggerClassName="inline-flex items-center rounded-lg bg-slate-100 px-1.5 py-0.5 text-2xs font-medium whitespace-nowrap text-slate-500 hover:bg-slate-200"
-                      contentClassName="min-w-[180px] max-w-[280px]"
-                      content={
-                        <div className="space-y-0.5">
-                          {hiddenCoAuthors.map((name) => (
-                            <div key={name} className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-slate-50">
-                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                              <span className="truncate pr-2 text-xs font-medium text-slate-700">{name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      }
-                    />
-                  )}
-                </div>
+            <div className={CONTROL_STATE_CLASSES.readonlyContainer}>
+              <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+                {coAuthorDisplayNames.length > 0 ? (
+                  <>
+                    {visibleCoAuthors.map((name) => (
+                      <span
+                        key={name}
+                        className="inline-flex min-w-0 max-w-full shrink items-center gap-1 rounded-full py-0 pl-1.5 pr-0.5 text-2xs bg-emerald-50 text-emerald-700 border border-emerald-100"
+                      >
+                        <span className="truncate">{name}</span>
+                      </span>
+                    ))}
+                  </>
+                ) : (
+                  <span className="text-slate-400 text-left truncate">—</span>
+                )}
               </div>
-            ) : (
-              <MultiSelect
-                value={document.coAuthors}
-                onChange={(values) => handleChange("coAuthors", values)}
-                options={AUTHOR_OPTIONS}
-                enableSearch={true}
-                placeholder="Select Co-Authors..."
-                maxVisibleTags={2}
-                disabled={isReadOnly}
-              />
-            )}
+              <div className="ml-1 flex shrink-0 items-center gap-1.5">
+                {hiddenCoAuthors.length > 0 && (
+                  <Popover
+                    title="Selected"
+                    placement="top"
+                    triggerAriaLabel={`View ${hiddenCoAuthors.length} more selected items`}
+                    trigger={<span className="text-2xs font-medium">+{hiddenCoAuthors.length}</span>}
+                    triggerClassName="inline-flex items-center rounded-lg bg-slate-100 px-1.5 py-0.5 text-2xs font-medium whitespace-nowrap text-slate-500 hover:bg-slate-200"
+                    contentClassName="min-w-[180px] max-w-[280px]"
+                    content={
+                      <div className="space-y-0.5">
+                        {hiddenCoAuthors.map((name) => (
+                          <div key={name} className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-slate-50">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                            <span className="truncate pr-2 text-xs font-medium text-slate-700">{name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    }
+                  />
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -226,97 +218,29 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
           <label className="text-xs sm:text-sm font-medium text-slate-700">
             Business Unit<span className="text-red-500 ml-1">*</span>
           </label>
-          {isReadOnly ? (
-            <input
-              type="text"
-              value={document.businessUnit}
-              readOnly
-              className={readonlyInputClassName}
-              placeholder=""
-            />
-          ) : (
-            <Select
-              value={document.businessUnit}
-              onChange={(value) => handleChanges({ businessUnit: value, department: "" })}
-              options={Object.keys(DOCUMENT_BU_DEPARTMENTS).map((bu) => ({
-                label: bu,
-                value: bu,
-              }))}
-              enableSearch={true}
-              disabled={isReadOnly}
-            />
-          )}
+          <input
+            type="text"
+            value={document.businessUnit}
+            readOnly
+            className={readonlyInputClassName}
+            placeholder=""
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700">
             Department
           </label>
-          {isReadOnly ? (
-            <input
-              type="text"
-              value={document.department}
-              readOnly
-              className={readonlyInputClassName}
-              placeholder=""
-            />
-          ) : (
-            <Select
-              value={document.department}
-              onChange={(value) => handleChange("department", value)}
-              options={departmentOptions}
-              enableSearch={true}
-              placeholder={document.businessUnit ? "Select department..." : "Select Business Unit first"}
-              disabled={isReadOnly || !document.businessUnit}
-            />
-          )}
+          <input
+            type="text"
+            value={document.department}
+            readOnly
+            className={readonlyInputClassName}
+            placeholder=""
+          />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">
-            Sub-Type
-          </label>
-          {isReadOnly ? (
-            <input
-              type="text"
-              value={document.subType || "-"}
-              readOnly
-              className={readonlyInputClassName}
-              placeholder=""
-            />
-          ) : (
-            <Select
-              value={document.subType || ""}
-              onChange={(value) => handleChange("subType", value)}
-              options={[
-                { label: "Guideline", value: "Guideline" },
-                { label: "Manual", value: "Manual" },
-                { label: "Procedure", value: "Procedure" },
-                { label: "Work Instruction", value: "Work Instruction" },
-                { label: "Form", value: "Form" },
-                { label: "Specification", value: "Specification" },
-                { label: "Site Master File", value: "Site Master File" },
-                { label: "Addendum / Annex / Appendix", value: "Addendum / Annex / Appendix" },
-                { label: "User Requirement Specification", value: "User Requirement Specification" },
-                { label: "Design Qualification Protocol and Report", value: "Design Qualification Protocol and Report" },
-                { label: "Factory Acceptance / Site Acceptance Protocol and Report", value: "Factory Acceptance / Site Acceptance Protocol and Report" },
-                { label: "Installation Qualification Protocol and Report", value: "Installation Qualification Protocol and Report" },
-                { label: "Operational Qualification Protocol and Report", value: "Operational Qualification Protocol and Report" },
-                { label: "Performance Qualification Protocol and Report", value: "Performance Qualification Protocol and Report" },
-                { label: "Process Validation Protocol and Report", value: "Process Validation Protocol and Report" },
-                { label: "Cleaning Validation Protocol and Report", value: "Cleaning Validation Protocol and Report" },
-                { label: "Record", value: "Record" },
-                { label: "Contamination Control Strategy", value: "Contamination Control Strategy" },
-                { label: "Risk Management", value: "Risk Management" },
-              ]}
-              enableSearch={true}
-              placeholder="Select sub-type..."
-              disabled={isReadOnly}
-            />
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1.5 md:col-span-2">
+                <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="text-xs sm:text-sm font-medium text-slate-700">
             Revision Name<span className="text-red-500 ml-1">*</span>
           </label>
@@ -353,6 +277,60 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
             }
           />
         </div>
+
+        {/* The document type is fixed for the document, so it is always shown as read-only text. */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs sm:text-sm font-medium text-slate-700">
+            Document Type<span className="text-red-500 ml-1">*</span>
+          </label>
+          <input
+            type="text"
+            value={document.type ? formatDocumentTypeSelectLabel(document.type) : "-"}
+            readOnly
+            className={readonlyInputClassName}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs sm:text-sm font-medium text-slate-700">
+            Sub-Type
+          </label>
+          <input
+            type="text"
+            value={document.subType || "-"}
+            readOnly
+            className={readonlyInputClassName}
+            placeholder=""
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs sm:text-sm font-medium text-slate-700">Effective Date</label>
+          <input
+            type="text"
+            value={formatOptionalDate(document.effectiveDate)}
+            readOnly
+            className={readonlyInputClassName}
+            placeholder="Set when approved"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs sm:text-sm font-medium text-slate-700">Valid Until</label>
+          <input
+            type="text"
+            value={formatOptionalDate(document.validUntil)}
+            readOnly
+            className={readonlyInputClassName}
+            placeholder="Set when approved"
+          />
+        </div>
+
+        {/* Everyone can see whether the document is a template; it is set on the document, not on the revision. */}
+        {/* <div className="flex items-center gap-3 md:col-span-2">
+          <label className="text-xs sm:text-sm font-medium text-slate-700">Is Template?</label>
+          <Checkbox id="revisionIsTemplate" checked={Boolean(document.isTemplate)} disabled />
+        </div> */}
 
         <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="text-xs sm:text-sm font-medium text-slate-700">

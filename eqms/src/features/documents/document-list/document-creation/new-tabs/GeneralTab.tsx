@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { LinkIcon } from "lucide-react";
 import { Select } from "@/components/ui/select/Select";
 import { MultiSelect } from "@/components/ui/select/MultiSelect";
@@ -8,6 +8,7 @@ import { Popover } from "@/components/ui/popover/Popover";
 import { cn } from "@/components/ui/utils";
 import type { DocumentType } from "@/features/documents/types";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { knowledgeApi } from "@/services/api/knowledge";
 
 type SelectOption = { label: string; value: string };
 type DepartmentOption = SelectOption & { businessUnit?: string };
@@ -126,14 +127,34 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
     [departmentOptions, filteredDepartmentOptions, formData.department],
   );
 
-  const knowledgeBaseDisplayValue = useMemo(
-    () =>
+  // The Knowledge Base is decided by the default Knowledge Categories Hierarchy's determinator field
+  // (for example the Business Unit) and is set by the server on save -- it is never typed here.
+  const [knowledgeField, setKnowledgeField] = useState<{ field?: string | null; label?: string | null } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    knowledgeApi.getDefaultDeterminator().then((value) => { if (alive) setKnowledgeField(value); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, []);
+
+  const knowledgeBaseDisplayValue = useMemo(() => {
+    const fromField = (() => {
+      switch (knowledgeField?.field) {
+        case "BUSINESS_UNIT": return formData.businessUnit ? getOptionLabel(businessUnitOptions ?? [], formData.businessUnit) : "";
+        case "DEPARTMENT": return formData.department ? getOptionLabel([...filteredDepartmentOptions, ...departmentOptions], formData.department) : "";
+        case "DOCUMENT_TYPE": return formData.type ? getOptionLabel(documentTypeOptions ?? [], formData.type) : "";
+        case "SUB_TYPE": return String(formData.subType || "");
+        case "LANGUAGE": return String(formData.language || "");
+        default: return null;
+      }
+    })();
+    if (fromField !== null) return fromField || "—";
+    return (
       getOptionLabel(departmentOptions, formData.knowledgeBase) ||
       getOptionLabel(filteredDepartmentOptions, formData.knowledgeBase) ||
       formData.knowledgeBase ||
-      "—",
-    [departmentOptions, filteredDepartmentOptions, formData.knowledgeBase],
-  );
+      "—"
+    );
+  }, [knowledgeField, businessUnitOptions, departmentOptions, documentTypeOptions, filteredDepartmentOptions, formData]);
 
   const documentTypeDisplayValue = useMemo(
     () => getOptionLabel(documentTypeOptions ?? [], formData.type),
@@ -201,7 +222,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               <LinkIcon className="h-4 w-4 text-blue-600 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs font-medium text-blue-900">
-                  Gợi ý mã tài liệu con:
+                  Suggested sub-document number:
                 </p>
                 <p className="text-sm font-bold text-blue-700 mt-0.5">
                   {suggestedDocumentCode}
@@ -425,7 +446,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
         </div>
 
         {/* Is Template */}
-        {!isTemplateMode && (canManageTemplates || formData.isTemplate) && (
+        {/* Always shown so every user sees whether the document is a template; only users who manage templates can change it. */}
+        {!isTemplateMode && (
           <div className="flex items-center gap-3">
             <label
               htmlFor="isTemplate"
@@ -456,6 +478,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             type="text"
             value={knowledgeBaseDisplayValue}
             readOnly
+            title={knowledgeField?.label ? `Determined by ${knowledgeField.label} (default Knowledge Categories Hierarchy)` : undefined}
             placeholder="Auto-filled after Next Step"
             className={CONTROL_STATE_CLASSES.readonlyField}
           />
@@ -490,7 +513,9 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
         {/* Sub-Type (Select) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Sub-Type</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700">
+            Sub-Type<span className="text-red-500 ml-1">*</span>
+          </label>
           <Select
             value={formData.subType}
             onChange={(value) =>
@@ -596,24 +621,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           />
         </div>
 
-        {/* Language */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Language</label>
-          <Select
-            value={formData.language}
-            onChange={(value) =>
-              !isObsoleted && setFormData({ language: value })
-            }
-            options={[
-              { label: "English", value: "English" },
-              { label: "Vietnamese", value: "Vietnamese" },
-            ]}
-            enableSearch={false}
-            disabled={isObsoleted || isLocked}
-          />
-        </div>
-
-        {/* Review Date */}
+                {/* Review Date */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700">
             Review Date
@@ -637,6 +645,25 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             />
           )}
         </div>
+
+        {/* Language */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs sm:text-sm font-medium text-slate-700">Language</label>
+          <Select
+            value={formData.language}
+            onChange={(value) =>
+              !isObsoleted && setFormData({ language: value })
+            }
+            options={[
+              { label: "English", value: "English" },
+              { label: "Vietnamese", value: "Vietnamese" },
+            ]}
+            enableSearch={false}
+            disabled={isObsoleted || isLocked}
+          />
+        </div>
+
+
 
         {/* Description */}
         <div className="flex flex-col gap-1.5 md:col-span-2">

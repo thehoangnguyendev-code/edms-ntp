@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface RevisionPublishingMetadataRepository extends JpaRepository<RevisionPublishingMetadata, UUID> {
     Optional<RevisionPublishingMetadata> findByRevision_Id(UUID revisionId);
+    boolean existsByPublishingTemplate_Id(UUID templateId);
 }

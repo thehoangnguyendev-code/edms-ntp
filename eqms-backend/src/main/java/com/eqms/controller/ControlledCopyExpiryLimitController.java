@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/settings/controlled-copy-expiry-limits")
+@RequestMapping("/documents/administration/controlled-copies-policy/expiry-limits")
 public class ControlledCopyExpiryLimitController {
 
     private final ControlledCopyExpiryLimitService service;

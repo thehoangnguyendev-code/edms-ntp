@@ -1,11 +1,13 @@
 package com.eqms.service;
 
 import com.eqms.auth.CurrentUserService;
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.controlledcopypolicy.ControlledCopyExpiryLimitRequest;
 import com.eqms.dto.controlledcopypolicy.ControlledCopyExpiryLimitResponse;
 import com.eqms.entity.ControlledCopyExpiryLimit;
 import com.eqms.entity.Department;
 import com.eqms.entity.DocumentType;
+import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.UserAccount;
 import com.eqms.repository.ControlledCopyExpiryLimitRepository;
 import com.eqms.repository.DepartmentRepository;
@@ -41,6 +43,7 @@ public class ControlledCopyExpiryLimitService {
     private final PermissionEvaluationService permissionEvaluationService;
     private final CurrentUserService currentUserService;
     private final SecurityChangeSignatureService securityChangeSignatureService;
+    private final AuditTrailService auditTrailService;
 
     public ControlledCopyExpiryLimitService(
             ControlledCopyExpiryLimitRepository repository,
@@ -48,7 +51,8 @@ public class ControlledCopyExpiryLimitService {
             DepartmentRepository departmentRepository,
             PermissionEvaluationService permissionEvaluationService,
             CurrentUserService currentUserService,
-            SecurityChangeSignatureService securityChangeSignatureService
+            SecurityChangeSignatureService securityChangeSignatureService,
+            AuditTrailService auditTrailService
     ) {
         this.repository = repository;
         this.documentTypeRepository = documentTypeRepository;
@@ -56,6 +60,7 @@ public class ControlledCopyExpiryLimitService {
         this.permissionEvaluationService = permissionEvaluationService;
         this.currentUserService = currentUserService;
         this.securityChangeSignatureService = securityChangeSignatureService;
+        this.auditTrailService = auditTrailService;
     }
 
     @Transactional(readOnly = true)
@@ -73,7 +78,7 @@ public class ControlledCopyExpiryLimitService {
         limit.setCreatedBy(currentUser.getId());
         limit.setUpdatedBy(currentUser.getId());
         ControlledCopyExpiryLimit saved = repository.save(limit);
-        recordSignature(currentUser, request, saved, null, summarize(saved));
+        recordSignatureAndAudit(currentUser, request, saved, "CREATED", diff(null, snapshot(saved)));
         return toResponse(saved);
     }
 
@@ -83,11 +88,11 @@ public class ControlledCopyExpiryLimitService {
         requireSignature(currentUser, request);
         ControlledCopyExpiryLimit limit = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Expiry limit not found"));
-        String previous = summarize(limit);
+        RuleSnapshot before = snapshot(limit);
         applyRequest(limit, request);
         limit.setUpdatedBy(currentUser.getId());
         ControlledCopyExpiryLimit saved = repository.save(limit);
-        recordSignature(currentUser, request, saved, previous, summarize(saved));
+        recordSignatureAndAudit(currentUser, request, saved, "UPDATED", diff(before, snapshot(saved)));
         return toResponse(saved);
     }
 
@@ -100,27 +105,132 @@ public class ControlledCopyExpiryLimitService {
         if (limit.isSystem()) {
             throw new IllegalArgumentException("System-defined expiry limits cannot be deleted");
         }
-        String previous = summarize(limit);
+        RuleSnapshot before = snapshot(limit);
+        String scope = describeScope(limit);
+        UUID limitId = limit.getId();
         repository.delete(limit);
-        recordSignature(currentUser, request, limit, previous, "deleted");
+        recordSignatureAndAudit(currentUser, request, limitId, scope, "DELETED", diff(before, null));
     }
 
     private void requireSignature(UserAccount actor, ControlledCopyExpiryLimitRequest request) {
         securityChangeSignatureService.requireValidToken(actor, request == null ? null : request.signatureToken());
     }
 
-    private void recordSignature(UserAccount actor, ControlledCopyExpiryLimitRequest request, ControlledCopyExpiryLimit limit, String previous, String current) {
-        securityChangeSignatureService.record(actor, request == null ? null : request.signatureToken(),
-                SecurityChangeSignatureService.MEANING_SECURITY_CONFIGURATION_CHANGE,
-                "CONTROLLED_COPY_EXPIRY_LIMIT", limit.getId(), "Controlled Copy Expiry Rule",
-                request == null ? null : request.reason(), previous, current);
+    /** Immutable snapshot of a rule's fields, captured before/after applyRequest() so diff() can compare them field by field. */
+    private record RuleSnapshot(String documentType, String department, String duration, boolean active) {}
+
+    private RuleSnapshot snapshot(ControlledCopyExpiryLimit limit) {
+        return new RuleSnapshot(
+                limit.getDocumentType() == null ? "Any" : limit.getDocumentType().getName(),
+                limit.getDepartment() == null ? "Any" : limit.getDepartment().getName(),
+                limit.getDurationValue() + " " + limit.getDurationUnit(),
+                limit.isActive()
+        );
     }
 
-    private String summarize(ControlledCopyExpiryLimit limit) {
-        return "documentType=" + (limit.getDocumentType() == null ? "Any" : limit.getDocumentType().getName())
-                + ", department=" + (limit.getDepartment() == null ? "Any" : limit.getDepartment().getName())
-                + ", duration=" + limit.getDurationValue() + " " + limit.getDurationUnit()
-                + ", active=" + limit.isActive();
+    /**
+     * Only the fields that actually changed -- not the whole rule dumped as one blob. {@code before}
+     * is null on create (every field shown as newly set), {@code after} is null on delete (every
+     * field shown as removed).
+     */
+    private List<AuditTrailChangeResponse> diff(RuleSnapshot before, RuleSnapshot after) {
+        List<AuditTrailChangeResponse> changes = new java.util.ArrayList<>();
+        addIfChanged(changes, "documentType", before == null ? null : before.documentType(), after == null ? null : after.documentType());
+        addIfChanged(changes, "department", before == null ? null : before.department(), after == null ? null : after.department());
+        addIfChanged(changes, "duration", before == null ? null : before.duration(), after == null ? null : after.duration());
+        Boolean beforeActive = before == null ? null : before.active();
+        Boolean afterActive = after == null ? null : after.active();
+        if (!java.util.Objects.equals(beforeActive, afterActive)) {
+            changes.add(new AuditTrailChangeResponse("active",
+                    beforeActive == null ? null : (beforeActive ? "Enabled" : "Disabled"),
+                    afterActive == null ? null : (afterActive ? "Enabled" : "Disabled")));
+        }
+        return changes;
+    }
+
+    private void addIfChanged(List<AuditTrailChangeResponse> changes, String field, String before, String after) {
+        if (!java.util.Objects.equals(before, after)) {
+            changes.add(new AuditTrailChangeResponse(field, before, after));
+        }
+    }
+
+    // This service had NO audit trail entries at all before -- create/update/delete were only ever
+    // visible via the (now-retired) generic "ENTITY_ELECTRONICALLY_SIGNED" companion row that
+    // ElectronicSignatureService used to log for every signed action. Electronic signing is a step
+    // that accompanies the real action, not a separate audit event of its own (see
+    // ElectronicSignatureService#createEntitySignature) -- so this rule change needs its own proper
+    // Audit Trail entry, carrying the signature's ID directly, same as every other action in the app.
+    private void recordSignatureAndAudit(
+            UserAccount actor,
+            ControlledCopyExpiryLimitRequest request,
+            ControlledCopyExpiryLimit limit,
+            String actionType,
+            List<AuditTrailChangeResponse> changes
+    ) {
+        recordSignatureAndAudit(actor, request, limit.getId(), describeScope(limit), actionType, changes);
+    }
+
+    /**
+     * Human-identifiable scope of a rule ("SOP / Quality Assurance", "Global Default", ...) -- used
+     * as the Audit Trail entity name/object code so a reviewer can tell WHICH rule an entry is about
+     * (multiple rules can exist at once; a generic "Controlled Copy Expiry Rule" label for all of
+     * them made every entry indistinguishable from every other). Computed here (not looked up by
+     * AuditTrailService alone) because on delete the row is already gone by the time this runs.
+     */
+    private String describeScope(ControlledCopyExpiryLimit limit) {
+        boolean hasType = limit.getDocumentType() != null;
+        boolean hasDept = limit.getDepartment() != null;
+        if (!hasType && !hasDept) {
+            return "Global Default";
+        }
+        if (hasType && hasDept) {
+            return limit.getDocumentType().getName() + " / " + limit.getDepartment().getName();
+        }
+        if (hasType) {
+            return limit.getDocumentType().getName() + " (Any Department)";
+        }
+        return limit.getDepartment().getName() + " (Any Document Type)";
+    }
+
+    // This service had NO audit trail entries at all before -- create/update/delete were only ever
+    // visible via the (now-retired) generic "ENTITY_ELECTRONICALLY_SIGNED" companion row that
+    // ElectronicSignatureService used to log for every signed action. Electronic signing is a step
+    // that accompanies the real action, not a separate audit event of its own (see
+    // ElectronicSignatureService#createEntitySignature) -- so this rule change needs its own proper
+    // Audit Trail entry, carrying the signature's ID directly, same as every other action in the app.
+    //
+    // Action type is plain CREATED/UPDATED/DELETED, not "CONTROLLED_COPY_EXPIRY_LIMIT_..." --
+    // Target Module already says "Controlled Copy Expiry Limit" and entityName/objectCode now
+    // carries the specific rule's scope, so repeating the entity type in the action label would
+    // only be noise.
+    private void recordSignatureAndAudit(
+            UserAccount actor,
+            ControlledCopyExpiryLimitRequest request,
+            UUID limitId,
+            String scopeLabel,
+            String actionType,
+            List<AuditTrailChangeResponse> changes
+    ) {
+        String reason = request == null ? null : request.reason();
+        ElectronicSignature signature = securityChangeSignatureService.record(actor, request == null ? null : request.signatureToken(),
+                SecurityChangeSignatureService.MEANING_SECURITY_CONFIGURATION_CHANGE,
+                "CONTROLLED_COPY_EXPIRY_LIMIT", limitId, scopeLabel,
+                reason, null, null);
+        // fromStatus/toStatus stay null -- audit_logs.from_status/to_status are varchar(40) and a
+        // full-rule summary there previously overflowed the column and failed the save outright.
+        // Field Modifications must list only the fields that actually changed (see diff() above).
+        auditTrailService.logAs(
+                actor,
+                "CONTROLLED_COPY_EXPIRY_LIMIT",
+                scopeLabel,
+                limitId,
+                actionType,
+                null,
+                null,
+                StringUtils.hasText(reason) ? "Reason: " + reason : null,
+                changes,
+                signature == null ? null : signature.getId()
+        );
     }
 
     /** Comparable magnitude used only to pick the "shortest" rule when several rules tie in specificity. */
@@ -145,6 +255,28 @@ public class ControlledCopyExpiryLimitService {
      */
     @Transactional(readOnly = true)
     public Instant resolveMaximumExpiry(DocumentType documentType, Department department) {
+        return resolveMatchingLimit(documentType, department).map(this::addDuration).orElse(null);
+    }
+
+    /**
+     * Same rule matching as {@link #resolveMaximumExpiry}, but the duration is added to the given
+     * {@code anchor} instead of "now". Used to recompute a policy-derived (non-explicit) Controlled
+     * Copy expiry at Distribute time, anchored to the actual distribution moment rather than to
+     * whenever the request happened to be created.
+     */
+    @Transactional(readOnly = true)
+    public Instant resolveExpiryFrom(DocumentType documentType, Department department, Instant anchor) {
+        return resolveMatchingLimit(documentType, department).map(limit -> addDuration(limit, anchor)).orElse(null);
+    }
+
+    /**
+     * Same resolution/priority as {@link #resolveMaximumExpiry}, but returns the matched rule
+     * itself (duration value + unit) instead of a computed Instant -- for callers that need to
+     * *display* the applicable policy (e.g. "valid for 3 day(s)") rather than compute a deadline.
+     * Kept as one shared matching implementation so the two never drift apart.
+     */
+    @Transactional(readOnly = true)
+    public Optional<ControlledCopyExpiryLimit> resolveMatchingLimit(DocumentType documentType, Department department) {
         UUID documentTypeId = documentType == null ? null : documentType.getId();
         UUID departmentId = department == null ? null : department.getId();
 
@@ -156,7 +288,7 @@ public class ControlledCopyExpiryLimitService {
                         && limit.getDocumentType() != null && limit.getDepartment() != null)
                 .min(Comparator.comparingLong(ControlledCopyExpiryLimitService::toApproxHours));
         if (exactMatch.isPresent()) {
-            return addDuration(exactMatch.get());
+            return exactMatch;
         }
 
         Optional<ControlledCopyExpiryLimit> documentTypeMatch = active.stream()
@@ -165,7 +297,7 @@ public class ControlledCopyExpiryLimitService {
                         && Objects.equals(limit.getDocumentType().getId(), documentTypeId))
                 .min(Comparator.comparingLong(ControlledCopyExpiryLimitService::toApproxHours));
         if (documentTypeMatch.isPresent()) {
-            return addDuration(documentTypeMatch.get());
+            return documentTypeMatch;
         }
 
         Optional<ControlledCopyExpiryLimit> departmentMatch = active.stream()
@@ -174,18 +306,20 @@ public class ControlledCopyExpiryLimitService {
                         && Objects.equals(limit.getDepartment().getId(), departmentId))
                 .min(Comparator.comparingLong(ControlledCopyExpiryLimitService::toApproxHours));
         if (departmentMatch.isPresent()) {
-            return addDuration(departmentMatch.get());
+            return departmentMatch;
         }
 
         return active.stream()
                 .filter(limit -> limit.getDocumentType() == null && limit.getDepartment() == null)
-                .min(Comparator.comparingLong(ControlledCopyExpiryLimitService::toApproxHours))
-                .map(this::addDuration)
-                .orElse(null);
+                .min(Comparator.comparingLong(ControlledCopyExpiryLimitService::toApproxHours));
     }
 
     private Instant addDuration(ControlledCopyExpiryLimit limit) {
-        ZonedDateTime now = Instant.now().atZone(ZoneOffset.UTC);
+        return addDuration(limit, Instant.now());
+    }
+
+    private Instant addDuration(ControlledCopyExpiryLimit limit, Instant anchor) {
+        ZonedDateTime now = anchor.atZone(ZoneOffset.UTC);
         int value = limit.getDurationValue();
         ZonedDateTime result = switch (limit.getDurationUnit() == null ? "DAYS" : limit.getDurationUnit()) {
             case "HOURS" -> now.plusHours(value);
@@ -209,6 +343,16 @@ public class ControlledCopyExpiryLimitService {
         String unit = StringUtils.hasText(request.durationUnit()) ? request.durationUnit().trim().toUpperCase() : "DAYS";
         if (!VALID_DURATION_UNITS.contains(unit)) {
             throw new IllegalArgumentException("Duration unit must be one of HOURS, DAYS, WEEKS, MONTHS");
+        }
+        // Bound the duration so the computed expiry date can never overflow when a copy is requested.
+        int maxDuration = switch (unit) {
+            case "HOURS" -> 24 * 365;
+            case "DAYS" -> 3650;
+            case "WEEKS" -> 520;
+            default -> 120;
+        };
+        if (request.durationValue() > maxDuration) {
+            throw new IllegalArgumentException("Duration for " + unit + " must not exceed " + maxDuration);
         }
         // The Global Default row's scope is fixed (Any document type / Any department) — ignore
         // any attempt to change it, only its duration may be edited.
@@ -264,9 +408,9 @@ public class ControlledCopyExpiryLimitService {
 
     private void requireViewAccess() {
         UserAccount user = currentUserService.requireCurrentUser();
-        boolean allowed = permissionEvaluationService.hasPermission(user, "settings.controlled_copy_policy.view")
-                || permissionEvaluationService.hasPermission(user, "settings.controlled_copy_policy.manage")
-                || permissionEvaluationService.isSuperAdmin(user);
+        boolean allowed = permissionEvaluationService.hasAnyPermission(user,
+                "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage",
+                "settings.configuration.view", "settings.configuration.manage");
         if (!allowed) {
             throw new AccessDeniedException("Access denied");
         }
@@ -274,8 +418,8 @@ public class ControlledCopyExpiryLimitService {
 
     private UserAccount requireManageAccess() {
         UserAccount user = currentUserService.requireCurrentUser();
-        boolean allowed = permissionEvaluationService.hasPermission(user, "settings.controlled_copy_policy.manage")
-                || permissionEvaluationService.isSuperAdmin(user);
+        boolean allowed = permissionEvaluationService.hasAnyPermission(user,
+                "documents.admin.controlled_copies_policy.manage", "settings.configuration.manage");
         if (!allowed) {
             throw new AccessDeniedException("Access denied");
         }

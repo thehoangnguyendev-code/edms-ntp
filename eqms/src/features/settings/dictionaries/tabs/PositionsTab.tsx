@@ -1,18 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import {
-    Trash2,
-    MoreVertical,
-    Briefcase,
-    Power,
-    PowerOff,
-    Search,
-    AlertTriangle,
-    ChevronUp,
-    ChevronDown,
-    Check,
-    X,
-} from "lucide-react";
+import { Trash2, MoreVertical, Power, PowerOff, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { cn } from "@/components/ui/utils";
@@ -20,6 +8,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import type { PositionItem, BusinessUnit, DepartmentItem } from "../types";
 import { usePortalDropdown } from "@/hooks";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -31,16 +20,6 @@ import { useToast } from "@/components/ui/toast";
 import { extractApiMessage } from "../utils";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
-
-const generatePositionAbbreviation = (name: string): string => {
-  const letters = name
-    .replace(/[^A-Za-z0-9 ]/g, " ")
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word[0]?.toUpperCase() ?? "")
-    .join("");
-  return letters.slice(0, 10) || "POS";
-};
 
 export const PositionsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -65,7 +44,7 @@ export const PositionsTab = React.forwardRef<
     close: closeDropdown,
   } = usePortalDropdown();
   const { hasPermissionAlias } = usePermissions();
-  const canManage = hasPermissionAlias("settings.dictionary.manage");
+  const canManage = hasPermissionAlias("settings.position.manage");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -172,7 +151,6 @@ export const PositionsTab = React.forwardRef<
     if (!item) return;
     dictionaryApi.updatePosition(item.id, {
       name: item.name,
-      abbreviation: item.abbreviation || generatePositionAbbreviation(item.name),
       businessUnit: item.businessUnit,
       department: item.department,
       description: item.description,
@@ -417,32 +395,19 @@ export const PositionsTab = React.forwardRef<
                       <span className="font-medium text-slate-900">{item.name}</span>
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge
-                        color={
-                          item.businessUnit === "Corporate"
-                            ? "slate"
-                            : item.businessUnit === "Operations"
-                            ? "blue"
-                            : item.businessUnit === "Quality"
-                            ? "emerald"
-                            : "cyan"
-                        }
-                        size="sm"
-                      >
-                        {item.businessUnit}
-                      </Badge>
+                     {item.businessUnit}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge color="blue" size="sm">{item.department}</Badge>
+                     {item.department}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-md truncate">
                       {item.description || "-"}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                       {item.isActive ? (
-                        <Badge color="emerald" size="sm" showDot pill>Active</Badge>
+                        <Badge color="emerald" size="sm" >Active</Badge>
                       ) : (
-                        <Badge color="slate" size="sm" showDot pill>Inactive</Badge>
+                        <Badge color="slate" size="sm" >Inactive</Badge>
                       )}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
@@ -467,14 +432,8 @@ export const PositionsTab = React.forwardRef<
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-slate-500">
-                      <div className="bg-slate-50 p-4 rounded-full mb-3">
-                        <Briefcase className="h-8 w-8 text-slate-400" />
-                      </div>
-                      <p className="text-base font-medium text-slate-900">No positions found</p>
-                      <p className="text-sm mt-1">Try adjusting your search or filters</p>
-                    </div>
+                  <td colSpan={8} className="p-0">
+                    <TableEmptyState title="No positions found" description="Try adjusting your search or filters" />
                   </td>
                 </tr>
               )}
@@ -533,10 +492,8 @@ export const PositionsTab = React.forwardRef<
         businessUnitOptions={businessUnits}
         allDepartments={departments}
         onSave={async (data) => {
-          const abbreviation = data.abbreviation || generatePositionAbbreviation(data.name);
           const payload = {
             name: data.name,
-            abbreviation,
             businessUnit: data.businessUnit,
             department: data.department,
             description: data.description,
@@ -721,7 +678,6 @@ interface PositionModalProps {
 const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, isEdit, businessUnitOptions, allDepartments, onSave }) => {
   const [formData, setFormData] = useState({
     name: item?.name || "",
-    abbreviation: item?.abbreviation || "",
     businessUnit: (item?.businessUnit || "Corporate") as BusinessUnit,
     department: item?.department || "",
     description: item?.description || "",
@@ -734,14 +690,13 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
     if (item) {
       setFormData({
         name: item.name,
-        abbreviation: item.abbreviation || "",
         businessUnit: item.businessUnit,
         department: item.department,
         description: item.description || "",
         isActive: item.isActive,
       });
     } else {
-      setFormData({ name: "", abbreviation: "", businessUnit: "Corporate", department: "", description: "", isActive: true });
+      setFormData({ name: "", businessUnit: "Corporate", department: "", description: "", isActive: true });
     }
     setErrors({});
   }, [item, isOpen]);
@@ -837,20 +792,6 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
             disabled={isSaving}
           />
           {errors.name && <p className="text-xs text-red-600 mt-1.5">{errors.name}</p>}
-        </div>
-
-        <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-            Abbreviation
-          </label>
-          <input
-            type="text"
-            value={formData.abbreviation}
-            onChange={(e) => setFormData((prev) => ({ ...prev, abbreviation: e.target.value.toUpperCase() }))}
-            className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Auto-generated if blank"
-            disabled={isSaving}
-          />
         </div>
 
         {/* Description */}

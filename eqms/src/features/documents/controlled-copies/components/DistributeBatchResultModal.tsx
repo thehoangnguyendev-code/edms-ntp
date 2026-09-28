@@ -1,6 +1,7 @@
 import React from "react";
 import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { IconAlertTriangle, IconCheck } from "@tabler/icons-react";
 
 export interface DistributeBatchFailedItem {
   controlledCopyId: string;
@@ -14,6 +15,7 @@ interface DistributeBatchResultModalProps {
   total: number;
   succeeded: number;
   failed: number;
+  skipped: number;
   failedItems: DistributeBatchFailedItem[];
   isRetrying: boolean;
   onRetryAllFailed: () => void;
@@ -29,6 +31,7 @@ export const DistributeBatchResultModal: React.FC<DistributeBatchResultModalProp
   total,
   succeeded,
   failed,
+  skipped,
   failedItems,
   isRetrying,
   onRetryAllFailed,
@@ -41,6 +44,7 @@ export const DistributeBatchResultModal: React.FC<DistributeBatchResultModalProp
   }
 
   const hasErrors = failed > 0;
+  const hasExceptions = hasErrors || skipped > 0;
 
   return (
     <FormModal
@@ -53,23 +57,23 @@ export const DistributeBatchResultModal: React.FC<DistributeBatchResultModalProp
       showCancel={hasErrors}
       cancelText="Close"
       confirmText={hasErrors ? (isRetrying ? "Retrying..." : "Retry All Failed") : "OK"}
-      confirmVariant={hasErrors ? "default" : "outline"}
+      confirmVariant="default"
       isLoading={isRetrying}
       onConfirm={hasErrors ? onRetryAllFailed : onClose}
     >
       <div className="py-1">
         <div className="flex items-center gap-2.5 mb-4">
-          {hasErrors ? (
-            <AlertCircle className="h-5 w-5 text-red-600" />
+          {hasExceptions ? (
+            <IconAlertTriangle className="h-5 w-5 text-red-600" />
           ) : (
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            <IconCheck className="h-5 w-5 text-emerald-600" />
           )}
           <h3 className="text-sm font-semibold text-slate-900">
-            {hasErrors ? `${actionLabel} completed with errors` : `${actionLabel} complete`}
+            {hasExceptions ? `${actionLabel} completed with exceptions` : `${actionLabel} complete`}
           </h3>
         </div>
 
-        <div className="grid grid-cols-3 gap-2.5 mb-4">
+        <div className="grid grid-cols-4 gap-2.5 mb-4">
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-center">
             <p className="text-lg font-semibold text-slate-900 tabular-nums">{total}</p>
             <p className="text-2xs text-slate-500 uppercase tracking-wider">Total</p>
@@ -82,7 +86,17 @@ export const DistributeBatchResultModal: React.FC<DistributeBatchResultModalProp
             <p className={`text-lg font-semibold tabular-nums ${hasErrors ? "text-red-700" : "text-slate-400"}`}>{failed}</p>
             <p className={`text-2xs uppercase tracking-wider ${hasErrors ? "text-red-600" : "text-slate-400"}`}>Failed</p>
           </div>
+          <div className={`rounded-lg border px-3 py-2.5 text-center ${skipped > 0 ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-slate-50"}`}>
+            <p className={`text-lg font-semibold tabular-nums ${skipped > 0 ? "text-amber-700" : "text-slate-400"}`}>{skipped}</p>
+            <p className={`text-2xs uppercase tracking-wider ${skipped > 0 ? "text-amber-600" : "text-slate-400"}`}>Skipped</p>
+          </div>
         </div>
+
+        {skipped > 0 && (
+          <p className="mb-4 text-xs sm:text-sm text-amber-700">
+            Skipped controlled copies had already reached a terminal lifecycle state and were not processed or retried.
+          </p>
+        )}
 
         {hasErrors && (
           <div className="space-y-2">

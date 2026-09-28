@@ -11,5 +11,6 @@ public record ControlledCopyPolicyDistributionSecuritySection(
         Boolean watermarkCopyNumber,
         Boolean watermarkRecipient,
         Boolean watermarkDistributedDate,
-        Boolean watermarkExpiryDate
+        Boolean watermarkExpiryDate,
+        @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using = StrictIntegerDeserializer.class) Integer previewSessionMinutes
 ) {}

@@ -23,9 +23,10 @@ const TABS: TabItem[] = [
 
 /**
  * Read-only diagnostic tools for the new hybrid authorization engine -- split into its own page
- * (sibling to "Workflow Authorization" in the sidebar) rather than tabs sharing that page, since
- * these answer a different kind of question (engine internals/testing) than the policy
- * configuration tabs do. See each tab's own intro text for what it's for.
+ * (nested under "Advanced" in the sidebar, alongside the other expert/one-time-config screens)
+ * rather than tabs sharing "Workflow Authorization", since these answer a different kind of
+ * question (engine internals/testing) than the policy configuration tabs do. See each tab's own
+ * intro text for what it's for.
  */
 export const AuthorizationDiagnosticsView: React.FC = () => {
   const navigate = useNavigate();

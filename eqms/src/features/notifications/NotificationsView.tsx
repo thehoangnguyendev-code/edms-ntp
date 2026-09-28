@@ -1,5 +1,5 @@
 ﻿import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { notifications as notificationsBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import {
@@ -385,7 +385,7 @@ const EmptyState: React.FC<{
 
   return (
     <TableEmptyState
-      icon={<Bell className="h-7 w-7 md:h-8 md:w-8 text-slate-300" />}
+     
       title={messages[type].title}
       description={messages[type].description}
     />
@@ -395,6 +395,7 @@ const EmptyState: React.FC<{
 // --- Main View ---
 export const NotificationsView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
@@ -445,6 +446,33 @@ export const NotificationsView: React.FC = () => {
   const requestSeqRef = useRef(0);
   const currentPageRef = useRef(currentPage);
   const itemsPerPageRef = useRef(itemsPerPage);
+  React.useLayoutEffect(() => {
+    setActiveTab((searchParams.get("tab") as NotificationFilterTab) ?? "all");
+    setSearch(searchParams.get("search") ?? "");
+    setStatusFilter(searchParams.get("status") ?? "all");
+    setModule(searchParams.get("module") ?? "all");
+    setPriority(searchParams.get("priority") ?? "all");
+    setDateFrom(searchParams.get("dateFrom") ?? "");
+    setDateTo(searchParams.get("dateTo") ?? "");
+    setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
+    setItemsPerPage(Number(searchParams.get("limit")) || 10);
+    setSortConfig({ key: (searchParams.get("sortBy") as keyof Notification) ?? "createdAt", direction: searchParams.get("sortDirection") === "asc" ? "asc" : "desc" });
+  }, [searchParams]);
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (activeTab !== "all") params.set("tab", activeTab);
+    if (search.trim()) params.set("search", search.trim());
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (module !== "all") params.set("module", module);
+    if (priority !== "all") params.set("priority", priority);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (itemsPerPage !== 10) params.set("limit", String(itemsPerPage));
+    if (sortConfig.key && sortConfig.key !== "createdAt") params.set("sortBy", String(sortConfig.key));
+    if (sortConfig.direction !== "desc") params.set("sortDirection", sortConfig.direction);
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [activeTab, search, statusFilter, module, priority, dateFrom, dateTo, currentPage, itemsPerPage, sortConfig, searchParams, setSearchParams]);
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
   useEffect(() => { itemsPerPageRef.current = itemsPerPage; }, [itemsPerPage]);
 

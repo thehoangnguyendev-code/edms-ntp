@@ -37,6 +37,23 @@ public class RevisionPublishingMetadata {
     @Column(name = "selected_publishing_layout", length = 20)
     private String selectedPublishingLayout;
 
+    /** Page ranges chosen for THIS revision in the Publishing Workspace (never written back to the shared template). */
+    @Column(name = "header_page_from")
+    private Integer headerPageFrom;
+    @Column(name = "header_page_to")
+    private Integer headerPageTo;
+    @Column(name = "footer_page_from")
+    private Integer footerPageFrom;
+    @Column(name = "footer_page_to")
+    private Integer footerPageTo;
+    @Column(name = "watermark_page_from")
+    private Integer watermarkPageFrom;
+    @Column(name = "watermark_page_to")
+    private Integer watermarkPageTo;
+    /** False for rows written before page ranges moved off the template: those fall back to the template's ranges. */
+    @Column(name = "page_ranges_recorded", nullable = false)
+    private boolean pageRangesRecorded;
+
     @Column(name = "publishing_preview_pdf_path", length = 1024)
     private String publishingPreviewPdfPath;
 
@@ -77,6 +94,19 @@ public class RevisionPublishingMetadata {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    // #4: async regeneration status for the Publishing preview PDF -- mirrors
+    // DocumentRevisionRecord's snapshotStatus/snapshotError/snapshotRequestId trio, kept here
+    // instead since this tracks a different pipeline (the Publishing preview, not the pre-publish
+    // review snapshot). Values: GENERATING / READY / FAILED.
+    @Column(name = "preview_generation_status", nullable = false, length = 20)
+    private String previewGenerationStatus = "READY";
+
+    @Column(name = "preview_generation_error", columnDefinition = "text")
+    private String previewGenerationError;
+
+    @Column(name = "preview_generation_request_id")
+    private UUID previewGenerationRequestId;
 
     @PrePersist
     void onCreate() {
@@ -223,5 +253,48 @@ public class RevisionPublishingMetadata {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getPreviewGenerationStatus() {
+        return previewGenerationStatus;
+    }
+
+    public void setPreviewGenerationStatus(String previewGenerationStatus) {
+        this.previewGenerationStatus = previewGenerationStatus;
+    }
+
+    public String getPreviewGenerationError() {
+        return previewGenerationError;
+    }
+
+    public void setPreviewGenerationError(String previewGenerationError) {
+        this.previewGenerationError = previewGenerationError;
+    }
+
+    public UUID getPreviewGenerationRequestId() {
+        return previewGenerationRequestId;
+    }
+
+    public void setPreviewGenerationRequestId(UUID previewGenerationRequestId) {
+        this.previewGenerationRequestId = previewGenerationRequestId;
+    }
+
+    public Integer getHeaderPageFrom() { return headerPageFrom; }
+    public Integer getHeaderPageTo() { return headerPageTo; }
+    public Integer getFooterPageFrom() { return footerPageFrom; }
+    public Integer getFooterPageTo() { return footerPageTo; }
+    public Integer getWatermarkPageFrom() { return watermarkPageFrom; }
+    public Integer getWatermarkPageTo() { return watermarkPageTo; }
+    public boolean isPageRangesRecorded() { return pageRangesRecorded; }
+
+    public void setPageRanges(Integer headerFrom, Integer headerTo, Integer footerFrom, Integer footerTo,
+                              Integer watermarkFrom, Integer watermarkTo) {
+        this.headerPageFrom = headerFrom;
+        this.headerPageTo = headerTo;
+        this.footerPageFrom = footerFrom;
+        this.footerPageTo = footerTo;
+        this.watermarkPageFrom = watermarkFrom;
+        this.watermarkPageTo = watermarkTo;
+        this.pageRangesRecorded = true;
     }
 }

@@ -157,7 +157,7 @@ export const EMAIL_VARIABLES: EmailVariable[] = [
   { key: "auditUrl", label: "Audit URL", description: "URL to audit details", example: "https://eqms.company.com/audits/view/789", category: "url" },
 
   // Controlled Copy Variables
-  { key: "controlledCopyNumber", label: "Controlled Copy Number", description: "Unique controlled copy number", example: "CC-2026-001", category: "document" },
+  { key: "controlledCopyNumber", label: "Document Number", description: "Unique document number of the controlled copy", example: "CC-2026-001", category: "document" },
   { key: "copyNumber", label: "Copy Number", description: "Copy sequence number", example: "1", category: "document" },
   { key: "totalCopies", label: "Total Copies", description: "Total number of controlled copies", example: "5", category: "document" },
   { key: "controlledCopyStatus", label: "Controlled Copy Status", description: "Current status of the controlled copy", example: "Distributed", category: "workflow" },

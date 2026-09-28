@@ -147,7 +147,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({ opacity: 0 });
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
 
   const closePopover = useCallback((returnFocus: boolean = true) => {
     setIsOpen(false);
@@ -168,7 +168,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   // Position
   useLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
-      const update = () => {
+      const update = (reveal: boolean) => {
         if (!triggerRef.current) return;
         const rect = triggerRef.current.getBoundingClientRect();
         const sw = window.innerWidth;
@@ -177,7 +177,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         const pw = isMobile ? Math.min(sw - 32, includeTime ? 360 : 340) : (includeTime ? 520 : 480);
         const ph = popoverRef.current?.offsetHeight || (includeTime ? 560 : 460);
 
-        const style: React.CSSProperties = { position: 'fixed', zIndex: 9999, opacity: 1 };
+        // `visibility`, not `opacity` -- framer-motion's own `animate={{ opacity: 1 }}` on the
+        // dialog (see the entrance fade below) drives that property directly every frame and would
+        // fight/override a plain inline `opacity`, defeating this hide-until-positioned trick.
+        const style: React.CSSProperties = { position: 'fixed', zIndex: 9999, visibility: reveal ? 'visible' : 'hidden' };
 
         if (isMobile) {
           // On mobile, show picker centered to avoid clipping at screen edges.
@@ -206,12 +209,21 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         }
         setPopoverStyle(style);
       };
-      update();
-      window.addEventListener('resize', update);
-      window.addEventListener('scroll', update, true);
+      // The popover (rendered via AnimatePresence/portal) hasn't committed to the DOM in this same
+      // synchronous pass yet, so the first call always falls back to the guessed `ph` height
+      // instead of the real one -- which is what made the mobile-centered position look off on the
+      // very first open. Stay invisible (opacity 0) for that first, only-estimated pass, and only
+      // reveal on the second pass (next frame), once the real height is measurable -- otherwise the
+      // popover flashes at the wrong spot for a frame before jumping to the correct one.
+      update(false);
+      const raf = requestAnimationFrame(() => update(true));
+      const onReposition = () => update(true);
+      window.addEventListener('resize', onReposition);
+      window.addEventListener('scroll', onReposition, true);
       return () => {
-        window.removeEventListener('resize', update);
-        window.removeEventListener('scroll', update, true);
+        cancelAnimationFrame(raf);
+        window.removeEventListener('resize', onReposition);
+        window.removeEventListener('scroll', onReposition, true);
       };
     }
   }, [isOpen, viewMode, viewDate, includeTime]);

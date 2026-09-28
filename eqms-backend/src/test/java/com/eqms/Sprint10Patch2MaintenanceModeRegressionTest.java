@@ -28,8 +28,9 @@ import static org.mockito.Mockito.when;
  *
  * Verifies that raw role-name strings ("SUPERADMIN", "ADMIN") no longer grant
  * maintenance-mode exemption. Only users with the explicit
- * {@code security.maintenance.bypass} permission or a confirmed system super admin
- * (via {@code PermissionEvaluationService.isSuperAdmin()}) are exempt.
+ * {@code security.maintenance.bypass} permission are exempt -- the identity-based
+ * {@code PermissionEvaluationService.isSuperAdmin()} fallback has since been retired
+ * entirely (the SYSTEM_SUPER_ADMIN profile was merged into ADMINISTRATOR).
  */
 @ExtendWith(MockitoExtension.class)
 class Sprint10Patch2MaintenanceModeRegressionTest {
@@ -68,22 +69,22 @@ class Sprint10Patch2MaintenanceModeRegressionTest {
     }
 
     @Test
-    void maintenanceMode_systemSuperAdmin_allowed() throws Exception {
+    void maintenanceMode_superAdminFlagWithoutBypassPermission_denied() throws Exception {
+        // The old isSuperAdmin() fallback is gone -- even a user for whom isSuperAdmin() would
+        // report true (hypothetically) is blocked without the actual bypass permission.
         AuthenticatedUser principal = principal(Set.of("some.other.permission"));
         UserAccount user = user("sys-super-admin");
-        when(permissionEvaluationService.isSuperAdmin(user)).thenReturn(true);
 
         boolean blocked = invoke(isMaintenanceBlocked, filter, "/api/documents", principal, user);
-        assertThat(blocked).isFalse();
+        assertThat(blocked).isTrue();
     }
 
     @Test
     void maintenanceMode_roleNameOnlySuperAdmin_withoutPermission_denied() throws Exception {
-        // Old bypass: role="SUPERADMIN" without isSuperAdmin() would have been exempt — must now be blocked
+        // Old bypass: role="SUPERADMIN" alone was never enough — must be blocked
         AuthenticatedUser principal = principal(Set.of());
         UserAccount user = user("role-name-superadmin");
         user.setRoleName("SUPERADMIN");
-        when(permissionEvaluationService.isSuperAdmin(user)).thenReturn(false);
 
         boolean blocked = invoke(isMaintenanceBlocked, filter, "/api/documents", principal, user);
         assertThat(blocked).isTrue();
@@ -91,11 +92,10 @@ class Sprint10Patch2MaintenanceModeRegressionTest {
 
     @Test
     void maintenanceMode_roleNameOnlyAdmin_withoutPermission_denied() throws Exception {
-        // Old bypass: role="ADMIN" without isSuperAdmin() would have been exempt — must now be blocked
+        // Old bypass: role="ADMIN" alone was never enough — must be blocked
         AuthenticatedUser principal = principal(Set.of());
         UserAccount user = user("role-name-admin");
         user.setRoleName("ADMIN");
-        when(permissionEvaluationService.isSuperAdmin(user)).thenReturn(false);
 
         boolean blocked = invoke(isMaintenanceBlocked, filter, "/api/documents", principal, user);
         assertThat(blocked).isTrue();
@@ -105,7 +105,6 @@ class Sprint10Patch2MaintenanceModeRegressionTest {
     void maintenanceMode_normalUser_denied() throws Exception {
         AuthenticatedUser principal = principal(Set.of("documents.view"));
         UserAccount user = user("normal-user");
-        when(permissionEvaluationService.isSuperAdmin(user)).thenReturn(false);
 
         boolean blocked = invoke(isMaintenanceBlocked, filter, "/api/documents", principal, user);
         assertThat(blocked).isTrue();

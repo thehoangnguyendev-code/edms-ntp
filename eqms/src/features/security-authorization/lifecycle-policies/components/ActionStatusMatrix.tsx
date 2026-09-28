@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useNavigate } from "react-router-dom";
-import { Check, Pencil, Search, X } from "lucide-react";
+import { Check, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Select } from "@/components/ui/select/Select";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -154,36 +156,46 @@ export const ActionStatusMatrix: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-        <p className="text-xs text-blue-700">
+      <WarningBanner
+        variant="info"
+        description={
+          <>
           Who may perform which action, at which lifecycle status. Each ✓ is an active policy —
           click it to see the required permission, allowed actors and priority. Document Master,
           Document Revision and Controlled Copy are shown separately because their status sets differ.
-        </p>
-      </div>
+          </>
+        }
+      />
 
       {objectType === "CONTROLLED_COPY" && (
-        <div className="flex items-start gap-3 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-xs text-emerald-800">
-          <p>
+        <WarningBanner
+          variant="success"
+          description={
+            <>
             <strong>Create controlled copy request:</strong> access is determined by the configured action policy. The source Document Master must be Active and its Revision must be Effective. This is an entry condition, not a Controlled Copy status.
-          </p>
-        </div>
+            </>
+          }
+        />
       )}
 
       {/* Filter bar — same layout language as DocumentFilters (labeled search + selects, items-end grid) */}
       {(workflowLoadError || statePolicyLoadError) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
-          <span>
+        <WarningBanner
+          variant="warning"
+          description={
+            <>
             {workflowLoadError && statePolicyLoadError
               ? "Workflow and document-master policy data could not be loaded. The matrix is incomplete."
               : workflowLoadError
                 ? "Workflow transition policy data could not be loaded. The matrix is incomplete."
                 : "Document-master capability policy data could not be loaded. The matrix is incomplete."}
-          </span>
+            </>
+          }
+        >
           <Button size="sm" variant="outline" onClick={() => setLoadVersion((version) => version + 1)}>
             Retry
           </Button>
-        </div>
+        </WarningBanner>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
@@ -238,8 +250,8 @@ export const ActionStatusMatrix: React.FC = () => {
           <tbody className="divide-y divide-slate-100">
             {actions.length === 0 && (
               <tr>
-                <td colSpan={statuses.length + 1} className="px-4 py-10 text-center text-sm text-slate-400">
-                  No actions match your search.
+                <td colSpan={statuses.length + 1} className="p-0">
+                  <TableEmptyState title="No actions found" description="No actions match your search." />
                 </td>
               </tr>
             )}
@@ -301,7 +313,7 @@ export const ActionStatusMatrix: React.FC = () => {
                 </Badge>
               </div>
               <p className="text-2xs md:text-xs font-semibold uppercase tracking-wider text-slate-400">Required permission</p>
-              <p className="font-mono text-xs text-slate-700 mt-0.5">{winner.requiredPermissionCode}</p>
+              <p className=" text-xs text-slate-700 mt-0.5">{winner.requiredPermissionCode}</p>
               {winner.requiredPermissionName && <p className="text-xs text-slate-500">{winner.requiredPermissionName}</p>}
             <div>
               <p className="text-2xs md:text-xs font-semibold uppercase tracking-wider text-slate-400">Allowed actors</p>

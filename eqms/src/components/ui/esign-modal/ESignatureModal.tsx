@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertCircle, PenTool } from 'lucide-react';
+import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { Button } from '../button/Button';
 import { Loading } from '../loading/Loading';
 import { cn } from "@/components/ui/utils";
@@ -38,6 +39,15 @@ export interface ESignatureModalProps {
   meaningDisplayName?: string;
   /** Stable system code (e.g. "APPROVED") used to fetch the admin-configured display name. */
   meaningCode?: string;
+  /**
+   * When true, this modal closes as soon as the signature/password itself is verified instead of
+   * staying open (showing "Processing signature...") for the entire duration of onConfirm. Use
+   * this whenever onConfirm kicks off a longer-running action that has its own dedicated
+   * progress UI (e.g. a batch progress-bar modal) -- otherwise this modal's blocking spinner
+   * covers that UI for the whole operation. onConfirm errors are not shown by this modal in that
+   * case; the caller is responsible for its own error handling/feedback.
+   */
+  deferConfirm?: boolean;
 }
 
 const TRANSACTION_PRESETS = {
@@ -66,12 +76,12 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   transactionType,
   meaningDisplayName,
   meaningCode,
+  deferConfirm = false,
 }) => {
   const { user } = useAuth();
   const currentUsername = user?.username || "";
   const currentFullName = user?.fullName || "";
-  const currentRole = user?.role || "";
-  const currentDepartment = user?.department || "";
+  const currentEmployeeCode = user?.employeeCode || "";
   const modalId = useId();
   const titleId = `${modalId}-title`;
 
@@ -174,13 +184,22 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
     setIsSubmitting(true);
     try {
       const verification = await authApi.verifyESignature({ password });
-      await onConfirm({
+      const confirmArgs = {
         username: currentUsername.trim(),
         password,
         reason: effectiveReason,
         signatureToken: verification.signatureToken,
         timestamp: verification.timestamp,
-      });
+      };
+      if (deferConfirm) {
+        // The signature itself is verified -- hand off to the caller's own progress/error UI
+        // instead of keeping this modal (and its spinner) up for the whole action.
+        void Promise.resolve(onConfirm(confirmArgs)).catch((err) => {
+          console.error('Deferred onConfirm handler failed after signature verification', err);
+        });
+      } else {
+        await onConfirm(confirmArgs);
+      }
       setPassword('');
       setFreeReason('');
       setFormError('');
@@ -311,18 +330,16 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   </div>
                 )}
 
-                {/* Signing As */}
+                {/* Signing As + Meaning -- merged into one card so the modal stays short and
+                    easy to focus on for the person signing. */}
                 <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-emerald-700">Signing as</span>
-                    <span className="text-2xs font-medium text-emerald-600">Identity verified</span>
                   </div>
                   <div className="grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
                     {[
-                      { label: "Username", value: currentUsername },
                       { label: "Full Name", value: currentFullName },
-                      { label: "Role", value: currentRole },
-                      { label: "Department", value: currentDepartment },
+                      { label: "Employee ID", value: currentEmployeeCode },
                     ].map(({ label, value }) => (
                       <div key={label}>
                         <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
@@ -330,21 +347,19 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                       </div>
                     ))}
                   </div>
+                  {effectiveMeaningDisplayName && (
+                    <div className="flex items-center gap-2 border-t border-emerald-100 pt-2">
+                      <span className="text-2xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
+                      <span className="text-xs font-semibold text-slate-900">{effectiveMeaningDisplayName}</span>
+                    </div>
+                  )}
                 </div>
-
-                {/* Meaning */}
-                {effectiveMeaningDisplayName && (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 flex items-center gap-2">
-                    <span className="text-2xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Meaning</span>
-                    <span className="text-xs font-semibold text-slate-900">{effectiveMeaningDisplayName}</span>
-                  </div>
-                )}
 
                 {/* Activity Summary */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs sm:text-sm font-medium text-slate-700">Activity Summary</span>
-                    <span className="text-2xs font-medium text-slate-400 shrink-0">{itemLabel} to sign</span>
+                    {/* <span className="text-2xs font-medium text-slate-400 shrink-0">{itemLabel} to sign</span> */}
                   </div>
                   <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
                     <table className="w-full text-left border-collapse table-fixed">
@@ -418,26 +433,32 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                     <label htmlFor={`${modalId}-password`} className="text-xs sm:text-sm font-medium text-slate-700">
                       Password <span className="text-red-500" aria-hidden="true">*</span>
                     </label>
-                    <input
-                      id={`${modalId}-password`}
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      onKeyDown={handlePasswordKeyEvent}
-                      onKeyUp={handlePasswordKeyEvent}
-                      onBlur={() => setIsCapsLockOn(false)}
-                      autoComplete="current-password"
-                      className={cn(
-                        "w-full h-9 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm",
-                        fieldErrors.password ? "border-red-400" : "border-slate-200"
+                    <div className="relative">
+                      <input
+                        id={`${modalId}-password`}
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={handlePasswordKeyEvent}
+                        onKeyUp={handlePasswordKeyEvent}
+                        onBlur={() => setIsCapsLockOn(false)}
+                        autoComplete="current-password"
+                        className={cn(
+                          "w-full h-9 px-3 py-1.5 pr-10 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm",
+                          fieldErrors.password ? "border-red-400" : "border-slate-200"
+                        )}
+                        placeholder="Enter your password"
+                      />
+                      {isCapsLockOn && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                          <div className="rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
+                            <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" />
+                          </div>
+                        </div>
                       )}
-                      placeholder="Enter your password"
-                    />
+                    </div>
                     {fieldErrors.password && (
                       <p className="text-xs text-red-600 leading-tight">{fieldErrors.password}</p>
-                    )}
-                    {isCapsLockOn && !fieldErrors.password && (
-                      <p className="text-xs text-amber-600 leading-tight">Caps Lock is on.</p>
                     )}
                   </div>
 

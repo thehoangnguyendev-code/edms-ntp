@@ -110,6 +110,23 @@ public class PublishingPlaceholderCatalogService {
                         )
                 ),
                 new PublishingPlaceholderGroupResponse(
+                        "Controlled Copy",
+                        "Filled in by the system for each controlled copy from the copy's own record (recipient details are captured when the copy is distributed). Shown as \"-\" in a published document; use the placeholder's visibility option to show it only in controlled copies.",
+                        List.of(
+                                item("{{recipientName}}", "Full name of the person receiving this copy. For an external recipient this is the e-mail address."),
+                                item("{{recipientEmail}}", "E-mail address of the recipient."),
+                                item("{{recipientJobTitle}}", "Job title of the recipient when the copy was distributed. Empty for an external recipient."),
+                                item("{{recipientDepartment}}", "Department of the recipient when the copy was distributed. Empty for an external recipient."),
+                                item("{{totalCopies}}", "Total number of copies issued in the same request."),
+                                item("{{copyExpiryDate}}", "Date until which this copy is valid."),
+                                item("{{distributedBy}}", "Name of the person who distributed the copy."),
+                                item("{{distributionDate}}", "Date the copy was distributed."),
+                                item("{{requestedBy}}", "Name of the person who requested the copy."),
+                                item("{{requestPurpose}}", "Reason given when the copy was requested."),
+                                item("{{copyLocation}}", "Location the copy is issued to.")
+                        )
+                ),
+                new PublishingPlaceholderGroupResponse(
                         "Footer and Cover Notes",
                         "Useful for the footer row and the review summary section.",
                         List.of(

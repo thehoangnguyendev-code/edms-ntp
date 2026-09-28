@@ -1,6 +1,7 @@
 import React, {
   useState,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useMemo,
   useRef,
@@ -11,19 +12,22 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { NavItem } from "@/types";
 import { NAV_CONFIG, QUALITY_NAV_CONFIG, findNodeByPath, ICON_MAP } from "@/app/constants";
-import { isTransactionalRoute } from "@/app/routes.constants";
+import { isTransactionalRoute, ROUTES } from "@/app/routes.constants";
 import { documentApi, navigationApi } from "@/services/api";
 import { invalidateNavigationCache } from "@/services/api/navigation";
 import { cn } from "@/components/ui/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { SearchDropdown } from "../header/SearchDropdown";
 import { NavigationGuardModal } from "@/components/ui/modal/NavigationGuardModal";
-import { BrandLogo } from "@/components/branding/BrandLogo";
+import { AlertModal } from "@/components/ui/modal/AlertModal";
+import { BrandLogo, useBranding } from "@/components/branding/BrandLogo";
+import { KNOWLEDGE_BASE_NAV_ID, openKnowledgeExplorer } from "@/features/self-service/knowledge/explorer/openExplorer";
+import { Avatar } from "@/components/ui/avatar";
 import "./Sidebar.module.css";
 import { resolvePermissionAliasCodes } from "@/features/settings/permissionCatalog";
 import { notificationApi } from "@/services/api/notifications";
 import { subscribeNotificationsChanged } from "@/features/notifications/events";
-import { IconPointFilled } from "@tabler/icons-react";
+import { IconLogout, IconPointFilled, IconUser } from "@tabler/icons-react";
 
 // Constants
 const BASE_PADDING = 12;
@@ -144,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
   ({
     isCollapsed,
     activeId,
-    onNavigate,
+    onNavigate: onNavigateToItem,
     isMobileOpen,
     onClose,
     onToggleSidebar,
@@ -157,6 +161,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           : { type: "spring" as const, stiffness: 65, damping: 18, mass: 0.9 },
       [shouldReduceMotion],
     );
+
     const sidebarExpandTransition = React.useMemo(
       () =>
         shouldReduceMotion
@@ -175,7 +180,24 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
       'training-pending-approval': 4,
     });
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const { showSidebarUserProfile, knowledgeExplorerEnabled } = useBranding();
+    // With the Explorer enabled, Knowledge Base opens in a new tab: the current page is not left,
+    // so the unsaved-changes guard does not apply and the router is not involved.
+    const opensInNewTab = useCallback(
+      (item: NavItem) => item.id === KNOWLEDGE_BASE_NAV_ID && knowledgeExplorerEnabled === true,
+      [knowledgeExplorerEnabled],
+    );
+    const onNavigate = useCallback(
+      (id: string) => {
+        if (id === KNOWLEDGE_BASE_NAV_ID && knowledgeExplorerEnabled === true) {
+          openKnowledgeExplorer();
+          return;
+        }
+        onNavigateToItem(id);
+      },
+      [knowledgeExplorerEnabled, onNavigateToItem],
+    );
     const [authorizedNavigationIds, setAuthorizedNavigationIds] = useState<Set<string> | null>(null);
     const [navigationLabels, setNavigationLabels] = useState<Map<string, string>>(new Map());
     const location = useLocation();
@@ -278,6 +300,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
     const [pendingNavId, setPendingNavId] = useState<string | null>(null);
     const [pendingNavLabel, setPendingNavLabel] = useState<string>("");
     const [pendingPageTitle, setPendingPageTitle] = useState<string>("");
+    const [isSidebarUserMenuOpen, setIsSidebarUserMenuOpen] = useState(false);
+    const [isSidebarLogoutModalOpen, setIsSidebarLogoutModalOpen] = useState(false);
+    const [isSidebarLogoutLoading, setIsSidebarLogoutLoading] = useState(false);
 
     // Backend navigation is the visibility authority; local RBAC is only a temporary
     // availability fallback while its read-only navigation request is unavailable.
@@ -296,6 +321,37 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
       position: { top: 0, left: 0, showAbove: false },
       expandedSubItems: [],
     });
+    // The flyout's real height changes when a sub-group is expanded inside it, so its position is re-fitted to the
+    // viewport from the measured height (not from an estimate) every time its size or the window changes.
+    const hoverMenuRef = useRef<HTMLDivElement | null>(null);
+    const [hoverMenuTop, setHoverMenuTop] = useState<number | null>(null);
+    useLayoutEffect(() => {
+      if (!hoverMenu.isOpen) {
+        setHoverMenuTop(null);
+        return;
+      }
+      const element = hoverMenuRef.current;
+      if (!element) return;
+      const fit = () => {
+        const height = element.offsetHeight;
+        const wanted = (hoverMenu.position.showAbove
+          ? hoverMenu.position.top - height
+          : hoverMenu.position.top) - window.scrollY;
+        const top = Math.max(
+          SAFE_PADDING,
+          Math.min(wanted, window.innerHeight - height - SAFE_PADDING),
+        );
+        setHoverMenuTop((previous) => (previous === top ? previous : top));
+      };
+      fit();
+      const observer = new ResizeObserver(fit);
+      observer.observe(element);
+      window.addEventListener("resize", fit);
+      return () => {
+        observer.disconnect();
+        window.removeEventListener("resize", fit);
+      };
+    }, [hoverMenu.isOpen, hoverMenu.item?.id, hoverMenu.position.top, hoverMenu.position.showAbove]);
     const [tooltip, setTooltip] = useState<TooltipState>({
       isVisible: false,
       label: "",
@@ -315,6 +371,31 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         typeof document !== "undefined" ? document.title?.trim() : "";
       return fromH1 || fromDoc || currentScreenLabel || "";
     }, [currentScreenLabel]);
+
+    useEffect(() => {
+      if (!showSidebarUserProfile) {
+        setIsSidebarUserMenuOpen(false);
+      }
+    }, [showSidebarUserProfile]);
+
+    const handleSidebarProfileClick = useCallback(() => {
+      setIsSidebarUserMenuOpen(false);
+      navigate(ROUTES.PROFILE);
+      onClose();
+    }, [navigate, onClose]);
+
+    const handleSidebarConfirmLogout = useCallback(async () => {
+      setIsSidebarLogoutLoading(true);
+      try {
+        await logout();
+      } finally {
+        setIsSidebarLogoutLoading(false);
+        setIsSidebarLogoutModalOpen(false);
+        setIsSidebarUserMenuOpen(false);
+        navigate(ROUTES.LOGIN);
+        onClose();
+      }
+    }, [logout, navigate, onClose]);
 
     // Auto-expand parent items when activeId changes
     useEffect(() => {
@@ -487,7 +568,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           : null;
 
         // If no path or same path, just navigate normally
-        if (!targetPath || targetPath === currentPath) {
+        if (!targetPath || targetPath === currentPath || opensInNewTab(item)) {
           onNavigate(item.id);
           onClose();
           return;
@@ -507,7 +588,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         onNavigate(item.id);
         onClose();
       },
-      [isCollapsed, location.pathname, onNavigate, onClose, getCurrentPageTitle, setPendingNavId, setPendingNavLabel, setPendingPageTitle, setShowLeaveModal],
+      [isCollapsed, location.pathname, onNavigate, opensInNewTab, onClose, getCurrentPageTitle, setPendingNavId, setPendingNavLabel, setPendingPageTitle, setShowLeaveModal],
     );
 
     // Handle tooltip show
@@ -820,7 +901,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
             : `/${item.path}`
           : null;
 
-        if (!targetPath || targetPath === currentPath) {
+        if (!targetPath || targetPath === currentPath || opensInNewTab(item)) {
           onNavigate(item.id);
           setHoverMenu((prev) => ({ ...prev, isOpen: false }));
           onClose();
@@ -840,7 +921,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         setHoverMenu((prev) => ({ ...prev, isOpen: false }));
         onClose();
       },
-      [onNavigate, onClose, location.pathname, getCurrentPageTitle, isCollapsed, setPendingNavId, setPendingNavLabel, setPendingPageTitle, setShowLeaveModal],
+      [onNavigate, opensInNewTab, onClose, location.pathname, getCurrentPageTitle, isCollapsed, setPendingNavId, setPendingNavLabel, setPendingPageTitle, setShowLeaveModal],
     );
 
     // Render hover menu sub-item
@@ -956,11 +1037,14 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
             {hoverMenu.isOpen && hoverMenu.item && (
               <div
                 key="hover-menu"
+                ref={hoverMenuRef}
                 className="fixed z-50"
                 style={{
-                  top: `${hoverMenu.position.top}px`,
+                  top: `${hoverMenuTop ?? hoverMenu.position.top}px`,
                   left: `${hoverMenu.position.left}px`,
-                  transform: hoverMenu.position.showAbove ? "translateY(-100%)" : undefined,
+                  // Until the measured position is known, keep the old "open upwards" behaviour; afterwards the top
+                  // already accounts for the real height.
+                  transform: hoverMenuTop === null && hoverMenu.position.showAbove ? "translateY(-100%)" : undefined,
                 }}
               >
                 <motion.div
@@ -968,7 +1052,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   animate={{ opacity: 1, scale: 1, x: 0 }}
                   exit={{ opacity: 0, scale: 0.95, x: -6 }}
                   transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  className="min-w-[240px] max-w-[280px] bg-white/90 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl"
+                  className="min-w-[260px] max-w-[320px] bg-white/90 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl"
                   style={{
                     transformOrigin: hoverMenu.position.showAbove ? "left bottom" : "left top",
                     maxHeight: "calc(100vh - 32px)",
@@ -1055,7 +1139,13 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         </AnimatePresence>
 
         {/* Sidebar */}
-        <aside
+        <motion.aside
+          initial={false}
+          animate={{ width: isCollapsed ? 80 : 320 }}
+          transition={{
+            width: shouldReduceMotion ? { duration: 0 } : { duration: 0.56, ease: [0.22, 1, 0.36, 1] },
+            transform: shouldReduceMotion ? { duration: 0 } : { duration: 0.46, ease: [0.22, 1, 0.36, 1] },
+          }}
           className={cn(
             "bg-white border-r border-slate-200 flex flex-col sidebar-mobile",
             "fixed top-0 left-0 bottom-0 z-50",
@@ -1063,7 +1153,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
 
             isCollapsed
               ? "w-16 md:w-20"
-              : "w-[272px] max-w-[92vw]",
+              : "w-[320px] max-w-[92vw]",
 
             "md:translate-x-0",
             isMobileOpen
@@ -1071,7 +1161,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               : "-translate-x-full md:translate-x-0",
           )}
           style={{
-            transition: "transform 460ms cubic-bezier(0.22, 1, 0.36, 1), width 560ms cubic-bezier(0.22, 1, 0.36, 1)",
+            // Mobile and narrow screens use the translate-x classes above. Keep
+            // their off-canvas motion aligned with the desktop width animation.
+            transition: shouldReduceMotion ? "none" : "transform 560ms cubic-bezier(0.22, 1, 0.36, 1)",
             willChange: "transform, width",
             // Safe area for notch/Dynamic Island (top) and landscape edges
             // Bottom is NOT set here - handled by nav container padding for proper scroll
@@ -1244,7 +1336,106 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
             />
           </div>
 
-        </aside>
+          {showSidebarUserProfile && user && (
+            <div
+              className={cn(
+                "relative shrink-0 border-t border-slate-200 bg-white p-2 md:p-3",
+                isCollapsed && "p-2",
+              )}
+              style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
+            >
+              {isSidebarUserMenuOpen && createPortal(
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
+                  onClick={() => setIsSidebarUserMenuOpen(false)}
+                  aria-hidden="true"
+                />,
+                document.body,
+              )}
+
+              <AnimatePresence initial={false}>
+                {isSidebarUserMenuOpen && (
+                  <motion.div
+                    key="sidebar-user-menu"
+                    initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                    transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.24 }}
+                    className={cn(
+                      "absolute z-50 overflow-hidden rounded-xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur-md",
+                      isCollapsed ? "bottom-2 left-full ml-2 w-64" : "bottom-full inset-x-2 mb-2",
+                    )}
+                  >
+                    <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-2.5">
+                      <p className="truncate text-sm font-semibold text-slate-900">{user.username || "-"} - {user.employeeCode || "-"}</p>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{user.email || ""}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSidebarProfileClick}
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+                    >
+                      <IconUser className="h-4 w-4 shrink-0" />
+                      <span>Profile</span>
+                    </button>
+                    <div className="border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSidebarUserMenuOpen(false);
+                          setIsSidebarLogoutModalOpen(true);
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
+                      >
+                        <IconLogout className="h-4 w-4 shrink-0" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <button
+                type="button"
+                onClick={() => setIsSidebarUserMenuOpen((previous) => !previous)}
+                className={cn(
+                  "flex w-full items-center rounded-lg text-left transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                  isCollapsed ? "justify-center p-1.5" : "gap-2.5 p-2",
+                )}
+                title={isCollapsed ? "Profile" : undefined}
+                aria-label="Open user menu"
+                aria-expanded={isSidebarUserMenuOpen}
+                aria-haspopup="menu"
+              >
+                <Avatar
+                  name={user.fullName || user.username || "User"}
+                  src={user.avatar}
+                  tone="brand"
+                  className="h-9 w-9"
+                />
+                {!isCollapsed && (
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-slate-700">{user.fullName || user.username || "User"}</span>
+                    <span className="block truncate text-xs text-slate-500">{user.position || "—"}</span>
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+        </motion.aside>
+
+        <AlertModal
+          isOpen={isSidebarLogoutModalOpen}
+          onClose={() => setIsSidebarLogoutModalOpen(false)}
+          onConfirm={handleSidebarConfirmLogout}
+          type="warning"
+          title="Confirm Sign Out"
+          description="Are you sure you want to log out? Any unsaved changes will be lost."
+          confirmText="Sign Out"
+          cancelText="Cancel"
+          isLoading={isSidebarLogoutLoading}
+        />
 
         <NavigationGuardModal
           isOpen={showLeaveModal}

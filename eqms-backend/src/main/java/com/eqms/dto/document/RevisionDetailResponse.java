@@ -54,6 +54,11 @@ public record RevisionDetailResponse(
         boolean hasPreview,
         String previewType,
         String snapshotStatus,
+        /** #4: Publishing preview regeneration status (GENERATING/READY/FAILED), distinct from
+         *  snapshotStatus above (the separate pre-publish review-snapshot pipeline). Consumed by
+         *  the same FE pollSnapshotInBackground/isSnapshotGenerating helpers, which already check
+         *  this exact field name for QUEUED/PROCESSING/GENERATING. */
+        String previewStatus,
         String editingStatus,
         boolean sourceLocked,
         String sourceStorageProvider,
@@ -91,6 +96,10 @@ public record RevisionDetailResponse(
         boolean canApproveRevision,
         boolean canCompleteTraining,
         boolean canPublishRevision,
-        String message
+        String message,
+        // Legacy Import reference-only fields (never a real electronic signature event -- see
+        // RevisionService#createLegacyImportRevisionsBatch). Non-null only for a revision created
+        // through Legacy Import.
+        LegacyImportInfoResponse legacyImportInfo
 ) {
 }

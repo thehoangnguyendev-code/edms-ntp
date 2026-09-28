@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Search } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -145,22 +146,26 @@ export const PermissionSetsTab: React.FC<{
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-        <p className="text-xs text-blue-700">
-          Tick a shared permission set to attach it to this Access Profile. Changes are applied when you click <b>Save</b>{" "}
-          (a single electronic signature covers all changes). To modify a set's contents, use{" "}
-          <button
-            onClick={() => navigate(ROUTES.SECURITY.PERMISSION_SETS)}
-            className="underline font-medium hover:text-blue-900"
-          >
-            Shared Permission Sets
-          </button>.
-        </p>
-      </div>
+      <WarningBanner
+        variant="info"
+        description={
+          <>
+            Tick a shared permission set to attach it to this Access Profile. Changes are applied when you click <b>Save</b>{" "}
+            (a single electronic signature covers all changes). To modify a set's contents, use{" "}
+            <button
+              onClick={() => navigate(ROUTES.SECURITY.PERMISSION_SETS)}
+              className="font-medium underline hover:text-blue-900"
+            >
+              Shared Permission Sets
+            </button>.
+          </>
+        }
+      />
       {!canAssign && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          {deniedReason || "You can preview permission sets, but cannot change assignments."}
-        </div>
+        <WarningBanner
+          variant="warning"
+          description={deniedReason || "You can preview permission sets, but cannot change assignments."}
+        />
       )}
 
       <div className="relative max-w-md">

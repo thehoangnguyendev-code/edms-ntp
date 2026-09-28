@@ -360,7 +360,11 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         {/* Review Date */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700">Review Date</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700">
+            Review Date
+            {/* Required while preparing an upgrade (Edit Revision for Upgrade unlocked the field). */}
+            {canEditReviewDate && <span className="text-red-500 ml-1">*</span>}
+          </label>
           <DateTimePicker
             value={reviewDateInputValue ?? document.reviewDate}
             onChange={(value) => onDocumentChange?.({ ...document, reviewDate: value })}

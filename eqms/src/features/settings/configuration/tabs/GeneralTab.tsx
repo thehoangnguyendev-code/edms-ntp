@@ -1,9 +1,10 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { FormSection } from '@/components/ui/form/FormSection';
 import { GeneralConfig } from '../types';
 import { Select } from '@/components/ui/select/Select';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { TimePicker } from '@/components/ui/datetime-picker';
-import { Palette, Database, Globe, Wrench, ImageIcon, PanelTop } from 'lucide-react';
+import { Palette, Database, Globe, Wrench, ImageIcon, PanelTop, PanelLeft, BookOpen } from 'lucide-react';
 import { IconAddressBook } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
@@ -15,21 +16,6 @@ interface GeneralTabProps {
   onValidationChange?: (isValid: boolean) => void;
 }
 
-const SettingsCard: React.FC<{
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}> = ({ title, icon, children }) => (
-  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div className="flex items-center gap-2.5 px-4 md:px-5 py-4 border-b border-slate-100">
-      <span className="text-emerald-600">{icon}</span>
-
-
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-    </div>
-    <div className="p-4 md:p-5">{children}</div>
-  </div>
-);
 
 const BrandImagePreview: React.FC<{
   src?: string;
@@ -131,12 +117,32 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           sidebarDefaultCollapsed: config.appearance?.sidebarDefaultCollapsed ?? false,
           animationsEnabled: config.appearance?.animationsEnabled ?? true,
           theme: config.appearance?.theme ?? 'light',
+          showSidebarUserProfile: config.appearance?.showSidebarUserProfile ?? false,
+          knowledgeExplorerEnabled: config.appearance?.knowledgeExplorerEnabled ?? false,
           systemSidebarCollapsedLogo: value,
         },
       });
       return;
     }
     onChange({ ...config, [key]: value });
+  };
+
+  const handleAppearanceChange = (key: keyof GeneralConfig['appearance'], value: boolean) => {
+    onChange({
+      ...config,
+      appearance: {
+        primaryColor: config.appearance?.primaryColor ?? '#10b981',
+        compactMode: config.appearance?.compactMode ?? false,
+        showBreadcrumbs: config.appearance?.showBreadcrumbs ?? true,
+        sidebarDefaultCollapsed: config.appearance?.sidebarDefaultCollapsed ?? false,
+        animationsEnabled: config.appearance?.animationsEnabled ?? true,
+        theme: config.appearance?.theme ?? 'light',
+        systemSidebarCollapsedLogo: config.appearance?.systemSidebarCollapsedLogo ?? config.systemSidebarCollapsedLogo,
+        showSidebarUserProfile: config.appearance?.showSidebarUserProfile ?? false,
+          knowledgeExplorerEnabled: config.appearance?.knowledgeExplorerEnabled ?? false,
+        [key]: value,
+      },
+    });
   };
 
   const collapsedSidebarLogo = config.appearance?.systemSidebarCollapsedLogo || config.systemSidebarCollapsedLogo || '';
@@ -185,7 +191,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
   return (
     <div className="p-4 md:p-5 space-y-4">
       {/* Branding */}
-      <SettingsCard title="Branding" icon={<Palette className="h-4 w-4" />}>
+      <FormSection title="Branding" icon={<Palette className="h-4 w-4" />}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
@@ -220,12 +226,12 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
         </div>
         <div className="mt-4">
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">System Footer</label>
-          <textarea
+          <input
+            type="text"
             value={config.systemFooter ?? '© {year} Ngoc Thien Pharma. All rights reserved.'}
-            onChange={(e) => handleChange('systemFooter', e.target.value.slice(0, 500))}
-            rows={2}
+            onChange={(e) => handleChange('systemFooter', e.target.value.replace(/[\r\n]+/g, ' ').slice(0, 500))}
             maxLength={500}
-            className="w-full resize-y rounded-lg border border-slate-200 px-3.5 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+            className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
             placeholder="© {year} Your Company. All rights reserved."
           />
           <p className="mt-1 text-xs text-slate-500">Shown in the footer across the system. Use <code>{'{year}'}</code> to insert the current year.</p>
@@ -268,10 +274,35 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             <p className="text-xs text-slate-500 mt-1">Used in the browser tab. Square PNG, SVG or ICO; max 1 MB.</p>
           </div>
         </div>
-      </SettingsCard>
+      </FormSection>
+
+      <FormSection title="Sidebar" icon={<PanelLeft className="h-4 w-4" />}>
+        <Checkbox
+          id="showSidebarUserProfile"
+          label="Show signed-in user profile at the bottom of the sidebar"
+          checked={config.appearance?.showSidebarUserProfile ?? false}
+          onChange={(checked) => handleAppearanceChange('showSidebarUserProfile', checked)}
+        />
+        <p className="ml-7 mt-1 text-xs text-slate-500">
+          Shows the current user&apos;s avatar, name and position. In collapsed mode, only the avatar is shown.
+        </p>
+      </FormSection>
+
+      <FormSection title="Knowledge Base" icon={<BookOpen className="h-4 w-4" />}>
+        <Checkbox
+          id="knowledgeExplorerEnabled"
+          label="Open the Knowledge Base in the new Explorer experience"
+          checked={config.appearance?.knowledgeExplorerEnabled ?? false}
+          onChange={(checked) => handleAppearanceChange('knowledgeExplorerEnabled', checked)}
+        />
+        <p className="ml-7 mt-1 text-xs text-slate-500">
+          When enabled, choosing Knowledge Base in the menu opens a file-manager style explorer with widgets in a new browser tab.
+          When disabled, the classic Knowledge Base page opens in the current tab. Takes effect for every signed-in user right after you save.
+        </p>
+      </FormSection>
 
       {/* System Information */}
-      <SettingsCard title="Contact Information" icon={<IconAddressBook className="h-4 w-4" />}>
+      <FormSection title="Contact Information" icon={<IconAddressBook className="h-4 w-4" />}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
@@ -289,11 +320,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             </p>
           </div>
         </div>
-      </SettingsCard>
+      </FormSection>
 
 
       {/* Backup & Data Management */}
-      <SettingsCard title="Backup & Data Management" icon={<Database className="h-4 w-4" />}>
+      <FormSection title="Backup & Data Management" icon={<Database className="h-4 w-4" />}>
         <div className="space-y-4">
           <div>
             <Checkbox
@@ -368,10 +399,10 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             </div>
           )}
         </div>
-      </SettingsCard>
+      </FormSection>
 
       {/* Localization */}
-      <SettingsCard title="Localization" icon={<Globe className="h-4 w-4" />}>
+      <FormSection title="Localization" icon={<Globe className="h-4 w-4" />}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
             label="Date & Time Format"
@@ -425,11 +456,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             ]}
           />
         </div>
-      </SettingsCard>
+      </FormSection>
 
 
       {/* System Maintenance */}
-      <SettingsCard title="System Maintenance" icon={<Wrench className="h-4 w-4" />}>
+      <FormSection title="System Maintenance" icon={<Wrench className="h-4 w-4" />}>
         <div className="space-y-3">
           <div>
             <Checkbox
@@ -443,7 +474,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             </p>
           </div>
         </div>
-      </SettingsCard>
+      </FormSection>
     </div>
   );
 };

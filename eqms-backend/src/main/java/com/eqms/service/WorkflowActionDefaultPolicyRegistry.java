@@ -84,15 +84,22 @@ public final class WorkflowActionDefaultPolicyRegistry {
                 "System default: a user granted revision submission may submit the revision for review.",
                 List.of(permission("documents.revision.submit_review")));
 
+        // Review-snapshot generation is now fully system-triggered (submitForReview requests it
+        // automatically; RevisionSnapshotRetryScheduler retries failures) -- there is no manual
+        // FE action left that calls these two anymore, and documents.revision.generate_preview
+        // has been retired. Kept here (rather than removed outright) only so "Reset to System
+        // Default" in the Workflow Authorization UI has a defined, valid target instead of
+        // resurrecting the deleted permission code; matches the permission already live in the DB
+        // for these two policy rows.
         addRev(m, "GENERATE_REVIEW_SNAPSHOT", "DRAFT",
-                "documents.revision.generate_preview",
-                "System default: a user granted document workspace management may generate review snapshot.",
-                List.of(permission(DOCUMENT_WORKSPACE_MANAGE_PERMISSION)));
+                "documents.revision.submit_review",
+                "System default: system-triggered; requires the same permission as submitting for review.",
+                List.of(permission("documents.revision.submit_review")));
 
         addRev(m, "REGENERATE_SNAPSHOT", "DRAFT",
-                "documents.revision.generate_preview",
-                "System default: a user granted document workspace management may regenerate snapshot.",
-                List.of(permission(DOCUMENT_WORKSPACE_MANAGE_PERMISSION)));
+                "documents.revision.submit_review",
+                "System default: system-triggered; requires the same permission as submitting for review.",
+                List.of(permission("documents.revision.submit_review")));
 
         addRev(m, "COMPLETE_REVIEW", "PENDING_REVIEW",
                 "documents.revision.review",

@@ -67,11 +67,16 @@ const DOT_COLOR: Record<BadgeColor, string> = {
   gray: 'bg-gray-400',
 };
 
+// One responsive scale for every badge: `sm` dimensions on desktop (xl, 1280px and up) and `xs`
+// dimensions on tablet/mobile. The size prop is kept so existing call sites keep compiling, but
+// every value resolves to this scale so the app's badges stay visually consistent.
+const RESPONSIVE_BADGE_SIZE = 'px-1.5 py-0.5 text-2xs xl:px-2 xl:text-xs';
+
 const SIZE_STYLES: Record<BadgeSize, string> = {
-  xs: 'px-1.5 py-0.5 text-2xs',
-  sm: 'px-2 py-0.5 text-2xs sm:text-xs',
-  default: 'px-2.5 py-0.5 sm:py-1 text-2xs sm:text-xs',
-  lg: 'px-3 py-1 text-xs sm:text-sm',
+  xs: RESPONSIVE_BADGE_SIZE,
+  sm: RESPONSIVE_BADGE_SIZE,
+  default: RESPONSIVE_BADGE_SIZE,
+  lg: RESPONSIVE_BADGE_SIZE,
 };
 
 export interface BadgeProps {

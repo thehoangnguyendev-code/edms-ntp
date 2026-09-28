@@ -8,7 +8,7 @@ const ACTION_BADGE_CLASS_MAP: Array<{ actions: string[]; className: string }> = 
     className: "bg-sky-50 text-sky-700 border-sky-200",
   },
   {
-    actions: ["delete", "reject", "failed login", "cancel", "destroy", "placeholder style deleted"],
+    actions: ["delete", "reject", "failed login", "cancel", "destroy", "placeholder style deleted", "account locked"],
     className: "bg-rose-50 text-rose-700 border-rose-200",
   },
   {

@@ -4,6 +4,8 @@ import com.eqms.auth.TokenService;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.document.DocumentDraftCreateRequest;
 import com.eqms.dto.document.DocumentFiltersResponse;
+import com.eqms.dto.document.LegacyBatchImportResponse;
+import com.eqms.dto.document.LegacyBatchRevisionSectionRequest;
 import com.eqms.dto.document.DocumentParticipantResponse;
 import com.eqms.dto.document.DocumentRelationResponse;
 import com.eqms.dto.document.DocumentRevisionSummaryResponse;
@@ -42,7 +44,9 @@ import com.eqms.entity.RevisionWorkflowHistory;
 import com.eqms.entity.RevisionWorkflowParticipant;
 import com.eqms.entity.RevisionWorkingNote;
 import com.eqms.entity.UserAccount;
+import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.UserStatus;
+import com.eqms.dto.document.ReplaceWorkflowParticipantRequest;
 import com.eqms.entity.ControlledCopyRecord;
 import com.eqms.entity.WorkflowActionPolicy;
 import com.eqms.entity.WorkflowActionPolicyActor;
@@ -60,7 +64,6 @@ import com.eqms.repository.DocumentRevisionTemplateLineageRepository;
 import com.eqms.repository.DocumentTypeRepository;
 import com.eqms.repository.DocumentSubTypeRepository;
 import com.eqms.repository.DocumentWorkflowParticipantRepository;
-import com.eqms.repository.DocumentWorkflowPoolMemberRepository;
 import com.eqms.repository.DocumentStatusDefinitionRepository;
 import com.eqms.repository.DocumentWorkflowSettingRepository;
 import com.eqms.repository.RevisionStatusDefinitionRepository;
@@ -75,7 +78,10 @@ import com.eqms.util.EmailTemplateTypeUtils;
 import com.eqms.util.StatusMapper;
 import com.eqms.exception.RelatedDocumentsNotEffectiveException;
 import com.eqms.exception.ApiErrorResponse;
+import com.eqms.exception.RevisionLifecycleConflictException;
 import com.eqms.exception.RevisionUploadValidationException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -163,7 +169,6 @@ public class RevisionService {
     private final DocumentRecordRepository documentRepository;
     private final DocumentStatusDefinitionRepository documentStatusRepository;
     private final DocumentWorkflowParticipantRepository documentWorkflowParticipantRepository;
-    private final DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     private final RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
     private final RevisionWorkflowHistoryRepository revisionWorkflowHistoryRepository;
     private final DocumentRelationRepository documentRelationRepository;
@@ -175,9 +180,6 @@ public class RevisionService {
     private final TrainingAuthorizationService trainingAuthorizationService;
     private final CurrentUserService currentUserService;
     private final SystemConfigurationService systemConfigurationService;
-    private final OfficeOnlineConfigurationService officeOnlineConfigurationService;
-    private final MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService;
-    private final SharePointPathBuilder sharePointPathBuilder;
     private final FileStorageService fileStorageService;
     private final TokenService tokenService;
     private final ControlledCopyRepository controlledCopyRepository;
@@ -192,9 +194,37 @@ public class RevisionService {
     private final SecureFileAccessService secureFileAccessService;
     private final WorkflowActionPolicyService workflowActionPolicyService;
     private final UserAccessProfileRepository userAccessProfileRepository;
+
+    // Field-injected (not constructor-injected) to avoid widening the already-large constructor
+    // above; see TBR-DOC-013/014 -- canonical Controlled-Copy-obsolescence operation shared with
+    // DocumentService.obsoleteDocument.
+    @org.springframework.beans.factory.annotation.Autowired
+    private ControlledCopyLifecycleObsolescenceService controlledCopyLifecycleObsolescenceService;
+
+    // TBR-DOC-015: forces a genuine DB reload of an already-managed entity after the Document lock
+    // is acquired in upgradeRevision (see there). A plain repository re-fetch within the same
+    // persistence context returns the cached, possibly-stale managed instance (Hibernate's
+    // first-level cache) rather than hitting the database again -- entityManager.refresh(...) is
+    // required to actually observe a concurrent commit that happened while this transaction was
+    // blocked waiting for the row lock.
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
+    // Field-injected for the same reason as controlledCopyLifecycleObsolescenceService above --
+    // publishes RevisionSnapshotEvent to trigger async review-snapshot (re)generation without
+    // widening the constructor.
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    // Field-injected for the same reason as above -- used only by createLegacyImportRevisionsBatch
+    // to parse the "revisions" JSON array multipart part.
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectMapper objectMapper;
     private final RevisionUploadFileValidator revisionUploadFileValidator;
     private final RevisionUploadSecurityAuditService revisionUploadSecurityAuditService;
     private final DocumentRevisionTemplateLineageRepository templateLineageRepository;
+    private final WorkflowParticipantEligibilityService workflowParticipantEligibilityService;
+    private final SignatureTokenConsumptionService signatureTokenConsumptionService;
 
     private final DocumentTypeRepository documentTypeRepository;
     private final DocumentSubTypeRepository documentSubTypeRepository;
@@ -207,7 +237,6 @@ public class RevisionService {
             DocumentRecordRepository documentRepository,
             DocumentStatusDefinitionRepository documentStatusRepository,
             DocumentWorkflowParticipantRepository documentWorkflowParticipantRepository,
-            DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository,
             RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository,
             RevisionWorkflowHistoryRepository revisionWorkflowHistoryRepository,
             DocumentRelationRepository documentRelationRepository,
@@ -219,9 +248,6 @@ public class RevisionService {
             TrainingAuthorizationService trainingAuthorizationService,
             CurrentUserService currentUserService,
             SystemConfigurationService systemConfigurationService,
-            OfficeOnlineConfigurationService officeOnlineConfigurationService,
-            MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService,
-            SharePointPathBuilder sharePointPathBuilder,
             FileStorageService fileStorageService,
             TokenService tokenService,
             ControlledCopyRepository controlledCopyRepository,
@@ -242,14 +268,15 @@ public class RevisionService {
             UserAccessProfileRepository userAccessProfileRepository,
             RevisionUploadFileValidator revisionUploadFileValidator,
             RevisionUploadSecurityAuditService revisionUploadSecurityAuditService,
-            DocumentRevisionTemplateLineageRepository templateLineageRepository
+            DocumentRevisionTemplateLineageRepository templateLineageRepository,
+            WorkflowParticipantEligibilityService workflowParticipantEligibilityService,
+            SignatureTokenConsumptionService signatureTokenConsumptionService
     ) {
         this.revisionRepository = revisionRepository;
         this.revisionStatusRepository = revisionStatusRepository;
         this.documentRepository = documentRepository;
         this.documentStatusRepository = documentStatusRepository;
         this.documentWorkflowParticipantRepository = documentWorkflowParticipantRepository;
-        this.documentWorkflowPoolMemberRepository = documentWorkflowPoolMemberRepository;
         this.revisionWorkflowParticipantRepository = revisionWorkflowParticipantRepository;
         this.revisionWorkflowHistoryRepository = revisionWorkflowHistoryRepository;
         this.documentRelationRepository = documentRelationRepository;
@@ -261,9 +288,6 @@ public class RevisionService {
         this.trainingAuthorizationService = trainingAuthorizationService;
         this.currentUserService = currentUserService;
         this.systemConfigurationService = systemConfigurationService;
-        this.officeOnlineConfigurationService = officeOnlineConfigurationService;
-        this.microsoftGraphOfficeOnlineService = microsoftGraphOfficeOnlineService;
-        this.sharePointPathBuilder = sharePointPathBuilder;
         this.fileStorageService = fileStorageService;
         this.tokenService = tokenService;
         this.controlledCopyRepository = controlledCopyRepository;
@@ -285,6 +309,8 @@ public class RevisionService {
         this.revisionUploadFileValidator = revisionUploadFileValidator;
         this.revisionUploadSecurityAuditService = revisionUploadSecurityAuditService;
         this.templateLineageRepository = templateLineageRepository;
+        this.workflowParticipantEligibilityService = workflowParticipantEligibilityService;
+        this.signatureTokenConsumptionService = signatureTokenConsumptionService;
     }
 
     @Transactional(readOnly = true)
@@ -642,6 +668,7 @@ public class RevisionService {
         requireDocumentWorkflowParticipantsAssigned(document);
         ensureNoRevisionInProgress(documentId, null);
         DocumentRevisionRecord latestRevision = revisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(documentId).orElse(null);
+        requireDocumentAllowsRevisionCreation(document, latestRevision);
         DocumentRevisionRecord templateRevision = null;
         String templateSelectionComment = null;
         if (request != null && StringUtils.hasText(request.templateRevisionId())) {
@@ -676,11 +703,6 @@ public class RevisionService {
 
         copyWorkflowParticipantsFromDocument(document, revision);
 
-        if (latestRevision == null) {
-            document.setStatus(requireDocumentStatus("ACTIVE"));
-            documentRepository.save(document);
-        }
-
         recordRevisionHistory(
                 revision,
                 "CREATE",
@@ -691,6 +713,521 @@ public class RevisionService {
         );
         return toDetailResponse(revision);
     }
+
+    /**
+     * Legacy Import only. Rejects anything that is not purely numeric segments in the same
+     * "family" (two-part vs three-part) as the system's configured Revision Number Seed (Settings
+     * > Document Properties) -- e.g. a system configured for "0.0.1" three-part numbering only
+     * accepts "4.0.0", never "4.0". Returns the canonicalised value via normalizeVersionFormat.
+     */
+    private String requireLegacyRevisionNumberFormat(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            throw new IllegalArgumentException("Initial revision number is required.");
+        }
+        String trimmed = raw.trim();
+        String[] parts = trimmed.split("\\.", -1);
+        boolean seedIsTwoPart = isTwoPartRevisionNumber(defaultRevisionSeed());
+        boolean formatMatches = seedIsTwoPart ? parts.length == 2 : parts.length == 3;
+        if (!formatMatches) {
+            throw new IllegalArgumentException("Initial revision number must have the format "
+                    + (seedIsTwoPart ? "X.Y (e.g. 4.0)" : "X.Y.Z (e.g. 4.0.0)")
+                    + " to match the system's configured revision numbering.");
+        }
+        for (String part : parts) {
+            if (!part.matches("\\d+")) {
+                throw new IllegalArgumentException("Initial revision number must contain only numeric segments, e.g. "
+                        + (seedIsTwoPart ? "4.0" : "4.0.0") + ".");
+            }
+        }
+        return normalizeVersionFormat(trimmed);
+    }
+
+    private String normalizeToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    /**
+     * Shared core of "promote a Legacy Import DRAFT revision straight to Effective", used by
+     * {@link #createLegacyImportRevisionsBatch} for the last revision of a batch (single-revision
+     * Legacy Import is just a batch of one -- see that method's javadoc). Caller is responsible for
+     * every precondition check (status is DRAFT, not already promoted, etc.) -- this method only
+     * does the actual promotion work.
+     */
+    /**
+     * Renders the revision's source file to PDF and stores it as that revision's OWN permanent
+     * published record ({@link RevisionPublishingMetadata} + revision.storagePdfUrl/
+     * previewFilePath) -- independent of whether the revision ends up Effective or (superseded)
+     * Obsoleted. Every OTHER document lifecycle keeps a real published PDF for every revision that
+     * was ever Effective, even after a newer one supersedes it (Controlled Copy of an old revision,
+     * "view this historical revision's PDF", etc. all rely on that). Legacy Import's earlier,
+     * directly-Obsoleted sections would otherwise never get one at all -- they never pass through
+     * {@link #promoteLegacyImportRevisionCore}, which used to be the only place this ran.
+     */
+    private DocumentRevisionRecord generateAndStoreLegacyImportPublishedPdf(
+            DocumentRevisionRecord revision,
+            UserAccount currentUser,
+            Instant publishedAt,
+            List<String> storedObjectKeysForRollbackCleanup
+    ) throws IOException {
+        byte[] publishedPdf = renderReviewSnapshotSource(revision.getId());
+        if (publishedPdf == null || publishedPdf.length == 0) {
+            throw new IllegalStateException("Published PDF is not available");
+        }
+        try (ByteArrayInputStream input = new ByteArrayInputStream(publishedPdf)) {
+            FileStorageService.StorageWriteResult stored = fileStorageService.storeRevisionPublishedPdf(
+                    revision.getId(), "published.pdf", input, revision.getDocumentNumber(), revision.getRevisionNumber()
+            );
+            RevisionPublishingMetadata metadata = new RevisionPublishingMetadata();
+            metadata.setRevision(revision);
+            metadata.setPublishedPdfPath(stored.storedPath());
+            metadata.setPublishedPdfChecksum(stored.checksum());
+            metadata.setPublishedPdfVersionId(stored.versionId());
+            metadata.setPublishedAt(publishedAt);
+            metadata.setPublishedBy(currentUser);
+            metadata.setConversionEngine("LEGACY_IMPORT_DIRECT");
+            publishingMetadataRepository.save(metadata);
+            revision.setStoragePdfUrl(stored.storedPath());
+            // Controlled Copy creation (ControlledCopyService#requirePublishedPdfBytes) and other
+            // features read the published PDF from revision.previewFilePath, not storagePdfUrl --
+            // the normal publish flow (PublishingWorkspaceService) always populates both to the
+            // same path by the time a revision reaches Effective. Legacy Import skips Publishing
+            // Workspace entirely, so without this it would leave previewFilePath permanently null
+            // and every such feature would report "Published PDF is not available" despite a real
+            // one existing in MinIO.
+            revision.setPreviewFilePath(stored.storedPath());
+            revision = revisionRepository.save(revision);
+            if (storedObjectKeysForRollbackCleanup != null) {
+                storedObjectKeysForRollbackCleanup.add(stored.storedPath());
+            }
+            return revision;
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to store the published PDF", ex);
+        }
+    }
+
+    private void promoteLegacyImportRevisionCore(
+            DocumentRevisionRecord revision,
+            DocumentRecord document,
+            UserAccount currentUser,
+            LocalDate effectiveDate,
+            UUID signatureSessionId,
+            String auditComment,
+            List<String> storedObjectKeysForRollbackCleanup
+    ) throws IOException {
+        Instant publishedAt = Instant.now();
+        Integer periodicReviewCycle = revision.getPeriodicReviewCycle() != null
+                ? revision.getPeriodicReviewCycle()
+                : document.getPeriodicReviewCycle();
+        LocalDate validUntil = calculateValidUntil(effectiveDate, periodicReviewCycle, revision.getValidUntil());
+
+        // Same immutable-source invariant Complete Editing normally establishes -- Legacy Import
+        // skips Complete Editing entirely, so it must set this itself before the revision becomes
+        // Effective.
+        revision.setEditingStatus("COMPLETED");
+        revision.setSourceLocked(true);
+        revision.setStatus(requireRevisionStatus("EFFECTIVE"));
+        revision.setPublishedBy(currentUser);
+        revision.setPublishedAt(publishedAt);
+        revision.setEffectiveDate(effectiveDate);
+        revision.setValidUntil(validUntil);
+        revision.setOpenedBy(currentUser);
+        // Reassign to the merged/managed return value -- see the matching comment in
+        // createLegacyImportRevisionsBatch for why this entity's manually-assigned id makes every
+        // save() route through entityManager.merge(), whose return value (not the passed-in
+        // reference) is the one that carries the correct @Version going into the next save below.
+        revision = revisionRepository.save(revision);
+
+        document.setVersion(revision.getRevisionNumber());
+        document.setEffectiveDate(effectiveDate);
+        document.setValidUntil(validUntil);
+        document.setStatus(requireDocumentStatus("ACTIVE"));
+        document.setOpenedBy(currentUser);
+        documentRepository.save(document);
+
+        // A controlled document template is never converted to PDF; its Word file stays the working copy.
+        if (!document.isTemplate()) {
+            revision = generateAndStoreLegacyImportPublishedPdf(revision, currentUser, publishedAt, storedObjectKeysForRollbackCleanup);
+        }
+
+        String revisionLabel = revision.getDocumentNumber() + " Rev " + revision.getRevisionNumber();
+        recordRevisionHistory(
+                revision,
+                "LEGACY_IMPORT_EFFECTIVE",
+                "DRAFT",
+                "EFFECTIVE",
+                "Legacy import promoted directly to Effective (Review, Approval, Training and Publishing Template steps were not used).",
+                currentUser,
+                signatureSessionId
+        );
+        auditTrailService.logAs(
+                currentUser,
+                "DOCUMENT_REVISION",
+                revisionLabel,
+                revision.getId(),
+                "DOCUMENT_LEGACY_IMPORT_EFFECTIVE",
+                "DRAFT",
+                "EFFECTIVE",
+                auditComment,
+                List.of(),
+                signatureSessionId
+        );
+    }
+
+    /**
+     * Legacy Import: creates the entire revision chain for a document from an existing (e.g.
+     * paper-based) original in one atomic transaction -- a single revision (N=1, the ordinary case)
+     * is just a batch of one, so there is deliberately no separate single-revision method or
+     * endpoint any more. For N>1 (e.g. 1.0 -> 4.0), every revision but the last is created directly
+     * in OBSOLETED status ("superseded by a newer legacy revision"); the last one is promoted
+     * straight to Effective via {@link #promoteLegacyImportRevisionCore}, all as one all-or-nothing
+     * transaction with revisions properly parent-chained.
+     *
+     * <p>Exactly one signature token authorizes the whole batch. {@link ElectronicSignatureService
+     * #createEntitySignature} is called once per created revision with the SAME token -- safe
+     * because {@link SignatureTokenConsumptionService#requireAndConsume} tracks consumption
+     * per-transaction (first call durably consumes it, later calls within the same transaction are
+     * idempotent), not a replay. This gives every revision its own signature record (own
+     * signatureId, own entityId) while the user only authenticates once.</p>
+     *
+     * <p>Deliberately does NOT impersonate the paper document's original historical Reviewer/
+     * Approver with a real electronic signature -- legacyHistoricalReviewers/Approver/ReviewDate/
+     * ApprovalDate remain reference-only text fields, exactly as in the single-revision Legacy
+     * Import. The only real signature event on every revision is the current user attesting "this
+     * reflects the paper original", not an impersonation of who reviewed/approved it on paper.
+     * See the field-level javadoc on {@link com.eqms.entity.DocumentRevisionRecord
+     * #legacyHistoricalReviewers} for the resulting constraint on any feature that reads revision
+     * participants.</p>
+     */
+    @Transactional
+    public LegacyBatchImportResponse createLegacyImportRevisionsBatch(
+            UUID documentId,
+            String revisionsJson,
+            List<MultipartFile> files,
+            String legacyJustification,
+            String signatureToken
+    ) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        if (!permissionEvaluationService.hasPermission(currentUser, "documents.legacy_import.manage")) {
+            throw new AccessDeniedException("Only Legacy Import is permitted to create revisions this way.");
+        }
+        DocumentRecord document = requireDocument(documentId);
+        if (!document.isLegacyImport()) {
+            throw new IllegalArgumentException("This document was not created through Legacy Import.");
+        }
+        if (revisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(documentId).isPresent()) {
+            throw new IllegalStateException("This document already has a revision; Legacy Batch Import only creates the initial revision history.");
+        }
+        if (!StringUtils.hasText(legacyJustification)) {
+            throw new IllegalArgumentException("Migration Justification is required.");
+        }
+
+        List<LegacyBatchRevisionSectionRequest> sections = parseLegacyBatchSections(revisionsJson);
+        if (sections.isEmpty()) {
+            throw new IllegalArgumentException("At least one revision section is required.");
+        }
+        if (sections.size() > 100) {
+            throw new IllegalArgumentException("A single Legacy Batch Import cannot exceed 100 revisions.");
+        }
+
+        // Validate every section up front (format, strictly increasing revision number, strictly
+        // increasing Effective Date, file-or-justification present) before creating anything, so a
+        // mistake anywhere in the batch fails the whole transaction cleanly.
+        List<String> normalizedNumbers = new ArrayList<>();
+        List<LocalDate> effectiveDates = new ArrayList<>();
+        for (int i = 0; i < sections.size(); i++) {
+            LegacyBatchRevisionSectionRequest section = sections.get(i);
+            String normalized = requireLegacyRevisionNumberFormat(section.revisionNumber());
+            if (i > 0 && compareRevisionNumbers(normalized, normalizedNumbers.get(i - 1)) <= 0) {
+                throw new IllegalArgumentException("Revision numbers must be strictly increasing (section "
+                        + (i + 1) + ": " + section.revisionNumber() + " must be greater than "
+                        + sections.get(i - 1).revisionNumber() + ").");
+            }
+            normalizedNumbers.add(normalized);
+
+            LocalDate effectiveDate = parseDate(section.effectiveDate());
+            if (effectiveDate == null) {
+                throw new IllegalArgumentException("A valid Effective Date is required for revision "
+                        + section.revisionNumber() + ".");
+            }
+            if (i > 0 && !effectiveDate.isAfter(effectiveDates.get(i - 1))) {
+                throw new IllegalArgumentException("Effective Date must be strictly increasing across revisions (section "
+                        + (i + 1) + ": " + section.effectiveDate() + " must be after "
+                        + sections.get(i - 1).effectiveDate() + ").");
+            }
+            effectiveDates.add(effectiveDate);
+
+            if (document.isRequiresTraining() && !StringUtils.hasText(section.trainingCompletionDate())) {
+                throw new IllegalArgumentException("Historical Training Completion Date is required for revision "
+                        + section.revisionNumber() + ".");
+            }
+            if (StringUtils.hasText(section.trainingCompletionDate())) {
+                LocalDate trainingCompletionDate = parseDate(section.trainingCompletionDate());
+                if (trainingCompletionDate != null && trainingCompletionDate.isAfter(effectiveDate)) {
+                    throw new IllegalArgumentException("Historical Training Completion Date for revision "
+                            + section.revisionNumber() + " must be on or before this revision's Effective Date ("
+                            + section.effectiveDate() + ").");
+                }
+            }
+
+            if (document.isTemplate() && !section.hasFile()) {
+                // A template is used directly as its Word file at every revision, so a "no file"
+                // justification cannot stand in for it the way it can for an ordinary historical revision.
+                throw new IllegalArgumentException("Revision " + section.revisionNumber()
+                        + " needs a DOCX file: every revision of a controlled document template must have its Word file.");
+            }
+            if (!section.hasFile() && !StringUtils.hasText(section.noFileJustification())) {
+                throw new IllegalArgumentException("Revision " + section.revisionNumber()
+                        + " has no file attached; a justification is required when no source file is available.");
+            }
+            if (!StringUtils.hasText(section.authorId())) {
+                throw new IllegalArgumentException("Author is required for revision "
+                        + section.revisionNumber() + ".");
+            }
+            if (!StringUtils.hasText(section.legacyHistoricalAuthoredDate())) {
+                throw new IllegalArgumentException("Authored Date is required for revision "
+                        + section.revisionNumber() + ".");
+            }
+            if (!StringUtils.hasText(section.legacyHistoricalReviewers())) {
+                throw new IllegalArgumentException("Historical Reviewer(s) is required for revision "
+                        + section.revisionNumber() + ".");
+            }
+            if (!StringUtils.hasText(section.legacyHistoricalReviewDate())) {
+                throw new IllegalArgumentException("Historical Review Date is required for revision "
+                        + section.revisionNumber() + ".");
+            }
+            if (!StringUtils.hasText(section.legacyHistoricalApprover())) {
+                throw new IllegalArgumentException("Historical Approver is required for revision "
+                        + section.revisionNumber() + ".");
+            }
+            if (!StringUtils.hasText(section.legacyHistoricalApprovalDate())) {
+                throw new IllegalArgumentException("Historical Approval Date is required for revision "
+                        + section.revisionNumber() + ".");
+            }
+
+            // Chronology of the paper process itself (drafted -> reviewed -> approved -> [trained
+            // if required] -> effective), and no historical date may be in the future -- the
+            // frontend already enforces this, but this endpoint accepts direct API calls too, and
+            // every accepted revision here gets a REAL electronic signature attesting to these
+            // dates, so the same rule must hold independent of the caller.
+            LocalDate authoredDate = parseDate(section.legacyHistoricalAuthoredDate());
+            if (authoredDate == null) {
+                throw new IllegalArgumentException("Authored Date for revision " + section.revisionNumber() + " is not a valid date.");
+            }
+            LocalDate reviewDate = parseDate(section.legacyHistoricalReviewDate());
+            if (reviewDate == null) {
+                throw new IllegalArgumentException("Historical Review Date for revision " + section.revisionNumber() + " is not a valid date.");
+            }
+            LocalDate approvalDate = parseDate(section.legacyHistoricalApprovalDate());
+            if (approvalDate == null) {
+                throw new IllegalArgumentException("Historical Approval Date for revision " + section.revisionNumber() + " is not a valid date.");
+            }
+            LocalDate today = LocalDate.now(SYSTEM_ZONE);
+            if (authoredDate.isAfter(today) || reviewDate.isAfter(today) || approvalDate.isAfter(today) || effectiveDate.isAfter(today)) {
+                throw new IllegalArgumentException("Historical dates for revision " + section.revisionNumber() + " cannot be in the future.");
+            }
+            if (reviewDate.isBefore(authoredDate)) {
+                throw new IllegalArgumentException("Historical Review Date for revision " + section.revisionNumber()
+                        + " must be on or after the Authored Date.");
+            }
+            if (approvalDate.isBefore(reviewDate)) {
+                throw new IllegalArgumentException("Historical Approval Date for revision " + section.revisionNumber()
+                        + " must be on or after the Historical Review Date.");
+            }
+            if (StringUtils.hasText(section.trainingCompletionDate())) {
+                LocalDate trainingCompletionDate = parseDate(section.trainingCompletionDate());
+                if (trainingCompletionDate != null) {
+                    if (trainingCompletionDate.isAfter(today)) {
+                        throw new IllegalArgumentException("Historical Training Completion Date for revision "
+                                + section.revisionNumber() + " cannot be in the future.");
+                    }
+                    if (trainingCompletionDate.isBefore(approvalDate)) {
+                        throw new IllegalArgumentException("Historical Training Completion Date for revision "
+                                + section.revisionNumber() + " must be on or after the Historical Approval Date.");
+                    }
+                }
+            } else if (effectiveDate.isBefore(approvalDate)) {
+                throw new IllegalArgumentException("Effective Date for revision " + section.revisionNumber()
+                        + " must be on or after the Historical Approval Date.");
+            }
+        }
+        if (!sections.get(sections.size() - 1).hasFile()) {
+            throw new IllegalArgumentException("The most recent revision (the one becoming Effective) must include a source file.");
+        }
+
+        // Validate every attached file (structure + ClamAV, same as the single-revision flow)
+        // before any DB write -- a bad file anywhere in the batch fails fast.
+        List<MultipartFile> safeFiles = files == null ? List.of() : files;
+        long expectedFileCount = sections.stream().filter(LegacyBatchRevisionSectionRequest::hasFile).count();
+        if (safeFiles.size() != expectedFileCount) {
+            throw new IllegalArgumentException("Expected " + expectedFileCount
+                    + " file(s) for the sections marked as having a file, got " + safeFiles.size() + ".");
+        }
+        List<RevisionUploadFileValidator.ValidatedRevisionFile> validatedFiles = new ArrayList<>();
+        for (MultipartFile file : safeFiles) {
+            if (file == null || file.isEmpty()) {
+                throw new RevisionUploadValidationException("REVISION_FILE_REQUIRED", "A source file is required for every attached file slot.");
+            }
+            // A template is kept and used as its Word file (never converted to PDF), so only DOCX is accepted.
+            validatedFiles.add(validateRevisionUpload(currentUser, document, null, file, !document.isTemplate()));
+        }
+
+        // Object storage (MinIO) is NOT transactional with the DB: storeRevisionFile/the published
+        // PDF write below happen mid-loop, immediately as each section is processed, so a later
+        // section's failure rolls back every DB row already created here but leaves any
+        // already-uploaded objects sitting in MinIO with no DB row pointing at them. Track every
+        // key written in this batch and delete them if the transaction ends up NOT committing.
+        List<String> storedObjectKeysForRollbackCleanup = new ArrayList<>();
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == TransactionSynchronization.STATUS_COMMITTED) return;
+                    for (String key : storedObjectKeysForRollbackCleanup) {
+                        deleteInvalidStoredFile(key);
+                    }
+                }
+            });
+        }
+
+        List<RevisionDetailResponse> createdRevisions = new ArrayList<>();
+        DocumentRevisionRecord parent = null;
+        int fileCursor = 0;
+        for (int i = 0; i < sections.size(); i++) {
+            LegacyBatchRevisionSectionRequest section = sections.get(i);
+            boolean isLast = i == sections.size() - 1;
+
+            DocumentRevisionRecord revision = new DocumentRevisionRecord();
+            revision.setId(UUID.randomUUID());
+            applyRevisionSnapshot(revision, document, currentUser, parent, section.changeDescription(), normalizedNumbers.get(i));
+            revision.setDocumentNumber(document.getDocumentNumber());
+            revision.setParentRevision(parent);
+            if (StringUtils.hasText(section.authorId())) {
+                userAccountRepository.findById(UUID.fromString(section.authorId()))
+                        .ifPresent(revision::setAuthor);
+            }
+            revision.setLegacyHistoricalReviewers(normalizeToNull(section.legacyHistoricalReviewers()));
+            revision.setLegacyHistoricalApprover(normalizeToNull(section.legacyHistoricalApprover()));
+            if (StringUtils.hasText(section.legacyHistoricalAuthoredDate())) {
+                revision.setLegacyHistoricalAuthoredDate(parseDate(section.legacyHistoricalAuthoredDate()));
+            }
+            if (StringUtils.hasText(section.legacyHistoricalReviewDate())) {
+                revision.setLegacyHistoricalReviewDate(parseDate(section.legacyHistoricalReviewDate()));
+            }
+            if (StringUtils.hasText(section.legacyHistoricalApprovalDate())) {
+                revision.setLegacyHistoricalApprovalDate(parseDate(section.legacyHistoricalApprovalDate()));
+            }
+            // Same field the ordinary Pending Training workflow step sets on any other revision --
+            // NOT a legacy-only shadow field, so this is already wired into whatever the Training
+            // module reads from a revision today.
+            if (!document.isTemplate() && StringUtils.hasText(section.trainingCompletionDate())) {
+                revision.setTrainingCompletionDate(parseDate(section.trainingCompletionDate()));
+            }
+            // Reassign to the returned (managed/merged) instance on every save -- this entity has
+            // a manually-assigned id, so Spring Data JPA's isNew() falls back to "id != null" (a
+            // primitive @Version field can't distinguish new from persisted) and therefore always
+            // routes save() through entityManager.merge(), never persist(). merge() does NOT attach
+            // the object you pass in -- it returns a *different* managed copy. Continuing to mutate
+            // and re-save the original, ignored reference leaves its @Version stuck at its initial
+            // value while the real row's version keeps incrementing, which throws
+            // ObjectOptimisticLockingFailureException on a later save in this same revision's
+            // multi-save sequence (reproduced by a 3-section LegacyBatchImportFullFlowTest run).
+            revision = revisionRepository.save(revision);
+
+            if (section.hasFile()) {
+                MultipartFile file = safeFiles.get(fileCursor);
+                RevisionUploadFileValidator.ValidatedRevisionFile validatedFile = validatedFiles.get(fileCursor);
+                fileCursor++;
+                try {
+                    storeRevisionFile(revision, file, validatedFile);
+                    revision = revisionRepository.saveAndFlush(revision);
+                    storedObjectKeysForRollbackCleanup.add(revision.getFilePath());
+                } catch (IOException ex) {
+                    throw new IllegalStateException("Failed to upload the source file for revision " + section.revisionNumber(), ex);
+                }
+            }
+
+            if (parent == null) {
+                activateDocumentAfterInitialSourceStored(document, revision, currentUser);
+            }
+
+            String revisionLabel = revision.getDocumentNumber() + " Rev " + revision.getRevisionNumber();
+            ElectronicSignature signature = electronicSignatureService.createEntitySignature(
+                    "DOCUMENT_REVISION", revision.getId(), revisionLabel, currentUser,
+                    signatureToken, "LEGACY_DOCUMENT_IMPORT", legacyJustification, null, null, null
+            );
+
+            String createComment = section.hasFile()
+                    ? "Revision imported as part of a Legacy Batch Import (historical revision "
+                            + (i + 1) + " of " + sections.size() + ")."
+                    : "Revision imported as part of a Legacy Batch Import without a source file: "
+                            + section.noFileJustification();
+            recordRevisionHistory(revision, "LEGACY_IMPORT", null,
+                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
+                    createComment, currentUser, signature.getId());
+            auditTrailService.logAs(currentUser, "DOCUMENT_REVISION", revisionLabel, revision.getId(),
+                    "DOCUMENT_LEGACY_IMPORTED", null,
+                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
+                    legacyJustification, List.of(), signature.getId());
+
+            if (isLast) {
+                try {
+                    promoteLegacyImportRevisionCore(revision, document, currentUser, effectiveDates.get(i),
+                            signature.getId(), "Legacy Batch Import completed.", storedObjectKeysForRollbackCleanup);
+                } catch (IOException ex) {
+                    throw new IllegalStateException("Failed to generate the published PDF for revision " + section.revisionNumber(), ex);
+                }
+            } else {
+                LocalDate obsoleteEffectiveDate = effectiveDates.get(i);
+                LocalDate obsoleteValidUntil = effectiveDates.get(i + 1);
+                String previousStatus = revision.getStatus() == null ? null : revision.getStatus().getCode();
+                revision.setEffectiveDate(obsoleteEffectiveDate);
+                revision.setValidUntil(obsoleteValidUntil);
+                revision.setStatus(requireRevisionStatus("OBSOLETED"));
+                revision.setObsoletedBy(currentUser);
+                revision.setObsoletedAt(obsoleteValidUntil.atStartOfDay(SYSTEM_ZONE).toInstant());
+                revision = revisionRepository.save(revision);
+
+                // Give this superseded historical revision its own permanent published PDF too --
+                // otherwise only the batch's last (Effective) revision would ever have one, and
+                // every other section (Preview, Controlled Copy, ...) would report it unavailable
+                // despite a real source file existing for it. Sections without a file
+                // (noFileJustification used instead) have nothing to render, so are skipped.
+                if (section.hasFile() && !document.isTemplate()) {
+                    try {
+                        revision = generateAndStoreLegacyImportPublishedPdf(revision, currentUser, Instant.now(), storedObjectKeysForRollbackCleanup);
+                    } catch (IOException ex) {
+                        throw new IllegalStateException("Failed to generate the published PDF for revision " + section.revisionNumber(), ex);
+                    }
+                }
+
+                recordRevisionHistory(revision, "LEGACY_BATCH_SUPERSEDED", previousStatus, "OBSOLETED",
+                        "Historical revision superseded by revision " + sections.get(i + 1).revisionNumber()
+                                + " (Legacy Batch Import).",
+                        currentUser, signature.getId());
+                auditTrailService.logAs(currentUser, "DOCUMENT_REVISION", revisionLabel, revision.getId(),
+                        "DOCUMENT_LEGACY_BATCH_SUPERSEDED", previousStatus, "OBSOLETED",
+                        legacyJustification, List.of(), signature.getId());
+            }
+
+            createdRevisions.add(toDetailResponse(revision));
+            parent = revision;
+        }
+
+        return new LegacyBatchImportResponse(document.getId(), createdRevisions);
+    }
+
+    private List<LegacyBatchRevisionSectionRequest> parseLegacyBatchSections(String revisionsJson) {
+        if (!StringUtils.hasText(revisionsJson)) {
+            throw new IllegalArgumentException("At least one revision section is required.");
+        }
+        try {
+            return objectMapper.readValue(revisionsJson, new TypeReference<List<LegacyBatchRevisionSectionRequest>>() {
+            });
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid revisions payload: " + ex.getMessage());
+        }
+    }
+
 
     @Transactional
     public RevisionDetailResponse updateRevision(UUID revisionId, DocumentDraftCreateRequest request) {
@@ -703,6 +1240,7 @@ public class RevisionService {
                 com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(revision)
         );
         requireRevisionStatus(revision, "DRAFT");
+        requireRevisionNotCompletedEditing(revision);
         DocumentRecord document = requireDocument(revision.getDocument().getId());
 
         applyRevisionSnapshot(
@@ -720,10 +1258,93 @@ public class RevisionService {
         return toDetailResponse(revision);
     }
 
+    /**
+     * Guarantees MinIO holds the latest OnlyOffice edits (Author before the source lock; Reviewer/Approver before they complete or reject) so the next stage never reads a stale file.
+     * OnlyOffice only pushes a save after the last editor disconnects (plus a delay), so without
+     * this the lock could land first and the trailing save would be dropped -- the file every
+     * later stage (snapshot PDF, reviewers) reads would silently miss the Author's work. Runs
+     * OUTSIDE any transaction on purpose: the save-callback needs the revision row that
+     * {@link #completeEditing} locks. Fails closed if edits cannot be confirmed saved.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    public void flushOnlyOfficeEditsBeforeLock(UUID revisionId) {
+        DocumentRevisionRecord before = requireRevision(revisionId);
+        String stage = before.getStatus() == null ? null : before.getStatus().getCode();
+        boolean draftOpen = "DRAFT".equalsIgnoreCase(stage) && !before.isSourceLocked();
+        boolean reviewStage = "PENDING_REVIEW".equalsIgnoreCase(stage) || "PENDING_APPROVAL".equalsIgnoreCase(stage);
+        if (!draftOpen && !reviewStage) {
+            return;
+        }
+        String checksumBefore = before.getSourceFileChecksum();
+        int code = onlyOfficeDocumentEditService.sendForceSave(before);
+        if (code == 1 || code == 4) {
+            return; // no open session / nothing changed since the last save
+        }
+        if (code != 0) {
+            throw new RevisionLifecycleConflictException("ONLYOFFICE_SAVE_NOT_CONFIRMED",
+                    "Your latest edits could not be confirmed as saved (OnlyOffice code " + code + "). Close the editor, wait a few seconds and try again.");
+        }
+        long deadline = System.currentTimeMillis() + 20_000L;
+        while (System.currentTimeMillis() < deadline) {
+            DocumentRevisionRecord current = revisionRepository.findById(revisionId).orElse(before);
+            if (!java.util.Objects.equals(checksumBefore, current.getSourceFileChecksum())) {
+                return;
+            }
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        throw new RevisionLifecycleConflictException("ONLYOFFICE_SAVE_NOT_CONFIRMED",
+                "Your latest edits are still being saved. Wait a few seconds and try Complete Editing again.");
+    }
+
+    public OnlyOfficeDocumentEditService.Capacity getOnlyOfficeCapacity() {
+        currentUserService.requireCurrentUser();
+        return onlyOfficeDocumentEditService.getCapacity();
+    }
+
+    /** Direct publish (no Publishing Workspace) exists only for controlled-document templates. */
+    @Transactional(readOnly = true)
+    public void requireDirectPublishAllowed(UUID revisionId) {
+        DocumentRevisionRecord revision = requireRevision(revisionId);
+        if (revision.getDocument() == null || !revision.getDocument().isTemplate()) {
+            throw new RevisionLifecycleConflictException("PUBLISH_VIA_WORKSPACE_REQUIRED",
+                    "This revision is published from the Publishing Workspace; only controlled document templates are published directly.");
+        }
+    }
+
+    /** Document keys of the editor sessions that may currently be open on this revision. */
+    @Transactional(readOnly = true)
+    public String onlyOfficeSessionKey(UUID revisionId) {
+        return onlyOfficeDocumentEditService.currentDocumentKey(requireRevision(revisionId));
+    }
+
+    /**
+     * Closes any open OnlyOffice editor on this revision right after a workflow transition
+     * succeeded, so nobody keeps working in a session the new stage no longer allows.
+     * Best-effort: the transition is already committed, so failures are only logged.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    public void dropOnlyOfficeSessions(java.util.Collection<String> keys) {
+        for (String key : new java.util.LinkedHashSet<>(keys)) {
+            try {
+                int code = onlyOfficeDocumentEditService.dropSession(key);
+                log.info("OnlyOffice drop for key {} -> code {}", key, code);
+            } catch (Exception ex) {
+                log.warn("Could not close OnlyOffice session {}: {}", key, ex.toString());
+            }
+        }
+    }
+
     @Transactional
     public RevisionDetailResponse completeEditing(UUID revisionId, RevisionWorkflowActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
+        // Row-locked: races getOfficeOnlineEditLink() for the same revision -- see
+        // requireRevisionForUpdate's javadoc.
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         // Author-only + documents.revision.complete_authoring, per the COMPLETE_AUTHORING
         // workflow_action_policy and explicit product decision (Co-Author does not complete
         // editing) â€” replaces the old Author/Co-Author, no-permission-required check.
@@ -734,15 +1355,14 @@ public class RevisionService {
                 com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(revision)
         );
         requireRevisionStatus(revision, "DRAFT");
+        requireRevisionSourceFile(revision);
         requireValidSignatureToken(request, currentUser, "complete editing");
 
-        if (StringUtils.hasText(revision.getStorageItemId()) && StringUtils.hasText(revision.getStorageDriveId())) {
-            syncEditedFileFromOfficeOnlineToMinio(revision, currentUser);
-        }
-        lockOfficeOnlineEditing(revision, currentUser);
-        // This workflow state is required even when no Office Online working copy exists.
-        // The lock routine only revokes remote resources; it must not be the source of truth
-        // for whether Author editing has been completed.
+        // OnlyOffice keeps MinIO current on every save via its push callback (see
+        // RevisionService#applyOnlyOfficeCallback) -- there is no separate "pull the latest edit"
+        // or "revoke remote access" step needed here the way Graph's pull model required; status
+        // alone (no longer DRAFT once sourceLocked below) is what stops further OnlyOffice edits,
+        // enforced by RevisionActionCapabilityService#hasOfficeWorkspace / getOnlyOfficeEditConfig.
         revision.setEditingStatus("COMPLETED");
         revision.setSourceLocked(true);
         revisionRepository.save(revision);
@@ -896,7 +1516,13 @@ public class RevisionService {
     @Transactional
     public RevisionDetailResponse submitForReview(UUID revisionId, RevisionWorkflowActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
+        // Row-locked: races completeEditing()/syncEditedFileFromOfficeOnline() for the same
+        // revision -- both also call syncEditedFileFromOfficeOnlineToMinio(), which downloads the
+        // current Office Online content and overwrites revision.filePath/sourceFileChecksum. Two
+        // such calls interleaving without a lock (e.g. a double-submit, or Submit racing an
+        // in-flight Complete Editing) is a lost-update race on our own DB writes -- the same class
+        // of issue already fixed for the Reviewer/Approver actions earlier this session.
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         // documents.workspace.manage specifically (DCO), matching the SUBMIT_FOR_REVIEW
         // workflow_action_policy already used by the submitForReview capability flag â€” replaces
         // the old requireCanManageRevisionWorkspace (broader document-admin-view group) check,
@@ -908,15 +1534,32 @@ public class RevisionService {
                 com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(revision)
         );
         requireRevisionStatus(revision, "DRAFT");
+        // S6: the Revision's review_requirement is frozen at Revision-creation time; the Document's
+        // is frozen when its Sub-Type is last changed. If someone changed the Draft's Sub-Type
+        // after this Revision was snapshotted, the two disagree and the reviewer/approver set that
+        // was assembled under the old rule may now be invalid. Refuse rather than submit a package
+        // built against a stale requirement -- the caller must re-open the Revision so it re-syncs.
+        if (revision.getDocument() != null) {
+            ReviewRequirement documentRequirement = revision.getDocument().getReviewRequirement();
+            if (documentRequirement == null) {
+                documentRequirement = ReviewRequirement.REQUIRED;
+            }
+            ReviewRequirement revisionRequirement = revision.getReviewRequirement() == null
+                    ? ReviewRequirement.REQUIRED
+                    : revision.getReviewRequirement();
+            if (documentRequirement != revisionRequirement) {
+                throw new IllegalStateException(
+                        "REVIEW_REQUIREMENT_CHANGED: the document's review requirement changed after this "
+                                + "revision was created; re-open the revision to re-sync before submitting for review");
+            }
+        }
         if (!electronicSignatureService.hasRevisionSignatureMeaning(revision, "PREPARED")) {
             throw new IllegalStateException("Revision editing must be completed before submitting for review");
         }
         requireValidSignatureToken(request, currentUser, "submit for review");
 
-        if (StringUtils.hasText(revision.getStorageItemId()) && StringUtils.hasText(revision.getStorageDriveId())) {
-            syncEditedFileFromOfficeOnlineToMinio(revision, currentUser);
-        }
-        refreshPreviewFromUploadedFile(revision);
+        // No review PDF snapshot any more: reviewers/approvers view the working file directly in the
+        // read-only OnlyOffice viewer (see getOnlyOfficeViewConfig), so submitting triggers no conversion.
         auditTrailService.logAs(
                 currentUser,
                 "REVISION",
@@ -953,6 +1596,7 @@ public class RevisionService {
 
         resetParticipantActions(revision, "REVIEWER");
         resetParticipantActions(revision, "APPROVER");
+        revision.setReviewFlowMode(ReviewFlowMode.of(systemConfigurationService.isParallelReviewEnabled()));
 
         ReviewRequirement reviewRequirement = revision.getReviewRequirement();
         validateReviewersForRequirement(revision, reviewRequirement);
@@ -964,15 +1608,10 @@ public class RevisionService {
                 ? "PENDING_APPROVAL"
                 : revision.isRequiresTraining() ? "PENDING_TRAINING" : "READY_FOR_PUBLISHING";
 
-        if (Objects.equals(targetStatus, "PENDING_APPROVAL")) {
-            requirePdfPreviewReady(revision);
-        }
 
         revision.setSubmittedBy(currentUser);
         revision.setSubmittedOn(Instant.now());
         revisionRepository.save(revision);
-
-        lockOfficeOnlineEditing(revision, currentUser);
 
         auditTrailService.logAs(
                 currentUser,
@@ -1002,7 +1641,12 @@ public class RevisionService {
     @Transactional
     public RevisionDetailResponse completeReview(UUID revisionId, RevisionWorkflowActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
+        // Row-locked: two Reviewers (common in Parallel Review mode, where more than one
+        // participant can be pending at once) submitting COMPLETE_REVIEW for the last two
+        // remaining participants at nearly the same instant would otherwise both read
+        // "not all reviewed yet" under READ_COMMITTED and neither would drive the revision
+        // forward, stranding it in PENDING_REVIEW with no pending reviewer left to retry.
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         revisionWorkflowAuthorizationService.require(
                 currentUser,
                 revision,
@@ -1024,12 +1668,11 @@ public class RevisionService {
                     : revision.isRequiresTraining() ? "PENDING_TRAINING" : "READY_FOR_PUBLISHING"
                 : "PENDING_REVIEW";
 
-        if (Objects.equals(targetStatus, "PENDING_APPROVAL")) {
-            requirePdfPreviewReady(revision);
-        }
-
         recordElectronicSignature(revision, currentUser, request, "REVIEWED", "PENDING_REVIEW", targetStatus);
         RevisionDetailResponse updated = updateRevisionStatus(revision, "REVIEW_COMPLETE", targetStatus, request, currentUser);
+        // OnlyOffice needs no explicit access revoke: once this reviewer's participant action is
+        // no longer PENDING, getOnlyOfficeEditConfig's own participant-status check already
+        // refuses to open a new REVIEW-mode session for them.
         regeneratePublishingSnapshotIfConfigured(revision, currentUser, "REVIEW_SNAPSHOT_REGENERATED");
         return updated;
     }
@@ -1037,7 +1680,9 @@ public class RevisionService {
     @Transactional
     public RevisionDetailResponse rejectReview(UUID revisionId, RevisionWorkflowActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
+        // Row-locked: same revision, same race window as completeReview() above -- a Reject
+        // racing a concurrent Complete on the last participant must not interleave.
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         revisionWorkflowAuthorizationService.require(
                 currentUser,
                 revision,
@@ -1045,6 +1690,10 @@ public class RevisionService {
                 com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(revision)
         );
         requireRevisionStatus(revision, "PENDING_REVIEW");
+        String rejectReviewReason = firstNonBlank(request == null ? null : request.comment(), request == null ? null : request.reason());
+        if (!StringUtils.hasText(rejectReviewReason)) {
+            throw new IllegalArgumentException("Activity summary is required");
+        }
         UUID signatureSessionId = requireValidSignatureToken(request, currentUser, "review rejection");
         RevisionWorkflowParticipant participant = requirePendingParticipant(revision, "REVIEWER", currentUser);
 
@@ -1060,7 +1709,8 @@ public class RevisionService {
         clearDraftReviewSnapshot(revision);
         revisionRepository.save(revision);
 
-        reopenOfficeOnlineWorkingCopy(revision, currentUser);
+        // sourceLocked=false above already re-enables OnlyOffice editing (status/lock-based
+        // gating) -- no separate "reopen" action is needed the way Graph's working copy required.
         auditTrailService.logAs(
                 currentUser,
                 "REVISION",
@@ -1083,7 +1733,8 @@ public class RevisionService {
     @Transactional
     public RevisionDetailResponse completeApproval(UUID revisionId, RevisionWorkflowActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
+        // Row-locked: same race as completeReview() above, for Approvers (Parallel Approval mode).
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         revisionWorkflowAuthorizationService.require(
                 currentUser,
                 revision,
@@ -1123,7 +1774,8 @@ public class RevisionService {
     @Transactional
     public RevisionDetailResponse rejectApproval(UUID revisionId, RevisionWorkflowActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
+        // Row-locked: same race window as rejectReview() above, for Approvers.
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         revisionWorkflowAuthorizationService.require(
                 currentUser,
                 revision,
@@ -1131,6 +1783,10 @@ public class RevisionService {
                 com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(revision)
         );
         requireRevisionStatus(revision, "PENDING_APPROVAL");
+        String rejectApprovalReason = firstNonBlank(request == null ? null : request.comment(), request == null ? null : request.reason());
+        if (!StringUtils.hasText(rejectApprovalReason)) {
+            throw new IllegalArgumentException("Activity summary is required");
+        }
         UUID signatureSessionId = requireValidSignatureToken(request, currentUser, "approval rejection");
         RevisionWorkflowParticipant participant = requirePendingParticipant(revision, "APPROVER", currentUser);
 
@@ -1146,7 +1802,6 @@ public class RevisionService {
         clearDraftReviewSnapshot(revision);
         revisionRepository.save(revision);
 
-        reopenOfficeOnlineWorkingCopy(revision, currentUser);
         auditTrailService.logAs(
                 currentUser,
                 "REVISION",
@@ -1169,7 +1824,7 @@ public class RevisionService {
     @Transactional
     public RevisionDetailResponse completeTraining(UUID revisionId, RevisionWorkflowActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         revisionWorkflowAuthorizationService.require(
                 currentUser,
                 revision,
@@ -1247,18 +1902,22 @@ public class RevisionService {
         if (currentUser == null) {
             currentUser = currentUserService.requireCurrentUser();
         }
-        DocumentRevisionRecord revision = requireRevision(revisionId);
+        // Row-locked: publish has irreversible external side effects (Graph PDF composition,
+        // WORM MinIO writes, superseding the previous EFFECTIVE revision and obsoleting its
+        // Controlled Copies, e-mails). @Version alone only rejects the loser at commit -- after
+        // those effects already ran twice for a double-submit or a Publish racing a Cancel.
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         revisionWorkflowAuthorizationService.require(
                 currentUser,
                 revision,
                 RevisionWorkflowAction.PUBLISH,
                 com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(revision)
         );
+        DocumentRecord document = requireDocument(revision.getDocument().getId());
+        requireDocumentActiveForPublish(document);
         UUID signatureSessionId = requireValidSignatureToken(request, currentUser, "publish");
         validatePublishableRevision(revision, false);
-
-        DocumentRecord document = requireDocument(revision.getDocument().getId());
-        List<DocumentRelation> relatedRelations = documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "Related");
+        List<DocumentRelation> relatedRelations = documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED");
 
         List<ApiErrorResponse.ErrorDetail> nonEffectiveDetails = new java.util.ArrayList<>();
         StringBuilder warningBuilder = new StringBuilder();
@@ -1269,9 +1928,11 @@ public class RevisionService {
                 continue;
             }
 
-            DocumentRevisionRecord latestRelatedRev = revisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(relatedDoc.getId()).orElse(null);
-            String statusLabel = "Unknown";
-            String statusCode = "UNKNOWN";
+            DocumentRevisionRecord latestRelatedRev = revisionRepository
+                    .findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(relatedDoc.getId(), "EFFECTIVE")
+                    .orElse(null);
+            String statusLabel = "No Effective Revision";
+            String statusCode = "NOT_EFFECTIVE";
             if (latestRelatedRev != null && latestRelatedRev.getStatus() != null) {
                 statusLabel = latestRelatedRev.getStatus().getLabel();
                 statusCode = latestRelatedRev.getStatus().getCode();
@@ -1287,13 +1948,24 @@ public class RevisionService {
         if (!nonEffectiveDetails.isEmpty()) {
             boolean forcePublish = request != null && Boolean.TRUE.equals(request.forcePublish());
             if (!forcePublish) {
-                String warningMsg = "One or more Related Documents are not currently Effective.\n\n" 
-                        + warningBuilder.toString() 
+                String warningMsg = "One or more Related Documents are not currently Effective.\n\n"
+                        + warningBuilder.toString()
                         + "\nPlease verify the document package before publishing.";
                 throw new RelatedDocumentsNotEffectiveException(warningMsg, nonEffectiveDetails);
             } else {
+                // Force Publish is a GMP exception/deviation: requires its own dedicated
+                // permission (granted to nobody by default) and a mandatory, non-blank reason --
+                // never inferred from documents.revision.publish/documents.workspace.manage.
+                if (!permissionEvaluationService.hasPermission(currentUser, "documents.revision.force_publish")) {
+                    throw new IllegalArgumentException("You do not have permission to force publish over non-effective Related Documents");
+                }
+                String forcePublishReason = request == null ? null : firstNonBlank(request.reason(), request.comment());
+                if (!StringUtils.hasText(forcePublishReason)) {
+                    throw new IllegalArgumentException("A reason is required to force publish over non-effective Related Documents");
+                }
                 // Log warning override decision in audit trail
-                String overrideDetail = "Revision published with non-effective Related Documents.\n\n" + warningBuilder.toString();
+                String overrideDetail = "Revision published with non-effective Related Documents. Reason: " + forcePublishReason.trim()
+                        + "\n\n" + warningBuilder.toString();
                 auditTrailService.logAs(
                         currentUser,
                         "REVISION",
@@ -1312,6 +1984,7 @@ public class RevisionService {
         
         // Remove batch publish behavior: only publish the primary revision
         publishRevisionRecord(revision, currentUser, publishedAt, comment, signatureSessionId, request == null ? null : request.signatureToken());
+        notifyKnowledgeSubscribers(revision);
 
         return toDetailResponse(revision);
     }
@@ -1319,7 +1992,7 @@ public class RevisionService {
     @Transactional
     public RevisionDetailResponse cancelRevision(UUID revisionId, RevisionWorkflowActionRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
         revisionWorkflowAuthorizationService.require(
                 currentUser,
                 revision,
@@ -1333,7 +2006,10 @@ public class RevisionService {
         // training/ready-for-publishing is no longer allowed via this action.
         String currentStatus = revision.getStatus() == null ? null : revision.getStatus().getCode();
         if (currentStatus == null || !"DRAFT".equalsIgnoreCase(currentStatus)) {
-            throw new IllegalStateException("Only Draft revisions can be cancelled");
+            throw new RevisionLifecycleConflictException(
+                    "REVISION_CANCEL_DRAFT_ONLY",
+                    "Only Draft revisions can be cancelled"
+            );
         }
 
         String cancelReason = firstNonBlank(request == null ? null : request.comment(), request == null ? null : request.reason());
@@ -1363,7 +2039,9 @@ public class RevisionService {
         // Cancel. Record it here so "Cancelled By" on the Signatures tab is actually populated.
         recordElectronicSignature(revision, currentUser, request, "CANCELLED", currentStatus, "CLOSED_CANCELLED");
 
-        boolean documentClosed = syncDocumentStatusAfterRevisionCancellation(revision, currentUser, cancelReason);
+        boolean documentClosed = syncDocumentStatusAfterRevisionCancellation(
+                revision, currentUser, cancelReason, signatureSessionId
+        );
         notifyAuthorRevisionCancelled(revision, currentUser, cancelReason);
 
         String responseMessage = documentClosed
@@ -1396,36 +2074,54 @@ public class RevisionService {
                 com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(source)
         );
 
+        // TBR-DOC-015 concurrency mechanism: acquire the same PESSIMISTIC_WRITE Document-row lock
+        // DocumentService.obsoleteDocument takes before its own final precondition re-check. This
+        // is the only Revision mutation that can introduce a brand-new in-progress Revision when a
+        // concurrent Obsolete's initial check saw none -- serializing the two here (rather than a
+        // wider lock/SERIALIZABLE isolation) closes that race. See DocumentObsoleteConcurrencyTest.
+        //
+        // Bug fixed here (found by TC-DOC-051/052 production-path test, "Obsolete wins lock"
+        // ordering): the ACTIVE check above runs BEFORE this lock is acquired. If a concurrent
+        // Document Obsolete commits while this transaction is blocked waiting for the lock, the
+        // pre-lock `document`/`documentStatus` read is stale by the time the lock is granted. The
+        // lock alone only serializes the WRITES; it does not retroactively make an earlier READ
+        // fresh. The status must therefore be re-checked against the entity the lock query itself
+        // returns, not the one fetched before waiting for the lock.
+        DocumentRecord lockedDocument = documentRepository.findByIdForUpdate(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+        String lockedDocumentStatus = lockedDocument.getStatus() == null ? null : lockedDocument.getStatus().getCode();
+        if (!"ACTIVE".equals(lockedDocumentStatus)) {
+            throw new IllegalArgumentException("Only active documents can be upgraded");
+        }
         ensureNoRevisionInProgress(documentId, null);
 
         DocumentRevisionRecord revision = new DocumentRevisionRecord();
         revision.setId(UUID.randomUUID());
         applyRevisionSnapshot(
                 revision,
-                document,
+                lockedDocument,
                 currentUser,
                 source,
                 "Upgraded from revision " + source.getRevisionNumber(),
                 resolveNextDraftRevisionNumberFromEffective(source.getRevisionNumber())
         );
         revision.setImpactAnalysisId(impactAnalysisId);
-        revision.setDocumentNumber(document.getDocumentNumber());
+        revision.setDocumentNumber(lockedDocument.getDocumentNumber());
         revision.setParentRevision(source);
         revisionRepository.save(revision);
 
-        copyWorkflowParticipantsFromDocument(document, revision);
-        recordRevisionHistory(revision, "UPGRADE", "EFFECTIVE", revision.getStatus().getCode(), "Upgraded from " + source.getRevisionNumber(), currentUser);
-        auditTrailService.logAs(
-                currentUser,
-                "REVISION",
-                revision.getRevisionName(),
-                revision.getId(),
-                "UPGRADE",
-                "EFFECTIVE",
+        copyWorkflowParticipantsFromDocument(lockedDocument, revision);
+        // Upgrade creates a NEW, independent revision -- it does not transition an existing one.
+        // This audit row belongs to that new revision, whose only prior state is "did not exist",
+        // so there is no from-status (recording "Effective -> Draft" here was wrong: the new
+        // revision was never Effective; the source revision -- which stays Effective -- is named in
+        // the comment instead). recordRevisionHistory() already writes the audit_logs entry, so
+        // there is no separate logAs() call -- that produced a duplicate row.
+        recordRevisionHistory(revision, "UPGRADE", null,
                 revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                "Upgrade Revision created new Draft Revision. Training configuration copied from Document Master.",
-                buildUpgradeTrainingAuditChanges(document)
-        );
+                "Draft revision " + revision.getRevisionNumber() + " created by upgrading effective revision "
+                        + source.getRevisionNumber() + ". Training configuration copied from Document Master.",
+                currentUser, buildUpgradeTrainingAuditChanges(lockedDocument));
         return toDetailResponse(revision);
     }
 
@@ -1450,36 +2146,52 @@ public class RevisionService {
         );
 
         DocumentRecord document = requireDocument(source.getDocument().getId());
-        ensureNoRevisionInProgress(document.getId(), null);
-        DocumentRevisionRecord latestRevision = revisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(document.getId()).orElse(source);
+        // TBR-DOC-015 concurrency mechanism -- see upgradeDocumentRevision's identical comment.
+        // Bug fixed here (same class as upgradeDocumentRevision's fix): the EFFECTIVE check above
+        // reads `source` before waiting for this lock. A concurrent Document Obsolete cascades this
+        // same Revision to OBSOLETED (obsoleteRevisionAsPartOfDocumentObsolete does not exempt an
+        // EFFECTIVE revision from the cascade). If that commits while this transaction is blocked
+        // on the lock, the pre-lock `sourceStatus` read is stale once the lock is granted -- the
+        // lock only serializes writes, it does not retroactively refresh an earlier read. Re-fetch
+        // and re-check the Revision's status against the entity read after lock acquisition.
+        DocumentRecord lockedDocument = documentRepository.findByIdForUpdate(document.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+        // `source` was already loaded (and is therefore already managed in this persistence
+        // context) before the lock was acquired -- a plain findById here would return that same
+        // cached instance without a new SQL round-trip, silently masking a concurrent commit made
+        // while this transaction was blocked on the lock above. entityManager.refresh forces an
+        // actual re-read from the database.
+        DocumentRevisionRecord lockedSource = source;
+        entityManager.refresh(lockedSource);
+        String lockedSourceStatus = lockedSource.getStatus() == null ? null : lockedSource.getStatus().getCode();
+        if (!"EFFECTIVE".equals(lockedSourceStatus)) {
+            throw new IllegalArgumentException("Only effective revisions can be upgraded");
+        }
+        ensureNoRevisionInProgress(lockedDocument.getId(), null);
 
         DocumentRevisionRecord revision = new DocumentRevisionRecord();
         revision.setId(UUID.randomUUID());
         applyRevisionSnapshot(
                 revision,
-                document,
+                lockedDocument,
                 currentUser,
-                latestRevision,
-                "Upgraded from revision " + source.getRevisionNumber(),
-                resolveNextDraftRevisionNumber(document.getId())
+                lockedSource,
+                "Upgraded from revision " + lockedSource.getRevisionNumber(),
+                resolveNextDraftRevisionNumber(lockedDocument.getId())
         );
         revision.setImpactAnalysisId(impactAnalysisId);
-        revision.setParentRevision(source);
+        revision.setParentRevision(lockedSource);
         revisionRepository.save(revision);
 
-        copyWorkflowParticipantsFromDocument(document, revision);
-        recordRevisionHistory(revision, "UPGRADE", sourceStatus, revision.getStatus().getCode(), "Upgraded from " + source.getRevisionNumber(), currentUser);
-        auditTrailService.logAs(
-                currentUser,
-                "REVISION",
-                revision.getRevisionName(),
-                revision.getId(),
-                "UPGRADE",
-                sourceStatus,
+        copyWorkflowParticipantsFromDocument(lockedDocument, revision);
+        // See upgradeDocumentRevision(): one audit row on the NEW revision, no from-status (it is a
+        // creation, not a transition; the source revision stays Effective and is named in the
+        // comment), and recordRevisionHistory() is the single writer -- no duplicate logAs().
+        recordRevisionHistory(revision, "UPGRADE", null,
                 revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                "Upgrade Revision created new Draft Revision. Training configuration copied from Document Master.",
-                buildUpgradeTrainingAuditChanges(document)
-        );
+                "Draft revision " + revision.getRevisionNumber() + " created by upgrading effective revision "
+                        + lockedSource.getRevisionNumber() + ". Training configuration copied from Document Master.",
+                currentUser, buildUpgradeTrainingAuditChanges(lockedDocument));
         return toDetailResponse(revision);
     }
 
@@ -1532,7 +2244,7 @@ public class RevisionService {
         validatePublishableRevision(primaryRevision, false);
 
         DocumentRecord document = requireDocument(primaryRevision.getDocument().getId());
-        List<DocumentRelation> relatedRelations = documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "Related");
+        List<DocumentRelation> relatedRelations = documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED");
         if (relatedRelations.isEmpty()) {
             return List.of(primaryRevision);
         }
@@ -1586,10 +2298,79 @@ public class RevisionService {
         }
     }
 
+    /**
+     * A Document Master remains Draft until its first Revision source file is stored successfully.
+     * After that first file, later revisions are allowed only while the Master is Active. Terminal
+     * states must never be reopened by a Revision creation request.
+     */
+    private void requireDocumentAllowsRevisionCreation(DocumentRecord document, DocumentRevisionRecord latestRevision) {
+        String documentStatus = document == null || document.getStatus() == null
+                ? null
+                : document.getStatus().getCode();
+        if (latestRevision == null) {
+            if (!"DRAFT".equals(documentStatus)) {
+                throw new IllegalStateException("The first revision can only be created while the document is Draft");
+            }
+            return;
+        }
+        if (!"ACTIVE".equals(documentStatus)) {
+            throw new IllegalStateException("Revisions can only be created for an active document");
+        }
+    }
+
+    /**
+     * An initial Draft revision may receive its first source file while its Document is still Draft.
+     * Any other file upload requires an Active Document, including direct/stale API calls.
+     */
+    private void requireDocumentAllowsRevisionFileUpload(DocumentRecord document, DocumentRevisionRecord revision) {
+        String documentStatus = document == null || document.getStatus() == null
+                ? null
+                : document.getStatus().getCode();
+        if ("ACTIVE".equals(documentStatus)) {
+            return;
+        }
+        if ("DRAFT".equals(documentStatus) && revision != null && revision.getParentRevision() == null) {
+            return;
+        }
+        throw new IllegalStateException("Revision source files can only be uploaded for an active document");
+    }
+
+    private void activateDocumentAfterInitialSourceStored(DocumentRecord document, DocumentRevisionRecord revision, UserAccount actor) {
+        if (document == null || revision == null || revision.getParentRevision() != null
+                || document.getStatus() == null || !"DRAFT".equals(document.getStatus().getCode())) {
+            return;
+        }
+        document.setStatus(requireDocumentStatus("ACTIVE"));
+        documentRepository.save(document);
+        // TBR-DOC-004: DRAFT->ACTIVE activation previously had no dedicated audit entry -- only the
+        // upload's own REVISION_SOURCE_FILE_UPLOADED history/audit existed, with no record that the
+        // Document itself changed status as a side effect. Same transaction as the status flip above.
+        auditTrailService.logAs(
+                actor,
+                "DOCUMENT",
+                document.getDocumentNumber() + " - " + document.getDocumentName(),
+                document.getId(),
+                "ACTIVATE",
+                "DRAFT",
+                "ACTIVE",
+                "Document activated: initial revision source uploaded (Revision " + revision.getId() + ")"
+        );
+    }
+
+    private void requireDocumentActiveForPublish(DocumentRecord document) {
+        String documentStatus = document == null || document.getStatus() == null
+                ? null
+                : document.getStatus().getCode();
+        if (!"ACTIVE".equals(documentStatus)) {
+            throw new IllegalStateException("A revision can only be published for an active document");
+        }
+    }
+
     private boolean syncDocumentStatusAfterRevisionCancellation(
             DocumentRevisionRecord cancelledRevision,
             UserAccount currentUser,
-            String cancelReason
+            String cancelReason,
+            UUID signatureSessionId
     ) {
         if (cancelledRevision.getDocument() == null || cancelledRevision.getDocument().getId() == null) {
             return false;
@@ -1647,7 +2428,8 @@ public class RevisionService {
                         new AuditTrailChangeResponse("lastModifiedBy", "-", currentUser.getFullName()),
                         new AuditTrailChangeResponse("reason", "-", reasonText),
                         new AuditTrailChangeResponse("remainingRevisionCount", String.valueOf(1), "0")
-                )
+                ),
+                signatureSessionId
         );
         return true;
     }
@@ -1701,6 +2483,7 @@ public class RevisionService {
                 "Document Master updated after revision publish.",
                 List.of(
                         new AuditTrailChangeResponse("effectiveDate", "-", DateTimeFormatUtils.formatDate(effectiveDate)),
+                        new AuditTrailChangeResponse("effectiveDateRule", "-", describeEffectiveDateRule(revision, publishedAt)),
                         new AuditTrailChangeResponse("validUntil", "-", DateTimeFormatUtils.formatDate(validUntil)),
                         new AuditTrailChangeResponse("reviewDate", "-", DateTimeFormatUtils.formatDate(reviewDate)),
                         new AuditTrailChangeResponse("currentRevision", "-", promotedVersion)
@@ -1719,12 +2502,13 @@ public class RevisionService {
             supersededRevision.setObsoletedAt(publishedAt);
             revisionRepository.save(supersededRevision);
 
-            obsoleteDistributedControlledCopies(
+            controlledCopyLifecycleObsolescenceService.obsoleteControlledCopiesForRevision(
                     supersededRevision,
                     currentUser,
                     publishedAt,
-                    "NEW_REVISION_PUBLISHED",
-                    "Controlled Copy Auto Obsoleted By New Revision; Reason: NEW_REVISION_PUBLISHED; Superseded by published revision " + promotedVersion
+                    ControlledCopyLifecycleObsolescenceService.REASON_NEW_REVISION_PUBLISHED,
+                    "Controlled Copy Auto Obsoleted By New Revision; Reason: NEW_REVISION_PUBLISHED; Superseded by published revision " + promotedVersion,
+                    signatureSessionId
             );
 
             recordRevisionHistory(
@@ -1733,7 +2517,8 @@ public class RevisionService {
                     previousStatus,
                     "OBSOLETED",
                     "Superseded by published revision " + promotedVersion,
-                    currentUser
+                    currentUser,
+                    signatureSessionId
             );
         }
 
@@ -1761,7 +2546,7 @@ public class RevisionService {
     }
 
     private void ensureRelatedDocumentsEffectiveForUpgrade(DocumentRecord document) {
-        List<DocumentRelation> relatedRelations = documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "Related");
+        List<DocumentRelation> relatedRelations = documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED");
         for (DocumentRelation relation : relatedRelations) {
             DocumentRecord relatedDocument = relation.getTargetDocument();
             if (relatedDocument == null || relatedDocument.getId() == null) {
@@ -1803,15 +2588,116 @@ public class RevisionService {
     private void requireRevisionStatus(DocumentRevisionRecord revision, String expectedStatus) {
         String currentStatus = revision.getStatus() == null ? null : revision.getStatus().getCode();
         if (!Objects.equals(expectedStatus, currentStatus)) {
-            throw new IllegalStateException("Revision must be in " + expectedStatus + " state");
+            throw new RevisionLifecycleConflictException(
+                    "REVISION_WRONG_STATUS",
+                    "Revision must be in " + expectedStatus + " state"
+            );
         }
     }
 
-    private LocalDate calculateEffectiveDate(DocumentRevisionRecord revision, Instant publishedAt) {
-        if (publishedAt == null) {
-            return LocalDate.now(SYSTEM_ZONE);
+    /**
+     * A Draft revision whose Author already signed COMPLETE_AUTHORING (editingStatus=="COMPLETED")
+     * must not have its metadata/participants silently mutated anymore -- status alone stays "DRAFT"
+     * at that point (completeEditing() never advances it), so requireRevisionStatus(revision,
+     * "DRAFT") alone is not sufficient to block edits after authoring is complete.
+     */
+    private void requireRevisionNotCompletedEditing(DocumentRevisionRecord revision) {
+        if ("COMPLETED".equals(revision.getEditingStatus())) {
+            throw new RevisionLifecycleConflictException(
+                    "REVISION_EDITING_ALREADY_COMPLETED",
+                    "Revision editing has already been completed and can no longer be modified"
+            );
         }
-        return publishedAt.atZone(SYSTEM_ZONE).toLocalDate();
+    }
+
+    /**
+     * storageItemId/storageDriveId/etc. are Office-Online/Microsoft-Graph-specific -- present only
+     * when the revision was opened via Edit Online, null for a source file uploaded directly. A
+     * non-blank sourceStorageObjectKey/filePath alone is not proof the object still exists and is
+     * readable (deleted object, corrupted path, storage outage) -- so this reuses
+     * {@link #resolveRevisionSourceFile}, the same helper {@code refreshPreviewFromUploadedFile}
+     * relies on, which actually materializes the object from storage and confirms it exists on
+     * disk before Complete Editing is allowed to proceed.
+     */
+    private void requireRevisionSourceFile(DocumentRevisionRecord revision) {
+        requireRevisionSourceFile(revision, "Complete Editing");
+    }
+
+    /**
+     * {@code action} names what the user was trying to do so the message tells them what to fix, rather than a
+     * generic "Complete Editing ..." text that is wrong when the check is used for viewing.
+     */
+    private void requireRevisionSourceFile(DocumentRevisionRecord revision, String action) {
+        Path sourcePath = resolveRevisionSourceFile(revision);
+        if (sourcePath == null || !Files.exists(sourcePath)) {
+            String revisionLabel = revision == null || !StringUtils.hasText(revision.getRevisionNumber())
+                    ? "This revision" : "Revision " + revision.getRevisionNumber();
+            throw new RevisionLifecycleConflictException("REVISION_SOURCE_FILE_REQUIRED",
+                    "Cannot " + action.toLowerCase() + ": " + revisionLabel + " has no Word (.docx) file yet. "
+                            + "Upload the file to this revision first (Edit Revision > Upload / Replace file), then try again.");
+        }
+    }
+
+    /**
+     * Effective Date = basis event + N calendar days, both set in Settings > Document Properties.
+     * Basis: the last Approver's approval (default), the training completion date, or the DCO
+     * publishing. The DCO being away therefore never has to delay a document that the configuration
+     * says becomes effective at approval. When the configured basis has no value for this revision
+     * (e.g. no training, or an imported revision without approvals) it falls back approval -> publish.
+     */
+    private LocalDate calculateEffectiveDate(DocumentRevisionRecord revision, Instant publishedAt) {
+        return resolveEffectiveDate(revision, publishedAt).date();
+    }
+
+    private String describeEffectiveDateRule(DocumentRevisionRecord revision, Instant publishedAt) {
+        EffectiveDateResolution resolution = resolveEffectiveDate(revision, publishedAt);
+        String basis = switch (resolution.basis()) {
+            case SystemConfigurationService.EFFECTIVE_DATE_AFTER_TRAINING -> "training completion";
+            case SystemConfigurationService.EFFECTIVE_DATE_AFTER_PUBLISH -> "publish";
+            default -> "approval";
+        };
+        return resolution.offsetDays() + " day(s) after " + basis;
+    }
+
+    private record EffectiveDateResolution(LocalDate date, String basis, int offsetDays) {}
+
+    private EffectiveDateResolution resolveEffectiveDate(DocumentRevisionRecord revision, Instant publishedAt) {
+        String configuredBasis = systemConfigurationService.getEffectiveDateBasis();
+        int offsetDays = systemConfigurationService.getEffectiveDateOffsetDays();
+
+        LocalDate approvalDate = null;
+        if (revision != null && revision.getId() != null) {
+            approvalDate = revisionWorkflowParticipantRepository
+                    .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "APPROVER")
+                    .stream()
+                    .filter(participant -> "APPROVED".equalsIgnoreCase(participant.getActionStatus()))
+                    .map(RevisionWorkflowParticipant::getActedAt)
+                    .filter(java.util.Objects::nonNull)
+                    .max(java.util.Comparator.naturalOrder())
+                    .map(instant -> instant.atZone(SYSTEM_ZONE).toLocalDate())
+                    .orElse(null);
+        }
+        LocalDate trainingDate = revision != null && revision.isRequiresTraining() ? revision.getTrainingCompletionDate() : null;
+        LocalDate publishDate = (publishedAt == null ? Instant.now() : publishedAt).atZone(SYSTEM_ZONE).toLocalDate();
+
+        LocalDate base = null;
+        String usedBasis = null;
+        if (SystemConfigurationService.EFFECTIVE_DATE_AFTER_PUBLISH.equals(configuredBasis)) {
+            base = publishDate;
+            usedBasis = configuredBasis;
+        } else if (SystemConfigurationService.EFFECTIVE_DATE_AFTER_TRAINING.equals(configuredBasis) && trainingDate != null) {
+            base = trainingDate;
+            usedBasis = configuredBasis;
+        }
+        if (base == null && approvalDate != null) {
+            base = approvalDate;
+            usedBasis = SystemConfigurationService.EFFECTIVE_DATE_AFTER_APPROVAL;
+        }
+        if (base == null) {
+            base = publishDate;
+            usedBasis = SystemConfigurationService.EFFECTIVE_DATE_AFTER_PUBLISH;
+        }
+        return new EffectiveDateResolution(base.plusDays(offsetDays), usedBasis, offsetDays);
     }
 
     private LocalDate calculateValidUntil(LocalDate effectiveDate, Integer periodicReviewCycleMonths, LocalDate fallbackValidUntil) {
@@ -1822,12 +2708,6 @@ public class RevisionService {
             return effectiveDate.plusMonths(periodicReviewCycleMonths.longValue());
         }
         return fallbackValidUntil;
-    }
-
-    private void requirePdfPreviewReady(DocumentRevisionRecord revision) {
-        if (!StringUtils.hasText(revision.getPreviewFilePath())) {
-            throw new IllegalStateException("A PDF preview must be generated before the revision can move to Pending Approval");
-        }
     }
 
     private boolean hasParticipants(DocumentRevisionRecord revision, String participantType) {
@@ -1852,12 +2732,7 @@ public class RevisionService {
         if (request == null || !StringUtils.hasText(request.signatureToken())) {
             throw new IllegalArgumentException("Electronic signature is required for " + actionName);
         }
-        var parsed = tokenService.parseSignatureToken(request.signatureToken())
-                .orElseThrow(() -> new IllegalArgumentException("Electronic signature is invalid or expired"));
-        if (!Objects.equals(parsed.principal().userId(), currentUser.getId())) {
-            throw new IllegalArgumentException("Electronic signature must belong to the current user");
-        }
-        return parsed.principal().sessionId();
+        return signatureTokenConsumptionService.requireAndConsume(request.signatureToken(), currentUser);
     }
 
     private UUID resolveSignatureSessionId(RevisionWorkflowActionRequest request, UserAccount currentUser) {
@@ -1897,9 +2772,33 @@ public class RevisionService {
                 .findByRevision_IdAndParticipantTypeAndUser_Id(revision.getId(), participantType, currentUser.getId())
                 .orElseThrow(() -> new AccessDeniedException("Current user is not assigned as " + participantType.toLowerCase(Locale.ROOT)));
         if (!"PENDING".equalsIgnoreCase(participant.getActionStatus())) {
-            throw new IllegalStateException("This workflow action has already been completed");
+            throw new RevisionLifecycleConflictException(
+                    "REVISION_ACTION_ALREADY_COMPLETED",
+                    "This workflow action has already been completed"
+            );
         }
-        if ("REVIEWER".equalsIgnoreCase(participantType) || "APPROVER".equalsIgnoreCase(participantType)) {
+        // Separation of duties at action time (assignment already forbids it): the person who wrote a
+        // revision must never approve it, even if the Author was changed after the Approver was set.
+        if ("APPROVER".equalsIgnoreCase(participantType)) {
+            boolean isAuthor = revision.getAuthor() != null && Objects.equals(revision.getAuthor().getId(), currentUser.getId());
+            boolean isCoAuthor = revisionWorkflowParticipantRepository
+                    .findByRevision_IdAndParticipantTypeAndUser_Id(revision.getId(), "CO_AUTHOR", currentUser.getId())
+                    .isPresent();
+            if (isAuthor || isCoAuthor) {
+                throw new AccessDeniedException("The Author or a Co-Author of a revision cannot approve it");
+            }
+        }
+        // Mutation-time re-check mirroring RevisionWorkflowAuthorizationService#isPendingReviewer/
+        // isPendingApprover's read-time gate -- skipped entirely when Document Properties'
+        // Parallel Review/Approval is enabled, letting any PENDING participant of that type act in
+        // any order. Shared rule: SystemConfigurationService#isSequenceEnforcedForParticipantType --
+        // unless the revision froze its own mode when it was submitted, which then wins so a
+        // later change of that setting cannot alter a review already in flight.
+        Boolean frozenSequence = ReviewFlowMode.sequenceEnforcedOrNull(participantType, revision.getReviewFlowMode());
+        boolean sequenceEnforced = frozenSequence != null
+                ? frozenSequence
+                : systemConfigurationService.isSequenceEnforcedForParticipantType(participantType);
+        if (sequenceEnforced) {
             RevisionWorkflowParticipant nextPending = nextPendingParticipant(revision, participantType).orElse(null);
             if (nextPending != null && !Objects.equals(nextPending.getId(), participant.getId())) {
                 throw new IllegalStateException(participantTypeLabel(participantType) + " action must be completed according to the configured sequence");
@@ -1952,6 +2851,8 @@ public class RevisionService {
             participant.setActionComment(null);
             participant.setActedAt(null);
             participant.setSignatureSessionId(null);
+            participant.setLastRemindedAt(null);
+            participant.setEscalatedAt(null);
         });
         revisionWorkflowParticipantRepository.saveAll(participants);
     }
@@ -1982,12 +2883,13 @@ public class RevisionService {
         revisionRepository.save(revision);
         UUID signatureSessionId = resolveSignatureSessionId(request, currentUser);
         if ("OBSOLETED".equalsIgnoreCase(targetStatus)) {
-            obsoleteDistributedControlledCopies(
+            controlledCopyLifecycleObsolescenceService.obsoleteControlledCopiesForRevision(
                     revision,
                     currentUser,
                     Instant.now(),
-                    "REVISION_OBSOLETED",
-                    "Controlled Copy Auto Obsoleted By Revision Obsolete; Reason: REVISION_OBSOLETED"
+                    ControlledCopyLifecycleObsolescenceService.REASON_REVISION_OBSOLETED,
+                    "Controlled Copy Auto Obsoleted By Revision Obsolete; Reason: REVISION_OBSOLETED",
+                    signatureSessionId
             );
         }
         recordRevisionHistory(
@@ -2003,50 +2905,43 @@ public class RevisionService {
         return toDetailResponse(revision);
     }
 
-    /**
-     * A source revision can be obsoleted by publishing a successor or by a manual workflow
-     * action. In either case, only copies still issued to users are invalidated. Closed/Cancelled
-     * records are intentionally untouched because their terminal state is part of the GMP trail.
-     */
-    private void obsoleteDistributedControlledCopies(
-            DocumentRevisionRecord sourceRevision,
-            UserAccount actor,
-            Instant obsoletedAt,
-            String obsoleteReason,
-            String auditComment
-    ) {
-        if (sourceRevision == null || sourceRevision.getId() == null) {
+    // Optional: never blocks a publish, and keeps constructors used by unit tests valid.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private KnowledgePortalService knowledgePortalService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private NotificationDispatcher knowledgeNotificationDispatcher;
+
+    /** Tells the people subscribed to the document's Knowledge Base that a new Effective version exists. */
+    private void notifyKnowledgeSubscribers(DocumentRevisionRecord revision) {
+        if (knowledgePortalService == null || knowledgeNotificationDispatcher == null
+                || revision == null || revision.getDocument() == null) {
             return;
         }
-        for (ControlledCopyRecord copy : controlledCopyRepository.findAllByRevision_IdOrderByCopyNumberAsc(sourceRevision.getId())) {
-            boolean distributed = "DISTRIBUTED".equalsIgnoreCase(copy.getStatusCode())
-                    || "DISTRIBUTED".equalsIgnoreCase(copy.getCurrentStage());
-            if (!distributed) {
-                continue;
+        try {
+            DocumentRecord document = revision.getDocument();
+            List<UserAccount> recipients = knowledgePortalService.subscribersOf(document).stream()
+                    .map(userAccountRepository::findById)
+                    .flatMap(Optional::stream)
+                    .filter(user -> user.getStatus() == UserStatus.Active)
+                    .toList();
+            if (recipients.isEmpty()) {
+                return;
             }
-            String copyFromStatus = copy.getStatusCode();
-            copy.setStatus("Obsoleted");
-            copy.setStatusCode("OBSOLETED");
-            copy.setCurrentStage("Obsoleted");
-            copy.setObsoleteReason(obsoleteReason);
-            copy.setObsoletedBy(actor);
-            copy.setObsoletedAt(obsoletedAt);
-            controlledCopyRepository.save(copy);
-            auditTrailService.logAs(
-                    actor,
-                    "Controlled Copy",
-                    copy.getControlledCopyNumber(),
-                    copy.getId(),
-                    "OBSOLETE",
-                    copyFromStatus,
-                    "Obsoleted",
-                    auditComment
-            );
+            Map<String, String> variables = new HashMap<>();
+            variables.put("documentNumber", Objects.toString(document.getDocumentNumber(), ""));
+            variables.put("documentTitle", Objects.toString(document.getDocumentName(), ""));
+            variables.put("revisionNumber", Objects.toString(revision.getRevisionNumber(), ""));
+            variables.put("knowledgeBase", Objects.toString(document.getKnowledgeBase(), ""));
+            variables.put("actionUrl", "/self-service/knowledge");
+            knowledgeNotificationDispatcher.dispatch("knowledge.document_published", recipients, variables);
+        } catch (Exception ex) {
+            log.warn("Knowledge subscriber notification failed for revision {}", revision.getId(), ex);
         }
-        controlledCopyBatchStatusService.synchronize(
-                controlledCopyRepository.findAllByRevision_IdOrderByCopyNumberAsc(sourceRevision.getId())
-        );
     }
+
+    // obsoleteDistributedControlledCopies(...) retired per TBR-DOC-014: both call sites above now
+    // invoke the canonical ControlledCopyLifecycleObsolescenceService.obsoleteControlledCopiesForRevision(...)
+    // instead of this (formerly duplicated) private implementation.
 
     private void dispatchRevisionNotification(
             DocumentRevisionRecord revision,
@@ -2066,9 +2961,7 @@ public class RevisionService {
         if ("SUBMIT_FOR_REVIEW".equalsIgnoreCase(actionType)) {
             if ("PENDING_REVIEW".equalsIgnoreCase(targetStatus)) {
                 templateType = "document-review";
-                nextPendingParticipant(revision, "REVIEWER")
-                        .map(RevisionWorkflowParticipant::getUser)
-                        .ifPresent(recipients::add);
+                recipients.addAll(reviewersToNotify(revision, true));
             } else if ("PENDING_APPROVAL".equalsIgnoreCase(targetStatus)) {
                 templateType = "document-approval";
                 nextPendingParticipant(revision, "APPROVER")
@@ -2080,9 +2973,7 @@ public class RevisionService {
             }
         } else if ("REVIEW_COMPLETE".equalsIgnoreCase(actionType) && "PENDING_REVIEW".equalsIgnoreCase(targetStatus)) {
             templateType = "document-review";
-            nextPendingParticipant(revision, "REVIEWER")
-                    .map(RevisionWorkflowParticipant::getUser)
-                    .ifPresent(recipients::add);
+            recipients.addAll(reviewersToNotify(revision, false));
         } else if ("REVIEW_COMPLETE".equalsIgnoreCase(actionType) && "PENDING_APPROVAL".equalsIgnoreCase(targetStatus)) {
             templateType = "document-approval";
             nextPendingParticipant(revision, "APPROVER")
@@ -2093,9 +2984,11 @@ public class RevisionService {
             nextPendingParticipant(revision, "APPROVER")
                     .map(RevisionWorkflowParticipant::getUser)
                     .ifPresent(recipients::add);
-        } else if ("REVIEW_REJECT".equalsIgnoreCase(actionType)) {
-            templateType = "document-review";
-            recipients.addAll(getWorkflowCoordinatorRecipients(revision));
+        } else if ("REVIEW_REJECT".equalsIgnoreCase(actionType) || "APPROVE_REJECT".equalsIgnoreCase(actionType)) {
+            templateType = "REVIEW_REJECT".equalsIgnoreCase(actionType)
+                    ? EmailTemplateTypeUtils.DOCUMENT_REVIEW_REJECTED_NOTIFICATION
+                    : EmailTemplateTypeUtils.DOCUMENT_APPROVAL_REJECTED_NOTIFICATION;
+            recipients.addAll(rejectionRecipients(revision, actor));
         } else if ("APPROVE_COMPLETE".equalsIgnoreCase(actionType)) {
             if ("PENDING_TRAINING".equalsIgnoreCase(targetStatus)) {
                 templateType = "training-notification";
@@ -2125,6 +3018,21 @@ public class RevisionService {
                 .toList();
 
         for (UserAccount recipient : recipients) {
+            sendRevisionNotification(revision, document, recipient, templateType, actionType, targetStatus, actor, comment);
+        }
+    }
+
+    private void sendRevisionNotification(
+            DocumentRevisionRecord revision,
+            DocumentRecord document,
+            UserAccount recipient,
+            String templateType,
+            String actionType,
+            String targetStatus,
+            UserAccount actor,
+            String comment
+    ) {
+        {
             Map<String, String> overrides = new HashMap<>();
             overrides.put("documentTitle", document.getDocumentName() == null ? "" : document.getDocumentName());
             overrides.put("documentNumber", document.getDocumentNumber() == null ? "" : document.getDocumentNumber());
@@ -2139,6 +3047,11 @@ public class RevisionService {
             if (notificationEventCode != null) {
                 overrides.put("notificationEventCode", notificationEventCode);
             }
+            if (isAssignmentOrRejectionNotification(templateType)) {
+                // Someone has to act, or must learn their work was sent back -- a personal
+                // preference must not be able to silence that (see NotificationEventCatalogBootstrap).
+                overrides.put("notificationMandatory", "true");
+            }
             Map<String, String> variables = emailNotificationService.buildDocumentVariables(
                     document,
                     revision,
@@ -2150,6 +3063,90 @@ public class RevisionService {
             );
             emailNotificationService.sendDocumentWorkflowNotification(templateType, List.of(recipient), variables);
         }
+    }
+
+    /**
+     * Document Control reassigns a pending Reviewer/Approver whose account is no longer usable
+     * (Suspended/Terminated/Inactive). Only that situation is allowed: swapping an available
+     * assignee would let Document Control steer a review. Requires the DCO permission and a valid
+     * e-signature session; the change is audited and the new assignee is notified.
+     */
+    @Transactional
+    public RevisionDetailResponse replaceWorkflowParticipant(UUID revisionId, ReplaceWorkflowParticipantRequest request) {
+        UserAccount actor = currentUserService.requireCurrentUser();
+        if (!permissionEvaluationService.hasPermission(actor, "documents.workspace.manage")) {
+            throw new AccessDeniedException("Only Document Control can replace a workflow participant");
+        }
+        if (request == null || request.fromUserId() == null || request.toUserId() == null
+                || !StringUtils.hasText(request.participantType()) || !StringUtils.hasText(request.reason())) {
+            throw new IllegalArgumentException("Participant type, current user, new user and a reason are required");
+        }
+        String type = request.participantType().trim().toUpperCase(Locale.ROOT);
+        if (!"REVIEWER".equals(type) && !"APPROVER".equals(type)) {
+            throw new IllegalArgumentException("Only a Reviewer or an Approver can be replaced");
+        }
+        DocumentRevisionRecord revision = requireRevisionForUpdate(revisionId);
+        String status = revision.getStatus() == null ? "" : revision.getStatus().getCode();
+        String expectedStatus = "REVIEWER".equals(type) ? "PENDING_REVIEW" : "PENDING_APPROVAL";
+        if (!expectedStatus.equals(status)) {
+            throw new RevisionLifecycleConflictException("REVISION_STATE_CHANGED",
+                    "This revision is now '" + status + "', so the " + type.toLowerCase(Locale.ROOT) + " can no longer be replaced.");
+        }
+        requireValidSignatureToken(new RevisionWorkflowActionRequest(request.reason(), request.reason(), request.signatureToken()), actor, "participant replacement");
+
+        RevisionWorkflowParticipant participant = revisionWorkflowParticipantRepository
+                .findByRevision_IdAndParticipantTypeAndUser_Id(revisionId, type, request.fromUserId())
+                .orElseThrow(() -> new IllegalArgumentException("The selected user is not assigned as " + type.toLowerCase(Locale.ROOT) + " on this revision"));
+        if (!"PENDING".equalsIgnoreCase(participant.getActionStatus())) {
+            throw new RevisionLifecycleConflictException("REVISION_ACTION_ALREADY_COMPLETED",
+                    "This assignment has already been completed and cannot be replaced");
+        }
+        UserAccount from = participant.getUser();
+        if (from != null && from.getStatus() == UserStatus.Active) {
+            throw new RevisionLifecycleConflictException("ASSIGNEE_STILL_ACTIVE", "The current " + type.toLowerCase(Locale.ROOT)
+                    + " is still an active user. Only an assignee who is suspended, terminated or inactive can be replaced.");
+        }
+        UserAccount to = userAccountRepository.findById(request.toUserId())
+                .orElseThrow(() -> new IllegalArgumentException("Replacement user not found"));
+        if (to.getStatus() != UserStatus.Active) {
+            throw new IllegalArgumentException("The replacement user must be an active user");
+        }
+        workflowParticipantEligibilityService.requirePoolMembership(type, to);
+        for (String existingType : List.of("CO_AUTHOR", "REVIEWER", "APPROVER")) {
+            if (revisionWorkflowParticipantRepository
+                    .findByRevision_IdAndParticipantTypeAndUser_Id(revisionId, existingType, to.getId()).isPresent()) {
+                throw new IllegalArgumentException("The replacement user already has a role on this revision");
+            }
+        }
+        UserAccount author = revision.getAuthor() != null ? revision.getAuthor()
+                : (revision.getDocument() == null ? null : revision.getDocument().getAuthor());
+        if (author != null && Objects.equals(author.getId(), to.getId())) {
+            throw new IllegalArgumentException("The Author cannot be a " + type.toLowerCase(Locale.ROOT) + " of the same revision");
+        }
+
+        participant.setUser(to);
+        revisionWorkflowParticipantRepository.save(participant);
+
+        ElectronicSignature signature = electronicSignatureService.createEntitySignature(
+                "revision_workflow_participants", participant.getId(), revision.getRevisionName(),
+                actor, request.signatureToken(), "WORKFLOW_AUTHORIZATION_CHANGE", request.reason(), null,
+                from == null ? null : from.getUsername(), to.getUsername());
+        auditTrailService.logAs(actor, "REVISION", revision.getRevisionName(), revision.getId(),
+                "WORKFLOW_PARTICIPANT_REPLACED", status, status,
+                type + " " + (from == null ? "?" : from.getUsername()) + " replaced by " + to.getUsername()
+                        + ". Reason: " + request.reason(),
+                List.of(new AuditTrailChangeResponse(participantTypeLabel(type),
+                        from == null ? "-" : firstNonBlank(from.getFullName(), from.getUsername()),
+                        firstNonBlank(to.getFullName(), to.getUsername()))),
+                signature == null ? null : signature.getId());
+
+        DocumentRecord document = revision.getDocument();
+        if (document != null) {
+            sendRevisionNotification(revision, document, to,
+                    "REVIEWER".equals(type) ? "document-review" : "document-approval",
+                    "REVIEWER".equals(type) ? "REVIEWER_REPLACED" : "APPROVER_REPLACED", status, actor, request.reason());
+        }
+        return getRevision(revisionId);
     }
 
     private String resolveRevisionWorkflowActionUrl(String templateType, DocumentRevisionRecord revision) {
@@ -2186,7 +3183,78 @@ public class RevisionService {
         if ("PUBLISH".equals(action)) {
             return "document.published";
         }
+        if ("REVIEWER_REPLACED".equals(action)) {
+            return "document.submitted_for_review";
+        }
+        if ("REVIEW_REJECT".equals(action)) {
+            return "document.review_rejected";
+        }
+        if ("APPROVE_REJECT".equals(action)) {
+            return "document.approval_rejected";
+        }
         return null;
+    }
+
+    private static boolean isAssignmentOrRejectionNotification(String templateType) {
+        return "document-review".equals(templateType)
+                || "document-approval".equals(templateType)
+                || EmailTemplateTypeUtils.DOCUMENT_REVIEW_REJECTED_NOTIFICATION.equals(templateType)
+                || EmailTemplateTypeUtils.DOCUMENT_APPROVAL_REJECTED_NOTIFICATION.equals(templateType);
+    }
+
+    /** True when this revision's Reviewers may act in any order (frozen at submit; falls back to
+     *  the live Document Properties switch for revisions submitted before the mode was recorded). */
+    private boolean isParallelReview(DocumentRevisionRecord revision) {
+        Boolean sequenceEnforced = ReviewFlowMode.sequenceEnforcedOrNull("REVIEWER", revision.getReviewFlowMode());
+        return sequenceEnforced != null ? !sequenceEnforced : systemConfigurationService.isParallelReviewEnabled();
+    }
+
+    /**
+     * Who must be told a review step is now open. Sequential: only the next Reviewer in line.
+     * Parallel: every Reviewer can act from the moment of submission, so all of them are told then
+     * -- and nobody is re-notified as their peers finish, since they are already free to act.
+     */
+    private List<UserAccount> reviewersToNotify(DocumentRevisionRecord revision, boolean justSubmitted) {
+        if (!isParallelReview(revision)) {
+            return nextPendingParticipant(revision, "REVIEWER")
+                    .map(RevisionWorkflowParticipant::getUser)
+                    .map(List::of)
+                    .orElse(List.of());
+        }
+        if (!justSubmitted) {
+            return List.of();
+        }
+        return revisionWorkflowParticipantRepository
+                .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "REVIEWER")
+                .stream()
+                .filter(participant -> "PENDING".equalsIgnoreCase(participant.getActionStatus()))
+                .map(RevisionWorkflowParticipant::getUser)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    /**
+     * A Reject sends the revision back to Draft and closes the round for everyone: the Author and
+     * Co-Authors must fix it, every Reviewer must know their round ended (they may be mid-review in
+     * Word Online, which is being revoked), and Document Control follows up. The rejecting user
+     * already knows and is left out.
+     */
+    private List<UserAccount> rejectionRecipients(DocumentRevisionRecord revision, UserAccount actor) {
+        java.util.LinkedHashMap<UUID, UserAccount> byId = new java.util.LinkedHashMap<>();
+        java.util.function.Consumer<UserAccount> add = user -> {
+            if (user != null && user.getId() != null && (user.getStatus() == null || user.getStatus() == UserStatus.Active)
+                    && (actor == null || !user.getId().equals(actor.getId()))) {
+                byId.putIfAbsent(user.getId(), user);
+            }
+        };
+        add.accept(revision.getAuthor());
+        if (revision.getDocument() != null) {
+            add.accept(revision.getDocument().getAuthor());
+        }
+        getRevisionParticipants(revision, "CO_AUTHOR").forEach(add);
+        getRevisionParticipants(revision, "REVIEWER").forEach(add);
+        getWorkflowCoordinatorRecipients(revision).forEach(add);
+        return new ArrayList<>(byId.values());
     }
 
     private List<UserAccount> getRevisionParticipants(DocumentRevisionRecord revision, String participantType) {
@@ -2196,68 +3264,6 @@ public class RevisionService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-    }
-
-    private List<UserAccount> getRevisionEditParticipants(DocumentRevisionRecord revision) {
-        if (revision == null) {
-            return List.of();
-        }
-        List<UserAccount> recipients = new ArrayList<>();
-        if (revision.getAuthor() != null) {
-            recipients.add(revision.getAuthor());
-        } else if (revision.getDocument() != null && revision.getDocument().getAuthor() != null) {
-            recipients.add(revision.getDocument().getAuthor());
-        }
-        recipients.addAll(getRevisionParticipants(revision, "CO_AUTHOR"));
-        return recipients.stream()
-                .filter(Objects::nonNull)
-                .filter(user -> user.getId() != null)
-                .collect(java.util.stream.Collectors.toMap(
-                        UserAccount::getId,
-                        user -> user,
-                        (left, right) -> left,
-                        LinkedHashMap::new
-                ))
-                .values()
-                .stream()
-                .toList();
-    }
-
-    private void notifyRevisionEditParticipants(DocumentRevisionRecord revision, UserAccount actor, String comment) {
-        if (revision == null || revision.getDocument() == null) {
-            return;
-        }
-        List<UserAccount> recipients = getRevisionEditParticipants(revision);
-        if (recipients.isEmpty()) {
-            return;
-        }
-        for (UserAccount recipient : recipients) {
-            Map<String, String> overrides = new HashMap<>();
-            overrides.put("documentTitle", firstNonBlank(revision.getDocumentName(), revision.getDocument().getDocumentName(), ""));
-            overrides.put("documentNumber", firstNonBlank(revision.getDocumentNumber(), revision.getDocument().getDocumentNumber(), ""));
-            overrides.put("revisionTitle", firstNonBlank(revision.getRevisionName(), revision.getDocumentName(), ""));
-            overrides.put("revisionName", firstNonBlank(revision.getRevisionName(), revision.getDocumentName(), ""));
-            overrides.put("revisionNumber", firstNonBlank(revision.getRevisionNumber(), ""));
-            overrides.put("revisionStatus", revision.getStatus() == null ? "" : firstNonBlank(revision.getStatus().getCode(), ""));
-            overrides.put("officeEditUrl", firstNonBlank(revision.getStorageEditUrl(), ""));
-            overrides.put("officeViewUrl", firstNonBlank(revision.getStorageViewUrl(), revision.getStorageWebUrl(), ""));
-            overrides.put("workflowAction", "UPLOAD_TO_OFFICE_ONLINE");
-            overrides.put("workflowComment", firstNonBlank(comment, ""));
-            Map<String, String> variables = emailNotificationService.buildDocumentVariables(
-                    revision.getDocument(),
-                    revision,
-                    actor,
-                    recipient,
-                    "UPLOAD_TO_OFFICE_ONLINE",
-                    comment,
-                    overrides
-            );
-            emailNotificationService.sendByTypeToRecipients(
-                    EmailTemplateTypeUtils.DOCUMENT_EDIT_ONLINE_NOTIFICATION,
-                    List.of(recipient),
-                    variables
-            );
-        }
     }
 
     private List<UserAccount> getWorkflowCoordinatorRecipients(DocumentRevisionRecord revision) {
@@ -2375,11 +3381,7 @@ public class RevisionService {
     }
 
     private String csv(String value) {
-        if (value == null) {
-            return "";
-        }
-        String escaped = value.replace("\"", "\"\"");
-        return "\"" + escaped + "\"";
+        return com.eqms.util.CsvSafety.escapeCell(value);
     }
 
     private Specification<DocumentRevisionRecord> buildSpecification(
@@ -2560,8 +3562,7 @@ public class RevisionService {
                 || !"ACTIVE".equalsIgnoreCase(document.getStatus().getCode())) {
             return false;
         }
-        boolean mayUseTemplates = permissionEvaluationService.hasPermission(user, "documents.template.use")
-                || permissionEvaluationService.hasPermission(user, "documents.template.manage");
+        boolean mayUseTemplates = permissionEvaluationService.hasPermission(user, "documents.revision.upload_source");
         if (!mayUseTemplates || !isDocxTemplate(revision)) {
             return false;
         }
@@ -2610,13 +3611,72 @@ public class RevisionService {
           };
       }
 
+      /** #4: Publishing preview regeneration status for the FE's pollSnapshotInBackground helper
+       *  (see RevisionDetailResponse.previewStatus javadoc). "READY" (the entity default) when no
+       *  Publishing metadata exists yet -- nothing is generating, so there's nothing to poll for. */
+      private String resolvePreviewGenerationStatus(DocumentRevisionRecord revision) {
+          return publishingMetadataRepository.findByRevision_Id(revision.getId())
+                  .map(RevisionPublishingMetadata::getPreviewGenerationStatus)
+                  .orElse("READY");
+      }
+
+      /**
+       * Builds the same response shape as {@link #getRevision(UUID)}, but from an already-loaded
+       * entity and with none of that method's request-facing side effects (no requireCurrentUser
+       * authorization gate, no "openedBy"/VIEW-audit bookkeeping). For internal callers that
+       * already have the entity and only need the DTO's field data -- most notably
+       * PublishingPdfComposerService#composePreview, which needs placeholder values (document
+       * number, dates, participant names, ...) and must also work when invoked from a background
+       * thread with no authenticated HTTP request/current-user context at all (see
+       * RevisionPublishingSnapshotAsyncService, #4's async snapshot regeneration).
+       */
+      public RevisionDetailResponse buildDetailResponse(DocumentRevisionRecord revision) {
+          return toDetailResponse(revision);
+      }
+
+      /**
+       * Detail response used to fill the publishing header/footer/cover placeholders. While a revision is
+       * still Ready for Publishing, publishing will change its revision number (next major version) and set
+       * its Effective Date; rendering the preview with today's values would show "Code: SOP.10110.1" and
+       * "Effective date: -" for a document that will read ".2" and a real date once published. So for that
+       * stage the response carries the values publishing WILL produce (nothing is persisted). Any other
+       * stage is rendered as stored.
+       */
+      public RevisionDetailResponse buildDetailResponseForRendering(DocumentRevisionRecord revision) {
+          String status = revision == null || revision.getStatus() == null ? null : revision.getStatus().getCode();
+          if (revision == null || !"READY_FOR_PUBLISHING".equalsIgnoreCase(status)) {
+              return toDetailResponse(revision);
+          }
+          Instant projectedPublishedAt = Instant.now();
+          LocalDate projectedEffectiveDate = calculateEffectiveDate(revision, projectedPublishedAt);
+          Integer periodicReviewCycle = revision.getPeriodicReviewCycle() != null
+                  ? revision.getPeriodicReviewCycle()
+                  : (revision.getDocument() == null ? null : revision.getDocument().getPeriodicReviewCycle());
+          return toDetailResponse(
+                  revision,
+                  null,
+                  promoteToNextMajorVersion(revision.getRevisionNumber()),
+                  projectedEffectiveDate,
+                  calculateValidUntil(projectedEffectiveDate, periodicReviewCycle, revision.getValidUntil()));
+      }
+
       private RevisionDetailResponse toDetailResponse(DocumentRevisionRecord revision) {
           return toDetailResponse(revision, null);
       }
 
       private RevisionDetailResponse toDetailResponse(DocumentRevisionRecord revision, String message) {
+          return toDetailResponse(revision, message, null, null, null);
+      }
+
+      private RevisionDetailResponse toDetailResponse(
+              DocumentRevisionRecord revision, String message,
+              String projectedRevisionNumber, LocalDate projectedEffectiveDate, LocalDate projectedValidUntil
+      ) {
           DocumentRecord sourceDocument = revision.getDocument();
-          String resolvedRevisionName = buildRevisionName(revision.getDocument() == null ? null : revision.getDocument().getDocumentName(), revision.getRevisionNumber());
+          String shownRevisionNumber = projectedRevisionNumber != null ? projectedRevisionNumber : revision.getRevisionNumber();
+          LocalDate shownEffectiveDate = projectedEffectiveDate != null ? projectedEffectiveDate : revision.getEffectiveDate();
+          LocalDate shownValidUntil = projectedValidUntil != null ? projectedValidUntil : revision.getValidUntil();
+          String resolvedRevisionName = buildRevisionName(revision.getDocument() == null ? null : revision.getDocument().getDocumentName(), shownRevisionNumber);
         OriginalDocumentResponse originalDocument = sourceDocument == null ? null : new OriginalDocumentResponse(
                 sourceDocument.getId() == null ? null : sourceDocument.getId().toString(),
                 sourceDocument.getDocumentNumber(),
@@ -2687,6 +3747,23 @@ public class RevisionService {
         boolean canCompleteTraining = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_TRAINING);
         boolean canPublishRevision = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.PUBLISH);
 
+        boolean hasLegacyImportInfo = sourceDocument != null && sourceDocument.isLegacyImport()
+                && (StringUtils.hasText(revision.getLegacyHistoricalReviewers())
+                        || StringUtils.hasText(revision.getLegacyHistoricalApprover())
+                        || revision.getLegacyHistoricalReviewDate() != null
+                        || revision.getLegacyHistoricalApprovalDate() != null
+                        || revision.getLegacyHistoricalAuthoredDate() != null
+                        || StringUtils.hasText(sourceDocument.getLegacyJustification()));
+        com.eqms.dto.document.LegacyImportInfoResponse legacyImportInfo = !hasLegacyImportInfo ? null
+                : new com.eqms.dto.document.LegacyImportInfoResponse(
+                        sourceDocument.getLegacyJustification(),
+                        DateTimeFormatUtils.formatDate(revision.getLegacyHistoricalAuthoredDate()),
+                        revision.getLegacyHistoricalReviewers(),
+                        DateTimeFormatUtils.formatDate(revision.getLegacyHistoricalReviewDate()),
+                        revision.getLegacyHistoricalApprover(),
+                        DateTimeFormatUtils.formatDate(revision.getLegacyHistoricalApprovalDate())
+                );
+
         return new RevisionDetailResponse(
                 revision.getId().toString(),
                 sourceDocument == null ? null : sourceDocument.getId().toString(),
@@ -2696,7 +3773,7 @@ public class RevisionService {
                 buildDocumentDisplayName(revision.getDocumentNumber(), sourceDocument == null ? revision.getDocumentName() : sourceDocument.getDocumentName()),
                 revision.getTitleLocalLanguage(),
                 resolvedRevisionName,
-                  revision.getRevisionNumber(),
+                  shownRevisionNumber,
                 revision.getStatus() == null ? null : revision.getStatus().getLabel(),
                 new StatusResponse(revision.getStatus() == null ? null : revision.getStatus().getCode(), revision.getStatus() == null ? null : revision.getStatus().getLabel()),
                 revision.getDocumentType() == null ? null : revision.getDocumentType().getName(),
@@ -2712,8 +3789,8 @@ public class RevisionService {
                 revision.getSubmittedBy() == null ? null : revision.getSubmittedBy().getUsername(),
                 DateTimeFormatUtils.formatDateTime(revision.getSubmittedOn()),
                 DateTimeFormatUtils.formatDateTime(revision.getCreatedAt()),
-                DateTimeFormatUtils.formatDate(revision.getEffectiveDate()),
-                DateTimeFormatUtils.formatDate(revision.getValidUntil()),
+                DateTimeFormatUtils.formatDate(shownEffectiveDate),
+                DateTimeFormatUtils.formatDate(shownValidUntil),
                 DateTimeFormatUtils.formatDate(
                         revision.getDocument() == null ? null : revision.getDocument().getReviewDate()
                 ),
@@ -2741,6 +3818,7 @@ public class RevisionService {
                 StringUtils.hasText(revision.getPreviewFilePath()),
                 resolvePreviewType(revision),
                 revision.getSnapshotStatus(),
+                resolvePreviewGenerationStatus(revision),
                 revision.getEditingStatus(),
                 revision.isSourceLocked(),
                 revision.getSourceStorageProvider(),
@@ -2778,7 +3856,8 @@ public class RevisionService {
                 canApproveRevision,
                 canCompleteTraining,
                 canPublishRevision,
-                message
+                message,
+                legacyImportInfo
         );
     }
 
@@ -2997,7 +4076,7 @@ public class RevisionService {
           revision.setDocumentNumber(document.getDocumentNumber());
           revision.setDocumentName(document.getDocumentName());
           revision.setTitleLocalLanguage(document.getTitleLocalLanguage());
-          revision.setRevisionNumber(normalizeVersionFormat(StringUtils.hasText(version) ? version.trim() : "0.0.1"));
+          revision.setRevisionNumber(normalizeVersionFormat(version));
           revision.setRevisionName(buildRevisionName(document.getDocumentName(), revision.getRevisionNumber()));
           revision.setStatus(requireRevisionStatus("DRAFT"));
           if (!StringUtils.hasText(revision.getEditingStatus())) {
@@ -3027,11 +4106,8 @@ public class RevisionService {
           revision.setRequiresTraining(document.isRequiresTraining());
           revision.setTrainingPeriodDays(document.getTrainingPeriodDays());
           revision.setReasonForSkippingTraining(document.getReasonForSkippingTraining());
-          revision.setTrainingPlannedDate(null);
-          revision.setTrainingPeriodEndDate(null);
           revision.setPublishedAt(null);
           revision.setPublishedBy(null);
-          revision.setTrainingCompletionDate(null);
       }
 
     /**
@@ -3045,8 +4121,9 @@ public class RevisionService {
      * longer the Author. Re-sync here whenever such a Draft exists. Deliberately excludes
      * `description`: that field is dual-purpose (an explicit revision Note overrides it at creation
      * time), so resyncing it here would silently clobber a user-entered Note with the Document's
-     * Description. Related/Correlated Documents need no resync -- they are queried live against the
-     * Document, never snapshotted onto the revision.
+     * Description. The Related/Correlated Document *list* is queried live against the Document, but
+     * the denormalised has_*_documents Yes/No flag is snapshotted onto the revision, so that flag is
+     * resynced below.
      */
     public void syncDraftRevisionWithDocument(DocumentRecord document) {
         if (document == null || document.getId() == null) {
@@ -3055,30 +4132,49 @@ public class RevisionService {
         DocumentRevisionRecord draft = revisionRepository
                 .findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(document.getId(), "DRAFT")
                 .orElse(null);
-        if (draft == null) {
+        if (draft == null || "COMPLETED".equals(draft.getEditingStatus())) {
+            // A Draft whose Author already signed COMPLETE_AUTHORING must not be silently
+            // re-synced from later Document Master workflow-configuration changes -- see
+            // requireRevisionNotCompletedEditing() for the equivalent guard on the direct
+            // updateRevision() edit path.
             return;
         }
         draft.setAuthor(document.getAuthor());
+        // Keep the Draft revision's Sub-Type + frozen review requirement in step with the Document
+        // so a Sub-Type change on the Draft is reconciled here (see S6 REVIEW_REQUIREMENT_CHANGED
+        // guard in submitForReview).
+        draft.setSubType(document.getSubType());
+        draft.setReviewRequirement(document.getReviewRequirement() == null
+                ? ReviewRequirement.REQUIRED
+                : document.getReviewRequirement());
         draft.setPeriodicReviewCycle(document.getPeriodicReviewCycle());
         draft.setPeriodicReviewNotification(document.getPeriodicReviewNotification());
         draft.setRequiresTraining(document.isRequiresTraining());
         draft.setTrainingPeriodDays(document.getTrainingPeriodDays());
         draft.setReasonForSkippingTraining(document.getReasonForSkippingTraining());
+        // The related/correlated list is queried live against the Document, but the denormalised
+        // has_*_documents Yes/No flag IS snapshotted onto the revision (applyRevisionSnapshot) and
+        // is read by the revision list column -- keep it in step when the Document's relations change.
+        draft.setHasRelatedDocuments(document.isHasRelatedDocuments());
+        draft.setHasCorrelatedDocuments(document.isHasCorrelatedDocuments());
         revisionRepository.save(draft);
         copyWorkflowParticipantsFromDocument(document, draft);
     }
 
+    /**
+     * Reads the review-requirement <em>snapshot</em> frozen on the Document (documents.review_requirement)
+     * when its Sub-Type was last set -- see DocumentService.applyDraftFields and change record
+     * docs/decisions/review-requirement-snapshot-and-subtype-fk-change-record.md (D1). This is the
+     * single source; the Sub-Type table is no longer re-read live here, so an admin editing a
+     * Sub-Type's policy cannot retroactively change an in-flight Draft/Revision. When a new
+     * Revision is created its own review_requirement is snapshotted from this value (applyRevisionSnapshot).
+     * Null (legacy rows before V408) falls back to the safer REQUIRED.
+     */
     private ReviewRequirement resolveReviewRequirement(DocumentRecord document) {
-        if (document == null || document.getDocumentType() == null || !StringUtils.hasText(document.getSubType())) {
-            // No Sub-Type chosen ("None") -- at least one Reviewer required, but not pinned to an
-            // exact count the way a configured Sub-Type would be.
-            return ReviewRequirement.FLEXIBLE;
+        if (document == null || document.getReviewRequirement() == null) {
+            return ReviewRequirement.REQUIRED;
         }
-        return documentSubTypeRepository
-                .findByDocumentType_IdAndNameIgnoreCase(document.getDocumentType().getId(), document.getSubType().trim())
-                .filter(DocumentSubType::isActive)
-                .map(DocumentSubType::getReviewRequirement)
-                .orElse(ReviewRequirement.SINGLE);
+        return document.getReviewRequirement();
     }
 
     /**
@@ -3090,11 +4186,25 @@ public class RevisionService {
      * {@link #validateReviewersForRequirement}.
      */
     private void requireDocumentWorkflowParticipantsAssigned(DocumentRecord document) {
+        String reason = describeWhyDocumentWorkflowParticipantsAreMissing(document);
+        if (reason != null) {
+            throw new IllegalStateException(reason);
+        }
+    }
+
+    /**
+     * Non-throwing sibling of {@link #requireDocumentWorkflowParticipantsAssigned} -- used by
+     * {@link DocumentMasterActionCapabilityService} so the "Upload Revision" action is reported as
+     * NOT allowed (with a clear reason) when no Approver/required Reviewer is assigned yet, instead
+     * of the button appearing clickable and only failing once the DCO has already picked a file and
+     * submitted. Same "at least one" check, same two error codes, just returned instead of thrown.
+     */
+    public String describeWhyDocumentWorkflowParticipantsAreMissing(DocumentRecord document) {
         long approverCount = documentWorkflowParticipantRepository
                 .findAllByDocument_IdAndParticipantTypeOrderBySequenceOrderAsc(document.getId(), "APPROVER")
                 .size();
         if (approverCount == 0) {
-            throw new IllegalStateException("APPROVER_REQUIRED: Assign and save an Approver before uploading a revision.");
+            return "APPROVER_REQUIRED: Assign and save an Approver before uploading a revision.";
         }
         ReviewRequirement requirement = resolveReviewRequirement(document);
         if (requirement != ReviewRequirement.NONE) {
@@ -3102,9 +4212,10 @@ public class RevisionService {
                     .findAllByDocument_IdAndParticipantTypeOrderBySequenceOrderAsc(document.getId(), "REVIEWER")
                     .size();
             if (reviewerCount == 0) {
-                throw new IllegalStateException("REVIEWER_REQUIRED: Assign and save a Reviewer before uploading a revision.");
+                return "REVIEWER_REQUIRED: Assign and save a Reviewer before uploading a revision.";
             }
         }
+        return null;
     }
 
     /**
@@ -3113,23 +4224,13 @@ public class RevisionService {
      */
     private void validateReviewersForRequirement(DocumentRevisionRecord revision, ReviewRequirement requirement) {
         long reviewerCount = countParticipants(revision, "REVIEWER");
-        switch (requirement == null ? ReviewRequirement.SINGLE : requirement) {
+        switch (requirement == null ? ReviewRequirement.REQUIRED : requirement) {
             case NONE -> {
                 if (reviewerCount != 0) {
                     throw new IllegalStateException("REVIEW_NOT_REQUIRED: this Sub-Type must not have Reviewers");
                 }
             }
-            case SINGLE -> {
-                if (reviewerCount != 1) {
-                    throw new IllegalStateException("EXACTLY_ONE_REVIEWER_REQUIRED: this Sub-Type requires exactly one Reviewer");
-                }
-            }
-            case MULTIPLE -> {
-                if (reviewerCount < 2) {
-                    throw new IllegalStateException("MULTIPLE_REVIEWERS_REQUIRED: this Sub-Type requires at least two Reviewers");
-                }
-            }
-            case FLEXIBLE -> {
+            case REQUIRED -> {
                 if (reviewerCount < 1) {
                     throw new IllegalStateException("AT_LEAST_ONE_REVIEWER_REQUIRED: at least one Reviewer is required");
                 }
@@ -3174,33 +4275,31 @@ public class RevisionService {
         revision.setTrainingCompletionDate(completionDate);
     }
 
+    /**
+     * The training configuration the new draft revision inherited from the Document Master at the
+     * moment of upgrade. This is a creation snapshot, not a user edit, so there is no meaningful
+     * "before" value -- the old side is left null. Rows whose value is absent are omitted entirely
+     * rather than recorded as "- -> -", which told an inspector nothing.
+     */
     private List<AuditTrailChangeResponse> buildUpgradeTrainingAuditChanges(DocumentRecord document) {
-        return List.of(
-                new AuditTrailChangeResponse(
-                        "requiresTraining",
-                        "-",
-                        document != null && document.isRequiresTraining() ? "true" : "false"
-                ),
-                new AuditTrailChangeResponse(
-                        "trainingPeriodDays",
-                        "-",
-                        document != null && document.getTrainingPeriodDays() != null
-                                ? String.valueOf(document.getTrainingPeriodDays())
-                                : "-"
-                ),
-                new AuditTrailChangeResponse(
-                        "reasonForSkippingTraining",
-                        "-",
-                        document != null && StringUtils.hasText(document.getReasonForSkippingTraining())
-                                ? document.getReasonForSkippingTraining().trim()
-                                : "-"
-                )
-        );
+        List<AuditTrailChangeResponse> changes = new ArrayList<>();
+        boolean requiresTraining = document != null && document.isRequiresTraining();
+        changes.add(new AuditTrailChangeResponse("requiresTraining", null, requiresTraining ? "Yes" : "No"));
+        if (requiresTraining) {
+            if (document != null && document.getTrainingPeriodDays() != null) {
+                changes.add(new AuditTrailChangeResponse(
+                        "trainingPeriodDays", null, String.valueOf(document.getTrainingPeriodDays())));
+            }
+        } else if (document != null && StringUtils.hasText(document.getReasonForSkippingTraining())) {
+            changes.add(new AuditTrailChangeResponse(
+                    "reasonForSkippingTraining", null, document.getReasonForSkippingTraining().trim()));
+        }
+        return changes;
     }
 
       private String buildRevisionName(String documentTitle, String version) {
           String safeTitle = StringUtils.hasText(documentTitle) ? documentTitle.trim() : "";
-          String safeVersion = StringUtils.hasText(version) ? version.trim() : "0.0.1";
+          String safeVersion = StringUtils.hasText(version) ? version.trim() : defaultRevisionSeed();
           if (!StringUtils.hasText(safeTitle)) {
               return safeVersion;
           }
@@ -3222,7 +4321,25 @@ public class RevisionService {
         return "Untitled Document";
     }
 
+    /**
+     * #13: re-validates SoD against the roster being copied in, rather than trusting it purely by
+     * construction. Two invariants happen to make that safe today (Author identity can't drift
+     * within the same applyRevisionSnapshot() call, and DocumentService re-validates existing
+     * Reviewers/Approvers whenever Author/Co-Author changes) -- but those are two independently
+     * maintained call sites, not one enforcement point, so this is defense-in-depth against either
+     * one silently breaking later, consistent with saveRevisionParticipantsFromRequest's own
+     * "always validate the combined effective roster" rule.
+     */
     private void copyWorkflowParticipantsFromDocument(DocumentRecord document, DocumentRevisionRecord revision) {
+        List<DocumentWorkflowParticipant> participants = documentWorkflowParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(document.getId());
+        validateSoD(
+                revision.getReviewRequirement(),
+                document.getAuthor(),
+                participantIdsByType(participants, DocumentWorkflowParticipant::getParticipantType, DocumentWorkflowParticipant::getUser, "CO_AUTHOR"),
+                participantIdsByType(participants, DocumentWorkflowParticipant::getParticipantType, DocumentWorkflowParticipant::getUser, "REVIEWER"),
+                participantIdsByType(participants, DocumentWorkflowParticipant::getParticipantType, DocumentWorkflowParticipant::getUser, "APPROVER")
+        );
+
         revisionWorkflowParticipantRepository.deleteAllByRevision_Id(revision.getId());
         // Flush before re-inserting -- previously harmless because every prior caller only ever ran
         // this against a brand-new revision (nothing to delete), so the missing flush never
@@ -3230,57 +4347,79 @@ public class RevisionService {
         // revision that already has participant rows; without the flush the delete and the
         // re-inserts can race, tripping uq_revision_workflow_participant.
         revisionWorkflowParticipantRepository.flush();
-        List<DocumentWorkflowParticipant> participants = documentWorkflowParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(document.getId());
         for (DocumentWorkflowParticipant participant : participants) {
             saveRevisionParticipant(revision, participant.getUser(), participant.getParticipantType(), participant.getSequenceOrder());
         }
     }
 
+    private <T> List<String> participantIdsByType(
+            List<T> participants,
+            java.util.function.Function<T, String> typeGetter,
+            java.util.function.Function<T, UserAccount> userGetter,
+            String wantedType
+    ) {
+        return participants.stream()
+                .filter(p -> wantedType.equalsIgnoreCase(typeGetter.apply(p)))
+                .map(p -> { UserAccount u = userGetter.apply(p); return u == null || u.getId() == null ? null : u.getId().toString(); })
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+    }
+
     private void copyWorkflowParticipantsFromRevision(DocumentRevisionRecord sourceRevision, DocumentRevisionRecord targetRevision) {
+        List<RevisionWorkflowParticipant> coAuthors = revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(sourceRevision.getId(), "CO_AUTHOR");
+        List<RevisionWorkflowParticipant> reviewers = revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(sourceRevision.getId(), "REVIEWER");
+        List<RevisionWorkflowParticipant> approvers = revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(sourceRevision.getId(), "APPROVER");
+        // #13: same defense-in-depth re-validation as copyWorkflowParticipantsFromDocument above.
+        validateSoD(
+                targetRevision.getReviewRequirement(),
+                targetRevision.getDocument() == null ? null : targetRevision.getDocument().getAuthor(),
+                participantIdsByType(coAuthors, RevisionWorkflowParticipant::getParticipantType, RevisionWorkflowParticipant::getUser, "CO_AUTHOR"),
+                participantIdsByType(reviewers, RevisionWorkflowParticipant::getParticipantType, RevisionWorkflowParticipant::getUser, "REVIEWER"),
+                participantIdsByType(approvers, RevisionWorkflowParticipant::getParticipantType, RevisionWorkflowParticipant::getUser, "APPROVER")
+        );
+
         revisionWorkflowParticipantRepository.deleteAllByRevision_Id(targetRevision.getId());
-        List<RevisionWorkflowParticipant> participants = revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(sourceRevision.getId(), "CO_AUTHOR");
-        for (RevisionWorkflowParticipant participant : participants) {
+        for (RevisionWorkflowParticipant participant : coAuthors) {
             saveRevisionParticipant(targetRevision, participant.getUser(), participant.getParticipantType(), participant.getSequenceOrder());
         }
-        participants = revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(sourceRevision.getId(), "REVIEWER");
-        for (RevisionWorkflowParticipant participant : participants) {
+        for (RevisionWorkflowParticipant participant : reviewers) {
             saveRevisionParticipant(targetRevision, participant.getUser(), participant.getParticipantType(), participant.getSequenceOrder());
         }
-        participants = revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(sourceRevision.getId(), "APPROVER");
-        for (RevisionWorkflowParticipant participant : participants) {
+        for (RevisionWorkflowParticipant participant : approvers) {
             saveRevisionParticipant(targetRevision, participant.getUser(), participant.getParticipantType(), participant.getSequenceOrder());
         }
     }
 
+    /**
+     * Partial-update semantics: a {@code null} field in the request means "keep the currently
+     * persisted roster for that participant type"; a non-null (possibly empty) field means
+     * "replace it with exactly this list". The combined, effective roster (mix of request-supplied
+     * and carried-over-from-DB lists) is what gets validated as a whole via {@link #validateSoD}
+     * and {@link #validateReviewerIdsForRequirement} -- never field-by-field -- so that omitting one
+     * field can never silently invalidate an already-valid roster for another type.
+     */
     private void saveRevisionParticipantsFromRequest(DocumentRevisionRecord revision, DocumentDraftCreateRequest request) {
+        List<String> existingCoAuthorIds = existingParticipantUserIds(revision.getId(), "CO_AUTHOR");
+        List<String> existingReviewerIds = existingParticipantUserIds(revision.getId(), "REVIEWER");
+        List<String> existingApproverIds = existingParticipantUserIds(revision.getId(), "APPROVER");
+
+        List<String> coAuthorIds = request.coAuthorIds() == null ? existingCoAuthorIds : distinctNonBlank(request.coAuthorIds());
+        List<String> reviewerUserIds = request.reviewerUserIds() == null ? existingReviewerIds : distinctNonBlank(request.reviewerUserIds());
+        List<String> approverUserIds = request.approverUserIds() == null ? existingApproverIds : distinctNonBlank(request.approverUserIds());
+
+        UserAccount author = revision.getDocument() == null ? null : revision.getDocument().getAuthor();
+        validateReviewerIdsForRequirement(revision.getReviewRequirement(), reviewerUserIds.size());
+        // Independent of DocumentWorkflowSetting.isRequireOneApprover() (which only pins the count
+        // to exactly one when enabled) -- at least one Approver is a GMP floor that must always
+        // hold, whether the caller omitted approverUserIds or explicitly sent [] to clear it.
+        if (approverUserIds.isEmpty()) {
+            throw new IllegalArgumentException("AT_LEAST_ONE_APPROVER_REQUIRED: at least one Approver is required");
+        }
+        validateSoD(revision.getReviewRequirement(), author, coAuthorIds, reviewerUserIds, approverUserIds);
+
         revisionWorkflowParticipantRepository.deleteAllByRevision_Id(revision.getId());
         revisionWorkflowParticipantRepository.flush();
-
-        List<String> coAuthorIds = request.coAuthorIds() == null ? List.of() : distinctNonBlank(request.coAuthorIds());
-        List<String> reviewerUserIds = request.reviewerUserIds() == null ? List.of() : distinctNonBlank(request.reviewerUserIds());
-        List<String> approverUserIds = request.approverUserIds() == null ? List.of() : distinctNonBlank(request.approverUserIds());
-
-        validateReviewerIdsForRequirement(revision.getReviewRequirement(), reviewerUserIds.size());
-
-        if (request != null && request.coAuthorIds() != null) {
-            validateCoAuthorRules(revision.getDocument() == null ? null : revision.getDocument().getAuthor(), distinctNonBlank(request.coAuthorIds()));
-        }
-        if (request != null && request.reviewerUserIds() != null) {
-            validateReviewerRules(
-                    revision.getReviewRequirement(),
-                    revision.getDocument() == null ? null : revision.getDocument().getAuthor(),
-                    request.coAuthorIds() == null ? List.of() : distinctNonBlank(request.coAuthorIds()),
-                    distinctNonBlank(request.reviewerUserIds())
-            );
-        }
-        if (request != null && request.approverUserIds() != null && !approverUserIds.isEmpty()) {
-            validateApproverRules(
-                    revision.getDocument() == null ? null : revision.getDocument().getAuthor(),
-                    request.coAuthorIds() == null ? List.of() : distinctNonBlank(request.coAuthorIds()),
-                    request.reviewerUserIds() == null ? List.of() : distinctNonBlank(request.reviewerUserIds()),
-                    approverUserIds
-            );
-        }
 
         int sequence = 1;
         for (String userId : coAuthorIds) {
@@ -3297,6 +4436,7 @@ public class RevisionService {
             if (user == null) {
                 throw new IllegalArgumentException("Reviewer not found: " + userId);
             }
+            workflowParticipantEligibilityService.requirePoolMembership("REVIEWER", user);
             saveRevisionParticipant(revision, user, "REVIEWER", sequence++);
         }
 
@@ -3306,8 +4446,19 @@ public class RevisionService {
             if (user == null) {
                 throw new IllegalArgumentException("Approver not found: " + userId);
             }
+            workflowParticipantEligibilityService.requirePoolMembership("APPROVER", user);
             saveRevisionParticipant(revision, user, "APPROVER", sequence++);
         }
+    }
+
+
+    private List<String> existingParticipantUserIds(UUID revisionId, String participantType) {
+        return revisionWorkflowParticipantRepository
+                .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revisionId, participantType)
+                .stream()
+                .map(p -> p.getUser() == null || p.getUser().getId() == null ? null : p.getUser().getId().toString())
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     private void saveRevisionParticipant(DocumentRevisionRecord revision, UserAccount user, String participantType, int sequenceOrder) {
@@ -3324,23 +4475,13 @@ public class RevisionService {
     }
 
     private void validateReviewerIdsForRequirement(ReviewRequirement requirement, int reviewerCount) {
-        switch (requirement == null ? ReviewRequirement.SINGLE : requirement) {
+        switch (requirement == null ? ReviewRequirement.REQUIRED : requirement) {
             case NONE -> {
                 if (reviewerCount != 0) {
                     throw new IllegalArgumentException("REVIEW_NOT_REQUIRED: this Sub-Type does not allow Reviewer assignments");
                 }
             }
-            case SINGLE -> {
-                if (reviewerCount != 1) {
-                    throw new IllegalArgumentException("EXACTLY_ONE_REVIEWER_REQUIRED: this Sub-Type requires exactly one Reviewer");
-                }
-            }
-            case MULTIPLE -> {
-                if (reviewerCount < 2) {
-                    throw new IllegalArgumentException("MULTIPLE_REVIEWERS_REQUIRED: this Sub-Type requires at least two Reviewers");
-                }
-            }
-            case FLEXIBLE -> {
+            case REQUIRED -> {
                 if (reviewerCount < 1) {
                     throw new IllegalArgumentException("AT_LEAST_ONE_REVIEWER_REQUIRED: at least one Reviewer is required");
                 }
@@ -3408,9 +4549,11 @@ public class RevisionService {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         DocumentRevisionRecord revision = requireRevision(revisionId);
         DocumentRecord document = requireDocument(revision.getDocument().getId());
+        requireDocumentAllowsRevisionFileUpload(document, revision);
         requireCurrentUserCanUploadRevision(document, currentUser);
         requireRevisionFileAccess(currentUser, revision, FileAccessAction.UPLOAD);
         requireRevisionStatus(revision, "DRAFT");
+        requireRevisionNotCompletedEditing(revision);
         ensureNoRevisionInProgress(document.getId(), revision.getId());
         RevisionUploadFileValidator.ValidatedRevisionFile validatedFile = validateRevisionUpload(
                 currentUser, document, revision, file
@@ -3427,6 +4570,7 @@ public class RevisionService {
                     revision.getRevisionNumber()
             );
             revisionRepository.save(revision);
+            activateDocumentAfterInitialSourceStored(document, revision, currentUser);
             recordRevisionHistory(
                     revision,
                     "REVISION_SOURCE_FILE_UPLOADED",
@@ -3453,10 +4597,15 @@ public class RevisionService {
         requireCurrentUserCanUploadRevision(document, currentUser);
         requireDocumentWorkflowParticipantsAssigned(document);
         ensureNoRevisionInProgress(documentId, null);
+        if (!documentAuthorizationService.isNextRevisionConfiguredForUpload(document)) {
+            throw new RevisionLifecycleConflictException("UPGRADE_NOT_CONFIGURED",
+                    "The DCO must configure the next revision (Edit Revision for Upgrade) and save before a new revision can be uploaded.");
+        }
         RevisionUploadFileValidator.ValidatedRevisionFile validatedFile = file == null || file.isEmpty()
                 ? null
                 : validateRevisionUpload(currentUser, document, null, file);
         DocumentRevisionRecord latestRevision = revisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(documentId).orElse(null);
+        requireDocumentAllowsRevisionCreation(document, latestRevision);
         DocumentRevisionRecord templateRevision = null;
         String templateSelectionComment = null;
         if (request != null && StringUtils.hasText(request.templateRevisionId())) {
@@ -3508,8 +4657,11 @@ public class RevisionService {
             throw new IllegalStateException("Failed to upload revision file", ex);
         }
 
-        if (latestRevision == null) {
-            document.setStatus(requireDocumentStatus("ACTIVE"));
+        activateDocumentAfterInitialSourceStored(document, revision, currentUser);
+        // The upgrade configuration has now been consumed by this revision; the next upgrade needs a fresh
+        // "Edit Revision for Upgrade" save before the Author may upload again.
+        if (document.getNextRevisionConfiguredAt() != null) {
+            document.setNextRevisionConfiguredAt(null);
             documentRepository.save(document);
         }
 
@@ -3605,13 +4757,10 @@ public class RevisionService {
 
     private void validateReviewerRules(ReviewRequirement requirement, UserAccount author, List<String> coAuthorIds, List<String> reviewerUserIds) {
         DocumentWorkflowSetting setting = requireDocumentWorkflowSetting();
-        // The subtype snapshot is the precise workflow cardinality.  The
-        // legacy global setting can strengthen MULTIPLE, but never contradict
-        // a configured NONE or SINGLE subtype.
-        if ((requirement == null || requirement == ReviewRequirement.MULTIPLE)
-                && setting.isRequireTwoReviewers() && reviewerUserIds.size() < 2) {
-            throw new IllegalArgumentException("At least two reviewers are required for controlled documents");
-        }
+        // Reviewer cardinality (none/exactly one/at least two) is the Sub-Type's
+        // ReviewRequirement snapshot alone -- validateReviewersForRequirement enforces it
+        // unconditionally *before* this method runs (see its javadoc), so a global toggle here
+        // could never fire without duplicating -- or worse, contradicting -- that source of truth.
         if (setting.isSameUserCannotHoldMultipleWorkflowRoles()) {
             ensureNoOverlap(coAuthorIds, reviewerUserIds, "Co-author and Reviewer cannot be the same user");
         }
@@ -3629,7 +4778,10 @@ public class RevisionService {
     private void validateApproverRules(UserAccount author, List<String> coAuthorIds, List<String> reviewerUserIds, List<String> approverUserIds) {
         validateAuthorAndCoAuthorApprovalIndependence(author, coAuthorIds, approverUserIds);
         DocumentWorkflowSetting setting = requireDocumentWorkflowSetting();
-        if (setting.isRequireOneApprover() && approverUserIds.size() != 1) {
+        // Unconditional GMP floor, not a togglable SoD rule: the business always requires exactly
+        // one Approver, and the FE never offers a way to select more than one (product decision,
+        // 2026-09-03 -- see the removed DocumentWorkflowSetting.requireOneApprover toggle).
+        if (approverUserIds.size() != 1) {
             throw new IllegalArgumentException("There is only one approver allowed in the document");
         }
         if (setting.isSameUserCannotHoldMultipleWorkflowRoles()) {
@@ -3665,526 +4817,34 @@ public class RevisionService {
         validateApproverRules(author, normalizedCoAuthors, normalizedReviewers, normalizedApprovers);
     }
 
-    @Transactional
-    public RevisionDetailResponse syncRevisionToOfficeOnline(UUID revisionId) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
-        DocumentRecord document = requireDocument(revision.getDocument().getId());
-        requireCurrentUserCanUploadRevision(document, currentUser);
-        requireRevisionStatus(revision, "DRAFT");
-        documentAuthorizationService.requireCanEditRevisionFileOnline(currentUser, revision);
-        requireRevisionFileAccess(currentUser, revision, FileAccessAction.SYNC_TO_OFFICE);
-
-        if (StringUtils.hasText(revision.getStorageItemId()) && StringUtils.hasText(revision.getStorageDriveId())) {
-            ensureOfficeOnlineEditLink(revision);
-            if (!"synced".equalsIgnoreCase(revision.getStorageSyncStatus())) {
-                revision.setStorageSyncStatus("synced");
-                revision.setStorageLastSyncedAt(Instant.now());
-                revisionRepository.save(revision);
-            }
-            return toDetailResponse(revision);
-        }
-
-        Path sourcePath = resolveRevisionSourceFile(revision);
-        if (sourcePath == null) {
-            throw new IllegalArgumentException("Revision file not found");
-        }
-        validateRevisionSourceForOfficeOnline(revision, currentUser, sourcePath);
-
-        if (!microsoftGraphOfficeOnlineService.isConfigured()) {
-            throw new IllegalStateException("Microsoft Graph Office Online is not configured");
-        }
-
-        boolean temporarySource = fileStorageService.isMinioReference(revision.getFilePath())
-                || (!StringUtils.hasText(revision.getFilePath())
-                && fileStorageService.isMinioReference(revision.getPreviewFilePath()));
-        try {
-            String previousStorageProvider = revision.getStorageProvider();
-            String previousStorageSyncStatus = revision.getStorageSyncStatus();
-            String previousStorageSiteId = revision.getStorageSiteId();
-            String previousStorageDriveId = revision.getStorageDriveId();
-            String previousStorageItemId = revision.getStorageItemId();
-            String previousStorageWebUrl = revision.getStorageWebUrl();
-            String previousStorageEditUrl = revision.getStorageEditUrl();
-            String spFolder = sharePointPathBuilder.editOnlineFolderV2(
-                    officeOnlineConfigurationService.getEffectiveConfiguration(),
-                    revision.getDocumentNumber(),
-                    revision.getId()
-            );
-            MicrosoftGraphOfficeOnlineService.GraphUploadResult result = microsoftGraphOfficeOnlineService.uploadOfficeFile(
-                    sourcePath,
-                    revision.getFileName(),
-                    spFolder
-            );
-            revision.setStorageProvider("microsoft-graph");
-            revision.setStorageSiteId(result.siteId());
-            revision.setStorageDriveId(result.driveId());
-            revision.setStorageItemId(result.itemId());
-            revision.setStorageWebUrl(result.webUrl());
-            revision.setStorageEditUrl(result.editUrl());
-            revision.setStorageEditPermissionId(result.editPermissionId());
-            revision.setStorageViewUrl(result.viewUrl());
-            revision.setStorageViewPermissionId(result.viewPermissionId());
-            revision.setStoragePdfUrl(null);
-            revision.setStorageSyncStatus("synced");
-            revision.setStorageLastSyncedAt(Instant.now());
-            revisionRepository.save(revision);
-            recordRevisionHistory(
-                    revision,
-                    "UPLOAD_TO_OFFICE_ONLINE",
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    "Revision file uploaded to Office Online",
-                    currentUser,
-                    List.of(
-                            new AuditTrailChangeResponse("storageProvider", firstNonBlank(previousStorageProvider, "-"), "microsoft-graph"),
-                            new AuditTrailChangeResponse("storageSyncStatus", firstNonBlank(previousStorageSyncStatus, "-"), "synced"),
-                            new AuditTrailChangeResponse("storageSiteId", firstNonBlank(previousStorageSiteId, "-"), firstNonBlank(result.siteId(), "-")),
-                            new AuditTrailChangeResponse("storageDriveId", firstNonBlank(previousStorageDriveId, "-"), firstNonBlank(result.driveId(), "-")),
-                            new AuditTrailChangeResponse("storageItemId", firstNonBlank(previousStorageItemId, "-"), firstNonBlank(result.itemId(), "-")),
-                            new AuditTrailChangeResponse("storageWebUrl", firstNonBlank(previousStorageWebUrl, "-"), firstNonBlank(result.viewUrl(), "-")),
-                            new AuditTrailChangeResponse("storageEditUrl", firstNonBlank(previousStorageEditUrl, "-"), firstNonBlank(result.editUrl(), "-"))
-                    )
-            );
-            notifyRevisionEditParticipants(revision, currentUser, "Revision file is ready for Office Online editing");
-            // This is the actual "Upload to Office Online" action (distinct from the "Edit File
-            // Online" open-editor flow, which can fail independently on an Entra invitation issue
-            // without affecting whether the file itself made it to SharePoint). The DCO's Document
-            // Details page gates "Edit Revision for Upgrade" on this exact transition.
-            publishRevisionWorkflowUpdateAfterCommit(revision, "UPLOAD_TO_OFFICE_ONLINE");
-            return toDetailResponse(revision);
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to upload revision file to Office Online", ex);
-        } finally {
-            if (temporarySource) {
-                try {
-                    Files.deleteIfExists(sourcePath);
-                } catch (IOException ex) {
-                    log.debug("Failed to delete temporary MinIO file {}", sourcePath, ex);
-                }
-            }
-        }
-    }
-
-    @Transactional
-    public RevisionDetailResponse syncEditedFileFromOfficeOnline(UUID revisionId) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
-        DocumentRecord document = requireDocument(revision.getDocument().getId());
-        requireCurrentUserCanUploadRevision(document, currentUser);
-        requireRevisionFileAccess(currentUser, revision, FileAccessAction.SYNC_FROM_OFFICE);
-        requireRevisionStatus(revision, "DRAFT");
-
-        if (StringUtils.hasText(revision.getStorageItemId()) && StringUtils.hasText(revision.getStorageDriveId())) {
-            syncEditedFileFromOfficeOnlineToMinio(revision, currentUser);
-        }
-
-        return toDetailResponse(revision);
-    }
-
-    @Transactional
-    public RevisionOfficeOnlineLinkResponse getOfficeOnlineEditLink(UUID revisionId) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRevisionRecord revision = requireRevision(revisionId);
-        documentAuthorizationService.requireCanEditRevisionFileOnline(currentUser, revision);
-        requireRevisionFileAccess(currentUser, revision, FileAccessAction.EDIT_ONLINE);
-        if (!StringUtils.hasText(revision.getStorageItemId()) || !StringUtils.hasText(revision.getStorageDriveId())) {
-            restoreOfficeOnlineWorkingCopy(revision, currentUser);
-        }
-        grantCurrentUserOfficeOnlineEditAccess(revision, currentUser);
-        String editUrl = resolveDirectOfficeOnlineEditUrl(revision);
-        if (!StringUtils.hasText(editUrl)) {
-            throw new IllegalStateException("Revision file has not been uploaded to Office Online");
-        }
-        String configuredScope = officeOnlineConfigurationService.getEffectiveConfiguration().shareLinkScope();
-        String effectiveScope = "direct-item-permission";
-        String fetchedAt = Instant.now().toString();
-        recordRevisionHistory(
-                revision,
-                "OPEN_EDIT_ONLINE",
-                revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                "Opened Office Online edit link",
-                currentUser,
-                List.of(
-                        new AuditTrailChangeResponse("Edit Session", "-", "Office Online edit link opened"),
-                        new AuditTrailChangeResponse("configuredScope", "-", firstNonBlank(configuredScope, "-")),
-                        new AuditTrailChangeResponse("effectiveScope", "-", effectiveScope),
-                        new AuditTrailChangeResponse("storageEditUrl", "-", editUrl),
-                        new AuditTrailChangeResponse("fetchedAt", "-", fetchedAt)
-                )
-        );
-        return new RevisionOfficeOnlineLinkResponse(editUrl, configuredScope, effectiveScope, fetchedAt);
-    }
 
     /**
-     * Opens an item-scoped Word Online session for the assigned reviewer or approver. This is
-     * deliberately separate from author editing: it is available only while the revision is in
-     * the matching review stage and never enables source-file upload/sync operations in EQMS.
+     * OnlyOffice Document Server calls its save webhook with the finished file's bytes directly
+     * (push model), so this method takes the content as a parameter rather than downloading it
+     * itself. {@code @Transactional} here since this is invoked directly by
+     * {@code OnlyOfficeController}'s webhook, a plain request thread with no surrounding
+     * transaction of its own.
      */
     @Transactional
-    public RevisionOfficeOnlineLinkResponse getOfficeOnlineReviewLink(UUID revisionId) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        if (!officeOnlineConfigurationService.getEffectiveConfiguration().reviewLinksEnabled()) {
-            throw new IllegalStateException("Word Online comment-only review links are disabled by system configuration.");
+    public void applyOnlyOfficeEditedContent(DocumentRevisionRecord revision, byte[] fileBytes, UserAccount currentUser) {
+        if (revision == null || fileBytes == null || fileBytes.length == 0) {
+            throw new IllegalArgumentException("Revision and file content are required");
         }
-        DocumentRevisionRecord revision = requireRevision(revisionId);
-        String status = revision.getStatus() == null ? null : revision.getStatus().getCode();
-        boolean isReviewer = "PENDING_REVIEW".equalsIgnoreCase(status)
-                && (canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_REVIEW)
-                || canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.REJECT_REVIEW));
-        boolean isApprover = "PENDING_APPROVAL".equalsIgnoreCase(status)
-                && (canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_APPROVAL)
-                || canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.REJECT_APPROVAL));
-        if (!isReviewer && !isApprover) {
-            throw new AccessDeniedException("Only the assigned Reviewer or Approver can open this file to comment at the current workflow stage.");
-        }
-        if (!isOfficeOnlineReviewableFile(revision)) {
-            throw new IllegalStateException("Word Online comments are available only for DOC or DOCX revision files");
-        }
-        if (!StringUtils.hasText(revision.getStorageItemId()) || !StringUtils.hasText(revision.getStorageDriveId())) {
-            restoreOfficeOnlineWorkingCopy(revision, currentUser);
-        }
-        String reviewUrl = createCurrentUserOfficeOnlineReviewLink(revision, currentUser);
-        if (!StringUtils.hasText(reviewUrl)) {
-            throw new IllegalStateException("Revision file is not available for Word Online review");
-        }
-        String configuredScope = officeOnlineConfigurationService.getEffectiveConfiguration().shareLinkScope();
-        String effectiveScope = "direct-item-permission";
-        String fetchedAt = Instant.now().toString();
-        recordRevisionHistory(
-                revision,
-                "OPEN_REVIEW_ONLINE",
-                status,
-                status,
-                "Opened Word Online review/comment session",
-                currentUser,
-                List.of(new AuditTrailChangeResponse("Review Session", "-", "Word Online comment session opened"))
-        );
-        return new RevisionOfficeOnlineLinkResponse(reviewUrl, configuredScope, effectiveScope, fetchedAt);
-    }
-
-    private void grantCurrentUserOfficeOnlineEditAccess(DocumentRevisionRecord revision, UserAccount currentUser) {
-        try {
-            microsoftGraphOfficeOnlineService.grantItemWriteAccess(
-                    revision.getStorageDriveId(),
-                    revision.getStorageItemId(),
-                    currentUser == null ? null : currentUser.getEmail()
-            );
-        } catch (IOException ex) {
-            throw new IllegalStateException("Unable to grant the current user Office Online access", ex);
-        }
-    }
-
-    private String createCurrentUserOfficeOnlineReviewLink(DocumentRevisionRecord revision, UserAccount currentUser) {
-        try {
-            return microsoftGraphOfficeOnlineService.createItemReviewLink(
-                    revision.getStorageDriveId(),
-                    revision.getStorageItemId(),
-                    currentUser == null ? null : currentUser.getEmail()
-            );
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to create the Office Online review link for the current Reviewer/Approver", ex);
-        }
-    }
-
-    private boolean isOfficeOnlineReviewableFile(DocumentRevisionRecord revision) {
-        String fileName = revision == null ? null : revision.getFileName();
-        if (!StringUtils.hasText(fileName)) {
-            return false;
-        }
-        String normalized = fileName.trim().toLowerCase(Locale.ROOT);
-        return normalized.endsWith(".doc") || normalized.endsWith(".docx");
-    }
-
-    private String resolveDirectOfficeOnlineEditUrl(DocumentRevisionRecord revision) {
-        try {
-            String directUrl = microsoftGraphOfficeOnlineService.getItemWebUrl(
-                    revision.getStorageDriveId(),
-                    revision.getStorageItemId()
-            );
-            revision.setStorageWebUrl(directUrl);
-            revision.setStorageEditUrl(directUrl);
-            revision.setStorageEditPermissionId(null);
-            revisionRepository.save(revision);
-            return directUrl;
-        } catch (IOException ex) {
-            throw new IllegalStateException("Unable to resolve the Office Online file URL", ex);
-        }
-    }
-
-    private void restoreOfficeOnlineWorkingCopy(DocumentRevisionRecord revision, UserAccount currentUser) {
-        if (revision == null) {
+        String currentStatusCode = revision.getStatus() == null ? null : revision.getStatus().getCode();
+        // Reviewer/Approver comments and tracked changes are made while the source is locked
+        // (PENDING_REVIEW / PENDING_APPROVAL); they must still be persisted or the Author never
+        // sees them after a reject. Any other locked state keeps ignoring late saves.
+        boolean reviewStage = "PENDING_REVIEW".equalsIgnoreCase(currentStatusCode)
+                || "PENDING_APPROVAL".equalsIgnoreCase(currentStatusCode);
+        if (revision.isSourceLocked() && !reviewStage) {
+            log.warn("DROPPING OnlyOffice save for revision {} -- source is locked (edits after lock are not persisted)", revision.getId());
             return;
         }
-        if (!microsoftGraphOfficeOnlineService.isConfigured()) {
-            // Rejecting a review must still return the revision to Draft when the
-            // optional Office Online integration is disabled. There is no remote
-            // working copy to restore in that case; the normal source file remains
-            // authoritative and the workflow transition must not be blocked.
-            log.info("Office Online is not configured; skipping working-copy restore for revision {}", revision.getId());
-            return;
-        }
-
-        Path resolvedSourcePath = resolveRevisionSourceFile(revision);
-        if (resolvedSourcePath == null) {
-            throw new IllegalStateException("Revision source file is not available for Office Online editing");
-        }
-        validateRevisionSourceForOfficeOnline(revision, currentUser, resolvedSourcePath);
-
-        boolean temporarySource = fileStorageService.isMinioReference(revision.getFilePath())
-                || (!StringUtils.hasText(revision.getFilePath())
-                && fileStorageService.isMinioReference(revision.getPreviewFilePath()));
-        try {
-            String previousStorageProvider = revision.getStorageProvider();
-            String previousStorageSyncStatus = revision.getStorageSyncStatus();
-            String previousStorageSiteId = revision.getStorageSiteId();
-            String previousStorageDriveId = revision.getStorageDriveId();
-            String previousStorageItemId = revision.getStorageItemId();
-            String previousStorageWebUrl = revision.getStorageWebUrl();
-            String previousStorageEditUrl = revision.getStorageEditUrl();
-            String spFolder = sharePointPathBuilder.editOnlineFolderV2(
-                    officeOnlineConfigurationService.getEffectiveConfiguration(),
-                    revision.getDocumentNumber(),
-                    revision.getId()
-            );
-            MicrosoftGraphOfficeOnlineService.GraphUploadResult result = microsoftGraphOfficeOnlineService.uploadOfficeFile(
-                    resolvedSourcePath,
-                    revision.getFileName(),
-                    spFolder
-            );
-            revision.setStorageProvider("microsoft-graph");
-            revision.setStorageSiteId(result.siteId());
-            revision.setStorageDriveId(result.driveId());
-            revision.setStorageItemId(result.itemId());
-            revision.setStorageWebUrl(result.webUrl());
-            revision.setStorageEditUrl(result.editUrl());
-            revision.setStorageEditPermissionId(result.editPermissionId());
-            revision.setStorageViewUrl(result.viewUrl());
-            revision.setStorageViewPermissionId(result.viewPermissionId());
-            revision.setStoragePdfUrl(null);
-            revision.setStorageSyncStatus("synced");
-            revision.setStorageLastSyncedAt(Instant.now());
-            revisionRepository.save(revision);
-            recordRevisionHistory(
-                    revision,
-                    "SHAREPOINT_LINK_RECREATED",
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    "Office Online working copy restored from latest MinIO source file",
-                    currentUser,
-                    List.of(
-                            new AuditTrailChangeResponse("storageProvider", firstNonBlank(previousStorageProvider, "-"), "microsoft-graph"),
-                            new AuditTrailChangeResponse("storageSyncStatus", firstNonBlank(previousStorageSyncStatus, "-"), "synced"),
-                            new AuditTrailChangeResponse("storageSiteId", firstNonBlank(previousStorageSiteId, "-"), firstNonBlank(result.siteId(), "-")),
-                            new AuditTrailChangeResponse("storageDriveId", firstNonBlank(previousStorageDriveId, "-"), firstNonBlank(result.driveId(), "-")),
-                            new AuditTrailChangeResponse("storageItemId", firstNonBlank(previousStorageItemId, "-"), firstNonBlank(result.itemId(), "-")),
-                            new AuditTrailChangeResponse("storageWebUrl", firstNonBlank(previousStorageWebUrl, "-"), firstNonBlank(result.viewUrl(), "-")),
-                            new AuditTrailChangeResponse("storageEditUrl", firstNonBlank(previousStorageEditUrl, "-"), firstNonBlank(result.editUrl(), "-"))
-                    )
-            );
-            // The DCO's Document Details page (a different view entirely) gates "Edit Revision for
-            // Upgrade" on this exact transition -- push it so an already-open page updates without
-            // requiring a manual reload, matching the poll+realtime pattern already used for
-            // revision workflow updates.
-            publishRevisionWorkflowUpdateAfterCommit(revision, "UPLOAD_TO_OFFICE_ONLINE");
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to restore Office Online working copy", ex);
-        } finally {
-            if (temporarySource) {
-                try {
-                    Files.deleteIfExists(resolvedSourcePath);
-                } catch (IOException ex) {
-                    log.debug("Failed to delete temporary MinIO file {}", resolvedSourcePath, ex);
-                }
-            }
-        }
-    }
-
-    /**
-     * Returns a rejected revision to Draft without replacing its SharePoint file. This preserves
-     * Reviewer/Approver comments and tracked changes for the Author and Co-Author to resolve.
-     */
-    private void reopenOfficeOnlineWorkingCopy(DocumentRevisionRecord revision, UserAccount currentUser) {
-        boolean hasOfficeItem = revision != null
-                && StringUtils.hasText(revision.getStorageItemId())
-                && StringUtils.hasText(revision.getStorageDriveId());
-        if (!hasOfficeItem) {
-            restoreOfficeOnlineWorkingCopy(revision, currentUser);
-            return;
-        }
-        syncEditedFileFromOfficeOnlineToMinio(revision, currentUser);
-        lockOfficeOnlineEditing(revision, currentUser);
-    }
-
-    private String ensureOfficeOnlineEditLink(DocumentRevisionRecord revision) {
-        if (revision == null) {
-            return null;
-        }
-        String editUrl = revision.getStorageEditUrl();
-        if (StringUtils.hasText(editUrl)) {
-            return editUrl;
-        }
-        if (!StringUtils.hasText(revision.getStorageItemId()) || !StringUtils.hasText(revision.getStorageDriveId())) {
-            return editUrl;
-        }
-        try {
-            MicrosoftGraphOfficeOnlineService.SharingLinkResult editLink = microsoftGraphOfficeOnlineService.createSharingLink(
-                    officeOnlineConfigurationService.getEffectiveConfiguration(),
-                    revision.getStorageItemId(),
-                    "edit"
-            );
-            editUrl = editLink.webUrl();
-            revision.setStorageEditUrl(editUrl);
-            revision.setStorageEditPermissionId(editLink.permissionId());
-            revisionRepository.save(revision);
-            return editUrl;
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to create Office Online edit link", ex);
-        } catch (IllegalStateException ex) {
-            if (isSharePointSharingDisabled(ex) && StringUtils.hasText(revision.getStorageWebUrl())) {
-                editUrl = revision.getStorageWebUrl();
-                revision.setStorageEditUrl(editUrl);
-                revision.setStorageEditPermissionId(null);
-                revisionRepository.save(revision);
-                log.warn("SharePoint sharing is disabled for revision {}; using its direct web URL. "
-                        + "The user must have access to the SharePoint site.", revision.getId());
-                return editUrl;
-            }
-            throw ex;
-        }
-    }
-
-    private boolean isSharePointSharingDisabled(IllegalStateException exception) {
-        String message = exception.getMessage();
-        return StringUtils.hasText(message)
-                && (message.contains("\"sharingDisabled\"") || message.contains("sharingDisabled"));
-    }
-
-    public void lockOfficeOnlineEditing(DocumentRevisionRecord revision, UserAccount currentUser) {
-        if (revision == null || !StringUtils.hasText(revision.getStorageItemId()) || !StringUtils.hasText(revision.getStorageDriveId())) {
-            return;
-        }
-
-        String previousStorageProvider = revision.getStorageProvider();
-        String previousStorageSyncStatus = revision.getStorageSyncStatus();
-        String previousStorageSiteId = revision.getStorageSiteId();
-        String previousStorageDriveId = revision.getStorageDriveId();
-        String previousStorageItemId = revision.getStorageItemId();
-        String previousStorageWebUrl = revision.getStorageWebUrl();
-        String previousStorageEditUrl = revision.getStorageEditUrl();
-
-        String storageDriveId = revision.getStorageDriveId();
-        String storageItemId = revision.getStorageItemId();
-        java.util.Set<String> permissionIds = new java.util.LinkedHashSet<>();
-        if (StringUtils.hasText(revision.getStorageEditPermissionId())) {
-            permissionIds.add(revision.getStorageEditPermissionId());
-        }
-
-        if (StringUtils.hasText(storageDriveId) && StringUtils.hasText(storageItemId)) {
-            try {
-                microsoftGraphOfficeOnlineService.listSharingPermissions(
-                                storageDriveId,
-                                storageItemId
-                        )
-                        .stream()
-                        .filter(permission -> permission != null)
-                        .filter(permission -> StringUtils.hasText(permission.type()))
-                        .filter(permission -> java.util.Arrays.stream(permission.type().split(","))
-                                .anyMatch(role -> "edit".equalsIgnoreCase(role)
-                                        || "write".equalsIgnoreCase(role)
-                                        || "review".equalsIgnoreCase(role)))
-                        .filter(permission -> !StringUtils.hasText(permission.inheritedFrom()))
-                        .map(MicrosoftGraphOfficeOnlineService.SharingPermissionResult::id)
-                        .filter(StringUtils::hasText)
-                        .forEach(permissionIds::add);
-            } catch (Exception ex) {
-                log.warn("Failed to inspect Office Online sharing permissions for revision {}", revision.getId(), ex);
-            }
-        }
-
-        for (String permissionId : permissionIds) {
-            if (!StringUtils.hasText(permissionId)) {
-                continue;
-            }
-            try {
-                microsoftGraphOfficeOnlineService.revokeSharingPermission(
-                        storageDriveId,
-                        storageItemId,
-                        permissionId
-                );
-            } catch (Exception ex) {
-                log.warn("Failed to revoke Office Online permission {} for revision {}", permissionId, revision.getId(), ex);
-            }
-        }
-
-        // Keep the same SharePoint item across the workflow. A rejection must return the
-        // Author/Co-Author to this exact file so Word comments and tracked changes remain visible.
-        revision.setStorageEditPermissionId(null);
-        revision.setStorageSyncStatus("access-revoked");
-        revision.setStorageLastSyncedAt(Instant.now());
-        revisionRepository.save(revision);
-
-        if (currentUser != null) {
-            auditTrailService.logAs(
-                    currentUser,
-                    "REVISION",
-                    revision.getRevisionName(),
-                    revision.getId(),
-                    "SHAREPOINT_LINK_REVOKED",
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    "Revoked Office Online edit access while retaining the working file.",
-                    List.of(
-                            new AuditTrailChangeResponse("Edit Session", "Opened", "Closed"),
-                            new AuditTrailChangeResponse("storageProvider", firstNonBlank(previousStorageProvider, "-"), firstNonBlank(revision.getStorageProvider(), "-")),
-                            new AuditTrailChangeResponse("storageSyncStatus", firstNonBlank(previousStorageSyncStatus, "-"), "access-revoked"),
-                            new AuditTrailChangeResponse("storageSiteId", firstNonBlank(previousStorageSiteId, "-"), firstNonBlank(revision.getStorageSiteId(), "-")),
-                            new AuditTrailChangeResponse("storageDriveId", firstNonBlank(previousStorageDriveId, "-"), firstNonBlank(revision.getStorageDriveId(), "-")),
-                            new AuditTrailChangeResponse("storageItemId", firstNonBlank(previousStorageItemId, "-"), firstNonBlank(revision.getStorageItemId(), "-")),
-                            new AuditTrailChangeResponse("storageWebUrl", firstNonBlank(previousStorageWebUrl, "-"), firstNonBlank(revision.getStorageWebUrl(), "-")),
-                            new AuditTrailChangeResponse("storageEditUrl", firstNonBlank(previousStorageEditUrl, "-"), firstNonBlank(revision.getStorageEditUrl(), "-"))
-                    )
-            );
-            auditTrailService.logAs(
-                    currentUser,
-                    "REVISION",
-                    revision.getRevisionName(),
-                    revision.getId(),
-                    "EDITING_LOCKED",
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    "Source DOCX editing access revoked while its SharePoint working file was retained.",
-                    List.of(
-                            new AuditTrailChangeResponse("Source Editing", "Unlocked", "Locked"),
-                            new AuditTrailChangeResponse("storageProvider", firstNonBlank(previousStorageProvider, "-"), firstNonBlank(revision.getStorageProvider(), "-")),
-                            new AuditTrailChangeResponse("storageSyncStatus", firstNonBlank(previousStorageSyncStatus, "-"), "access-revoked")
-                    )
-            );
-        }
-    }
-
-    public void syncEditedFileFromOfficeOnlineToMinio(DocumentRevisionRecord revision, UserAccount currentUser) {
-        if (revision == null || !StringUtils.hasText(revision.getStorageItemId())) {
-            return;
-        }
-        if (!microsoftGraphOfficeOnlineService.isConfigured()) {
-            throw new IllegalStateException("Microsoft Graph Office Online is not configured");
-        }
-
         try {
             String previousFilePath = revision.getFilePath();
             String previousStorageProvider = revision.getStorageProvider();
             String previousStorageSyncStatus = revision.getStorageSyncStatus();
             String previousSourceChecksum = revision.getSourceFileChecksum();
-            String previousStorageSiteId = revision.getStorageSiteId();
-            String previousStorageDriveId = revision.getStorageDriveId();
-            String previousStorageItemId = revision.getStorageItemId();
-            String previousStorageEditUrl = revision.getStorageEditUrl();
-            byte[] fileBytes = microsoftGraphOfficeOnlineService.downloadFile(revision.getStorageItemId());
-            if (fileBytes == null || fileBytes.length == 0) {
-                throw new IOException("Office Online returned an empty file");
-            }
 
             String fileName = StringUtils.hasText(revision.getFileName()) ? revision.getFileName() : "revision.bin";
             RevisionUploadFileValidator.ValidatedRevisionFile validatedFile = validateOfficeOnlineSyncedFile(
@@ -4210,7 +4870,7 @@ public class RevisionService {
             revision.setSourceStorageVersionId(stored.versionId());
             revision.setSourceFileChecksum(stored.checksum());
             revision.setSourceUploadedAt(Instant.now());
-            revision.setStorageProvider("minio");
+            revision.setStorageProvider("onlyoffice");
             revision.setStoragePdfUrl(null);
             revision.setStorageSyncStatus("synced");
             revision.setStorageLastSyncedAt(Instant.now());
@@ -4221,28 +4881,138 @@ public class RevisionService {
                     "EDIT_ONLINE_SYNCED_BACK_TO_MINIO",
                     revision.getStatus() == null ? null : revision.getStatus().getCode(),
                     revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    "Edited file synced back from Office Online to MinIO",
+                    "Edited file synced back from OnlyOffice to MinIO",
                     currentUser,
                     List.of(
                             new AuditTrailChangeResponse("filePath", firstNonBlank(previousFilePath, "-"), firstNonBlank(stored.storedPath(), "-")),
-                            new AuditTrailChangeResponse("storageProvider", firstNonBlank(previousStorageProvider, "-"), "minio"),
+                            new AuditTrailChangeResponse("storageProvider", firstNonBlank(previousStorageProvider, "-"), "onlyoffice"),
                             new AuditTrailChangeResponse("storageSyncStatus", firstNonBlank(previousStorageSyncStatus, "-"), "synced"),
                             new AuditTrailChangeResponse("sourceFileChecksum", firstNonBlank(previousSourceChecksum, "-"), firstNonBlank(stored.checksum(), "-")),
                             new AuditTrailChangeResponse("serverDetectedContentType", "-", validatedFile.detectedContentType()),
                             new AuditTrailChangeResponse("docxOoxmlValidation", "-", "PASSED"),
-                            new AuditTrailChangeResponse("malwareScan", "-", validatedFile.malwareScanPerformed() ? "CLEAN" : "DISABLED_BY_CONFIGURATION"),
-                            new AuditTrailChangeResponse("storageSiteId", firstNonBlank(previousStorageSiteId, "-"), "-"),
-                            new AuditTrailChangeResponse("storageDriveId", firstNonBlank(previousStorageDriveId, "-"), "-"),
-                            new AuditTrailChangeResponse("storageItemId", firstNonBlank(previousStorageItemId, "-"), "-"),
-                            new AuditTrailChangeResponse("storageEditUrl", firstNonBlank(previousStorageEditUrl, "-"), "-")
+                            new AuditTrailChangeResponse("malwareScan", "-", validatedFile.malwareScanPerformed() ? "CLEAN" : "DISABLED_BY_CONFIGURATION")
                     )
             );
 
             deleteReplacedStoredFile(previousFilePath, stored.storedPath());
         } catch (IOException ex) {
-            throw new IllegalStateException("Failed to sync edited revision file back to MinIO", ex);
+            throw new IllegalStateException("Failed to sync OnlyOffice-edited revision file back to MinIO", ex);
         }
     }
+
+    /** Reads the current source file bytes for a revision -- used to serve OnlyOffice's initial file fetch. */
+    public byte[] readCurrentSourceFileBytes(DocumentRevisionRecord revision) throws IOException {
+        return fileStorageService.readFile(revision.getFilePath());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private OnlyOfficeDocumentEditService onlyOfficeDocumentEditService;
+
+    /**
+     * Resolves the caller's edit permission/mode exactly like the Graph edit/review link methods
+     * above (Draft -> full edit for Author/Co-Author via {@code canEditRevisionFileOnline};
+     * Pending Review/Pending Approval -> comment-only for the assigned Reviewer/Approver via
+     * {@code canCurrentUserPerformWorkflowAction}) and, once permitted, builds the OnlyOffice
+     * editor config for that mode. Kept as a single entry point so both providers stay gated by
+     * the same lifecycle rules instead of each provider re-implementing its own check.
+     */
+    @Transactional
+    public com.fasterxml.jackson.databind.node.ObjectNode getOnlyOfficeEditConfig(UUID revisionId) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        DocumentRevisionRecord revision = requireRevision(revisionId);
+        String status = revision.getStatus() == null ? null : revision.getStatus().getCode();
+
+        com.eqms.service.editprovider.EditMode mode;
+        if ("DRAFT".equalsIgnoreCase(status) && documentAuthorizationService.canEditRevisionFileOnline(currentUser, revision)) {
+            mode = com.eqms.service.editprovider.EditMode.EDIT;
+        } else if ("PENDING_REVIEW".equalsIgnoreCase(status)
+                && (canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_REVIEW)
+                || canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.REJECT_REVIEW))) {
+            mode = com.eqms.service.editprovider.EditMode.REVIEW;
+        } else if ("PENDING_APPROVAL".equalsIgnoreCase(status)
+                && (canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_APPROVAL)
+                || canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.REJECT_APPROVAL))) {
+            mode = com.eqms.service.editprovider.EditMode.COMMENT_ONLY;
+        } else {
+            throw new AccessDeniedException("Online editing is not available for this revision at its current stage for this user");
+        }
+
+        recordRevisionHistory(
+                revision,
+                "OPEN_ONLYOFFICE_SESSION",
+                status,
+                status,
+                "Opened OnlyOffice " + mode.name() + " session",
+                currentUser,
+                List.of(new AuditTrailChangeResponse("OnlyOffice Session", "-", mode.name() + " session opened"))
+        );
+        return onlyOfficeDocumentEditService.buildEditorConfig(revision, mode, currentUser);
+    }
+
+    /**
+     * Read-only OnlyOffice viewer config for the revision's Document tab while it is still a working
+     * file (Draft / Pending Review / Pending Approval). Later stages keep the PDF preview. Anyone who may
+     * view the revision may open it; the viewer cannot edit, comment, download or print.
+     */
+    @Transactional(readOnly = true)
+    public com.fasterxml.jackson.databind.node.ObjectNode getOnlyOfficeViewConfig(UUID revisionId) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        DocumentRevisionRecord revision = requireRevision(revisionId);
+        // An active template's effective revision may be opened by any user who may upload a revision (documents.revision.upload_source), like the
+        // preview offered when choosing "Select file from template", even outside the source document's BU/department scope.
+        if (!canPreviewControlledDocumentTemplate(currentUser, revision)) {
+            ensureCurrentUserCanViewRevision(revision, currentUser);
+        }
+        String status = revision.getStatus() == null ? null : revision.getStatus().getCode();
+        // A controlled-document template is never converted to PDF at any stage (it is kept and used as its
+        // Word file), so its Document tab views the Word file directly at every stage, even after it is Effective.
+        boolean isTemplate = revision.getDocument() != null && revision.getDocument().isTemplate();
+        boolean workingStage = isTemplate
+                || "DRAFT".equalsIgnoreCase(status)
+                || "PENDING_REVIEW".equalsIgnoreCase(status)
+                || "PENDING_APPROVAL".equalsIgnoreCase(status)
+                || "PENDING_TRAINING".equalsIgnoreCase(status)
+                || "READY_FOR_PUBLISHING".equalsIgnoreCase(status);
+        if (!workingStage) {
+            throw new IllegalArgumentException("Live document view is only available while the revision is a working file");
+        }
+        requireRevisionSourceFile(revision, "Show the document");
+        return onlyOfficeDocumentEditService.buildEditorConfig(revision, com.eqms.service.editprovider.EditMode.VIEW, currentUser);
+    }
+
+    /** Verifies an OnlyOffice-minted access token and returns the revision it authorizes, for the public source-file endpoint. */
+    @Transactional
+    public DocumentRevisionRecord requireRevisionForOnlyOfficeToken(UUID revisionId, String token) {
+        onlyOfficeDocumentEditService.verifyAccessToken(revisionId, token);
+        return requireRevision(revisionId);
+    }
+
+    /**
+     * Verifies the callback's token, re-fetches the revision and actor fresh (rather than trusting
+     * entities handed across a request boundary, which would be detached Hibernate proxies by the
+     * time this runs) and applies the edited content -- all within one transaction, since the
+     * calling controller is a plain request thread with no transaction of its own.
+     */
+    @Transactional
+    public void applyOnlyOfficeCallback(UUID revisionId, String token, byte[] fileBytes) {
+        applyOnlyOfficeCallback(revisionId, token, fileBytes, null);
+    }
+
+    /**
+     * {@code editingUserId} is the user OnlyOffice reports as the editor whose changes are being saved;
+     * when it names a known user it is the actor of the sync-back, otherwise the token's user is (the
+     * token only identifies whoever opened the shared session first).
+     */
+    @Transactional
+    public void applyOnlyOfficeCallback(UUID revisionId, String token, byte[] fileBytes, UUID editingUserId) {
+        UUID userId = onlyOfficeDocumentEditService.verifyAccessToken(revisionId, token);
+        DocumentRevisionRecord revision = requireRevision(revisionId);
+        UserAccount actor = (editingUserId == null ? java.util.Optional.<UserAccount>empty() : userAccountRepository.findById(editingUserId))
+                .or(() -> userAccountRepository.findById(userId))
+                .orElseThrow(() -> new IllegalStateException("OnlyOffice access token references an unknown user"));
+        applyOnlyOfficeEditedContent(revision, fileBytes, actor);
+    }
+
 
     private byte[] applyPreviewWatermark(byte[] pdfBytes) throws IOException {
         try (PDDocument pdf = Loader.loadPDF(pdfBytes); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -4287,6 +5057,41 @@ public class RevisionService {
                 && bytes[1] == 0x50
                 && bytes[2] == 0x44
                 && bytes[3] == 0x46;
+    }
+
+    /**
+     * Obsoletes 1 Revision as part of its parent Document Master's Obsolete action
+     * ({@code DocumentService.obsoleteDocument()}). Deliberately public: recordRevisionHistory is
+     * private, so this is the one entry point DocumentService can call, and it does the full job in
+     * a single call -- status change + obsoletedBy/obsoletedAt + history + audit -- so the caller can
+     * never end up half-updating a Revision (status changed but no audit, or vice versa) if something
+     * fails partway. Joins the caller's existing transaction (DocumentService.obsoleteDocument() is
+     * itself @Transactional) rather than opening a new one.
+     */
+    @Transactional
+    public void obsoleteRevisionAsPartOfDocumentObsolete(
+            DocumentRevisionRecord revision,
+            RevisionStatusDefinition obsoletedStatus,
+            UserAccount currentUser,
+            Instant obsoletedAt,
+            UUID signatureSessionId
+    ) {
+        String fromStatus = revision.getStatus() == null ? null : revision.getStatus().getCode();
+        revision.setStatus(obsoletedStatus);
+        revision.setObsoletedBy(currentUser);
+        revision.setObsoletedAt(obsoletedAt);
+        revision.setOpenedBy(currentUser);
+        revision.setLastModifiedBy(currentUser);
+        revisionRepository.save(revision);
+        recordRevisionHistory(
+                revision,
+                "OBSOLETE",
+                fromStatus,
+                "OBSOLETED",
+                "Obsoleted as part of parent Document obsolete action",
+                currentUser,
+                signatureSessionId
+        );
     }
 
     private void recordRevisionHistory(DocumentRevisionRecord revision, String actionType, String fromStatus, String toStatus, String comment, UserAccount currentUser) {
@@ -4433,8 +5238,18 @@ public class RevisionService {
             DocumentRevisionRecord revision,
             MultipartFile file
     ) {
+        return validateRevisionUpload(currentUser, document, revision, file, false);
+    }
+
+    private RevisionUploadFileValidator.ValidatedRevisionFile validateRevisionUpload(
+            UserAccount currentUser,
+            DocumentRecord document,
+            DocumentRevisionRecord revision,
+            MultipartFile file,
+            boolean allowPdf
+    ) {
         try {
-            return revisionUploadFileValidator.validate(file);
+            return revisionUploadFileValidator.validate(file, allowPdf);
         } catch (RevisionUploadValidationException ex) {
             revisionUploadSecurityAuditService.recordRejected(
                             currentUser, document, null, file, ex.getCode(), ex.getMessage()
@@ -4499,44 +5314,16 @@ public class RevisionService {
         }
     }
 
-    private void refreshPreviewFromUploadedFile(DocumentRevisionRecord revision) {
-        if (revision == null || !StringUtils.hasText(revision.getFilePath())) {
-            return;
-        }
-        try {
-            Path sourcePath = fileStorageService.materializeStoredFile(revision.getFilePath());
-            if (sourcePath == null || !Files.exists(sourcePath)) {
-                sourcePath = resolveRevisionSourceFile(revision);
-            }
-            if (sourcePath == null || !Files.exists(sourcePath)) {
-                return;
-            }
-            Path revisionDir = sourcePath.getParent();
-            String displayName = StringUtils.hasText(revision.getFileName())
-                    ? revision.getFileName()
-                    : sourcePath.getFileName().toString();
-            Path previewTarget = buildPreviewFileFromPath(
-                    revision,
-                    sourcePath,
-                    revisionDir,
-                    displayName,
-                    revision.getFileType()
-            );
-            try (InputStream previewInput = Files.newInputStream(previewTarget)) {
-                FileStorageService.StorageWriteResult previewStored = fileStorageService.storeRevisionPreviewFile(revision.getId(), "preview.pdf", previewInput, revision.getDocumentNumber(), revision.getRevisionNumber());
-                revision.setPreviewFilePath(previewStored.storedPath());
-                revisionRepository.save(revision);
-            }
-        } catch (Exception ex) {
-            log.warn("Failed to generate PDF preview for revision {} during submit", revision.getId(), ex);
-        }
-    }
-
     /**
      * Re-composes the published PDF from the revision's stored publishing template/layout.
      * Restores the "Refresh Published PDF" button (FE: DetailRevisionView.tsx handleRegeneratePdf),
      * whose endpoint (POST /revisions/{id}/regenerate-snapshot) previously did not exist on the
      * backend and always failed with 404 regardless of the caller's permissions.
+     *
+     * #4: queues the actual composition asynchronously (see regeneratePublishingSnapshotIfConfigured)
+     * instead of running the multi-minute-capable Graph round trip inline on this request thread.
+     * The response carries previewStatus="GENERATING" when queued; FE polls it via the same
+     * pollSnapshotInBackground helper already used for the review-snapshot pipeline.
      */
     @Transactional
     public RevisionDetailResponse regenerateSnapshot(UUID revisionId) {
@@ -4552,6 +5339,14 @@ public class RevisionService {
         return toDetailResponse(revision);
     }
 
+    /**
+     * No-ops if no Publishing template is configured for this revision (nothing to regenerate).
+     * Otherwise marks the metadata GENERATING and publishes {@link PublishingSnapshotRegenerationEvent}
+     * -- {@link RevisionPublishingSnapshotAsyncService} does the actual Graph composition + storage
+     * + audit trail (success or failure) off the request thread, AFTER this transaction commits.
+     * Safe to call from every workflow-transition call site unconditionally: queuing is cheap and
+     * synchronous, so none of them need to change to stay best-effort/non-blocking.
+     */
     private void regeneratePublishingSnapshotIfConfigured(DocumentRevisionRecord revision, UserAccount currentUser, String actionLabel) {
         if (revision == null || revision.getId() == null) {
             return;
@@ -4562,53 +5357,17 @@ public class RevisionService {
                 || !StringUtils.hasText(metadata.getSelectedPublishingLayout())) {
             return;
         }
-        try {
-            PublishingPdfComposerService.PublishingCompositionResult composition =
-                    publishingPdfComposerService.composePreview(revision, metadata.getPublishingTemplate(), metadata.getSelectedPublishingLayout());
-            byte[] previewBytes = composition.pdfBytes();
-            if (previewBytes == null || previewBytes.length == 0) {
-                return;
-            }
-            String storedPreviewPath = null;
-            try (InputStream previewInput = new ByteArrayInputStream(previewBytes)) {
-                FileStorageService.StorageWriteResult previewStored = fileStorageService.storeRevisionPublishingPreviewFile(
-                        revision.getId(),
-                        "preview.pdf",
-                        previewInput,
-                        revision.getDocumentNumber(),
-                        revision.getRevisionNumber()
-                );
-                storedPreviewPath = previewStored.storedPath();
-                metadata.setPublishingPreviewPdfPath(previewStored.storedPath());
-                metadata.setPublishingPreviewChecksum(previewStored.checksum());
-                metadata.setPublishingPreviewVersionId(previewStored.versionId());
-                metadata.setConversionEngine("MICROSOFT_GRAPH");
-                metadata.setPreviewGeneratedAt(Instant.now());
-                metadata.setPreviewGeneratedBy(currentUser);
-                publishingMetadataRepository.save(metadata);
-
-                revision.setPreviewFilePath(storedPreviewPath);
-                revision.setStoragePdfUrl(storedPreviewPath);
-                revisionRepository.save(revision);
-            }
-            auditTrailService.logAs(
-                    currentUser,
-                    "REVISION",
-                    revision.getRevisionName(),
-                    revision.getId(),
-                    StringUtils.hasText(actionLabel) ? actionLabel : "REVIEW_SNAPSHOT_REGENERATED",
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                    "Review snapshot PDF regenerated from the latest workflow state.",
-                    List.of(
-                            new AuditTrailChangeResponse("Selected Template ID", "-", metadata.getPublishingTemplate().getId() == null ? "-" : metadata.getPublishingTemplate().getId().toString()),
-                            new AuditTrailChangeResponse("Selected Layout", "-", metadata.getSelectedPublishingLayout()),
-                            new AuditTrailChangeResponse("Review Snapshot PDF", "-", metadata.getPublishingPreviewPdfPath() == null ? "-" : metadata.getPublishingPreviewPdfPath())
-                    )
-            );
-        } catch (Exception ex) {
-            log.warn("Failed to regenerate publishing snapshot for revision {}", revision.getId(), ex);
-        }
+        UUID requestId = UUID.randomUUID();
+        metadata.setPreviewGenerationStatus("GENERATING");
+        metadata.setPreviewGenerationRequestId(requestId);
+        metadata.setPreviewGenerationError(null);
+        publishingMetadataRepository.save(metadata);
+        eventPublisher.publishEvent(new PublishingSnapshotRegenerationEvent(
+                revision.getId(),
+                currentUser == null ? null : currentUser.getId(),
+                actionLabel,
+                requestId
+        ));
     }
 
     /**
@@ -4700,10 +5459,9 @@ public class RevisionService {
             DocumentRecord targetDocument,
             UserAccount currentUser
     ) {
-        if (currentUser == null || !(
-                permissionEvaluationService.hasPermission(currentUser, "documents.template.use")
-                        || permissionEvaluationService.hasPermission(currentUser, "documents.template.manage")
-        )) {
+        // documents.template.manage and documents.template.use were retired: creating/marking a Template rides on the
+        // document-create permission (see DocumentService#createDocumentDraft), selecting one rides on the upload permission.
+        if (currentUser == null || !permissionEvaluationService.hasPermission(currentUser, "documents.revision.upload_source")) {
             throw new AccessDeniedException("TEMPLATE_USE_DENIED: Current user is not allowed to use controlled document templates");
         }
         DocumentRevisionRecord templateRevision = requireRevision(templateRevisionId);
@@ -4756,7 +5514,9 @@ public class RevisionService {
             throw new IllegalStateException("TEMPLATE_SOURCE_INVALID: Template clone provenance is incomplete");
         }
         DocumentRevisionTemplateLineage lineage = new DocumentRevisionTemplateLineage();
-        lineage.setTargetRevision(target);
+        // `target` was created with a pre-assigned id and a primitive @Version, so revisionRepository.save() merged it
+        // and returned a different managed copy; the FK must point at that managed copy, not this detached instance.
+        lineage.setTargetRevision(revisionRepository.getReferenceById(target.getId()));
         lineage.setSourceTemplateDocument(source.getDocument());
         lineage.setSourceTemplateRevision(source);
         lineage.setSourceTemplateRevisionNumber(source.getRevisionNumber());
@@ -4958,24 +5718,22 @@ public class RevisionService {
         }
     }
 
+    /**
+     * Converts via OnlyOffice's ConvertService, which reads {@code revision}'s current
+     * MinIO-stored file directly ({@code revision.getFilePath()}) rather than the passed
+     * {@code sourcePath}/{@code displayName} -- fine for every live caller (they always pass the
+     * revision's own already-stored source file), which is why those parameters are otherwise
+     * unused here now that Graph (which needed an explicit upload-then-convert step) is gone.
+     */
     private byte[] convertOfficeDocumentToPdf(DocumentRevisionRecord revision, Path sourcePath, String displayName) throws IOException {
-        if (!microsoftGraphOfficeOnlineService.isConfigured()) {
-            throw new IllegalStateException("Microsoft Graph Office Online is not configured");
-        }
         try {
-            return microsoftGraphOfficeOnlineService.convertSourceFileToPdf(
-                    sourcePath,
-                    displayName,
-                    sharePointPathBuilder.conversionFolder(
-                            officeOnlineConfigurationService.getEffectiveConfiguration(),
-                            "revisions",
-                            revision == null || revision.getId() == null ? "preview" : revision.getId().toString()
-                    )
-            );
-        } catch (IOException ex) {
-            throw ex;
+            // Convert from the already-materialized file, not from the revision's own source-file URL:
+            // OnlyOffice fetches that URL over HTTP in a separate transaction, so it cannot see a
+            // revision created (and not yet committed) by the caller -- e.g. Legacy Import, which
+            // renders each published PDF inside the same transaction that creates the revision.
+            return onlyOfficeDocumentEditService.convertLocalFileToPdf(sourcePath, displayName);
         } catch (RuntimeException ex) {
-            throw ex;
+            throw new IOException("Failed to convert revision file to PDF via OnlyOffice", ex);
         }
     }
 
@@ -5008,14 +5766,16 @@ public class RevisionService {
                 .map(this::normalizeVersionFormat)
                 .max(this::compareRevisionNumbers)
                 .map(this::incrementPatchVersion)
-                .orElse("0.0.1");
+                .orElseGet(this::defaultRevisionSeed);
     }
 
     private String resolveNextDraftRevisionNumberFromEffective(String effectiveRevisionNumber) {
         String normalized = normalizeVersionFormat(effectiveRevisionNumber);
         int major = parseVersionPart(normalized, 0);
-        int patch = parseVersionPart(normalized, 2);
-        return major + ".0." + (patch + 1);
+        int patch = lastNumericPart(normalized);
+        return isTwoPartRevisionNumber(normalized)
+                ? major + "." + (patch + 1)
+                : major + ".0." + (patch + 1);
     }
 
     private int compareRevisionNumbers(String left, String right) {
@@ -5023,7 +5783,8 @@ public class RevisionService {
         if (majorCompare != 0) {
             return majorCompare;
         }
-        return Integer.compare(parseVersionPart(left, 2), parseVersionPart(right, 2));
+        // Patch is the LAST segment in both families ("1.0.2" and "1.2").
+        return Integer.compare(lastNumericPart(left), lastNumericPart(right));
     }
 
     private DocumentStatusDefinition requireDocumentStatus(String code) {
@@ -5033,6 +5794,17 @@ public class RevisionService {
 
     private DocumentRevisionRecord requireRevision(UUID id) {
         return revisionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Revision not found"));
+    }
+
+    /** Same lookup, but row-locked (PESSIMISTIC_WRITE) for the two call sites that race each
+     *  other over the same "is this revision's source still editable" decision:
+     *  {@link #completeEditing} (locks the source + revokes Office Online edit access) and
+     *  {@link #getOfficeOnlineEditLink} (grants it). Holding the row lock for the duration of
+     *  each transaction means whichever commits first is guaranteed the other sees its result
+     *  before deciding, instead of both reading the pre-lock state concurrently. */
+    private DocumentRevisionRecord requireRevisionForUpdate(UUID id) {
+        return revisionRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new IllegalArgumentException("Revision not found"));
     }
 
@@ -5237,20 +6009,39 @@ public class RevisionService {
     }
 
     private String promoteToNextMajorVersion(String version) {
-        int nextMajor = parseVersionPart(version, 0) + 1;
+        String normalized = normalizeVersionFormat(version);
+        int nextMajor = parseVersionPart(normalized, 0) + 1;
         if (nextMajor <= 0) {
             nextMajor = 1;
         }
-        return String.format("%d.0.0", nextMajor);
+        return isTwoPartRevisionNumber(normalized)
+                ? nextMajor + ".0"
+                : String.format("%d.0.0", nextMajor);
     }
 
     private String incrementPatchVersion(String version) {
-        // Format is A.0.B: major stays, middle always 0, patch increments
+        // Three-part family: A.0.B (middle always 0). Two-part family: A.B. Patch increments,
+        // major is preserved; the incoming string's part-count determines the family.
         String normalized = normalizeVersionFormat(version);
-        String[] parts = normalized.split("\\.", -1);
-        int major = parseSafePart(parts, 0);
-        int patch = parseSafePart(parts, 2) + 1;
-        return String.format("%d.0.%d", major, patch);
+        int major = parseVersionPart(normalized, 0);
+        int patch = lastNumericPart(normalized) + 1;
+        return isTwoPartRevisionNumber(normalized)
+                ? major + "." + patch
+                : String.format("%d.0.%d", major, patch);
+    }
+
+    /** True when a revision number belongs to the two-part family (e.g. "1.2" vs "1.0.2"). */
+    private boolean isTwoPartRevisionNumber(String version) {
+        return StringUtils.hasText(version) && version.trim().split("\\.", -1).length <= 2;
+    }
+
+    /** Numeric value of the final dot-separated segment ("1.0.2" -> 2, "1.3" -> 3). */
+    private int lastNumericPart(String version) {
+        if (!StringUtils.hasText(version)) {
+            return 0;
+        }
+        String[] parts = version.trim().split("\\.");
+        return parseVersionPart(version, parts.length - 1);
     }
 
     private int parseVersionPart(String version, int index) {
@@ -5280,32 +6071,33 @@ public class RevisionService {
     }
 
     /**
-     * Normalises any version string to the canonical A.0.B format.
-     * The middle part is always 0. Examples:
-     *   "0.0.1" â†’ "0.0.1" (unchanged)
-     *   "1.0" â†’ "1.0.0", "0.1" â†’ "0.0.1"
-     *   "0.1.0" â†’ "0.0.1" (middle non-zero, patch=0 â†’ treat middle as patch)
-     *   "1.0.0" â†’ "1.0.0"
+     * Canonicalises a revision number while PRESERVING its format family (part count):
+     *   two-part  "0.1"  -> "0.1",   "1.0"   -> "1.0"
+     *   three-part "0.0.1" -> "0.0.1", "1.0.0" -> "1.0.0", "0.1.0" -> "0.0.1"
+     * A blank value resolves to the admin-configured seed ("0.0.1" or "0.1").
      */
+    /** Admin-configured first-revision seed ("0.0.1" or "0.1"); "0.0.1" when config is unavailable. */
+    private String defaultRevisionSeed() {
+        return systemConfigurationService == null ? "0.0.1" : systemConfigurationService.getRevisionNumberSeed();
+    }
+
     private String normalizeVersionFormat(String version) {
         if (!StringUtils.hasText(version)) {
-            return "0.0.1";
+            return defaultRevisionSeed();
         }
         String trimmed = version.trim();
         String[] parts = trimmed.split("\\.", -1);
         int major = parseSafePart(parts, 0);
-        int patch;
-        if (parts.length == 2) {
-            int secondPart = parseSafePart(parts, 1);
-            patch = secondPart; // "0.1" â†’ patch=1 â†’ "0.0.1"; "1.0" â†’ patch=0 â†’ "1.0.0"
-        } else {
-            // 3-part: ignore middle part (index 1), use major and patch (index 2)
-            // But if middle was non-zero and patch is 0 (like "0.1.0"), treat middle as patch
-            int middle = parseSafePart(parts, 1);
-            patch = parseSafePart(parts, 2);
-            if (middle != 0 && patch == 0) {
-                patch = middle; // "0.1.0" â†’ patch=1 â†’ "0.0.1"
-            }
+        if (parts.length <= 2) {
+            // Two-part family: "major.patch" kept as-is (patch = 2nd segment).
+            return major + "." + parseSafePart(parts, 1);
+        }
+        // Three-part family: middle part is always 0. If the middle was non-zero and the
+        // last part is 0 (e.g. "0.1.0"), treat the middle as the patch.
+        int middle = parseSafePart(parts, 1);
+        int patch = parseSafePart(parts, 2);
+        if (middle != 0 && patch == 0) {
+            patch = middle;
         }
         return String.format("%d.0.%d", major, patch);
     }
@@ -5322,7 +6114,8 @@ public class RevisionService {
                 participant == null ? null : participant.getSequenceOrder(),
                 participant == null ? null : participant.getActionStatus(),
                 participant == null || participant.getActedAt() == null ? null : DateTimeFormatUtils.formatDateTime(participant.getActedAt()),
-                participant == null ? null : participant.getActionComment()
+                participant == null ? null : participant.getActionComment(),
+                user == null || user.getStatus() == null ? null : user.getStatus().name()
         );
     }
 

@@ -4,6 +4,9 @@ export interface PublicBranding {
   systemDisplayName: string;
   systemLogo: string;
   systemSidebarCollapsedLogo?: string;
+  showSidebarUserProfile?: boolean;
+  /** Administrator switch: the Knowledge Base menu opens the explorer experience in a new tab. */
+  knowledgeExplorerEnabled?: boolean;
   systemFavicon: string;
   systemFooter: string;
   navigationLabelOverrides?: Record<string, string>;

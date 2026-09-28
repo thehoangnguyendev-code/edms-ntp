@@ -30,7 +30,6 @@ public class AccessProfileService {
     private static final String BASELINE_PERSONAL_WORKSPACE_SET_CODE = "BASELINE_PERSONAL_WORKSPACE";
 
     private static final String ENTITY_TYPE = "ACCESS_PROFILE";
-    private static final String SYSTEM_SUPER_ADMIN_CODE = EffectivePermissionService.SYSTEM_SUPER_ADMIN_CODE;
     private static final String VIEW_PERMISSION = "security.access_profiles.view";
     private static final String MANAGE_PERMISSION = "security.access_profiles.update";
     private static final String ASSIGN_PERMISSION = "security.access_profiles.assign";
@@ -161,41 +160,30 @@ public class AccessProfileService {
     @Transactional(readOnly = true)
     public AccessProfileCapabilitiesResponse getCapabilities(UUID id) {
         UserAccount actor = currentUserService.requireCurrentUser();
-        // Serialize aggregate updates so the timestamp check is evaluated against the
-        // latest committed Role configuration, including assignment-only changes.
-        RoleDefinition profile = requireRole(id);
+        requireRole(id);
         boolean canView = canView(actor);
         boolean canManage = canManage(actor);
         boolean canAssign = canAssign(actor);
         long assignedUsers = uapRepo.countByAccessProfileId(id);
-        boolean isSystemSuperAdmin = SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(profile.getCode());
         boolean deletingWouldRemoveAssignedAccess = assignedUsers > 0;
-        boolean deactivatingSystemProfile = profile.isSystem() && profile.isActive();
-        boolean deactivatingSuperAdmin = isSystemSuperAdmin && profile.isActive();
 
+        // No profile -- including the system super admin one -- is hard-locked by name here.
+        // Every mutating action stays gated purely by the actor's own permission plus the
+        // admin-coverage invariant enforced at write time (see requireProfileRemovalKeepsAdminCoverage
+        // and friends): the org must always retain at least one active administrator, nothing more,
+        // nothing role-specific.
         Map<String, AccessProfileCapabilitiesResponse.ActionCapability> actions = new LinkedHashMap<>();
         actions.put("view", capability(canView, VIEW_PERMISSION, "Access profile view permission required"));
         actions.put("edit", capability(canManage, MANAGE_PERMISSION, "Access profile management permission required"));
         actions.put("duplicate", capability(canManage, MANAGE_PERMISSION, "Access profile management permission required"));
         actions.put("delete", capability(
-                canManage && !profile.isSystem() && !isSystemSuperAdmin && !deletingWouldRemoveAssignedAccess,
+                canManage && !deletingWouldRemoveAssignedAccess,
                 MANAGE_PERMISSION,
                 !canManage ? "Access profile management permission required"
-                        : profile.isSystem() || isSystemSuperAdmin ? "System access profiles cannot be deleted"
                         : deletingWouldRemoveAssignedAccess ? "Access profile is assigned to users and cannot be deleted"
                         : null));
-        actions.put("toggleStatus", capability(
-                canManage && !deactivatingSystemProfile && !deactivatingSuperAdmin,
-                MANAGE_PERMISSION,
-                !canManage ? "Access profile management permission required"
-                        : deactivatingSuperAdmin ? "System super admin profile cannot be deactivated"
-                        : deactivatingSystemProfile ? "System access profiles cannot be deactivated"
-                        : null));
-        actions.put("assignPermissionSets", capability(
-                canAssign && !isSystemSuperAdmin,
-                ASSIGN_PERMISSION,
-                !canAssign ? "Access profile assignment permission required"
-                        : "Permission sets cannot be changed for the system super admin profile"));
+        actions.put("toggleStatus", capability(canManage, MANAGE_PERMISSION, "Access profile management permission required"));
+        actions.put("assignPermissionSets", capability(canAssign, ASSIGN_PERMISSION, "Access profile assignment permission required"));
         actions.put("assignWorkflowRoles", capability(canAssign, ASSIGN_PERMISSION, "Access profile assignment permission required"));
         actions.put("assignUsers", capability(canAssign, ASSIGN_PERMISSION, "Access profile assignment permission required"));
         actions.put("removeUsers", capability(
@@ -221,13 +209,13 @@ public class AccessProfileService {
         role.setDepartmentScope(req.departmentScope());
         role = roleRepo.save(role);
         linkBaselinePersonalWorkspace(role.getId(), actor);
-        auditTrailService.logAs(actor, ENTITY_TYPE, role.getName(), role.getId(),
-                "ACCESS_PROFILE_CREATED", null, role.isActive() ? "Active" : "Inactive",
-                "Created access profile " + safeCode(role));
-        securityChangeSignatureService.record(actor, req.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, req.signatureToken(),
                 SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
                 ENTITY_TYPE, role.getId(), role.getName(), req.reason(),
                 null, "Created access profile " + safeCode(role));
+        auditTrailService.logAs(actor, ENTITY_TYPE, role.getName(), role.getId(),
+                "ACCESS_PROFILE_CREATED", null, role.isActive() ? "Active" : "Inactive",
+                withReason("Created access profile " + safeCode(role), req.reason()), List.of(), esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
         return toDetailResponse(role);
     }
@@ -326,15 +314,16 @@ public class AccessProfileService {
             summary.add("users: " + String.join(", ", assignedUsers));
         }
 
-        auditTrailService.logAs(actor, ENTITY_TYPE, role.getName(), role.getId(),
-                "ACCESS_PROFILE_CREATED", null, role.isActive() ? "Active" : "Inactive",
-                "Created access profile " + safeCode(role)
-                        + (summary.isEmpty() ? "" : " with " + String.join("; ", summary)));
-        securityChangeSignatureService.record(actor, req.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, req.signatureToken(),
                 SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
                 ENTITY_TYPE, role.getId(), role.getName(), req.reason(),
                 null, "Created access profile " + safeCode(role)
                         + (summary.isEmpty() ? "" : " with " + String.join("; ", summary)));
+        auditTrailService.logAs(actor, ENTITY_TYPE, role.getName(), role.getId(),
+                "ACCESS_PROFILE_CREATED", null, role.isActive() ? "Active" : "Inactive",
+                withReason("Created access profile " + safeCode(role)
+                        + (summary.isEmpty() ? "" : " with " + String.join("; ", summary)), req.reason()),
+                List.of(), esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
         return toDetailResponse(role);
     }
@@ -376,8 +365,8 @@ public class AccessProfileService {
         String oldBusinessUnitScope = role.getBusinessUnitScope();
         String oldDepartmentScope = role.getDepartmentScope();
 
-        if (role.isSystem() && !req.active() && role.isActive()) {
-            throw new IllegalStateException("System access profiles cannot be deactivated");
+        if (role.isActive() && !req.active()) {
+            requireProfileRemovalKeepsAdminCoverage(id);
         }
 
         if (req.name() != null) role.setName(req.name());
@@ -394,13 +383,13 @@ public class AccessProfileService {
         addChange(changes, "Status", oldStatus, role.isActive() ? "Active" : "Inactive");
         addChange(changes, "Business Unit Scope", oldBusinessUnitScope, role.getBusinessUnitScope());
         addChange(changes, "Department Scope", oldDepartmentScope, role.getDepartmentScope());
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, req.signatureToken(),
+                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                ENTITY_TYPE, role.getId(), role.getName(), auditReason(role, req.reason()),
+                oldName, "Updated access profile " + safeCode(role));
         auditTrailService.logAs(actor, ENTITY_TYPE, role.getName(), role.getId(),
                 "ACCESS_PROFILE_UPDATED", oldStatus, role.isActive() ? "Active" : "Inactive",
-                "Updated access profile " + safeCode(role), changes);
-        securityChangeSignatureService.record(actor, req.signatureToken(),
-                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                ENTITY_TYPE, role.getId(), role.getName(), req.reason(),
-                oldName, "Updated access profile " + safeCode(role));
+                withReason("Updated access profile " + safeCode(role), req.reason()), changes, esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
         return toDetailResponse(role);
     }
@@ -412,17 +401,11 @@ public class AccessProfileService {
         sig = SecurityChangeRequest.orEmpty(sig);
         securityChangeSignatureService.requireValidToken(actor, sig.signatureToken());
         RoleDefinition role = requireRole(id);
-        if (role.isSystem()) throw new IllegalStateException("System profiles cannot be deleted");
-        if (SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(role.getCode())) {
-            throw new IllegalStateException("System super admin profile cannot be deleted");
-        }
         long assignedUsers = uapRepo.countByAccessProfileId(id);
         if (assignedUsers > 0) {
             throw new IllegalStateException("Access profile is assigned to users and cannot be deleted");
         }
-        auditTrailService.logAs(actor, ENTITY_TYPE, role.getName(), role.getId(),
-                "ACCESS_PROFILE_DELETED", role.isActive() ? "Active" : "Inactive", null,
-                "Deleted access profile " + safeCode(role));
+        requireProfileRemovalKeepsAdminCoverage(id);
         // Clean up the role's auto-managed permission set (ROLE_<code>) alongside the role,
         // as long as no other profile happens to reference it.
         permSetRepo.findByCode(managedSetCode(role.getCode())).ifPresent(managed -> {
@@ -435,10 +418,13 @@ public class AccessProfileService {
             }
         });
         roleRepo.delete(role);
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
                 SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                ENTITY_TYPE, id, role.getName(), sig.reason(),
+                ENTITY_TYPE, id, role.getName(), auditReason(role, sig.reason()),
                 "Deleted access profile " + safeCode(role), null);
+        auditTrailService.logAs(actor, ENTITY_TYPE, role.getName(), role.getId(),
+                "ACCESS_PROFILE_DELETED", role.isActive() ? "Active" : "Inactive", null,
+                withReason("Deleted access profile " + safeCode(role), sig.reason()), List.of(), esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
     }
 
@@ -475,13 +461,13 @@ public class AccessProfileService {
             na.setWorkflowRole(a.getWorkflowRole());
             appWfRepo.save(na);
         }
-        auditTrailService.logAs(actor, ENTITY_TYPE, copy.getName(), copy.getId(),
-                "ACCESS_PROFILE_DUPLICATED", null, copy.isActive() ? "Active" : "Inactive",
-                "Duplicated access profile from " + safeCode(src));
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
                 SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
                 ENTITY_TYPE, copy.getId(), copy.getName(), sig.reason(),
                 safeCode(src), "Duplicated access profile from " + safeCode(src));
+        auditTrailService.logAs(actor, ENTITY_TYPE, copy.getName(), copy.getId(),
+                "ACCESS_PROFILE_DUPLICATED", null, copy.isActive() ? "Active" : "Inactive",
+                withReason("Duplicated access profile from " + safeCode(src), sig.reason()), List.of(), esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
         return toDetailResponse(copy);
     }
@@ -494,23 +480,21 @@ public class AccessProfileService {
         securityChangeSignatureService.requireValidToken(actor, sig.signatureToken());
         RoleDefinition role = requireRole(id);
         String oldStatus = role.isActive() ? "Active" : "Inactive";
-        if (role.isSystem() && role.isActive()) {
-            throw new IllegalStateException("System access profiles cannot be deactivated");
-        }
-        if (SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(role.getCode()) && role.isActive()) {
-            throw new IllegalStateException("System super admin profile cannot be deactivated");
+        if (role.isActive()) {
+            requireProfileRemovalKeepsAdminCoverage(id);
         }
         role.setActive(!role.isActive());
         RoleDefinition saved = roleRepo.save(role);
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
+                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                ENTITY_TYPE, saved.getId(), saved.getName(), auditReason(saved, sig.reason()),
+                oldStatus, saved.isActive() ? "Active" : "Inactive");
         auditTrailService.logAs(actor, ENTITY_TYPE, saved.getName(), saved.getId(),
                 saved.isActive() ? "ACCESS_PROFILE_ACTIVATED" : "ACCESS_PROFILE_DEACTIVATED",
                 oldStatus, saved.isActive() ? "Active" : "Inactive",
-                "Changed access profile status " + safeCode(saved),
-                List.of(new AuditTrailChangeResponse("Status", oldStatus, saved.isActive() ? "Active" : "Inactive")));
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
-                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                ENTITY_TYPE, saved.getId(), saved.getName(), sig.reason(),
-                oldStatus, saved.isActive() ? "Active" : "Inactive");
+                withReason("Changed access profile status " + safeCode(saved), sig.reason()),
+                List.of(new AuditTrailChangeResponse("Status", oldStatus, saved.isActive() ? "Active" : "Inactive")),
+                esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
         return toDetailResponse(saved);
     }
@@ -532,9 +516,6 @@ public class AccessProfileService {
         sig = SecurityChangeRequest.orEmpty(sig);
         securityChangeSignatureService.requireValidToken(actor, sig.signatureToken());
         RoleDefinition profile = requireRole(profileId);
-        if (SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(profile.getCode())) {
-            throw new IllegalStateException("Permission sets cannot be changed for the system super admin profile");
-        }
         Set<UUID> oldIds = appSetRepo.findByAccessProfileId(profileId).stream()
                 .map(AccessProfilePermissionSet::getPermissionSetId)
                 .filter(Objects::nonNull)
@@ -567,14 +548,15 @@ public class AccessProfileService {
                 .map(this::safePermissionSet)
                 .sorted()
                 .toList();
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
+                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                ENTITY_TYPE, profile.getId(), profile.getName(), auditReason(profile, sig.reason()),
+                String.join(", ", oldSets), String.join(", ", newSets));
         auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
                 "ACCESS_PROFILE_PERMISSION_SETS_REPLACED", null, null,
-                "Replaced permission sets for " + safeCode(profile),
-                List.of(new AuditTrailChangeResponse("Permission Sets", String.join(", ", oldSets), String.join(", ", newSets))));
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
-                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
-                String.join(", ", oldSets), String.join(", ", newSets));
+                withReason("Replaced permission sets for " + safeCode(profile), sig.reason()),
+                List.of(new AuditTrailChangeResponse("Permission Sets", String.join(", ", oldSets), String.join(", ", newSets))),
+                esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
     }
 
@@ -584,9 +566,6 @@ public class AccessProfileService {
         securityChangeSignatureService.requireValidToken(actor, sig.signatureToken());
         RoleDefinition profile = requireRole(profileId);
         PermissionSet permissionSet = requirePermissionSet(permissionSetId);
-        if (SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(profile.getCode())) {
-            throw new IllegalStateException("Permission sets cannot be changed for the system super admin profile");
-        }
         preventSelfGrantOfCriticalPermissionSets(actor, profileId, Set.of(permissionSetId));
         if (!appSetRepo.existsByAccessProfileIdAndPermissionSetId(profileId, permissionSetId)) {
             AccessProfilePermissionSet a = new AccessProfilePermissionSet();
@@ -594,14 +573,15 @@ public class AccessProfileService {
             a.setPermissionSetId(permissionSetId);
             a.setAssignedBy(actor);
             appSetRepo.save(a);
+            ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
+                    SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                    ENTITY_TYPE, profile.getId(), profile.getName(), auditReason(profile, sig.reason()),
+                    null, "Assigned permission set " + safePermissionSet(permissionSet));
             auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
                     "ACCESS_PROFILE_PERMISSION_SET_ASSIGNED", null, null,
-                    "Assigned permission set " + safePermissionSet(permissionSet) + " to " + safeCode(profile),
-                    List.of(new AuditTrailChangeResponse("Permission Set", null, safePermissionSet(permissionSet))));
-            securityChangeSignatureService.record(actor, sig.signatureToken(),
-                    SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                    ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
-                    null, "Assigned permission set " + safePermissionSet(permissionSet));
+                    withReason("Assigned permission set " + safePermissionSet(permissionSet) + " to " + safeCode(profile), sig.reason()),
+                    List.of(new AuditTrailChangeResponse("Permission Set", null, safePermissionSet(permissionSet))),
+                    esig == null ? null : esig.getId());
             permissionEvaluationService.clearCache();
         }
     }
@@ -612,22 +592,20 @@ public class AccessProfileService {
         securityChangeSignatureService.requireValidToken(actor, sig.signatureToken());
         RoleDefinition profile = requireRole(profileId);
         PermissionSet permissionSet = requirePermissionSet(permissionSetId);
-        if (SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(profile.getCode())) {
-            throw new IllegalStateException("Permission sets cannot be removed from the system super admin profile");
-        }
         if (BASELINE_PERSONAL_WORKSPACE_SET_CODE.equalsIgnoreCase(permissionSet.getCode())) {
             throw new IllegalArgumentException("The baseline personal workspace permission set is required for every access profile");
         }
         requireProfilePermissionSetRemovalKeepsAdminCoverage(profileId, Set.of(permissionSetId));
         appSetRepo.deleteByAccessProfileIdAndPermissionSetId(profileId, permissionSetId);
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
+                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                ENTITY_TYPE, profile.getId(), profile.getName(), auditReason(profile, sig.reason()),
+                "Permission set " + safePermissionSet(permissionSet), null);
         auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
                 "ACCESS_PROFILE_PERMISSION_SET_REMOVED", null, null,
-                "Removed permission set " + safePermissionSet(permissionSet) + " from " + safeCode(profile),
-                List.of(new AuditTrailChangeResponse("Permission Set", safePermissionSet(permissionSet), null)));
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
-                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
-                "Permission set " + safePermissionSet(permissionSet), null);
+                withReason("Removed permission set " + safePermissionSet(permissionSet) + " from " + safeCode(profile), sig.reason()),
+                List.of(new AuditTrailChangeResponse("Permission Set", safePermissionSet(permissionSet), null)),
+                esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
     }
 
@@ -641,25 +619,21 @@ public class AccessProfileService {
         sig = SecurityChangeRequest.orEmpty(sig);
         securityChangeSignatureService.requireValidToken(actor, sig.signatureToken());
         RoleDefinition profile = requireRole(profileId);
-        if (SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(profile.getCode())) {
-            throw new IllegalStateException("Permissions cannot be changed for the system super admin profile");
-        }
-        if (profile.isSystem()) {
-            throw new IllegalStateException("Permissions cannot be changed for system access profiles");
-        }
         Optional<PermissionSet> existing = permSetRepo.findByCode(managedSetCode(profile.getCode()));
         String oldValue = existing.map(ps -> ps.getName()).orElse(null);
+        requireManagedPermissionRemovalKeepsAdminCoverage(profileId, existing.orElse(null), codes);
         List<String> requested = applyManagedPermissions(profile, codes, actor);
 
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
+                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                ENTITY_TYPE, profile.getId(), profile.getName(), auditReason(profile, sig.reason()),
+                oldValue, requested.isEmpty() ? "Removed individual permissions" : requested.size() + " individual permission(s)");
         auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
                 "ACCESS_PROFILE_PERMISSIONS_REPLACED", null, null,
-                "Replaced individually-picked permissions for " + safeCode(profile),
+                withReason("Replaced individually-picked permissions for " + safeCode(profile), sig.reason()),
                 List.of(new AuditTrailChangeResponse("Individual Permissions",
-                        oldValue, requested.isEmpty() ? null : requested.size() + " permission(s)")));
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
-                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
-                oldValue, requested.isEmpty() ? "Removed individual permissions" : requested.size() + " individual permission(s)");
+                        oldValue, requested.isEmpty() ? null : requested.size() + " permission(s)")),
+                esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
     }
 
@@ -703,12 +677,11 @@ public class AccessProfileService {
     /**
      * Mirrors preventSelfGrantOfCriticalPermissionSets for the managed-set path:
      * an actor assigned to this profile must not grant themself critical permissions
-     * by editing the role's individually-picked permissions.
+     * by editing the role's individually-picked permissions. Applies uniformly -- no identity
+     * is exempt, including whoever holds the org's top admin profile; escalating a second
+     * admin's help is the intended path, not a self-service bypass.
      */
     private void requireNoSelfGrantOfCriticalManagedSet(UserAccount actor, UUID profileId, UUID managedSetId) {
-        if (permissionEvaluationService.isSuperAdmin(actor)) {
-            return;
-        }
         if (uapRepo.existsByUserIdAndAccessProfileId(actor.getId(), profileId)
                 && permissionSetHasCriticalPermission(managedSetId)) {
             throw new IllegalStateException("Users cannot grant themselves critical permissions through their own access profile");
@@ -731,9 +704,6 @@ public class AccessProfileService {
         // Serialize aggregate updates so the timestamp check is evaluated against the
         // latest committed Role configuration, including assignment-only changes.
         RoleDefinition profile = requireRoleForConfigurationUpdate(id);
-        if (profile.isSystem() || SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(profile.getCode())) {
-            throw new IllegalStateException("System access profiles cannot be reconfigured");
-        }
         if (req.expectedUpdatedAt() != null && profile.getUpdatedAt() != null
                 && !req.expectedUpdatedAt().equals(profile.getUpdatedAt())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -761,6 +731,9 @@ public class AccessProfileService {
                         }
                     });
                 }
+                if (profile.isActive() && !g.active()) {
+                    requireProfileRemovalKeepsAdminCoverage(id);
+                }
                 addChange(changes, "Name", profile.getName(), g.name());
                 addChange(changes, "Description", profile.getDescription(), g.description());
                 addChange(changes, "Status", profile.isActive() ? "Active" : "Inactive", g.active() ? "Active" : "Inactive");
@@ -779,9 +752,11 @@ public class AccessProfileService {
 
         // 2 — Direct (managed) permissions
         if (req.managedPermissionCodes() != null) {
-            List<String> oldCodes = permSetRepo.findByCode(managedCode)
+            Optional<PermissionSet> existingManagedSet = permSetRepo.findByCode(managedCode);
+            List<String> oldCodes = existingManagedSet
                     .map(ps -> getPermissionSetCodes(ps.getId()))
                     .orElse(List.of());
+            requireManagedPermissionRemovalKeepsAdminCoverage(id, existingManagedSet.orElse(null), req.managedPermissionCodes());
             List<String> newCodes = applyManagedPermissions(profile, req.managedPermissionCodes(), actor);
             if (!new HashSet<>(oldCodes).equals(new HashSet<>(newCodes))) {
                 addChange(changes, "Direct Permissions",
@@ -806,6 +781,7 @@ public class AccessProfileService {
             removed.removeAll(requestedIds);
             if (!added.isEmpty() || !removed.isEmpty()) {
                 preventSelfGrantOfCriticalPermissionSets(actor, id, added);
+                requireProfilePermissionSetRemovalKeepsAdminCoverage(id, removed);
                 for (UUID psId : added) {
                     requirePermissionSet(psId);
                     linkPermissionSet(id, psId, actor);
@@ -886,13 +862,13 @@ public class AccessProfileService {
             // themselves. Touch it so the next editor receives a new concurrency token.
             profile.setUpdatedAt(java.time.Instant.now());
             profile = roleRepo.save(profile);
+            ElectronicSignature esig = securityChangeSignatureService.record(actor, req.signatureToken(),
+                    SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                    ENTITY_TYPE, profile.getId(), profile.getName(), auditReason(profile, req.reason()),
+                    null, "Updated role configuration (" + changes.size() + " change group(s))");
             auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
                     "ACCESS_PROFILE_CONFIGURATION_UPDATED", null, profile.isActive() ? "Active" : "Inactive",
-                    "Updated role configuration for " + safeCode(profile), changes);
-            securityChangeSignatureService.record(actor, req.signatureToken(),
-                    SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                    ENTITY_TYPE, profile.getId(), profile.getName(), req.reason(),
-                    null, "Updated role configuration (" + changes.size() + " change group(s))");
+                    withReason("Updated role configuration for " + safeCode(profile), req.reason()), changes, esig == null ? null : esig.getId());
             permissionEvaluationService.clearCache();
         }
         return toDetailResponse(requireRole(id));
@@ -938,14 +914,15 @@ public class AccessProfileService {
                 .map(AccessProfileWorkflowRole::getWorkflowRole)
                 .sorted()
                 .toList();
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
+                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                ENTITY_TYPE, profile.getId(), profile.getName(), auditReason(profile, sig.reason()),
+                String.join(", ", oldRoles), String.join(", ", newRoles));
         auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
                 "ACCESS_PROFILE_WORKFLOW_ROLES_REPLACED", null, null,
-                "Replaced workflow roles for " + safeCode(profile),
-                List.of(new AuditTrailChangeResponse("Workflow Roles", String.join(", ", oldRoles), String.join(", ", newRoles))));
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
-                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
-                String.join(", ", oldRoles), String.join(", ", newRoles));
+                withReason("Replaced workflow roles for " + safeCode(profile), sig.reason()),
+                List.of(new AuditTrailChangeResponse("Workflow Roles", String.join(", ", oldRoles), String.join(", ", newRoles))),
+                esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
     }
 
@@ -960,14 +937,15 @@ public class AccessProfileService {
             a.setAccessProfileId(profileId);
             a.setWorkflowRole(role);
             appWfRepo.save(a);
+            ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
+                    SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                    ENTITY_TYPE, profile.getId(), profile.getName(), auditReason(profile, sig.reason()),
+                    null, "Assigned workflow role " + role);
             auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
                     "ACCESS_PROFILE_WORKFLOW_ROLE_ASSIGNED", null, null,
-                    "Assigned workflow role " + role + " to " + safeCode(profile),
-                    List.of(new AuditTrailChangeResponse("Workflow Role", null, role)));
-            securityChangeSignatureService.record(actor, sig.signatureToken(),
-                    SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                    ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
-                    null, "Assigned workflow role " + role);
+                    withReason("Assigned workflow role " + role + " to " + safeCode(profile), sig.reason()),
+                    List.of(new AuditTrailChangeResponse("Workflow Role", null, role)),
+                    esig == null ? null : esig.getId());
             permissionEvaluationService.clearCache();
         }
     }
@@ -978,14 +956,15 @@ public class AccessProfileService {
         securityChangeSignatureService.requireValidToken(actor, sig.signatureToken());
         RoleDefinition profile = requireRole(profileId);
         appWfRepo.deleteByAccessProfileIdAndWorkflowRole(profileId, role);
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
+                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
+                ENTITY_TYPE, profile.getId(), profile.getName(), auditReason(profile, sig.reason()),
+                "Workflow role " + role, null);
         auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
                 "ACCESS_PROFILE_WORKFLOW_ROLE_REMOVED", null, null,
-                "Removed workflow role " + role + " from " + safeCode(profile),
-                List.of(new AuditTrailChangeResponse("Workflow Role", role, null)));
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
-                SecurityChangeSignatureService.MEANING_ACCESS_PROFILE_CHANGE,
-                ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
-                "Workflow role " + role, null);
+                withReason("Removed workflow role " + role + " from " + safeCode(profile), sig.reason()),
+                List.of(new AuditTrailChangeResponse("Workflow Role", role, null)),
+                esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
     }
 
@@ -1009,11 +988,6 @@ public class AccessProfileService {
         UserAccount targetUser = requireUser(userId);
         if (actor.getId() != null
                 && actor.getId().equals(userId)
-                && SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(profile.getCode())) {
-            throw new IllegalStateException("Users cannot assign the system super admin profile to themselves");
-        }
-        if (actor.getId() != null
-                && actor.getId().equals(userId)
                 && profileContainsCriticalPermissionSet(profileId)) {
             throw new IllegalStateException("Users cannot assign themselves an access profile containing critical permissions");
         }
@@ -1024,14 +998,15 @@ public class AccessProfileService {
             a.setAccessProfileId(profileId);
             a.setAssignedBy(actor);
             uapRepo.save(a);
-            auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
-                    "ACCESS_PROFILE_USER_ASSIGNED", null, null,
-                    "Assigned " + userLabel(targetUser) + " to " + safeCode(profile),
-                    List.of(new AuditTrailChangeResponse("Assigned User", null, userLabel(targetUser))));
-            securityChangeSignatureService.record(actor, sig.signatureToken(),
+            ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
                     SecurityChangeSignatureService.MEANING_USER_ACCESS_CHANGE,
                     ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
                     null, "Assigned " + userLabel(targetUser));
+            auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
+                    "ACCESS_PROFILE_USER_ASSIGNED", null, null,
+                    withReason("Assigned " + userLabel(targetUser) + " to " + safeCode(profile), sig.reason()),
+                    List.of(new AuditTrailChangeResponse("Assigned User", null, userLabel(targetUser))),
+                    esig == null ? null : esig.getId());
             permissionEvaluationService.clearCache();
         }
     }
@@ -1042,21 +1017,20 @@ public class AccessProfileService {
         securityChangeSignatureService.requireValidToken(actor, sig.signatureToken());
         RoleDefinition profile = requireRole(profileId);
         UserAccount targetUser = requireUser(userId);
-        if (SYSTEM_SUPER_ADMIN_CODE.equalsIgnoreCase(profile.getCode())
-                && uapRepo.existsByUserIdAndAccessProfileId(userId, profileId)
-                && uapRepo.countByActiveProfileCode(SYSTEM_SUPER_ADMIN_CODE) <= 1) {
-            throw new IllegalStateException("Cannot remove the last system super admin assignment");
-        }
+        // No more identity-specific "last super admin" guard: requireNotLastActiveAdmin already
+        // enforces the general invariant (org must always keep at least one active user holding
+        // ADMIN_GUARD_PERMISSION), which this profile's removal is checked against below.
         requireNotLastActiveAdmin(targetUser);
         uapRepo.deleteByUserIdAndAccessProfileId(userId, profileId);
-        auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
-                "ACCESS_PROFILE_USER_REMOVED", null, null,
-                "Removed " + userLabel(targetUser) + " from " + safeCode(profile),
-                List.of(new AuditTrailChangeResponse("Assigned User", userLabel(targetUser), null)));
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
                 SecurityChangeSignatureService.MEANING_USER_ACCESS_CHANGE,
                 ENTITY_TYPE, profile.getId(), profile.getName(), sig.reason(),
                 "Assigned " + userLabel(targetUser), null);
+        auditTrailService.logAs(actor, ENTITY_TYPE, profile.getName(), profile.getId(),
+                "ACCESS_PROFILE_USER_REMOVED", null, null,
+                withReason("Removed " + userLabel(targetUser) + " from " + safeCode(profile), sig.reason()),
+                List.of(new AuditTrailChangeResponse("Assigned User", userLabel(targetUser), null)),
+                esig == null ? null : esig.getId());
         permissionEvaluationService.clearCache();
     }
 
@@ -1096,6 +1070,20 @@ public class AccessProfileService {
     private void requireProfilePermissionSetRemovalKeepsAdminCoverage(UUID profileId, Set<UUID> removedSetIds) {
         boolean removesAdminGrant = removedSetIds.stream().anyMatch(id -> permissionSetGrants(id, ADMIN_GUARD_PERMISSION));
         if (!removesAdminGrant) return;
+        for (UserAccessProfile uap : uapRepo.findByAccessProfileId(profileId)) {
+            requireNotLastActiveAdmin(userRepo.findById(uap.getUserId()).orElse(null));
+        }
+    }
+
+    /** Same invariant as {@link #requireProfilePermissionSetRemovalKeepsAdminCoverage}, applied to
+     * a profile's individually-picked (managed-set) permission codes instead of shared sets. */
+    private void requireManagedPermissionRemovalKeepsAdminCoverage(UUID profileId, PermissionSet existingManagedSet, List<String> requestedCodes) {
+        if (existingManagedSet == null || !permissionSetGrants(existingManagedSet.getId(), ADMIN_GUARD_PERMISSION)) return;
+        boolean requestedKeepsGrant = requestedCodes != null && requestedCodes.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .anyMatch(ADMIN_GUARD_PERMISSION::equalsIgnoreCase);
+        if (requestedKeepsGrant) return;
         for (UserAccessProfile uap : uapRepo.findByAccessProfileId(profileId)) {
             requireNotLastActiveAdmin(userRepo.findById(uap.getUserId()).orElse(null));
         }
@@ -1285,6 +1273,49 @@ public class AccessProfileService {
 
     private String safeCode(RoleDefinition role) {
         return role.getCode() == null ? role.getName() : role.getCode();
+    }
+
+    /** Does this profile currently grant {@code permissionCode} through any of its linked
+     * permission sets, including its auto-managed ROLE_&lt;code&gt; set? */
+    private boolean profileGrantsPermission(UUID profileId, String permissionCode) {
+        return appSetRepo.findByAccessProfileId(profileId).stream()
+                .map(AccessProfilePermissionSet::getPermissionSetId)
+                .filter(Objects::nonNull)
+                .anyMatch(setId -> permissionSetGrants(setId, permissionCode));
+    }
+
+    /**
+     * Same admin-coverage invariant as {@link #requireProfilePermissionSetRemovalKeepsAdminCoverage},
+     * applied when an action (deactivate, delete) would remove ALL of a profile's grants at once
+     * rather than one specific permission set. Deliberately permission-based, not role-name-based:
+     * it applies identically to every access profile, including the system super admin one -- there
+     * is no hardcoded "cannot touch this profile" rule left, only "don't leave the org without an
+     * administrator", which is what EU-GMP actually requires.
+     */
+    private void requireProfileRemovalKeepsAdminCoverage(UUID profileId) {
+        if (!profileGrantsPermission(profileId, ADMIN_GUARD_PERMISSION)) return;
+        for (UserAccessProfile uap : uapRepo.findByAccessProfileId(profileId)) {
+            requireNotLastActiveAdmin(userRepo.findById(uap.getUserId()).orElse(null));
+        }
+    }
+
+    /** Tags the audit-trail reason so a signed override of a protected system profile (any
+     * profile but the super admin one) is easy to spot separately from routine custom-profile
+     * edits when reviewing the Audit Trail. */
+    private String auditReason(RoleDefinition role, String reason) {
+        if (!role.isSystem()) return reason;
+        String suffix = (reason == null || reason.isBlank()) ? "" : ": " + reason;
+        return "[System Profile Override]" + suffix;
+    }
+
+    /**
+     * The reason typed into the e-signature modal is otherwise only persisted on the
+     * ElectronicSignature row (as the record()'s own reason param above) and never surfaced in the
+     * Audit Trail's own comment/description -- fold it into the action's own comment so a reviewer
+     * can actually see it.
+     */
+    private String withReason(String comment, String reason) {
+        return org.springframework.util.StringUtils.hasText(reason) ? comment + " Reason: " + reason : comment;
     }
 
     private String safePermissionSet(PermissionSet permissionSet) {

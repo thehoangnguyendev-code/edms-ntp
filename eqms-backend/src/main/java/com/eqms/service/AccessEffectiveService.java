@@ -407,7 +407,7 @@ public class AccessEffectiveService {
     private UserAccount findProbeUser(UUID accessProfileId) {
         return userAccessProfileRepository.findByAccessProfileId(accessProfileId).stream()
                 .map(UserAccessProfile::getUser)
-                .filter(u -> u != null && !permissionEvaluationService.isSuperAdmin(u))
+                .filter(u -> u != null)
                 .findFirst()
                 .orElse(null);
     }

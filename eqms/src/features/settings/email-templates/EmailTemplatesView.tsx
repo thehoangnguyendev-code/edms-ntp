@@ -47,10 +47,11 @@ import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 
 export const EmailTemplatesView: React.FC = () => {
   const navigate = useNavigate();
-  const { hasPermissionAlias } = usePermissions();
-  const canManageTemplates = hasPermissionAlias(
+  const { hasAnyPermission } = usePermissions();
+  const canManageTemplates = hasAnyPermission([
     "settings.email_template.manage",
-  );
+    "settings.configuration.manage",
+  ]);
   const { navigateTo, isNavigating } = useNavigateWithLoading();
 
   const {

@@ -1,6 +1,5 @@
 export type RevisionActionCapabilityKey =
   | "preview"
-  | "downloadSource"
   | "editOnline"
   | "uploadSource"
   | "replaceSource"
@@ -9,8 +8,6 @@ export type RevisionActionCapabilityKey =
   | "completeAuthoring"
   | "updateDraftMetadata"
   | "openPublishingWorkspace"
-  | "generateReviewSnapshot"
-  | "regenerateSnapshot"
   | "submitForReview"
   | "completeReview"
   | "rejectReview"
@@ -42,7 +39,6 @@ export interface RevisionActionCapabilitiesResponse {
 
 export const REVISION_ACTION_CAPABILITY_KEYS: RevisionActionCapabilityKey[] = [
   "preview",
-  "downloadSource",
   "editOnline",
   "uploadSource",
   "replaceSource",
@@ -51,8 +47,6 @@ export const REVISION_ACTION_CAPABILITY_KEYS: RevisionActionCapabilityKey[] = [
   "completeAuthoring",
   "updateDraftMetadata",
   "openPublishingWorkspace",
-  "generateReviewSnapshot",
-  "regenerateSnapshot",
   "submitForReview",
   "completeReview",
   "rejectReview",

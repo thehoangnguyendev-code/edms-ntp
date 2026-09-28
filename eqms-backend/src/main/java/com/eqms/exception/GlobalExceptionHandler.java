@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
                                 "VALIDATION_ERROR",
-                                "Dữ liệu không hợp lệ",
+                                "Invalid request data",
                                 details
                         )
                 ));
@@ -117,26 +117,32 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler(OfficeOnlineShareException.class)
-    public ResponseEntity<ApiErrorResponse> handleOfficeOnlineShare(OfficeOnlineShareException exception) {
-        return ResponseEntity.badRequest()
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException exception) {
+        // Services throw IllegalStateException for "the record is not in a state that allows this"
+        // (a business conflict), which is a client-visible 409 -- not a server fault.
+        log.warn("Business state conflict while processing request: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                exception.getCode(),
-                                exception.getMessage(),
+                                "INVALID_STATE",
+                                exception.getMessage() == null ? "Unexpected server error" : exception.getMessage(),
                                 List.of()
                         )
                 ));
     }
 
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException exception) {
-        log.error("IllegalStateException while processing request", exception);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(ExternalIntegrationException.class)
+    public ResponseEntity<ApiErrorResponse> handleExternalIntegration(ExternalIntegrationException exception) {
+        // #16: the raw upstream detail (e.g. a Microsoft Graph response body) is logged here,
+        // server-side only, and never returned to the client -- see ExternalIntegrationException's
+        // javadoc for why this handler exists separately from the generic IllegalStateException one.
+        log.error("External integration failure: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                "INTERNAL_ERROR",
-                                exception.getMessage() == null ? "Unexpected server error" : exception.getMessage(),
+                                "EXTERNAL_INTEGRATION_ERROR",
+                                exception.getSafeMessage(),
                                 List.of()
                         )
                 ));
@@ -171,6 +177,35 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    // Document Cancel/Obsolete precondition failures (TBR-DOC-008/010): expected, recoverable
+    // business-state conflicts -- 409 with a stable machine-readable code, never a generic 500.
+    @ExceptionHandler(DocumentLifecycleConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleDocumentLifecycleConflict(DocumentLifecycleConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(
+                        new ApiErrorResponse.ErrorBody(
+                                exception.getCode(),
+                                exception.getMessage(),
+                                List.of()
+                        )
+                ));
+    }
+
+    // Revision-lifecycle precondition failures (wrong workflow state, participant action already
+    // completed, Cancel attempted outside Draft): expected, recoverable business-state conflicts --
+    // 409 with a stable machine-readable code, never a generic 500.
+    @ExceptionHandler(RevisionLifecycleConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleRevisionLifecycleConflict(RevisionLifecycleConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(
+                        new ApiErrorResponse.ErrorBody(
+                                exception.getCode(),
+                                exception.getMessage(),
+                                List.of()
+                        )
+                ));
+    }
+
     @ExceptionHandler(RelatedDocumentsNotEffectiveException.class)
     public ResponseEntity<ApiErrorResponse> handleRelatedDocumentsNotEffective(RelatedDocumentsNotEffectiveException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -187,6 +222,21 @@ public class GlobalExceptionHandler {
     // modified this same Document/Revision/ControlledCopy between this request's read and write.
     // 409 (not 500) because this is an expected, recoverable concurrency conflict: the client
     // should reload the current state and retry, not treat it as a server fault.
+    // 410, per this exception's own class Javadoc: thrown when a Controlled Copy token/grant is
+    // otherwise valid but the copy itself is no longer available (Obsoleted/Recalled/Cancelled),
+    // including mid-preview-session. Was previously unhandled (fell through to a generic 500).
+    @ExceptionHandler(ControlledCopyNotAvailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleControlledCopyNotAvailable(ControlledCopyNotAvailableException exception) {
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body(new ApiErrorResponse(
+                        new ApiErrorResponse.ErrorBody(
+                                "CONTROLLED_COPY_NOT_AVAILABLE",
+                                exception.getMessage(),
+                                List.of()
+                        )
+                ));
+    }
+
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -247,7 +297,7 @@ public class GlobalExceptionHandler {
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
                                 "VALIDATION_ERROR",
-                                "Dữ liệu không hợp lệ",
+                                "Invalid request data",
                                 details
                         )
                 ));
@@ -261,6 +311,18 @@ public class GlobalExceptionHandler {
                         new ApiErrorResponse.ErrorBody(
                                 "BAD_REQUEST",
                                 "Invalid value supplied for parameter '" + paramName + "'",
+                                List.of()
+                        )
+                ));
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MissingRequestHeaderException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingHeader(org.springframework.web.bind.MissingRequestHeaderException exception) {
+        return ResponseEntity.badRequest()
+                .body(new ApiErrorResponse(
+                        new ApiErrorResponse.ErrorBody(
+                                "BAD_REQUEST",
+                                "Missing required header '" + exception.getHeaderName() + "'",
                                 List.of()
                         )
                 ));
@@ -314,6 +376,23 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    // TC-DOC-068/069 (Document Lifecycle Batch D) found this had no dedicated handler: it fell
+    // through to the generic Exception handler below, returning 500 for what is actually an
+    // authorization denial (documentMasterWorkflowAuthorizationService.require, used by Document
+    // Cancel/Obsolete, throws this type -- distinct from Spring Security's AccessDeniedException
+    // thrown elsewhere in DocumentAuthorizationService). Mapped identically to AccessDeniedException.
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthorizationDenied(AuthorizationDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiErrorResponse(
+                        new ApiErrorResponse.ErrorBody(
+                                "FORBIDDEN",
+                                exception.getMessage() == null ? "Access denied" : exception.getMessage(),
+                                List.of()
+                        )
+                ));
+    }
+
     // The class-level javadoc on WorkflowAuthorizationDeniedException already documented this as
     // mapping to 403 WORKFLOW_ACCESS_DENIED, but the handler was never actually added -- it fell
     // through to the generic Exception handler below, surfacing as a vague 500 "Unexpected server
@@ -329,6 +408,17 @@ public class GlobalExceptionHandler {
                                 exception.getMessage() == null ? "Access denied" : exception.getMessage(),
                                 List.of()
                         )
+                ));
+    }
+
+    // An unknown route is a client error, not a server fault; without this it fell through to the
+    // generic handler below and was reported (and alerted on) as HTTP 500.
+    @ExceptionHandler({org.springframework.web.servlet.resource.NoResourceFoundException.class,
+            org.springframework.web.servlet.NoHandlerFoundException.class})
+    public ResponseEntity<ApiErrorResponse> handleUnknownRoute(Exception exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse(
+                        new ApiErrorResponse.ErrorBody("NOT_FOUND", "Resource not found", List.of())
                 ));
     }
 

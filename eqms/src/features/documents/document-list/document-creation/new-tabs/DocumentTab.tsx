@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { File, CheckCircle2, AlertCircle, Check, AlertTriangle } from "lucide-react";
+import { File, CheckCircle2, AlertCircle, Check, AlertTriangle, FileText } from "lucide-react";
 import { IconCloudUpload } from "@tabler/icons-react";
 import { cn } from "@/components/ui/utils";
 import { getFileIconSrc } from "@/utils/fileIcons";
@@ -141,7 +141,7 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
         <div className="border-2 border-dashed rounded-xl flex items-center justify-center bg-slate-50">
           <div className="text-center p-4 md:p-5">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
-              <File className="h-8 w-8 text-slate-400" />
+              <FileText className="h-8 w-8 text-slate-400" />
             </div>
             <h4 className="text-sm font-semibold text-slate-700 mb-2">
               There is no attachment to display

@@ -246,7 +246,11 @@ public class NotificationDispatcher {
         return merged;
     }
 
-    private String render(String template, Map<String, String> variables) {
+    /** Package-visible (not private) so {@link EmailNotificationService#retryDeliveryFailure} can
+     *  reuse the exact same variable-substitution logic when manually re-sending a policy-driven
+     *  (NotificationTemplateVersion-based) email from its durably-persisted variables, without
+     *  duplicating this regex elsewhere. */
+    String render(String template, Map<String, String> variables) {
         if (!StringUtils.hasText(template)) return template;
         Matcher matcher = VARIABLE_PATTERN.matcher(template);
         StringBuilder result = new StringBuilder();

@@ -4,18 +4,18 @@ import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { Badge, type BadgeColor } from "@/components/ui/badge/Badge";
 import { useNavigateWithLoading, usePortalDropdown, type PortalDropdownPosition } from "@/hooks";
 import { ROUTES } from "@/app/routes.constants";
-import { documentApi } from "@/services/api/documents";
+import { CONTROLLED_COPY_MUTATED_EVENT, documentApi } from "@/services/api/documents";
 import { buildControlledCopySnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
-import { formatDateTimeParts, formatDateUS } from "@/utils/format";
+import { formatDateTime, formatDateTimeParts, formatDateUS } from "@/utils/format";
 import { getStatusBadgeColor } from "@/utils/status";
 import { cn } from "@/components/ui/utils";
 import { formatControlledCopyNumber, formatDocumentLabel, formatDocumentRevisionLabel } from "../display";
-import { getControlledCopyDistributionListText } from "../distributionDisplay";
+import { getControlledCopyMemberRecipientText } from "../distributionDisplay";
 import { normalizeControlledCopyRecord } from "../controlledCopyMapping";
 import { normalizeControlledCopyStatusLabel } from "../status";
 import type { ControlledCopy } from "../types";
 import { FileX, History, MoreVertical, RefreshCw, Send, Shredder } from "lucide-react";
-import { IconArrowBackUp, IconInfoCircle, IconShape3 } from "@tabler/icons-react";
+import { IconArrowBackUp, IconInfoCircle, IconShape3, IconX } from "@tabler/icons-react";
 import {
   getControlledCopyActionDecision,
 } from "../controlledCopyCapabilities";
@@ -24,6 +24,30 @@ import { useControlledCopyActionCapabilities } from "@/hooks";
 const CONTROLLED_COPY_CHILDREN_CACHE = new Map<string, ControlledCopy[]>();
 const CONTROLLED_COPY_CHILDREN_IN_FLIGHT = new Map<string, Promise<ControlledCopy[]>>();
 const CHILD_PAGE_SIZE = 50;
+// Bound the module-level cache so a long session that browses many large batches can't grow it
+// without limit (each entry can hold up to CHILD_PAGE_SIZE records). Only one batch is ever
+// expanded at a time in the list, and the detail view reads at most one, so a modest cap is
+// safe; oldest insertion is evicted first (Map preserves insertion order).
+const CHILDREN_CACHE_MAX_ENTRIES = 24;
+
+// A distribute/recall/cancel/report-lost-damaged/reissue done anywhere (including on another page, e.g. the
+// Report Lost/Damaged screen) changes a member's status, so the cached children are no longer trustworthy.
+// Without this the expanded batch kept showing a copy reported damaged as "Distributed".
+if (typeof window !== "undefined") {
+  window.addEventListener(CONTROLLED_COPY_MUTATED_EVENT, () => {
+    CONTROLLED_COPY_CHILDREN_CACHE.clear();
+  });
+}
+
+const writeChildrenCache = (batchId: string, copies: ControlledCopy[]) => {
+  CONTROLLED_COPY_CHILDREN_CACHE.delete(batchId);
+  CONTROLLED_COPY_CHILDREN_CACHE.set(batchId, copies);
+  while (CONTROLLED_COPY_CHILDREN_CACHE.size > CHILDREN_CACHE_MAX_ENTRIES) {
+    const oldest = CONTROLLED_COPY_CHILDREN_CACHE.keys().next().value;
+    if (oldest === undefined) break;
+    CONTROLLED_COPY_CHILDREN_CACHE.delete(oldest);
+  }
+};
 
 interface ExpandControlledCopiesRowProps {
   source: {
@@ -92,7 +116,7 @@ export const preloadControlledCopyChildren = async (batchId: string) => {
     limit: CHILD_PAGE_SIZE,
   }).then((result) => {
     const copies = (result.data || []).map((item) => normalizeControlledCopyRecord(item));
-    CONTROLLED_COPY_CHILDREN_CACHE.set(batchId, copies);
+    writeChildrenCache(batchId, copies);
     CONTROLLED_COPY_CHILDREN_IN_FLIGHT.delete(batchId);
     return copies;
   }).catch((error) => {
@@ -125,13 +149,20 @@ const ExpandedControlledCopyRow: React.FC<{
   onReportLostDamaged,
   onReissue,
 }) => {
-  const { capabilities, loading } = useControlledCopyActionCapabilities(copy.id);
+  const { openId, position, getRef, toggle, close } = usePortalDropdown();
+  // Fetch this row's action capabilities ONLY while its own "..." menu is open. A departmental
+  // batch expands to up to CHILD_PAGE_SIZE (50) child rows at once; fetching capabilities eagerly
+  // per row fired ~50 parallel /action-capabilities calls on every expand, for menus that are
+  // mostly never opened. This mirrors how the outer ControlledCopiesView table already scopes its
+  // capability fetch to the single open dropdown row. The 5s TTL cache in the hook keeps
+  // re-opening the same row cheap.
+  const isMenuOpen = openId === copy.id;
+  const { capabilities, loading } = useControlledCopyActionCapabilities(isMenuOpen ? copy.id : null);
   const recallDecision = getControlledCopyActionDecision(capabilities, "recallCopy");
   const distributeDecision = getControlledCopyActionDecision(capabilities, "distributeCopy");
   const cancelDecision = getControlledCopyActionDecision(capabilities, "cancelRequest");
   const reportLostDamagedDecision = getControlledCopyActionDecision(capabilities, "reportLostDamaged");
   const reissueDecision = getControlledCopyActionDecision(capabilities, "replaceLostDamaged");
-  const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const tdClass = "py-1.5 px-2.5 text-slate-700 whitespace-nowrap border-b border-slate-100";
   const statusLabel = normalizeControlledCopyStatusLabel(copy.status, copy.statusInfo as any);
 
@@ -147,8 +178,10 @@ const ExpandedControlledCopyRow: React.FC<{
       <td className={tdClass}>{formatDateTimeParts(copy.createdDate, copy.createdTime)}</td>
       <td className={tdClass}>{copy.openedBy || "-"}</td>
       <td className={cn(tdClass, "font-medium text-slate-900")}>{copy.name || "-"}</td>
+      {/* Each child row is exactly one physical copy. */}
+      <td className={tdClass}>1</td>
       <td className={tdClass}>
-        <Badge color={getBadgeColor(copy.statusCode || copy.statusInfo?.id, statusLabel)}>
+        <Badge color={getBadgeColor(copy.statusCode || copy.statusInfo?.id, statusLabel)} size="sm">
           {statusLabel}
         </Badge>
       </td>
@@ -157,10 +190,13 @@ const ExpandedControlledCopyRow: React.FC<{
       <td className={tdClass}>
         <span className="font-medium text-slate-900">{formatDocumentLabel(copy)}</span>
       </td>
-      <td className={tdClass}>{getControlledCopyDistributionListText(copy) || "-"}</td>
+      <td className={tdClass}>{getControlledCopyMemberRecipientText(copy) || "-"}</td>
+      <td className={tdClass}>{copy.recallDate ? formatDateUS(copy.recallDate) : "-"}</td>
+      <td className={tdClass}>{copy.recallReason || "-"}</td>
       <td className={tdClass}>
         <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span>
       </td>
+      <td className={tdClass}>{copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-"}</td>
       <td
         onClick={(e) => e.stopPropagation()}
         className="border-b border-l border-slate-200 bg-white py-3 px-4 text-center whitespace-nowrap group-hover:bg-slate-50 transition-colors"
@@ -209,11 +245,15 @@ const SkeletonRow: React.FC<{ rowNumber: number }> = ({ rowNumber }) => {
       <td className={tdClass}><div className={cn(skeletonClass, "w-28")} /></td>
       <td className={tdClass}><div className={cn(skeletonClass, "w-20")} /></td>
       <td className={tdClass}><div className={cn(skeletonClass, "w-40")} /></td>
+      <td className={tdClass}><div className={cn(skeletonClass, "w-8")} /></td>
       <td className={tdClass}><div className={cn(skeletonClass, "w-20")} /></td>
       <td className={tdClass}><div className={cn(skeletonClass, "w-24")} /></td>
       <td className={tdClass}><div className={cn(skeletonClass, "w-24")} /></td>
       <td className={tdClass}><div className={cn(skeletonClass, "w-28")} /></td>
       <td className={tdClass}><div className={cn(skeletonClass, "w-32")} /></td>
+      <td className={tdClass}><div className={cn(skeletonClass, "w-24")} /></td>
+      <td className={tdClass}><div className={cn(skeletonClass, "w-32")} /></td>
+      <td className={tdClass}><div className={cn(skeletonClass, "w-28")} /></td>
       <td className={tdClass}><div className={cn(skeletonClass, "w-28")} /></td>
       <td className={cn(tdClass, "text-center")}><div className={cn(skeletonClass, "w-7 mx-auto")} /></td>
     </tr>
@@ -325,7 +365,7 @@ const ChildDropdownMenu: React.FC<{
             title={isCapabilityLoading ? "Capability information is still loading." : ""}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <FileX className="h-4 w-4 flex-shrink-0" />
+            <IconX className="h-4 w-4 flex-shrink-0" />
             <span className="font-medium">Cancel Request</span>
           </button>
         )}
@@ -548,16 +588,20 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                           <thead>
                             <tr className="bg-slate-100 border-b border-slate-200">
                               <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-10">No.</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Controlled Copy Number</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document Number</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Created</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Opened by</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Controlled Copy Name</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Quantity</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Status</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Valid Until</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Expiry Date</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Distribution List</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Recall Date</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Reason for Recall</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document Revision</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Last Updated</th>
                               <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-14 border-l border-slate-200 bg-slate-100">
                                 Action
                               </th>
@@ -583,16 +627,20 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                           <thead>
                             <tr className="bg-slate-100 border-b border-slate-200">
                               <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-10">No.</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Controlled Copy Number</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document Number</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Created</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Opened by</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Controlled Copy Name</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Quantity</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Status</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Valid Until</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Expiry Date</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Distribution List</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Recall Date</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Reason for Recall</th>
                               <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document Revision</th>
+                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Last Updated</th>
                               <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-14 border-l border-slate-200 bg-slate-100">
                                 Action
                               </th>

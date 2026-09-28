@@ -23,6 +23,8 @@ type Options = {
   page?: number;
   limit?: number;
   enabled?: boolean;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
 };
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -39,7 +41,8 @@ const firstText = (...values: Array<string | null | undefined>) => {
 const normalizeApiResponseItems = (items: any[], documentId: string): ControlledCopy[] =>
   items.map((item, index) => {
     const normalized = normalizeControlledCopyRecord(item, item?.id || `${documentId}-${index}`);
-    const created = firstText(normalized.createdDate, normalized.createdTime);
+    const created = [firstText(normalized.createdDate), firstText(normalized.createdTime)].filter(Boolean).join(" ");
+    const controlledCopyNumber = firstText(normalized.controlledCopyNumber, normalized.controlNumber);
     return {
       id: normalized.id,
       controlledCopiesName: firstText(
@@ -48,12 +51,16 @@ const normalizeApiResponseItems = (items: any[], documentId: string): Controlled
         normalized.documentName,
         normalized.documentDisplayLabel,
       ),
-      copyNumber: firstText(normalized.controlledCopyNumber, normalized.controlNumber),
+      // The copy's sequential position (1, 2, 3, ...) among the copies of its revision -- the
+      // server-authoritative value, never derived from the Document Number's own text/digits.
+      copyNumber: String(normalized.copyNumber || ""),
+      controlledCopyNumber,
+      sourceRevisionId: firstText(normalized.sourceRevisionId),
       created,
       status: firstText(normalized.status) as ControlledCopy["status"],
       openedBy: firstText(normalized.openedBy),
       validUntil: firstText(normalized.validUntil),
-      documentRevision: firstText(normalized.revisionNumber, normalized.revisionName),
+      documentRevision: firstText(normalized.revisionName, normalized.revisionNumber),
       documentNumber: firstText(normalized.documentNumber),
     };
   });
@@ -66,6 +73,9 @@ export const useDocumentControlledCopies = (
   const page = options?.page ?? 1;
   const limit = options?.limit ?? DEFAULT_PAGE_SIZE;
   const search = options?.search?.trim() ?? "";
+  // Sorting is done by the server (see ControlledCopyService#resolveSort), never on the page of rows in hand.
+  const sortBy = options?.sortBy ?? "created";
+  const sortDirection = options?.sortDirection ?? "desc";
   const [copies, setCopies] = useState<ControlledCopy[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,8 +108,8 @@ export const useDocumentControlledCopies = (
         search: search || undefined,
         page,
         limit,
-        sortBy: "createdDate",
-        sortDirection: "desc",
+        sortBy,
+        sortDirection,
       });
 
       const items = Array.isArray(response?.data) ? response.data : [];
@@ -123,7 +133,7 @@ export const useDocumentControlledCopies = (
     } finally {
       setLoading(false);
     }
-  }, [documentId, enabled, limit, page, search]);
+  }, [documentId, enabled, limit, page, search, sortBy, sortDirection]);
 
   useEffect(() => {
     void loadCopies();

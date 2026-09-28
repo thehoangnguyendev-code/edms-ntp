@@ -47,6 +47,7 @@ public class ExternalIdentityProvisioningService {
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
     private final DistributedSchedulerLockService schedulerLockService;
+    private final SystemActorProvider systemActorProvider;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private volatile Instant lastManualReconciliationAt;
     private volatile String cachedGraphToken;
@@ -57,13 +58,15 @@ public class ExternalIdentityProvisioningService {
             NotificationRealtimeService notificationRealtimeService, NotificationService notificationService,
             ObjectMapper mapper, AuditTrailService auditTrailService, CurrentUserService currentUserService,
             PermissionEvaluationService permissionEvaluationService,
-            DistributedSchedulerLockService schedulerLockService) {
+            DistributedSchedulerLockService schedulerLockService,
+            SystemActorProvider systemActorProvider) {
         this.repository = repository; this.userRepository = userRepository; this.officeOnlineConfigurationService = officeOnlineConfigurationService;
         this.notificationRealtimeService = notificationRealtimeService;
         this.notificationService = notificationService;
         this.mapper = mapper; this.auditTrailService = auditTrailService; this.currentUserService = currentUserService;
         this.permissionEvaluationService = permissionEvaluationService;
         this.schedulerLockService = schedulerLockService;
+        this.systemActorProvider = systemActorProvider;
     }
 
     /** Notifies every admin who can view external provisioning that a guest accepted their invitation. */
@@ -84,13 +87,13 @@ public class ExternalIdentityProvisioningService {
 
     /**
      * Background reconciliation (scheduled job) runs with no authenticated HTTP request, so
-     * {@code auditTrailService.log(...)} (which requires the current SecurityContext user)
-     * would silently fail and be swallowed by the caller's try/catch — meaning automatically
-     * detected status changes never made it into the Audit Trail. Attribute them to the
-     * built-in admin account instead, matching the pattern used by other scheduled jobs.
+     * {@code auditTrailService.log(...)} (which requires the current SecurityContext user) would
+     * silently fail and be swallowed by the caller's try/catch — meaning automatically detected
+     * status changes never made it into the Audit Trail. Attribute them to the reserved SYSTEM
+     * account (V413) so the entry records an unambiguous automated "who", not a real human.
      */
     private UserAccount resolveSystemActor() {
-        return userRepository.findByUsername("admin").orElse(null);
+        return systemActorProvider.get();
     }
 
     @Transactional

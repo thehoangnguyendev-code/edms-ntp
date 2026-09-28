@@ -20,6 +20,9 @@ interface ReviewersTabProps {
      * drag-reorder and remove affordances must be disabled to match, instead of letting the user
      * rearrange/remove locally and only find out at Save time that it was rejected. */
     isLocked?: boolean;
+    /** Sub-Type's resolved requirement — caps/floors the picker modal's selection so the DCO
+     * can't pick a count the server will reject on Save. */
+    reviewRequirement?: "NONE" | "REQUIRED" | null;
 }
 
 export const ReviewersTab: React.FC<ReviewersTabProps> = ({
@@ -32,6 +35,7 @@ export const ReviewersTab: React.FC<ReviewersTabProps> = ({
     excludedUserIds = [],
     isLocked = false,
     revisionId,
+    reviewRequirement,
 }) => (
     <ParticipantRosterTab
         roleLabel="Reviewer"
@@ -47,5 +51,6 @@ export const ReviewersTab: React.FC<ReviewersTabProps> = ({
         onModalClose={onModalClose}
         isReadOnly={isReadOnly}
         excludedUserIds={excludedUserIds}
+        reviewRequirement={reviewRequirement}
     />
 );

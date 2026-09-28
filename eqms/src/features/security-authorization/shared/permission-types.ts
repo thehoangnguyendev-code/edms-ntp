@@ -21,6 +21,15 @@ export type PermissionAction =
 
 export type PermissionRiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
+export interface PermissionLifecycleUsage {
+  objectType: string;
+  objectTypeLabel: string;
+  fromStatus: string | null;
+  fromStatusLabel: string | null;
+  action: string;
+  actionLabel: string;
+}
+
 export interface PermissionCatalogPermission {
   code: string;
   name: string;
@@ -35,6 +44,7 @@ export interface PermissionCatalogPermission {
   requiresESign?: boolean;
   systemDefined?: boolean;
   active?: boolean;
+  lifecycleUsages?: PermissionLifecycleUsage[];
 }
 
 export interface PermissionCatalogGroup {
@@ -56,6 +66,7 @@ export interface Permission {
   requiresESign: boolean;
   systemDefined: boolean;
   active: boolean;
+  lifecycleUsages?: PermissionLifecycleUsage[];
 }
 
 export interface PermissionGroup {

@@ -1,18 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import {
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  MapPin,
-  MoreVertical,
-  Power,
-  PowerOff,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Power, PowerOff, Search, Trash2, X } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -22,6 +10,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
 import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { dictionaryApi } from "@/services/api";
@@ -48,7 +37,7 @@ type StorageLocationFormData = {
 export const StorageLocationsTab = React.forwardRef<{ openAddModal: () => void }, {}>((_, ref) => {
   const { openId: openDropdownId, position: dropdownPosition, getRef: getButtonRef, toggle: handleDropdownToggle, close: closeDropdown } = usePortalDropdown();
   const { hasPermissionAlias } = usePermissions();
-  const canManage = hasPermissionAlias("settings.dictionary.manage");
+  const canManage = hasPermissionAlias("settings.storage_location.manage");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedItem, setSelectedItem] = useState<StorageLocationItem | null>(null);
@@ -377,9 +366,9 @@ export const StorageLocationsTab = React.forwardRef<{ openAddModal: () => void }
                     <td className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-md truncate">{item.description || "-"}</td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                       {item.isActive ? (
-                        <Badge color="emerald" size="sm" showDot pill>Active</Badge>
+                        <Badge color="emerald" size="sm" >Active</Badge>
                       ) : (
-                        <Badge color="slate" size="sm" showDot pill>Inactive</Badge>
+                        <Badge color="slate" size="sm" >Inactive</Badge>
                       )}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{item.modifiedDate}</td>
@@ -402,14 +391,8 @@ export const StorageLocationsTab = React.forwardRef<{ openAddModal: () => void }
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-slate-500">
-                      <div className="bg-slate-50 p-4 rounded-full mb-3">
-                        <MapPin className="h-8 w-8 text-slate-400" />
-                      </div>
-                      <p className="text-base font-medium text-slate-900">No storage locations found</p>
-                      <p className="text-sm mt-1">Try adjusting your search</p>
-                    </div>
+                  <td colSpan={6} className="p-0">
+                    <TableEmptyState title="No storage locations found" description="Try adjusting your search" />
                   </td>
                 </tr>
               )}

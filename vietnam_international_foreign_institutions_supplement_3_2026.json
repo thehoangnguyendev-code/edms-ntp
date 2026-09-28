@@ -1,0 +1,230 @@
+{
+  "metadata": {
+    "title": "Verified international and foreign higher-education presence in Vietnam",
+    "verified_as_of": "2026-09-16",
+    "record_count": 13,
+    "important_note": "This file deliberately separates legally established foreign-invested universities from alliance programs, delivery locations, bilateral public universities, and vocational joint programs. These categories must not be treated as equivalent legal entities."
+  },
+  "institutions": [
+    {
+      "name": "RMIT University Vietnam",
+      "abbreviation": "RMIT Vietnam",
+      "country_or_origin": "Australia",
+      "presence_type": "foreign_branch_campus_or_foreign_owned_university",
+      "ownership": "foreign_invested",
+      "locations": [
+        "Ho Chi Minh City",
+        "Hanoi"
+      ],
+      "status": "active",
+      "notes": "RMIT states that it operates two campuses in Vietnam. In August 2026 it received a Foreign Branch Campus licence for Saigon South and an IRC for Hanoi.",
+      "source_urls": [
+        "https://www.rmit.edu.vn/about-us/locations-and-campuses",
+        "https://www.rmit.edu.vn/news/all-news/2026/aug/rmit-university-to-expand-significantly-in-vietnam-after-government-approvals"
+      ]
+    },
+    {
+      "name": "British University Vietnam",
+      "abbreviation": "BUV",
+      "country_or_origin": "United Kingdom-linked",
+      "presence_type": "foreign_invested_university",
+      "ownership": "foreign_invested",
+      "locations": [
+        "Ecopark, Hung Yen"
+      ],
+      "status": "active",
+      "notes": "International university in Vietnam; University of London recognises BUV as a teaching centre delivering University of London degrees.",
+      "source_urls": [
+        "https://www.buv.edu.vn/about-buv/",
+        "https://www.london.ac.uk/study/where-study/teaching-centre/vietnam/british-university-vietnam"
+      ]
+    },
+    {
+      "name": "Fulbright University Vietnam",
+      "abbreviation": "FUV",
+      "country_or_origin": "United States-linked",
+      "presence_type": "foreign_invested_university",
+      "ownership": "100_percent_foreign_invested_nonprofit",
+      "locations": [
+        "Ho Chi Minh City"
+      ],
+      "status": "active",
+      "legal_basis": "Decision 819/QD-TTg dated 2016-05-16",
+      "notes": "The establishment decision states FUV is a 100% foreign-invested, not-for-profit higher education institution.",
+      "source_urls": [
+        "https://thuvienphapluat.vn/van-ban/Giao-duc/Quyet-dinh-819-QD-TTg-thanh-lap-Truong-Dai-hoc-Fulbright-Viet-Nam-2016-334392.aspx",
+        "https://fulbright.edu.vn/our-mission/"
+      ]
+    },
+    {
+      "name": "The American University in Vietnam",
+      "abbreviation": "AUV",
+      "country_or_origin": "United States-linked",
+      "presence_type": "foreign_invested_university",
+      "ownership": "foreign_invested",
+      "locations": [
+        "Da Nang"
+      ],
+      "status": "active",
+      "legal_basis": "Decision 2247/QD-TTg dated 2015-12-11",
+      "notes": "Four-year degree granting American-model university in Vietnam.",
+      "source_urls": [
+        "https://www.auv.edu.vn/",
+        "https://thuvienphapluat.vn/van-ban/Giao-duc/Quyet-dinh-2247-QD-TTg-thanh-lap-truong-dai-hoc-My-tai-Viet-Nam-2015-297966.aspx"
+      ]
+    },
+    {
+      "name": "Trường Đại học Y khoa Tokyo Việt Nam",
+      "english_name": "Tokyo Human Health Sciences University Vietnam",
+      "abbreviation": "THUV",
+      "country_or_origin": "Japan",
+      "presence_type": "foreign_invested_university",
+      "ownership": "foreign_invested",
+      "locations": [
+        "Ecopark, Hung Yen"
+      ],
+      "status": "active",
+      "notes": "Project entity listed by the university: Japan Health Sciences Education (Vietnam) Co., Ltd.",
+      "source_urls": [
+        "https://tokyo-human.edu.vn/gioi-thieu/"
+      ]
+    },
+    {
+      "name": "Swinburne Vietnam",
+      "abbreviation": "Swinburne Vietnam",
+      "country_or_origin": "Australia",
+      "presence_type": "foreign_university_alliance_program",
+      "ownership": "joint_program",
+      "locations": [
+        "Hanoi",
+        "Da Nang",
+        "Ho Chi Minh City",
+        "Can Tho"
+      ],
+      "status": "active",
+      "parent_or_partner": "Swinburne University of Technology + FPT University",
+      "notes": "Officially described as the Swinburne Vietnam Alliance Program, not an independent Vietnamese university legal entity.",
+      "source_urls": [
+        "https://swinburne-vn.edu.vn/",
+        "https://admissions.swin.edu.vn/"
+      ]
+    },
+    {
+      "name": "Greenwich Vietnam",
+      "abbreviation": "Greenwich Vietnam",
+      "country_or_origin": "United Kingdom",
+      "presence_type": "foreign_university_alliance_program",
+      "ownership": "joint_program",
+      "locations": [
+        "Hanoi",
+        "Da Nang",
+        "Ho Chi Minh City",
+        "Can Tho"
+      ],
+      "status": "active",
+      "parent_or_partner": "University of Greenwich + FPT University",
+      "notes": "University of Greenwich lists FPT University delivery locations in four Vietnamese cities.",
+      "source_urls": [
+        "https://www.gre.ac.uk/collaborations/current-tne/asia-and-oceania-partnerships"
+      ]
+    },
+    {
+      "name": "Western Sydney University Vietnam",
+      "abbreviation": "WSU Vietnam",
+      "country_or_origin": "Australia",
+      "presence_type": "foreign_university_delivery_location",
+      "ownership": "joint_delivery",
+      "locations": [
+        "Ho Chi Minh City"
+      ],
+      "status": "active",
+      "parent_or_partner": "Western Sydney University + University of Economics Ho Chi Minh City (UEH)",
+      "notes": "Western Sydney University officially calls Vietnam a delivery location operated in partnership with UEH.",
+      "source_urls": [
+        "https://www.westernsydney.edu.au/future/our-campuses"
+      ]
+    },
+    {
+      "name": "Melbourne Polytechnic Vietnam",
+      "abbreviation": "MPV",
+      "country_or_origin": "Australia",
+      "presence_type": "foreign_vocational_joint_program",
+      "ownership": "joint_program",
+      "locations": [
+        "Hanoi",
+        "Ho Chi Minh City",
+        "Da Nang",
+        "Can Tho"
+      ],
+      "status": "active",
+      "parent_or_partner": "Melbourne Polytechnic + FPT Polytechnic",
+      "notes": "International VET partnership; qualifications are awarded by Melbourne Polytechnic Australia.",
+      "source_urls": [
+        "https://www.melbournepolytechnic.edu.au/students/international-students/offshore-programs/melbourne-polytechnic-vietnam/",
+        "https://melbourne.fpt.edu.vn/"
+      ]
+    },
+    {
+      "name": "Vietnamese-German University",
+      "abbreviation": "VGU",
+      "country_or_origin": "Vietnam-Germany",
+      "presence_type": "bilateral_public_university",
+      "ownership": "public",
+      "locations": [
+        "Ho Chi Minh City region"
+      ],
+      "status": "active",
+      "notes": "Vietnamese public university developed through Vietnam-Germany governmental cooperation; not foreign-owned.",
+      "source_urls": [
+        "https://vgu.edu.vn/en/"
+      ]
+    },
+    {
+      "name": "University of Science and Technology of Hanoi",
+      "abbreviation": "USTH",
+      "country_or_origin": "Vietnam-France",
+      "presence_type": "bilateral_public_university",
+      "ownership": "public",
+      "locations": [
+        "Hanoi"
+      ],
+      "status": "active",
+      "notes": "Vietnam-France public university established under intergovernmental cooperation; not foreign-owned.",
+      "source_urls": [
+        "https://usth.edu.vn/en/about-us/general-introduction/"
+      ]
+    },
+    {
+      "name": "Vietnam Japan University",
+      "abbreviation": "VJU",
+      "country_or_origin": "Vietnam-Japan",
+      "presence_type": "bilateral_public_university",
+      "ownership": "public",
+      "locations": [
+        "Hanoi"
+      ],
+      "status": "active",
+      "parent_or_partner": "Vietnam National University, Hanoi + Japanese partners",
+      "notes": "Member university of VNU Hanoi created from Vietnam-Japan cooperation; not foreign-owned.",
+      "source_urls": [
+        "https://vju.ac.vn/"
+      ]
+    },
+    {
+      "name": "University of London programmes at British University Vietnam",
+      "abbreviation": "UoL@BUV",
+      "country_or_origin": "United Kingdom",
+      "presence_type": "recognised_teaching_centre_program",
+      "ownership": "program",
+      "locations": [
+        "Ecopark, Hung Yen"
+      ],
+      "status": "active",
+      "parent_or_partner": "University of London + British University Vietnam",
+      "notes": "BUV is officially listed by University of London as a Recognised Teaching Centre.",
+      "source_urls": [
+        "https://www.london.ac.uk/study/where-study/teaching-centre/vietnam/british-university-vietnam"
+      ]
+    }
+  ]
+}

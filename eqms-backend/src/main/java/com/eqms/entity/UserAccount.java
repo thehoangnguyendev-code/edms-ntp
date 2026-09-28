@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -97,7 +96,15 @@ public class UserAccount {
     @Column(length = 40)
     private String phone;
 
-    @Lob
+    // Deliberately NOT @Lob: the column is a plain Postgres `text` (unbounded, no size cap needed
+    // -- no @Lob required for that in Postgres/Hibernate), and @Lob on a String forces Hibernate to
+    // read it as a JDBC CLOB, which PgJDBC streams via the Large Object API -- that throws
+    // "Large Objects may not be used in auto-commit mode" for any read of a UserAccount outside an
+    // active transaction. Root cause of TBR-DOC-015 (DocumentService.getFilters()) and the
+    // already-documented workaround in DocumentObsoleteNotificationService.onDocumentObsoleted()
+    // (see that class's own comment). Removing @Lob here fixes every call site at once instead of
+    // requiring @Transactional/TransactionTemplate wrapping around every future place that loads a
+    // UserAccount -- confirmed the column stays a plain `text` (not `oid`) in the DB.
     @Column(columnDefinition = "TEXT")
     private String avatar;
 
@@ -116,11 +123,23 @@ public class UserAccount {
     @Column(name = "mfa_remember_device_enabled", nullable = false)
     private boolean mfaRememberDeviceEnabled = true;
 
+    /** Admin-mandated per-user MFA requirement, independent of the user's own mfaEnabled
+     *  self-service toggle and of the global "Enforce Two-Factor Authentication" security
+     *  setting. The effective requirement is (global enable2FA) OR (this flag) -- see
+     *  UserManagementService#computeMfaSetupRequired. Set from Settings > Users create/edit. */
+    @Column(name = "mfa_required_by_admin", nullable = false)
+    private boolean mfaRequiredByAdmin;
+
     @Column(name = "email_notifications_enabled", nullable = false)
     private boolean emailNotificationsEnabled = true;
 
     @Column(name = "notification_preferences", columnDefinition = "TEXT", nullable = false)
     private String notificationPreferences = "{}";
+
+    /** Where this user lands immediately after login: DASHBOARD (default), NOTIFICATIONS, or
+     *  KNOWLEDGE. Set by Settings > Users create/edit; see UserManagementService#applyCreateOrUpdate. */
+    @Column(name = "home_page", nullable = false, length = 40)
+    private String homePage = "DASHBOARD";
 
     @Column(name = "failed_login_count", nullable = false)
     private int failedLoginCount;
@@ -146,6 +165,13 @@ public class UserAccount {
     @Column(name = "termination_date")
     private LocalDate terminationDate;
 
+    /** Set only by {@code TimeLimitedUserGrantScheduler} when it auto-suspends this user because
+     *  of an ACTIVE "Time-Limited User" grant window (before start / after end). Lets the
+     *  scheduler safely auto-reinstate the exact same user once the window opens again, while
+     *  never touching a user who was suspended manually or for an unrelated reason. */
+    @Column(name = "time_limited_grant_id")
+    private UUID timeLimitedGrantId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -166,6 +192,9 @@ public class UserAccount {
         }
         if (notificationPreferences == null || notificationPreferences.isBlank()) {
             notificationPreferences = "{}";
+        }
+        if (homePage == null || homePage.isBlank()) {
+            homePage = "DASHBOARD";
         }
     }
 
@@ -414,6 +443,14 @@ public class UserAccount {
         this.mfaRememberDeviceEnabled = mfaRememberDeviceEnabled;
     }
 
+    public boolean isMfaRequiredByAdmin() {
+        return mfaRequiredByAdmin;
+    }
+
+    public void setMfaRequiredByAdmin(boolean mfaRequiredByAdmin) {
+        this.mfaRequiredByAdmin = mfaRequiredByAdmin;
+    }
+
     public boolean isEmailNotificationsEnabled() {
         return emailNotificationsEnabled;
     }
@@ -428,6 +465,14 @@ public class UserAccount {
 
     public void setNotificationPreferences(String notificationPreferences) {
         this.notificationPreferences = notificationPreferences;
+    }
+
+    public String getHomePage() {
+        return homePage;
+    }
+
+    public void setHomePage(String homePage) {
+        this.homePage = homePage;
     }
 
     public int getFailedLoginCount() {
@@ -492,6 +537,14 @@ public class UserAccount {
 
     public void setTerminationDate(LocalDate terminationDate) {
         this.terminationDate = terminationDate;
+    }
+
+    public UUID getTimeLimitedGrantId() {
+        return timeLimitedGrantId;
+    }
+
+    public void setTimeLimitedGrantId(UUID timeLimitedGrantId) {
+        this.timeLimitedGrantId = timeLimitedGrantId;
     }
 
     public Instant getCreatedAt() {

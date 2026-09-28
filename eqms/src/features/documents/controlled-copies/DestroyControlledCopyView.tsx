@@ -24,7 +24,7 @@ import { documentApi } from "@/services/api/documents";
 import { metadataApi } from "@/services/api/metadata";
 import { Select } from "@/components/ui/select/Select";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
-import { IconPhoto } from "@tabler/icons-react";
+import { IconPhoto, IconPlaylistX } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
 import type { ControlledCopy, ControlledCopyStatus, CurrentStage } from "./types";
 import { formatDocumentLabel } from "./display";
@@ -93,7 +93,10 @@ export const DestroyControlledCopyView: React.FC = () => {
     }
   }, [location]);
 
-  // Get current datetime when component mounts
+  // Get current datetime when component mounts, in the same dd/MM/yyyy HH:mm format the
+  // DateTimePicker itself emits on every change -- keeping a single format end-to-end avoids the
+  // ambiguous-locale bug where `new Date(string)` treats a later "dd/MM/yyyy" value as US
+  // MM/DD/YYYY (see parseDestructionDate below).
   const getCurrentDateTime = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -101,7 +104,24 @@ export const DestroyControlledCopyView: React.FC = () => {
     const day = String(now.getDate()).padStart(2, "0");
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  };
+
+  // DateTimePicker's value is always "dd/MM/yyyy" or "dd/MM/yyyy HH:mm" -- never feed that through
+  // the native `new Date(string)` constructor, which parses slash-separated dates as US MM/DD/YYYY
+  // and silently produces the wrong date (or Invalid Date, which fails every comparison silently).
+  const parseDestructionDate = (value: string): Date | null => {
+    const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?$/);
+    if (!match) return null;
+    const [, day, month, year, hours, minutes] = match;
+    const date = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      hours ? Number(hours) : 0,
+      minutes ? Number(minutes) : 0,
+    );
+    return Number.isNaN(date.getTime()) ? null : date;
   };
 
   const [formData, setFormData] = useState<DestructionFormData>({
@@ -264,8 +284,13 @@ export const DestroyControlledCopyView: React.FC = () => {
 
     if (!formData.destructionDate) {
       newErrors.destructionDate = "Destruction date is required";
-    } else if (new Date(formData.destructionDate).getTime() > Date.now()) {
-      newErrors.destructionDate = "Destruction date cannot be in the future";
+    } else {
+      const parsed = parseDestructionDate(formData.destructionDate);
+      if (!parsed) {
+        newErrors.destructionDate = "Destruction date is invalid";
+      } else if (parsed.getTime() > Date.now()) {
+        newErrors.destructionDate = "Destruction date cannot be in the future";
+      }
     }
     if (!formData.destructionMethod.trim()) {
       newErrors.destructionMethod = "Destruction method is required";
@@ -504,7 +529,7 @@ export const DestroyControlledCopyView: React.FC = () => {
       {/* Column Layout */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Destruction Information */}
-        <FormSection title="Destruction Information" icon={<Calendar className="h-4 w-4" />}>
+        <FormSection title="Destruction Information" icon={<IconPlaylistX className="h-4 w-4" />}>
           <div className="space-y-5">
             {/* Destruction Date */}
             <div>

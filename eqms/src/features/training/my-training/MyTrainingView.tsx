@@ -1,22 +1,5 @@
 import React, { useState, useMemo } from "react";
-import {
-  CheckCircle2,
-  Check,
-  Clock,
-  ExternalLink,
-  FileText,
-  GraduationCap,
-  PlayCircle,
-  Search,
-  Trophy,
-  Calendar,
-  ShieldCheck,
-  Star,
-  Award,
-  ChevronUp,
-  ChevronDown,
-  X,
-} from "lucide-react";
+import { Check, ExternalLink, FileText, GraduationCap, PlayCircle, Search, Calendar, ShieldCheck, Star, Award, ChevronUp, ChevronDown, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
@@ -666,7 +649,7 @@ export const MyTrainingView: React.FC = () => {
 
               {sortedTasks.length === 0 && (
                 <TableEmptyState
-                  icon={<CheckCircle2 className="h-8 w-8 text-emerald-400" />}
+                 
                   title="All caught up!"
                   description={
                     searchQuery
@@ -839,7 +822,7 @@ export const MyTrainingView: React.FC = () => {
 
               {sortedTranscript.length === 0 && (
                 <TableEmptyState
-                  icon={<Trophy className="h-8 w-8 text-slate-300" />}
+                 
                   title="No records found"
                   description={
                     searchQuery

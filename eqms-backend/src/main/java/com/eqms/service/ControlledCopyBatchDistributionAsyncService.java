@@ -57,25 +57,30 @@ public class ControlledCopyBatchDistributionAsyncService {
         String batchId = event.batchId() == null ? null : event.batchId().toString();
         int processed = 0;
         int failed = 0;
+        int skipped = 0;
         List<UUID> succeededCopyIds = new java.util.ArrayList<>();
         publishProgress(batchId, event.issuerUserId(), processed, total, failed, "in_progress");
         for (int index = 0; index < copyIds.size(); index++) {
             UUID copyId = copyIds.get(index);
             ControlledCopyDistributionJobItem item = index < items.size() ? items.get(index) : null;
             if (item != null) { item.setStatus("PROCESSING"); item.setAttempts(item.getAttempts() + 1); item.setProcessingStartedAt(Instant.now()); itemRepository.save(item); }
-            if (!finalizeWithRetry(copyId, event.issuerUserId(), batchId)) {
+            ControlledCopyFinalizationOutcome outcome = finalizeWithRetry(copyId, event.issuerUserId(), batchId);
+            if (outcome == ControlledCopyFinalizationOutcome.FAILED) {
                 failed++;
                 restoreFailedCopy(copyId, event.issuerUserId(), batchId);
                 if (item != null) { item.setStatus("FAILED"); item.setLastErrorCode("FILE_PROCESSING_FAILED"); item.setLastErrorMessage("File processing failed after automatic retries."); item.setCompletedAt(Instant.now()); itemRepository.save(item); }
+            } else if (outcome == ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL) {
+                skipped++;
+                if (item != null) { item.setStatus("SKIPPED"); item.setLastErrorCode(null); item.setLastErrorMessage("Controlled copy was already moved to a terminal state (Obsoleted/Cancelled) by a concurrent action."); item.setCompletedAt(Instant.now()); itemRepository.save(item); }
             } else {
                 succeededCopyIds.add(copyId);
                 if (item != null) { item.setStatus("SUCCESS"); item.setCompletedAt(Instant.now()); itemRepository.save(item); }
             }
             processed++;
-            String status = processed == total ? (failed > 0 ? "completed_with_errors" : "completed") : "in_progress";
+            String status = processed == total ? (failed > 0 || skipped > 0 ? "completed_with_errors" : "completed") : "in_progress";
             publishProgress(batchId, event.issuerUserId(), processed, total, failed, status);
         }
-        if (job != null) { job.setSucceededItems(total - failed); job.setFailedItems(failed); job.setStatus(failed > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED"); job.setCompletedAt(Instant.now()); jobRepository.save(job); }
+        if (job != null) { job.setSucceededItems(succeededCopyIds.size()); job.setFailedItems(failed); job.setStatus(failed > 0 || skipped > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED"); job.setCompletedAt(Instant.now()); jobRepository.save(job); }
         if (event.batchId() != null && !succeededCopyIds.isEmpty()) {
             try {
                 controlledCopyService.sendDcoBatchZipEmail(event.batchId(), succeededCopyIds, event.issuerUserId());
@@ -110,6 +115,7 @@ public class ControlledCopyBatchDistributionAsyncService {
         int total = failedItems.size();
         int processed = 0;
         int failed = 0;
+        int skipped = 0;
         publishProgress(batchIdText, issuerUserId, processed, total, failed, "in_progress");
         for (ControlledCopyDistributionJobItem item : failedItems) {
             UUID copyId = item.getControlledCopy().getId();
@@ -117,39 +123,56 @@ public class ControlledCopyBatchDistributionAsyncService {
             item.setAttempts(item.getAttempts() + 1);
             item.setProcessingStartedAt(Instant.now());
             itemRepository.save(item);
-            boolean success = finalizeWithRetry(copyId, issuerUserId, batchIdText);
-            if (!success) {
+            ControlledCopyFinalizationOutcome outcome = finalizeWithRetry(copyId, issuerUserId, batchIdText);
+            if (outcome == ControlledCopyFinalizationOutcome.FAILED) {
                 failed++;
                 restoreFailedCopy(copyId, issuerUserId, batchIdText);
                 item.setStatus("FAILED");
                 item.setLastErrorCode("FILE_PROCESSING_FAILED");
                 item.setLastErrorMessage("File processing failed again after retry.");
+            } else if (outcome == ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL) {
+                skipped++;
+                item.setStatus("SKIPPED");
+                item.setLastErrorCode(null);
+                item.setLastErrorMessage("Controlled copy was already moved to a terminal state (Obsoleted/Cancelled) by a concurrent action.");
             } else {
                 item.setStatus("SUCCESS");
             }
             item.setCompletedAt(Instant.now());
             itemRepository.save(item);
             processed++;
-            String status = processed == total ? (failed > 0 ? "completed_with_errors" : "completed") : "in_progress";
+            String status = processed == total ? (failed > 0 || skipped > 0 ? "completed_with_errors" : "completed") : "in_progress";
             publishProgress(batchIdText, issuerUserId, processed, total, failed, status);
         }
         List<ControlledCopyDistributionJobItem> allItems = itemRepository.findAllByJob_IdOrderByIdAsc(job.getId());
         int succeededCount = (int) allItems.stream().filter(i -> "SUCCESS".equals(i.getStatus())).count();
         int failedCount = (int) allItems.stream().filter(i -> "FAILED".equals(i.getStatus())).count();
+        int skippedCount = (int) allItems.stream().filter(i -> "SKIPPED".equals(i.getStatus())).count();
         job.setSucceededItems(succeededCount);
         job.setFailedItems(failedCount);
-        job.setStatus(failedCount > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED");
+        job.setStatus(failedCount > 0 || skippedCount > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED");
         job.setCompletedAt(Instant.now());
         jobRepository.save(job);
     }
 
-    private boolean finalizeWithRetry(UUID copyId, UUID issuerUserId, String batchId) {
+    private ControlledCopyFinalizationOutcome finalizeWithRetry(UUID copyId, UUID issuerUserId, String batchId) {
         for (int attempt = 1; attempt <= MAX_PROCESSING_ATTEMPTS; attempt++) {
             try {
-                if (controlledCopyService.finalizeDistributedCopy(copyId, issuerUserId)) {
-                    return true;
+                ControlledCopyFinalizationOutcome outcome = controlledCopyService.finalizeDistributedCopy(copyId, issuerUserId);
+                if (outcome == ControlledCopyFinalizationOutcome.SUCCESS || outcome == ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL) {
+                    return outcome;
                 }
                 log.warn("Controlled copy {} in batch {} was not processed on attempt {}/{}", copyId, batchId, attempt, MAX_PROCESSING_ATTEMPTS);
+            } catch (org.springframework.dao.OptimisticLockingFailureException conflictEx) {
+                // The version conflict surfaces at the @Transactional proxy boundary of
+                // finalizeDistributedCopy() -- i.e. after that method already returned/committed its
+                // own attempt -- so the only reliable way to learn who won the race is to re-read the
+                // copy's status in a brand-new transaction here.
+                if (controlledCopyService.isControlledCopyInTerminalState(copyId)) {
+                    log.info("Controlled copy {} in batch {} was concurrently moved to a terminal state; treating as skipped, not a failure.", copyId, batchId);
+                    return ControlledCopyFinalizationOutcome.SKIPPED_TERMINAL;
+                }
+                log.warn("Optimistic lock conflict finalizing controlled copy {} in batch {} on attempt {}/{}: {}", copyId, batchId, attempt, MAX_PROCESSING_ATTEMPTS, conflictEx.getMessage());
             } catch (Exception ex) {
                 log.warn("Failed to finalize controlled copy {} in batch {} on attempt {}/{}: {}", copyId, batchId, attempt, MAX_PROCESSING_ATTEMPTS, ex.getMessage(), ex);
             }
@@ -158,11 +181,11 @@ public class ControlledCopyBatchDistributionAsyncService {
                     Thread.sleep(250L * attempt);
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
-                    return false;
+                    return ControlledCopyFinalizationOutcome.FAILED;
                 }
             }
         }
-        return false;
+        return ControlledCopyFinalizationOutcome.FAILED;
     }
 
     private void restoreFailedCopy(UUID copyId, UUID issuerUserId, String batchId) {

@@ -71,7 +71,7 @@ public class ReportPlatformService {
         return result;
     }
     public void updateConfiguration(UserAccount actor, String code, Map<String,Object> update) {
-        require(actor,"reports.definition.manage","settings.configuration.edit");
+        require(actor,"reports.definition.manage","settings.configuration.manage");
         String reason=String.valueOf(update.getOrDefault("reason","")).trim(); if(reason.isEmpty()) throw new IllegalArgumentException("A reason is required for report configuration changes");
         Map<String,Object> before=configurationDetail(actor,code);
         UUID retentionPolicyId = null;
@@ -87,7 +87,7 @@ public class ReportPlatformService {
         auditTrail.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_CONFIGURATION_UPDATED", null, null, "Report definition configuration changed: " + reason);
     }
     public void updateFields(UserAccount actor, String code, Map<String,Object> request) {
-        require(actor,"reports.definition.manage","settings.configuration.edit");
+        require(actor,"reports.definition.manage","settings.configuration.manage");
         String reason=String.valueOf(request.getOrDefault("reason","")).trim(); if(reason.isEmpty()) throw new IllegalArgumentException("A reason is required for report field changes");
         Object raw=request.get("fields"); if (!(raw instanceof List<?> fields)) throw new IllegalArgumentException("fields is required");
         for (Object item: fields) { if (!(item instanceof Map<?,?> map)) throw new IllegalArgumentException("Invalid field payload"); String field=String.valueOf(map.get("code")); Object rawOrder=map.get("order"); int order=rawOrder instanceof Number number ? number.intValue() : 0; boolean allowed=Boolean.TRUE.equals(map.get("allowed")); boolean required=Boolean.TRUE.equals(map.get("required")); boolean selected=required || Boolean.TRUE.equals(map.get("defaultSelected")); int updated=jdbc.update("update report_definition_fields set allowed=?, default_selected=?, required=?, display_order=? where definition_code=? and field_code=?",allowed,selected,required,order,code,field); if(updated!=1) throw new IllegalArgumentException("REPORT_FIELD_NOT_ALLOWED"); }
@@ -144,7 +144,22 @@ public class ReportPlatformService {
     }
     public void deleteSchedule(UserAccount actor, UUID id) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); jdbc.update("delete from report_schedules where id=?",id); auditTrail.logAs(actor, "REPORT_SCHEDULE", id.toString(), id, "REPORT_SCHEDULE_DELETED", null, null, "Scheduled report deleted"); }
     private void updateScheduleStatus(UserAccount actor, UUID id, boolean active, String status) { require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor,id); jdbc.update("update report_schedules set active=?,status=?,updated_at=now() where id=?",active,status,id); auditTrail.logAs(actor, "REPORT_SCHEDULE", id.toString(), id, "REPORT_SCHEDULE_" + status, null, status, "Scheduled report status changed"); }
-    private void requireScheduleManagement(UserAccount actor, UUID id) { Integer exists = jdbc.queryForObject("select count(*) from report_schedules where id=?", Integer.class, id); if (exists == null || exists != 1) throw new IllegalArgumentException("Report schedule not found"); }
+    // Mirrors the ownership scoping already enforced in runDetail()/download(): the "manage" require()
+    // above accepts the broad legacy report.module.export permission too, so without this check any
+    // holder of that permission could pause/resume/delete another user's schedule despite the list
+    // view (schedules()) already restricting them to their own schedules.
+    private void requireScheduleManagement(UserAccount actor, UUID id) {
+        Map<String, Object> row;
+        try {
+            row = jdbc.queryForMap("select creator_user_id from report_schedules where id=?", id);
+        } catch (org.springframework.dao.EmptyResultDataAccessException notFound) {
+            throw new IllegalArgumentException("Report schedule not found");
+        }
+        boolean manageAll = permissions.hasPermission(actor, "reports.schedule.manage");
+        if (!manageAll && !actor.getId().toString().equals(String.valueOf(row.get("creator_user_id")))) {
+            throw new SecurityException("REPORT_SCOPE_DENIED");
+        }
+    }
     private CronExpression parseCron(String value) { try { return CronExpression.parse(value == null ? "" : value.trim()); } catch (Exception invalid) { throw new IllegalArgumentException("Invalid cron expression"); } }
 
     public UUID queueRun(UserAccount actor, RunRequest request, String idempotencyKey) {

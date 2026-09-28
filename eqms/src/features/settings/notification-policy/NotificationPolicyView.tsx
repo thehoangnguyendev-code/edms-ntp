@@ -1,18 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Search,
-  ShieldCheck,
-  X,
-  Check,
-  ChevronUp,
-  ChevronDown,
-  Plus,
-  MoreVertical,
-  Eye,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Search, X, Check, ChevronUp, ChevronDown, Plus, MoreVertical, Trash2 } from "lucide-react";
 import {
   IconFilter2,
   IconInfoCircle,
@@ -104,6 +92,7 @@ const getOptionClassName = (isActive: boolean) =>
 
 export const NotificationPolicyView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias("settings.notification_policy.manage");
@@ -132,6 +121,33 @@ export const NotificationPolicyView: React.FC = () => {
     new Set(["module"]),
   );
   const [refreshToken, setRefreshToken] = useState(0);
+
+  React.useLayoutEffect(() => {
+    const sortBy = searchParams.get("sortBy");
+    const allowedSortKeys: SortKey[] = ["name", "module", "priority", "updatedAt"];
+    setSearch(searchParams.get("search") ?? "");
+    setModuleFilter(searchParams.get("module") ?? "All");
+    setComplianceFilter(searchParams.get("compliance") ?? "All");
+    setStatusFilter(searchParams.get("status") ?? "All");
+    setSortKey(allowedSortKeys.includes(sortBy as SortKey) ? sortBy as SortKey : "module");
+    setSortDir(searchParams.get("sortDirection") === "desc" ? "desc" : "asc");
+    setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
+    setItemsPerPage(Math.max(1, Number(searchParams.get("limit")) || 10));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (search !== debouncedSearch) return;
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (moduleFilter !== "All") params.set("module", moduleFilter);
+    if (complianceFilter !== "All") params.set("compliance", complianceFilter);
+    if (statusFilter !== "All") params.set("status", statusFilter);
+    if (sortKey !== "module") params.set("sortBy", sortKey);
+    if (sortDir !== "asc") params.set("sortDirection", sortDir);
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (itemsPerPage !== 10) params.set("limit", String(itemsPerPage));
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [search, debouncedSearch, moduleFilter, complianceFilter, statusFilter, sortKey, sortDir, currentPage, itemsPerPage, searchParams, setSearchParams]);
 
   useEffect(
     () => setCurrentPage(1),
@@ -417,11 +433,9 @@ export const NotificationPolicyView: React.FC = () => {
                   <tbody className="divide-y divide-slate-200 bg-white">
                     {!isLoading && policies.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-12 text-center">
+                        <td colSpan={8} className="p-0">
                           <TableEmptyState
-                            icon={
-                              <ShieldCheck className="h-10 w-10 text-slate-300" />
-                            }
+
                             title="No events found"
                             description={
                               hasFilters

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useSearchParams } from "react-router-dom";
 import { useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
@@ -35,6 +36,11 @@ const readNumber = (params: URLSearchParams, key: string, fallback: number) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const readSortConfig = (params: URLSearchParams): SortConfig => ({
+  key: readString(params, "sortBy", "created"),
+  direction: readString(params, "sortDirection", "desc") === "asc" ? "asc" : "desc",
+});
+
 interface UseDocumentServerTableOptions {
   viewType: DocumentViewType;
   currentUser: User | null;
@@ -45,32 +51,69 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   const requestSeqRef = useRef(0);
   const { showToast } = useToast();
 
-  const [searchQuery, setSearchQuery] = useState(() => readString(searchParams, "search"));
-  const [statusFilter, setStatusFilter] = useState(() => readString(searchParams, "status", "All"));
-  const [typeFilter, setTypeFilter] = useState(() => readString(searchParams, "documentType", "All"));
-  const [businessUnitFilter, setBusinessUnitFilter] = useState(() => readString(searchParams, "businessUnit", "All"));
-  const [departmentFilter, setDepartmentFilter] = useState(() => readString(searchParams, "department", "All"));
-  const [relatedDocumentFilter, setRelatedDocumentFilter] = useState(() => readString(searchParams, "relatedDocument", "All"));
-  const [correlatedDocumentFilter, setCorrelatedDocumentFilter] = useState(() => readString(searchParams, "correlatedDocument", "All"));
-  const [templateFilter, setTemplateFilter] = useState(() => readString(searchParams, "isTemplate", "All"));
-  const [authorFilter, setAuthorFilter] = useState(() => {
-    if (viewType === "owned-by-me") {
-      return readString(searchParams, "authorId", currentUser?.id ?? "All");
-    }
-    return readString(searchParams, "authorId", "All");
-  });
-  const [createdFromDate, setCreatedFromDate] = useState(() => readString(searchParams, "createdFrom"));
-  const [createdToDate, setCreatedToDate] = useState(() => readString(searchParams, "createdTo"));
-  const [effectiveFromDate, setEffectiveFromDate] = useState(() => readString(searchParams, "effectiveFrom"));
-  const [effectiveToDate, setEffectiveToDate] = useState(() => readString(searchParams, "effectiveTo"));
-  const [validFromDate, setValidFromDate] = useState(() => readString(searchParams, "validFrom"));
-  const [validToDate, setValidToDate] = useState(() => readString(searchParams, "validTo"));
-  const [currentPage, setCurrentPage] = useState(() => readNumber(searchParams, "page", 1));
-  const [itemsPerPage, setItemsPerPage] = useState(() => Math.min(readNumber(searchParams, "limit", 10), 50));
-  const [sortConfig, setSortConfig] = useState<SortConfig>(() => ({
-    key: readString(searchParams, "sortBy", "created"),
-    direction: readString(searchParams, "sortDirection", "desc") === "asc" ? "asc" : "desc",
-  }));
+  // URL is the source of truth for every committed filter. The only local state is
+  // the search draft, which lets typing stay responsive until its debounce completes.
+  const urlSearch = readString(searchParams, "search");
+  const [searchQuery, setSearchQueryDraft] = useState(urlSearch);
+  const statusFilter = readString(searchParams, "status", "All");
+  const typeFilter = readString(searchParams, "documentType", "All");
+  const businessUnitFilter = readString(searchParams, "businessUnit", "All");
+  const departmentFilter = readString(searchParams, "department", "All");
+  const relatedDocumentFilter = readString(searchParams, "relatedDocument", "All");
+  const correlatedDocumentFilter = readString(searchParams, "correlatedDocument", "All");
+  const templateFilter = readString(searchParams, "isTemplate", "All");
+  const authorFilter = viewType === "owned-by-me"
+    ? currentUser?.id ?? "All"
+    : readString(searchParams, "authorId", "All");
+  const createdFromDate = readString(searchParams, "createdFrom");
+  const createdToDate = readString(searchParams, "createdTo");
+  const effectiveFromDate = readString(searchParams, "effectiveFrom");
+  const effectiveToDate = readString(searchParams, "effectiveTo");
+  const validFromDate = readString(searchParams, "validFrom");
+  const validToDate = readString(searchParams, "validTo");
+  const currentPage = readNumber(searchParams, "page", 1);
+  const itemsPerPage = Math.min(readNumber(searchParams, "limit", 10), 50);
+  const sortConfig = readSortConfig(searchParams);
+
+  const updateSearchParams = useCallback((updates: Record<string, string | null | undefined>, replace = true) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === undefined || value === "") next.delete(key);
+        else next.set(key, value);
+      }
+      return next;
+    }, { replace });
+  }, [setSearchParams]);
+
+  const updateFilter = useCallback((key: string, value: string) => {
+    updateSearchParams({ [key]: value === "All" ? null : value, page: null });
+  }, [updateSearchParams]);
+
+  const setSearchQuery = useCallback((value: string) => {
+    setSearchQueryDraft(value);
+  }, []);
+  const setStatusFilter = useCallback((value: string) => updateFilter("status", value), [updateFilter]);
+  const setTypeFilter = useCallback((value: string) => updateFilter("documentType", value), [updateFilter]);
+  const setBusinessUnitFilter = useCallback((value: string) => updateFilter("businessUnit", value), [updateFilter]);
+  const setDepartmentFilter = useCallback((value: string) => updateFilter("department", value), [updateFilter]);
+  const setRelatedDocumentFilter = useCallback((value: string) => updateFilter("relatedDocument", value), [updateFilter]);
+  const setCorrelatedDocumentFilter = useCallback((value: string) => updateFilter("correlatedDocument", value), [updateFilter]);
+  const setTemplateFilter = useCallback((value: string) => updateFilter("isTemplate", value), [updateFilter]);
+  const setAuthorFilter = useCallback((value: string) => updateFilter("authorId", value), [updateFilter]);
+  const setCreatedFromDate = useCallback((value: string) => updateFilter("createdFrom", value), [updateFilter]);
+  const setCreatedToDate = useCallback((value: string) => updateFilter("createdTo", value), [updateFilter]);
+  const setEffectiveFromDate = useCallback((value: string) => updateFilter("effectiveFrom", value), [updateFilter]);
+  const setEffectiveToDate = useCallback((value: string) => updateFilter("effectiveTo", value), [updateFilter]);
+  const setValidFromDate = useCallback((value: string) => updateFilter("validFrom", value), [updateFilter]);
+  const setValidToDate = useCallback((value: string) => updateFilter("validTo", value), [updateFilter]);
+  const setCurrentPage = useCallback((page: number) => {
+    updateSearchParams({ page: page > 1 ? String(page) : null }, false);
+  }, [updateSearchParams]);
+  const setItemsPerPage = useCallback((limit: number) => {
+    const normalizedLimit = Math.min(Math.max(limit, 1), 50);
+    updateSearchParams({ limit: normalizedLimit === 10 ? null : String(normalizedLimit), page: null }, false);
+  }, [updateSearchParams]);
 
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -88,21 +131,17 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   });
   const [refreshTick, setRefreshTick] = useState(0);
 
-  const debouncedSearch = useDebounce(searchQuery, 300);
-  const effectiveSearch = searchQuery.trim() === "" ? "" : debouncedSearch.trim();
+  const debouncedSearch = useDebounce(searchQuery, 400);
+  // Requests always use the committed URL value. Typing changes only the draft;
+  // the debounce below commits it to the URL, which then triggers the request.
+  const effectiveSearch = urlSearch;
+  const debouncedSearchValue = debouncedSearch.trim();
 
-  useEffect(() => {
-    if (viewType === "owned-by-me") {
-      if (currentUser?.id && authorFilter !== currentUser.id) {
-        setAuthorFilter(currentUser.id);
-      }
-    } else {
-      const paramAuthor = searchParams.get("authorId");
-      if (!paramAuthor && authorFilter !== "All") {
-        setAuthorFilter("All");
-      }
-    }
-  }, [viewType, currentUser?.id, searchParams, authorFilter]);
+  // Apply Browser Back/Forward (and a URL opened directly) to the search input
+  // before passive effects run, so an old debounced value cannot overwrite it.
+  useLayoutEffect(() => {
+    setSearchQueryDraft(urlSearch);
+  }, [urlSearch]);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,58 +226,13 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   ]);
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    params.set("scope", viewType);
-
-    if (effectiveSearch) params.set("search", effectiveSearch);
-    if (statusFilter && statusFilter !== "All") params.set("status", statusFilter);
-    if (typeFilter && typeFilter !== "All") params.set("documentType", typeFilter);
-    if (businessUnitFilter && businessUnitFilter !== "All") params.set("businessUnit", businessUnitFilter);
-    if (departmentFilter && departmentFilter !== "All") params.set("department", departmentFilter);
-    if (relatedDocumentFilter && relatedDocumentFilter !== "All") params.set("relatedDocument", relatedDocumentFilter);
-    if (correlatedDocumentFilter && correlatedDocumentFilter !== "All") params.set("correlatedDocument", correlatedDocumentFilter);
-    if (templateFilter && templateFilter !== "All") params.set("isTemplate", templateFilter);
-    if (authorFilter && authorFilter !== "All") params.set("authorId", viewType === "owned-by-me" ? (currentUser?.id ?? authorFilter) : authorFilter);
-    if (createdFromDate) params.set("createdFrom", createdFromDate);
-    if (createdToDate) params.set("createdTo", createdToDate);
-    if (effectiveFromDate) params.set("effectiveFrom", effectiveFromDate);
-    if (effectiveToDate) params.set("effectiveTo", effectiveToDate);
-    if (validFromDate) params.set("validFrom", validFromDate);
-    if (validToDate) params.set("validTo", validToDate);
-    if (sortConfig.key && sortConfig.key !== "title") params.set("sortBy", sortConfig.key);
-    if (sortConfig.direction !== "asc") params.set("sortDirection", sortConfig.direction);
-    if (currentPage > 1) params.set("page", String(currentPage));
-    if (itemsPerPage !== 10) params.set("limit", String(Math.min(itemsPerPage, 50)));
-
-    const nextQuery = params.toString();
-    if (nextQuery !== searchParams.toString()) {
-      setSearchParams(params, { replace: true });
-    }
-  }, [
-    viewType,
-    effectiveSearch,
-    statusFilter,
-    typeFilter,
-    businessUnitFilter,
-    departmentFilter,
-    relatedDocumentFilter,
-    correlatedDocumentFilter,
-    templateFilter,
-    authorFilter,
-    createdFromDate,
-    createdToDate,
-    effectiveFromDate,
-    effectiveToDate,
-    validFromDate,
-    validToDate,
-    sortConfig.key,
-    sortConfig.direction,
-    currentPage,
-    itemsPerPage,
-    currentUser?.id,
-    searchParams,
-    setSearchParams,
-  ]);
+    // A Back/Forward URL update replaces the draft in a layout effect. Until
+    // debounce catches up, its previous value must never be written back over
+    // the browser-selected URL.
+    if (searchQuery !== debouncedSearch) return;
+    if (debouncedSearchValue === urlSearch) return;
+    updateSearchParams({ search: debouncedSearchValue || null, page: null });
+  }, [debouncedSearch, debouncedSearchValue, searchQuery, updateSearchParams, urlSearch]);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,35 +317,24 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   ]);
 
   const handleSort = (key: string) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-    setCurrentPage(1);
+    const direction = sortConfig.key === key && sortConfig.direction === "asc" ? "desc" : "asc";
+    updateSearchParams({
+      sortBy: key === "created" ? null : key,
+      sortDirection: direction === "desc" ? null : direction,
+      page: null,
+    });
   };
 
   const clearFilters = () => {
-    setSearchQuery("");
-    setStatusFilter("All");
-    setTypeFilter("All");
-    setBusinessUnitFilter("All");
-    setDepartmentFilter("All");
-    setRelatedDocumentFilter("All");
-    setCorrelatedDocumentFilter("All");
-    setTemplateFilter("All");
-    setAuthorFilter(viewType === "owned-by-me" ? (currentUser?.id ?? "") : "All");
-    setCreatedFromDate("");
-    setCreatedToDate("");
-    setEffectiveFromDate("");
-    setEffectiveToDate("");
-    setValidFromDate("");
-    setValidToDate("");
-    setSortConfig({ key: "created", direction: "desc" });
-    setCurrentPage(1);
-    setItemsPerPage(10);
+    setSearchQueryDraft("");
+    setSearchParams(new URLSearchParams(), { replace: true });
   };
 
   const reload = () => setRefreshTick((prev) => prev + 1);
+
+  // Any document changed by anyone (a Reviewer completing review, a DCO publishing ...) changes what this list shows
+  // (status, actions, counts): refetch the current page so it is never stale until a manual reload.
+  useEntityChanged(["DOCUMENT", "REVISION"], () => reload(), { debounceMs: 1000 });
 
   const exportDocuments = async () => {
     setIsExporting(true);

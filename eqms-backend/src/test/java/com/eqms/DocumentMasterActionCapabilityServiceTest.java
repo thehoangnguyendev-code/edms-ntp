@@ -13,6 +13,7 @@ import com.eqms.service.DocumentMasterActionCapabilityService;
 import com.eqms.service.DocumentMasterWorkflowAuthorizationService;
 import com.eqms.service.DocumentService;
 import com.eqms.service.PermissionEvaluationService;
+import com.eqms.service.RevisionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +48,7 @@ class DocumentMasterActionCapabilityServiceTest {
     @Mock DocumentMasterWorkflowAuthorizationService workflowAuthorizationService;
     @Mock PermissionEvaluationService permissionEvaluationService;
     @Mock DocumentService documentService;
+    @Mock RevisionService revisionService;
 
     private DocumentMasterActionCapabilityService service;
     private UserAccount user;
@@ -62,7 +64,8 @@ class DocumentMasterActionCapabilityServiceTest {
                 documentAuthorizationService,
                 workflowAuthorizationService,
                 permissionEvaluationService,
-                documentService
+                documentService,
+                revisionService
         );
 
         user = new UserAccount();
@@ -78,12 +81,14 @@ class DocumentMasterActionCapabilityServiceTest {
         lenient().when(documentAuthorizationService.canViewDocument(user, document)).thenReturn(true);
         lenient().when(documentAuthorizationService.canEditInitialDocumentDraft(user, document)).thenReturn(false);
         lenient().when(documentAuthorizationService.canUploadRevision(user, document)).thenReturn(true);
+        lenient().when(documentAuthorizationService.isNextRevisionConfiguredForUpload(document)).thenReturn(true);
         lenient().when(documentRevisionRepository.findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(documentId, "EFFECTIVE"))
                 .thenReturn(Optional.of(new com.eqms.entity.DocumentRevisionRecord()));
         lenient().when(documentRevisionRepository.existsByDocument_IdAndStatus_CodeIn(eq(documentId), any()))
                 .thenReturn(false);
         lenient().when(permissionEvaluationService.hasPermission(eq(user), anyString())).thenReturn(true);
         lenient().when(documentService.isNextRevisionConfigurable(document)).thenReturn(true);
+        lenient().when(revisionService.describeWhyDocumentWorkflowParticipantsAreMissing(document)).thenReturn(null);
         lenient().when(workflowAuthorizationService.check(eq(user), eq(document), anyString()))
                 .thenAnswer(invocation -> new DocumentMasterWorkflowAuthorizationService.Decision(
                         true, null, null, "documents.document.lifecycle"));
@@ -97,7 +102,7 @@ class DocumentMasterActionCapabilityServiceTest {
         assertThat(response.actions()).containsKeys(
                 "view", "editInitialDraft", "uploadRevision", "requestControlledCopy",
                 "configureNextReviewers", "configureNextApprovers", "configureNextRelatedDocuments",
-                "configureNextCorrelatedDocuments", "manageReviewCycle", "cancel", "obsolete");
+                "configureNextCorrelatedDocuments", "configureNextMetadata", "cancel", "obsolete");
         assertThat(response.actions().get("uploadRevision").allowed()).isTrue();
         assertThat(response.actions().get("requestControlledCopy").requiredPermissionCode())
                 .isEqualTo("documents.controlled_copy.request");
@@ -120,6 +125,27 @@ class DocumentMasterActionCapabilityServiceTest {
         ResourceCapabilitiesResponse hasOpenRevision = service.getCapabilities(documentId);
         assertThat(hasOpenRevision.actions().get("uploadRevision").allowed()).isFalse();
         assertThat(hasOpenRevision.actions().get("uploadRevision").reasonCode()).isEqualTo("DOCUMENT_HAS_OPEN_REVISIONS");
+    }
+
+    @Test
+    void uploadRevision_isNotAllowedWhenApproverOrReviewerIsMissing() {
+        // Regression: a Document with no Approver assigned (e.g. a freshly-promoted Legacy Import,
+        // which never gets real workflow participants) must not report uploadRevision as allowed --
+        // the real guard (RevisionService#createRevisionAndUploadFile) would reject it at submit
+        // time anyway; this capability must say so up front instead of the button just failing later.
+        when(revisionService.describeWhyDocumentWorkflowParticipantsAreMissing(document))
+                .thenReturn("APPROVER_REQUIRED: Assign and save an Approver before uploading a revision.");
+
+        ResourceCapabilitiesResponse missingApprover = service.getCapabilities(documentId);
+        assertThat(missingApprover.actions().get("uploadRevision").allowed()).isFalse();
+        assertThat(missingApprover.actions().get("uploadRevision").reasonCode()).isEqualTo("APPROVER_REQUIRED");
+
+        when(revisionService.describeWhyDocumentWorkflowParticipantsAreMissing(document))
+                .thenReturn("REVIEWER_REQUIRED: Assign and save a Reviewer before uploading a revision.");
+
+        ResourceCapabilitiesResponse missingReviewer = service.getCapabilities(documentId);
+        assertThat(missingReviewer.actions().get("uploadRevision").allowed()).isFalse();
+        assertThat(missingReviewer.actions().get("uploadRevision").reasonCode()).isEqualTo("REVIEWER_REQUIRED");
     }
 
     @Test
@@ -151,7 +177,7 @@ class DocumentMasterActionCapabilityServiceTest {
         assertThat(response.actions().get("configureNextApprovers").allowed()).isFalse();
         assertThat(response.actions().get("configureNextRelatedDocuments").allowed()).isFalse();
         assertThat(response.actions().get("configureNextCorrelatedDocuments").allowed()).isFalse();
-        assertThat(response.actions().get("manageReviewCycle").allowed()).isFalse();
+        assertThat(response.actions().get("configureNextMetadata").allowed()).isFalse();
         // Unrelated actions must not be affected.
         assertThat(response.actions().get("requestControlledCopy").allowed()).isTrue();
     }

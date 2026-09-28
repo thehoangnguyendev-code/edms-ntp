@@ -108,6 +108,17 @@ export interface WorkflowActionPolicyEffectiveResponse {
   source: WorkflowPolicySource;
   policy: WorkflowActionPolicy | null;
   fallbackUsed: boolean;
+  trace: WorkflowPolicyResolutionTrace[];
+  decisionCode: string | null;
+  decisionMessage: string | null;
+}
+
+export interface WorkflowPolicyResolutionTrace {
+  policyId: string | null;
+  scope: "DOCUMENT_TYPE_OVERRIDE" | "GLOBAL";
+  outcome: "SELECTED" | "NOT_FOUND";
+  reasonCode: string;
+  message: string;
 }
 
 export interface WorkflowActorTypeOption {

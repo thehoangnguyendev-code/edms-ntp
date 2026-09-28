@@ -11,4 +11,5 @@ public interface DocumentWorkflowParticipantRepository extends JpaRepository<Doc
     void deleteAllByDocument_IdAndParticipantType(UUID documentId, String participantType);
     List<DocumentWorkflowParticipant> findAllByDocument_IdOrderBySequenceOrderAsc(UUID documentId);
     List<DocumentWorkflowParticipant> findAllByDocument_IdAndParticipantTypeOrderBySequenceOrderAsc(UUID documentId, String participantType);
+    long countByDocument_IdAndParticipantType(UUID documentId, String participantType);
 }

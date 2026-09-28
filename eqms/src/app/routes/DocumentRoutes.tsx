@@ -11,7 +11,7 @@ import { ProtectedRoute } from '@/middleware/ProtectedRoute';
 const DetailDocumentView = lazy(() => import('@/features/documents/document-detail/DetailDocumentView').then(m => ({ default: m.DetailDocumentView })));
 const DocumentsView = lazy(() => import('@/features/documents/document-list').then(m => ({ default: m.DocumentsView })));
 const NewDocumentView = lazy(() => import('@/features/documents/document-list/document-creation').then(m => ({ default: m.NewDocumentView })));
-const KnowledgeView = lazy(() => import('@/features/documents/knowledge').then(m => ({ default: m.KnowledgeView })));
+const LegacyImportView = lazy(() => import('@/features/documents/document-list/document-creation').then(m => ({ default: m.LegacyImportView })));
 const DetailRevisionView = lazy(() => import('@/features/documents/document-revisions/detail-revision/DetailRevisionView').then(m => ({ default: m.DetailRevisionView })));
 const RevisionListView = lazy(() => import('@/features/documents/document-revisions').then(m => ({ default: m.RevisionListView })));
 const NewRevisionView = lazy(() => import('@/features/documents/document-revisions').then(m => ({ default: m.NewRevisionView })));
@@ -26,7 +26,7 @@ const ControlledCopiesView = lazy(() => import('@/features/documents/controlled-
 const ControlledCopyBatchStatusDiscrepanciesView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.ControlledCopyBatchStatusDiscrepanciesView })));
 const ControlledCopyDetailView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.ControlledCopyDetailView })));
 const DestroyControlledCopyView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.DestroyControlledCopyView })));
-const ControlledCopyPreviewView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.ControlledCopyPreviewView })));
+const DcoBatchZipDownloadView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.DcoBatchZipDownloadView })));
 const RequestControlledCopyView = lazy(() => import('@/features/documents/document-revisions/views/RequestControlledCopyView').then(m => ({ default: m.RequestControlledCopyView })));
 
 // ==================== ROUTE WRAPPER ====================
@@ -158,12 +158,6 @@ const ControlledCopyDetailViewWrapper = () => {
   );
 };
 
-const ControlledCopyPreviewViewWrapper = () => (
-  <Suspense fallback={<LoadingFallback />}>
-    <ControlledCopyPreviewView />
-  </Suspense>
-);
-
 // ==================== DOCUMENT ROUTES ====================
 export function documentRoutes(navigate: NavigateFunction) {
   return (
@@ -179,9 +173,12 @@ export function documentRoutes(navigate: NavigateFunction) {
       <Route path="owned" element={<Suspense fallback={<LoadingFallback />}><DocumentsView viewType="owned-by-me" /></Suspense>} />
       <Route path="all" element={<Suspense fallback={<LoadingFallback />}><DocumentsView viewType="all" /></Suspense>} />
       <Route path="all/new" element={<Suspense fallback={<LoadingFallback />}><NewDocumentView /></Suspense>} />
+      <Route path="all/legacy-import" element={<ProtectedRoute requiredPermissions={["documents.legacy_import.manage"]}><Suspense fallback={<LoadingFallback />}><LegacyImportView /></Suspense></ProtectedRoute>} />
       <Route path="all/edit/:id" element={<Suspense fallback={<LoadingFallback />}><NewDocumentView /></Suspense>} />
-      {/* Knowledge Base */}
-      <Route path="knowledge" element={<Suspense fallback={<LoadingFallback />}><KnowledgeView /></Suspense>} />
+
+      {/* Document Administration -- moved to System Administration, see SettingsRoutes.tsx
+          (route registered at documents/administration/* -- URL unchanged since it is also the
+          backend @RequestMapping base path on several controllers). */}
 
       {/* Document Detail */}
       <Route path=":id" element={<DetailDocumentViewWrapper />} />
@@ -209,8 +206,9 @@ export function documentRoutes(navigate: NavigateFunction) {
         <Route path="all" element={<Suspense fallback={<LoadingFallback />}><ControlledCopiesView viewType="all" /></Suspense>} />
         <Route path="ready" element={<Suspense fallback={<LoadingFallback />}><ControlledCopiesView viewType="ready" /></Suspense>} />
         <Route path="distributed" element={<Suspense fallback={<LoadingFallback />}><ControlledCopiesView viewType="distributed" /></Suspense>} />
-        <Route path="preview/:id" element={<ControlledCopyPreviewViewWrapper />} />
         <Route path="discrepancies" element={<Suspense fallback={<LoadingFallback />}><ControlledCopyBatchStatusDiscrepanciesView /></Suspense>} />
+        {/* Must come before ":id" -- otherwise "batches" is captured there instead. */}
+        <Route path="batches/:batchId/dco-zip" element={<Suspense fallback={<LoadingFallback />}><DcoBatchZipDownloadView /></Suspense>} />
         <Route path=":id" element={<ControlledCopyDetailViewWrapper />} />
         <Route path=":id/destroy" element={<Suspense fallback={<LoadingFallback />}><DestroyControlledCopyView /></Suspense>} />
         <Route path="*" element={<Suspense fallback={<LoadingFallback />}><DocumentsView viewType="all" /></Suspense>} />

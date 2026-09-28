@@ -138,7 +138,7 @@ public class EmailService {
             return false;
         }
 
-        String populatedSubject = emailTemplateService.renderTemplateText(template.getSubject(), variables);
+        String populatedSubject = stripHeaderInjectionChars(emailTemplateService.renderTemplateText(template.getSubject(), variables));
         String populatedBody = emailTemplateService.renderTemplateContent(template, variables);
 
         JavaMailSender mailSender = getMailSender(emailConfig);
@@ -197,7 +197,7 @@ public class EmailService {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         helper.setTo(to);
-        helper.setSubject(subject);
+        helper.setSubject(stripHeaderInjectionChars(subject));
         helper.setText(htmlBody, true);
         helper.setFrom(senderEmail, senderName);
         mailSender.send(message);
@@ -224,7 +224,7 @@ public class EmailService {
             return false;
         }
 
-        String populatedSubject = emailTemplateService.renderTemplateText(template.getSubject(), variables);
+        String populatedSubject = stripHeaderInjectionChars(emailTemplateService.renderTemplateText(template.getSubject(), variables));
         String populatedBody = emailTemplateService.renderTemplateContent(template, variables);
 
         JavaMailSender mailSender = getMailSender(emailConfig);
@@ -272,5 +272,21 @@ public class EmailService {
         helper.setFrom(request.senderEmail(), request.senderName());
 
         mailSender.send(message);
+    }
+
+    /**
+     * #8: an email Subject may be built from workflow-actor free text (e.g. a Reject Review/
+     * Approval reason substituted into a template placeholder), which is never sanitized the way
+     * the email body is (see {@code EmailTemplateService#sanitizeRenderedHtml}). A raw CR/LF in
+     * that text reaching {@link MimeMessageHelper#setSubject} could otherwise be a header
+     * injection vector (e.g. smuggling an extra "Bcc:" line). Strip control characters right
+     * before the final header write -- defense in depth regardless of what protection the
+     * underlying Jakarta Mail implementation already provides.
+     */
+    private static String stripHeaderInjectionChars(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replaceAll("[\\r\\n\\x00]", " ").trim();
     }
 }

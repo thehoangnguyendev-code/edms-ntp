@@ -224,7 +224,7 @@ export const WorkflowRoleDrawer: React.FC<{
               >
                 {role.label}
               </p>
-              <p className="truncate font-mono text-[11px] text-slate-400">
+              <p className="truncate  text-[11px] text-slate-400">
                 {role.code}
               </p>
             </div>
@@ -253,7 +253,7 @@ export const WorkflowRoleDrawer: React.FC<{
             {stages.length ? (
               <div className="flex flex-wrap gap-1.5">
                 {stages.map((stage) => (
-                  <Badge key={stage} size="xs" color="emerald">
+                  <Badge key={stage} size="sm" color="emerald">
                     {stage}
                   </Badge>
                 ))}
@@ -275,7 +275,7 @@ export const WorkflowRoleDrawer: React.FC<{
                       {policy.actionLabel ||
                         policy.actionCode.replace(/_/g, " ")}
                     </span>
-                    <Badge size="xs" color="slate">
+                    <Badge size="sm" color="slate">
                       {policy.fromStatus.replace(/_/g, " ")}
                     </Badge>
                   </div>

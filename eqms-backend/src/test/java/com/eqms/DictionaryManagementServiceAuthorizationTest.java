@@ -26,15 +26,22 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * F-17 — Dictionary master data (Business Unit, Department, Position, Document Type,
- * Document Sub-Type, Storage Location, Retention Policy) previously had NO permission gate
- * at either the controller or service layer. Document Type is the key
- * {@code workflow_action_policies.document_type_id} is keyed on, and Business Unit/Department
- * feed {@code ObjectAccessEvaluationService}'s scope matching — so an unauthenticated-permission
- * write here could reshape authorization decisions elsewhere.
+ * F-17 — Dictionary master data (Business Unit, Department, Position, Storage Location,
+ * Retention Policy) previously had NO permission gate at either the controller or service layer.
+ * Business Unit/Department feed {@code ObjectAccessEvaluationService}'s scope matching — so an
+ * unauthenticated-permission write here could reshape authorization decisions elsewhere.
+ * (Document Type / Sub-Type permission coverage now lives in
+ * {@code DocumentTypeAdminServiceAuthorizationTest}, alongside its own service.)
  *
- * Verifies the gate runs BEFORE any repository access (not just before the response is built),
- * for every read (view-or-manage) and every mutate (manage-only) method across all 7 resources.
+ * Every mutate (create/update/delete, manage-only) and every paginated "admin screen" read
+ * ({@code list*Page()}) is gated, verified to run BEFORE any repository access.
+ *
+ * The unpaginated "give me the full active list" reads ({@code listBusinessUnits()} etc.)
+ * are a deliberate exception (2026-08-27 product decision): they back ordinary dropdowns used
+ * across unrelated modules (document creation, user creation, controlled copies policy, ...),
+ * not the Settings > Dictionaries admin screen, so they carry no permission gate at all —
+ * requiring a Settings screen permission just to populate a form dropdown blocked ordinary users
+ * (e.g. DCO) from routine actions. Only their {@code *Page()} counterpart is gated.
  */
 @ExtendWith(MockitoExtension.class)
 class DictionaryManagementServiceAuthorizationTest {
@@ -42,8 +49,6 @@ class DictionaryManagementServiceAuthorizationTest {
     @Mock private BusinessUnitRepository businessUnitRepository;
     @Mock private DepartmentRepository departmentRepository;
     @Mock private PositionRepository positionRepository;
-    @Mock private DocumentTypeRepository documentTypeRepository;
-    @Mock private DocumentSubTypeRepository documentSubTypeRepository;
     @Mock private StorageLocationRepository storageLocationRepository;
     @Mock private RetentionPolicyRepository retentionPolicyRepository;
     @Mock private DocumentRecordRepository documentRecordRepository;
@@ -58,96 +63,97 @@ class DictionaryManagementServiceAuthorizationTest {
     private DictionaryManagementService service;
 
     private UserAccount actor;
-    private static final String VIEW = "settings.dictionary.view";
-    private static final String MANAGE = "settings.dictionary.manage";
-
     @BeforeEach
     void setUp() {
         actor = new UserAccount();
         actor.setId(UUID.randomUUID());
-        when(currentUserService.requireCurrentUser()).thenReturn(actor);
+        // lenient: the unpaginated "no permission gate" reads never call requireCurrentUser().
+        lenient().when(currentUserService.requireCurrentUser()).thenReturn(actor);
     }
 
     private void grantView() {
-        when(permissionEvaluationService.hasAnyPermission(actor, VIEW, MANAGE)).thenReturn(true);
+        when(permissionEvaluationService.hasAnyPermission(eq(actor), anyString(), anyString())).thenReturn(true);
     }
 
     private void denyView() {
-        when(permissionEvaluationService.hasAnyPermission(actor, VIEW, MANAGE)).thenReturn(false);
+        when(permissionEvaluationService.hasAnyPermission(eq(actor), anyString(), anyString())).thenReturn(false);
     }
 
     private void grantManage() {
-        when(permissionEvaluationService.hasPermission(actor, MANAGE)).thenReturn(true);
+        when(permissionEvaluationService.hasPermission(eq(actor), anyString())).thenReturn(true);
     }
 
     private void denyManage() {
-        when(permissionEvaluationService.hasPermission(actor, MANAGE)).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(eq(actor), anyString())).thenReturn(false);
     }
 
-    // ── Read methods: denied without view/manage, and the gate runs before any repo call ──────
+    // ── Unpaginated "dropdown" reads: deliberately NOT gated (see class Javadoc) ───────────────
 
     @Test
-    void listBusinessUnits_withoutPermission_isDenied_andRepositoryNeverTouched() {
-        denyView();
-        assertThrows(AccessDeniedException.class, () -> service.listBusinessUnits());
-        verifyNoInteractions(businessUnitRepository);
-    }
-
-    @Test
-    void listDepartments_withoutPermission_isDenied() {
-        denyView();
-        assertThrows(AccessDeniedException.class, () -> service.listDepartments());
-        verifyNoInteractions(departmentRepository);
+    void listBusinessUnits_hasNoPermissionGate_alwaysAllowed() {
+        when(businessUnitRepository.findAllByOrderByNameAsc()).thenReturn(List.of());
+        assertDoesNotThrow(() -> service.listBusinessUnits());
+        verify(businessUnitRepository).findAllByOrderByNameAsc();
+        verifyNoInteractions(permissionEvaluationService);
     }
 
     @Test
-    void listPositions_withoutPermission_isDenied() {
-        denyView();
-        assertThrows(AccessDeniedException.class, () -> service.listPositions());
-        verifyNoInteractions(positionRepository);
+    void listDepartments_hasNoPermissionGate_alwaysAllowed() {
+        when(departmentRepository.findAllByOrderByNameAsc()).thenReturn(List.of());
+        assertDoesNotThrow(() -> service.listDepartments());
+        verify(departmentRepository).findAllByOrderByNameAsc();
+        verifyNoInteractions(permissionEvaluationService);
     }
 
     @Test
-    void listDocumentTypes_withoutPermission_isDenied() {
-        denyView();
-        assertThrows(AccessDeniedException.class, () -> service.listDocumentTypes());
-        verifyNoInteractions(documentTypeRepository);
+    void listPositions_hasNoPermissionGate_alwaysAllowed() {
+        when(positionRepository.findAllByOrderByNameAsc()).thenReturn(List.of());
+        assertDoesNotThrow(() -> service.listPositions());
+        verify(positionRepository).findAllByOrderByNameAsc();
+        verifyNoInteractions(permissionEvaluationService);
     }
 
-    @Test
-    void listDocumentSubTypes_withoutPermission_isDenied() {
-        denyView();
-        assertThrows(AccessDeniedException.class, () -> service.listDocumentSubTypes());
-        verifyNoInteractions(documentSubTypeRepository);
-    }
+    // Document Type / Sub-Type lookup tests moved to DocumentTypeAdminServiceAuthorizationTest.
 
     @Test
     void listStorageLocations_withoutPermission_isDenied() {
+        // Was previously ungated (a genuine oversight, unlike listBusinessUnits/listDepartments/
+        // listPositions above which are deliberately open lookups) -- now matches its paginated
+        // sibling listStorageLocationsPage.
         denyView();
         assertThrows(AccessDeniedException.class, () -> service.listStorageLocations());
         verifyNoInteractions(storageLocationRepository);
     }
 
     @Test
-    void listRetentionPolicies_withoutPermission_isDenied() {
-        denyView();
-        assertThrows(AccessDeniedException.class, () -> service.listRetentionPolicies());
-        verifyNoInteractions(retentionPolicyRepository);
+    void listRetentionPolicies_hasNoPermissionGate_alwaysAllowed() {
+        when(retentionPolicyRepository.findAllByOrderByNameAsc()).thenReturn(List.of());
+        assertDoesNotThrow(() -> service.listRetentionPolicies());
+        verify(retentionPolicyRepository).findAllByOrderByNameAsc();
+        verifyNoInteractions(permissionEvaluationService);
     }
 
     @Test
-    void listLanguages_withoutPermission_isDenied() {
-        denyView();
-        assertThrows(AccessDeniedException.class, () -> service.listLanguages());
-        verifyNoInteractions(userLanguageRepository);
+    void listLanguages_hasNoPermissionGate_alwaysAllowed() {
+        when(userLanguageRepository.findAllByActiveTrueOrderBySortOrderAscNameAsc()).thenReturn(List.of());
+        assertDoesNotThrow(() -> service.listLanguages());
+        verify(userLanguageRepository).findAllByActiveTrueOrderBySortOrderAscNameAsc();
+        verifyNoInteractions(permissionEvaluationService);
     }
+
+    // Education lookup-list test moved to EducationManagementServiceAuthorizationTest.
+
+    // ── Paginated "admin screen" reads: gated, and the gate runs before any repo call ──────────
 
     @Test
     void listBusinessUnits_withViewOnly_isAllowedThroughTheGate() {
         grantView();
-        when(businessUnitRepository.findAllByOrderByNameAsc()).thenReturn(List.of());
-        assertDoesNotThrow(() -> service.listBusinessUnits());
-        verify(businessUnitRepository).findAllByOrderByNameAsc();
+        when(businessUnitRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+        assertDoesNotThrow(() -> service.listBusinessUnitsPage(null, null, null, null, 1, 10, "name", "asc"));
+        verify(permissionEvaluationService).hasAnyPermission(
+                actor, "settings.business_unit.view", "settings.business_unit.manage");
+        verify(businessUnitRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @SuppressWarnings("unchecked")
@@ -190,7 +196,7 @@ class DictionaryManagementServiceAuthorizationTest {
     void createDepartment_withoutManage_isDenied_beforeBusinessUnitLookup() {
         denyManage();
         assertThrows(AccessDeniedException.class, () ->
-                service.createDepartment(new DepartmentDictionaryRequest("Dept", "DPT", "Unit", null, true)));
+                service.createDepartment(new DepartmentDictionaryRequest("Dept", "DPT", "Unit", null, true, null, null)));
         verifyNoInteractions(businessUnitRepository, departmentRepository);
     }
 
@@ -199,7 +205,7 @@ class DictionaryManagementServiceAuthorizationTest {
         denyManage();
         UUID id = UUID.randomUUID();
         assertThrows(AccessDeniedException.class, () ->
-                service.updateDepartment(id, new DepartmentDictionaryRequest("Dept", "DPT", "Unit", null, true)));
+                service.updateDepartment(id, new DepartmentDictionaryRequest("Dept", "DPT", "Unit", null, true, null, null)));
         verifyNoInteractions(departmentRepository);
     }
 
@@ -215,7 +221,7 @@ class DictionaryManagementServiceAuthorizationTest {
     void createPosition_withoutManage_isDenied() {
         denyManage();
         assertThrows(AccessDeniedException.class, () ->
-                service.createPosition(new PositionDictionaryRequest("Pos", "POS", "Unit", "Dept", null, true)));
+                service.createPosition(new PositionDictionaryRequest("Pos", "Unit", "Dept", null, true)));
         verifyNoInteractions(businessUnitRepository, departmentRepository, positionRepository);
     }
 
@@ -224,7 +230,7 @@ class DictionaryManagementServiceAuthorizationTest {
         denyManage();
         UUID id = UUID.randomUUID();
         assertThrows(AccessDeniedException.class, () ->
-                service.updatePosition(id, new PositionDictionaryRequest("Pos", "POS", "Unit", "Dept", null, true)));
+                service.updatePosition(id, new PositionDictionaryRequest("Pos", "Unit", "Dept", null, true)));
         verifyNoInteractions(positionRepository);
     }
 
@@ -236,55 +242,7 @@ class DictionaryManagementServiceAuthorizationTest {
         verifyNoInteractions(positionRepository);
     }
 
-    @Test
-    void createDocumentType_withoutManage_isDenied() {
-        denyManage();
-        assertThrows(AccessDeniedException.class, () ->
-                service.createDocumentType(new DocumentTypeDictionaryRequest("SOP", "SOP", 0, null, true)));
-        verifyNoInteractions(documentTypeRepository);
-    }
-
-    @Test
-    void updateDocumentType_withoutManage_isDenied() {
-        denyManage();
-        UUID id = UUID.randomUUID();
-        assertThrows(AccessDeniedException.class, () ->
-                service.updateDocumentType(id, new DocumentTypeDictionaryRequest("SOP", "SOP", 0, null, true)));
-        verifyNoInteractions(documentTypeRepository);
-    }
-
-    @Test
-    void deleteDocumentType_withoutManage_isDenied() {
-        denyManage();
-        UUID id = UUID.randomUUID();
-        assertThrows(AccessDeniedException.class, () -> service.deleteDocumentType(id));
-        verifyNoInteractions(documentTypeRepository);
-    }
-
-    @Test
-    void createDocumentSubType_withoutManage_isDenied() {
-        denyManage();
-        assertThrows(AccessDeniedException.class, () ->
-                service.createDocumentSubType(new DocumentSubTypeDictionaryRequest("Sub", UUID.randomUUID().toString(), null, true)));
-        verifyNoInteractions(documentTypeRepository, documentSubTypeRepository);
-    }
-
-    @Test
-    void updateDocumentSubType_withoutManage_isDenied() {
-        denyManage();
-        UUID id = UUID.randomUUID();
-        assertThrows(AccessDeniedException.class, () ->
-                service.updateDocumentSubType(id, new DocumentSubTypeDictionaryRequest("Sub", UUID.randomUUID().toString(), null, true)));
-        verifyNoInteractions(documentSubTypeRepository);
-    }
-
-    @Test
-    void deleteDocumentSubType_withoutManage_isDenied() {
-        denyManage();
-        UUID id = UUID.randomUUID();
-        assertThrows(AccessDeniedException.class, () -> service.deleteDocumentSubType(id));
-        verifyNoInteractions(documentSubTypeRepository);
-    }
+    // Document Type / Sub-Type mutate tests moved to DocumentTypeAdminServiceAuthorizationTest.
 
     @Test
     void createStorageLocation_withoutManage_isDenied() {
@@ -336,11 +294,19 @@ class DictionaryManagementServiceAuthorizationTest {
         verifyNoInteractions(retentionPolicyRepository);
     }
 
+    // Country tests removed: Application Settings > Countries no longer goes through
+    // DictionaryManagementService/countryRepository at all -- it's live-sourced from REST
+    // Countries v5 via CountryManagementService/RestCountriesClient (read-only, no manage gate to
+    // regression-test here anymore).
+
+    // Education (Degree Levels, Schools) create/update/delete/page tests moved to
+    // EducationManagementServiceAuthorizationTest.
+
     // ── View-only is not enough to mutate ──────────────────────────────────────────────────────
 
     @Test
     void createBusinessUnit_withViewOnly_isStillDenied() {
-        when(permissionEvaluationService.hasPermission(actor, MANAGE)).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(eq(actor), anyString())).thenReturn(false);
         assertThrows(AccessDeniedException.class, () ->
                 service.createBusinessUnit(new BusinessUnitDictionaryRequest("Unit", "UNT", null, true)));
     }

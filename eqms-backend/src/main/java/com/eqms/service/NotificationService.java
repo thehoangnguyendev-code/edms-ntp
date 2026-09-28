@@ -41,12 +41,24 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
 public class NotificationService {
 
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
+    // Every email template in this codebase follows the same shape: one or two short intro
+    // <p> paragraphs (greeting + one-line summary), then a bordered <div>/<table> "details box"
+    // listing every field (Controlled Copy/Copy Number/Status/... or the Document/Revision
+    // equivalent). Flattening the WHOLE body for the in-app notification (the old behavior)
+    // dumped that entire details box into a toast -- reading like the e-mail it was copied from,
+    // not a short in-app message. Only the paragraph(s) BEFORE that details box are pulled in
+    // (case-insensitive, matches <p ...> or <P ...>); the details box itself lives on the record's
+    // own detail page (one tap away via the notification's actionUrl), not duplicated here.
+    private static final Pattern LEADING_PARAGRAPH_PATTERN = Pattern.compile("(?is)<p\\b[^>]*>(.*?)</p>");
+    private static final Pattern DETAILS_BOX_START_PATTERN = Pattern.compile("(?i)<(div|table)\\b");
+    private static final int MAX_SUMMARY_PARAGRAPHS = 2;
     private static final DateTimeFormatter DD_MM_YYYY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final ZoneId ZONE = ZoneId.systemDefault();
 
@@ -671,7 +683,10 @@ public class NotificationService {
         );
     }
 
-    private String renderTemplate(String template, Map<String, String> variables) {
+    /** Supports both {{key}} and {key} placeholders -- the same two forms EmailTemplateService
+     *  accepts; seeded templates (e.g. V346 handover subjects) use the single-brace form, which
+     *  previously reached the in-app inbox unrendered. */
+    static String renderTemplate(String template, Map<String, String> variables) {
         if (!StringUtils.hasText(template)) {
             return "";
         }
@@ -682,6 +697,7 @@ public class NotificationService {
                 String value = entry.getValue() == null ? "" : entry.getValue();
                 if (StringUtils.hasText(key)) {
                     rendered = rendered.replace("{{" + key + "}}", value);
+                    rendered = rendered.replace("{" + key + "}", value);
                 }
             }
         }
@@ -692,12 +708,50 @@ public class NotificationService {
         if (!StringUtils.hasText(renderedHtml)) {
             return "";
         }
+        String leadingSummary = extractLeadingParagraphSummary(renderedHtml);
+        if (leadingSummary != null) {
+            return leadingSummary;
+        }
+        // Fallback for templates that don't follow the greeting+summary+details-box convention:
+        // strip all HTML and truncate, same as before.
         String plain = HTML_TAG_PATTERN.matcher(renderedHtml).replaceAll(" ");
         plain = plain.replace("&nbsp;", " ").replaceAll("\\s+", " ").trim();
         if (plain.length() <= 220) {
             return plain;
         }
         return plain.substring(0, 217) + "...";
+    }
+
+    /**
+     * Every email template here opens with one or two short intro {@code <p>} paragraphs
+     * (greeting + a one-line summary) followed by a bordered {@code <div>}/{@code <table>}
+     * "details box" restating every field. In-app notifications only need the intro -- the
+     * details box duplicates what's already on the record's own detail page. This pulls the
+     * text of up to the first {@link #MAX_SUMMARY_PARAGRAPHS} {@code <p>} tags that appear
+     * BEFORE that details box, or returns null (caller falls back to the old full-strip
+     * behavior) if the body doesn't contain any leading paragraph in that shape.
+     */
+    private String extractLeadingParagraphSummary(String renderedHtml) {
+        Matcher boxMatcher = DETAILS_BOX_START_PATTERN.matcher(renderedHtml);
+        String prefix = boxMatcher.find() ? renderedHtml.substring(0, boxMatcher.start()) : renderedHtml;
+
+        Matcher paragraphMatcher = LEADING_PARAGRAPH_PATTERN.matcher(prefix);
+        List<String> paragraphs = new ArrayList<>();
+        while (paragraphMatcher.find() && paragraphs.size() < MAX_SUMMARY_PARAGRAPHS) {
+            String innerText = HTML_TAG_PATTERN.matcher(paragraphMatcher.group(1)).replaceAll(" ");
+            innerText = innerText.replace("&nbsp;", " ").replaceAll("\\s+", " ").trim();
+            if (StringUtils.hasText(innerText)) {
+                paragraphs.add(innerText);
+            }
+        }
+        if (paragraphs.isEmpty()) {
+            return null;
+        }
+        String joined = String.join(" ", paragraphs);
+        if (joined.length() <= 220) {
+            return joined;
+        }
+        return joined.substring(0, 217) + "...";
     }
 
     private String resolveActionUrl(Map<String, String> variables) {

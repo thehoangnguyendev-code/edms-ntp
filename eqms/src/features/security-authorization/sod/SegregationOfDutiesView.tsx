@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Scale, Search, AlertTriangle, Ban, ShieldOff, RefreshCw, MoreVertical, X, Check, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Search, AlertTriangle, Ban, ShieldOff, RefreshCw, MoreVertical, X, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { IconFilter2, IconPencilMinus, IconTrash } from "@tabler/icons-react";
 import { NavigationGuardModal } from "@/components/ui/modal/NavigationGuardModal";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { useDocumentAdministration } from "@/features/settings/document-administration/hooks/useDocumentAdministration";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
+import { FormSection } from "@/components/ui/form/FormSection";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
@@ -49,17 +50,19 @@ const ViolationsPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-800">Violation Scanner</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Check all active Access Profiles for SoD conflicts</p>
-        </div>
+    <FormSection
+      title="Violation Scanner"
+      icon={<ShieldOff className="h-4 w-4" />}
+      headerRight={
         <Button variant="outline" size="sm" className="whitespace-nowrap gap-2" onClick={scan} disabled={scanning}>
           <RefreshCw className={cn("h-4 w-4", scanning && "animate-spin")} />
           {scanning ? "Scanning…" : "Scan Now"}
         </Button>
-      </div>
+      }
+    >
+      <p className="mb-4 text-xs text-slate-500">
+        Checks every active Access Profile alone, and every active user's combined profiles, for SoD conflicts.
+      </p>
 
       {violations === null ? (
         <p className="py-6 text-center text-sm text-slate-400">Click "Scan Now" to check for violations across all Access Profiles.</p>
@@ -93,20 +96,56 @@ const ViolationsPanel: React.FC = () => {
                     {v.permissionCodeA} ⊕ {v.permissionCodeB}
                   </p>
                   {v.regulationRef && <p className="text-xs text-slate-500 mt-1">{v.regulationRef}</p>}
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {v.violatingAccessProfiles.map((profile) => (
-                      <Badge key={profile.accessProfileId} color="slate" variant="outline" size="xs">
-                        {profile.accessProfileName}
-                      </Badge>
-                    ))}
-                  </div>
+
+                  {v.violatingAccessProfiles.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                        Profile alone grants both sides — fix the profile:
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {v.violatingAccessProfiles.map((profile) => (
+                          <Badge key={profile.accessProfileId} color="slate" variant="outline" size="xs">
+                            {profile.accessProfileName}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {v.violatingUserCombinations.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                        No single profile is at fault — this person's combined profiles are:
+                      </p>
+                      {v.violatingUserCombinations.map((combo) => (
+                        <div key={combo.userId} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                          <p className="text-xs font-semibold text-slate-800">
+                            {combo.fullName ?? combo.username}
+                            <span className="ml-1.5 font-normal text-slate-400">@{combo.username}</span>
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-1 text-2xs">
+                            <span className="text-slate-500">grants {v.permissionCodeA} via</span>
+                            {combo.profilesGrantingA.map((p) => (
+                              <Badge key={p.accessProfileId} color="slate" variant="outline" size="xs">{p.accessProfileName}</Badge>
+                            ))}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-1 text-2xs">
+                            <span className="text-slate-500">grants {v.permissionCodeB} via</span>
+                            {combo.profilesGrantingB.map((p) => (
+                              <Badge key={p.accessProfileId} color="slate" variant="outline" size="xs">{p.accessProfileName}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </FormSection>
   );
 };
 
@@ -321,7 +360,7 @@ export const SegregationOfDutiesView: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       <PageHeader
-        title="Governance Rules"
+        title="Segregation of Duties"
         breadcrumbItems={segregationOfDutiesBreadcrumb(
           navigate,
           SOD_TABS.find((tab) => tab.id === activeTab)?.label,
@@ -486,9 +525,9 @@ export const SegregationOfDutiesView: React.FC = () => {
                   <tbody className="divide-y divide-slate-200 bg-white">
                     {!loading && constraints.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="py-12 text-center">
+                        <td colSpan={9} className="p-0">
                           <TableEmptyState
-                            icon={<Scale className="h-10 w-10 text-slate-300" />}
+                           
                             title="No SoD Constraints"
                             description={hasFilters ? "Try adjusting your search or filters." : "No Segregation of Duties constraints have been defined yet."}
                           />
@@ -505,11 +544,11 @@ export const SegregationOfDutiesView: React.FC = () => {
                             {c.regulationRef && <div className="text-xs text-slate-400 mt-0.5">{c.regulationRef}</div>}
                           </td>
                           <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <span className="font-mono text-slate-600">{c.permissionCodeA}</span>
+                            <span className=" text-slate-600">{c.permissionCodeA}</span>
                             <div className="text-xs text-slate-400 mt-0.5">{c.permissionNameA}</div>
                           </td>
                           <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <span className="font-mono text-slate-600">{c.permissionCodeB}</span>
+                            <span className=" text-slate-600">{c.permissionCodeB}</span>
                             <div className="text-xs text-slate-400 mt-0.5">{c.permissionNameB}</div>
                           </td>
                           <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">

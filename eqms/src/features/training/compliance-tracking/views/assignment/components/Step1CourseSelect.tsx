@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Search, X, GraduationCap, ChevronUp, ChevronDown, MoreVertical } from "lucide-react";
-import { IconClock, IconInfoCircle } from "@tabler/icons-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { Select } from "@/components/ui/select/Select";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
@@ -281,7 +281,7 @@ export const Step1CourseSelect: React.FC<Step1Props> = ({
                     <tr>
                       <td colSpan={12} className="p-0">
                         <TableEmptyState
-                          icon={<GraduationCap className="h-8 w-8 text-slate-300" />}
+                         
                           title="No courses found"
                           description="Try adjusting your search criteria to see more results."
                         />
@@ -384,7 +384,7 @@ export const Step1CourseSelect: React.FC<Step1Props> = ({
             <div className="block lg:hidden p-4 space-y-3 bg-slate-50/50 max-h-[600px] overflow-y-auto scrollbar-thin">
               {currentCourses.length === 0 ? (
                 <TableEmptyState
-                  icon={<GraduationCap className="h-8 w-8 text-slate-300" />}
+                 
                   title="No courses found"
                   description="Try adjusting your search criteria to see more results."
                 />

@@ -15,6 +15,8 @@ public record ControlledCopyRequestContextResponse(
         String validUntil,
         boolean canRequest,
         boolean canRequestForOthers,
-        String message
+        String message,
+        Integer expiryDurationValue,
+        String expiryDurationUnit
 ) {
 }

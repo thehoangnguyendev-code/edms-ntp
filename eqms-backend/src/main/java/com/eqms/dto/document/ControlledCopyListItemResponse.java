@@ -28,6 +28,9 @@ public record ControlledCopyListItemResponse(
         String distributedDate,
         String distributedBy,
         String recipientName,
+        String recipientEmployeeCode,
+        String recipientDepartment,
+        String recipientEmail,
         String recipientSignature,
         String recipientDate,
         String recallDate,
@@ -61,6 +64,7 @@ public record ControlledCopyListItemResponse(
         String replacedControlledCopyId,
         String replacedControlledCopyNumber,
         String replacementControlledCopyId,
-        String replacementControlledCopyNumber
+        String replacementControlledCopyNumber,
+        String lastUpdatedAt
 ) {
 }

@@ -86,8 +86,7 @@ public class WorkflowRoleService {
 
     private void requireView() {
         UserAccount u = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(u)
-                && !permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Workflow authorization view permission required");
         }
     }

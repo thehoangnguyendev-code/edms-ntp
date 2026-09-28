@@ -4,7 +4,6 @@ import com.eqms.dto.document.DocumentDraftCreateRequest;
 import com.eqms.dto.document.DocumentFiltersResponse;
 import com.eqms.dto.document.RevisionDetailResponse;
 import com.eqms.dto.document.TemplateLineageResponse;
-import com.eqms.dto.document.RevisionOfficeOnlineLinkResponse;
 import com.eqms.dto.document.RevisionListItemResponse;
 import com.eqms.dto.document.RevisionWorkingNoteRequest;
 import com.eqms.dto.document.RevisionWorkingNoteResponse;
@@ -184,7 +183,14 @@ public class RevisionController {
             @PathVariable UUID id,
             @RequestBody(required = false) RevisionWorkflowActionRequest request
     ) {
-        return ResponseEntity.ok(revisionService.completeEditing(id, request));
+        java.util.List<String> editorKeys = new java.util.ArrayList<>();
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        revisionService.flushOnlyOfficeEditsBeforeLock(id);
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        var result = revisionService.completeEditing(id, request);
+        // Close open OnlyOffice editors now that the stage changed, so the UI reflects it immediately.
+        revisionService.dropOnlyOfficeSessions(editorKeys);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/{id}/submit-review")
@@ -192,7 +198,13 @@ public class RevisionController {
             @PathVariable UUID id,
             @RequestBody(required = false) RevisionWorkflowActionRequest request
     ) {
-        return ResponseEntity.ok(revisionService.submitForReview(id, request));
+        java.util.List<String> editorKeys = new java.util.ArrayList<>();
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        var result = revisionService.submitForReview(id, request);
+        // Close open OnlyOffice editors now that the stage changed, so the UI reflects it immediately.
+        revisionService.dropOnlyOfficeSessions(editorKeys);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/{id}/review/complete")
@@ -200,7 +212,14 @@ public class RevisionController {
             @PathVariable UUID id,
             @RequestBody(required = false) RevisionWorkflowActionRequest request
     ) {
-        return ResponseEntity.ok(revisionService.completeReview(id, request));
+        java.util.List<String> editorKeys = new java.util.ArrayList<>();
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        revisionService.flushOnlyOfficeEditsBeforeLock(id);
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        var result = revisionService.completeReview(id, request);
+        // Close open OnlyOffice editors now that the stage changed, so the UI reflects it immediately.
+        revisionService.dropOnlyOfficeSessions(editorKeys);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/{id}/review/reject")
@@ -208,7 +227,14 @@ public class RevisionController {
             @PathVariable UUID id,
             @RequestBody(required = false) RevisionWorkflowActionRequest request
     ) {
-        return ResponseEntity.ok(revisionService.rejectReview(id, request));
+        java.util.List<String> editorKeys = new java.util.ArrayList<>();
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        revisionService.flushOnlyOfficeEditsBeforeLock(id);
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        var result = revisionService.rejectReview(id, request);
+        // Close open OnlyOffice editors now that the stage changed, so the UI reflects it immediately.
+        revisionService.dropOnlyOfficeSessions(editorKeys);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/{id}/approve/complete")
@@ -216,7 +242,14 @@ public class RevisionController {
             @PathVariable UUID id,
             @RequestBody(required = false) RevisionWorkflowActionRequest request
     ) {
-        return ResponseEntity.ok(revisionService.completeApproval(id, request));
+        java.util.List<String> editorKeys = new java.util.ArrayList<>();
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        revisionService.flushOnlyOfficeEditsBeforeLock(id);
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        var result = revisionService.completeApproval(id, request);
+        // Close open OnlyOffice editors now that the stage changed, so the UI reflects it immediately.
+        revisionService.dropOnlyOfficeSessions(editorKeys);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/{id}/approve/reject")
@@ -224,7 +257,22 @@ public class RevisionController {
             @PathVariable UUID id,
             @RequestBody(required = false) RevisionWorkflowActionRequest request
     ) {
-        return ResponseEntity.ok(revisionService.rejectApproval(id, request));
+        java.util.List<String> editorKeys = new java.util.ArrayList<>();
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        revisionService.flushOnlyOfficeEditsBeforeLock(id);
+        editorKeys.add(revisionService.onlyOfficeSessionKey(id));
+        var result = revisionService.rejectApproval(id, request);
+        // Close open OnlyOffice editors now that the stage changed, so the UI reflects it immediately.
+        revisionService.dropOnlyOfficeSessions(editorKeys);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/{id}/workflow-participants/replace")
+    public ResponseEntity<RevisionDetailResponse> replaceWorkflowParticipant(
+            @PathVariable UUID id,
+            @RequestBody com.eqms.dto.document.ReplaceWorkflowParticipantRequest request
+    ) {
+        return ResponseEntity.ok(revisionService.replaceWorkflowParticipant(id, request));
     }
 
     @PostMapping("/{id}/training/complete")
@@ -240,6 +288,9 @@ public class RevisionController {
             @PathVariable UUID id,
             @RequestBody(required = false) RevisionWorkflowActionRequest request
     ) {
+        // Ordinary documents are published through the Publishing Workspace (which composes the PDF); only a
+        // controlled-document template, which is kept as its Word file, is published directly here.
+        revisionService.requireDirectPublishAllowed(id);
         return ResponseEntity.ok(revisionService.publishRevision(id, request));
     }
 
@@ -287,24 +338,35 @@ public class RevisionController {
         return ResponseEntity.ok(revisionService.uploadRevisionFile(id, file));
     }
 
-    @PostMapping("/{id}/office-online/sync")
-    public ResponseEntity<RevisionDetailResponse> syncRevisionToOfficeOnline(@PathVariable UUID id) {
-        return ResponseEntity.ok(revisionService.syncRevisionToOfficeOnline(id));
+
+    /**
+     * Session-authenticated counterpart to Graph's edit-link/review-link endpoints above, for the
+     * OnlyOffice provider: returns the full editor config JSON the frontend passes to
+     * {@code DocsAPI.DocEditor(...)} (see {@code OnlyOfficeEditorFrame.tsx}), already scoped to
+     * the caller's permitted mode (edit/review/comment-only) by
+     * {@code RevisionService#getOnlyOfficeEditConfig}.
+     */
+    @GetMapping("/{id}/onlyoffice/edit-config")
+    public ResponseEntity<com.fasterxml.jackson.databind.node.ObjectNode> getOnlyOfficeEditConfig(@PathVariable UUID id) {
+        return ResponseEntity.ok(revisionService.getOnlyOfficeEditConfig(id));
     }
 
-    @PostMapping("/{id}/office-online/sync-back")
-    public ResponseEntity<RevisionDetailResponse> syncEditedFileFromOfficeOnline(@PathVariable UUID id) {
-        return ResponseEntity.ok(revisionService.syncEditedFileFromOfficeOnline(id));
+    /**
+     * Connection usage of the OnlyOffice document server, so the UI can warn before its (licence-bound)
+     * connection limit is reached. Values are -1 when unknown.
+     */
+    @GetMapping("/onlyoffice-capacity")
+    public ResponseEntity<java.util.Map<String, Integer>> getOnlyOfficeCapacity() {
+        var capacity = revisionService.getOnlyOfficeCapacity();
+        return ResponseEntity.ok(java.util.Map.of(
+                "editUsed", capacity.editUsed(), "editLimit", capacity.editLimit(),
+                "viewUsed", capacity.viewUsed(), "viewLimit", capacity.viewLimit()));
     }
 
-    @GetMapping("/{id}/office-online/edit-link")
-    public ResponseEntity<RevisionOfficeOnlineLinkResponse> getOfficeOnlineEditLink(@PathVariable UUID id) {
-        return ResponseEntity.ok(revisionService.getOfficeOnlineEditLink(id));
-    }
-
-    @GetMapping("/{id}/office-online/review-link")
-    public ResponseEntity<RevisionOfficeOnlineLinkResponse> getOfficeOnlineReviewLink(@PathVariable UUID id) {
-        return ResponseEntity.ok(revisionService.getOfficeOnlineReviewLink(id));
+    /** Read-only OnlyOffice viewer config for the Document tab (Draft / Pending Review / Pending Approval). */
+    @GetMapping("/{id}/onlyoffice/view-config")
+    public ResponseEntity<com.fasterxml.jackson.databind.node.ObjectNode> getOnlyOfficeViewConfig(@PathVariable UUID id) {
+        return ResponseEntity.ok(revisionService.getOnlyOfficeViewConfig(id));
     }
 
     @GetMapping("/{id}/preview")

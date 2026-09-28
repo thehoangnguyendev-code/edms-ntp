@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { WarningBanner } from '@/components/ui/banner/WarningBanner';
+import { getApiErrorMessage } from '@/utils/apiError';
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -10,6 +12,7 @@ import {
   ChevronDown,
   Copy,
   Eye,
+  FilePlusCorner,
   GalleryHorizontalEnd,
   Info,
   Loader2,
@@ -169,6 +172,7 @@ const DEFAULT_PLACEHOLDER_STYLE: PublishingPlaceholderStyleConfig = {
   numberFormat: "",
   preserveLineBreaks: true,
   maxLines: null,
+  visibility: "BOTH",
 };
 
 const normalizePlaceholderKey = (value?: string | null) =>
@@ -205,6 +209,7 @@ const toStyleForm = (style?: PublishingPlaceholderStyleConfig | null): Publishin
   dateFormat: style?.dateFormat || "",
   numberFormat: style?.numberFormat || "",
   preserveLineBreaks: style?.preserveLineBreaks ?? true,
+  visibility: style?.visibility || "BOTH",
 });
 
 const normalizePublishingMode = (value?: string | null) => {
@@ -278,7 +283,7 @@ export const PublishingTemplateEditorView: React.FC = () => {
       locationState?.workspaceReturnPath ||
       locationState?.returnTo ||
       locationState?.from ||
-      ROUTES.SETTINGS.PUBLISHING_TEMPLATES
+      ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES
     );
   }, [locationState?.from, locationState?.returnTo, locationState?.workspaceReturnPath]);
   const handleBack = () => {
@@ -286,7 +291,7 @@ export const PublishingTemplateEditorView: React.FC = () => {
       navigateTo(returnToPath);
       return;
     }
-    navigateBack(navigate, null, ROUTES.SETTINGS.PUBLISHING_TEMPLATES);
+    navigateBack(navigate, null, ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES);
   };
   const [template, setTemplate] = useState<PublishingTemplateResponse | null>(
     null,
@@ -326,6 +331,7 @@ export const PublishingTemplateEditorView: React.FC = () => {
   // Full (unfiltered) built-in placeholder key set, used to classify detected placeholder chips.
   // Kept separate from `placeholderCatalog` above, which is re-fetched filtered by search term.
   const [builtInPlaceholderKeys, setBuiltInPlaceholderKeys] = useState<Set<string>>(new Set());
+  const [systemPlaceholderKeys, setSystemPlaceholderKeys] = useState<Set<string>>(new Set());
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const previewUrlRef = useRef<string | null>(null);
   const previewCacheRef = useRef<Map<string, string>>(new Map());
@@ -603,7 +609,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         showToast({
           type: "error",
           title: "Load failed",
-          message: "Unable to load publishing template data.",
+          message: getApiErrorMessage(error, "Unable to load publishing template data."),
         });
       } finally {
         if (alive) setIsLoading(false);
@@ -653,6 +659,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
 
   const loadCcPlaceholderFields = () => {
     controlledCopyPolicyApi.listPlaceholderFields().then(setCcPlaceholderFields).catch(() => setCcPlaceholderFields([]));
+    controlledCopyPolicyApi
+      .listReservedPlaceholderKeys()
+      .then((keys) => setSystemPlaceholderKeys(new Set(keys.map((key) => key.toLowerCase()))))
+      .catch(() => setSystemPlaceholderKeys(new Set()));
   };
 
   useEffect(() => {
@@ -861,7 +871,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         showToast({
           type: "error",
           title: "Mode update failed",
-          message: "Unable to clear incompatible template files.",
+          message: getApiErrorMessage(error, "Unable to clear incompatible template files."),
         });
       }
     })();
@@ -940,15 +950,15 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     setPendingControlledCopyVisible(checked);
   };
 
-  const commitControlledCopyVisibility = async () => {
-    if (pendingControlledCopyVisible === null) return;
+  const commitControlledCopyVisibility = async (desiredVisibility = pendingControlledCopyVisible) => {
+    if (desiredVisibility === null) return;
     const fieldKey = selectedStyleKey;
     const existingField = ccPlaceholderFields.find((f) => f.fieldKey.toLowerCase() === fieldKey);
-    const alreadyMatches = pendingControlledCopyVisible === Boolean(existingField);
+    const alreadyMatches = desiredVisibility === Boolean(existingField);
     if (alreadyMatches) return;
     setIsSavingDataSource(true);
     try {
-      if (pendingControlledCopyVisible) {
+      if (desiredVisibility) {
         if (!existingField) {
           await controlledCopyPolicyApi.createPlaceholderField({
             fieldKey,
@@ -990,7 +1000,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         message: "Publishing template saved successfully.",
       });
       if (options?.redirectAfterCreate !== false && !isEditMode && saved.id) {
-        navigate(ROUTES.SETTINGS.PUBLISHING_TEMPLATES_EDIT(saved.id), {
+        navigate(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(saved.id), {
           replace: true,
           state: locationState || undefined,
         });
@@ -1001,7 +1011,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({
         type: "error",
         title: "Save failed",
-        message: "Unable to save publishing template.",
+        message: getApiErrorMessage(error, "Unable to save publishing template."),
       });
       return null;
     } finally {
@@ -1040,7 +1050,9 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         showToast({
           type: "error",
           title: "Publish failed",
-          message: "Unable to publish template.",
+          message: (error as any)?.response?.data?.error?.message
+            || (error as any)?.response?.data?.message
+            || "Unable to publish template.",
         });
       } finally {
         setIsSaving(false);
@@ -1068,17 +1080,43 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         title: "Deleted",
         message: "Publishing template deleted.",
       });
-      navigateTo(ROUTES.SETTINGS.PUBLISHING_TEMPLATES);
+      navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES);
     } catch (error) {
       console.error("Failed to delete publishing template", error);
       showToast({
         type: "error",
         title: "Delete failed",
-        message: "Unable to delete publishing template.",
+        message: getApiErrorMessage(error, "Unable to delete publishing template."),
       });
     } finally {
       setIsSaving(false);
       setDeleteTarget(null);
+    }
+  };
+
+  const handleCreateNewVersion = async () => {
+    if (!template?.id) return;
+    setIsSaving(true);
+    try {
+      const created = await publishingTemplatesApi.createNewVersion(template.id);
+      showToast({
+        type: "success",
+        title: "New version created",
+        message: "Edit the new version, then publish it to replace the current template.",
+      });
+      navigate(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(created.id || ""), {
+        replace: true,
+        state: locationState || undefined,
+      });
+    } catch (error) {
+      console.error("Failed to create a new template version", error);
+      showToast({
+        type: "error",
+        title: "Could not create a new version",
+        message: getApiErrorMessage(error, "Unable to create a new version."),
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1101,7 +1139,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         title: "Duplicated",
         message: "Publishing template duplicated.",
       });
-      navigate(ROUTES.SETTINGS.PUBLISHING_TEMPLATES_EDIT(duplicated.id || ""), {
+      navigate(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(duplicated.id || ""), {
         replace: true,
         state: locationState || undefined,
       });
@@ -1110,7 +1148,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({
         type: "error",
         title: "Duplicate failed",
-        message: "Unable to duplicate template.",
+        message: getApiErrorMessage(error, "Unable to duplicate template."),
       });
     } finally {
       setIsSaving(false);
@@ -1232,7 +1270,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         showToast({
           type: "error",
           title: "Preview failed",
-          message: "Unable to load template preview.",
+          message: getApiErrorMessage(error, "Unable to load template preview."),
         });
       }
     } finally {
@@ -1311,7 +1349,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({
         type: "error",
         title: "Upload failed",
-        message: "Unable to upload template file.",
+        message: getApiErrorMessage(error, "Unable to upload template file."),
       });
     } finally {
       setUploadingSlot(null);
@@ -1351,7 +1389,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({
         type: "error",
         title: "Delete failed",
-        message: "Unable to delete template file.",
+        message: getApiErrorMessage(error, "Unable to delete template file."),
       });
     } finally {
       setDeletingSlot(null);
@@ -1371,7 +1409,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({
         type: "error",
         title: "Copy failed",
-        message: "Unable to copy placeholder.",
+        message: getApiErrorMessage(error, "Unable to copy placeholder."),
       });
     }
   };
@@ -1411,10 +1449,13 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
               typeof styleForm.maxLines === "number" && Number.isFinite(styleForm.maxLines)
                 ? styleForm.maxLines
                 : null,
+            visibility: styleForm.visibility || "BOTH",
           },
         },
       ]);
-      await commitControlledCopyVisibility();
+      await commitControlledCopyVisibility(
+        styleForm.visibility === "PUBLISH" ? false : pendingControlledCopyVisible,
+      );
       await refreshPlaceholderStyles(template.id);
       previewCacheRef.current.delete(activeSlotMeta.key);
       await loadSlotPreview(
@@ -1432,7 +1473,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({ type: "success", title: "Style saved", message: "Placeholder style updated." });
     } catch (error) {
       console.error("Failed to save placeholder style", error);
-      showToast({ type: "error", title: "Save failed", message: "Unable to save placeholder style." });
+      showToast({ type: "error", title: "Save failed", message: getApiErrorMessage(error, "Unable to save placeholder style.") });
     } finally {
       setIsSavingPlaceholderStyle(false);
     }
@@ -1466,7 +1507,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({ type: "success", title: "Style cleared", message: "Placeholder style removed." });
     } catch (error) {
       console.error("Failed to delete placeholder style", error);
-      showToast({ type: "error", title: "Delete failed", message: "Unable to delete placeholder style." });
+      showToast({ type: "error", title: "Delete failed", message: getApiErrorMessage(error, "Unable to delete placeholder style.") });
     } finally {
       setIsSavingPlaceholderStyle(false);
     }
@@ -1543,7 +1584,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             transition={{ type: "spring", damping: 25, stiffness: 350, duration: 0.3 }}
-            className="relative z-10 w-full max-w-lg rounded-xl border border-slate-200 bg-white shadow-xl"
+            className="relative z-10 w-full max-w-2xl rounded-xl border border-slate-200 bg-white shadow-xl"
             style={{ maxHeight: 'calc(100dvh - 2rem)' }}
           >
             {/* Modal header */}
@@ -1576,42 +1617,65 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
 
             {/* Modal body */}
             <div className="max-h-[70vh] overflow-y-auto p-5 space-y-5">
-              {/* Controlled Copy visibility — lets the admin wire any placeholder to a Controlled
-                  Copy Field (DCO fills it in at Distribute time) right from where it was detected,
-                  instead of a separate screen. For a built-in placeholder, checking this lets DCO's
-                  entered value override the automatic one for that specific copy.
-                  Not offered for SIGNATURE-type placeholders: the real signature block is always
-                  resolved last when composing the PDF, so a DCO-entered override would be silently
-                  ignored — better to not offer a control that can never actually take effect. */}
-              {isSignaturePlaceholder ? (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-2xs sm:text-xs text-slate-500">
-                    Signature placeholders always render the actual electronic signature and cannot be overridden by a DCO-entered value at distribution time.
-                  </p>
-                </div>
-              ) : (() => {
-                const isBuiltIn = builtInPlaceholderKeys.has(selectedStyleKey);
-                const registeredField = ccPlaceholderFields.find((f) => f.fieldKey.toLowerCase() === selectedStyleKey);
-                return (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <Checkbox
-                        checked={pendingControlledCopyVisible ?? Boolean(registeredField)}
-                        onChange={(checked) => handleToggleControlledCopyField(checked)}
-                        disabled={isSavingDataSource}
-                      />
-                      <span>
-                        <span className="text-xs sm:text-sm font-medium text-slate-800">Show in Controlled Copies</span>
-                        <span className="mt-0.5 block text-2xs sm:text-xs text-slate-500">
-                          {isBuiltIn
-                            ? "DCO's entered value overrides the automatic value for that specific copy when checked."
-                            : "DCO fills this in when distributing a controlled copy. Without this, it always renders \"-\"."}
+              {/* Visibility and DCO input are related but distinct: visibility controls where the
+                  placeholder is rendered; the checkbox registers an editable distribution-time
+                  value. Keep them together so the relationship is explicit without changing the
+                  underlying publishing or controlled-copy behaviour. */}
+              <div>
+                <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">Usage</p>
+                <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <Select
+                    label="Visible in"
+                    value={styleForm.visibility || "BOTH"}
+                    onChange={(value) => {
+                      const visibility = String(value || "BOTH") as PublishingPlaceholderStyleConfig["visibility"];
+                      setStyleForm((current) => ({ ...current, visibility }));
+                      if (visibility === "PUBLISH") {
+                        setPendingControlledCopyVisible(false);
+                      }
+                    }}
+                    options={[
+                      { label: "Published document and controlled copy", value: "BOTH" },
+                      { label: "Published document only", value: "PUBLISH" },
+                      { label: "Controlled copy only", value: "CONTROLLED_COPY" },
+                    ]}
+                    enableSearch={false}
+                  />
+                  {styleForm.visibility === "PUBLISH" ? (
+                    <p className="text-2xs sm:text-xs text-slate-500">
+                      This placeholder is not used in controlled copies, so no distribution-time value is collected.
+                    </p>
+                  ) : isSignaturePlaceholder ? (
+                    <p className="text-2xs sm:text-xs text-slate-500">
+                      Signature placeholders always render the actual electronic signature and cannot be overridden by a DCO-entered value.
+                    </p>
+                  ) : systemPlaceholderKeys.has(selectedStyleKey) ? (
+                    <p className="text-2xs sm:text-xs text-slate-500">
+                      This value is filled in by the system from the controlled copy record and cannot be changed at distribution time.
+                    </p>
+                  ) : (() => {
+                    const isBuiltIn = builtInPlaceholderKeys.has(selectedStyleKey);
+                    const registeredField = ccPlaceholderFields.find((field) => field.fieldKey.toLowerCase() === selectedStyleKey);
+                    return (
+                      <label className="flex cursor-pointer items-start gap-2.5 border-t border-slate-200 pt-3">
+                        <Checkbox
+                          checked={pendingControlledCopyVisible ?? Boolean(registeredField)}
+                          onChange={(checked) => handleToggleControlledCopyField(checked)}
+                          disabled={isSavingDataSource}
+                        />
+                        <span>
+                          <span className="text-xs font-medium text-slate-800 sm:text-sm">Allow DCO-entered value</span>
+                          <span className="mt-0.5 block text-2xs text-slate-500 sm:text-xs">
+                            {isBuiltIn
+                              ? "The entered value overrides the automatic value for that controlled copy."
+                              : "The DCO fills this value in when distributing a controlled copy; otherwise it renders as \"-\"."}
+                          </span>
                         </span>
-                      </span>
-                    </label>
-                  </div>
-                );
-              })()}
+                      </label>
+                    );
+                  })()}
+                </div>
+              </div>
 
               {/* Typography */}
               <div>
@@ -1773,7 +1837,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         }
         breadcrumbItems={
           isEditMode
-            ? publishingTemplateEdit(navigateTo, template?.templateName ?? undefined)
+            ? publishingTemplateEdit(navigateTo)
             : publishingTemplateCreate(navigateTo)
         }
         actions={
@@ -1822,6 +1886,16 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     <button
                       onClick={() => {
                         closeHeaderMenu();
+                        handleCreateNewVersion();
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                    >
+                      <FilePlusCorner className="h-4 w-4 flex-shrink-0" />
+                      <span className="font-medium text-slate-500">Create new version</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        closeHeaderMenu();
                         handleDuplicate();
                       }}
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
@@ -1846,6 +1920,14 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           </>
         }
       />
+
+      {isEditMode && template?.publishedAt && (
+        <WarningBanner
+          variant="info"
+          title="Published template is read-only"
+          description="Documents and controlled copies were composed with this template, so it can no longer be edited. Use “Create new version” in the actions menu, edit that copy, then publish it to replace this template."
+        />
+      )}
 
       <div className="flex flex-col gap-4 lg:gap-6 xl:flex-row xl:items-start">
         <div className="min-w-0 space-y-4 xl:flex-1">

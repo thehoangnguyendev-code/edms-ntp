@@ -68,8 +68,3 @@ export { RequestControlledCopyView } from './document-revisions';
 // PUBLISHING
 // =============================================================================
 export { PublishingWorkspaceView } from './publishing';
-
-// =============================================================================
-// KNOWLEDGE BASE
-// =============================================================================
-export { KnowledgeView } from './knowledge';

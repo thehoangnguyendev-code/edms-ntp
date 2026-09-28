@@ -39,7 +39,6 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final boolean MFA_DISABLED = true;
     public static final String TRUSTED_DEVICE_COOKIE = "trustedDeviceToken";
     private static final long TRUSTED_DEVICE_TTL_SECONDS = 8 * 60 * 60;
 
@@ -50,7 +49,6 @@ public class AuthService {
     private final MfaTrustedDeviceRepository mfaTrustedDeviceRepository;
     private final PasswordResetTokenRepository resetTokenRepository;
     private final RoleDefinitionRepository roleDefinitionRepository;
-    private final RolePermissionRepository rolePermissionRepository;
     private final PermissionEvaluationService permissionEvaluationService;
     private final TokenService tokenService;
     private final TotpService totpService;
@@ -76,7 +74,6 @@ public class AuthService {
             MfaTrustedDeviceRepository mfaTrustedDeviceRepository,
             PasswordResetTokenRepository resetTokenRepository,
             RoleDefinitionRepository roleDefinitionRepository,
-            RolePermissionRepository rolePermissionRepository,
             PermissionEvaluationService permissionEvaluationService,
             TokenService tokenService,
             TotpService totpService,
@@ -101,7 +98,6 @@ public class AuthService {
         this.mfaTrustedDeviceRepository = mfaTrustedDeviceRepository;
         this.resetTokenRepository = resetTokenRepository;
         this.roleDefinitionRepository = roleDefinitionRepository;
-        this.rolePermissionRepository = rolePermissionRepository;
         this.permissionEvaluationService = permissionEvaluationService;
         this.tokenService = tokenService;
         this.totpService = totpService;
@@ -144,24 +140,6 @@ public class AuthService {
         // work so the next bad password is counted from zero again.
         resetLoginFailures(user);
         user.setLastLoginAt(Instant.now());
-
-        if (MFA_DISABLED) {
-            user.setMfaEnabled(false);
-            user.setMfaEmailFallbackEnabled(false);
-            user.setMfaRememberDeviceEnabled(false);
-            AuthSession session = createSession(user, httpRequest, null);
-            trailService.logAs(
-                    user,
-                    "SESSION",
-                    "Authentication Session",
-                    session.getId(),
-                    "LOGIN",
-                    null,
-                    "ACTIVE",
-                    "Login successful"
-            );
-            return buildAuthResponse(user, session);
-        }
 
         List<MfaFactor> enabledFactors = mfaFactorRepository.findAllByUserIdAndEnabledTrue(user.getId());
 
@@ -214,30 +192,6 @@ public class AuthService {
 
     @Transactional
     public MfaVerificationOutcome verifyMfa(VerifyMfaRequest request, HttpServletRequest httpRequest) {
-        if (MFA_DISABLED) {
-            LoginChallenge challenge = challengeRepository.findByMfaTokenHash(tokenService.hashToken(request.mfaToken()))
-                    .orElseThrow(() -> new UnauthorizedException("MFA challenge not found or expired"));
-            UserAccount user = challenge.getUser();
-            challenge.setConsumedAt(Instant.now());
-            user.setMfaEnabled(false);
-            user.setMfaEmailFallbackEnabled(false);
-            user.setMfaRememberDeviceEnabled(false);
-            AuthSession session = createSession(user, httpRequest, null);
-            resetLoginFailures(user);
-            user.setLastLoginAt(Instant.now());
-            trailService.logAs(
-                    user,
-                    "SESSION",
-                    "Authentication Session",
-                    session.getId(),
-                    "LOGIN",
-                    null,
-                    "ACTIVE",
-                    "MFA verification bypassed because MFA is disabled"
-            );
-            return new MfaVerificationOutcome(buildAuthResponse(user, session), null);
-        }
-
         LoginChallenge challenge = challengeRepository.findByMfaTokenHash(tokenService.hashToken(request.mfaToken()))
                 .orElseThrow(() -> new UnauthorizedException("MFA challenge not found or expired"));
 
@@ -523,7 +477,13 @@ public class AuthService {
         if (request.avatar() != null) {
             String newAvatar = request.avatar().trim();
             if (!equalsIgnoringNull(oldAvatar, newAvatar)) {
-                changes.add(new AuditTrailChangeResponse("Avatar", oldAvatar, newAvatar));
+                // Never log the raw base64 image payload (can be hundreds of KB) into the audit
+                // trail -- it would permanently duplicate the image into audit_log_changes on
+                // every change and render as an unreadable wall of text in the Audit Trail UI.
+                // Record only that a change occurred.
+                changes.add(new AuditTrailChangeResponse("Avatar",
+                        oldAvatar == null ? "(none)" : "(previous image)",
+                        newAvatar.isEmpty() ? "(none)" : "(new image)"));
             }
             user.setAvatar(newAvatar);
         }
@@ -601,7 +561,7 @@ public class AuthService {
         UserAccount user = currentUserService.requireCurrentUser();
 
         // Enforce password policy
-        systemConfigurationService.validatePasswordPolicy(request.newPassword());
+        systemConfigurationService.validatePasswordPolicy(request.newPassword(), user);
 
         // Enforce password history
         com.fasterxml.jackson.databind.JsonNode security = systemConfigurationService.requireConfiguration().getSecurityConfig();
@@ -713,7 +673,7 @@ public class AuthService {
         UserAccount user = token.getUser();
 
         // Enforce password policy
-        systemConfigurationService.validatePasswordPolicy(request.newPassword());
+        systemConfigurationService.validatePasswordPolicy(request.newPassword(), user);
 
         // Enforce password history
         com.fasterxml.jackson.databind.JsonNode security = systemConfigurationService.requireConfiguration().getSecurityConfig();
@@ -772,13 +732,6 @@ public class AuthService {
 
     @Transactional
     public SetupMfaResponse setupMfa(SetupMfaRequest request) {
-        if (MFA_DISABLED) {
-            UserAccount user = currentUserService.requireCurrentUser();
-            user.setMfaEnabled(false);
-            user.setMfaEmailFallbackEnabled(false);
-            user.setMfaRememberDeviceEnabled(false);
-            return new SetupMfaResponse("", "", "disabled");
-        }
         UserAccount user = currentUserService.requireCurrentUser();
         String method = request != null && request.method() != null ? request.method().toLowerCase(Locale.ROOT) : "app";
 
@@ -836,16 +789,6 @@ public class AuthService {
 
     @Transactional
     public void enableMfa(EnableMfaRequest request) {
-        if (MFA_DISABLED) {
-            UserAccount user = currentUserService.requireCurrentUser();
-            user.setMfaEnabled(false);
-            user.setMfaEmailFallbackEnabled(false);
-            user.setMfaRememberDeviceEnabled(false);
-            challengeRepository.deleteAll();
-            mfaFactorRepository.deleteAll();
-            mfaTrustedDeviceRepository.deleteAll();
-            return;
-        }
         UserAccount user = currentUserService.requireCurrentUser();
         String method = request.method() == null ? "app" : request.method().toLowerCase(Locale.ROOT);
         MfaFactor factor = mfaFactorRepository.findByUserIdAndMethod(user.getId(), toMfaMethod(method))
@@ -881,16 +824,6 @@ public class AuthService {
 
     @Transactional
     public void disableMfa(DisableMfaRequest request) {
-        if (MFA_DISABLED) {
-            UserAccount user = currentUserService.requireCurrentUser();
-            user.setMfaEnabled(false);
-            user.setMfaEmailFallbackEnabled(false);
-            user.setMfaRememberDeviceEnabled(false);
-            challengeRepository.deleteAll();
-            mfaFactorRepository.deleteAll();
-            mfaTrustedDeviceRepository.deleteAll();
-            return;
-        }
         UserAccount user = currentUserService.requireCurrentUser();
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new UnauthorizedException("Password verification failed");
@@ -915,15 +848,8 @@ public class AuthService {
 
     @Transactional
     public void updateMfaSettings(UpdateMfaSettingsRequest request) {
-        if (MFA_DISABLED) {
-            UserAccount user = currentUserService.requireCurrentUser();
-            user.setMfaEnabled(false);
-            user.setMfaEmailFallbackEnabled(false);
-            user.setMfaRememberDeviceEnabled(false);
-            return;
-        }
         UserAccount user = currentUserService.requireCurrentUser();
-        
+
         if (request.mfaEmailFallbackEnabled() != null) {
             boolean previous = user.isMfaEmailFallbackEnabled();
             user.setMfaEmailFallbackEnabled(request.mfaEmailFallbackEnabled());
@@ -977,9 +903,6 @@ public class AuthService {
 
     @Transactional
     public SendEmailOtpResponse sendEmailOtp(SendEmailOtpRequest request) {
-        if (MFA_DISABLED) {
-            throw new IllegalStateException("MFA is disabled for this environment");
-        }
         LoginChallenge challenge = challengeRepository.findByMfaTokenHash(tokenService.hashToken(request.mfaToken()))
                 .orElseThrow(() -> new UnauthorizedException("MFA challenge not found or expired"));
         if (challenge.getConsumedAt() != null || challenge.isExpired()) {
@@ -1076,17 +999,12 @@ public class AuthService {
             throw new UnauthorizedException("Password is incorrect");
         }
         String signatureToken = tokenService.createSignatureToken(currentUser);
+        // Deliberately NOT a separate "VERIFY_E_SIGNATURE" Audit Trail row. This only checks the
+        // user's password to issue a short-lived signatureToken -- it isn't itself a GxP action on
+        // any record, and the resulting signed action (RECALL/APPROVE/...) already shows
+        // electronicSignatureApplied=true on its own row. auditService.log() below still records
+        // the security-relevant success/failure event in the separate security audit log.
         auditService.log("esign_verify_success", currentUser, Map.of(), null, null);
-        trailService.logAs(
-                currentUser,
-                "USER",
-                currentUser.getFullName(),
-                currentUser.getId(),
-                "VERIFY_E_SIGNATURE",
-                null,
-                null,
-                "Electronic signature verified"
-        );
         return new VerifySignatureResponse(
                 true,
                 currentUser.getId().toString(),
@@ -1105,7 +1023,8 @@ public class AuthService {
         boolean lockoutEnabled = security != null && security.path("enableAccountLockout").asBoolean(true);
         int maxAttempts = security != null ? security.path("maxLoginAttempts").asInt(5) : 5;
 
-        if (lockoutEnabled && user.getFailedLoginCount() >= maxAttempts) {
+        boolean justLockedOut = lockoutEnabled && user.getFailedLoginCount() >= maxAttempts;
+        if (justLockedOut) {
             user.setLockedUntil(Instant.now().plus(36500, java.time.temporal.ChronoUnit.DAYS));
             notificationDispatcher.dispatch("security.account_locked", List.of(user), Map.of());
         }
@@ -1120,6 +1039,29 @@ public class AuthService {
                 "REVOKED",
                 "Password is incorrect"
         );
+        // The above "LOGIN"/REVOKED entry is written for every wrong-password attempt and looks
+        // identical whether or not this was the attempt that crossed the threshold -- an admin
+        // reading the trail can't tell "just another wrong password" from "system auto-locked
+        // the account here" without cross-referencing locked_until. Log a second, distinct entry
+        // only on the exact attempt that trips the lockout so it's visible as its own row.
+        if (justLockedOut) {
+            auditService.log("account_locked", user, auditDetails(
+                    "username", user.getUsername(),
+                    "reason", "auto_lockout_max_attempts",
+                    "failedLoginCount", user.getFailedLoginCount()
+            ), clientIp(request), userAgent(request));
+            trailService.logAs(
+                    user,
+                    "USER",
+                    user.getFullName() == null || user.getFullName().isBlank() ? user.getUsername() : user.getFullName(),
+                    user.getId(),
+                    "ACCOUNT_LOCKED",
+                    "ACTIVE",
+                    "LOCKED",
+                    "System automatically locked this account after " + user.getFailedLoginCount()
+                            + " consecutive failed login attempts (limit: " + maxAttempts + ")."
+            );
+        }
         if (lockoutEnabled) {
             int remaining = Math.max(0, maxAttempts - user.getFailedLoginCount());
             if (remaining == 0) {
@@ -1245,7 +1187,9 @@ public class AuthService {
                 user.getSuspendReason(),
                 user.getSuspendedUntil() != null ? user.getSuspendedUntil().toString() : null,
                 user.getTerminationReason(),
-                user.getTerminationDate() != null ? user.getTerminationDate().toString() : null
+                user.getTerminationDate() != null ? user.getTerminationDate().toString() : null,
+                user.getHomePage(),
+                user.isMfaRequiredByAdmin()
         );
     }
 
@@ -1306,9 +1250,13 @@ public class AuthService {
     }
 
     private boolean requiresMfaSetup(UserAccount user) {
-        // MFA setup should not be forced just because email fallback is disabled.
-        // Users may choose app, email, both, or neither without being pushed to the setup flow.
-        return false;
+        // Effective requirement = global "Enforce Two-Factor Authentication" OR this user's own
+        // admin-mandated requirement. Per-user only ever ADDS a requirement, never exempts a user
+        // from the global one. Setup is only "required" while the user has not yet enrolled any
+        // factor (mfaEnabled) -- MFA setup should not be forced just because email fallback is
+        // disabled; users may choose app, email, both, or neither once already enrolled.
+        boolean requiredEffective = systemConfigurationService.isMfaRequiredGlobally() || user.isMfaRequiredByAdmin();
+        return requiredEffective && !user.isMfaEnabled();
     }
 
     private Set<String> permissionCodesForRole(UserAccount user) {

@@ -7,16 +7,16 @@ import { workflowAuthorization as workflowAuthorizationBreadcrumb } from "@/comp
 import { ROUTES } from "@/app/routes.constants";
 import { Plus, RefreshCw, Shield } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
-import { WorkflowAuthorizationView, type WorkflowAuthorizationViewHandle } from "./WorkflowAuthorizationView";
-import { StatePoliciesView } from "./StatePoliciesView";
+import { WorkflowTransitionsView, type WorkflowTransitionsViewHandle } from "./WorkflowTransitionsView";
+import { StateCapabilitiesView } from "./StateCapabilitiesView";
 import { ActionStatusMatrix } from "../components/ActionStatusMatrix";
 
 type TabId = "matrix" | "transitions" | "capabilities";
 
 const TAB_LABELS: Record<TabId, string> = {
-  matrix: "Matrix",
-  transitions: "Transitions",
-  capabilities: "Capabilities",
+  matrix: "Action Matrix",
+  transitions: "Transition Policies",
+  capabilities: "State Capabilities",
 };
 
 const TABS: TabItem[] = [
@@ -28,7 +28,7 @@ const TABS: TabItem[] = [
 export const LifecyclePoliciesView: React.FC = () => {
   const navigate = useNavigate();
   const { hasPermissionAlias } = usePermissions();
-  const transitionViewRef = useRef<WorkflowAuthorizationViewHandle>(null);
+  const transitionViewRef = useRef<WorkflowTransitionsViewHandle>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab: TabId = useMemo(() => {
     const tab = searchParams.get("tab");
@@ -60,9 +60,9 @@ export const LifecyclePoliciesView: React.FC = () => {
     ) : undefined
   ) : activeTab === "transitions" ? (
     <>
-      <Button variant="outline" size="sm" className="whitespace-nowrap gap-2" onClick={() => transitionViewRef.current?.openEffectiveLookup()}>
+      <Button variant="outline" size="sm" className="whitespace-nowrap gap-2" onClick={() => navigate(ROUTES.SECURITY.POLICY_RESOLVER)}>
         <Shield className="h-4 w-4" />
-        Effective Lookup
+        Policy Resolver
       </Button>
       <Button variant="outline" size="sm" className="whitespace-nowrap gap-2" onClick={() => transitionViewRef.current?.refresh()}>
         <RefreshCw className="h-4 w-4" />
@@ -88,8 +88,8 @@ export const LifecyclePoliciesView: React.FC = () => {
         <TabNav tabs={TABS} activeTab={activeTab} onChange={handleTabChange} variant="underline" />
         <div className="p-4 md:p-5 flex-1 flex flex-col">
           {activeTab === "matrix" && <ActionStatusMatrix />}
-          {activeTab === "capabilities" && <StatePoliciesView embedded />}
-          {activeTab === "transitions" && <WorkflowAuthorizationView ref={transitionViewRef} embedded />}
+          {activeTab === "capabilities" && <StateCapabilitiesView embedded />}
+          {activeTab === "transitions" && <WorkflowTransitionsView ref={transitionViewRef} embedded />}
         </div>
       </div>
     </div>

@@ -1,5 +1,7 @@
 package com.eqms.dto.user;
 
+import java.util.List;
+
 public record PermissionCatalogItemResponse(
         String code,
         String name,
@@ -7,6 +9,7 @@ public record PermissionCatalogItemResponse(
         String module,
         String group,
         int order,
-        boolean requiresAudit
+        boolean requiresAudit,
+        List<PermissionLifecycleUsageResponse> lifecycleUsages
 ) {
 }

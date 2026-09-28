@@ -1,9 +1,10 @@
 export { PermissionSetsView } from './permission-sets/PermissionSetsView';
 export { PermissionSetDetailView } from './permission-sets/PermissionSetDetailView';
 export { PermissionSetFormView } from './permission-sets/PermissionSetFormView';
-export { WorkflowAuthorizationView } from './lifecycle-policies/views/WorkflowAuthorizationView';
-export { StatePoliciesView } from './lifecycle-policies/views/StatePoliciesView';
+export { WorkflowTransitionsView } from './lifecycle-policies/views/WorkflowTransitionsView';
+export { StateCapabilitiesView } from './lifecycle-policies/views/StateCapabilitiesView';
 export { LifecyclePoliciesView } from './lifecycle-policies/views/LifecyclePoliciesView';
+export { PolicyResolverView } from './lifecycle-policies/policy-resolver/PolicyResolverView';
 export { AuthorizationDiagnosticsView } from './lifecycle-policies/views/AuthorizationDiagnosticsView';
 export { LifecyclePolicyFormView } from './lifecycle-policies/views/LifecyclePolicyFormView';
 export { WorkflowPolicyDuplicateView } from './lifecycle-policies/views/WorkflowPolicyDuplicateView';

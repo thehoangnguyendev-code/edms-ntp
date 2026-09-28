@@ -10,6 +10,7 @@ import { AUTH_UI } from "./auth-ui";
 import { AuthField, AuthLayout, AuthBackLink, AuthTopBackButton } from "./components";
 import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { usePasswordPolicy } from "./usePasswordPolicy";
+import { evaluatePasswordPolicy } from "./passwordPolicyRules";
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -52,40 +53,8 @@ interface FormErrors {
 // VALIDATION HELPERS
 // ============================================================================
 
-const checkPasswordStrength = (password: string, policy: ReturnType<typeof usePasswordPolicy>) => {
-  const hasMinLength = password.length >= policy.passwordMinLength;
-  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  const hasNumber = /\d/.test(password);
-  const hasUpper = /[A-Z]/.test(password);
-  const hasLower = /[a-z]/.test(password);
-
-  // The strength bar's segment count and fill level must both track the *currently active*
-  // policy (minLength is always required; the other 4 are admin toggles from Security
-  // Configuration). Only checks the admin has actually turned on go into the bar -- a disabled
-  // requirement used to silently count as an automatic point even for an empty password (e.g.
-  // with all 4 optional requirements off, an empty password scored 4/4 and rendered a "fully
-  // strong" bar), which is misleading regardless of which requirements are enabled.
-  const activeChecks = [
-    hasMinLength,
-    ...(policy.requireUppercase ? [hasUpper] : []),
-    ...(policy.requireLowercase ? [hasLower] : []),
-    ...(policy.requireNumbers ? [hasNumber] : []),
-    ...(policy.requireSpecialChars ? [hasSpecial] : []),
-  ];
-  const score = activeChecks.filter(Boolean).length;
-  const maxScore = activeChecks.length;
-
-  return {
-    score,
-    maxScore,
-    hasMinLength,
-    hasSpecial,
-    hasNumber,
-    hasUpper,
-    hasLower,
-    isValid: hasMinLength && (!policy.requireSpecialChars || hasSpecial) && (!policy.requireNumbers || hasNumber) && (!policy.requireUppercase || hasUpper) && (!policy.requireLowercase || hasLower)
-  };
-};
+const checkPasswordStrength = (password: string, policy: ReturnType<typeof usePasswordPolicy>) =>
+  evaluatePasswordPolicy(password, policy);
 
 // ============================================================================
 // MAIN COMPONENT
@@ -361,11 +330,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     ))}
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-0.5">
-                    <StrengthCheck label={`At least ${passwordPolicy.passwordMinLength} characters`} checked={strength.hasMinLength} />
-                    {passwordPolicy.requireUppercase && <StrengthCheck label="One uppercase letter" checked={strength.hasUpper} />}
-                    {passwordPolicy.requireLowercase && <StrengthCheck label="One lowercase letter" checked={strength.hasLower} />}
-                    {passwordPolicy.requireNumbers && <StrengthCheck label="One number" checked={strength.hasNumber} />}
-                    {passwordPolicy.requireSpecialChars && <StrengthCheck label="One special character" checked={strength.hasSpecial} />}
+                    {strength.checks.map((check) => <StrengthCheck key={check.key} label={check.label} checked={check.met} />)}
                   </div>
                 </div>
               </AuthField>

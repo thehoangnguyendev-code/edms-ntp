@@ -23,7 +23,7 @@ public class PublishingTemplatePreviewService {
     private final PublishingTemplateComponentRepository componentRepository;
     private final PublishingPlaceholderStyleService placeholderStyleService;
     private final FileStorageService fileStorageService;
-    private final MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService;
+    private final OnlyOfficeDocumentEditService onlyOfficeDocumentEditService;
     private final PublishingOpenXmlTemplateRenderService openXmlTemplateRenderService;
     private final RevisionService revisionService;
     private final StoragePathBuilder storagePathBuilder;
@@ -33,7 +33,7 @@ public class PublishingTemplatePreviewService {
             PublishingTemplateComponentRepository componentRepository,
             PublishingPlaceholderStyleService placeholderStyleService,
             FileStorageService fileStorageService,
-            MicrosoftGraphOfficeOnlineService microsoftGraphOfficeOnlineService,
+            OnlyOfficeDocumentEditService onlyOfficeDocumentEditService,
             PublishingOpenXmlTemplateRenderService openXmlTemplateRenderService,
             RevisionService revisionService,
             StoragePathBuilder storagePathBuilder
@@ -42,7 +42,7 @@ public class PublishingTemplatePreviewService {
         this.componentRepository = componentRepository;
         this.placeholderStyleService = placeholderStyleService;
         this.fileStorageService = fileStorageService;
-        this.microsoftGraphOfficeOnlineService = microsoftGraphOfficeOnlineService;
+        this.onlyOfficeDocumentEditService = onlyOfficeDocumentEditService;
         this.openXmlTemplateRenderService = openXmlTemplateRenderService;
         this.revisionService = revisionService;
         this.storagePathBuilder = storagePathBuilder;
@@ -102,7 +102,7 @@ public class PublishingTemplatePreviewService {
                 exactPreview,
                 placeholderStyles
         );
-        byte[] pdfBytes = microsoftGraphOfficeOnlineService.convertSourceFileToPdf(rendered, descriptor.fileName());
+        byte[] pdfBytes = onlyOfficeDocumentEditService.convertLocalFileToPdf(rendered, descriptor.fileName());
         return pdfBytes;
     }
 
@@ -142,6 +142,12 @@ public class PublishingTemplatePreviewService {
                 .orElse(null);
         if (component != null && StringUtils.hasText(component.getObjectKey())) {
             return new ComponentFileDescriptor(component.getObjectKey(), component.getFileName());
+        }
+        // The legacy columns pre-date layout-specific components and represent Portrait only.
+        // Falling back to them for an explicitly requested Landscape preview makes the UI display
+        // a Portrait document under a Landscape selection, which is unsafe and misleading.
+        if ("landscape".equals(layout)) {
+            return null;
         }
         return switch (componentType) {
             case "cover" -> new ComponentFileDescriptor(template.getCoverTemplatePath(), template.getCoverFileName());

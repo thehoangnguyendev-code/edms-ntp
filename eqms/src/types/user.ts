@@ -1,9 +1,11 @@
-import type { UserRole } from './roles';
+import type { UserRoleLabel } from './roles';
 
 export type UserStatus = "Active" | "Inactive" | "Pending" | "Suspended" | "Terminated";
 export type UserGender = "Male" | "Female" | "Other";
 export type EmploymentType = "Full-time" | "Part-time" | "Contract" | "Intern";
 export type ExternalProvisioningStatus = "NOT_INVITED" | "INVITED" | "REDEEMED" | "FAILED" | "DISABLED";
+/** Where this user lands immediately after login. Set by Admin on create/edit. */
+export type HomePage = "DASHBOARD" | "NOTIFICATIONS" | "KNOWLEDGE";
 
 export interface Certification {
   id: string;
@@ -33,12 +35,21 @@ export interface User {
   username: string;
   email: string;
   phone: string;
-  /** Display-only summary of active Access Profiles returned by the server. */
-  role: string;
+  /** The legacy app_users.role_name free-text display label -- NOT derived from or synchronized
+   *  with Access Profile assignment. See UserRoleLabel in types/roles.ts. */
+  role: UserRoleLabel;
+  /** Real Access Profile names actually granting this user's entitlement (user_access_profiles),
+   *  ordered by assignment date. Empty means the user has zero Access Profiles and cannot use any
+   *  permission-gated function until an admin assigns one. */
+  accessProfileNames?: string[];
   position: string;
   businessUnit: string;
   department: string;
   status: UserStatus;
+  /** True while the server has actually locked login out (failed-attempt lockout).
+   * Independent of `status` -- there is no UserStatus.Locked, so an Active account can still
+   * be login-locked and the UI must not report it as plain "Active" in that case. */
+  accountLocked?: boolean;
   inSession?: boolean;
   online?: boolean;
   lastLogin: string;
@@ -63,6 +74,10 @@ export interface User {
     modules?: Record<string, boolean>;
   };
   mfaSetupRequired?: boolean;
+  /** Admin-mandated per-user MFA requirement, independent of the user's own mfaEnabled
+   *  self-service toggle and of the global "Enforce Two-Factor Authentication" security
+   *  setting. Effective requirement = global setting OR this flag. Set by Admin on create/edit. */
+  mfaRequiredByAdmin?: boolean;
   maintenanceMode?: boolean;
   // Extended profile fields
   dateOfBirth?: string;
@@ -96,12 +111,16 @@ export interface User {
   externalProvisioningEmail?: string | null;
   externalProvisioningStatusLabel?: string | null;
   externalProvisioningStatusColor?: string | null;
+  /** Where this user lands immediately after login. Defaults to DASHBOARD server-side. */
+  homePage?: HomePage;
 }
 
-/** Payload for creating a user. Access Profile IDs are the stable entitlement source. */
-export type CreateUserPayload = Omit<User, "id" | "lastLogin" | "createdDate" | "lastUpdated" | "role"> & {
-  primaryAccessProfileId: string;
-  additionalAccessProfileIds?: string[];
+/** Payload for creating a user. Access Profile IDs are the stable entitlement source -- one flat
+ *  list, no primary/additional split (user_access_profiles never persisted that distinction).
+ *  Server-enforced with the same SoD combination check the FE runs live (never trust the FE check
+ *  alone) -- see UserManagementService.createUser. */
+export type CreateUserPayload = Omit<User, "id" | "lastLogin" | "createdDate" | "lastUpdated" | "role" | "accessProfileNames"> & {
+  accessProfileIds: string[];
   inviteExternal?: boolean;
 };
 
@@ -112,7 +131,7 @@ export type NewUser = CreateUserPayload;
 
 export interface UserFilters {
   search: string;
-  role: UserRole | "All";
+  role: UserRoleLabel | "All";
   status: UserStatus | "All";
   businessUnit: string;
   department: string;

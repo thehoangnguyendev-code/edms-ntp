@@ -156,11 +156,11 @@ export const RevisionListView: React.FC = () => {
         async () => ({
           ...buildRevisionDetailSnapshotState(await documentApi.getRevisionByIdSnapshot(revisionId)),
         }),
-        { state: { from, ...(extraState ?? {}) } },
+        { state: { from, returnTo: `${location.pathname}${location.search}`, ...(extraState ?? {}) } },
       );
     } catch (error) {
       console.error("Failed to preload revision before navigation", error);
-      navigateTo(route, { state: { from, ...(extraState ?? {}) } });
+      navigateTo(route, { state: { from, returnTo: `${location.pathname}${location.search}`, ...(extraState ?? {}) } });
     }
   };
 
@@ -385,6 +385,14 @@ export const RevisionListView: React.FC = () => {
         );
         break;
       case "publish": {
+        // A controlled-document template has no Publishing Workspace: it is published directly (signature,
+        // then Effective) and stays as its Word file.
+        const templateRevision = revisions.find((item) => item.id === id);
+        if (templateRevision?.isTemplate) {
+          setSelectedRevisionForPublish(templateRevision);
+          setShowESignModal(true);
+          break;
+        }
         navigateTo(ROUTES.DOCUMENTS.REVISIONS.PUBLISHING(id), {
           state: {
             from: location.pathname + location.search,
@@ -444,7 +452,7 @@ export const RevisionListView: React.FC = () => {
         return <span className="font-medium text-slate-900">{revision.revisionName}</span>;
       case "state":
         return (
-          <Badge color={getBadgeColor(revision.statusCode, revision.state)}>
+          <Badge color={getBadgeColor(revision.statusCode, revision.state)} size="sm">
             {revision.state}
           </Badge>
         );

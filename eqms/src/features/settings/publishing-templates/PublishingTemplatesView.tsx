@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getApiErrorMessage } from '@/utils/apiError';
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Copy, MoreVertical, Plus, Search, ToggleLeft, Trash2, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -19,7 +20,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { formatDateTimeLong } from "@/utils/format";
 import type { PublishingTemplateResponse } from "@/features/documents/publishing/types";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
-import { IconBrandTelegram, IconFilter2, IconPencilMinus, IconShare2, IconShare3 } from "@tabler/icons-react";
+import { IconBrandTelegram, IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { publishingTemplates as publishingTemplatesBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -89,9 +90,7 @@ const configuredFileCount = (template: PublishingTemplateResponse) =>
 export const PublishingTemplatesView: React.FC = () => {
   const navigate = useNavigate();
   const { hasPermissionAlias } = usePermissions();
-  const canManageTemplates = hasPermissionAlias('settings.publishing_template.manage')
-    || hasPermissionAlias('settings.configuration.edit')
-    || hasPermissionAlias('settings.configuration.manage');
+  const canManageTemplates = hasPermissionAlias('documents.admin.publishing_templates.manage');
   const { showToast } = useToast();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
@@ -190,7 +189,7 @@ export const PublishingTemplatesView: React.FC = () => {
       showToast({ type: "success", title: "Duplicated", message: "Publishing template duplicated." });
     } catch (error) {
       console.error("Failed to duplicate publishing template", error);
-      showToast({ type: "error", title: "Duplicate failed", message: "Unable to duplicate publishing template." });
+      showToast({ type: "error", title: "Duplicate failed", message: getApiErrorMessage(error, "Unable to duplicate publishing template.") });
     } finally {
       setIsSaving(false);
     }
@@ -204,7 +203,7 @@ export const PublishingTemplatesView: React.FC = () => {
       showToast({ type: "success", title: "Status updated", message: "Publishing template status updated." });
     } catch (error) {
       console.error("Failed to toggle publishing template status", error);
-      showToast({ type: "error", title: "Update failed", message: "Unable to update publishing template status." });
+      showToast({ type: "error", title: "Update failed", message: getApiErrorMessage(error, "Unable to update publishing template status.") });
     } finally {
       setIsSaving(false);
     }
@@ -218,7 +217,7 @@ export const PublishingTemplatesView: React.FC = () => {
       showToast({ type: "success", title: "Deleted", message: "Publishing template deleted." });
     } catch (error) {
       console.error("Failed to delete publishing template", error);
-      showToast({ type: "error", title: "Delete failed", message: "Unable to delete publishing template." });
+      showToast({ type: "error", title: "Delete failed", message: getApiErrorMessage(error, "Unable to delete publishing template.") });
     } finally {
       setIsSaving(false);
       setDeleteTarget(null);
@@ -233,7 +232,7 @@ export const PublishingTemplatesView: React.FC = () => {
       showToast({ type: "success", title: "Published", message: "Publishing template published." });
     } catch (error) {
       console.error("Failed to publish publishing template", error);
-      showToast({ type: "error", title: "Publish failed", message: "Unable to publish publishing template." });
+      showToast({ type: "error", title: "Publish failed", message: getApiErrorMessage(error, "Unable to publish publishing template.") });
     } finally {
       setIsSaving(false);
     }
@@ -293,7 +292,7 @@ export const PublishingTemplatesView: React.FC = () => {
         breadcrumbItems={publishingTemplatesBreadcrumbs()}
         actions={
           canManageTemplates ? (
-            <Button size="sm" onClick={() => navigateTo(ROUTES.SETTINGS.PUBLISHING_TEMPLATES_NEW)} className="gap-2 whitespace-nowrap">
+            <Button size="sm" onClick={() => navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_NEW)} className="gap-2 whitespace-nowrap">
               <Plus className="h-4 w-4" />
               New Publishing Template
             </Button>
@@ -526,7 +525,7 @@ export const PublishingTemplatesView: React.FC = () => {
               <tbody className="divide-y divide-slate-200 bg-white">
                 {!isLoading && templates.length === 0 ? (
                   <tr>
-                    <td colSpan={tableColumns.length + 1} className="py-12 text-center">
+                    <td colSpan={tableColumns.length + 1} className="p-0">
                       <TableEmptyState
                         title="No Publishing Templates Found"
                         description="No templates match the current filters. Adjust filters or create a new publishing template."
@@ -542,7 +541,7 @@ export const PublishingTemplatesView: React.FC = () => {
                       <td className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
                         <button
                           type="button"
-                          onClick={() => navigateTo(ROUTES.SETTINGS.PUBLISHING_TEMPLATES_EDIT(template.id || ""))}
+                          onClick={() => navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(template.id || ""))}
                           className="font-medium text-emerald-700 hover:underline"
                         >
                           {template.templateName || "-"}
@@ -558,7 +557,7 @@ export const PublishingTemplatesView: React.FC = () => {
                         {template.versionNumber ?? 1}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
-                        <Badge color={getStatusColor(template.status)}>{formatStatus(template.status)}</Badge>
+                        <Badge color={getStatusColor(template.status)} size="sm">{formatStatus(template.status)}</Badge>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                         <span className="font-medium text-slate-900">{configuredFileCount(template)}</span>
@@ -592,7 +591,7 @@ export const PublishingTemplatesView: React.FC = () => {
                             <DropdownMenuItem
                               icon={<IconPencilMinus className="h-4 w-4" />}
                               onClick={() => {
-                                navigateTo(ROUTES.SETTINGS.PUBLISHING_TEMPLATES_EDIT(template.id || ""));
+                                navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(template.id || ""));
                                 close();
                               }}
                             >

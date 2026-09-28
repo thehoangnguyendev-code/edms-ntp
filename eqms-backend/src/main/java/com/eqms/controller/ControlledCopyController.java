@@ -15,6 +15,7 @@ import com.eqms.dto.document.ControlledCopyReplaceRequest;
 import com.eqms.dto.document.ControlledCopyRequestCreateRequest;
 import com.eqms.dto.document.ControlledCopyPreviewCloseRequest;
 import com.eqms.dto.document.ControlledCopyPreviewResponse;
+import com.eqms.dto.document.ControlledCopyPreviewSessionRequest;
 import com.eqms.dto.document.SignatureResponse;
 import com.eqms.dto.security.ControlledCopyActionCapabilitiesResponse;
 import com.eqms.dto.user.PageResponse;
@@ -26,10 +27,12 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,6 +48,7 @@ import java.util.UUID;
 public class ControlledCopyController {
 
     private final ControlledCopyService controlledCopyService;
+    private final com.eqms.service.ControlledCopyPreviewRealtimeService controlledCopyPreviewRealtimeService;
     private final ControlledCopyAuthorizationService controlledCopyAuthorizationService;
     private final ControlledCopyDistributionJobRepository controlledCopyDistributionJobRepository;
     private final com.eqms.repository.ControlledCopyDistributionJobItemRepository controlledCopyDistributionJobItemRepository;
@@ -53,8 +57,10 @@ public class ControlledCopyController {
             ControlledCopyService controlledCopyService,
             ControlledCopyAuthorizationService controlledCopyAuthorizationService,
             ControlledCopyDistributionJobRepository controlledCopyDistributionJobRepository,
-            com.eqms.repository.ControlledCopyDistributionJobItemRepository controlledCopyDistributionJobItemRepository
+            com.eqms.repository.ControlledCopyDistributionJobItemRepository controlledCopyDistributionJobItemRepository,
+            com.eqms.service.ControlledCopyPreviewRealtimeService controlledCopyPreviewRealtimeService
     ) {
+        this.controlledCopyPreviewRealtimeService = controlledCopyPreviewRealtimeService;
         this.controlledCopyService = controlledCopyService;
         this.controlledCopyAuthorizationService = controlledCopyAuthorizationService;
         this.controlledCopyDistributionJobRepository = controlledCopyDistributionJobRepository;
@@ -179,6 +185,21 @@ public class ControlledCopyController {
         return ResponseEntity.ok(controlledCopyService.listDistributionBatchCopies(batchId, page, limit));
     }
 
+    /**
+     * The same ZIP {@link com.eqms.service.ControlledCopyService#sendDcoBatchZipEmail} emailed the DCO
+     * for this batch, rebuilt on demand -- the "download" link in that email points here. Requires the
+     * caller to be logged in and hold the "Receive Controlled Copies as DCO" permission (enforced in the
+     * service), so it's an ordinary authenticated download, never a public/token link.
+     */
+    @GetMapping("/batches/{batchId}/dco-zip")
+    public ResponseEntity<byte[]> downloadDcoBatchZip(@PathVariable UUID batchId) throws java.io.IOException {
+        ControlledCopyService.DcoBatchZipFile file = controlledCopyService.buildDcoBatchZipForDownload(batchId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .body(file.bytes());
+    }
+
     @GetMapping("/export")
     public ResponseEntity<StreamingResponseBody> export(
             @RequestParam(required = false) String search,
@@ -217,6 +238,27 @@ public class ControlledCopyController {
         return ResponseEntity.ok(controlledCopyService.getControlledCopyDetail(id));
     }
 
+    /** The controlled copy's PDF for the Document tab (read-only, status text drawn by the server). */
+    @GetMapping("/{id}/document")
+    public ResponseEntity<byte[]> issuedDocument(@PathVariable UUID id) {
+        ControlledCopyService.FileDownload file = controlledCopyService.viewIssuedDocument(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.fileName() + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .body(file.bytes());
+    }
+
+    /** Recall / withdrawal notice for a copy that is no longer valid, generated on the server. */
+    @GetMapping("/{id}/withdrawal-notice")
+    public ResponseEntity<byte[]> withdrawalNotice(@PathVariable UUID id) {
+        ControlledCopyService.FileDownload file = controlledCopyService.generateWithdrawalNotice(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .body(file.bytes());
+    }
+
     @GetMapping("/{id}/resolved-detail")
     public ResponseEntity<Object> getResolvedDetailById(@PathVariable UUID id) {
         return ResponseEntity.ok(controlledCopyService.getControlledCopyResolvedDetail(id));
@@ -240,20 +282,19 @@ public class ControlledCopyController {
         return ResponseEntity.ok(controlledCopyService.getControlledCopySignatures(id));
     }
 
-    @GetMapping("/{id}/preview")
+    @PostMapping("/{id}/preview")
     public ResponseEntity<ControlledCopyPreviewResponse> openPreview(
             @PathVariable UUID id,
-            @RequestParam String token,
-            @RequestParam(required = false) String password
+            @Valid @RequestBody ControlledCopyPreviewSessionRequest request
     ) {
-        return ResponseEntity.ok(controlledCopyService.openPreview(id, token, password));
+        return ResponseEntity.ok(controlledCopyService.openPreview(id, request.token(), request.password()));
     }
 
     @GetMapping("/{id}/preview/pages/{pageNumber}")
     public ResponseEntity<byte[]> renderPreviewPage(
             @PathVariable UUID id,
             @PathVariable int pageNumber,
-            @RequestParam String token
+            @RequestHeader("X-EQMS-Controlled-Copy-Preview-Grant") String token
     ) {
         byte[] bytes = controlledCopyService.renderPreviewPage(id, token, pageNumber);
         return ResponseEntity.ok()
@@ -262,10 +303,22 @@ public class ControlledCopyController {
                 .body(bytes);
     }
 
+    /**
+     * Live availability of the copy for an open viewer (recalled / cancelled / obsoleted / expired). Authorised only by the
+     * copy-bound preview grant, like the other preview calls, because the recipient has no eQMS session.
+     */
+    @GetMapping(value = "/{id}/preview/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter previewEvents(
+            @PathVariable UUID id,
+            @RequestHeader("X-EQMS-Controlled-Copy-Preview-Grant") String token
+    ) {
+        return controlledCopyPreviewRealtimeService.subscribe(id, token);
+    }
+
     @GetMapping("/{id}/preview/file")
     public ResponseEntity<byte[]> previewFile(
             @PathVariable UUID id,
-            @RequestParam String token
+            @RequestHeader("X-EQMS-Controlled-Copy-Preview-Grant") String token
     ) {
         ControlledCopyService.FileDownload file = controlledCopyService.previewControlledCopyFile(id, token);
         return ResponseEntity.ok()
@@ -277,10 +330,9 @@ public class ControlledCopyController {
     @GetMapping("/{id}/download")
     public ResponseEntity<byte[]> downloadControlledCopy(
             @PathVariable UUID id,
-            @RequestParam String token,
-            @RequestParam(required = false) String password
+            @RequestHeader("X-EQMS-Controlled-Copy-Preview-Grant") String token
     ) {
-        ControlledCopyService.FileDownload file = controlledCopyService.downloadControlledCopy(id, token, password);
+        ControlledCopyService.FileDownload file = controlledCopyService.downloadControlledCopy(id, token, null);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
                 .contentType(MediaType.parseMediaType(file.contentType()))
@@ -298,20 +350,51 @@ public class ControlledCopyController {
                 .stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Job not found for batch: " + batchId));
+        boolean isFinished = "COMPLETED".equals(job.getStatus()) || "COMPLETED_WITH_ERRORS".equals(job.getStatus());
         String status = switch (job.getStatus()) {
             case "COMPLETED" -> "completed";
             case "COMPLETED_WITH_ERRORS" -> "completed_with_errors";
             default -> "in_progress";
         };
+        int succeeded;
+        int failed;
+        int skipped;
+        if (isFinished) {
+            // job.succeededItems/failedItems are written in the SAME save() call as job.status
+            // (see ControlledCopyBatchDistributionAsyncService), so once the job is finished these
+            // fields are an atomic, authoritative snapshot. Re-counting the job_items table
+            // independently here (as before) reads a second, separately-committed data source --
+            // during the tiny window between the last item's own row committing and this endpoint
+            // being polled, that recount could observe a stale row and under-report succeeded
+            // (e.g. showing 14/15 succeeded on a batch where every copy actually succeeded).
+            succeeded = job.getSucceededItems();
+            failed = job.getFailedItems();
+            skipped = Math.max(job.getTotalItems() - succeeded - failed, 0);
+        } else {
+            // Still running -- job.succeededItems/failedItems aren't updated per-item, only once at
+            // the very end, so recompute live progress from the items themselves.
+            List<com.eqms.entity.ControlledCopyDistributionJobItem> items = controlledCopyDistributionJobItemRepository
+                    .findAllByJob_IdOrderByIdAsc(job.getId());
+            succeeded = (int) items.stream().filter(item -> "SUCCESS".equals(item.getStatus())).count();
+            failed = (int) items.stream().filter(item -> "FAILED".equals(item.getStatus())).count();
+            skipped = (int) items.stream().filter(item -> "SKIPPED".equals(item.getStatus())).count();
+        }
         return ResponseEntity.ok(java.util.Map.of(
                 "batchId", batchId.toString(),
-                "processed", job.getSucceededItems() + job.getFailedItems(),
+                "processed", succeeded + failed + skipped,
                 "total", job.getTotalItems(),
-                "failed", job.getFailedItems(),
+                "succeeded", succeeded,
+                "failed", failed,
+                "skipped", skipped,
                 "status", status
         ));
     }
 
+    // Only @Transactional controller method in this class -- item.getControlledCopy() below is a
+    // lazy association; without an open Hibernate session for the whole mapping, it throws
+    // LazyInitializationException the instant a batch actually has a failed item to report
+    // (verified live: every call to this endpoint for a batch with failures 500'd).
+    @Transactional(readOnly = true)
     @GetMapping("/distribution-batches/{batchId}/failed-items")
     public ResponseEntity<List<com.eqms.dto.document.ControlledCopyBatchFailedItemResponse>> getDistributionFailedItems(
             @PathVariable UUID batchId,
@@ -409,7 +492,9 @@ public class ControlledCopyController {
             @PathVariable UUID id,
             @RequestBody(required = false) ControlledCopyDestroyRequest request
     ) {
-        return ResponseEntity.ok(controlledCopyService.destroy(id, request));
+        return ResponseEntity.ok(isLostOrDamaged(request)
+                ? controlledCopyService.reportLostDamaged(id, request, List.of())
+                : controlledCopyService.destroy(id, request));
     }
 
     @PostMapping(value = "/{id}/destroy", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -426,21 +511,29 @@ public class ControlledCopyController {
             @RequestParam(required = false) String signatureToken,
             @RequestPart(value = "evidenceFiles", required = false) List<MultipartFile> evidenceFiles
     ) {
-        return ResponseEntity.ok(controlledCopyService.destroy(
-                id,
-                new ControlledCopyDestroyRequest(
-                        destroyedBy,
-                        destroyedByUserId,
-                        destroyReason,
-                        witnessedBy,
-                        witnessedByUserId,
-                        destroyedAt,
-                        destructionMethod,
-                        destructionType,
-                        signatureToken
-                ),
-                evidenceFiles
-        ));
+        ControlledCopyDestroyRequest request = new ControlledCopyDestroyRequest(
+                destroyedBy,
+                destroyedByUserId,
+                destroyReason,
+                witnessedBy,
+                witnessedByUserId,
+                destroyedAt,
+                destructionMethod,
+                destructionType,
+                signatureToken
+        );
+        return ResponseEntity.ok(isLostOrDamaged(request)
+                ? controlledCopyService.reportLostDamaged(id, request, evidenceFiles)
+                : controlledCopyService.destroy(id, request, evidenceFiles));
+    }
+
+    // Routes the Lost/Damaged case through ControlledCopyService#reportLostDamaged -- the real,
+    // documented entry point for that specific action -- instead of always falling to the generic
+    // destroy(), which used to leave reportLostDamaged() unreachable from the actual HTTP API despite
+    // its javadoc describing it as the enforced authorization gate for this action.
+    private static boolean isLostOrDamaged(ControlledCopyDestroyRequest request) {
+        String type = request == null ? null : request.destructionType();
+        return "Lost".equalsIgnoreCase(type) || "Damaged".equalsIgnoreCase(type);
     }
 
     @GetMapping("/{id}/evidence")
@@ -452,7 +545,9 @@ public class ControlledCopyController {
     public ResponseEntity<byte[]> downloadEvidence(@PathVariable UUID id, @PathVariable UUID evidenceId) {
         ControlledCopyService.FileDownload file = controlledCopyService.downloadEvidence(id, evidenceId);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.fileName() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
                 .contentType(MediaType.parseMediaType(file.contentType()))
                 .body(file.bytes());
     }

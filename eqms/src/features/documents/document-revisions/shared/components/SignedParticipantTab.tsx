@@ -1,10 +1,14 @@
 import React from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { Badge } from "@/components/ui/badge/Badge";
 
 export interface SignedParticipantItem {
   id: string;
   displayName: string;
   signedOn?: string | null;
+  /** True for a Legacy Import reference-only entry -- recorded from the paper original, never a
+   *  real electronic signature. Annotated distinctly so it's never mistaken for one. */
+  isLegacy?: boolean;
 }
 
 interface SignedParticipantTabProps {
@@ -18,7 +22,7 @@ export const SignedParticipantTab: React.FC<SignedParticipantTabProps> = ({
 }) => {
   const rows = items.length > 0
     ? items
-    : [{ id: "empty", displayName: "", signedOn: undefined }];
+    : [{ id: "empty", displayName: "", signedOn: undefined, isLegacy: false }];
 
   return (
     <div className="space-y-4 md:space-y-5">
@@ -26,8 +30,9 @@ export const SignedParticipantTab: React.FC<SignedParticipantTabProps> = ({
         {rows.map((item, index) => (
           <React.Fragment key={item.id}>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700">
+              <label className="text-xs sm:text-sm font-medium text-slate-700 flex items-center gap-1.5">
                 {labelPrefix} {index + 1}
+                {item.isLegacy && <Badge color="amber" size="xs">Legacy — Reference Only</Badge>}
               </label>
               <input
                 type="text"
@@ -40,7 +45,7 @@ export const SignedParticipantTab: React.FC<SignedParticipantTabProps> = ({
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700">
-                Signed On (Date - Time)
+                {item.isLegacy ? "Historical Date (not a signature)" : "Signed On (Date - Time)"}
               </label>
               <input
                 type="text"

@@ -1,8 +1,6 @@
 package com.eqms.service;
 
-import com.eqms.dto.security.WorkflowAuthorizationDecision;
 import com.eqms.entity.UserAccount;
-import com.eqms.enums.RevisionWorkflowAction;
 import com.eqms.service.authorization.AuthorizationDecision;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,19 +67,4 @@ class AuthorizationShadowEvaluationServiceTest {
         verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
 
-    @Test
-    void recordRevisionMismatch_delegatesAsDocumentRevisionResourceType() {
-        WorkflowAuthorizationDecision policyDecision = WorkflowAuthorizationDecision.denied(
-                "ACTOR_NOT_ALLOWED", "not allowed", "documents.revision.submit_review",
-                RevisionWorkflowAction.SUBMIT_FOR_REVIEW, resourceId, "DRAFT");
-        WorkflowAuthorizationDecision legacyDecision = WorkflowAuthorizationDecision.allowed(
-                RevisionWorkflowAction.SUBMIT_FOR_REVIEW, resourceId, "DRAFT", false, false);
-
-        service.recordRevisionMismatch(user, resourceId, RevisionWorkflowAction.SUBMIT_FOR_REVIEW,
-                policyDecision, legacyDecision);
-
-        verify(jdbc).update(anyString(),
-                eq("DOCUMENT_REVISION"), eq(resourceId), eq("SUBMIT_FOR_REVIEW"), eq(user.getId()),
-                eq(false), eq("ACTOR_NOT_ALLOWED"), eq(true), eq((String) null));
-    }
 }

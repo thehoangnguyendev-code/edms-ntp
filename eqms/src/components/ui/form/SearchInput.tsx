@@ -8,6 +8,9 @@ interface SearchInputProps {
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
+  /** Optional handle to the underlying input (for keyboard shortcuts that focus it). */
+  inputRef?: React.Ref<HTMLInputElement>;
+  ariaLabel?: string;
 }
 
 export const SearchInput: React.FC<SearchInputProps> = ({
@@ -16,15 +19,23 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   placeholder = 'Search...',
   className,
   autoFocus,
+  inputRef: externalRef,
+  ariaLabel,
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const setRefs = (node: HTMLInputElement | null) => {
+    inputRef.current = node;
+    if (typeof externalRef === 'function') externalRef(node);
+    else if (externalRef) (externalRef as React.MutableRefObject<HTMLInputElement | null>).current = node;
+  };
 
   return (
     <div className={cn('relative', className)}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
       <input
-        ref={inputRef}
+        ref={setRefs}
         type="text"
+        aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

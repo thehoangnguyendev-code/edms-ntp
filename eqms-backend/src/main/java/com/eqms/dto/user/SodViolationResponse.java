@@ -10,10 +10,26 @@ public record SodViolationResponse(
     String permissionCodeA,
     String permissionCodeB,
     String regulationRef,
-    List<ViolatingAccessProfile> violatingAccessProfiles
+    /** A single Access Profile alone grants both sides of the pair -- fix the profile. */
+    List<ViolatingAccessProfile> violatingAccessProfiles,
+    /** No single Access Profile grants both sides, but this user's combined active profiles do --
+     * fix the assignment (don't give this person both profiles), not any one profile. */
+    List<ViolatingUserCombination> violatingUserCombinations
 ) {
     public record ViolatingAccessProfile(
             UUID accessProfileId,
             String accessProfileName,
             String accessProfileCode) {}
+
+    public record ProfileRef(
+            UUID accessProfileId,
+            String accessProfileName,
+            String accessProfileCode) {}
+
+    public record ViolatingUserCombination(
+            UUID userId,
+            String username,
+            String fullName,
+            List<ProfileRef> profilesGrantingA,
+            List<ProfileRef> profilesGrantingB) {}
 }

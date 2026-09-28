@@ -57,6 +57,8 @@ public class PublishingTemplateService {
     private final PublishingPlaceholderStyleService placeholderStyleService;
     private final ObjectMapper objectMapper;
     private final ClamAvScanService clamAvScanService;
+    private final com.eqms.repository.RevisionPublishingMetadataRepository publishingMetadataRepository;
+    private final RevisionUploadFileValidator revisionUploadFileValidator;
 
     public PublishingTemplateService(
             PublishingTemplateRepository templateRepository,
@@ -69,7 +71,9 @@ public class PublishingTemplateService {
             PublishingTemplatePreviewService previewService,
             PublishingPlaceholderStyleService placeholderStyleService,
             ObjectMapper objectMapper,
-            ClamAvScanService clamAvScanService
+            ClamAvScanService clamAvScanService,
+            com.eqms.repository.RevisionPublishingMetadataRepository publishingMetadataRepository,
+            RevisionUploadFileValidator revisionUploadFileValidator
     ) {
         this.templateRepository = templateRepository;
         this.componentRepository = componentRepository;
@@ -82,6 +86,8 @@ public class PublishingTemplateService {
         this.placeholderStyleService = placeholderStyleService;
         this.objectMapper = objectMapper;
         this.clamAvScanService = clamAvScanService;
+        this.publishingMetadataRepository = publishingMetadataRepository;
+        this.revisionUploadFileValidator = revisionUploadFileValidator;
     }
 
     @Transactional(readOnly = true)
@@ -136,7 +142,7 @@ public class PublishingTemplateService {
             throw new IllegalArgumentException("Use Publish Template to activate a template — it cannot be created directly as Active.");
         }
         PublishingTemplate template = new PublishingTemplate();
-        template.setTemplateName(normalizeName(request.templateName()));
+        template.setTemplateName(validatedTemplateName(request, null));
         template.setDocumentType(normalizeOptional(request.documentType()));
         template.setDescription(normalizeOptional(request.description()));
         template.setStatus(nextStatus);
@@ -156,6 +162,7 @@ public class PublishingTemplateService {
     public PublishingTemplateResponse updateTemplate(UUID id, PublishingTemplateRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate template = requireTemplate(id);
+        requireEditable(template);
         String nextStatus = normalizeTemplateStatus(request.status());
         // Save Changes may move a template OUT of Active (deactivate) or leave it unchanged, but
         // never INTO Active — that transition must go through Publish Template, which creates a
@@ -164,7 +171,7 @@ public class PublishingTemplateService {
         if (isLiveStatus(nextStatus) && !isLiveStatus(template.getStatus())) {
             throw new IllegalArgumentException("Use Publish Template to activate a template — Save Changes cannot activate it directly.");
         }
-        template.setTemplateName(normalizeName(request.templateName()));
+        template.setTemplateName(validatedTemplateName(request, template.getId()));
         template.setDocumentType(normalizeOptional(request.documentType()));
         template.setDescription(normalizeOptional(request.description()));
         template.setStatus(nextStatus);
@@ -179,10 +186,23 @@ public class PublishingTemplateService {
 
     @Transactional
     public PublishingTemplateResponse duplicateTemplate(UUID id) {
+        return copyTemplate(id, false);
+    }
+
+    /** New version of a template: an editable copy that supersedes the original once it is published. */
+    @Transactional
+    public PublishingTemplateResponse createNewVersion(UUID id) {
+        return copyTemplate(id, true);
+    }
+
+    private PublishingTemplateResponse copyTemplate(UUID id, boolean newVersion) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate source = requireTemplate(id);
         PublishingTemplate duplicate = new PublishingTemplate();
-        duplicate.setTemplateName(uniqueTemplateName(source.getTemplateName() + " Copy"));
+        duplicate.setTemplateName(uniqueTemplateName(source.getTemplateName() + (newVersion ? " (new version)" : " Copy")));
+        if (newVersion) {
+            duplicate.setSupersedesTemplateId(source.getId());
+        }
         duplicate.setDocumentType(source.getDocumentType());
         duplicate.setVersionNumber(1);
         duplicate.setStatus("INACTIVE");
@@ -223,7 +243,12 @@ public class PublishingTemplateService {
         templateRepository.save(duplicate);
         cloneComponents(source.getId(), duplicate, currentUser);
         placeholderStyleService.cloneStylesForTemplate(source.getId(), duplicate, duplicate.getVersionNumber());
-        createVersionSnapshot(duplicate, "Duplicated from " + source.getTemplateName(), currentUser, false);
+        createVersionSnapshot(duplicate, (newVersion ? "New version of " : "Duplicated from ") + source.getTemplateName(), currentUser, false);
+        if (newVersion) {
+            auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", duplicate.getTemplateName(), duplicate.getId(),
+                    "PUBLISHING_TEMPLATE_NEW_VERSION_CREATED", null, duplicate.getStatus(),
+                    "Created a new version of Publishing Template: " + source.getTemplateName(), java.util.List.of());
+        }
         return toResponse(duplicate);
     }
 
@@ -244,14 +269,28 @@ public class PublishingTemplateService {
 
     @Transactional
     public void deleteTemplate(UUID id) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate template = requireTemplate(id);
+        // A live template may be the one a document is being published with right now; require it to be deactivated first.
+        if (isLiveStatus(template.getStatus())) {
+            throw new IllegalArgumentException("An active Publishing Template cannot be deleted. Deactivate it first.");
+        }
+        // Published PDFs record the template (and version) they were composed with; that history must stay resolvable.
+        if (publishingMetadataRepository.existsByPublishingTemplate_Id(id)) {
+            throw new IllegalArgumentException("This Publishing Template was used to publish documents, so it cannot be deleted. Keep it inactive instead.");
+        }
+        String templateName = template.getTemplateName();
         templateRepository.delete(template);
+        auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", templateName, id, "PUBLISHING_TEMPLATE_DELETED",
+                template.getStatus(), null, "Deleted Publishing Template: " + templateName, java.util.List.of());
     }
 
     @Transactional
     public PublishingTemplateResponse publishTemplate(UUID id, String changeSummary) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate template = requireTemplate(id);
+        requireComponentsForPublishingMode(template);
+        retireOtherLiveTemplates(template, currentUser);
         String previousStatus = template.getStatus();
         int previousVersion = template.getVersionNumber();
         String previousPublishingMode = template.getPublishingMode();
@@ -274,13 +313,15 @@ public class PublishingTemplateService {
                 previousStatus,
                 template.getStatus(),
                 StringUtils.hasText(changeSummary) ? changeSummary : "Published publishing template from editor.",
-                List.of(
+                // "Publishing Mode" in particular is usually unchanged at publish time -- filter
+                // out any entry whose value didn't actually move, same as everywhere else.
+                java.util.stream.Stream.of(
                         new AuditTrailChangeResponse("Change Summary", "-", StringUtils.hasText(changeSummary) ? changeSummary : "Published publishing template from editor."),
                         new AuditTrailChangeResponse("Version", String.valueOf(previousVersion), String.valueOf(template.getVersionNumber())),
                         new AuditTrailChangeResponse("Publishing Mode", previousPublishingMode, template.getPublishingMode()),
                         new AuditTrailChangeResponse("Published At", previousPublishedAt == null ? "-" : previousPublishedAt, template.getPublishedAt() == null ? "-" : template.getPublishedAt().toString()),
                         new AuditTrailChangeResponse("Published By", "-", template.getPublishedBy() == null ? "-" : template.getPublishedBy())
-                )
+                ).filter(c -> !java.util.Objects.equals(c.oldValue(), c.newValue())).toList()
         );
         return toResponse(template);
     }
@@ -293,6 +334,7 @@ public class PublishingTemplateService {
         validateDocxTemplateFile(file);
         scanTemplateFileOrThrow(file);
         PublishingTemplate template = requireTemplate(id);
+        requireEditable(template);
         String component = normalizeComponentType(componentType);
         String normalizedLayout = normalizeLayout(layout);
         try (InputStream input = file.getInputStream()) {
@@ -345,6 +387,55 @@ public class PublishingTemplateService {
         }
     }
 
+    /**
+     * The composer silently skips a component that has no file, so a template that is missing the cover/header/footer
+     * its Publishing Mode calls for would go live and then publish official PDFs without them. Refuse to activate it.
+     */
+    /** Only one Publishing Template is live at a time; publishing another retires the previous one (audited). */
+    private void retireOtherLiveTemplates(PublishingTemplate publishing, UserAccount currentUser) {
+        for (PublishingTemplate other : templateRepository.findAll()) {
+            if (other.getId().equals(publishing.getId()) || !isLiveStatus(other.getStatus())) {
+                continue;
+            }
+            String previousStatus = other.getStatus();
+            other.setStatus("INACTIVE");
+            other.setUpdatedBy(currentUser.getFullName());
+            templateRepository.saveAndFlush(other);
+            auditTrailService.logAs(currentUser, "PUBLISHING_TEMPLATE", other.getTemplateName(), other.getId(),
+                    "PUBLISHING_TEMPLATE_RETIRED", previousStatus, other.getStatus(),
+                    "Retired because \"" + publishing.getTemplateName() + "\" was published as the active Publishing Template.",
+                    java.util.List.of());
+        }
+    }
+
+    private void requireComponentsForPublishingMode(PublishingTemplate template) {
+        String mode = StringUtils.hasText(template.getPublishingMode()) ? template.getPublishingMode().trim().toUpperCase(Locale.ROOT) : "";
+        boolean needsCover = "COVER_ONLY".equals(mode) || "COVER_HEADER_FOOTER".equals(mode) || "COVER_AND_HEADER_FOOTER".equals(mode);
+        boolean needsHeaderFooter = !"COVER_ONLY".equals(mode) && StringUtils.hasText(mode);
+        List<String> missing = new java.util.ArrayList<>();
+        if (needsCover && !hasComponent(template, "cover")) {
+            missing.add("cover");
+        }
+        if (needsHeaderFooter && template.isEnableHeader() && !hasComponent(template, "header")) {
+            missing.add("header");
+        }
+        if (needsHeaderFooter && template.isEnableFooter() && !hasComponent(template, "footer")) {
+            missing.add("footer");
+        }
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException("Upload a DOCX file for the " + String.join(", ", missing)
+                    + " before publishing: the selected Publishing Mode (" + template.getPublishingMode() + ") requires it.");
+        }
+    }
+
+    private boolean hasComponent(PublishingTemplate template, String type) {
+        if (StringUtils.hasText(resolveTemplateComponentPath(template, type))) {
+            return true;
+        }
+        return componentRepository.findByTemplate_IdOrderByComponentTypeAscLayoutAsc(template.getId()).stream()
+                .anyMatch(component -> type.equalsIgnoreCase(component.getComponentType()) && StringUtils.hasText(component.getObjectKey()));
+    }
+
     private void validateDocxTemplateFile(MultipartFile file) {
         String originalName = file == null ? null : file.getOriginalFilename();
         String lowerName = originalName == null ? "" : originalName.toLowerCase(Locale.ROOT);
@@ -369,21 +460,12 @@ public class PublishingTemplateService {
         } catch (IOException ex) {
             throw new IllegalArgumentException("The selected template file could not be read.");
         }
-        if (content.length < 4
-                || content[0] != 0x50
-                || content[1] != 0x4B
-                || content[2] != 0x03
-                || content[3] != 0x04) {
-            throw new IllegalArgumentException("The selected file is not a valid DOCX document.");
-        }
-        if (!clamAvScanService.isEnabled()) {
-            return;
-        }
-        ClamAvScanService.ScanResult result = clamAvScanService.scan(content);
-        if (!result.clean()) {
-            throw new IllegalArgumentException("Template file " + file.getOriginalFilename()
-                    + " was rejected by the virus scanner"
-                    + (StringUtils.hasText(result.signatureName()) ? " (" + result.signatureName() + ")" : ""));
+        // Same OOXML structure check + malware scan the revision source upload uses: a ZIP that merely starts with the
+        // right bytes (or a renamed archive) must not be stored as a template and only fail later at preview/publish.
+        try {
+            revisionUploadFileValidator.validateStoredDocx(file.getOriginalFilename(), content);
+        } catch (com.eqms.exception.RevisionUploadValidationException ex) {
+            throw new IllegalArgumentException(ex.getMessage());
         }
     }
 
@@ -391,6 +473,7 @@ public class PublishingTemplateService {
     public PublishingTemplateResponse deleteTemplateComponent(UUID id, String componentType, String layout) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         PublishingTemplate template = requireTemplate(id);
+        requireEditable(template);
         String normalizedComponent = normalizeComponentType(componentType);
         String normalizedLayout = normalizeLayout(layout);
         PublishingTemplateComponent component = componentRepository
@@ -473,9 +556,44 @@ public class PublishingTemplateService {
                 .orElse(1);
     }
 
+    /**
+     * A template that has been published is the reference a Revision's PDF and later Controlled Copies were composed with,
+     * so it is immutable from then on. A change is made in a new version (a new template that supersedes it).
+     */
+    private void requireEditable(PublishingTemplate template) {
+        if (template.getPublishedAt() != null) {
+            throw new com.eqms.exception.RevisionLifecycleConflictException("PUBLISHING_TEMPLATE_PUBLISHED_IMMUTABLE",
+                    "This Publishing Template has been published and can no longer be edited. Create a new version, edit it and publish that instead.");
+        }
+    }
+
+    /** Used by the controller before placeholder-style writes, which live outside this service. */
+    @Transactional(readOnly = true)
+    public void requireEditable(UUID templateId) {
+        requireEditable(requireTemplate(templateId));
+    }
+
     private PublishingTemplate requireTemplate(UUID id) {
         return templateRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Publishing template not found"));
+    }
+
+    /** Name and Document Type must fit their columns and the name must be unique regardless of letter case. */
+    private String validatedTemplateName(PublishingTemplateRequest request, UUID currentId) {
+        String name = normalizeName(request.templateName());
+        if (name.length() > 160) {
+            throw new IllegalArgumentException("Template name must be at most 160 characters");
+        }
+        String documentType = normalizeOptional(request.documentType());
+        if (documentType != null && documentType.length() > 120) {
+            throw new IllegalArgumentException("Document Type must be at most 120 characters");
+        }
+        templateRepository.findByTemplateNameIgnoreCase(name).ifPresent(existing -> {
+            if (currentId == null || !existing.getId().equals(currentId)) {
+                throw new IllegalArgumentException("A Publishing Template named \"" + name + "\" already exists");
+            }
+        });
+        return name;
     }
 
     private String normalizeName(String value) {

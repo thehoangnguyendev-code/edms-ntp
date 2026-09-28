@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, Ban, Search, Shield, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Ban, Search, Shield } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
@@ -17,6 +17,7 @@ import { useSecurityESign } from "@/features/security-authorization/shared/useSe
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
 import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
+import { IconInfoCircle, IconSettingsAutomation } from "@tabler/icons-react";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -54,6 +55,10 @@ export const SodConstraintFormView: React.FC = () => {
   const [regulationRef, setRegulationRef] = useState("");
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Real duplicate-pair check against existing constraints -- null while checking/no pair
+  // selected, undefined once checked and no duplicate found, otherwise the existing constraint.
+  const [duplicateConstraint, setDuplicateConstraint] = useState<SodConstraintResponse | null>(null);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -81,6 +86,35 @@ export const SodConstraintFormView: React.FC = () => {
       cancelled = true;
     };
   }, [id, showToast]);
+
+  // Real check: does an active constraint already exist for this exact permission pair
+  // (in either order)? Prevents defining a redundant/duplicate SoD rule, which is the only
+  // thing this form can actually detect client-side -- it has no visibility into who
+  // currently holds which permissions, so it cannot judge real-world "conflict" risk.
+  useEffect(() => {
+    if (!codeA || !codeB || codeA === codeB) {
+      setDuplicateConstraint(null);
+      return;
+    }
+    let cancelled = false;
+    setCheckingDuplicate(true);
+    settingsApi
+      .checkSodPermissions([codeA, codeB])
+      .then((matches) => {
+        if (cancelled) return;
+        const dup = matches.find((m) => m.id !== initial?.id) ?? null;
+        setDuplicateConstraint(dup);
+      })
+      .catch(() => {
+        if (!cancelled) setDuplicateConstraint(null);
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingDuplicate(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [codeA, codeB, initial?.id]);
 
   const handleBack = () => navigateBack(navigate, location.state, ROUTES.SECURITY.SOD);
 
@@ -206,7 +240,7 @@ export const SodConstraintFormView: React.FC = () => {
                         >
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                             <span className="font-medium text-slate-800">{permission.label}</span>
-                            <span className="font-mono text-[11px] text-slate-500">{permission.id}</span>
+                            <span className=" text-[11px] text-slate-500">{permission.id}</span>
                             <span className="text-[11px] text-slate-400">{permission.groupName}</span>
                           </div>
                         </button>
@@ -248,8 +282,7 @@ export const SodConstraintFormView: React.FC = () => {
 
       <FormSection
         title="Constraint Identity"
-        icon={<ShieldAlert className="h-4 w-4" />}
-        description="Give this conflict rule a clear business name and reference."
+        icon={<IconInfoCircle className="h-4 w-4" />}
         contentClassName="p-4 md:p-5"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -282,7 +315,6 @@ export const SodConstraintFormView: React.FC = () => {
       <FormSection
         title="Conflicting Permission Pair"
         icon={<Ban className="h-4 w-4" />}
-        description="Choose the two permissions that must not coexist in the same Access Profile or user assignment."
         contentClassName="p-4 md:p-5 space-y-4"
       >
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
@@ -292,16 +324,31 @@ export const SodConstraintFormView: React.FC = () => {
           {renderPermissionTable("Permission A", codeA, setCodeA, permissionSearchA, setPermissionSearchA, codeB)}
           {renderPermissionTable("Permission B", codeB, setCodeB, permissionSearchB, setPermissionSearchB, codeA)}
         </div>
-        {codeA && codeB && (
+        {codeA && codeB && checkingDuplicate && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            Checking for an existing constraint on this pair...
+          </div>
+        )}
+        {codeA && codeB && !checkingDuplicate && duplicateConstraint && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            <span className="font-semibold">Conflict:</span> {codeA} cannot coexist with {codeB}.
+            <span className="font-semibold">Duplicate:</span> an active constraint for this exact permission pair
+            already exists — "{duplicateConstraint.name}" ({duplicateConstraint.severity}).
+            Edit that constraint instead of creating a second one for the same pair.
+          </div>
+        )}
+        {codeA && codeB && !checkingDuplicate && !duplicateConstraint && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            This rule will flag any user or Access Profile holding both{" "}
+            <span className="font-semibold">{permissionRows.find((p) => p.id === codeA)?.label ?? codeA}</span> and{" "}
+            <span className="font-semibold">{permissionRows.find((p) => p.id === codeB)?.label ?? codeB}</span> as a
+            Segregation of Duties {severity === "BLOCK" ? "violation to block" : "warning"}.
           </div>
         )}
       </FormSection>
 
       <FormSection
         title="Enforcement Settings"
-        icon={<Shield className="h-4 w-4" />}
+        icon={<IconSettingsAutomation className="h-4 w-4" />}
         description="Choose how the system should handle this conflict."
         contentClassName="p-4 md:p-5"
       >
@@ -332,7 +379,7 @@ export const SodConstraintFormView: React.FC = () => {
                 ))}
               </div>
             </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 self-start">
+          <div className="self-start">
             <Checkbox checked={active} onChange={setActive} disabled={isSystem} label="Active" />
           </div>
         </div>

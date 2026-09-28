@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   BookText,
   GraduationCap,
+  Globe2,
   UserStar,
   SquareChartGantt,
   PenTool,
@@ -22,6 +23,10 @@ import {
   type LucideProps,
   ScanSearch,
   BrickWallShield,
+  University,
+  Shield,
+  UserLock,
+  DatabaseBackup,
 } from "lucide-react";
 
 const PenToolRotated = (props: LucideProps) =>
@@ -60,6 +65,7 @@ import {
   IconSwitch2,
   IconActivity,
   IconReport,
+  IconServerCog,
 } from "@tabler/icons-react";
 import { NavItem } from "@/types";
 import { ROUTES } from "./routes.constants";
@@ -71,8 +77,10 @@ export const ICON_MAP: Record<string, React.ComponentType<any>> = {
   ShieldCheck,
   BookText,
   GraduationCap,
+  Globe2,
   UserStar,
   SquareChartGantt,
+  DatabaseBackup,
   PenTool: PenToolRotated,
   IconAlertTriangle,
   IconBrandAsana,
@@ -101,10 +109,10 @@ export const ICON_MAP: Record<string, React.ComponentType<any>> = {
 };
 
 // ============================================================================
-// QUALITY CORE NAVIGATION (Dashboard and Notifications)
+// QUALITY CORE NAVIGATION (Notifications and Self-Service)
 // ============================================================================
-// Dashboard and Notifications are baseline workspace surfaces — available to every
-// authenticated user without a permission gate (same policy as Work Management).
+// Notifications is a baseline workspace surface — available to every authenticated user
+// without a permission gate (same policy as Work Management).
 const CORE_NAV: NavItem[] = [
   {
     id: "notifications",
@@ -114,12 +122,27 @@ const CORE_NAV: NavItem[] = [
     allowedPermissions: ["notifications.module.view"],
   },
   {
-    id: "dashboard",
-    label: "Dashboard",
+    id: "self-service",
+    label: "Self-Service",
     icon: IconLayoutGrid,
-    path: ROUTES.DASHBOARD,
-    allowedPermissions: ["dashboard.module.view"],
+    // Shown if the user has either child's permission -- mirrors the server's
+    // NavigationService#getNavigation self-service block, which is the real authority.
+    allowedPermissions: ["dashboard.module.view", "self_service.knowledge.view"],
     showDividerAfter: true,
+    children: [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        path: ROUTES.DASHBOARD,
+        allowedPermissions: ["dashboard.module.view"],
+      },
+      {
+        id: "knowledge-base",
+        label: "Knowledge",
+        path: ROUTES.SELF_SERVICE.KNOWLEDGE,
+        allowedPermissions: ["self_service.knowledge.view"],
+      },
+    ],
   },
 ];
 
@@ -133,11 +156,6 @@ const FOUNDATION_MODULES: NavItem[] = [
     icon: IconFileDescription,
     allowedPermissions: ["documents.module.view"],
     children: [
-      {
-        id: "knowledge-base",
-        label: "Knowledge Base",
-        path: ROUTES.DOCUMENTS.KNOWLEDGE,
-      },
       {
         id: "doc-owned-me",
         label: "Documents Owned By Me",
@@ -303,7 +321,6 @@ const SYSTEM_MODULES: NavItem[] = [
     label: "Audit Trail",
     icon: IconFilter2Search,
     allowedPermissions: ["audittrail.module.view", "audit.review.view"],
-    showDividerAfter: true,
     children: [
       {
         id: "audit-trail-all",
@@ -319,12 +336,20 @@ const SYSTEM_MODULES: NavItem[] = [
       },
     ],
   },
+  {
+    id: "backup-restore",
+    label: "Backup & Restore",
+    icon: DatabaseBackup,
+    path: ROUTES.BACKUP_RESTORE,
+    allowedPermissions: ["backup.module.view"],
+    showDividerAfter: true,
+  },
 
   // ── Security & Authorization ──────────────────────────────────────────────
   {
     id: "security-authorization",
     label: "Security & Authorization",
-    icon: ShieldCheck,
+    icon: UserLock,
     allowedPermissions: [
       "settings.user.view",
       "security.access_profiles.view",
@@ -336,11 +361,33 @@ const SYSTEM_MODULES: NavItem[] = [
     ],
     children: [
       {
-        id: "sec-user-management",
-        label: "User Management",
+        // "User Administration" nested group -- server (NavigationService.java) is the real
+        // authority for the whole nav tree; this local copy is only the fallback used before
+        // that response has loaded.
+        id: "sec-user-administration",
+        label: "User Administration",
         icon: IconUsers,
-        path: ROUTES.SECURITY.USERS,
         allowedPermissions: ["settings.user.view"],
+        children: [
+          {
+            id: "sec-user-management",
+            label: "User Management",
+            path: ROUTES.SECURITY.USERS,
+            allowedPermissions: ["settings.user.view"],
+          },
+          {
+            id: "sec-time-limited-roles",
+            label: "Time-Limited User",
+            path: ROUTES.SECURITY.TIME_LIMITED_USERS,
+            allowedPermissions: ["settings.user.view"],
+          },
+          {
+            id: "sec-logged-in-users",
+            label: "Logged in Users",
+            path: ROUTES.SECURITY.LOGGED_IN_USERS,
+            allowedPermissions: ["settings.user.view"],
+          },
+        ],
       },
       {
         id: "sec-access-profiles",
@@ -354,13 +401,6 @@ const SYSTEM_MODULES: NavItem[] = [
         label: "Workflow Authorization",
         icon: IconSwitch2,
         path: ROUTES.SECURITY.WORKFLOW_AUTHORIZATION,
-        allowedPermissions: ["security.workflow_authorization.view"],
-      },
-      {
-        id: "sec-authorization-diagnostics",
-        label: "Engine Diagnostics",
-        icon: IconActivity,
-        path: ROUTES.SECURITY.AUTHORIZATION_DIAGNOSTICS,
         allowedPermissions: ["security.workflow_authorization.view"],
       },
       {
@@ -395,17 +435,23 @@ const SYSTEM_MODULES: NavItem[] = [
             path: ROUTES.SECURITY.WORKFLOW_ROLE_CATALOG,
             allowedPermissions: ["security.workflow_authorization.view"],
           },
+                    {
+            id: "sec-sod",
+            label: "Segregation of Duties",
+            path: ROUTES.SECURITY.SOD,
+            allowedPermissions: ["security.sod.view"],
+          },
+          {
+            id: "sec-authorization-diagnostics",
+            label: "Engine Diagnostics",
+            path: ROUTES.SECURITY.AUTHORIZATION_DIAGNOSTICS,
+            allowedPermissions: ["security.workflow_authorization.view"],
+          },
           {
             id: "sec-object-rules",
             label: "Object Access Rules",
             path: ROUTES.SECURITY.OBJECT_RULES,
             allowedPermissions: ["security.object_rules.view"],
-          },
-          {
-            id: "sec-sod",
-            label: "Segregation of Duties",
-            path: ROUTES.SECURITY.SOD,
-            allowedPermissions: ["security.sod.view"],
           },
         ],
       },
@@ -417,21 +463,48 @@ const SYSTEM_MODULES: NavItem[] = [
     id: "settings",
     label: "Application Settings",
     icon: IconSettings2,
-    allowedPermissions: ["settings.configuration.view", "settings.publishing_template.view"],
+    allowedPermissions: ["settings.configuration.view"],
     children: [
       {
+        // "Dictionaries" nested group -- server (NavigationService.java) is the real authority
+        // for the whole nav tree; this local copy is only the fallback used before that response
+        // has loaded. Each child used to be a tab on one page; now each is its own page/menu
+        // entry, in the same left-to-right order the tabs used to have.
         id: "dictionaries",
         label: "Dictionaries",
         icon: BookText,
-        path: ROUTES.SETTINGS.DICTIONARIES,
-        allowedPermissions: ["settings.configuration.view"],
+        allowedPermissions: ["settings.business_unit.view", "settings.business_unit.manage", "settings.department.view", "settings.department.manage", "settings.position.view", "settings.position.manage", "settings.storage_location.view", "settings.storage_location.manage", "settings.retention_policy.view", "settings.retention_policy.manage"],
+        children: [
+          { id: "dict-business-units", label: "Business Units", path: ROUTES.SETTINGS.DICTIONARIES_BUSINESS_UNITS, allowedPermissions: ["settings.business_unit.view", "settings.business_unit.manage"] },
+          { id: "dict-departments", label: "Departments", path: ROUTES.SETTINGS.DICTIONARIES_DEPARTMENTS, allowedPermissions: ["settings.department.view", "settings.department.manage"] },
+          { id: "dict-positions", label: "Positions", path: ROUTES.SETTINGS.DICTIONARIES_POSITIONS, allowedPermissions: ["settings.position.view", "settings.position.manage"] },
+          { id: "dict-storage-locations", label: "Storage Locations", path: ROUTES.SETTINGS.DICTIONARIES_STORAGE_LOCATIONS, allowedPermissions: ["settings.storage_location.view", "settings.storage_location.manage"] },
+          { id: "dict-retention-policies", label: "Retention Policies", path: ROUTES.SETTINGS.DICTIONARIES_RETENTION_POLICIES, allowedPermissions: ["settings.retention_policy.view", "settings.retention_policy.manage"] },
+        ],
+      },
+      {
+        id: "countries",
+        label: "Countries",
+        icon: Globe2,
+        path: ROUTES.SETTINGS.COUNTRIES,
+        allowedPermissions: ["settings.country.view", "settings.country.manage"],
+      },
+      {
+        id: "education",
+        label: "Education",
+        icon: University,
+        allowedPermissions: ["settings.education.degree_level.view", "settings.education.degree_level.manage", "settings.education.school.view", "settings.education.school.manage"],
+        children: [
+          { id: "education-degree-levels", label: "Degree Levels", path: ROUTES.SETTINGS.EDUCATION_DEGREE_LEVELS, allowedPermissions: ["settings.education.degree_level.view", "settings.education.degree_level.manage"] },
+          { id: "education-schools", label: "Schools", path: ROUTES.SETTINGS.EDUCATION_SCHOOLS, allowedPermissions: ["settings.education.school.view", "settings.education.school.manage"] },
+        ],
       },
       {
         id: "email-templates",
         label: "Email Templates",
         icon: IconMailForward,
         path: ROUTES.SETTINGS.EMAIL_TEMPLATES,
-        allowedPermissions: ["settings.configuration.view"],
+        allowedPermissions: ["settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"],
       },
       {
         id: "notification-policy",
@@ -447,30 +520,6 @@ const SYSTEM_MODULES: NavItem[] = [
         path: ROUTES.SETTINGS.REPORT_CONFIGURATION,
         allowedPermissions: ["reports.definition.view", "settings.configuration.view"],
       },
-      {
-        id: "settings-document-control",
-        label: "Document Control",
-        icon: IconFileDescription,
-        allowedPermissions: [
-          "settings.configuration.view",
-          "settings.controlled_copy_policy.view",
-          "settings.publishing_template.view",
-        ],
-        children: [
-          {
-            id: "publishing-templates",
-            label: "Publishing Templates",
-            path: ROUTES.SETTINGS.PUBLISHING_TEMPLATES,
-            allowedPermissions: ["settings.publishing_template.view", "settings.configuration.view"],
-          },
-          {
-            id: "controlled-copy-policy",
-            label: "Controlled Copies Policy",
-            path: ROUTES.SETTINGS.CONTROLLED_COPY_POLICY,
-            allowedPermissions: ["settings.controlled_copy_policy.view"],
-          },
-        ],
-      },
     ],
   },
 
@@ -479,28 +528,136 @@ const SYSTEM_MODULES: NavItem[] = [
     id: "system-administration",
     label: "System Administration",
     icon: UserStar,
-    allowedPermissions: ["settings.configuration.view", "documents.admin.view"],
+    allowedPermissions: [
+      "settings.configuration.view", "documents.admin.view",
+      "documents.admin.properties.view", "documents.admin.properties.manage",
+      "documents.admin.name_formats.view", "documents.admin.name_formats.manage",
+      "documents.admin.document_types.view", "documents.admin.document_types.manage",
+      "documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage",
+      "documents.admin.publishing_templates.view", "documents.admin.publishing_templates.manage",
+      "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage",
+      "training.admin.view",
+    ],
     children: [
       {
         id: "config",
         label: "Configuration",
-        icon: IconDeviceDesktopCog,
         path: ROUTES.SETTINGS.CONFIGURATION,
         allowedPermissions: ["settings.configuration.view"],
       },
       {
         id: "electronic-signature-policies",
         label: "E-Sign Config",
-        icon: PenToolRotated,
         path: ROUTES.SECURITY.ESIGN_POLICIES,
         allowedPermissions: ["settings.configuration.view"],
       },
       {
-        id: "info-sys",
-        label: "System Information",
-        icon: IconAlertSquareRounded,
-        path: ROUTES.SETTINGS.SYSTEM_INFO,
-        allowedPermissions: ["settings.configuration.view"],
+        // Moved here from Document Control -- see NavigationService.java for the server-side
+        // authority (the local tree below is only the fallback used before that response loads).
+        id: "doc-administration",
+        label: "Document Administration",
+        allowedPermissions: [
+          "documents.admin.properties.view", "documents.admin.properties.manage",
+          "documents.admin.name_formats.view", "documents.admin.name_formats.manage",
+          "documents.admin.document_types.view", "documents.admin.document_types.manage",
+          "documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage",
+          "documents.admin.publishing_templates.view", "documents.admin.publishing_templates.manage",
+          "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage",
+        ],
+        children: [
+          {
+            id: "doc-admin-properties",
+            label: "Document Properties",
+            path: ROUTES.DOCUMENTS.ADMIN.PROPERTIES,
+            allowedPermissions: ["documents.admin.properties.view", "documents.admin.properties.manage"],
+          },
+          {
+            id: "doc-admin-name-formats",
+            label: "Document Name Formats",
+            path: ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS,
+            allowedPermissions: ["documents.admin.name_formats.view", "documents.admin.name_formats.manage"],
+          },
+          {
+            id: "doc-admin-document-components",
+            label: "Document Components",
+            path: ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS,
+            allowedPermissions: ["documents.admin.name_formats.view", "documents.admin.name_formats.manage"],
+          },
+          {
+            id: "doc-admin-document-types",
+            label: "Document Types",
+            path: ROUTES.DOCUMENTS.ADMIN.DOCUMENT_TYPES,
+            allowedPermissions: ["documents.admin.document_types.view", "documents.admin.document_types.manage"],
+          },
+          {
+            id: "doc-admin-document-sub-types",
+            label: "Document Sub-Types",
+            path: ROUTES.DOCUMENTS.ADMIN.DOCUMENT_SUB_TYPES,
+            allowedPermissions: ["documents.admin.document_types.view", "documents.admin.document_types.manage"],
+          },
+          {
+            id: "doc-admin-knowledge-categories",
+            label: "Knowledge Categories Hierarchies",
+            path: ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES,
+            allowedPermissions: ["documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage"],
+          },
+          {
+            id: "doc-admin-knowledge-components",
+            label: "Knowledge Category Components",
+            path: ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS,
+            allowedPermissions: ["documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage"],
+          },
+          {
+            id: "publishing-templates",
+            label: "Publishing Templates",
+            path: ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES,
+            allowedPermissions: ["documents.admin.publishing_templates.view", "documents.admin.publishing_templates.manage"],
+          },
+          {
+            id: "controlled-copy-policy",
+            label: "Controlled Copies Policy",
+            path: ROUTES.DOCUMENTS.ADMIN.CONTROLLED_COPIES_POLICY,
+            allowedPermissions: ["documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage"],
+          },
+        ],
+      },
+      {
+        // Coming soon sub-screens -- no real functionality behind them yet, each just a
+        // placeholder page with its own permission (mirrors doc-administration's per-screen split).
+        id: "training-administration",
+        label: "Training Administration",
+        allowedPermissions: [
+          "training.admin.properties.view",
+          "training.admin.requirement_templates.view",
+          "training.admin.quiz.view",
+          "training.admin.curriculums.view",
+        ],
+        children: [
+          {
+            id: "training-admin-properties",
+            label: "Training Properties",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.PROPERTIES,
+            allowedPermissions: ["training.admin.properties.view"],
+          },
+          {
+            id: "training-admin-requirement-templates",
+            label: "Requirement Templates",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.REQUIREMENT_TEMPLATES,
+            allowedPermissions: ["training.admin.requirement_templates.view"],
+          },
+          {
+            id: "training-admin-create-quiz",
+            label: "Create a Quiz",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.CREATE_QUIZ,
+            allowedPermissions: ["training.admin.quiz.view"],
+          },
+          {
+            id: "training-admin-curriculums",
+            label: "Curriculums",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.CURRICULUMS,
+            allowedPermissions: ["training.admin.curriculums.view"],
+          },
+        ],
       },
     ],
   },
@@ -512,6 +669,13 @@ const SYSTEM_MODULES: NavItem[] = [
     icon: IconAdjustmentsHorizontal,
     path: ROUTES.PREFERENCES,
     allowedPermissions: ["preferences.module.view"],
+  },
+  {
+    id: "system-information",
+    label: "System Information",
+    icon: IconAlertSquareRounded,
+    path: ROUTES.SETTINGS.SYSTEM_INFO,
+    allowedPermissions: ["settings.configuration.view"],
   },
 ];
 
@@ -584,16 +748,24 @@ export const findNodeByPath = (
   items: NavItem[],
   targetPath: string,
 ): NavItem | null => {
+  let closestParent: NavItem | null = null;
   for (const item of items) {
     if (item.path === targetPath) {
       return item;
+    }
+    if (
+      item.path
+      && targetPath.startsWith(`${item.path.replace(/\/$/, "")}/`)
+      && (!closestParent || item.path.length > closestParent.path!.length)
+    ) {
+      closestParent = item;
     }
     if (item.children) {
       const result = findNodeByPath(item.children, targetPath);
       if (result) return result;
     }
   }
-  return null;
+  return closestParent;
 };
 
 // Helper to get all paths (useful for route generation)

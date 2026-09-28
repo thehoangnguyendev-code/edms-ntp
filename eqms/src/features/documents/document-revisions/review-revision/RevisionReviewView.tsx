@@ -31,10 +31,12 @@ import { buildRevisionSignatureRecords, type SignatureTabRecord } from "@/featur
 import { useToast } from "@/components/ui/toast";
 import { hasWorkingNotesEditAccess } from "@/features/documents/document-revisions/shared/workingNotesPermissions";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
-import { getApiErrorMessage } from "@/utils/apiError";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
+import { useOfficeOnlineReviewLink } from "@/features/documents/hooks/useOfficeOnlineReviewLink";
 import { buildRevisionDetailSnapshotState, isRevisionDetailSnapshotPreload, refreshDetailAfterSnapshot, isSnapshotGenerating, pollSnapshotInBackground } from "@/features/documents/shared/detailSnapshotHelpers";
 import { buildRevisionDetailNavigationState } from "@/features/documents/shared/navigationContext";
 import { ROUTES } from "@/app/routes.constants";
+import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
 import { resolveTerminalProgressStep } from "@/features/documents/shared/statusMapping";
 import type { RevisionWorkspaceState } from "@/features/documents/shared/navigationContext";
 import {
@@ -84,7 +86,6 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isOpeningWordReview, setIsOpeningWordReview] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("general");
   const [commentHistoryOpen, setCommentHistoryOpen] = useState(false);
   const [showESignModal, setShowESignModal] = useState(false);
@@ -95,9 +96,17 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
   const [isWorkingNotesSubmitting, setIsWorkingNotesSubmitting] = useState(false);
   const [reviewComments, setReviewComments] = useState<RevisionReviewCommentItem[]>([]);
   const [currentReviewRound, setCurrentReviewRound] = useState(1);
-  const [openCommentCount, setOpenCommentCount] = useState(0);
   const currentRevision = document;
   const revisionActionCapabilities = useRevisionActionCapabilities(currentRevision?.id ?? revisionId ?? null);
+  // Someone else (Reviewer, Approver, DCO ...) moved this revision on: refresh the page in place so the status,
+  // stepper and available actions are current without a manual reload.
+  useEntityChanged(["REVISION"], () => {
+    void documentApi.getRevisionByIdSnapshot(revisionId, { force: true }).then((live) => {
+      if (!live) return;
+      setDocument({ ...live, reviewers: live.reviewers || [], approvers: live.approvers || [], reviewFlowType: "parallel", currentReviewerIndex: 0 });
+    }).catch(() => undefined);
+  }, { ids: [revisionId] });
+  const { isOpeningWordReview, handleOpenWordReview } = useOfficeOnlineReviewLink(revisionId);
   const canEditWorkingNotes = useMemo(
     () =>
       hasWorkingNotesEditAccess(
@@ -136,11 +145,21 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       }
 
       const serverPreviewStatus = String(detail.previewStatus || "").toUpperCase();
+      const snapshotIsGenerating = isSnapshotGenerating(detail.snapshotStatus, detail.previewStatus);
+      const snapshotFailed = String(detail.snapshotStatus || "").toUpperCase() === "FAILED"
+        || serverPreviewStatus === "FAILED";
+      // Bug fix: previewType alone flips to REVIEW_PDF as soon as a PRIOR round's
+      // previewFilePath exists on the revision -- requestReviewSnapshotGeneration (backend)
+      // deliberately never clears it while a newer round is GENERATING, so relying on
+      // previewType/previewStatus alone here would serve the stale prior round's PDF while a
+      // resubmission's snapshot is still being regenerated. Must also gate on snapshotStatus.
       const canRequestPreview = isRevisionPdfPreviewType(detail.previewType)
-        && (serverPreviewStatus === "READY" || !serverPreviewStatus);
+        && (serverPreviewStatus === "READY" || !serverPreviewStatus)
+        && !snapshotIsGenerating
+        && !snapshotFailed;
       if (!canRequestPreview) {
         setRevisionFile(null);
-        setPreviewStatus(isSnapshotGenerating(detail.snapshotStatus) || serverPreviewStatus === "GENERATING" ? "loading" : "idle");
+        setPreviewStatus(snapshotIsGenerating ? "loading" : snapshotFailed ? "error" : "idle");
         setPreviewMessage(describeRevisionPreviewUnavailable(detail));
         return;
       }
@@ -246,6 +265,34 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     };
   }, [revisionId, locationState?.preloadedRevisionDetail, locationState?.preloadedRevisionDetailSnapshot, loadRevisionPreview]);
 
+  // Keep the Document-tab PDF preview in step with edits saved from OnlyOffice: the backend
+  // regenerates the snapshot after each reviewer/approver save, so poll the revision while the
+  // tab is open and reload the preview whenever its version token or snapshot state changes.
+  const lastPreviewSignatureRef = React.useRef<string>("");
+  useEffect(() => {
+    if (activeTab !== "document") return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const live = await documentApi.getRevisionById(revisionId);
+        if (cancelled || !live) return;
+        const signature = `${resolveRevisionPreviewVersionToken(live)}|${live.snapshotStatus ?? ""}|${live.previewStatus ?? ""}`;
+        if (lastPreviewSignatureRef.current && lastPreviewSignatureRef.current !== signature) {
+          void loadRevisionPreview(live);
+        }
+        lastPreviewSignatureRef.current = signature;
+      } catch {
+        // transient poll failure -- next tick retries
+      }
+    };
+    void tick();
+    const timer = window.setInterval(() => void tick(), 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeTab, revisionId, loadRevisionPreview]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -278,7 +325,6 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     // controlled Word Online collaboration file, not in a second internal layer.
     setReviewComments([]);
     setCurrentReviewRound(1);
-    setOpenCommentCount(0);
   }, []);
 
   useEffect(() => {
@@ -350,37 +396,6 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     && revisionActionCapabilities.can("rejectReview");
   const canActOnReview = canReview || canRejectReview;
 
-  const handleOpenWordReview = async () => {
-    if (isOpeningWordReview) return;
-
-    // Open the tab synchronously so browser popup protection cannot block it
-    // while the review URL is being created by the server.
-    const reviewWindow = window.open("", "_blank");
-    if (!reviewWindow) {
-      showToast({
-        type: "error",
-        title: "Unable to open Word Online",
-        message: "Your browser blocked the new tab. Allow pop-ups for EQMS and try again.",
-      });
-      return;
-    }
-
-    setIsOpeningWordReview(true);
-    try {
-      const link = await documentApi.getRevisionOfficeOnlineReviewLink(revisionId);
-      if (reviewWindow.closed) {
-        throw new Error("The Word Online tab was closed before the review session could be opened.");
-      }
-      reviewWindow.opener = null;
-      reviewWindow.location.replace(link.url);
-      showToast({ type: "success", title: "Word Online review opened", message: "Sign in with your registered e-mail address to review and comment." });
-    } catch (error) {
-      reviewWindow.close();
-      showToast({ type: "error", title: "Word Online review unavailable", message: getApiErrorMessage(error, "Unable to open the named review session.") });
-    } finally {
-      setIsOpeningWordReview(false);
-    }
-  };
 
   const handleApprove = () => {
     setESignAction("approve");
@@ -531,29 +546,10 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     }
   };
 
-  const snapshotStatus = document?.snapshotStatus as string | null | undefined;
-  const isSnapshotBlocking = snapshotStatus === "GENERATING" || snapshotStatus === "FAILED";
-  const [isRegeneratingSnapshot, setIsRegeneratingSnapshot] = useState(false);
-
-  const handleRegenerateSnapshot = async () => {
-    if (!revisionId) return;
-    setIsRegeneratingSnapshot(true);
-    try {
-      const refreshed = await documentApi.regenerateRevisionSnapshot(revisionId);
-      setDocument({
-        ...refreshed,
-        reviewers: refreshed.reviewers || [],
-        approvers: refreshed.approvers || [],
-        reviewFlowType: "parallel",
-        currentReviewerIndex: 0,
-      });
-      showToast({ type: "info", title: "Snapshot queued", message: "Review snapshot is being regenerated.", duration: 3000 });
-    } catch {
-      showToast({ type: "error", title: "Failed", message: "Could not queue snapshot regeneration.", duration: 3000 });
-    } finally {
-      setIsRegeneratingSnapshot(false);
-    }
-  };
+  // Review-snapshot generation/retry is now fully server-side (RevisionSnapshotAsyncService +
+  // RevisionSnapshotRetryScheduler) -- there is no manual "Retry Snapshot" action any more. The
+  // Approve/Reject actions still wait for a ready snapshot; "Open File to Comment" (Word Online)
+  // stays available regardless, so reviewers are never blocked from viewing the source content.
 
   // Status workflow steps
   const statusSteps: DocumentStatus[] = [
@@ -604,18 +600,8 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
         headerActions={
           canActOnReview ? (
             <>
-              {isSnapshotBlocking && (
-                <span className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${snapshotStatus === "GENERATING" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
-                  {snapshotStatus === "GENERATING" ? "⏳ Snapshot generating…" : "⚠ Snapshot failed"}
-                </span>
-              )}
-              {snapshotStatus === "FAILED" && (
-                <Button onClick={handleRegenerateSnapshot} variant="outline-emerald" size="sm" disabled={isRegeneratingSnapshot} className="whitespace-nowrap">
-                  Retry Snapshot
-                </Button>
-              )}
-              {canRejectReview && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">Reject</Button>}
-              {canReview && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">Complete Review</Button>}
+              {canRejectReview && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">Reject</Button>}
+              {canReview && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">Complete Review</Button>}
             </>
           ) : undefined
         }
@@ -624,23 +610,13 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
             <Button onClick={handleBack} variant="outline-emerald" size="sm" className="whitespace-nowrap">
               Back
             </Button>
-            {isSnapshotBlocking && (
-              <span className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${snapshotStatus === "GENERATING" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
-                {snapshotStatus === "GENERATING" ? "⏳ Đang tạo snapshot PDF…" : "⚠ Snapshot thất bại — không thể thao tác"}
-              </span>
-            )}
             {canActOnReview && (
               <>
-                {snapshotStatus === "FAILED" && (
-                  <Button onClick={handleRegenerateSnapshot} variant="outline-emerald" size="sm" disabled={isRegeneratingSnapshot} className="whitespace-nowrap">
-                    Retry Snapshot
-                  </Button>
-                )}
-          <Button onClick={handleOpenWordReview} variant="outline-emerald" size="sm" disabled={isSnapshotBlocking} loading={isOpeningWordReview} loadingText="Opening Word Online…" className="whitespace-nowrap">
+          <Button onClick={handleOpenWordReview} variant="outline-emerald" size="sm" loading={isOpeningWordReview} loadingText="Opening Word Online…" className="whitespace-nowrap">
                   Open File to Comment
                 </Button>
-                {canRejectReview && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">Reject</Button>}
-                {canReview && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">Complete Review</Button>}
+                {canRejectReview && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">Reject</Button>}
+                {canReview && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">Complete Review</Button>}
               </>
             )}
           </>
@@ -662,6 +638,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
             <div className="min-h-0 overflow-hidden px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
               <DocumentTab
                 documentFile={revisionFile}
+                liveViewRevisionId={isLiveViewStage(document) ? revisionId : null}
                 previewStatus={previewStatus}
                 previewMessage={previewMessage}
                 revisionId={revisionId}
@@ -683,6 +660,10 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
                 author: currentRevision.author || "",
                 coAuthors: (currentRevision.coAuthors || []).map((item: any) => item.fullName),
                 isTemplate: currentRevision.isTemplate || false,
+                type: currentRevision.type || "",
+                subType: currentRevision.subType || "",
+                effectiveDate: currentRevision.effectiveDate,
+                validUntil: currentRevision.validUntil,
                 businessUnit: currentRevision.businessUnit || "",
                 department: currentRevision.department || "",
                 knowledgeBase: currentRevision.knowledgeBase || "",
@@ -716,6 +697,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
         {activeTab === "training" && (
           <TrainingInformationTab
             isReadOnly
+            isTemplate={Boolean(currentRevision?.isTemplate)}
             data={{
               trainingPlannedDate: currentRevision?.trainingPlannedDate,
               trainingPeriodEndDate: currentRevision?.trainingPeriodEndDate,

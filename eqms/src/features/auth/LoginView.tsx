@@ -391,7 +391,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
             </div>
 
             <div className="text-center">
-              <p className="text-[11px] text-slate-500 sm:text-sm">Product is developed by Nguyen The Hoang - Ngoc Thien Pharma</p>
+              <p className="text-[11px] text-slate-500 sm:text-sm">Product is developed by Nguyen The Hoang</p>
             </div>
           </div>
         }

@@ -1,9 +1,7 @@
 package com.eqms.service;
 
-import com.eqms.dto.security.WorkflowAuthorizationDecision;
 import com.eqms.dto.security.AuthorizationShadowMismatchResponse;
 import com.eqms.entity.UserAccount;
-import com.eqms.enums.RevisionWorkflowAction;
 import com.eqms.service.authorization.AuthorizationDecision;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -17,12 +15,21 @@ import java.util.List;
 /**
  * Persistent, non-enforcing evidence for the policy rollout gate
  * (SECURITY_AUTHORIZATION_HYBRID_REFACTOR_PLAN.md §7, Phase 0 step 7). {@code recordMismatch} is
- * the generic entry point every module's shadow-evaluation call site should use going forward
- * (Phase 1-2 onward); {@code recordRevisionMismatch} is kept as a thin convenience wrapper over it
- * for the one call site shape already in place, not a second write path.
+ * the generic entry point every module's shadow-evaluation call site uses.
+ *
+ * <p>REVISION completed its cutover and had its legacy comparison path removed entirely (see
+ * {@link RevisionWorkflowAuthorizationService}) -- its historical rows here are a frozen snapshot,
+ * not live traffic. {@link #CUTOVER_COMPLETE_RESOURCE_TYPES} is what the Engine Health summary uses
+ * to avoid presenting that as if it were still under active shadow monitoring; update it if another
+ * resource type's legacy path is ever fully removed the same way.
  */
 @Service
 public class AuthorizationShadowEvaluationService {
+
+    /** Resource types whose legacy evaluator has been physically deleted (not flag-gated) --
+     * shadow-evaluation rows for these are permanent historical evidence and will never grow. */
+    private static final java.util.Set<String> CUTOVER_COMPLETE_RESOURCE_TYPES = java.util.Set.of("REVISION");
+
     private final JdbcTemplate jdbc;
 
     public AuthorizationShadowEvaluationService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
@@ -60,21 +67,6 @@ public class AuthorizationShadowEvaluationService {
                 policyDecision.allowed(), policyDecision.reasonCode(), legacyAllowed, legacyReasonCode);
     }
 
-    public void recordRevisionMismatch(
-            UserAccount user, UUID revisionId, RevisionWorkflowAction action,
-            WorkflowAuthorizationDecision policyDecision, WorkflowAuthorizationDecision legacyDecision
-    ) {
-        if (policyDecision == null || legacyDecision == null) {
-            return;
-        }
-        recordMismatch(
-                user, "DOCUMENT_REVISION", revisionId, action == null ? null : action.name(),
-                new AuthorizationDecision(
-                        policyDecision.allowed(), policyDecision.reasonCode(), policyDecision.permissionCode(),
-                        List.of(), List.of(), null, policyDecision.currentStatus(), java.util.Map.of()),
-                legacyDecision.allowed(), legacyDecision.reasonCode());
-    }
-
     public List<AuthorizationShadowMismatchResponse> recentMismatches(int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 500));
         return jdbc.query("""
@@ -100,8 +92,12 @@ public class AuthorizationShadowEvaluationService {
                 from authorization_shadow_evaluation_events
                 group by resource_type
                 order by resource_type
-                """, (rs, row) -> new com.eqms.dto.security.AuthorizationShadowMismatchSummaryResponse(
-                rs.getString("resource_type"), rs.getLong("total"), rs.getLong("mismatches")));
+                """, (rs, row) -> {
+            String resourceType = rs.getString("resource_type");
+            return new com.eqms.dto.security.AuthorizationShadowMismatchSummaryResponse(
+                    resourceType, rs.getLong("total"), rs.getLong("mismatches"),
+                    CUTOVER_COMPLETE_RESOURCE_TYPES.contains(resourceType));
+        });
     }
 
     /** Server-side filter/search/sort/pagination for the Engine Health table. */

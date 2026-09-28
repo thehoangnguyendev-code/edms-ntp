@@ -11,7 +11,7 @@ export const SETTINGS_PERMISSION_CODES = {
   manageRoles: "security.access_profiles.update",
   assignRolePermissions: "security.access_profiles.assign",
   viewConfiguration: "settings.configuration.view",
-  editConfiguration: "settings.configuration.edit",
+  editConfiguration: "settings.configuration.manage",
   viewDocumentAdministration: "documents.admin.view",
   manageDocumentWorkflowRoles: "documents.admin.manage_workflow_roles",
   manageDocumentSodConstraints: "security.sod.manage",

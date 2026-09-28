@@ -2,11 +2,13 @@ package com.eqms.service;
 
 import com.eqms.auth.CurrentUserService;
 import org.springframework.security.access.AccessDeniedException;
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.security.LifecycleStatePolicyDtos.LifecycleStatePolicyOptionsResponse;
 import com.eqms.dto.security.LifecycleStatePolicyDtos.LifecycleStatePolicyRequest;
 import com.eqms.dto.security.LifecycleStatePolicyDtos.LifecycleStatePolicyResponse;
 import com.eqms.dto.security.LifecycleStatePolicyDtos.OptionItem;
 import com.eqms.entity.DocumentType;
+import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.LifecycleStatePolicy;
 import com.eqms.entity.UserAccount;
 import com.eqms.enums.LifecycleActorScope;
@@ -153,13 +155,14 @@ public class LifecycleStatePolicyService {
         policy.setUpdatedBy(actor.getId());
         policyRepository.save(policy);
 
-        auditTrailService.log(AUDIT_ENTITY, policyName(policy), policy.getId(),
-                "CREATED", null, policy.isActive() ? "Active" : "Inactive",
-                "Created lifecycle state policy " + policyName(policy));
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 AUDIT_ENTITY, policy.getId(), policyName(policy), request.reason(),
                 null, policyName(policy));
+        auditTrailService.logAs(actor, AUDIT_ENTITY, policyName(policy), policy.getId(),
+                "CREATED", null, policy.isActive() ? "Active" : "Inactive",
+                withReason("Created lifecycle state policy " + policyName(policy), request.reason()),
+                List.of(), esig == null ? null : esig.getId());
         return toResponse(policy, statusLabelMap(), documentTypeNameMap());
     }
 
@@ -173,18 +176,47 @@ public class LifecycleStatePolicyService {
         LifecycleStatePolicy policy = require(id);
         String oldSummary = policyName(policy);
         String oldStatus = policy.isActive() ? "Active" : "Inactive";
+        String oldCapabilityCode = policy.getCapabilityCode();
+        String oldStatusCode = policy.getStatusCode();
+        String oldDocumentTypeId = policy.getDocumentTypeId() == null ? null : policy.getDocumentTypeId().toString();
+        String oldActorScope = policy.getActorScope();
+        String oldRequiredPermissionCode = policy.getRequiredPermissionCode();
+        String oldPriority = String.valueOf(policy.getPriority());
+        String oldDescription = policy.getDescription();
+
         applyRequest(policy, request);
         policy.setUpdatedBy(actor.getId());
         policyRepository.save(policy);
 
-        auditTrailService.log(AUDIT_ENTITY, policyName(policy), policy.getId(),
-                "UPDATED", oldStatus, policy.isActive() ? "Active" : "Inactive",
-                "Updated lifecycle state policy " + policyName(policy));
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        // Previously recorded only the Active/Inactive status with an empty changes list -- an
+        // inspector could see THAT a lifecycle authorization policy changed but never WHAT (which
+        // capability/status/actor scope/permission it now governs), even though this policy
+        // directly controls who may perform which document-lifecycle action.
+        List<AuditTrailChangeResponse> changes = new java.util.ArrayList<>();
+        addPolicyChange(changes, "Capability", oldCapabilityCode, policy.getCapabilityCode());
+        addPolicyChange(changes, "Status Code", oldStatusCode, policy.getStatusCode());
+        addPolicyChange(changes, "Document Type ID", oldDocumentTypeId, policy.getDocumentTypeId() == null ? null : policy.getDocumentTypeId().toString());
+        addPolicyChange(changes, "Actor Scope", oldActorScope, policy.getActorScope());
+        addPolicyChange(changes, "Required Permission", oldRequiredPermissionCode, policy.getRequiredPermissionCode());
+        addPolicyChange(changes, "Priority", oldPriority, String.valueOf(policy.getPriority()));
+        addPolicyChange(changes, "Description", oldDescription, policy.getDescription());
+        addPolicyChange(changes, "Status", oldStatus, policy.isActive() ? "Active" : "Inactive");
+
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 AUDIT_ENTITY, policy.getId(), policyName(policy), request.reason(),
                 oldSummary, policyName(policy));
+        auditTrailService.logAs(actor, AUDIT_ENTITY, policyName(policy), policy.getId(),
+                "UPDATED", oldStatus, policy.isActive() ? "Active" : "Inactive",
+                withReason("Updated lifecycle state policy " + policyName(policy), request.reason()),
+                changes, esig == null ? null : esig.getId());
         return toResponse(policy, statusLabelMap(), documentTypeNameMap());
+    }
+
+    private void addPolicyChange(List<AuditTrailChangeResponse> changes, String field, String oldValue, String newValue) {
+        if (!java.util.Objects.equals(oldValue, newValue)) {
+            changes.add(new AuditTrailChangeResponse(field, oldValue, newValue));
+        }
     }
 
     @Transactional
@@ -197,14 +229,24 @@ public class LifecycleStatePolicyService {
         if (policy.isSystem()) {
             throw new IllegalArgumentException("System lifecycle state policies cannot be deleted. Deactivate instead.");
         }
-        auditTrailService.log(AUDIT_ENTITY, policyName(policy), policy.getId(),
-                "DELETED", policy.isActive() ? "Active" : "Inactive", null,
-                "Deleted lifecycle state policy " + policyName(policy));
-        policyRepository.delete(policy);
-        securityChangeSignatureService.record(actor, sig.signatureToken(),
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, sig.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 AUDIT_ENTITY, id, policyName(policy), sig.reason(),
                 policyName(policy), null);
+        auditTrailService.logAs(actor, AUDIT_ENTITY, policyName(policy), policy.getId(),
+                "DELETED", policy.isActive() ? "Active" : "Inactive", null,
+                withReason("Deleted lifecycle state policy " + policyName(policy), sig.reason()),
+                List.of(), esig == null ? null : esig.getId());
+        policyRepository.delete(policy);
+    }
+
+    /**
+     * The reason typed into the e-signature modal is otherwise only persisted on the
+     * ElectronicSignature row and never surfaced in the Audit Trail's own comment/description --
+     * fold it into the action's own comment so a reviewer can actually see it.
+     */
+    private String withReason(String comment, String reason) {
+        return org.springframework.util.StringUtils.hasText(reason) ? comment + " Reason: " + reason : comment;
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -270,16 +312,14 @@ public class LifecycleStatePolicyService {
 
     private void requireView() {
         UserAccount u = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(u)
-                && !permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasAnyPermission(u, VIEW_PERMISSION, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Workflow authorization view permission required");
         }
     }
 
     private void requireManage() {
         UserAccount u = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(u)
-                && !permissionEvaluationService.hasPermission(u, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasPermission(u, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Workflow authorization management permission required");
         }
     }

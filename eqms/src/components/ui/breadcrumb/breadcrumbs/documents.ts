@@ -54,16 +54,18 @@ export const documentList = (
   { label: activeTab === "owned" ? "Documents Owned By Me" : "All Documents", isActive: true },
 ];
 
-export const knowledgeBase = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...docControlBase(navigate),
-  { label: "Knowledge Base", isActive: true },
-];
-
 export const newDocument = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   { label: "All Documents", onClick: () => navigate?.(ROUTES.DOCUMENTS.ALL) },
   { label: "New Document", isActive: true },
 ];
+
+export const legacyImport = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...docControlBase(navigate),
+  { label: "All Documents", onClick: () => navigate?.(ROUTES.DOCUMENTS.ALL) },
+  { label: "Legacy Import", isActive: true },
+];
+
 
 export const documentDetail = (
   navigate?: NavigateFn,
@@ -92,10 +94,6 @@ export const revisionList = (navigate?: NavigateFn): BreadcrumbItem[] => [
 export const publishingWorkspace = (navigate?: NavigateFn): BreadcrumbItem[] => [
   dashboard(navigate),
   { label: "All Revisions", onClick: () => navigate?.(ROUTES.DOCUMENTS.REVISIONS.ALL) },
-  {
-    label: "Create Revision",
-    onClick: () => navigate?.(ROUTES.DOCUMENTS.REVISIONS.CREATE),
-  },
   { label: "Publishing Workspace", isActive: true },
 ];
 
@@ -210,8 +208,8 @@ export const controlledCopyBatchStatusDiscrepancies = (
   navigate?: NavigateFn
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
-  controlledCopiesLabel,
-  { label: "Needs Review", isActive: true },
+  { label: "Controlled Copies", onClick: () => navigate?.(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL) },
+  { label: "Batch Status Discrepancies", isActive: true },
 ];
 
 export const controlledCopyDetail = (

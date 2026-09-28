@@ -102,6 +102,9 @@ export const normalizeControlledCopyRecord = (payload: any, fallbackId = ""): Co
     distributedDate: firstText(payload?.distributedDate) || undefined,
     distributedBy: firstText(payload?.distributedBy) || undefined,
     recipientName: firstText(payload?.recipientName) || undefined,
+    recipientEmployeeCode: firstText(payload?.recipientEmployeeCode) || undefined,
+    recipientDepartment: firstText(payload?.recipientDepartment) || undefined,
+    recipientEmail: firstText(payload?.recipientEmail) || undefined,
     distributionComment: firstText(payload?.distributionComment) || undefined,
     recipientSignature: firstText(payload?.recipientSignature) || undefined,
     recipientDate: firstText(payload?.recipientDate) || undefined,
@@ -136,6 +139,7 @@ export const normalizeControlledCopyRecord = (payload: any, fallbackId = ""): Co
     replacedControlledCopyNumber: firstText(payload?.replacedControlledCopyNumber) || undefined,
     replacementControlledCopyId: firstText(payload?.replacementControlledCopyId) || undefined,
     replacementControlledCopyNumber: firstText(payload?.replacementControlledCopyNumber) || undefined,
+    lastUpdatedAt: firstText(payload?.lastUpdatedAt) || undefined,
   };
 };
 
@@ -183,12 +187,18 @@ export const normalizeControlledCopyBatch = (batch: ControlledCopyDistributionBa
     externalRecipients: firstText(batch.externalRecipients) || undefined,
     revisionNumber,
     sourceRevisionId: firstText(batch.sourceRevisionId) || undefined,
-    revisionName: controlledCopyName || documentName || batch.documentTitle || "",
+    // Server-provided, distinct from controlledCopyName (which always ends with a copy/quantity
+    // suffix) -- must not fall back to reusing controlledCopyName, or this column would just
+    // duplicate the Controlled Copy Name column.
+    revisionName: firstText(batch.revisionName, documentName, batch.documentTitle) || "",
     documentName,
     location: firstText(batch.location) || "",
     locationCode: firstText(batch.locationCode) || "",
-    businessUnit: "",
-    department: "",
+    // "Multiple" when the batch's member copies span more than one department/business unit
+    // (a batch can be distributed to several at once) -- set by the backend, which already has
+    // the member copies loaded for the detail endpoint; empty on list rows, where this isn't shown.
+    businessUnit: firstText(batch.businessUnitName),
+    department: firstText(batch.departmentName),
     reason: "",
     distributedDate: firstText(batch.distributedAt),
     distributedBy: firstText(batch.distributedBy),
@@ -208,6 +218,7 @@ export const normalizeControlledCopyBatch = (batch: ControlledCopyDistributionBa
     distributionBatchId: batch.id,
     distributionBatchNumber: batch.batchNumber,
     copyIds: batch.copyIds,
+    lastUpdatedAt: firstText(batch.lastUpdatedAt) || undefined,
   } as ControlledCopy & { copyIds?: string[] };
 };
 

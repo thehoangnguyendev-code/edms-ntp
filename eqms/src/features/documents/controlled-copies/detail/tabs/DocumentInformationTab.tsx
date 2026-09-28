@@ -2,6 +2,7 @@ import React from "react";
 import { ControlledCopy } from "../../types";
 import { formatDateNumeric, formatDateTimePartsNumeric } from "@/utils/format";
 import {
+  controlledCopyDisplayNumber,
   formatControlledCopyNumber,
   formatDocumentLabel,
   formatDocumentRevisionLabel,
@@ -30,14 +31,19 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
     <div className="space-y-4 md:space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
 
-        {/* Controlled Copy Number / Batch Number */}
+        {/* Document Number / Batch Number -- driven by the SAME isBatchParent flag as the
+            label, not by controlledCopy.controlledCopyNumber's own pre-baked batch-vs-singleton
+            guess (which is derived from `quantity` upstream and can drift out of sync with
+            isBatchParent, e.g. once a member copy is reissued/destroyed and the two counts no
+            longer agree) -- that mismatch was showing a member copy's own number under a "Batch
+            Number" label. distributionBatchNumber is always the batch's own number, unconditionally. */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700">
-            {isBatchParent ? "Batch Number" : "Controlled Copy Number"}
+            {isBatchParent ? "Batch Number" : "Document Number"}
           </label>
           <input
             type="text"
-            value={formatControlledCopyNumber(controlledCopy.controlledCopyNumber)}
+            value={controlledCopyDisplayNumber(controlledCopy, isBatchParent)}
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
           />
@@ -149,7 +155,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
           />
-          {controlledCopy.hasExpiryDate && controlledCopy.expiryDate && controlledCopy.status === "Obsoleted" && (
+          {controlledCopy.status === "Obsoleted" && controlledCopy.obsoleteReason === "EXPIRED" && (
             <p className="text-[11px] sm:text-xs text-amber-600 font-medium">
               This controlled copy has been automatically obsoleted because the expiry date was reached.
             </p>

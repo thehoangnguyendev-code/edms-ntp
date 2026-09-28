@@ -9,7 +9,6 @@ import com.eqms.entity.UserAccount;
 import com.eqms.repository.DocumentRelationRepository;
 import com.eqms.repository.DocumentRevisionRepository;
 import com.eqms.repository.DocumentWorkflowParticipantRepository;
-import com.eqms.repository.DocumentWorkflowPoolMemberRepository;
 import com.eqms.repository.RevisionWorkflowParticipantRepository;
 import com.eqms.repository.UserAccessProfileRepository;
 import com.eqms.service.DocumentAuthorizationService;
@@ -47,7 +46,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class DocumentAuthorizationServiceTest {
 
-    @Mock private DocumentWorkflowPoolMemberRepository documentWorkflowPoolMemberRepository;
     @Mock private UserAccessProfileRepository userAccessProfileRepository;
     @Mock private DocumentWorkflowParticipantRepository documentWorkflowParticipantRepository;
     @Mock private RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
@@ -56,6 +54,7 @@ class DocumentAuthorizationServiceTest {
     @Mock private ObjectAccessEvaluationService objectAccessEvaluationService;
     @Mock private LifecycleStatePolicyEvaluator lifecycleStatePolicyEvaluator;
     @Mock private DocumentRelationRepository documentRelationRepository;
+    @Mock private com.eqms.service.SystemConfigurationService systemConfigurationService;
 
     @InjectMocks
     private DocumentAuthorizationService service;
@@ -73,8 +72,6 @@ class DocumentAuthorizationServiceTest {
 
         lenient().when(objectAccessEvaluationService.canViewDocument(any(), any())).thenReturn(true);
         lenient().when(objectAccessEvaluationService.canViewRevision(any(), any())).thenReturn(true);
-        lenient().when(documentWorkflowPoolMemberRepository.findAllByPoolTypeAndActiveTrueOrderByCreatedAtAsc(anyString()))
-                .thenReturn(List.of());
         lenient().when(userAccessProfileRepository.findUserIdsByWorkflowRole(anyString())).thenReturn(List.of());
         lenient().when(documentWorkflowParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(any()))
                 .thenReturn(List.of());
@@ -205,6 +202,69 @@ class DocumentAuthorizationServiceTest {
         when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(true);
         DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
         assertThat(service.canViewRevision(user, revision)).isTrue();
+    }
+
+    // ── isDirectStakeholder (HDR-AUTH-001: Preview/Audit Trail bundling) ────
+
+    @Test
+    void isDirectStakeholder_true_forAdminDco() {
+        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(true);
+        assertThat(service.isDirectStakeholder(user, document)).isTrue();
+        DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
+        assertThat(service.isDirectStakeholder(user, revision)).isTrue();
+    }
+
+    @Test
+    void isDirectStakeholder_true_forAuthor_document() {
+        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        document.setAuthor(user);
+        assertThat(service.isDirectStakeholder(user, document)).isTrue();
+    }
+
+    @Test
+    void isDirectStakeholder_true_forParticipant_document() {
+        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        DocumentWorkflowParticipant participant = new DocumentWorkflowParticipant();
+        participant.setUser(user);
+        when(documentWorkflowParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(document.getId()))
+                .thenReturn(List.of(participant));
+        assertThat(service.isDirectStakeholder(user, document)).isTrue();
+    }
+
+    @Test
+    void isDirectStakeholder_false_forUnrelatedUser_document() {
+        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        assertThat(service.isDirectStakeholder(user, document)).isFalse();
+    }
+
+    @Test
+    void isDirectStakeholder_true_forAuthor_revision() {
+        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
+        revision.setAuthor(user);
+        assertThat(service.isDirectStakeholder(user, revision)).isTrue();
+    }
+
+    @Test
+    void isDirectStakeholder_true_forReviewerParticipant_revision() {
+        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        DocumentRevisionRecord revision = revisionWithStatus("PENDING_REVIEW");
+        RevisionWorkflowParticipant participant = new RevisionWorkflowParticipant();
+        participant.setUser(user);
+        lenient().when(revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(any(), anyString()))
+                .thenReturn(List.of());
+        when(revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "REVIEWER"))
+                .thenReturn(List.of(participant));
+        assertThat(service.isDirectStakeholder(user, revision)).isTrue();
+    }
+
+    @Test
+    void isDirectStakeholder_false_forUnrelatedUser_revision() {
+        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(any(), anyString()))
+                .thenReturn(List.of());
+        DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
+        assertThat(service.isDirectStakeholder(user, revision)).isFalse();
     }
 
     // ── canUploadRevision: Author-only, no DCO bypass ───────────────────────

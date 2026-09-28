@@ -176,6 +176,20 @@ class AuthTokenFilterTest {
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
+    @Test
+    void revokedSession_isDenied401WithStableCode_andNeverGrantedSecurityContext() throws Exception {
+        stubParsedToken();
+        session.setRevokedAt(Instant.now());
+        session.setStatus(AuthSession.SessionStatus.REVOKED);
+
+        MockHttpServletResponse response = runFilter(requestWithBearerToken());
+
+        assertEquals(401, response.getStatus());
+        assertTrue(response.getContentAsString().contains("SESSION_REVOKED"));
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verifyNoInteractions(userRepository, permissionEvaluationService, auditTrailService);
+    }
+
     // ── Active user is unaffected ───────────────────────────────────────────────────────────
 
     @Test
@@ -208,19 +222,21 @@ class AuthTokenFilterTest {
         assertEquals(200, response.getStatus());
     }
 
+    /**
+     * The old identity-based isSuperAdmin() fallback has since been retired entirely (the
+     * SYSTEM_SUPER_ADMIN profile was merged into ADMINISTRATOR) -- only the explicit
+     * security.maintenance.bypass permission grants exemption now.
+     */
     @Test
-    void maintenanceMode_systemSuperAdmin_isLetThrough() throws Exception {
+    void maintenanceMode_superAdminFlagWithoutBypassPermission_isBlocked() throws Exception {
         stubParsedToken("Read-Only User");
         stubActiveUserPastStatusGate();
         when(systemConfigurationService.isMaintenanceModeEnabled()).thenReturn(true);
         when(permissionEvaluationService.hasPermission(any(), eq("security.maintenance.bypass"))).thenReturn(false);
-        when(permissionEvaluationService.isSuperAdmin(any())).thenReturn(true);
-        when(permissionEvaluationService.getPermissionCodes(any())).thenReturn(Set.of());
-        when(tokenService.toAuthorities(any())).thenReturn(java.util.List.of());
 
         MockHttpServletResponse response = runFilter(requestWithBearerToken());
 
-        assertEquals(200, response.getStatus());
+        assertEquals(503, response.getStatus());
     }
 
     /**
@@ -235,7 +251,6 @@ class AuthTokenFilterTest {
         stubActiveUserPastStatusGate();
         when(systemConfigurationService.isMaintenanceModeEnabled()).thenReturn(true);
         when(permissionEvaluationService.hasPermission(any(), eq("security.maintenance.bypass"))).thenReturn(false);
-        when(permissionEvaluationService.isSuperAdmin(any())).thenReturn(false);
 
         MockHttpServletResponse response = runFilter(requestWithBearerToken());
 
@@ -250,7 +265,6 @@ class AuthTokenFilterTest {
         stubActiveUserPastStatusGate();
         when(systemConfigurationService.isMaintenanceModeEnabled()).thenReturn(true);
         when(permissionEvaluationService.hasPermission(any(), eq("security.maintenance.bypass"))).thenReturn(false);
-        when(permissionEvaluationService.isSuperAdmin(any())).thenReturn(false);
 
         MockHttpServletResponse response = runFilter(requestWithBearerToken());
 

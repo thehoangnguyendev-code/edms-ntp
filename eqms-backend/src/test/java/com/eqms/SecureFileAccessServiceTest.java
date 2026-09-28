@@ -125,6 +125,14 @@ class SecureFileAccessServiceTest {
         return FileAccessContext.simple("DOCUMENTS", "EFFECTIVE");
     }
 
+    private FileAccessContext effectiveCtxStakeholder() {
+        return new FileAccessContext("DOCUMENTS", "EFFECTIVE", null, null, Map.of("isDirectStakeholder", true));
+    }
+
+    private FileAccessContext draftRevisionCtxStakeholder() {
+        return new FileAccessContext("DOCUMENTS", "DRAFT", null, null, Map.of("isDirectStakeholder", true));
+    }
+
     private FileAccessContext ccActiveNoDownload() {
         return new FileAccessContext("CONTROLLED_COPY", "DISTRIBUTED", null, null,
                 Map.of("isActive", true, "policyAllowsDownload", false, "policyAllowsPortalView", true,
@@ -206,6 +214,49 @@ class SecureFileAccessServiceTest {
         assertThat(decision.allowed()).isTrue();
     }
 
+    // HDR-AUTH-001: a direct stakeholder bypasses the separate preview permission requirement,
+    // even when no permission is granted at all -- proving this is a real bypass, not coincidence.
+    @Test
+    void directStakeholder_publishedPdf_preview_allowedWithoutAnyPermission() {
+        when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
+        denyPermission("documents.document.preview_published");
+        FileAccessDecision decision = service.check(user, FileAccessAction.VIEW_PREVIEW,
+                FileObjectType.PUBLISHED_PDF, objectId, effectiveCtxStakeholder());
+        assertThat(decision.allowed()).isTrue();
+    }
+
+    // HDR-AUTH-001: the bypass must never apply to DOWNLOAD, even for a direct stakeholder --
+    // Controlled Copy remains the only sanctioned download path (see prior GMP decision).
+    @Test
+    void directStakeholder_publishedPdf_download_stillDenied() {
+        when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
+        FileAccessDecision decision = service.check(user, FileAccessAction.DOWNLOAD,
+                FileObjectType.PUBLISHED_PDF, objectId, effectiveCtxStakeholder());
+        assertThat(decision.allowed()).isFalse();
+        assertThat(decision.reasonCode()).isEqualTo("DOWNLOAD_NOT_SUPPORTED");
+    }
+
+    // Non-stakeholder (default false flag) must still be denied without the permission -- proving
+    // the bypass is opt-in per-context, not a global relaxation.
+    @Test
+    void nonStakeholder_publishedPdf_preview_deniedWithoutPermission() {
+        when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
+        denyPermission("documents.document.preview_published");
+        FileAccessDecision decision = service.check(user, FileAccessAction.VIEW_PREVIEW,
+                FileObjectType.PUBLISHED_PDF, objectId, effectiveCtx());
+        assertThat(decision.allowed()).isFalse();
+        assertThat(decision.reasonCode()).isEqualTo("MISSING_PERMISSION");
+    }
+
+    @Test
+    void directStakeholder_sourceDocx_preview_allowedWithoutAnyPermission() {
+        when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
+        denyPermission("documents.revision.preview");
+        FileAccessDecision decision = service.check(user, FileAccessAction.VIEW_PREVIEW,
+                FileObjectType.SOURCE_DOCX, objectId, draftRevisionCtxStakeholder());
+        assertThat(decision.allowed()).isTrue();
+    }
+
     // TC-07
     @Test
     void draftRevision_publishedPdf_preview_denied() {
@@ -226,6 +277,46 @@ class SecureFileAccessServiceTest {
                 FileObjectType.CONTROLLED_COPY, objectId, ccActiveNoDownload());
         assertThat(decision.allowed()).isFalse();
         assertThat(decision.reasonCode()).isEqualTo("DOWNLOAD_NOT_PERMITTED");
+    }
+
+    // GMP decision: direct download of the source/master document is no longer supported for any
+    // of these object types -- the only sanctioned path is Controlled Copy (unaffected, see TC-08
+    // above). These assertions hold even with no permission granted at all, proving this is a hard
+    // deny and not merely an absent permission (fail-open) gap.
+    @Test
+    void publishedPdf_download_alwaysDenied_evenWithNoPermissionGranted() {
+        when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
+        FileAccessDecision decision = service.check(user, FileAccessAction.DOWNLOAD,
+                FileObjectType.PUBLISHED_PDF, objectId, effectiveCtx());
+        assertThat(decision.allowed()).isFalse();
+        assertThat(decision.reasonCode()).isEqualTo("DOWNLOAD_NOT_SUPPORTED");
+    }
+
+    @Test
+    void document_download_alwaysDenied_evenWithNoPermissionGranted() {
+        when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
+        FileAccessDecision decision = service.check(user, FileAccessAction.DOWNLOAD,
+                FileObjectType.DOCUMENT, objectId, effectiveCtx());
+        assertThat(decision.allowed()).isFalse();
+        assertThat(decision.reasonCode()).isEqualTo("DOWNLOAD_NOT_SUPPORTED");
+    }
+
+    @Test
+    void revision_download_alwaysDenied_evenWithNoPermissionGranted() {
+        when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
+        FileAccessDecision decision = service.check(user, FileAccessAction.DOWNLOAD,
+                FileObjectType.REVISION, objectId, draftRevisionCtx());
+        assertThat(decision.allowed()).isFalse();
+        assertThat(decision.reasonCode()).isEqualTo("DOWNLOAD_NOT_SUPPORTED");
+    }
+
+    @Test
+    void sourceDocx_download_alwaysDenied_evenWithNoPermissionGranted() {
+        when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
+        FileAccessDecision decision = service.check(user, FileAccessAction.DOWNLOAD,
+                FileObjectType.SOURCE_DOCX, objectId, draftRevisionCtx());
+        assertThat(decision.allowed()).isFalse();
+        assertThat(decision.reasonCode()).isEqualTo("DOWNLOAD_NOT_SUPPORTED");
     }
 
     // TC-09

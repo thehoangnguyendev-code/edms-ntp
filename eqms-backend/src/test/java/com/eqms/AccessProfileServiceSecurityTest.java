@@ -79,8 +79,15 @@ class AccessProfileServiceSecurityTest {
         actor = user("qa-admin");
     }
 
+    /**
+     * There is no more identity-specific "system super admin profile" lock: every profile
+     * (including one that happens to still carry the legacy SYSTEM_SUPER_ADMIN code) is editable
+     * given a valid signature, subject only to the general admin-coverage / no-self-grant
+     * invariants exercised elsewhere in this file. Adding a permission set never removes admin
+     * coverage, so it should simply succeed here.
+     */
     @Test
-    void addPermissionSet_deniedForSystemSuperAdminProfile_doesNotMutate() {
+    void addPermissionSet_succeedsRegardlessOfProfileCode() {
         UUID profileId = UUID.randomUUID();
         UUID setId = UUID.randomUUID();
         RoleDefinition profile = accessProfile(profileId, EffectivePermissionService.SYSTEM_SUPER_ADMIN_CODE);
@@ -88,14 +95,12 @@ class AccessProfileServiceSecurityTest {
         allowAssign();
         when(roleRepo.findById(profileId)).thenReturn(Optional.of(profile));
         when(permSetRepo.findById(setId)).thenReturn(Optional.of(permissionSet(setId, "Critical Admin Set")));
+        when(appSetRepo.existsByAccessProfileIdAndPermissionSetId(profileId, setId)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.addPermissionSet(profileId, setId, null))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("system super admin profile");
+        service.addPermissionSet(profileId, setId, null);
 
-        verify(appSetRepo, never()).save(any());
-        verify(auditTrailService, never()).logAs(any(), any(), any(), any(), any(), any(), any(), any());
-        verify(permissionEvaluationService, never()).clearCache();
+        verify(appSetRepo).save(any());
+        verify(permissionEvaluationService).clearCache();
     }
 
     @Test
@@ -368,23 +373,30 @@ class AccessProfileServiceSecurityTest {
         verify(uapRepo, never()).save(any());
     }
 
+    /**
+     * The old identity-specific "last system super admin assignment" guard was replaced by the
+     * general admin-coverage invariant (requireNotLastActiveAdmin): removing this user would
+     * leave the org with zero active users holding ADMIN_GUARD_PERMISSION, regardless of which
+     * profile or code is involved.
+     */
     @Test
-    void removeUser_deniedWhenRemovingLastSystemSuperAdmin_doesNotMutate() {
+    void removeUser_deniedWhenRemovingLastActiveAdmin_doesNotMutate() {
         UUID profileId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        RoleDefinition profile = accessProfile(profileId, EffectivePermissionService.SYSTEM_SUPER_ADMIN_CODE);
+        RoleDefinition profile = accessProfile(profileId, "ADMINISTRATOR");
         UserAccount target = user("last-admin");
         target.setId(targetUserId);
+        target.setStatus(com.eqms.entity.UserStatus.Active);
 
         allowAssign();
         when(roleRepo.findById(profileId)).thenReturn(Optional.of(profile));
         when(userRepo.findById(targetUserId)).thenReturn(Optional.of(target));
-        when(uapRepo.existsByUserIdAndAccessProfileId(targetUserId, profileId)).thenReturn(true);
-        when(uapRepo.countByActiveProfileCode(EffectivePermissionService.SYSTEM_SUPER_ADMIN_CODE)).thenReturn(1L);
+        when(permissionEvaluationService.hasPermission(target, "settings.user.edit")).thenReturn(true);
+        when(userRepo.findAll()).thenReturn(List.of(target));
 
         assertThatThrownBy(() -> service.removeUser(profileId, targetUserId, null))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("last system super admin");
+                .hasMessageContaining("last active administrator");
 
         verify(uapRepo, never()).deleteByUserIdAndAccessProfileId(eq(targetUserId), eq(profileId));
         verify(auditTrailService, never()).logAs(any(), any(), any(), any(), any(), any(), any(), any(), any());

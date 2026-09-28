@@ -12,6 +12,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -59,6 +61,16 @@ public class AuditLog {
     @Column(name = "department_name", length = 120)
     private String departmentName;
 
+    // Point-in-time snapshot of the actor's Access Profile(s) as of this event -- an audit row
+    // must never appear to change what access someone held when they acted, even if their profile
+    // assignment changes later. See AuditLog.getRoleName's own snapshot for the same reasoning;
+    // Access Profile is many-valued (user_access_profiles), hence an array rather than a single
+    // varchar column. Mapped as String[] (not List<String>) for the same Hibernate-array-vs-JSON
+    // reason documented on ObjectAccessRule#actions.
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "access_profile_names", columnDefinition = "text[]")
+    private String[] accessProfileNames;
+
     @Column(name = "action", length = 80)
     private String action;
 
@@ -101,7 +113,9 @@ public class AuditLog {
     @Column(name = "to_status", length = 40)
     private String toStatus;
 
-    @Column(length = 1024)
+    // TEXT (see V412) -- a workflow reason has no business max length, and an over-long value must
+    // never abort the audit INSERT. Mirrors reason/old_value/new_value, which are already TEXT.
+    @Column(columnDefinition = "TEXT")
     private String comment;
 
     @Column(name = "ip_address", length = 80)
@@ -251,6 +265,14 @@ public class AuditLog {
 
     public void setDepartmentName(String departmentName) {
         this.departmentName = departmentName;
+    }
+
+    public String[] getAccessProfileNames() {
+        return accessProfileNames;
+    }
+
+    public void setAccessProfileNames(String[] accessProfileNames) {
+        this.accessProfileNames = accessProfileNames;
     }
 
     public String getAction() {

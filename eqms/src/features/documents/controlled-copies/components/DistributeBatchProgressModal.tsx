@@ -49,9 +49,14 @@ export const DistributeBatchProgressModal: React.FC<DistributeBatchProgressModal
           ) : (
             <div className="h-5 w-5 rounded-full border-2 border-emerald-200 border-t-emerald-600 animate-spin" />
           )}
-          <h3 className="text-sm font-semibold text-slate-900">
+          <h3 className="text-sm font-semibold text-slate-900 flex-1">
             {isCompleted ? `${actionLabel} complete` : hasErrors ? `${actionLabel} completed with errors` : "Processing controlled copy files..."}
           </h3>
+          {total > 1 && (
+            <span className="text-xs font-semibold text-slate-500 tabular-nums shrink-0">
+              {Math.min(processed, total)} / {total}
+            </span>
+          )}
         </div>
 
         {!isCompleted && !hasErrors && (
@@ -60,7 +65,15 @@ export const DistributeBatchProgressModal: React.FC<DistributeBatchProgressModal
           </p>
         )}
 
-        <Progress value={percent} variant={hasErrors ? "error" : "emerald"} size="md" />
+        {/* A single copy is one synchronous request/response -- there is no real partial-progress
+            signal to report until it resolves, so a value-based bar would sit frozen at 0% the
+            whole time. Show it sliding instead of fabricating a percentage. */}
+        <Progress
+          value={percent}
+          variant={hasErrors ? "error" : "emerald"}
+          size="md"
+          indeterminate={!isCompleted && !hasErrors && total <= 1}
+        />
 
         <p className="mt-2.5 text-xs sm:text-sm text-slate-500 tabular-nums">
           {isCompleted

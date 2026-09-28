@@ -11,6 +11,7 @@ export interface RevisionPerson {
   actionStatus?: string | null;
   actedAt?: string | null;
   actionComment?: string | null;
+  userStatus?: string | null;
 }
 
 export interface RevisionHistoryItem {
@@ -133,7 +134,7 @@ export interface RevisionDetailResponse {
   description?: string | null;
   knowledgeBase?: string | null;
   subType?: string | null;
-  reviewRequirement?: "NONE" | "SINGLE" | "MULTIPLE" | null;
+  reviewRequirement?: "NONE" | "REQUIRED" | null;
   periodicReviewCycle?: number | null;
   periodicReviewNotification?: number | null;
   language?: string | null;
@@ -181,7 +182,6 @@ export interface RevisionDetailResponse {
   storagePdfUrl?: string | null;
   storageSyncStatus?: string | null;
   storageLastSyncedAt?: string | null;
-  officeOnlineEverSynced?: boolean;
   canEditFileOnline?: boolean;
   canCompleteEditing?: boolean;
   canOpenPublishingWorkspace?: boolean;
@@ -202,4 +202,14 @@ export interface RevisionDetailResponse {
   reviewSnapshotVersionToken?: string | null;
   publishingPreviewVersionToken?: string | null;
   publishedPdfVersionToken?: string | null;
+  /** Reference-only Legacy Import metadata -- never a real electronic signature, present only
+   *  when this revision was created via Legacy Import or Legacy Batch Import. */
+  legacyImportInfo?: {
+    legacyJustification?: string | null;
+    historicalAuthoredDate?: string | null;
+    historicalReviewers?: string | null;
+    historicalReviewDate?: string | null;
+    historicalApprover?: string | null;
+    historicalApprovalDate?: string | null;
+  } | null;
 }

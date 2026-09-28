@@ -10,10 +10,6 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
       optimizeDeps: {
         include: [
           'react',
@@ -44,6 +40,9 @@ export default defineConfig(({ mode }) => {
           // Animation — both packages must share React
           'framer-motion',
           'motion',
+          // Stamp/watermark drag-resize-rotate editor (Controlled Copies Policy)
+          'konva',
+          'react-konva',
           // PDF viewer
           '@react-pdf-viewer/core',
           '@react-pdf-viewer/default-layout',
@@ -82,8 +81,9 @@ export default defineConfig(({ mode }) => {
             manualChunks: {
               // Core React runtime
               'vendor-react': ['react', 'react-dom', 'react-router-dom', 'react-router'],
-              // Charting library
-              'vendor-recharts': ['recharts'],
+              // recharts is intentionally NOT listed: forcing it into a named chunk made the entry chunk
+              // import it (through shared helper modules), so every page paid for ~350 kB of charts that
+              // only the lazy Dashboard uses.
               // Animation library
               'vendor-framer': ['framer-motion'],
               // PDF viewer

@@ -22,14 +22,23 @@ export const ROUTES = {
   // Notifications
   NOTIFICATIONS: '/notifications',
 
+  // Self-Service
+  SELF_SERVICE: {
+    KNOWLEDGE: '/self-service/knowledge',
+  },
+
   // Documents
   DOCUMENTS: {
     OWNED: '/documents/owned',
     ALL: '/documents/all',
     NEW: '/documents/all/new',
+    LEGACY_IMPORT: '/documents/all/legacy-import',
     EDIT: (id: string) => `/documents/all/edit/${id}`,
     DETAIL: (id: string) => `/documents/${id}`,
-    KNOWLEDGE: '/documents/knowledge',
+    // The Knowledge landing page itself moved to SELF_SERVICE.KNOWLEDGE -- these two remain here,
+    // they're separate standalone views (new-tab Explorer, and a single-document preview link),
+    // not the Self-Service Knowledge page.
+    KNOWLEDGE_EXPLORER: '/documents/knowledge/explorer',
     KNOWLEDGE_PREVIEW: (id: string) => `/documents/knowledge/preview/${id}`,
     SNAPSHOT_HISTORY_PREVIEW: (revisionId: string, historyId: string) =>
       `/documents/revisions/${revisionId}/snapshot-history/${historyId}/preview`,
@@ -63,9 +72,35 @@ export const ROUTES = {
       DISTRIBUTED: '/documents/controlled-copies/distributed',
       DETAIL: (id: string) => `/documents/controlled-copies/${id}`,
       DISCREPANCIES: '/documents/controlled-copies/discrepancies',
-      PREVIEW: (id: string, token: string) => `/documents/controlled-copies/preview/${id}#token=${encodeURIComponent(token)}`,
       DESTROY: (id: string) => `/documents/controlled-copies/${id}/destroy`,
       REQUEST: '/documents/controlled-copy/request',
+      /** The "download" link inside the DCO's batch-ZIP email; requires login (the "Receive Controlled
+       *  Copies as DCO" permission), never a public/token link. */
+      DCO_BATCH_ZIP: (batchId: string) => `/documents/controlled-copies/batches/${batchId}/dco-zip`,
+    },
+
+    // Document Administration (admin-only, now under System Administration -- URLs unchanged
+    // since documents/administration/* is also the backend @RequestMapping base path)
+    ADMIN: {
+      PROPERTIES: '/documents/administration/properties',
+      NAME_FORMATS: '/documents/administration/name-formats',
+      NAME_FORMATS_NEW: '/documents/administration/name-formats/new',
+      NAME_FORMATS_EDIT: (id: string) => `/documents/administration/name-formats/edit/${id}`,
+      DOCUMENT_COMPONENTS: '/documents/administration/document-components',
+      DOCUMENT_COMPONENTS_NEW: '/documents/administration/document-components/new',
+      DOCUMENT_COMPONENTS_EDIT: (id: string) => `/documents/administration/document-components/edit/${id}`,
+      DOCUMENT_TYPES: '/documents/administration/document-types',
+      DOCUMENT_SUB_TYPES: '/documents/administration/document-sub-types',
+      KNOWLEDGE_CATEGORIES: '/documents/administration/knowledge-categories',
+      KNOWLEDGE_CATEGORIES_NEW: '/documents/administration/knowledge-categories/new',
+      KNOWLEDGE_COMPONENTS: '/documents/administration/knowledge-components',
+      KNOWLEDGE_COMPONENTS_NEW: '/documents/administration/knowledge-components/new',
+      KNOWLEDGE_COMPONENTS_EDIT: (id: string) => `/documents/administration/knowledge-components/edit/${id}`,
+      KNOWLEDGE_CATEGORIES_EDIT: (id: string) => `/documents/administration/knowledge-categories/edit/${id}`,
+      PUBLISHING_TEMPLATES: '/documents/administration/publishing-templates',
+      PUBLISHING_TEMPLATES_NEW: '/documents/administration/publishing-templates/new',
+      PUBLISHING_TEMPLATES_EDIT: (id: string) => `/documents/administration/publishing-templates/edit/${id}`,
+      CONTROLLED_COPIES_POLICY: '/documents/administration/controlled-copies-policy',
     },
   },
 
@@ -120,32 +155,51 @@ export const ROUTES = {
   AUDIT_TRAIL: '/audit-trail',
   AUDIT_TRAIL_REVIEW: '/audit-trail/reviews',
 
+  // Backup & Restore
+  BACKUP_RESTORE: '/backup-restore',
+
   // Settings
   SETTINGS: {
     USERS: '/settings/users',
     USERS_ADD: '/settings/users/add',
     USERS_EDIT: (userId: string) => `/settings/users/edit/${userId}`,
     USERS_PROFILE: (userId: string) => `/settings/users/profile/${userId}`,
-    DOCUMENT_ADMINISTRATION: '/settings/document-administration',
     DICTIONARIES: '/settings/dictionaries',
+    DICTIONARIES_BUSINESS_UNITS: '/settings/dictionaries/business-units',
+    DICTIONARIES_DEPARTMENTS: '/settings/dictionaries/departments',
+    DICTIONARIES_POSITIONS: '/settings/dictionaries/positions',
+    DICTIONARIES_STORAGE_LOCATIONS: '/settings/dictionaries/storage-locations',
+    DICTIONARIES_RETENTION_POLICIES: '/settings/dictionaries/retention-policies',
+    COUNTRIES: '/settings/countries',
+    EDUCATION_DEGREE_LEVELS: '/settings/education/degree-levels',
+    EDUCATION_SCHOOLS: '/settings/education/schools',
+    EDUCATION_SCHOOLS_NEW: '/settings/education/schools/new',
+    EDUCATION_SCHOOLS_EDIT: (id: string) => `/settings/education/schools/${id}/edit`,
     CONFIGURATION: '/settings/configuration',
     EMAIL_TEMPLATES: '/settings/email-templates',
     EMAIL_TEMPLATES_NEW: '/settings/email-templates/new',
     EMAIL_TEMPLATES_EDIT: (id: string) => `/settings/email-templates/edit/${id}`,
-    PUBLISHING_TEMPLATES: '/settings/publishing-templates',
-    PUBLISHING_TEMPLATES_NEW: '/settings/publishing-templates/new',
-    PUBLISHING_TEMPLATES_EDIT: (id: string) => `/settings/publishing-templates/edit/${id}`,
     ELECTRONIC_SIGNATURE: '/settings/electronic-signature',
-    CONTROLLED_COPY_POLICY: '/settings/controlled-copy-policy',
     NOTIFICATION_POLICY: '/settings/notification-policy',
     SYSTEM_INFO: '/settings/system-info',
     REPORT_CONFIGURATION: '/settings/report-configuration',
+    TRAINING_ADMINISTRATION: {
+      PROPERTIES: '/settings/administration/training/properties',
+      REQUIREMENT_TEMPLATES: '/settings/administration/training/requirement-templates',
+      CREATE_QUIZ: '/settings/administration/training/create-quiz',
+      CURRICULUMS: '/settings/administration/training/curriculums',
+    },
   },
 
   // Security & Authorization
   SECURITY: {
     // Existing pages (URLs unchanged, just reorganised in nav)
     USERS: '/settings/users',
+    TIME_LIMITED_USERS: '/settings/users/time-limited',
+    TIME_LIMITED_USERS_NEW: '/settings/users/time-limited/new',
+    TIME_LIMITED_USERS_DETAIL: (id: string) => `/settings/users/time-limited/${id}`,
+    TIME_LIMITED_USERS_EDIT: (id: string) => `/settings/users/time-limited/${id}/edit`,
+    LOGGED_IN_USERS: '/settings/users/logged-in',
     ACCESS_PROFILES: '/security/access-profiles',
     ESIGN_POLICIES: '/settings/electronic-signature',
     // New pages
@@ -154,6 +208,7 @@ export const ROUTES = {
     WORKFLOW_AUTHORIZATION: '/security/lifecycle-policies',
     LIFECYCLE_POLICIES_TRANSITIONS: '/security/lifecycle-policies/transitions',
     LIFECYCLE_POLICIES_CAPABILITIES: '/security/lifecycle-policies/capabilities',
+    POLICY_RESOLVER: '/security/lifecycle-policies/policy-resolver',
     AUTHORIZATION_DIAGNOSTICS: '/security/authorization-diagnostics',
     OBJECT_RULES: '/security/object-rules',
     SOD: '/security/sod',

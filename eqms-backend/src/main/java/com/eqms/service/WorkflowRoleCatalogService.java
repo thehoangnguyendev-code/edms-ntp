@@ -8,6 +8,7 @@ import com.eqms.dto.user.WorkflowRoleCatalogRequest;
 import com.eqms.dto.user.WorkflowRoleCatalogResponse;
 import com.eqms.dto.user.PageResponse;
 import com.eqms.dto.user.PaginationResponse;
+import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.UserAccount;
 import com.eqms.entity.WorkflowRole;
 import com.eqms.repository.WorkflowRoleRepository;
@@ -36,8 +37,8 @@ import java.time.format.DateTimeParseException;
 /**
  * CRUD service for the Workflow Roles catalog (see
  * docs/SECURITY_AUTHORIZATION_IMPLEMENTATION_PLAN.md 0.5a). Replaces the
- * hardcoded {@code WorkflowRoleCode} enum + {@code WorkflowPoolTypes}
- * constants with a DB-backed, admin-manageable catalog. Follows the same
+ * hardcoded {@code WorkflowRoleCode} enum and the retired Document Workflow
+ * Pool with a DB-backed, admin-manageable catalog. Follows the same
  * e-signature + audit trail pattern as {@link PermissionSetService}.
  */
 @Service
@@ -189,14 +190,15 @@ public class WorkflowRoleCatalogService {
         addChange(changes, "Module", null, role.getModuleKey());
         addChange(changes, "Status", null, role.isActive() ? "Active" : "Inactive");
 
-        auditTrailService.log(
-                ENTITY_TYPE, role.getLabel(), role.getId(), "CREATED",
-                null, role.isActive() ? "Active" : "Inactive",
-                "Created workflow role " + role.getCode(), changes);
-
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        ElectronicSignature signature = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 ENTITY_TYPE, role.getId(), role.getLabel(), request.reason(), null, role.getCode());
+
+        auditTrailService.logAs(actor,
+                ENTITY_TYPE, role.getLabel(), role.getId(), "CREATED",
+                null, role.isActive() ? "Active" : "Inactive",
+                withReason("Created workflow role " + role.getCode(), request.reason()), changes,
+                signature == null ? null : signature.getId());
 
         return toResponse(workflowRoleRepository.findById(role.getId()).orElseThrow());
     }
@@ -243,14 +245,15 @@ public class WorkflowRoleCatalogService {
         addChange(changes, "Display Order", String.valueOf(oldDisplayOrder), String.valueOf(role.getDisplayOrder()));
         addChange(changes, "Status", oldActive ? "Active" : "Inactive", role.isActive() ? "Active" : "Inactive");
 
-        auditTrailService.log(
-                ENTITY_TYPE, role.getLabel(), role.getId(), "UPDATED",
-                oldActive ? "Active" : "Inactive", role.isActive() ? "Active" : "Inactive",
-                "Updated workflow role " + role.getCode(), changes);
-
-        securityChangeSignatureService.record(actor, request.signatureToken(),
+        ElectronicSignature signature = securityChangeSignatureService.record(actor, request.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 ENTITY_TYPE, role.getId(), role.getLabel(), request.reason(), oldLabel, role.getLabel());
+
+        auditTrailService.logAs(actor,
+                ENTITY_TYPE, role.getLabel(), role.getId(), "UPDATED",
+                oldActive ? "Active" : "Inactive", role.isActive() ? "Active" : "Inactive",
+                withReason("Updated workflow role " + role.getCode(), request.reason()), changes,
+                signature == null ? null : signature.getId());
 
         return toResponse(workflowRoleRepository.save(role));
     }
@@ -270,14 +273,24 @@ public class WorkflowRoleCatalogService {
         role.setUpdatedBy(actor);
         workflowRoleRepository.save(role);
 
-        auditTrailService.log(
-                ENTITY_TYPE, role.getLabel(), role.getId(), "DEACTIVATED",
-                oldActive ? "Active" : "Inactive", "Inactive",
-                "Deactivated workflow role " + role.getCode(), List.of());
-
-        securityChangeSignatureService.record(actor, s.signatureToken(),
+        ElectronicSignature signature = securityChangeSignatureService.record(actor, s.signatureToken(),
                 SecurityChangeSignatureService.MEANING_WORKFLOW_AUTHORIZATION_CHANGE,
                 ENTITY_TYPE, role.getId(), role.getLabel(), s.reason(), "Active", "Inactive");
+
+        auditTrailService.logAs(actor,
+                ENTITY_TYPE, role.getLabel(), role.getId(), "DEACTIVATED",
+                oldActive ? "Active" : "Inactive", "Inactive",
+                withReason("Deactivated workflow role " + role.getCode(), s.reason()), List.of(),
+                signature == null ? null : signature.getId());
+    }
+
+    /**
+     * The reason typed into the e-signature modal is otherwise only persisted on the
+     * ElectronicSignature row and never surfaced in the Audit Trail's own comment/description --
+     * fold it into the action's own comment so a reviewer can actually see it.
+     */
+    private String withReason(String comment, String reason) {
+        return org.springframework.util.StringUtils.hasText(reason) ? comment + " Reason: " + reason : comment;
     }
 
     private WorkflowRole require(UUID id) {
@@ -287,16 +300,14 @@ public class WorkflowRoleCatalogService {
 
     private void requireView() {
         UserAccount user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(user)
-                && !permissionEvaluationService.hasAnyPermission(user, VIEW_PERMISSION, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasAnyPermission(user, VIEW_PERMISSION, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Workflow authorization view permission required");
         }
     }
 
     private void requireManage() {
         UserAccount user = currentUserService.requireCurrentUser();
-        if (!permissionEvaluationService.isSuperAdmin(user)
-                && !permissionEvaluationService.hasAnyPermission(user, MANAGE_PERMISSION)) {
+        if (!permissionEvaluationService.hasAnyPermission(user, MANAGE_PERMISSION)) {
             throw new AccessDeniedException("Workflow authorization management permission required");
         }
     }

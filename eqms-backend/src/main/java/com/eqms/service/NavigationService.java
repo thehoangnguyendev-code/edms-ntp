@@ -48,16 +48,23 @@ public class NavigationService {
                 && systemConfigurationService.isFeatureEnabled("feat-notifications")) {
             menu.add(new NavigationItemResponse("notifications", "Notifications", "Bell", "/notifications", false, null));
         }
+        // Self-Service groups the two personal-workspace surfaces (Dashboard, Knowledge) that used
+        // to live at top-level / nested inside Document Control -- shown if either child is visible.
+        List<NavigationItemResponse> selfServiceChildren = new ArrayList<>();
         if (hasPermission(normalizedPermissions, "dashboard.module.view")
                 && systemConfigurationService.isFeatureEnabled("feat-dashboard")) {
-            menu.add(new NavigationItemResponse("dashboard", "Dashboard", "IconLayoutGrid", "/dashboard", true, null));
+            selfServiceChildren.add(new NavigationItemResponse("dashboard", "Dashboard", "IconLayoutGrid", "/dashboard", false, null));
+        }
+        if (hasPermission(normalizedPermissions, "self_service.knowledge.view")
+                && systemConfigurationService.isFeatureEnabled("feat-edms-kb")) {
+            selfServiceChildren.add(new NavigationItemResponse("knowledge-base", "Knowledge", null, "/self-service/knowledge", false, null));
+        }
+        if (!selfServiceChildren.isEmpty()) {
+            menu.add(new NavigationItemResponse("self-service", "Self-Service", "IconLayoutGrid", null, true, selfServiceChildren));
         }
         if (hasPermission(normalizedPermissions, "documents.module.view")
                 && systemConfigurationService.isFeatureEnabled("feat-edms")) {
             List<NavigationItemResponse> docChildren = new ArrayList<>();
-            if (systemConfigurationService.isFeatureEnabled("feat-edms-kb")) {
-                docChildren.add(new NavigationItemResponse("knowledge-base", "Knowledge Base", null, "/documents/knowledge", false, null));
-            }
             if (systemConfigurationService.isFeatureEnabled("feat-edms-owned")) {
                 docChildren.add(new NavigationItemResponse("doc-owned-me", "Documents Owned By Me", null, "/documents/owned", false, null));
             }
@@ -145,22 +152,33 @@ public class NavigationService {
                 auditChildren.add(new NavigationItemResponse("audit-trail-review", "Periodic Review", null, "/audit-trail/reviews", false, null));
             }
             if (!auditChildren.isEmpty()) {
-                menu.add(new NavigationItemResponse("audit-trail", "Audit Trail", "IconFilter2Search", null, true, auditChildren));
+                menu.add(new NavigationItemResponse("audit-trail", "Audit Trail", "IconFilter2Search", null, false, auditChildren));
             }
+        }
+
+        // Backup & Restore: menu entry only for now (feature is developed later); gated by its own view permission.
+        if (hasPermission(normalizedPermissions, "backup.module.view")) {
+            menu.add(new NavigationItemResponse("backup-restore", "Backup & Restore", "DatabaseBackup", "/backup-restore", true, null));
         }
 
         List<NavigationItemResponse> securityChildren = new ArrayList<>();
         // Phase 4 Authorization Console (SECURITY_AUTHORIZATION_HYBRID_REFACTOR_PLAN.md §5.3) --
         // this server-side list is the authoritative source Sidebar.tsx filters against
         if (hasPermission(normalizedPermissions, "settings.user.view")) {
-            securityChildren.add(new NavigationItemResponse("sec-user-management", "User Management", "IconUsers", "/settings/users", false, null));
+            // "User Administration" nested group -- User Management, Time-Limited User and
+            // Logged in Users all read the same settings.user.view audience; the group only
+            // appears (and only once) when at least one child does.
+            List<NavigationItemResponse> userAdminChildren = new ArrayList<>();
+            userAdminChildren.add(new NavigationItemResponse("sec-user-management", "User Management", null, "/settings/users", false, null));
+            userAdminChildren.add(new NavigationItemResponse("sec-time-limited-roles", "Time-Limited User", null, "/settings/users/time-limited", false, null));
+            userAdminChildren.add(new NavigationItemResponse("sec-logged-in-users", "Logged in Users", null, "/settings/users/logged-in", false, null));
+            securityChildren.add(new NavigationItemResponse("sec-user-administration", "User Administration", "IconUsers", null, false, userAdminChildren));
         }
         if (hasPermission(normalizedPermissions, "security.access_profiles.view")) {
             securityChildren.add(new NavigationItemResponse("sec-access-profiles", "Access Profiles", "IconUserKey", "/security/access-profiles", false, null));
         }
         if (hasPermission(normalizedPermissions, "security.workflow_authorization.view")) {
             securityChildren.add(new NavigationItemResponse("sec-workflow-authorization", "Workflow Authorization", "IconSwitch2", "/security/lifecycle-policies", false, null));
-            securityChildren.add(new NavigationItemResponse("sec-authorization-diagnostics", "Engine Diagnostics", "IconActivity", "/security/authorization-diagnostics", false, null));
         }
         if (hasPermission(normalizedPermissions, "security.access_review.view")) {
             securityChildren.add(new NavigationItemResponse("sec-access-review", "Access Review", "ScanSearch", "/security/access-review", false, null));
@@ -172,6 +190,7 @@ public class NavigationService {
         }
         if (hasPermission(normalizedPermissions, "security.workflow_authorization.view")) {
             securityAdvancedChildren.add(new NavigationItemResponse("sec-workflow-role-catalog", "Workflow Role Catalog", null, "/security/advanced/workflow-roles", false, null));
+            securityAdvancedChildren.add(new NavigationItemResponse("sec-authorization-diagnostics", "Engine Diagnostics", "IconActivity", "/security/authorization-diagnostics", false, null));
         }
         if (hasPermission(normalizedPermissions, "security.object_rules.view")) {
             securityAdvancedChildren.add(new NavigationItemResponse("sec-object-rules", "Object Access Rules", null, "/security/object-rules", false, null));
@@ -189,44 +208,131 @@ public class NavigationService {
 
         if (systemConfigurationService.isFeatureEnabled("feat-system-settings")) {
             List<NavigationItemResponse> settingsChildren = new ArrayList<>();
-            if (hasPermission(normalizedPermissions, "settings.configuration.view")) {
-                settingsChildren.add(new NavigationItemResponse("dictionaries", "Dictionaries", "BookText", "/settings/dictionaries", false, null));
+            // "Dictionaries" nested group -- each dictionary used to be a tab on one page; now
+            // each is its own page/menu entry, in the same left-to-right order the tabs had.
+            List<NavigationItemResponse> dictionaryChildren = new ArrayList<>();
+            if (hasAnyPermission(normalizedPermissions, "settings.business_unit.view", "settings.business_unit.manage")) {
+                dictionaryChildren.add(new NavigationItemResponse("dict-business-units", "Business Units", null, "/settings/dictionaries/business-units", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "settings.department.view", "settings.department.manage")) {
+                dictionaryChildren.add(new NavigationItemResponse("dict-departments", "Departments", null, "/settings/dictionaries/departments", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "settings.position.view", "settings.position.manage")) {
+                dictionaryChildren.add(new NavigationItemResponse("dict-positions", "Positions", null, "/settings/dictionaries/positions", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "settings.storage_location.view", "settings.storage_location.manage")) {
+                dictionaryChildren.add(new NavigationItemResponse("dict-storage-locations", "Storage Locations", null, "/settings/dictionaries/storage-locations", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "settings.retention_policy.view", "settings.retention_policy.manage")) {
+                dictionaryChildren.add(new NavigationItemResponse("dict-retention-policies", "Retention Policies", null, "/settings/dictionaries/retention-policies", false, null));
+            }
+            if (!dictionaryChildren.isEmpty()) {
+                settingsChildren.add(new NavigationItemResponse("dictionaries", "Dictionaries", "BookText", null, false, dictionaryChildren));
+            }
+            if (hasAnyPermission(normalizedPermissions, "settings.country.view", "settings.country.manage")) {
+                settingsChildren.add(new NavigationItemResponse("countries", "Countries", "Globe2", "/settings/countries", false, null));
+            }
+            List<NavigationItemResponse> educationChildren = new ArrayList<>();
+            if (hasAnyPermission(normalizedPermissions, "settings.education.degree_level.view", "settings.education.degree_level.manage")) {
+                educationChildren.add(new NavigationItemResponse("education-degree-levels", "Degree Levels", null, "/settings/education/degree-levels", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "settings.education.school.view", "settings.education.school.manage")) {
+                educationChildren.add(new NavigationItemResponse("education-schools", "Schools", null, "/settings/education/schools", false, null));
+            }
+            if (!educationChildren.isEmpty()) {
+                settingsChildren.add(new NavigationItemResponse("education", "Education", "GraduationCap", null, false, educationChildren));
+            }
+            if (hasAnyPermission(normalizedPermissions, "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view")) {
                 settingsChildren.add(new NavigationItemResponse("email-templates", "Email Templates", "IconMailForward", "/settings/email-templates", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "settings.configuration.view")) {
                 settingsChildren.add(new NavigationItemResponse("notification-policy", "Notification In-app", "Bell", "/settings/notification-policy", false, null));
             }
             if (hasPermission(normalizedPermissions, "reports.definition.view") || hasPermission(normalizedPermissions, "settings.configuration.view")) {
                 settingsChildren.add(new NavigationItemResponse("report-configuration", "Report Configuration", "IconFileDescription", "/settings/report-configuration", false, null));
             }
 
-            List<NavigationItemResponse> docControlSettingsChildren = new ArrayList<>();
-            if (hasPermission(normalizedPermissions, "settings.configuration.view")
-                    || hasPermission(normalizedPermissions, "settings.publishing_template.view")) {
-                docControlSettingsChildren.add(new NavigationItemResponse("publishing-templates", "Publishing Templates", null, "/settings/publishing-templates", false, null));
-            }
-            if (hasPermission(normalizedPermissions, "settings.controlled_copy_policy.view")) {
-                docControlSettingsChildren.add(new NavigationItemResponse("controlled-copy-policy", "Controlled Copies Policy", null, "/settings/controlled-copy-policy", false, null));
-            }
-            if (!docControlSettingsChildren.isEmpty()) {
-                settingsChildren.add(new NavigationItemResponse("settings-document-control", "Document Control", "IconFileDescription", null, false, docControlSettingsChildren));
-            }
+            // "Document Administration" moved to the System Administration group (see below).
 
             if (!settingsChildren.isEmpty()) {
                 menu.add(new NavigationItemResponse("settings", "Application Settings", "IconSettings2", null, false, settingsChildren));
             }
         }
 
-        if (systemConfigurationService.isFeatureEnabled("feat-system-admin")
-                && hasPermission(normalizedPermissions, "settings.configuration.view")) {
+        if (systemConfigurationService.isFeatureEnabled("feat-system-admin")) {
             List<NavigationItemResponse> sysAdminChildren = new ArrayList<>();
-            sysAdminChildren.add(new NavigationItemResponse("config", "Configuration", "IconDeviceDesktopCog", "/settings/configuration", false, null));
-            sysAdminChildren.add(new NavigationItemResponse("electronic-signature-policies", "E-Sign Config", "PenTool", "/settings/electronic-signature", false, null));
-            sysAdminChildren.add(new NavigationItemResponse("info-sys", "System Information", "IconAlertSquareRounded", "/settings/system-info", false, null));
-            menu.add(new NavigationItemResponse("system-administration", "System Administration", "UserStar", null, false, sysAdminChildren));
+            if (hasPermission(normalizedPermissions, "settings.configuration.view")) {
+                sysAdminChildren.add(new NavigationItemResponse("config", "Configuration", "IconDeviceDesktopCog", "/settings/configuration", false, null));
+                sysAdminChildren.add(new NavigationItemResponse("electronic-signature-policies", "E-Sign Config", "PenTool", "/settings/electronic-signature", false, null));
+            }
+
+            // "Document Administration" -- moved here from the Document Control module (was nested
+            // under doc-control until this move). Each screen keeps its own, independent
+            // documents.admin.<screen>.view permission -- deliberately NOT gated behind
+            // settings.configuration.view too, so a Document-Administration-only Access Profile
+            // (holding none of the System Administration permissions) still sees this group.
+            List<NavigationItemResponse> docAdminChildren = new ArrayList<>();
+            if (hasAnyPermission(normalizedPermissions, "documents.admin.properties.view", "documents.admin.properties.manage")) {
+                docAdminChildren.add(new NavigationItemResponse("doc-admin-properties", "Document Properties", null, "/documents/administration/properties", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "documents.admin.name_formats.view", "documents.admin.name_formats.manage")) {
+                docAdminChildren.add(new NavigationItemResponse("doc-admin-name-formats", "Document Name Formats", null, "/documents/administration/name-formats", false, null));
+                docAdminChildren.add(new NavigationItemResponse("doc-admin-document-components", "Document Components", null, "/documents/administration/document-components", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "documents.admin.document_types.view", "documents.admin.document_types.manage")) {
+                docAdminChildren.add(new NavigationItemResponse("doc-admin-document-types", "Document Types", null, "/documents/administration/document-types", false, null));
+                docAdminChildren.add(new NavigationItemResponse("doc-admin-document-sub-types", "Document Sub-Types", null, "/documents/administration/document-sub-types", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage")) {
+                docAdminChildren.add(new NavigationItemResponse("doc-admin-knowledge-categories", "Knowledge Categories Hierarchies", null, "/documents/administration/knowledge-categories", false, null));
+                // Parity fix: the frontend fallback nav (navigation.ts) already listed this item;
+                // it was missing here, so a user relying on the server-authoritative response alone
+                // never saw it.
+                docAdminChildren.add(new NavigationItemResponse("doc-admin-knowledge-components", "Knowledge Category Components", null, "/documents/administration/knowledge-components", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "documents.admin.publishing_templates.view", "documents.admin.publishing_templates.manage")) {
+                docAdminChildren.add(new NavigationItemResponse("publishing-templates", "Publishing Templates", null, "/documents/administration/publishing-templates", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage")) {
+                docAdminChildren.add(new NavigationItemResponse("controlled-copy-policy", "Controlled Copies Policy", null, "/documents/administration/controlled-copies-policy", false, null));
+            }
+            if (!docAdminChildren.isEmpty()) {
+                sysAdminChildren.add(new NavigationItemResponse("doc-administration", "Document Administration", "IconFileDescription", null, false, docAdminChildren));
+            }
+
+            // "Training Administration" -- coming soon sub-screens, no real functionality behind
+            // them yet. Each screen keeps its own granular training.admin.<screen>.view
+            // permission, mirroring the Document Administration per-screen permission split.
+            List<NavigationItemResponse> trainingAdminChildren = new ArrayList<>();
+            if (hasPermission(normalizedPermissions, "training.admin.properties.view")) {
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-properties", "Training Properties", null, "/settings/administration/training/properties", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "training.admin.requirement_templates.view")) {
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-requirement-templates", "Requirement Templates", null, "/settings/administration/training/requirement-templates", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "training.admin.quiz.view")) {
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-create-quiz", "Create a Quiz", null, "/settings/administration/training/create-quiz", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "training.admin.curriculums.view")) {
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-curriculums", "Curriculums", null, "/settings/administration/training/curriculums", false, null));
+            }
+            if (!trainingAdminChildren.isEmpty()) {
+                sysAdminChildren.add(new NavigationItemResponse("training-administration", "Training Administration", "GraduationCap", null, false, trainingAdminChildren));
+            }
+
+            if (!sysAdminChildren.isEmpty()) {
+                menu.add(new NavigationItemResponse("system-administration", "System Administration", "UserStar", null, false, sysAdminChildren));
+            }
         }
 
         if (hasPermission(normalizedPermissions, "preferences.module.view")
                 && systemConfigurationService.isFeatureEnabled("feat-system-preferences")) {
             menu.add(new NavigationItemResponse("preferences", "Preferences", "IconAdjustmentsHorizontal", "/preferences", false, null));
+        }
+
+        if (systemConfigurationService.isFeatureEnabled("feat-system-admin")
+                && hasPermission(normalizedPermissions, "settings.configuration.view")) {
+            menu.add(new NavigationItemResponse("system-information", "System Information", "IconAlertSquareRounded", "/settings/system-info", false, null));
         }
 
         return applyConfiguredLabels(menu, systemConfigurationService.getNavigationLabelOverrides());
@@ -273,6 +379,13 @@ public class NavigationService {
         }
         return PERMISSION_ALIASES.getOrDefault(normalizedCode, Set.of()).stream()
                 .anyMatch(permissions::contains);
+    }
+
+    private boolean hasAnyPermission(Set<String> permissions, String... codes) {
+        for (String code : codes) {
+            if (hasPermission(permissions, code)) return true;
+        }
+        return false;
     }
 
     private void flattenAndFilter(List<NavigationItemResponse> items, String parentLabel, String parentIcon, String query, List<FlatMenuItem> result) {

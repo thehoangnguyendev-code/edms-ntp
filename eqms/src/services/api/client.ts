@@ -73,6 +73,22 @@ const isPublicAuthEndpoint = (url?: string) => {
   return PUBLIC_AUTH_ENDPOINTS.some((endpoint) => url.includes(endpoint));
 };
 
+// Controlled Copy preview/download for a distributed recipient is authenticated purely by the
+// emailed token + password (exchanged for a short-lived X-EQMS-Controlled-Copy-Preview-Grant
+// header) -- it must never piggyback on an unrelated internal login session that happens to be
+// present in this browser (e.g. a DCO testing their own distribution link while still logged
+// into the app elsewhere, or two tabs of the same browser). The backend's recipient-identity
+// check then compares that ambient internal user against the copy's actual recipient and denies
+// access when they don't match, surfacing as a generic "Unable to load this controlled copy's
+// preview" with no indication of the real cause. Matches /controlled-copies/{id}/preview(...)
+// and /controlled-copies/{id}/download, but not unrelated authenticated sub-resources like
+// /controlled-copies/{id}/evidence/{evidenceId}/download.
+const CONTROLLED_COPY_PUBLIC_PREVIEW_PATTERN = /\/controlled-copies\/[^/]+\/(preview(\/|$)|download$)/;
+const isControlledCopyPublicPreviewEndpoint = (url?: string) => {
+  if (!url) return false;
+  return CONTROLLED_COPY_PUBLIC_PREVIEW_PATTERN.test(url);
+};
+
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
@@ -266,20 +282,34 @@ const requestOnceMutation = async <T>(
   const existing = inFlightMutationRequests.get(key);
   if (existing) return existing as Promise<AxiosResponse<T>>;
   invalidateGetCache();
-  const requestConfig: AxiosRequestConfig | undefined = requiresIdempotencyKey(
-    url,
-  )
-    ? {
-        ...config,
-        headers: {
-          ...(config?.headers ?? {}),
-          "Idempotency-Key":
-            (config?.headers as Record<string, string> | undefined)?.[
-              "Idempotency-Key"
-            ] ?? safeRandomUUID(),
-        },
-      }
-    : config;
+  const needsIdempotencyKey = requiresIdempotencyKey(url);
+  // apiClient sets a default "Content-Type: application/json" header. Axios's own
+  // transformRequest checks that header BEFORE noticing the body is a FormData -- if it's still
+  // "application/json" at that point, axios silently JSON-stringifies the FormData (File/Blob
+  // entries collapse to "{}") instead of sending real multipart data, and the request never
+  // reaches the server as the multipart the backend expects. Forcing "multipart/form-data" here
+  // (same fix axios's own .postForm() applies) keeps transformRequest from doing that; the browser
+  // adapter then replaces this header with its own multipart/form-data; boundary=... anyway, so
+  // this exact string is never what actually goes over the wire.
+  const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+  const requestConfig: AxiosRequestConfig | undefined =
+    needsIdempotencyKey || isFormData
+      ? {
+          ...config,
+          headers: {
+            ...(config?.headers ?? {}),
+            ...(isFormData ? { "Content-Type": "multipart/form-data" } : {}),
+            ...(needsIdempotencyKey
+              ? {
+                  "Idempotency-Key":
+                    (config?.headers as Record<string, string> | undefined)?.[
+                      "Idempotency-Key"
+                    ] ?? safeRandomUUID(),
+                }
+              : {}),
+          },
+        }
+      : config;
   const request =
     method === "post"
       ? apiClient.post<T>(url, data, requestConfig)
@@ -314,7 +344,8 @@ apiClient.interceptors.request.use(
     );
     if (
       token &&
-      (!isPublicAuthEndpoint(requestUrl) || requiresLockedSessionIdentity)
+      (!isPublicAuthEndpoint(requestUrl) || requiresLockedSessionIdentity) &&
+      !isControlledCopyPublicPreviewEndpoint(requestUrl)
     ) {
       config.headers.Authorization = `Bearer ${token}`;
     }

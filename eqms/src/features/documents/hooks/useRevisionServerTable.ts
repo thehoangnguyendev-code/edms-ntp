@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useSearchParams } from "react-router-dom";
 import { useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
@@ -101,6 +102,36 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
 
   const debouncedSearch = useDebounce(searchQuery, 300);
   const effectiveSearch = searchQuery.trim() === "" ? "" : debouncedSearch.trim();
+
+  // Browser Back/Forward changes the router query without remounting this
+  // route. Rehydrate every committed table control before fetch effects run.
+  useLayoutEffect(() => {
+    setSearchQuery(readString(searchParams, "search"));
+    setStatusFilter(
+      viewType === "pending-review" ? "PENDING_REVIEW" as DocumentStatus :
+      viewType === "pending-approval" ? "PENDING_APPROVAL" as DocumentStatus :
+      readString(searchParams, "status", "All") as DocumentStatus | "All",
+    );
+    setTypeFilter(readString(searchParams, "documentType", "All") as DocumentType | "All");
+    setBusinessUnitFilter(readString(searchParams, "businessUnit", "All"));
+    setDepartmentFilter(readString(searchParams, "department", "All"));
+    setRelatedDocumentFilter(readString(searchParams, "relatedDocument", "All"));
+    setCorrelatedDocumentFilter(readString(searchParams, "correlatedDocument", "All"));
+    setTemplateFilter(readString(searchParams, "isTemplate", "All"));
+    setAuthorFilter(viewType === "owned-by-me" ? currentUser?.id ?? "All" : readString(searchParams, "authorId", "All"));
+    setCreatedFromDate(readString(searchParams, "createdFrom"));
+    setCreatedToDate(readString(searchParams, "createdTo"));
+    setEffectiveFromDate(readString(searchParams, "effectiveFrom"));
+    setEffectiveToDate(readString(searchParams, "effectiveTo"));
+    setValidFromDate(readString(searchParams, "validFrom"));
+    setValidToDate(readString(searchParams, "validTo"));
+    setCurrentPage(readNumber(searchParams, "page", 1));
+    setItemsPerPage(Math.min(readNumber(searchParams, "limit", 10), 50));
+    setSortConfig({
+      key: readString(searchParams, "sortBy", "created"),
+      direction: readString(searchParams, "sortDirection", "desc") === "asc" ? "asc" : "desc",
+    });
+  }, [searchParams, viewType, currentUser?.id]);
 
   useEffect(() => {
     if (viewType === "pending-review") {
@@ -215,6 +246,8 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
   ]);
 
   useEffect(() => {
+    // Do not let a stale debounced value overwrite a URL selected by Back/Forward.
+    if (searchQuery !== debouncedSearch) return;
     const params = new URLSearchParams();
     params.set("scope", viewType);
 
@@ -248,6 +281,8 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
     }
   }, [
     viewType,
+    searchQuery,
+    debouncedSearch,
     effectiveSearch,
     statusFilter,
     typeFilter,
@@ -402,6 +437,10 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
   };
 
   const reload = () => setRefreshTick((prev) => prev + 1);
+
+  // Any revision changed by anyone (a Reviewer completing review, a DCO publishing ...) changes what this list shows
+  // (status, actions, counts): refetch the current page so it is never stale until a manual reload.
+  useEntityChanged(["REVISION"], () => reload(), { debounceMs: 1000 });
 
   const exportRevisions = async () => {
     setIsExporting(true);

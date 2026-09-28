@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Save, RotateCcw, Settings, Shield, FileText, Bell, Plug, ToggleLeft, ChevronLeft, Menu } from 'lucide-react';
+import { Shield, Bell, Menu, Cloud, Server, Check, Eye } from 'lucide-react';
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { configuration } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { Button } from '@/components/ui/button/Button';
 import { TabNav } from '@/components/ui/tabs/TabNav';
-import { cn } from '@/components/ui/utils';
 import { useToast } from '@/components/ui/toast/Toast';
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { AlertModal } from '@/components/ui/modal/AlertModal';
@@ -15,16 +14,17 @@ import { SystemConfig } from './types';
 import { GeneralTab } from './tabs/GeneralTab';
 import { NavigationLabelsTab } from './tabs/NavigationLabelsTab';
 import { SecurityTab } from './tabs/SecurityTab';
-import { DocumentTab } from './tabs/DocumentTab';
+import { OnlyOfficeTab } from './tabs/OnlyOfficeTab';
 import { NotificationTab } from './tabs/NotificationTab';
 import { IntegrationTab } from './tabs/IntegrationTab';
+import { PreviewFileTab } from './tabs/PreviewFileTab';
 import { FeaturesTab } from './tabs/FeaturesTab';
 import { BROWSER_TAB_TITLE_STORAGE_KEY, SECURITY_CONFIG_STORAGE_KEY } from '@/config/security';
 import { settingsApi } from '@/services/api/settings';
 import { usePermissions } from '@/hooks/usePermissions';
-import { IconDragDrop, IconFileDescription, IconPlugConnected, IconSettings2 } from '@tabler/icons-react';
+import { IconDragDrop, IconFileIsr, IconPlugConnected, IconSettings2 } from '@tabler/icons-react';
 
-type TabId = 'general' | 'navigation' | 'security' | 'document' | 'notification' | 'integration' | 'features';
+type TabId = 'general' | 'navigation' | 'security' | 'notification' | 'integration' | 'preview' | 'features';
 
 const TABS = [
   {
@@ -43,11 +43,6 @@ const TABS = [
     icon: Shield,
   },
   {
-    id: 'document' as TabId,
-    label: 'Documents',
-    icon: IconFileDescription,
-  },
-  {
     id: 'notification' as TabId,
     label: 'Notifications',
     icon: Bell,
@@ -56,6 +51,11 @@ const TABS = [
     id: 'integration' as TabId,
     label: 'Integrations',
     icon: IconPlugConnected,
+  },
+  {
+    id: 'preview' as TabId,
+    label: 'Preview File',
+    icon: IconFileIsr,
   },
   {
     id: 'features' as TabId,
@@ -90,27 +90,22 @@ export const ConfigurationView: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { hasPermissionAlias } = usePermissions();
-  const canManageConfiguration = hasPermissionAlias('settings.configuration.manage') || hasPermissionAlias('settings.configuration.edit');
+  const canManageConfiguration = hasPermissionAlias('settings.configuration.manage');
   const [isMountLoading, setIsMountLoading] = useState(true);
   const getTabFromSearch = (search: string): TabId => {
     const tab = new URLSearchParams(search).get('tab');
-    if (tab === 'general' || tab === 'navigation' || tab === 'security' || tab === 'document' || tab === 'notification' || tab === 'integration' || tab === 'features') {
+    if (tab === 'general' || tab === 'navigation' || tab === 'security' || tab === 'notification' || tab === 'integration' || tab === 'preview' || tab === 'features') {
       return tab;
     }
     return 'general';
   };
 
   const [activeTab, setActiveTab] = useState<TabId>(() => getTabFromSearch(location.search));
-  // On narrow screens, land on the section list first (like a settings menu) unless the URL
-  // explicitly deep-links to a tab — then open straight to that section's detail view.
-  const [mobileListView, setMobileListView] = useState<boolean>(
-    () => !new URLSearchParams(location.search).get('tab'),
-  );
   const [config, setConfig] = useState<SystemConfig | null>(null);
   const [originalConfig, setOriginalConfig] = useState<SystemConfig | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isGeneralValid, setIsGeneralValid] = useState(true);
-  const [isOfficeOnlineValid, setIsOfficeOnlineValid] = useState(true);
+  const [isOnlyOfficeValid, setIsOnlyOfficeValid] = useState(true);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const { showToast } = useToast();
@@ -263,28 +258,42 @@ export const ConfigurationView: React.FC = () => {
         return <NavigationLabelsTab config={config.general} onChange={(val) => handleConfigChange('general', val)} />;
       case 'security':
         return <SecurityTab config={config.security} onChange={(val) => handleConfigChange('security', val)} />;
-      case 'document':
-        return (
-          <DocumentTab
-            documentConfig={config.documents}
-            officeOnlineConfig={config.general.backupSettings.officeOnline}
-            onDocumentChange={(val) => handleConfigChange('documents', val)}
-            onOfficeOnlineChange={(val) =>
-              handleConfigChange('general', {
-                ...config.general,
-                backupSettings: {
-                  ...config.general.backupSettings,
-                  officeOnline: val,
-                },
-              })
-            }
-            onOfficeOnlineValidationChange={setIsOfficeOnlineValid}
-          />
-        );
       case 'notification':
         return <NotificationTab config={config.notifications} onChange={(val) => handleConfigChange('notifications', val)} />;
       case 'integration':
-        return <IntegrationTab config={config.integrations} onChange={(val) => handleConfigChange('integrations', val)} />;
+        return (
+          <div className="space-y-0">
+            <IntegrationTab config={config.integrations} onChange={(val) => handleConfigChange('integrations', val)} />
+            <OnlyOfficeTab
+              embedded
+              onlyOfficeConfig={config.general.backupSettings.onlyOffice}
+              onOnlyOfficeChange={(val) =>
+                handleConfigChange('general', {
+                  ...config.general,
+                  backupSettings: {
+                    ...config.general.backupSettings,
+                    onlyOffice: val,
+                  },
+                })
+              }
+              onOnlyOfficeValidationChange={setIsOnlyOfficeValid}
+            />
+          </div>
+        );
+      case 'preview':
+        return (
+          <PreviewFileTab
+            onlyOfficeConfig={config.general.backupSettings.onlyOffice}
+            onOnlyOfficeChange={(val) =>
+              handleConfigChange('general', {
+                ...config.general,
+                backupSettings: { ...config.general.backupSettings, onlyOffice: val },
+              })
+            }
+            documentsConfig={config.documents}
+            onDocumentsChange={(val) => handleConfigChange('documents', val)}
+          />
+        );
       case 'features':
         return <FeaturesTab features={config.features} onChange={(val) => handleConfigChange('features', val)} />;
       default:
@@ -308,7 +317,7 @@ export const ConfigurationView: React.FC = () => {
               <Button variant="outline-emerald" onClick={handleResetClick} disabled={!isDirty} size="sm" className="gap-2">
                 Reset
               </Button>
-              <Button variant="outline-emerald" onClick={handleSaveClick} disabled={!isDirty || !isGeneralValid || !isOfficeOnlineValid} size="sm" className="gap-2">
+              <Button variant="outline-emerald" onClick={handleSaveClick} disabled={!isDirty || !isGeneralValid || !isOnlyOfficeValid} size="sm" className="gap-2">
                 Save Changes
               </Button>
             </>
@@ -358,53 +367,25 @@ export const ConfigurationView: React.FC = () => {
         secondaryActionLabel="Keep editing"
       />
 
-      {/* Section list (sidebar on md+, drill-in menu on mobile) + content */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden md:flex md:items-stretch">
-        <div
-          className={cn(
-            "md:w-72 md:shrink-0 md:border-r md:border-slate-200 p-2 md:p-3",
-            mobileListView ? "block" : "hidden md:block",
-          )}
-        >
-          <TabNav
-            variant="vertical"
-            tabs={TABS}
-            activeTab={activeTab}
-            onChange={(id) => {
-              handleTabClick(id as TabId);
-              setMobileListView(false);
-            }}
-            ariaLabel="Configuration sections"
-            compactVertical
-          />
-        </div>
-
-        <div className={cn("min-w-0 flex-1", mobileListView ? "hidden md:block" : "block")}>
-          <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 md:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileListView(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
-              aria-label="Back to settings list"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <p className="text-sm font-semibold text-slate-900">
-              {TABS.find((t) => t.id === activeTab)?.label}
-            </p>
-          </div>
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {renderTabContent()}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+      {/* Section tabs + content */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <TabNav
+          tabs={TABS}
+          activeTab={activeTab}
+          onChange={(id) => handleTabClick(id as TabId)}
+          ariaLabel="Configuration sections"
+        />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {renderTabContent()}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

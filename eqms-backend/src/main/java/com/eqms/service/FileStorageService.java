@@ -57,6 +57,9 @@ public class FileStorageService {
     private final MinioObjectStorageService minioObjectStorageService;
     private final StoragePathBuilder storagePathBuilder;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private AuditTrailService auditTrailService;
+
     public FileStorageService(
             SystemConfigurationService systemConfigurationService,
             MinioObjectStorageService minioObjectStorageService,
@@ -520,7 +523,12 @@ public class FileStorageService {
             return;
         }
         if (minioObjectStorageService.isMinioUri(pathString)) {
-            minioObjectStorageService.delete(getStorageConfig(), pathString);
+            try {
+                minioObjectStorageService.delete(getStorageConfig(), pathString);
+            } catch (IOException ex) {
+                recordWormDeleteBlockedIfApplicable(pathString, ex);
+                throw ex;
+            }
             return;
         }
         if (isSmbReference(pathString)) {
@@ -538,9 +546,49 @@ public class FileStorageService {
         if (revisionId == null) {
             return;
         }
-        minioObjectStorageService.deletePrefix(getStorageConfig(), revisionId.toString() + "/");
+        String prefix = revisionId.toString() + "/";
+        try {
+            minioObjectStorageService.deletePrefix(getStorageConfig(), prefix);
+        } catch (IOException ex) {
+            recordWormDeleteBlockedIfApplicable(prefix, ex);
+            throw ex;
+        }
         deleteDirectoryIfExists(LOCAL_STORAGE_ROOT.resolve(revisionId.toString()));
         deleteDirectoryIfExists(NAS_STAGE_ROOT.resolve(revisionId.toString()));
+    }
+
+    /**
+     * #9 (backlog): MinIO delete/deletePrefix are unconditionally disabled while GMP/WORM Object
+     * Lock retention is enabled (see MinioObjectStorageService) -- every "cleanup"/"rollback"
+     * caller of deleteStoredFile/deleteRevisionStorageDirectory that reaches MinIO is therefore
+     * guaranteed to fail there, and previously that failure was only ever a log line at each of
+     * several call sites, several of which swallow the exception entirely ("best effort cleanup").
+     * That left no durable, queryable record that a specific object was intentionally left behind
+     * by GMP/WORM policy rather than actually cleaned up -- a real gap for a storage reconciliation
+     * review. Record it once here, centrally, so every caller gets this for free without each of
+     * them needing to know about WORM. Deliberately does not change any caller's control flow: the
+     * original IOException is always rethrown unchanged immediately after.
+     */
+    private void recordWormDeleteBlockedIfApplicable(String pathOrPrefix, IOException ex) {
+        String message = ex.getMessage();
+        if (message == null || !message.contains("WORM retention is enabled")) {
+            return;
+        }
+        try {
+            UUID syntheticEntityId = UUID.nameUUIDFromBytes(pathOrPrefix.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            auditTrailService.logSafely(
+                    "STORAGE_OBJECT",
+                    pathOrPrefix,
+                    syntheticEntityId,
+                    "DELETE_BLOCKED_BY_RETENTION",
+                    null,
+                    null,
+                    "Cleanup attempted to remove \"" + pathOrPrefix + "\" but MinIO GMP/WORM Object Lock retention "
+                            + "prevents deletion; the object remains in storage by design and requires no further action."
+            );
+        } catch (RuntimeException auditEx) {
+            log.debug("Failed to record WORM-delete-blocked reconciliation entry for {}", pathOrPrefix, auditEx);
+        }
     }
 
     public boolean isSmbReference(String pathString) {

@@ -280,7 +280,7 @@ export const CourseApproversTab: React.FC<CourseApproversTabProps> = ({
                       {approver.department}
                     </td>
                     <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge color="emerald">
+                      <Badge color="emerald" size="sm">
                         Approver
                       </Badge>
                     </td>

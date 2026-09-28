@@ -9,7 +9,9 @@ import java.util.UUID;
 public interface RevisionWorkflowParticipantRepository extends JpaRepository<RevisionWorkflowParticipant, UUID> {
     List<RevisionWorkflowParticipant> findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(UUID revisionId, String participantType);
     List<RevisionWorkflowParticipant> findAllByRevision_IdOrderByParticipantTypeAscSequenceOrderAsc(UUID revisionId);
+    List<RevisionWorkflowParticipant> findAllByUser_IdAndActionStatusAndRevision_Status_CodeIn(UUID userId, String actionStatus, java.util.Collection<String> revisionStatusCodes);
     java.util.Optional<RevisionWorkflowParticipant> findByRevision_IdAndParticipantTypeAndUser_Id(UUID revisionId, String participantType, UUID userId);
+    List<RevisionWorkflowParticipant> findAllByActionStatusAndRevision_Status_CodeIn(String actionStatus, java.util.Collection<String> revisionStatusCodes);
     void deleteAllByRevision_Id(UUID revisionId);
     long countByRevision_IdAndParticipantTypeAndUser_Id(UUID revisionId, String participantType, UUID userId);
     long countByRevision_Document_IdAndUser_Id(UUID documentId, UUID userId);

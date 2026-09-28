@@ -36,6 +36,7 @@ import { resolveTerminalProgressStep } from "@/features/documents/shared/statusM
 import type { RevisionWorkspaceState } from "@/features/documents/shared/navigationContext";
 import { buildRevisionDetailNavigationState } from "@/features/documents/shared/navigationContext";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   buildRevisionPreviewFileName,
@@ -45,6 +46,7 @@ import {
   loadPdfPreviewFile,
   resolveRevisionPreviewVersionToken,
 } from "@/features/documents/shared/previewHelpers";
+import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
 
 // --- Types ---
 type TabType = "document" | "general" | "workingNotes" | "documentInfo" | "infoFromDocument" | "training" | "reviewers" | "approvers" | "signatures" | "audit";
@@ -121,6 +123,13 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
   const [isNavigating, setIsNavigating] = useState(false);
   const [trainingSubmitValidationToken, setTrainingSubmitValidationToken] = useState(0);
   const revisionActionCapabilities = useRevisionActionCapabilities(document?.id ?? revisionId ?? null);
+  // Refresh in place when anyone changes this revision, so status and actions are never stale.
+  useEntityChanged(["REVISION"], () => {
+    void documentApi.getRevisionByIdSnapshot(revisionId, { force: true }).then((live) => {
+      if (!live) return;
+      setDocument({ ...live, reviewers: live.reviewers || [], approvers: live.approvers || [] });
+    }).catch(() => undefined);
+  }, { ids: [revisionId] });
   const canEditWorkingNotes = React.useMemo(
     () =>
       hasWorkingNotesEditAccess(
@@ -153,11 +162,21 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
       }
 
       const serverPreviewStatus = String(detail.previewStatus || "").toUpperCase();
+      const snapshotIsGenerating = isSnapshotGenerating(detail.snapshotStatus, detail.previewStatus);
+      const snapshotFailed = String(detail.snapshotStatus || "").toUpperCase() === "FAILED"
+        || serverPreviewStatus === "FAILED";
+      // Bug fix: previewType alone flips to REVIEW_PDF as soon as a PRIOR round's
+      // previewFilePath exists on the revision -- requestReviewSnapshotGeneration (backend)
+      // deliberately never clears it while a newer round is GENERATING, so relying on
+      // previewType/previewStatus alone here would serve the stale prior round's PDF while a
+      // resubmission's snapshot is still being regenerated. Must also gate on snapshotStatus.
       const canRequestPreview = isRevisionPdfPreviewType(detail.previewType)
-        && (serverPreviewStatus === "READY" || !serverPreviewStatus);
+        && (serverPreviewStatus === "READY" || !serverPreviewStatus)
+        && !snapshotIsGenerating
+        && !snapshotFailed;
       if (!canRequestPreview) {
         setRevisionFile(null);
-        setPreviewStatus(isSnapshotGenerating(detail.snapshotStatus) || serverPreviewStatus === "GENERATING" ? "loading" : "idle");
+        setPreviewStatus(snapshotIsGenerating ? "loading" : snapshotFailed ? "error" : "idle");
         setPreviewMessage(describeRevisionPreviewUnavailable(detail));
         return;
       }
@@ -539,6 +558,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
             <div className="min-h-0 overflow-hidden px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
               <DocumentTab
                 documentFile={revisionFile}
+                liveViewRevisionId={isLiveViewStage(document) ? revisionId : null}
                 previewStatus={previewStatus}
                 previewMessage={previewMessage}
               />
@@ -554,11 +574,13 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
               created: document.created,
               openedBy: document.openedBy,
               author: document.author,
-              isTemplate: false,
+              isTemplate: Boolean(document.isTemplate),
               businessUnit: document.businessUnit,
               department: document.department,
               knowledgeBase: document.knowledgeBase,
               subType: document.subType,
+              effectiveDate: document.effectiveDate,
+              validUntil: document.validUntil,
               periodicReviewCycle: document.periodicReviewCycle,
               periodicReviewNotification: document.periodicReviewNotification,
               language: document.language,

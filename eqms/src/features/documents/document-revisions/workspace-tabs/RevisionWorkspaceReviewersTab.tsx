@@ -4,7 +4,7 @@ import type { Reviewer } from "@/features/documents/types";
 
 interface RevisionWorkspaceReviewersTabProps {
   reviewers: Reviewer[];
-  reviewRequirement?: "NONE" | "SINGLE" | "MULTIPLE" | null;
+  reviewRequirement?: "NONE" | "REQUIRED" | null;
 }
 
 export const RevisionWorkspaceReviewersTab: React.FC<RevisionWorkspaceReviewersTabProps> = ({ reviewers, reviewRequirement }) => {

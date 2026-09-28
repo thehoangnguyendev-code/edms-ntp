@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/components/ui/utils";
 import { useLocation } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
@@ -15,11 +15,13 @@ import { FormSection } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge/Badge";
 import { toTitleCase } from "@/utils/format";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useNavigateWithLoading } from "@/hooks";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { documentApi } from "@/services/api/documents";
 import { settingsApi } from "@/services/api/settings";
 import { metadataApi } from "@/services/api/metadata";
+import { dictionaryApi } from "@/services/api/dictionary";
 import { usePermissions } from "@/hooks/usePermissions";
 import { IconUsersGroup } from "@tabler/icons-react";
 import type { ControlledCopyRequestRouteState } from "@/features/documents/shared/controlledCopyRequest";
@@ -27,6 +29,22 @@ import type { ControlledCopyRequestRouteState } from "@/features/documents/share
 // --- Types ---
 type DistributionScope = "business-unit" | "department" | "individual";
 type DistributionMode = "internal" | "external";
+
+const EXPIRY_DURATION_UNIT_LABELS: Record<string, [string, string]> = {
+  HOURS: ["hour", "hours"],
+  DAYS: ["day", "days"],
+  WEEKS: ["week", "weeks"],
+  MONTHS: ["month", "months"],
+};
+
+// Mirrors the Controlled Copies Policy > Expiry Duration Policy unit set (HOURS/DAYS/WEEKS/MONTHS).
+// Falls back to the raw unit string (lowercased) for forward-compatibility with a unit added there
+// but not yet known here, rather than silently showing nothing.
+function formatExpiryDuration(value: number, unit?: string | null): string {
+  const key = (unit || "DAYS").toUpperCase();
+  const [singular, plural] = EXPIRY_DURATION_UNIT_LABELS[key] || [key.toLowerCase(), key.toLowerCase()];
+  return `${value} ${value === 1 ? singular : plural}`;
+}
 
 interface DistributionTarget {
   id: string;
@@ -170,7 +188,8 @@ export const RequestControlledCopyView: React.FC = () => {
      * re-derive this from a client-side permission-code list. */
     canRequestForOthers?: boolean;
     message?: string | null;
-    expiryDurationDays?: number | null;
+    expiryDurationValue?: number | null;
+    expiryDurationUnit?: string | null;
   } | null>(null);
   // Self-service viewers only qualify via the server capability on REQUEST_COPY
   // (V233) — limited to one internal copy for themselves. Users granted the
@@ -593,7 +612,7 @@ export const RequestControlledCopyView: React.FC = () => {
     (distributionMode === "internal"
       ? selectedRecipientCount > 0
       : parsedExternalRecipients.length > 0) &&
-    reason.trim().length >= 10 &&
+    reason.trim().length > 0 &&
     !requestBlocked;
 
   // Validation
@@ -615,8 +634,6 @@ export const RequestControlledCopyView: React.FC = () => {
 
     if (!reason.trim()) {
       newErrors.reason = "Reason is required";
-    } else if (reason.trim().length < 10) {
-      newErrors.reason = "Reason must be at least 10 characters";
     }
 
     setErrors(newErrors);
@@ -765,7 +782,10 @@ export const RequestControlledCopyView: React.FC = () => {
       showToast({
         type: "error",
         title: "Request failed",
-        message: "Unable to submit the controlled copy request.",
+        message:
+          (error as any)?.response?.data?.error?.message ||
+          (error as any)?.response?.data?.message ||
+          "Unable to submit the controlled copy request.",
         duration: 4000,
       });
       setShowesignModal(false);
@@ -784,12 +804,10 @@ export const RequestControlledCopyView: React.FC = () => {
     setShowesignModal(false);
     setIsSubmitting(false);
     setIsNavigating(true);
-    navigateTo(
-      navigationState.workspaceReturnPath ||
-        navigationState.returnTo ||
-        navigationState.from ||
-        ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL,
-    );
+    // Always land on All Controlled Copies after a successful submit (matches the success toast's
+    // own message above) rather than returning to wherever the request was opened from -- the new
+    // request is what the user needs to see/monitor next.
+    navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL);
   };
 
   // Prepare select options for distribution
@@ -816,6 +834,21 @@ export const RequestControlledCopyView: React.FC = () => {
 
     return individualRecipients.map(mapToOption);
   }, [distributionScope, businessUnits, departments, individualRecipients]);
+
+  // Live server-side search for the Business Unit / Department location pickers, on top of the
+  // cached full-list fetch above -- these dictionaries are tens-scale today, but typing now hits
+  // the real paged/search endpoint instead of only filtering the already-loaded array. (The
+  // Individual-recipient picker deliberately keeps its full-list fetch: that same user list also
+  // feeds this form's recipient-count validation against the request quantity, so it can't be
+  // narrowed to a search subset without breaking that count.)
+  const searchLocationOptions = useCallback(async (scope: DistributionScope, query: string) => {
+    if (scope === "business-unit") {
+      const page = await dictionaryApi.getBusinessUnitsPage({ search: query, status: "Active", limit: 50 });
+      return page.data.map((b) => ({ value: b.id, label: `${b.abbreviation} - ${b.name}`, description: "Business Unit" }));
+    }
+    const page = await dictionaryApi.getDepartmentsPage({ search: query, status: "Active", limit: 50 });
+    return page.data.map((d) => ({ value: d.id, label: `${d.abbreviation} - ${d.name}`, description: d.departmentHeadName ? `Manager: ${d.departmentHeadName}` : "Department-level distribution" }));
+  }, []);
 
   const locationLabelByScope: Record<DistributionScope, string> = {
     "business-unit": "Business Unit",
@@ -1107,6 +1140,11 @@ export const RequestControlledCopyView: React.FC = () => {
                         }
                       }}
                       options={locationOptions}
+                      onSearch={
+                        distributionScope === "individual"
+                          ? undefined
+                          : (query) => searchLocationOptions(distributionScope, query)
+                      }
                       maxVisibleTags={2}
                       placeholder={`Select ${locationLabelByScope[distributionScope].toLowerCase()}`}
                     />
@@ -1124,7 +1162,7 @@ export const RequestControlledCopyView: React.FC = () => {
                   </label>
                   <div
                     className={cn(
-                      "min-h-[112px] rounded-xl border bg-white px-3 py-2.5 transition-colors",
+                      "min-h-[112px] rounded-lg border bg-white px-3 py-2.5 transition-colors",
                       errors.externalRecipients
                         ? "border-red-300 focus-within:ring-1 focus-within:ring-red-500"
                         : "border-slate-200 focus-within:ring-1 focus-within:ring-emerald-500",
@@ -1208,12 +1246,16 @@ export const RequestControlledCopyView: React.FC = () => {
                 </div>
               )}
 
-              {/* Expiry Policy */}
+              {/* Expiry Policy -- resolved from the applicable Controlled Copy Policy expiry rule
+                  (document type + department specificity, falling back to the mandatory Global
+                  Default). There is no "never expires" state; every Controlled Copy always
+                  resolves to one of these, matching exactly what the request will be submitted
+                  against. */}
               <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
                 <p className="text-xs sm:text-sm text-slate-700">
-                  {requestContext?.expiryDurationDays
-                    ? <>This Controlled Copy will be valid for <span className="font-semibold text-slate-900">{requestContext.expiryDurationDays} day(s)</span> from the date it is distributed.</>
-                    : "This Controlled Copy will never expire."}
+                  {requestContext?.expiryDurationValue
+                    ? <>This Controlled Copy will be valid for <span className="font-semibold text-slate-900">{formatExpiryDuration(requestContext.expiryDurationValue, requestContext.expiryDurationUnit)}</span> from the date it is distributed.</>
+                    : "Resolving the expiry duration from the Controlled Copies Policy..."}
                 </p>
               </div>
 
@@ -1230,7 +1272,7 @@ export const RequestControlledCopyView: React.FC = () => {
                       setErrors({ ...errors, reason: "" });
                     }
                   }}
-                  placeholder="Minimum 10 characters required..."
+                  placeholder="Enter the reason for this request..."
                   rows={4}
                   className={cn(
                     "w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 transition-colors resize-none",
@@ -1326,25 +1368,13 @@ export const RequestControlledCopyView: React.FC = () => {
                         ))
                       ) : (
                         <tr>
-                          <td
-                            colSpan={distributionMode === "internal" ? 5 : 4}
-                            className="py-12 text-center text-sm text-slate-500"
-                          >
-                            No recipients selected yet.
+                          <td colSpan={distributionMode === "internal" ? 5 : 4} className="p-0">
+                            <TableEmptyState title="No recipients selected yet." />
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs sm:text-sm text-slate-600">
-                <div className="flex items-center justify-between gap-4">
-                  <span>Number Of Copies</span>
-                  <span className="text-xs sm:text-sm font-semibold text-slate-900">
-                    {selectedRecipientCount}
-                  </span>
                 </div>
               </div>
             </div>

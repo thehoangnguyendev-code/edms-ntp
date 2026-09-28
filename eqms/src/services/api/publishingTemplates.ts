@@ -33,22 +33,22 @@ export interface PublishingTemplateListResponse {
 
 export const publishingTemplatesApi = {
   getTemplates: async (params?: PublishingTemplateListParams) => {
-    const response = await api.get<PublishingTemplateListResponse>("/settings/publishing-templates", { params });
+    const response = await api.get<PublishingTemplateListResponse>("/documents/administration/publishing-templates", { params });
     return response.data;
   },
 
   getTemplate: async (id: string) => {
-    const response = await api.get<PublishingTemplateResponse>(`/settings/publishing-templates/${id}`);
+    const response = await api.get<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}`);
     return response.data;
   },
 
   getVersions: async (id: string) => {
-    const response = await api.get<PublishingTemplateVersionResponse[]>(`/settings/publishing-templates/${id}/versions`);
+    const response = await api.get<PublishingTemplateVersionResponse[]>(`/documents/administration/publishing-templates/${id}/versions`);
     return response.data;
   },
 
   getAvailablePlaceholders: async (search?: string) => {
-    const response = await api.get<PublishingPlaceholderCatalogResponse>("/settings/publishing-templates/placeholders", {
+    const response = await api.get<PublishingPlaceholderCatalogResponse>("/documents/administration/publishing-templates/placeholders", {
       params: search ? { search } : undefined,
     });
     return response.data;
@@ -56,7 +56,7 @@ export const publishingTemplatesApi = {
 
   getPlaceholderStyles: async (id: string, componentType?: string, layout?: string) => {
     const response = await api.get<PublishingPlaceholderStyleResponse[]>(
-      `/settings/publishing-templates/${id}/placeholder-styles`,
+      `/documents/administration/publishing-templates/${id}/placeholder-styles`,
       {
         params: {
           ...(componentType ? { componentType } : {}),
@@ -69,7 +69,7 @@ export const publishingTemplatesApi = {
 
   savePlaceholderStyles: async (id: string, payload: PublishingPlaceholderStyleRequest[]) => {
     const response = await api.put<PublishingPlaceholderStyleResponse[]>(
-      `/settings/publishing-templates/${id}/placeholder-styles`,
+      `/documents/administration/publishing-templates/${id}/placeholder-styles`,
       payload,
     );
     return response.data;
@@ -77,39 +77,45 @@ export const publishingTemplatesApi = {
 
   deletePlaceholderStyle: async (id: string, componentType: string, layout: string, placeholderKey: string) => {
     await api.delete(
-      `/settings/publishing-templates/${id}/placeholder-styles/${componentType}/${layout}/${encodeURIComponent(placeholderKey)}`,
+      `/documents/administration/publishing-templates/${id}/placeholder-styles/${componentType}/${layout}/${encodeURIComponent(placeholderKey)}`,
     );
   },
 
   createTemplate: async (payload: PublishingTemplateRequest) => {
-    const response = await api.post<PublishingTemplateResponse>("/settings/publishing-templates", payload);
+    const response = await api.post<PublishingTemplateResponse>("/documents/administration/publishing-templates", payload);
     return response.data;
   },
 
   updateTemplate: async (id: string, payload: PublishingTemplateRequest) => {
-    const response = await api.put<PublishingTemplateResponse>(`/settings/publishing-templates/${id}`, payload);
+    const response = await api.put<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}`, payload);
     return response.data;
   },
 
   duplicateTemplate: async (id: string) => {
-    const response = await api.post<PublishingTemplateResponse>(`/settings/publishing-templates/${id}/duplicate`);
+    const response = await api.post<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}/duplicate`);
+    return response.data;
+  },
+
+  /** Server creates an editable copy that supersedes the published template once it is published. */
+  createNewVersion: async (id: string) => {
+    const response = await api.post<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}/new-version`);
     return response.data;
   },
 
   toggleStatus: async (id: string) => {
-    const response = await api.post<PublishingTemplateResponse>(`/settings/publishing-templates/${id}/toggle-status`);
+    const response = await api.post<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}/toggle-status`);
     return response.data;
   },
 
   deleteTemplate: async (id: string) => {
-    await api.delete(`/settings/publishing-templates/${id}`);
+    await api.delete(`/documents/administration/publishing-templates/${id}`);
   },
 
   uploadComponent: async (id: string, componentType: "cover" | "body" | "header" | "footer" | "logo", file: File, layout?: "portrait" | "landscape") => {
     const formData = new FormData();
     formData.append("file", file);
     const response = await api.post<PublishingTemplateResponse>(
-      `/settings/publishing-templates/${id}/components/${componentType}`,
+      `/documents/administration/publishing-templates/${id}/components/${componentType}`,
       formData,
       {
         params: layout ? { layout } : undefined,
@@ -121,7 +127,7 @@ export const publishingTemplatesApi = {
 
   deleteComponent: async (id: string, componentType: "cover" | "body" | "header" | "footer" | "logo", layout?: "portrait" | "landscape") => {
     const response = await api.delete<PublishingTemplateResponse>(
-      `/settings/publishing-templates/${id}/components/${componentType}`,
+      `/documents/administration/publishing-templates/${id}/components/${componentType}`,
       {
         params: layout ? { layout } : undefined,
       },
@@ -139,7 +145,7 @@ export const publishingTemplatesApi = {
     previewFontSize?: number,
     exactPreview?: boolean,
   ) => {
-    const response = await api.get<Blob>(`/settings/publishing-templates/${id}/components/${componentType}/preview`, {
+    const response = await api.get<Blob>(`/documents/administration/publishing-templates/${id}/components/${componentType}/preview`, {
       responseType: "blob",
       params: {
         ...(revisionId ? { revisionId } : {}),
@@ -155,7 +161,7 @@ export const publishingTemplatesApi = {
 
   inspectComponent: async (id: string, componentType: "cover" | "body" | "header" | "footer", revisionId?: string, layout?: "portrait" | "landscape") => {
     const response = await api.get<PublishingTemplateComponentInspectionResponse>(
-      `/settings/publishing-templates/${id}/components/${componentType}/inspection`,
+      `/documents/administration/publishing-templates/${id}/components/${componentType}/inspection`,
       {
         params: {
           ...(revisionId ? { revisionId } : {}),
@@ -167,14 +173,14 @@ export const publishingTemplatesApi = {
   },
 
   getLogoPreview: async (id: string) => {
-    const response = await api.get<Blob>(`/settings/publishing-templates/${id}/components/logo/preview`, {
+    const response = await api.get<Blob>(`/documents/administration/publishing-templates/${id}/components/logo/preview`, {
       responseType: "blob",
     });
     return response.data;
   },
 
   publishTemplate: async (id: string, changeSummary?: string) => {
-    const response = await api.post<PublishingTemplateResponse>(`/settings/publishing-templates/${id}/publish`, { changeSummary });
+    const response = await api.post<PublishingTemplateResponse>(`/documents/administration/publishing-templates/${id}/publish`, { changeSummary });
     return response.data;
   },
 };

@@ -49,6 +49,12 @@ public class RevisionWorkflowParticipant {
     @Column(name = "signature_session_id")
     private UUID signatureSessionId;
 
+    @Column(name = "last_reminded_at")
+    private Instant lastRemindedAt;
+
+    @Column(name = "escalated_at")
+    private Instant escalatedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -128,6 +134,22 @@ public class RevisionWorkflowParticipant {
 
     public void setActionComment(String actionComment) {
         this.actionComment = actionComment;
+    }
+
+    public Instant getLastRemindedAt() {
+        return lastRemindedAt;
+    }
+
+    public void setLastRemindedAt(Instant lastRemindedAt) {
+        this.lastRemindedAt = lastRemindedAt;
+    }
+
+    public Instant getEscalatedAt() {
+        return escalatedAt;
+    }
+
+    public void setEscalatedAt(Instant escalatedAt) {
+        this.escalatedAt = escalatedAt;
     }
 
     public Instant getActedAt() {

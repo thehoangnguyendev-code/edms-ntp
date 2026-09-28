@@ -1,18 +1,6 @@
 ﻿import React, { useState, useMemo } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
-import {
-    Trash2,
-    MoreVertical,
-    Briefcase,
-    Power,
-    PowerOff,
-    Search,
-    AlertTriangle,
-    ChevronUp,
-    ChevronDown,
-    Check,
-    X,
-} from "lucide-react";
+import { Trash2, MoreVertical, Power, PowerOff, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { Select } from "@/components/ui/select/Select";
 import { cn } from "@/components/ui/utils";
@@ -20,6 +8,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import type { BusinessUnitItem, DepartmentItem } from "../types";
 import { usePortalDropdown } from "@/hooks";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -47,7 +36,7 @@ export const BusinessUnitsTab = React.forwardRef<
   const [modifiedToDate, setModifiedToDate] = useState("");
   const { openId: openDropdownId, position: dropdownPosition, getRef: getButtonRef, toggle: handleDropdownToggle, close: closeDropdown } = usePortalDropdown();
   const { hasPermissionAlias } = usePermissions();
-  const canManage = hasPermissionAlias("settings.dictionary.manage");
+  const canManage = hasPermissionAlias("settings.business_unit.manage");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -406,9 +395,9 @@ export const BusinessUnitsTab = React.forwardRef<
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                       {item.isActive ? (
-                        <Badge color="emerald" size="sm" showDot pill>Active</Badge>
+                        <Badge color="emerald" size="sm" >Active</Badge>
                       ) : (
-                        <Badge color="slate" size="sm" showDot pill>Inactive</Badge>
+                        <Badge color="slate" size="sm" >Inactive</Badge>
                       )}
                     </td>
                     <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
@@ -433,14 +422,8 @@ export const BusinessUnitsTab = React.forwardRef<
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-slate-500">
-                      <div className="bg-slate-50 p-4 rounded-full mb-3">
-                        <Briefcase className="h-8 w-8 text-slate-400" />
-                      </div>
-                      <p className="text-base font-medium text-slate-900">No business units found</p>
-                      <p className="text-sm mt-1">Try adjusting your search</p>
-                    </div>
+                  <td colSpan={8} className="p-0">
+                    <TableEmptyState title="No business units found" description="Try adjusting your search" />
                   </td>
                 </tr>
               )}

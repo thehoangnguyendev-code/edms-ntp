@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { Menu, X, User } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../ui/button/Button';
 import { cn } from '../../ui/utils';
@@ -10,10 +10,12 @@ import { NotificationsDropdown } from './NotificationsDropdown';
 import { useBreadcrumb } from '@/contexts/BreadcrumbContext';
 import { AlertModal } from '../../ui/modal/AlertModal';
 import { FullPageLoading } from '../../ui/loading/Loading';
+import { Avatar } from '../../ui/avatar';
 import { IconLogout, IconUser } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROUTES } from '@/app/routes.constants';
 import logoNoBg from '@/assets/images/logo_nobg.png';
+import { useBranding } from '@/components/branding/BrandLogo';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -28,6 +30,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSidebarCollapsed, isMobileMenuOpen, onNavigateToProfile, onLogout, headerTitle, showHeaderTitle, scrollProgress = 0 }) => {
   const { user, logout } = useAuth();
+  const { showSidebarUserProfile } = useBranding();
   const { breadcrumbs } = useBreadcrumb();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -35,7 +38,6 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [avatarError, setAvatarError] = useState(false);
   const userMenuRef = useRef<HTMLButtonElement>(null);
   const menuDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -65,10 +67,6 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
   const handleCloseNotifications = useCallback(() => {
     setIsNotificationsOpen(false);
   }, []);
-
-  useEffect(() => {
-    setAvatarError(false);
-  }, [user?.avatar]);
 
   const handleProfileClick = useCallback(async () => {
     setIsUserMenuOpen(false);
@@ -112,6 +110,14 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [isUserMenuOpen]);
+
+  // The profile menu has a single owner. When it moves to the sidebar,
+  // close the header menu immediately so no orphaned portal remains visible.
+  useEffect(() => {
+    if (showSidebarUserProfile) {
+      setIsUserMenuOpen(false);
+    }
+  }, [showSidebarUserProfile]);
 
   return (
     <>
@@ -209,116 +215,85 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
           </div>
 
           {/* RIGHT: Notifications & Profile */}
-          <div className="flex items-center gap-1.5 md:gap-2 lg:gap-3 shrink-0">
+          <motion.div
+            layout="position"
+            transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
+            className="flex items-center gap-1.5 md:gap-2 lg:gap-3 shrink-0"
+          >
             {/* Notifications */}
-            <NotificationsDropdown
-              isOpen={isNotificationsOpen}
-              onClose={handleCloseNotifications}
-              onToggle={handleToggleNotifications}
-            />
+            <motion.div layout="position">
+              <NotificationsDropdown
+                isOpen={isNotificationsOpen}
+                onClose={handleCloseNotifications}
+                onToggle={handleToggleNotifications}
+              />
+            </motion.div>
 
-            {/* Divider - Hidden on mobile */}
-            <div className="hidden md:block w-px h-6 bg-slate-200"></div>
+            <AnimatePresence initial={false}>
+              {!showSidebarUserProfile && (
+                <motion.div
+                  key="header-user-profile"
+                  layout="position"
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto' }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.28 }}
+                  className="flex items-center gap-1.5 md:gap-2 lg:gap-3 overflow-hidden"
+                >
+                  {/* Divider - Hidden on mobile */}
+                  <div className="hidden md:block w-px h-6 bg-slate-200 shrink-0"></div>
 
-            {/* User Profile Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                ref={userMenuRef}
-                className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5 cursor-pointer min-h-[44px] min-w-[44px] px-1.5 py-1.5 lg:px-2 lg:py-1.5 rounded-lg border border-transparent transition-all select-none group"
-                onClick={handleToggleUserMenu}
-                aria-label="User menu"
-                aria-expanded={isUserMenuOpen}
-                aria-haspopup="true"
-              >
-                {/* Avatar */}
-                <div className="h-9 w-9 md:h-9 md:w-9 lg:h-10 lg:w-10 rounded-full bg-emerald-50 overflow-hidden flex items-center justify-center border border-emerald-100 text-emerald-600 transition-colors shrink-0">
-                  {user?.avatar && !avatarError ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.fullName || user.username || 'User avatar'}
-                      className="h-full w-full object-cover"
-                      onError={() => setAvatarError(true)}
-                    />
-                  ) : (
-                    <User className="h-4 w-4 md:h-4.5 md:w-4.5 lg:h-5 lg:w-5" />
-                  )}
-                </div>
-                {/* User Info - Hidden on mobile and tablet */}
-                <div className="hidden lg:block text-left pr-1">
-                  <p className="text-sm font-semibold text-slate-700 leading-6 group-hover:text-slate-900">{user?.fullName || '-'}</p>
-                  <p className="text-xs text-slate-500 leading-tight">{user?.position || '-'}</p>
-                </div>
-              </button>
+                  {/* User Profile Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      ref={userMenuRef}
+                      className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5 cursor-pointer min-h-[44px] min-w-[44px] px-1.5 py-1.5 lg:px-2 lg:py-1.5 rounded-lg border border-transparent transition-all select-none group"
+                      onClick={handleToggleUserMenu}
+                      aria-label="User menu"
+                      aria-expanded={isUserMenuOpen}
+                      aria-haspopup="true"
+                    >
+                      <Avatar name={user?.fullName || user?.username || 'User'} src={user?.avatar} tone="brand" className="h-9 w-9 lg:h-10 lg:w-10 transition-colors" />
+                      <div className="hidden lg:block text-left pr-1">
+                        <p className="text-sm font-semibold text-slate-700 leading-6 group-hover:text-slate-900">{user?.fullName || '-'}</p>
+                        <p className="text-xs text-slate-500 leading-tight">{user?.position || '-'}</p>
+                      </div>
+                    </button>
 
-              {/* Dropdown Menu */}
-              {createPortal(
-                <AnimatePresence>
-                  {isUserMenuOpen && (
-                    <>
-                      {/* Full-screen Backdrop Overlay */}
-                      <motion.div
-                        key="user-menu-backdrop"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-40 bg-transparent"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        aria-hidden="true"
-                      />
-
-                      {/* Menu Content */}
-                      <motion.div
-                        key="user-menu-dropdown"
-                        ref={menuDropdownRef}
-                        initial={{ opacity: 0, scale: 0.95, y: -10, transformOrigin: 'top right' }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
-                        className="fixed w-65 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-xl focus:outline-none z-50 overflow-hidden pointer-events-auto"
-                        style={{
-                          top: `${menuPosition.top}px`,
-                          right: `${menuPosition.right}px`
-                        }}
-                      >
-                        {/* User Info Header */}
-                        <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{user?.username || '-'} - {user?.role || "-"}</p>
-                          <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email || ''}</p>
-                        </div>
-
-                        {/* Menu Items */}
-                        <div className="py-0">
-                          <button
-                            type="button"
-                            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-3 transition-colors"
-                            onClick={handleProfileClick}
-                          >
-                            <IconUser  className="h-4 w-4 shrink-0" />
-                            <span>Profile</span>
-                          </button>
-                        </div>
-
-                        {/* Logout */}
-                        <div className="border-t border-slate-100">
-                          <button
-                            type="button"
-                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
-                            onClick={handleLogoutClick}
-                          >
-                            <IconLogout className="h-4 w-4 shrink-0" />
-                            <span>Sign Out</span>
-                          </button>
-                        </div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>,
-                document.body
+                    {createPortal(
+                      <AnimatePresence>
+                        {isUserMenuOpen && (
+                          <>
+                            <motion.div key="user-menu-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsUserMenuOpen(false)} aria-hidden="true" />
+                            <motion.div key="user-menu-dropdown" ref={menuDropdownRef} initial={{ opacity: 0, scale: 0.95, y: -10, transformOrigin: 'top right' }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -10 }} transition={{ type: 'spring', bounce: 0, duration: 0.25 }} className="fixed w-65 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-xl focus:outline-none z-50 overflow-hidden pointer-events-auto" style={{ top: `${menuPosition.top}px`, right: `${menuPosition.right}px` }}>
+                              <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
+                                <p className="text-sm font-semibold text-slate-900 truncate">{user?.username || '-'} - {user?.employeeCode || "-"}</p>
+                                <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email || ''}</p>
+                              </div>
+                              <div className="py-0">
+                                <button type="button" className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-3 transition-colors" onClick={handleProfileClick}>
+                                  <IconUser className="h-4 w-4 shrink-0" />
+                                  <span>Profile</span>
+                                </button>
+                              </div>
+                              <div className="border-t border-slate-100">
+                                <button type="button" className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors" onClick={handleLogoutClick}>
+                                  <IconLogout className="h-4 w-4 shrink-0" />
+                                  <span>Sign Out</span>
+                                </button>
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>,
+                      document.body
+                    )}
+                  </div>
+                </motion.div>
               )}
-            </div>
-
-          </div>
+            </AnimatePresence>
+          </motion.div>
         </div>
 
         {/* Scroll Progress Bar - Sát mép dưới */}
