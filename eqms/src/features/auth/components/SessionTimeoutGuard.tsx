@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/api/auth";
 import { settingsApi } from "@/services/api/settings";
 import { SECURITY_CONFIG_STORAGE_KEY } from "@/config/security";
+import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import { SessionTimeoutModal } from "./SessionTimeoutModal";
 
 const HEARTBEAT_THROTTLE_MS = 30_000;
@@ -38,8 +39,16 @@ export const SessionTimeoutGuard: React.FC = () => {
       }
     };
     void hydrateSecurityConfig();
+    // A Security tab save (Save Changes) commits, then broadcasts this event to every open
+    // browser -- re-hydrate immediately instead of waiting for this tab's next reload.
+    const unsubscribeRealtime = subscribeNotificationRealtime((event) => {
+      if (event.type === "security-config-updated") {
+        void hydrateSecurityConfig();
+      }
+    });
     return () => {
       isActive = false;
+      unsubscribeRealtime();
     };
   }, [isAuthenticated]);
 

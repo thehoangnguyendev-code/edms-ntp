@@ -4,6 +4,7 @@ import { config } from "@/config";
 import { documentApi } from "@/services/api/documents";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { OnlyOfficeCapacityNotice } from "./OnlyOfficeCapacityNotice";
+import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 
 interface OnlyOfficeDocumentViewerProps {
   revisionId: string;
@@ -28,8 +29,18 @@ export const OnlyOfficeDocumentViewer = ({ revisionId, versionToken, height = "c
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState<string | null>(null);
   const [liveToken, setLiveToken] = useState<string | null>(versionToken ?? null);
+  const [viewerConfigVersion, setViewerConfigVersion] = useState(0);
   const editorRef = useRef<{ destroyEditor?: () => void } | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
+
+  // OnlyOffice applies its customization when the editor iframe is created. A committed admin
+  // configuration change is broadcast through the authenticated SSE stream, so every open
+  // viewer re-requests its server-authoritative signed config without reloading the page.
+  useEffect(() => subscribeNotificationRealtime((event) => {
+    if (event.type === "onlyoffice-viewer-config-updated") {
+      setViewerConfigVersion((current) => current + 1);
+    }
+  }), []);
 
   // Watch the stored source; a new checksum means a save landed and the view is out of date.
   useEffect(() => {
@@ -124,7 +135,7 @@ export const OnlyOfficeDocumentViewer = ({ revisionId, versionToken, height = "c
       hostRef.current?.replaceChildren();
     };
     // Re-open whenever the stored source changes.
-  }, [revisionId, liveToken, containerId]);
+  }, [revisionId, liveToken, containerId, viewerConfigVersion]);
 
   return (
     <div className="space-y-2">

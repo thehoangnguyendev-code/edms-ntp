@@ -40,6 +40,17 @@ const DOCUMENTS_ENDPOINT = '/documents';
 const REVISIONS_ENDPOINT = '/revisions';
 const CONTROLLED_COPIES_ENDPOINT = '/controlled-copies';
 
+// API calls can use a same-origin relative path when the Docker frontend proxies
+// `/api`. OnlyOffice, however, fetches this logo from a separate server process
+// and therefore needs an absolute browser-reachable URL.
+const getBrowserReachableApiBaseUrl = () => {
+  const baseUrl = config.api.baseURL.replace(/\/$/, '');
+  if (/^https?:\/\//i.test(baseUrl) || typeof window === 'undefined') {
+    return baseUrl;
+  }
+  return new URL(baseUrl, window.location.origin).toString().replace(/\/$/, '');
+};
+
 /** One historical revision section in a Legacy Batch Import submission. */
 export interface LegacyBatchRevisionSectionPayload {
   revisionNumber: string;
@@ -1521,7 +1532,7 @@ export const documentApi = {
 
   /** Session-authenticated: returns the full OnlyOffice editor config (document/editorConfig/token), already scoped to the caller's permitted mode by the backend. */
   getRevisionOnlyOfficeEditConfig: async (revisionId: string) => {
-    const response = await api.get<Record<string, unknown>>(`${REVISIONS_ENDPOINT}/${revisionId}/onlyoffice/edit-config`, { params: { logoUrl: `${config.api.baseURL}/branding/logo` } });
+    const response = await api.get<Record<string, unknown>>(`${REVISIONS_ENDPOINT}/${revisionId}/onlyoffice/edit-config`, { params: { logoUrl: `${getBrowserReachableApiBaseUrl()}/branding/logo` } });
     return response.data;
   },
 
@@ -1533,7 +1544,7 @@ export const documentApi = {
 
   /** Read-only OnlyOffice viewer config for the Document tab (Draft / Pending Review / Pending Approval). */
   getRevisionOnlyOfficeViewConfig: async (revisionId: string) => {
-    const response = await api.get<Record<string, unknown>>(`${REVISIONS_ENDPOINT}/${revisionId}/onlyoffice/view-config`, { params: { logoUrl: `${config.api.baseURL}/branding/logo` } });
+    const response = await api.get<Record<string, unknown>>(`${REVISIONS_ENDPOINT}/${revisionId}/onlyoffice/view-config`, { params: { logoUrl: `${getBrowserReachableApiBaseUrl()}/branding/logo` } });
     return response.data;
   },
 

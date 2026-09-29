@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { SECURITY_CONFIG_STORAGE_KEY } from "@/config/security";
+import { settingsApi } from "@/services/api/settings";
+import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 
 export interface PdfPreviewSettings {
   defaultZoom?: "page-fit" | "page-width" | "actual-size";
@@ -8,8 +10,11 @@ export interface PdfPreviewSettings {
   showPageNavigation?: boolean;
   showZoomControls?: boolean;
   showFullScreen?: boolean;
-  showThemeSwitch?: boolean;
+  showInsertTools?: boolean;
   allowTextSelection?: boolean;
+  watermarkText?: string;
+  watermarkShowViewerName?: boolean;
+  watermarkShowOpenedAt?: boolean;
 }
 
 const readPdfPreviewSettings = (): PdfPreviewSettings => {
@@ -72,12 +77,26 @@ export const useDocumentPreviewSettings = () => {
       }
     };
 
+    const unsubscribeRealtime = subscribeNotificationRealtime((event) => {
+      if (event.type !== "documents-preview-config-updated") return;
+      void settingsApi.getDocumentsOperationalConfig().then((documents) => {
+        try {
+          const cached = JSON.parse(window.localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || "{}") as SystemConfigLike;
+          window.localStorage.setItem(SECURITY_CONFIG_STORAGE_KEY, JSON.stringify({ ...cached, documents }));
+        } catch {
+          window.localStorage.setItem(SECURITY_CONFIG_STORAGE_KEY, JSON.stringify({ documents }));
+        }
+        syncFromStorage();
+      }).catch(() => undefined);
+    });
+
     window.addEventListener("eqms:security-config-updated", handleSecurityConfigUpdated);
     window.addEventListener("storage", handleStorageChange);
 
     return () => {
       window.removeEventListener("eqms:security-config-updated", handleSecurityConfigUpdated);
       window.removeEventListener("storage", handleStorageChange);
+      unsubscribeRealtime();
     };
   }, []);
 

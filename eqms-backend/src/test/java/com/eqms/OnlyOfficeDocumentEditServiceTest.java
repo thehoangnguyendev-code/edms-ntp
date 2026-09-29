@@ -85,6 +85,32 @@ class OnlyOfficeDocumentEditServiceTest {
     }
 
     @Test
+    void buildViewerConfigUsesOnlyCommunityEditionCustomizations() {
+        OnlyOfficeConfigurationService configurationService = configuredService("test-secret-key-must-be-at-least-32-bytes");
+        when(configurationService.getViewerOptions()).thenReturn(
+                new OnlyOfficeConfigurationService.ViewerOptions(false, true, false));
+        OnlyOfficeDocumentEditService service = new OnlyOfficeDocumentEditService(
+                configurationService, org.mockito.Mockito.mock(com.eqms.service.SystemConfigurationService.class), objectMapper);
+
+        ObjectNode config = service.buildEditorConfig(
+                revision(UUID.randomUUID(), "revision.docx"), EditMode.VIEW, user(UUID.randomUUID(), "Viewer"));
+
+        ObjectNode permissions = (ObjectNode) config.path("document").path("permissions");
+        ObjectNode customization = (ObjectNode) config.path("editorConfig").path("customization");
+        assertThat(permissions.path("edit").asBoolean()).isFalse();
+        assertThat(permissions.path("comment").asBoolean()).isFalse();
+        assertThat(permissions.path("download").asBoolean()).isFalse();
+        assertThat(permissions.path("print").asBoolean()).isFalse();
+        assertThat(customization.path("plugins").asBoolean()).isFalse();
+        assertThat(customization.path("hideRightMenu").asBoolean()).isFalse();
+        assertThat(customization.path("toolbarHideFileName").asBoolean()).isTrue();
+        assertThat(customization.path("compactHeader").asBoolean()).isTrue();
+        assertThat(customization.has("layout")).isFalse();
+        assertThat(customization.has("leftMenu")).isFalse();
+        assertThat(customization.has("statusBar")).isFalse();
+    }
+
+    @Test
     void verifyAccessTokenReturnsTheMintingUserId() {
         String secret = "test-secret-key-must-be-at-least-32-bytes";
         OnlyOfficeDocumentEditService service = new OnlyOfficeDocumentEditService(configuredService(secret), org.mockito.Mockito.mock(com.eqms.service.SystemConfigurationService.class), objectMapper);

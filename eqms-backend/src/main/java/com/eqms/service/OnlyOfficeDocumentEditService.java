@@ -151,30 +151,16 @@ public class OnlyOfficeDocumentEditService {
     }
 
     /**
-     * Maps the admin's viewer toggles onto OnlyOffice's customization: the legacy flags (understood by every
-     * 8.x build) plus the newer {@code layout} block (8.1+) so tabs and panels are hidden either way.
+     * Maps only the settings supported by the bundled OnlyOffice Community Edition. The per-tab/panel
+     * {@code layout} controls require a White Label license, so sending them gives an administrator a
+     * misleading configuration that the Document Server silently ignores.
      */
     private void applyViewerOptions(ObjectNode customization, OnlyOfficeConfigurationService.ViewerOptions options) {
         customization.put("toolbarHideFileName", !options.showFileName());
+        // toolbarHideFileName is applied by OnlyOffice only with its compact header enabled.
+        customization.put("compactHeader", !options.showFileName());
         customization.put("hideRightMenu", !options.showRightMenu());
-        customization.put("leftMenu", options.showLeftPanel());
-        customization.put("statusBar", options.showStatusBar());
         customization.put("plugins", options.showPluginsTab());
-
-        ObjectNode layout = objectMapper.createObjectNode();
-        ObjectNode toolbar = objectMapper.createObjectNode();
-        toolbar.put("file", options.showFileTab());
-        toolbar.put("view", options.showViewTab());
-        toolbar.put("plugins", options.showPluginsTab());
-        layout.set("toolbar", toolbar);
-        ObjectNode leftMenu = objectMapper.createObjectNode();
-        leftMenu.put("mode", options.showLeftPanel());
-        layout.set("leftMenu", leftMenu);
-        ObjectNode rightMenu = objectMapper.createObjectNode();
-        rightMenu.put("mode", options.showRightMenu());
-        layout.set("rightMenu", rightMenu);
-        layout.put("statusBar", options.showStatusBar());
-        customization.set("layout", layout);
     }
 
     /** Verifies an access token minted by {@link #buildEditorConfig} for the given revision. */

@@ -8,6 +8,16 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        // In Docker, browser requests stay on the frontend origin and Vite forwards
+        // them across the internal compose network. This avoids coupling a user's
+        // browser to the host-published backend port while retaining the same /api
+        // routes, authentication headers, and server-side authorization checks.
+        proxy: {
+          '/api': {
+            target: env.VITE_API_PROXY_TARGET || 'http://localhost:5000',
+            changeOrigin: true,
+          },
+        },
       },
       plugins: [react()],
       optimizeDeps: {
@@ -43,10 +53,8 @@ export default defineConfig(({ mode }) => {
           // Stamp/watermark drag-resize-rotate editor (Controlled Copies Policy)
           'konva',
           'react-konva',
-          // PDF viewer
-          '@react-pdf-viewer/core',
-          '@react-pdf-viewer/default-layout',
-          '@react-pdf-viewer/page-navigation',
+          // EmbedPDF local WASM viewer (served from this application's Docker image)
+          '@embedpdf/react-pdf-viewer',
           // Icons
           'lucide-react',
           '@tabler/icons-react',
@@ -86,8 +94,8 @@ export default defineConfig(({ mode }) => {
               // only the lazy Dashboard uses.
               // Animation library
               'vendor-framer': ['framer-motion'],
-              // PDF viewer
-              'vendor-pdf': ['@react-pdf-viewer/core', '@react-pdf-viewer/default-layout', 'pdfjs-dist'],
+              // PDF viewer. Its PDFium WASM worker is emitted as a local Vite asset.
+              'vendor-pdf': ['@embedpdf/react-pdf-viewer'],
               // Icons
               'vendor-icons': ['lucide-react', '@tabler/icons-react'],
             },

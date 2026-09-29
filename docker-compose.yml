@@ -9,8 +9,16 @@ x-default-logging: &default-logging
     max-size: "10m"
     max-file: "5"
 
+# Docker Desktop/WSL supplies a shared memory pool; it does not reserve this amount
+# for every container.  This Compose-side hard limit prevents any one service from
+# exhausting that pool.  Override it in .env only when an environment has a justified
+# sizing decision (for example: EQMS_SERVICE_MEMORY_LIMIT=2g).
+x-default-resources: &default-resources
+  mem_limit: ${EQMS_SERVICE_MEMORY_LIMIT:-3g}
+
 services:
   postgres:
+    <<: *default-resources
     image: postgres:17-alpine
     container_name: eqms-postgres
     restart: unless-stopped
@@ -33,6 +41,7 @@ services:
       start_period: 10s
 
   adminer:
+    <<: *default-resources
     image: adminer:4
     container_name: eqms-adminer
     restart: unless-stopped
@@ -46,6 +55,7 @@ services:
       - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
 
   minio:
+    <<: *default-resources
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     container_name: eqms-minio
     restart: unless-stopped
@@ -69,6 +79,7 @@ services:
       start_period: 10s
 
   onlyoffice-documentserver:
+    <<: *default-resources
     image: onlyoffice/documentserver:8.2
     container_name: eqms-onlyoffice
     restart: unless-stopped
@@ -98,6 +109,7 @@ services:
       start_period: 60s
 
   redis:
+    <<: *default-resources
     image: redis:7-alpine
     container_name: eqms-redis
     restart: unless-stopped
@@ -114,6 +126,7 @@ services:
       retries: 10
 
   clamav:
+    <<: *default-resources
     image: clamav/clamav:stable
     container_name: eqms-clamav
     restart: unless-stopped
@@ -133,6 +146,7 @@ services:
       start_period: 300s
 
   mailhog:
+    <<: *default-resources
     # NOTIFICATION_SYSTEM_REMEDIATION_PLAN.md Phase 3: dev/test SMTP catcher -- EmailService has
     # no static SMTP config (it's always DB-driven via System Configuration), so without a local
     # catcher there was no way to see real email content in dev without a real external SMTP
@@ -147,6 +161,7 @@ services:
       - "127.0.0.1:1025:1025" # SMTP
 
   backend:
+    <<: *default-resources
     build:
       context: ./eqms-backend
       dockerfile: Dockerfile
@@ -252,6 +267,7 @@ services:
       start_period: 120s
 
   frontend:
+    <<: *default-resources
     build:
       context: ./eqms
       dockerfile: Dockerfile
@@ -265,7 +281,11 @@ services:
       backend:
         condition: service_started
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000/api}
+      # Keep browser API calls same-origin. Vite proxies /api to the backend service
+      # over the internal Docker network, so a host-side backend port issue cannot
+      # make the login page report a generic network error.
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+      VITE_API_PROXY_TARGET: ${VITE_API_PROXY_TARGET:-http://backend:5000}
       VITE_APP_URL: ${VITE_APP_URL:-http://localhost:3000}
       VITE_APP_ENV: ${VITE_APP_ENV:-development}
       VITE_AUTH_TOKEN_KEY: ${VITE_AUTH_TOKEN_KEY:-authToken}

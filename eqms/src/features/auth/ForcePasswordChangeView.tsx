@@ -34,6 +34,8 @@ interface ForcePasswordChangeViewProps {
   }) => Promise<{ success: boolean; error?: string }>;
   onBackToLogin?: () => void;
   username?: string;
+  /** Stable account identifier for the browser password manager; never submitted by this view. */
+  loginIdentifier?: string;
   passwordChangeReason?: 'FIRST_LOGIN' | 'ADMIN_RESET' | 'PASSWORD_EXPIRED' | 'SECURITY_INCIDENT' | 'LEGACY_REQUIRED' | null;
 }
 
@@ -64,6 +66,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
   onSubmit,
   onBackToLogin,
   username = "User",
+  loginIdentifier = "",
   passwordChangeReason,
 }) => {
   const passwordPolicy = usePasswordPolicy();
@@ -87,6 +90,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isPasswordUpdated, setIsPasswordUpdated] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
   const [focusedField, setFocusedField] = useState<"new" | "confirm" | null>(null);
@@ -188,6 +192,9 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
       setIsLoading(false);
 
       if (result.success) {
+        // Remove the password-change form before the parent transitions the SPA route.
+        // This is required for browser password managers to recognize the confirmed update.
+        setIsPasswordUpdated(true);
         blurActiveInput();
         resetViewportZoom();
         return;
@@ -254,13 +261,34 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate>
+            {/* `current-password` and `new-password` let Chrome offer to update the
+                saved credential after this form's existing server-side change succeeds. */}
+            {isPasswordUpdated ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800" role="status">
+                Password updated successfully. Opening your workspace…
+              </div>
+            ) : (
+            <form id="change-password-form" name="change-password-form" onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate autoComplete="on">
+              {/* This route is separate from login. Keep the account identifier in the form so
+                  Chrome can associate the successful password change with the right credential. */}
+              <input
+                type="text"
+                name="username"
+                autoComplete="username"
+                value={loginIdentifier}
+                readOnly
+                tabIndex={-1}
+                aria-hidden="true"
+                className="sr-only"
+              />
 
-              <AuthField htmlFor="currentPassword" label="Current Password" required={true} error={errors.currentPassword}>
+              <AuthField htmlFor="current-password" label="Current Password" required={true} error={errors.currentPassword}>
                 <div className="relative">
                   <input
-                    id="currentPassword"
+                    id="current-password"
+                    name="currentPassword"
                     type={showPasswords.current ? "text" : "password"}
+                    autoComplete="current-password"
                     value={formData.currentPassword}
                     onChange={(e) => handleInputChange("currentPassword", e.target.value)}
                     className={cn(AUTH_UI.inputBase, "pr-12", AUTH_UI.inputFocus, errors.currentPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault)}
@@ -274,15 +302,17 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
               </AuthField>
 
               <AuthField
-                htmlFor="newPassword"
+                htmlFor="new-password"
                 label="New Password"
                 required={true}
                 error={errors.newPassword}
               >
                 <div className="relative">
                   <input
-                    id="newPassword"
+                    id="new-password"
+                    name="newPassword"
                     type={showPasswords.new ? "text" : "password"}
+                    autoComplete="new-password"
                     value={formData.newPassword}
                     onChange={(e) => handleInputChange("newPassword", e.target.value)}
                     className={cn(AUTH_UI.inputBase, "pr-12", AUTH_UI.inputFocus, errors.newPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault)}
@@ -336,15 +366,17 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
               </AuthField>
 
               <AuthField
-                htmlFor="confirmPassword"
+                htmlFor="confirm-new-password"
                 label="Confirm New Password"
                 required={true}
                 error={errors.confirmPassword}
               >
                 <div className="relative">
                   <input
-                    id="confirmPassword"
+                    id="confirm-new-password"
+                    name="confirmPassword"
                     type={showPasswords.confirm ? "text" : "password"}
+                    autoComplete="new-password"
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                     className={cn(AUTH_UI.inputBase, "pr-12", AUTH_UI.inputFocus, errors.confirmPassword ? AUTH_UI.inputError : AUTH_UI.inputDefault)}
@@ -383,6 +415,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 <AuthBackLink onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
               </div>
             </form>
+            )}
           </div>
         }
       />

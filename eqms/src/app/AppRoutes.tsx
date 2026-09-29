@@ -118,7 +118,7 @@ export const AppRoutes: React.FC = () => {
   const handleLogin = async (
     username: string,
     password: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; passwordManagerEligible?: boolean }> => {
     const result = await initiateLogin({ username, password });
 
     if (!result.success) {
@@ -131,15 +131,19 @@ export const AppRoutes: React.FC = () => {
     if (result.mfaRequired && result.challenge) {
       setPendingChallenge(result.challenge);
       persistChallenge(result.challenge);
-      navigate(ROUTES.TWO_FACTOR);
+      window.setTimeout(() => navigate(ROUTES.TWO_FACTOR), 0);
       return { success: true };
     }
 
     setPendingChallenge(null);
     clearPersistedChallenge();
 
-    await navigateAfterLogin(resolveAuthenticatedLandingRouteForUser(result.user));
-    return { success: true };
+    // Let LoginView remove the credential form before this SPA route change. This gives
+    // browser password managers the equivalent success signal of a normal form navigation.
+    window.setTimeout(() => {
+      void navigateAfterLogin(resolveAuthenticatedLandingRouteForUser(result.user));
+    }, 0);
+    return { success: true, passwordManagerEligible: true };
   };
 
   const handleVerify2FA = async ({
@@ -357,6 +361,7 @@ export const AppRoutes: React.FC = () => {
         element={
           <ForcePasswordChangeView
             username={user?.fullName || user?.username || "User"}
+            loginIdentifier={user?.username || user?.email || ""}
             passwordChangeReason={user?.passwordChangeReason}
             onBackToLogin={handleBackToLogin}
             onSubmit={async (data) => {
@@ -368,7 +373,11 @@ export const AppRoutes: React.FC = () => {
                 });
                 const refreshedUser = await authApi.getCurrentUser();
                 updateUser(refreshedUser);
-                await navigateAfterStateFlush(resolveAuthenticatedLandingRouteForUser(refreshedUser));
+                // ForcePasswordChangeView removes its password form on this successful result;
+                // defer the SPA transition by one task so the browser can record the update.
+                window.setTimeout(() => {
+                  void navigateAfterStateFlush(resolveAuthenticatedLandingRouteForUser(refreshedUser));
+                }, 0);
                 return { success: true };
               } catch (error) {
                 const message = getApiErrorMessage(error, 'Unable to update password.');

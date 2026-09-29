@@ -2,6 +2,8 @@ package com.eqms.service;
 
 import com.eqms.auth.TokenService;
 import com.eqms.auth.CurrentUserService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.eqms.exception.DocumentLifecycleConflictException;
 import com.eqms.dto.security.FileAccessContext;
 import com.eqms.enums.FileAccessAction;
@@ -4038,15 +4040,41 @@ public class DocumentService {
                 && bytes[3] == 0x46;
     }
 
-    private byte[] applyPreviewWatermark(byte[] pdfBytes) throws IOException {
+    /**
+     * Produces the transient, policy-controlled watermark for Document Details preview.
+     * This must stay equivalent to RevisionService's preview watermark: the stored published
+     * PDF, its checksum, lifecycle, access check and audit event are not changed.
+     */
+    private byte[] applyPreviewWatermark(byte[] pdfBytes, UserAccount currentUser) throws IOException {
+        JsonNode documentsConfig = systemConfigurationService.requireConfiguration().getDocumentsConfig();
+        JsonNode previewPolicy = documentsConfig == null
+                ? MissingNode.getInstance()
+                : documentsConfig.path("pdfPreview");
+        String mainText = previewPolicy.path("watermarkText").asText("FOR PREVIEW ONLY").trim();
+        if (!StringUtils.hasText(mainText)) {
+            mainText = "FOR PREVIEW ONLY";
+        }
+        List<String> watermarkLines = new ArrayList<>();
+        watermarkLines.add(mainText);
+        if (previewPolicy.path("watermarkShowViewerName").asBoolean(false)) {
+            String viewerName = firstNonBlank(currentUser.getFullName(), currentUser.getUsername());
+            if (StringUtils.hasText(viewerName)) {
+                watermarkLines.add(viewerName);
+            }
+        }
+        if (previewPolicy.path("watermarkShowOpenedAt").asBoolean(false)) {
+            watermarkLines.add(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
+                    .withZone(SYSTEM_ZONE)
+                    .format(Instant.now()));
+        }
+
         try (PDDocument pdf = Loader.loadPDF(pdfBytes); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDType1Font mainFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-            String mainText = "FOR PREVIEW ONLY";
             for (PDPage page : pdf.getPages()) {
                 PDRectangle pageSize = page.getMediaBox();
                 float textX = pageSize.getWidth() / 2f;
                 float textY = pageSize.getHeight() / 2f;
-                float mainTextWidth = (mainFont.getStringWidth(mainText) / 1000f) * 90f;
+                float mainTextWidth = (mainFont.getStringWidth(mainText) / 1000f) * 76f;
 
                 try (PDPageContentStream contentStream = new PDPageContentStream(
                         pdf,
@@ -4061,10 +4089,19 @@ public class DocumentService {
                     contentStream.setGraphicsStateParameters(graphicsState);
                     contentStream.beginText();
                     contentStream.setNonStrokingColor(0.70f, 0.70f, 0.96f);
-                    contentStream.setFont(mainFont, 90);
+                    contentStream.setFont(mainFont, 76);
                     contentStream.setTextMatrix(Matrix.getRotateInstance(Math.toRadians(45), textX, textY));
-                    contentStream.newLineAtOffset(-mainTextWidth / 2f, 0f);
-                    contentStream.showText(mainText);
+                    contentStream.newLineAtOffset(-mainTextWidth / 2f, (watermarkLines.size() - 1) * 12f);
+                    for (int line = 0; line < watermarkLines.size(); line++) {
+                        if (line == 0) {
+                            contentStream.setFont(mainFont, 76);
+                        } else {
+                            contentStream.setFont(mainFont, 18);
+                            float lineWidth = (mainFont.getStringWidth(watermarkLines.get(line)) / 1000f) * 18f;
+                            contentStream.newLineAtOffset((mainTextWidth - lineWidth) / 2f, -26f);
+                        }
+                        contentStream.showText(watermarkLines.get(line));
+                    }
                     contentStream.endText();
                 }
             }
@@ -4113,7 +4150,7 @@ public class DocumentService {
 
         if (isPdfBytes(bytes) && systemConfigurationService.isDocumentWatermarkEnabled()) {
             try {
-                bytes = applyPreviewWatermark(bytes);
+                bytes = applyPreviewWatermark(bytes, currentUser);
             } catch (IOException ex) {
                 log.warn("Failed to apply watermark to PDF preview for document {}: {}", documentId, ex.getMessage());
             }

@@ -1,15 +1,13 @@
 import React from "react";
-import { Worker, Viewer, type RenderPageProps } from "@react-pdf-viewer/core";
-import { SpecialZoomLevel } from "@react-pdf-viewer/core";
-import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
-import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
+import {
+  PDFViewer,
+  ZoomPlugin,
+  type PDFViewerConfig,
+  type PluginRegistry,
+  type ZoomLevel,
+} from "@embedpdf/react-pdf-viewer";
 import { Loader2 } from "lucide-react";
-import { config } from "@/config";
 import { useDocumentPreviewSettings } from "../useDocumentPreviewSettings";
-import "@react-pdf-viewer/core/lib/styles/index.css";
-import "@react-pdf-viewer/default-layout/lib/styles/index.css";
-import "@react-pdf-viewer/page-navigation/lib/styles/index.css";
-import "@react-pdf-viewer/thumbnail/lib/styles/index.css";
 
 interface DocumentPdfViewerProps {
   fileUrl: string;
@@ -20,13 +18,8 @@ interface DocumentPdfViewerProps {
   showThumbnailSidebar?: boolean;
   thumbnailSidebarWidth?: number;
   isLoading?: boolean;
-  pageRangeHighlights?: Array<{
-    key: string;
-    label: string;
-    from: number;
-    to: number;
-    tone?: "emerald" | "slate" | "amber" | "blue" | "rose";
-  }>;
+  /** Retained for caller compatibility. EmbedPDF does not render range labels into document pages. */
+  pageRangeHighlights?: Array<{ key: string; label: string; from: number; to: number; tone?: "emerald" | "slate" | "amber" | "blue" | "rose" }>;
   /** Always hide download/print controls regardless of the system-wide allowDownloadAndPrint setting. */
   forceHideDownloadAndPrint?: boolean;
   /** Per-resource policy. When omitted, the system-wide setting is used. */
@@ -35,15 +28,18 @@ interface DocumentPdfViewerProps {
   /** Allow the browser context menu (needed for native Print when enabled). */
   allowContextMenu?: boolean;
   onDocumentLoad?: () => void;
-  /** Injects a page-relative overlay (e.g. review comment pins) on top of each rendered page.
-   * `pageIndex` is 0-based (pdf.js convention) — callers anchoring to a 1-based page number
-   * must convert. `pageWidth`/`pageHeight` are the page's rendered CSS pixel dimensions, so an
-   * overlay child can position pins with `left: x * pageWidth`, `top: y * pageHeight`. */
+  /** Legacy extension point retained until review-comment pins are migrated to EmbedPDF annotations. */
   renderPageOverlay?: (pageIndex: number, pageWidth: number, pageHeight: number) => React.ReactNode;
-  /** Called once with a `jumpToPage(pageIndex0Based)` function, letting a parent (e.g. a review
-   * comment list panel) navigate the viewer to a specific page. */
+  /** Legacy extension point retained until review-comment navigation is migrated to EmbedPDF. */
   onJumpToPageReady?: (jumpToPage: (pageIndex0Based: number) => void) => void;
 }
+
+const BASE_READ_ONLY_CATEGORIES = [
+  "redaction",
+  "form",
+  "capture",
+  "history",
+] as const;
 
 export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
   fileUrl,
@@ -52,211 +48,166 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
   minHeight = "720px",
   withFrame = true,
   showThumbnailSidebar = false,
-  thumbnailSidebarWidth = 220,
   isLoading = false,
-  pageRangeHighlights = [],
   forceHideDownloadAndPrint = false,
   allowDownload,
   allowPrint,
   allowContextMenu = false,
   onDocumentLoad,
-  renderPageOverlay,
-  onJumpToPageReady,
 }) => {
   const { allowDownloadAndPrint: systemAllowsDownloadAndPrint, pdfPreview } = useDocumentPreviewSettings();
+  const initialZoomRequestKey = React.useRef<string | null>(null);
   const effectiveAllowDownload = systemAllowsDownloadAndPrint && (allowDownload ?? true) && !forceHideDownloadAndPrint;
   const effectiveAllowPrint = systemAllowsDownloadAndPrint && (allowPrint ?? true) && !forceHideDownloadAndPrint;
+  const defaultZoomLevel: ZoomLevel = pdfPreview.defaultZoom === "page-fit"
+    ? "fit-page"
+    : pdfPreview.defaultZoom === "page-width"
+      ? "fit-width"
+      : 1;
+  // The EmbedPDF React wrapper initialises its engine once per mount. Include
+  // every viewer policy input in the key so a live Admin configuration update
+  // remounts the engine with the newly allowed/disabled controls.
+  const viewerInstanceKey = React.useMemo(() => JSON.stringify({
+    fileUrl,
+    defaultZoomLevel,
+    effectiveAllowDownload,
+    effectiveAllowPrint,
+    pdfPreview,
+    showThumbnailSidebar,
+  }), [
+    defaultZoomLevel,
+    effectiveAllowDownload,
+    effectiveAllowPrint,
+    fileUrl,
+    pdfPreview,
+    showThumbnailSidebar,
+  ]);
 
-  const toneClassMap: Record<NonNullable<NonNullable<DocumentPdfViewerProps["pageRangeHighlights"]>[number]["tone"]>, string> = {
-    emerald: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    slate: "border-slate-200 bg-slate-50 text-slate-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-800",
-    blue: "border-blue-200 bg-blue-50 text-blue-800",
-    rose: "border-rose-200 bg-rose-50 text-rose-800",
-  };
+  const viewerConfig = React.useMemo<PDFViewerConfig>(() => {
+    const disabledCategories = new Set<string>(BASE_READ_ONLY_CATEGORIES);
+    if (!effectiveAllowDownload) {
+      disabledCategories.add("export");
+      disabledCategories.add("document-export");
+    }
+    if (!effectiveAllowPrint) disabledCategories.add("document-print");
+    if (pdfPreview.allowTextSelection !== true || !effectiveAllowDownload) disabledCategories.add("selection");
+    // EmbedPDF's categories are its native command/UI categories, not those of
+    // the retired PDF.js viewer. Keep this mapping aligned with its UI schema.
+    if (pdfPreview.showSearch === false) disabledCategories.add("panel-search");
+    if (pdfPreview.showPageNavigation === false) disabledCategories.add("navigation");
+    if (pdfPreview.showZoomControls === false) disabledCategories.add("zoom");
+    if (pdfPreview.showFullScreen === false) disabledCategories.add("document-fullscreen");
+    if (pdfPreview.showOpenDocumentAction === false) disabledCategories.add("document-open");
+    if (pdfPreview.showCloseDocumentAction === false) disabledCategories.add("document-close");
+    if (pdfPreview.showSecurityAction === false) {
+      disabledCategories.add("document-protect");
+      disabledCategories.add("security");
+    }
+    if (pdfPreview.showScreenshotAction === false) {
+      disabledCategories.add("document-capture");
+      disabledCategories.add("capture");
+      disabledCategories.add("capture-screenshot");
+    }
+    // EmbedPDF's Insert tab contains annotation tools. It is hidden by default for a regulated
+    // read-only preview, but can be explicitly enabled as session-only markup by an administrator.
+    if (pdfPreview.showInsertTools !== true) {
+      disabledCategories.add("insert");
+      disabledCategories.add("mode-insert");
+    }
+    // Never expose the other editing modes in a preview, even when Insert is enabled.
+    disabledCategories.add("mode-annotate");
+    disabledCategories.add("mode-shapes");
+    // Pan/rotate are editing-style utilities rather than document-viewing
+    // controls. Keep them unavailable across all regulated preview surfaces.
+    disabledCategories.add("pan");
+    disabledCategories.add("rotate");
+    if (pdfPreview.showThumbnailSidebar === false && !showThumbnailSidebar) disabledCategories.add("panel-sidebar");
 
-  // React PDF Viewer plugins use hooks internally and must run on every render.
-  const textSelectClass = pdfPreview.allowTextSelection === true && effectiveAllowDownload ? "" : "select-none";
-  const hide = (flag: boolean | undefined) => flag === false;
-  const zoomSetting = pdfPreview.defaultZoom;
-  const defaultScale =
-    zoomSetting === "page-fit" ? SpecialZoomLevel.PageFit
-    : zoomSetting === "page-width" ? SpecialZoomLevel.PageWidth
-    : 1;
-  const sidebarHidden = pdfPreview.showThumbnailSidebar === false && !showThumbnailSidebar;
-  const defaultLayoutPluginInstance = defaultLayoutPlugin({
-    sidebarTabs: (defaultTabs) => (sidebarHidden ? [] : defaultTabs),
-    renderToolbar: (Toolbar) => (
-      <Toolbar>
-        {(slots) => {
-          const Empty = () => <></>;
-          const {
-            CurrentPageInput, GoToNextPage, GoToPreviousPage, NumberOfPages,
-            ShowSearchPopover, EnterFullScreen, SwitchTheme,
-            Zoom, ZoomIn, ZoomOut, Download, Print,
-          } = slots;
-          const Nav = hide(pdfPreview.showPageNavigation) ? Empty : null;
-          return (
-            <div className="flex w-full items-center gap-1 px-2">
-              {!hide(pdfPreview.showSearch) && <ShowSearchPopover />}
-              {Nav === null && (
-                <>
-                  <GoToPreviousPage />
-                  <CurrentPageInput /> / <NumberOfPages />
-                  <GoToNextPage />
-                </>
-              )}
-              <div className="flex-1" />
-              {!hide(pdfPreview.showZoomControls) && (
-                <>
-                  <ZoomOut />
-                  <Zoom />
-                  <ZoomIn />
-                </>
-              )}
-              <div className="flex-1" />
-              {!hide(pdfPreview.showThemeSwitch) && <SwitchTheme />}
-              {!hide(pdfPreview.showFullScreen) && <EnterFullScreen />}
-              {effectiveAllowDownload && <Download />}
-              {effectiveAllowPrint && <Print />}
-            </div>
-          );
-        }}
-      </Toolbar>
-    ),
-    toolbarPlugin: {
-      printPlugin: {
-        enableShortcuts: effectiveAllowPrint,
+    return {
+      src: fileUrl,
+      worker: true,
+      // PDFium WASM is emitted with the Vite build and served from this application origin.
+      // No CDN, CloudPDF service, or external font request is used by this read-only viewer.
+      fontFallback: null,
+      fonts: { ui: null, signature: null },
+      tabBar: "never",
+      // Preview is deliberately light-only so the rendered document and its
+      // watermark remain visually consistent across operating-system themes.
+      theme: { preference: "light" },
+      zoom: {
+        defaultZoomLevel,
       },
-    },
-  });
-  const pageNavigationPluginInstance = pageNavigationPlugin({
-    enableShortcuts: effectiveAllowPrint,
-  });
-  const { jumpToPage } = pageNavigationPluginInstance;
+      permissions: {
+        enforceDocumentPermissions: true,
+        overrides: {
+          print: effectiveAllowPrint,
+          copyContents: pdfPreview.allowTextSelection === true && effectiveAllowDownload,
+        },
+      },
+      disabledCategories: [...disabledCategories],
+    };
+  }, [defaultZoomLevel, effectiveAllowDownload, effectiveAllowPrint, fileUrl, pdfPreview, showThumbnailSidebar]);
 
-  const handleDocumentLoad = React.useCallback(() => {
-    // The navigation plugin is only ready after pdf.js has loaded the document.
-    // Publishing it earlier leaves a comparison viewer unable to honour a
-    // pending comment jump when it is still mounting.
-    onJumpToPageReady?.(jumpToPage);
+  const handleViewerReady = React.useCallback((registry: PluginRegistry) => {
+    // Reapply the configured initial zoom only once per mounted document. The former delayed
+    // second request fired while users were already reading and visibly reloaded/reflowed pages.
+    // A pair of animation frames waits for the tab panel to receive its dimensions.
+    const requestInitialZoom = () => {
+      if (registry.isDestroyed() || initialZoomRequestKey.current === viewerInstanceKey) return;
+      initialZoomRequestKey.current = viewerInstanceKey;
+      registry.getPlugin<ZoomPlugin>(ZoomPlugin.id)?.provides().requestZoom(defaultZoomLevel);
+    };
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(requestInitialZoom);
+    });
     onDocumentLoad?.();
-  }, [jumpToPage, onDocumentLoad, onJumpToPageReady]);
+  }, [defaultZoomLevel, onDocumentLoad, viewerInstanceKey]);
 
   React.useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "P") && !effectiveAllowPrint) {
-        e.preventDefault();
-        e.stopPropagation();
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && (event.key === "p" || event.key === "P") && !effectiveAllowPrint) {
+        event.preventDefault();
+        event.stopPropagation();
       }
     };
     window.addEventListener("keydown", handleGlobalKeyDown, true);
-    return () => {
-      window.removeEventListener("keydown", handleGlobalKeyDown, true);
-    };
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown, true);
   }, [effectiveAllowPrint]);
 
-  const previewControlsStyle = (
-    <style>{`
-      .eqms-document-pdf-viewer [data-testid="open__button"],
-      .eqms-document-pdf-viewer [data-testid="open__file-button"],
-      .eqms-document-pdf-viewer [data-testid="open-file__button"],
-      .eqms-document-pdf-viewer [data-testid="open-file__menu"],
-      .eqms-document-pdf-viewer [aria-label*="Open file"],
-      .eqms-document-pdf-viewer [aria-label*="Open File"],
-      .eqms-document-pdf-viewer [aria-label*="Mở tệp"],
-      .eqms-document-pdf-viewer [aria-label*="Mở file"],
-      .eqms-document-pdf-viewer [title*="Open file"],
-      .eqms-document-pdf-viewer [title*="Open File"],
-      .eqms-document-pdf-viewer [title*="Mở tệp"],
-      .eqms-document-pdf-viewer [title*="Mở file"] {
-        display: none !important;
-      }
-      ${!effectiveAllowDownload ? `
-      .eqms-document-pdf-viewer [data-testid="get-file__download-button"],
-      .eqms-document-pdf-viewer [data-testid="get-file__download-menu"] {
-        display: none !important;
-      }
-      ` : ""}
-      ${!effectiveAllowPrint ? `
-      .eqms-document-pdf-viewer [data-testid="print__button"],
-      .eqms-document-pdf-viewer [data-testid="print__menu"] {
-        display: none !important;
-      }
-      ` : ""}
-      ${!effectiveAllowPrint ? `@media print {
-        body {
-          display: none !important;
-        }
-      }` : ""}
-    `}</style>
-  );
-
   const content = (
-    <Worker workerUrl={config.pdf.workerUrl}>
-      {previewControlsStyle}
-      <div
-        className={`eqms-document-pdf-viewer relative flex h-full min-h-0 overflow-hidden ${textSelectClass}`}
-        onContextMenu={(e) => { if (!allowContextMenu) e.preventDefault(); }}
-      >
-        {isLoading && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-[1px]">
-            <div className="w-full max-w-[320px] rounded-xl border border-slate-200 bg-white/95 p-4 shadow-lg">
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
-                Loading preview...
-              </div>
-              <div className="mt-4 space-y-3">
-                <div className="h-3 w-3/4 animate-pulse rounded-full bg-slate-200" />
-                <div className="h-3 w-5/6 animate-pulse rounded-full bg-slate-100" />
-                <div className="h-3 w-2/3 animate-pulse rounded-full bg-slate-200" />
-                <div className="mt-4 grid grid-cols-3 gap-2">
-                  <div className="h-16 animate-pulse rounded-lg bg-emerald-50" />
-                  <div className="h-16 animate-pulse rounded-lg bg-slate-100" />
-                  <div className="h-16 animate-pulse rounded-lg bg-amber-50" />
-                </div>
-              </div>
+    <div
+      className="eqms-document-pdf-viewer relative h-full min-h-0 overflow-hidden rounded-xl bg-white"
+      onContextMenu={(event) => { if (!allowContextMenu) event.preventDefault(); }}
+    >
+      <PDFViewer
+        key={viewerInstanceKey}
+        config={viewerConfig}
+        className="h-full w-full"
+        style={{ height: "100%", width: "100%" }}
+        onReady={handleViewerReady}
+      />
+      {isLoading && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-[1px]">
+          <div className="w-full max-w-[320px] rounded-xl border border-slate-200 bg-white/95 p-4 shadow-lg">
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+              Loading preview...
             </div>
           </div>
-        )}
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <Viewer
-            key={fileUrl}
-            fileUrl={fileUrl}
-            plugins={[defaultLayoutPluginInstance, pageNavigationPluginInstance]}
-            defaultScale={defaultScale}
-            onDocumentLoad={handleDocumentLoad}
-            renderPage={
-              renderPageOverlay
-                ? (props: RenderPageProps) => (
-                    <>
-                      {props.canvasLayer.children}
-                      {props.textLayer.children}
-                      {props.annotationLayer.children}
-                      <div className="pointer-events-none absolute inset-0 z-10" style={{ width: props.width, height: props.height }}>
-                        {renderPageOverlay(props.pageIndex, props.width, props.height)}
-                      </div>
-                    </>
-                  )
-                : undefined
-            }
-          />
         </div>
-      </div>
-    </Worker>
+      )}
+    </div>
   );
 
-  if (!withFrame) {
-    return content;
-  }
+  if (!withFrame) return content;
 
   return (
     <div
-      className={`eqms-document-pdf-viewer w-full bg-white border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden ${textSelectClass} ${className}`.trim()}
+      className={`eqms-document-pdf-viewer flex w-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ${className}`.trim()}
       style={{ height, minHeight }}
-      onContextMenu={(e) => { if (!allowContextMenu) e.preventDefault(); }}
+      onContextMenu={(event) => { if (!allowContextMenu) event.preventDefault(); }}
     >
-      <div className="flex-1 min-h-0 overflow-hidden">{content}</div>
+      <div className="min-h-0 flex-1 overflow-hidden">{content}</div>
     </div>
   );
 };

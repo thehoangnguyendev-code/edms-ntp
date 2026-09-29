@@ -132,17 +132,13 @@ public class OnlyOfficeConfigurationService {
     }
 
     /**
-     * Which parts of OnlyOffice's own toolbar the read-only Document-tab viewer shows. Set by the admin in
-     * Settings > Configuration > OnlyOffice ("viewer" object stored next to the connection settings); a missing
-     * value falls back to a clean viewer (no File / Plugins tabs, no side panels).
+     * Community Edition options for the read-only Document-tab viewer. Set by the admin in
+     * Settings > Configuration > Preview File ("viewer" object stored next to the connection settings).
+     * Per-tab, left-panel and status-bar controls are White Label-only and are intentionally not represented here.
      */
     public record ViewerOptions(
-            boolean showFileTab,
-            boolean showViewTab,
             boolean showPluginsTab,
-            boolean showLeftPanel,
             boolean showRightMenu,
-            boolean showStatusBar,
             boolean showFileName
     ) {}
 
@@ -153,12 +149,8 @@ public class OnlyOfficeConfigurationService {
                 .orElse(null);
         JsonNode viewer = savedNode == null ? null : savedNode.get("viewer");
         return new ViewerOptions(
-                booleanValue(viewer, "showFileTab", false),
-                booleanValue(viewer, "showViewTab", true),
                 booleanValue(viewer, "showPluginsTab", false),
-                booleanValue(viewer, "showLeftPanel", false),
                 booleanValue(viewer, "showRightMenu", false),
-                booleanValue(viewer, "showStatusBar", true),
                 booleanValue(viewer, "showFileName", true)
         );
     }

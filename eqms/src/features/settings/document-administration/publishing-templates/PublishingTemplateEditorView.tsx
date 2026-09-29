@@ -2510,6 +2510,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 <>
                   <div
                     className={cn(
+                      BORDER_RADIUS.card,
                       COLORS.bg.primary,
                       "overflow-hidden border border-slate-200",
                     )}

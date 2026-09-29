@@ -3,9 +3,8 @@ import { FormSection } from '@/components/ui/form/FormSection';
 import { GeneralConfig } from '../types';
 import { Select } from '@/components/ui/select/Select';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
-import { TimePicker } from '@/components/ui/datetime-picker';
-import { Palette, Database, Globe, Wrench, ImageIcon, PanelTop, PanelLeft, BookOpen } from 'lucide-react';
-import { IconAddressBook } from '@tabler/icons-react';
+import { Palette, Globe, Wrench, ImageIcon, PanelTop, PanelLeft, BookOpen } from 'lucide-react';
+import { IconAddressBook, IconLibrary } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { settingsApi } from '@/services/api/settings';
@@ -62,7 +61,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
   const faviconInputRef = React.useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
-  const backupSettings = config.backupSettings || {} as any;
   const locale = config.locale || {} as any;
 
   // Fetch time zones using Intl API
@@ -146,16 +144,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
   };
 
   const collapsedSidebarLogo = config.appearance?.systemSidebarCollapsedLogo || config.systemSidebarCollapsedLogo || '';
-
-  const handleBackupSettingsChange = (key: keyof GeneralConfig['backupSettings'], value: any) => {
-    onChange({
-      ...config,
-      backupSettings: {
-        ...(config.backupSettings || {}),
-        [key]: value,
-      } as any,
-    });
-  };
 
   const handleLocaleChange = (key: keyof GeneralConfig['locale'], value: any) => {
     onChange({
@@ -288,7 +276,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
         </p>
       </FormSection>
 
-      <FormSection title="Knowledge Base" icon={<BookOpen className="h-4 w-4" />}>
+      <FormSection title="Knowledge Base" icon={<IconLibrary className="h-4 w-4" />}>
         <Checkbox
           id="knowledgeExplorerEnabled"
           label="Open the Knowledge Base in the new Explorer experience"
@@ -319,85 +307,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               Primary contact for system notifications
             </p>
           </div>
-        </div>
-      </FormSection>
-
-
-      {/* Backup & Data Management */}
-      <FormSection title="Backup & Data Management" icon={<Database className="h-4 w-4" />}>
-        <div className="space-y-4">
-          <div>
-            <Checkbox
-              id="enableAutoBackup"
-              label="Enable Automatic Backup"
-              checked={!!backupSettings.enableAutoBackup}
-              onChange={(checked) => handleBackupSettingsChange('enableAutoBackup', checked)}
-            />
-            <p className="text-xs text-slate-500 ml-7">
-              Automatically backup system data at scheduled intervals
-            </p>
-          </div>
-
-          {!!backupSettings.enableAutoBackup && (
-            <div className="ml-4 sm:ml-7 p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Select
-                  label="Backup Frequency"
-                  value={backupSettings.backupFrequency || 'daily'}
-                  onChange={(val) => handleBackupSettingsChange('backupFrequency', val as 'daily' | 'weekly' | 'monthly')}
-                  options={[
-                    { label: 'Daily', value: 'daily' },
-                    { label: 'Weekly', value: 'weekly' },
-                    { label: 'Monthly', value: 'monthly' },
-                  ]}
-                />
-                <TimePicker
-                  label="Backup Time"
-                  value={backupSettings.backupTime || ''}
-                  onChange={(val) => handleBackupSettingsChange('backupTime', val)}
-                  placeholder="00:00"
-                />
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Retention Period (Days)
-                  </label>
-                  <input
-                    type="number"
-                    value={backupSettings.retentionDays ?? 30}
-                    onChange={(e) => handleBackupSettingsChange('retentionDays', parseInt(e.target.value))}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    min={7}
-                    max={365}
-                  />
-                  <p className="text-xs text-slate-500 mt-1">
-                    Keep backups for {backupSettings.retentionDays ?? 30} days
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Select
-                  label="Backup Location"
-                  value={backupSettings.backupLocation || 'cloud'}
-                  onChange={(val) => handleBackupSettingsChange('backupLocation', val as 'local' | 'cloud' | 's3')}
-                  options={[
-                    { label: 'Local Server', value: 'local' },
-                    { label: 'Cloud Storage', value: 'cloud' },
-                    { label: 'Amazon S3', value: 's3' },
-                  ]}
-                />
-                <div className="flex items-center sm:pt-8">
-                  <Checkbox
-                    id="notifyOnBackupFailure"
-                    label="Notify on Backup Failure"
-                    checked={!!backupSettings.notifyOnBackupFailure}
-                    onChange={(checked) => handleBackupSettingsChange('notifyOnBackupFailure', checked)}
-                  />
-                </div>
-              </div>
-
-
-            </div>
-          )}
         </div>
       </FormSection>
 

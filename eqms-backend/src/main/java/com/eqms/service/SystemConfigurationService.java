@@ -222,7 +222,27 @@ public class SystemConfigurationService {
                 summarizeConfig(saved)
         );
         publishBrandingInvalidationAfterCommit(previousGeneral, nextGeneral);
+        publishOnlyOfficeViewerInvalidationAfterCommit(previousGeneral, nextGeneral);
+        publishDocumentsPreviewInvalidationAfterCommit(previousDocuments, saved.getDocumentsConfig());
+        publishSecurityConfigInvalidationAfterCommit(previousSecurity, saved.getSecurityConfig());
         return toResponse(saved);
+    }
+
+    /**
+     * Session timeout (and other Security tab settings read once into a long-lived browser tab,
+     * e.g. by SessionTimeoutGuard) must not wait for that tab's next reload. The event carries no
+     * configuration data; each authenticated browser re-reads the system configuration endpoint.
+     */
+    private void publishSecurityConfigInvalidationAfterCommit(JsonNode previousSecurity, JsonNode nextSecurity) {
+        if (Objects.equals(previousSecurity, nextSecurity)) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationRealtimeService.publishGlobalEvent("security-config-updated");
+            }
+        });
     }
 
     /**
@@ -240,6 +260,59 @@ public class SystemConfigurationService {
                 notificationRealtimeService.publishGlobalEvent("branding-updated");
             }
         });
+    }
+
+    /**
+     * The OnlyOffice viewer reads its signed UI customization only while it is being created.
+     * Notify connected browsers after the configuration and its audit entry commit, so they can
+     * re-open an already-authorized viewer without a page reload. The event deliberately carries
+     * no configuration, document, or user data.
+     */
+    private void publishOnlyOfficeViewerInvalidationAfterCommit(JsonNode previousGeneral, JsonNode nextGeneral) {
+        if (!hasOnlyOfficeViewerChange(previousGeneral, nextGeneral)) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationRealtimeService.publishGlobalEvent("onlyoffice-viewer-config-updated");
+            }
+        });
+    }
+
+    static boolean hasOnlyOfficeViewerChange(JsonNode previousGeneral, JsonNode nextGeneral) {
+        return !Objects.equals(onlyOfficeViewerNode(previousGeneral), onlyOfficeViewerNode(nextGeneral));
+    }
+
+    private static JsonNode onlyOfficeViewerNode(JsonNode generalConfig) {
+        JsonNode backupSettings = generalConfig == null ? null : generalConfig.get("backupSettings");
+        JsonNode onlyOffice = backupSettings == null ? null : backupSettings.get("onlyOffice");
+        return onlyOffice == null ? null : onlyOffice.get("viewer");
+    }
+
+    private void publishDocumentsPreviewInvalidationAfterCommit(JsonNode previousDocuments, JsonNode nextDocuments) {
+        if (!hasDocumentsPreviewChange(previousDocuments, nextDocuments)) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationRealtimeService.publishGlobalEvent("documents-preview-config-updated");
+            }
+        });
+    }
+
+    static boolean hasDocumentsPreviewChange(JsonNode previousDocuments, JsonNode nextDocuments) {
+        return !Objects.equals(previewPolicyNode(previousDocuments), previewPolicyNode(nextDocuments));
+    }
+
+    private static JsonNode previewPolicyNode(JsonNode documents) {
+        ObjectNode result = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+        if (documents != null) {
+            for (String field : java.util.List.of("enableWatermark", "allowDownload", "pdfPreview")) {
+                JsonNode value = documents.get(field);
+                if (value != null) result.set(field, value);
+            }
+        }
+        return result;
     }
 
     @Transactional(readOnly = true)
@@ -1255,6 +1328,12 @@ public class SystemConfigurationService {
         }
         com.fasterxml.jackson.databind.node.ObjectNode merged = ((com.fasterxml.jackson.databind.node.ObjectNode) existing).deepCopy();
         incoming.fields().forEachRemaining(entry -> merged.set(entry.getKey(), entry.getValue()));
+        // These controls belonged to the retired PDF.js viewer. Do not retain
+        // stale configuration that EmbedPDF neither exposes nor honours.
+        JsonNode preview = merged.get("pdfPreview");
+        if (preview instanceof com.fasterxml.jackson.databind.node.ObjectNode previewObject) {
+            previewObject.remove(java.util.List.of("showPanTool", "showRotateControls", "showThemeSwitch"));
+        }
         return merged;
     }
 
@@ -1281,6 +1360,28 @@ public class SystemConfigurationService {
             JsonNode value = documents.get(flag);
             if (value != null && !value.isNull() && !value.isBoolean()) {
                 throw new IllegalArgumentException(flag + " must be true or false");
+            }
+        }
+        JsonNode pdfPreview = documents.get("pdfPreview");
+        if (pdfPreview != null && !pdfPreview.isNull()) {
+            if (!pdfPreview.isObject()) throw new IllegalArgumentException("PDF preview configuration must be an object");
+            JsonNode text = pdfPreview.get("watermarkText");
+            if (text != null && !text.isNull() && (!text.isTextual() || text.asText().trim().length() > 120)) {
+                throw new IllegalArgumentException("PDF preview watermark text must be at most 120 characters");
+            }
+            for (String flag : java.util.List.of(
+                    "watermarkShowViewerName", "watermarkShowOpenedAt",
+                    "showThumbnailSidebar", "showSearch", "showPageNavigation",
+                    "showZoomControls", "showFullScreen", "showInsertTools",
+                    "showOpenDocumentAction", "showCloseDocumentAction", "showSecurityAction",
+                    "showScreenshotAction", "allowTextSelection")) {
+                JsonNode value = pdfPreview.get(flag);
+                if (value != null && !value.isNull() && !value.isBoolean()) throw new IllegalArgumentException(flag + " must be true or false");
+            }
+            JsonNode defaultZoom = pdfPreview.get("defaultZoom");
+            if (defaultZoom != null && !defaultZoom.isNull()
+                    && (!defaultZoom.isTextual() || !java.util.Set.of("page-fit", "page-width", "actual-size").contains(defaultZoom.asText()))) {
+                throw new IllegalArgumentException("PDF preview default zoom must be page-fit, page-width, or actual-size");
             }
         }
     }

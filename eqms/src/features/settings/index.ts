@@ -11,10 +11,10 @@ export {
   TimeLimitedUserEditView,
 } from '../security-authorization/user-management';
 export { ComingSoonView } from './document-administration/ComingSoonView';
-export { TrainingPropertiesView } from './system-administration/TrainingPropertiesView';
-export { RequirementTemplatesView } from './system-administration/RequirementTemplatesView';
-export { CreateQuizView } from './system-administration/CreateQuizView';
-export { CurriculumsView } from './system-administration/CurriculumsView';
+export { TrainingPropertiesView } from './training-administration/TrainingPropertiesView';
+export { RequirementTemplatesView } from './training-administration/RequirementTemplatesView';
+export { CreateQuizView } from './training-administration/CreateQuizView';
+export { CurriculumsView } from './training-administration/CurriculumsView';
 export { DictionariesView } from './dictionaries/DictionariesView';
 export { CountriesView } from './countries/CountriesView';
 export { EducationDegreeLevelsView } from './education/EducationDegreeLevelsView';
@@ -25,10 +25,10 @@ export { EmailTemplatesView } from './email-templates/EmailTemplatesView';
 export { EmailTemplateCreateView } from './email-templates/views/EmailTemplateCreateView';
 export { EmailTemplateEditView } from './email-templates/views/EmailTemplateEditView';
 export { EmailTemplatePreviewView } from './email-templates/views/EmailTemplatePreviewView';
-export { PublishingTemplatesView } from './publishing-templates/PublishingTemplatesView';
-export { PublishingTemplateEditorView } from './publishing-templates/PublishingTemplateEditorView';
+export { PublishingTemplatesView } from './document-administration/publishing-templates/PublishingTemplatesView';
+export { PublishingTemplateEditorView } from './document-administration/publishing-templates/PublishingTemplateEditorView';
 export { ElectronicSignatureSettingsView } from './electronic-signature/ElectronicSignatureSettingsView';
-export { ControlledCopiesPolicyView } from './controlled-copies-policy/ControlledCopiesPolicyView';
+export { ControlledCopiesPolicyView } from './document-administration/controlled-copies-policy/ControlledCopiesPolicyView';
 export { NotificationPolicyView } from './notification-policy/NotificationPolicyView';
 export { NotificationPolicyDetailView } from './notification-policy/NotificationPolicyDetailView';
 export { NotificationPolicyCreateView } from './notification-policy/NotificationPolicyCreateView';

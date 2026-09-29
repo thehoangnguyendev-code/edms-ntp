@@ -18,14 +18,13 @@ export interface BackupSettings {
   onlyOffice: OnlyOfficeStorageConfig;
 }
 
-/** Which parts of OnlyOffice's own toolbar the read-only Document-tab viewer shows (admin setting). */
+/** Community Edition options for the read-only OnlyOffice Document-tab viewer. */
 export interface OnlyOfficeViewerConfig {
-  showFileTab?: boolean;
-  showViewTab?: boolean;
+  /** Enables plugins; Community Edition cannot hide the Plugins tab independently. */
   showPluginsTab?: boolean;
-  showLeftPanel?: boolean;
+  /** Controls the initial right-menu state. A user's OnlyOffice browser preference may override it. */
   showRightMenu?: boolean;
-  showStatusBar?: boolean;
+  /** Hiding the name uses OnlyOffice's compact header layout. */
   showFileName?: boolean;
 }
 
@@ -121,9 +120,24 @@ export interface PdfPreviewConfig {
   showPageNavigation?: boolean;
   showZoomControls?: boolean;
   showFullScreen?: boolean;
-  showThemeSwitch?: boolean;
+  /** Shows EmbedPDF's Insert tab. Inserted marks stay in the browser session and are never persisted by EQMS. */
+  showInsertTools?: boolean;
+  /** Allow selecting another local PDF from EmbedPDF's Document menu. */
+  showOpenDocumentAction?: boolean;
+  /** Allow closing the current PDF from EmbedPDF's Document menu. */
+  showCloseDocumentAction?: boolean;
+  /** Show EmbedPDF's document permissions/security information dialog. */
+  showSecurityAction?: boolean;
+  /** Allow a temporary screenshot capture from the current preview. */
+  showScreenshotAction?: boolean;
   /** Allow selecting/copying text in the preview. */
   allowTextSelection?: boolean;
+  /** Text rendered by the server on the transient PDF preview watermark. */
+  watermarkText?: string;
+  /** Include the authenticated viewer's display name in the preview watermark. */
+  watermarkShowViewerName?: boolean;
+  /** Include the local time at which the preview was opened. */
+  watermarkShowOpenedAt?: boolean;
 }
 
 export interface DocumentConfig {

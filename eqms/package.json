@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@embedpdf/react-pdf-viewer": "^2.15.1",
     "@lexical/code": "^0.42.0",
     "@lexical/html": "^0.42.0",
     "@lexical/link": "^0.42.0",
@@ -21,8 +22,6 @@
     "@lexical/rich-text": "^0.42.0",
     "@lexical/selection": "^0.42.0",
     "@lexical/table": "^0.42.0",
-    "@react-pdf-viewer/core": "^3.12.0",
-    "@react-pdf-viewer/default-layout": "^3.12.0",
     "@tabler/icons-react": "^3.36.0",
     "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
@@ -35,7 +34,6 @@
     "lexical": "^0.42.0",
     "lucide-react": "^0.562.0",
     "motion": "^12.38.0",
-    "pdfjs-dist": "^3.11.174",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

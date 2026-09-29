@@ -70,6 +70,7 @@ import { FormSection } from "@/components/ui";
 import { formatDateTime } from "@/utils";
 import { Shield } from "lucide-react";
 import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
+import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 
 // --- Types ---
 type TabType =
@@ -400,6 +401,15 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     },
     [revisionId],
   );
+
+  // The server generates the watermark for every preview response. Re-fetch only the open
+  // Document tab after an administrator changes that policy; the page and its workflow state
+  // remain intact while the transient PDF bytes are replaced.
+  useEffect(() => subscribeNotificationRealtime((event) => {
+    if (event.type === "documents-preview-config-updated" && activeTab === "document") {
+      void reloadRevisionPreview(currentRevision);
+    }
+  }), [activeTab, currentRevision, reloadRevisionPreview]);
 
   const originalDocument = currentRevision?.originalDocument ?? null;
 

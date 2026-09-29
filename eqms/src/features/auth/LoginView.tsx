@@ -34,7 +34,7 @@ interface LoginViewProps {
   onLogin?: (
     username: string,
     password: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; passwordManagerEligible?: boolean }>;
   onForgotPassword?: () => void;
 }
 
@@ -143,6 +143,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignInAccepted, setIsSignInAccepted] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [loginErrorModalOpen, setLoginErrorModalOpen] = useState(false);
   const [loginErrorTitle, setLoginErrorTitle] = useState("Login Failed");
@@ -235,7 +236,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
         setIsLoading(false);
 
         if (result.success) {
-          // Login stage completed (direct auth or moved to 2FA), normalize viewport before navigation.
+          // In a SPA, remove the password form before the route transition so Chrome can
+          // recognize a confirmed sign-in and offer to save the credential. MFA challenges
+          // are intentionally excluded because the sign-in is not complete yet.
+          if (result.passwordManagerEligible) {
+            setIsSignInAccepted(true);
+          }
           blurActiveInput();
           resetViewportZoom();
           return;
@@ -290,14 +296,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate autoComplete="off">
+            {/* Keep semantic credential fields so the browser password manager can offer to
+                save/update credentials only after the existing login request succeeds. */}
+            {isSignInAccepted ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800" role="status">
+                Sign-in successful. Opening your workspace…
+              </div>
+            ) : (
+            <form onSubmit={handleSubmit} className={AUTH_UI.formStack} noValidate autoComplete="on">
               <AuthField htmlFor="username" label="Email or Username" error={errors.username}>
                   <input
                     id="username"
                     ref={usernameRef}
                     name="username"
                     type="text"
-                    autoComplete="off"
+                    autoComplete="username"
                     value={formData.username}
                     onChange={(e) => handleInputChange("username", e.target.value)}
                     className={cn(
@@ -312,13 +325,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                   />
               </AuthField>
 
-              <AuthField htmlFor="password" label="Password" error={errors.password}>
+              <AuthField htmlFor="current-password" label="Password" error={errors.password}>
                 <div className="relative">
                   <input
-                    id="password"
+                    id="current-password"
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    autoComplete="new-password"
+                    autoComplete="current-password"
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     className={cn(
@@ -332,7 +345,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                     onKeyUp={handleCapsLockCheck}
                     onKeyDown={handleCapsLockCheck}
                     aria-invalid={!!errors.password}
-                    aria-describedby={errors.password ? "password-error" : undefined}
+                    aria-describedby={errors.password ? "current-password-error" : undefined}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:pr-3">
                     {isCapsLockOn && (
@@ -380,6 +393,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                 <span className="tracking-wide">Sign In</span>
               </Button>
             </form>
+            )}
 
             <div className="relative my-4 sm:my-7" aria-hidden="true">
               <div className="absolute inset-0 flex items-center">

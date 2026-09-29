@@ -45,4 +45,45 @@ class SystemConfigurationServiceBrandingTest {
         assertFalse(serviceWithGeneral("{\"appearance\":{\"knowledgeExplorerEnabled\":false}}")
                 .getPublicBranding().knowledgeExplorerEnabled());
     }
+
+    @Test
+    void onlyOfficeViewerInvalidationIsLimitedToViewerSettings() throws Exception {
+        var previous = mapper.readTree("""
+                {"appearance":{"theme":"light"},"backupSettings":{"onlyOffice":{"viewer":{"showPluginsTab":false}}}}
+                """);
+        var unrelatedGeneralChange = mapper.readTree("""
+                {"appearance":{"theme":"dark"},"backupSettings":{"onlyOffice":{"viewer":{"showPluginsTab":false}}}}
+                """);
+        var viewerChange = mapper.readTree("""
+                {"appearance":{"theme":"light"},"backupSettings":{"onlyOffice":{"viewer":{"showPluginsTab":true}}}}
+                """);
+
+        assertFalse(SystemConfigurationService.hasOnlyOfficeViewerChange(previous, unrelatedGeneralChange));
+        assertTrue(SystemConfigurationService.hasOnlyOfficeViewerChange(previous, viewerChange));
+    }
+
+    @Test
+    void documentsPreviewInvalidationIsLimitedToPdfPolicy() throws Exception {
+        var previous = mapper.readTree("{\"maxFileSizeMB\":20,\"enableWatermark\":true,\"pdfPreview\":{\"watermarkText\":\"PREVIEW\"}}");
+        var unrelated = mapper.readTree("{\"maxFileSizeMB\":30,\"enableWatermark\":true,\"pdfPreview\":{\"watermarkText\":\"PREVIEW\"}}");
+        var changed = mapper.readTree("{\"maxFileSizeMB\":20,\"enableWatermark\":true,\"pdfPreview\":{\"watermarkText\":\"CONFIDENTIAL\"}}");
+        assertFalse(SystemConfigurationService.hasDocumentsPreviewChange(previous, unrelated));
+        assertTrue(SystemConfigurationService.hasDocumentsPreviewChange(previous, changed));
+    }
+
+    @Test
+    void documentsPreviewInvalidationIncludesEmbedPdfViewerPolicy() throws Exception {
+        var previous = mapper.readTree("""
+                {"enableWatermark":true,"allowDownload":false,
+                 "pdfPreview":{"defaultZoom":"page-fit","showSearch":true,"showPanTool":true}}
+                """);
+        var changed = mapper.readTree("""
+                {"enableWatermark":true,"allowDownload":false,
+                 "pdfPreview":{"defaultZoom":"page-width","showSearch":false,"showPanTool":false,
+                 "showOpenDocumentAction":false,"showCloseDocumentAction":false,
+                 "showSecurityAction":false,"showScreenshotAction":false}}
+                """);
+
+        assertTrue(SystemConfigurationService.hasDocumentsPreviewChange(previous, changed));
+    }
 }
