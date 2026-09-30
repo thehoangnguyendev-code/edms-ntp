@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '../utils';
 import { TableEmptyState as SharedTableEmptyState } from './TableEmptyState';
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 /**
  * Responsive Table Component System
@@ -17,25 +18,25 @@ export interface ResponsiveTableProps {
 
 export const Table: React.FC<ResponsiveTableProps> = ({ children, className }) => {
   return (
-    <table className={cn('w-full border-collapse text-sm md:text-base', className)}>
+    <TableMarkup.Root className={cn('w-full border-collapse text-sm md:text-base', className)}>
       {children}
-    </table>
+    </TableMarkup.Root>
   );
 };
 
 export const TableHeader: React.FC<ResponsiveTableProps> = ({ children, className }) => {
   return (
-    <thead className={cn('bg-slate-50 border-b border-slate-200 sticky top-0 z-10', className)}>
+    <TableMarkup.Head className={cn('bg-slate-50 border-b border-slate-200 sticky top-0 z-10', className)}>
       {children}
-    </thead>
+    </TableMarkup.Head>
   );
 };
 
 export const TableBody: React.FC<ResponsiveTableProps> = ({ children, className }) => {
   return (
-    <tbody className={cn('divide-y divide-slate-200', className)}>
+    <TableMarkup.Body className={cn('divide-y divide-slate-200', className)}>
       {children}
-    </tbody>
+    </TableMarkup.Body>
   );
 };
 
@@ -54,7 +55,7 @@ export const TableCell: React.FC<TableCellProps> = ({
   sticky,
   align = 'left',
 }) => {
-  const Component = isHeader ? 'th' : 'td';
+  const Component = isHeader ? TableMarkup.HeaderCell : TableMarkup.Cell;
 
   return (
     <Component
@@ -88,9 +89,9 @@ export const TableCell: React.FC<TableCellProps> = ({
 
 export const TableRow: React.FC<ResponsiveTableProps> = ({ children, className }) => {
   return (
-    <tr className={cn('hover:bg-slate-50 transition-colors', className)}>
+    <TableMarkup.Row className={cn('hover:bg-slate-50 transition-colors', className)}>
       {children}
-    </tr>
+    </TableMarkup.Row>
   );
 };
 
@@ -110,11 +111,11 @@ export const TableEmptyState: React.FC<TableEmptyStateProps> = ({
   colSpan = 1,
 }) => {
   return (
-    <tr>
-      <td colSpan={colSpan} className="p-0">
+    <TableMarkup.Row>
+      <TableMarkup.Cell colSpan={colSpan} className="p-0">
         <SharedTableEmptyState title={title} description={description} />
-      </td>
-    </tr>
+      </TableMarkup.Cell>
+    </TableMarkup.Row>
   );
 };
 

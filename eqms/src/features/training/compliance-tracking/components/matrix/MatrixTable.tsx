@@ -8,6 +8,7 @@ import { ROUTES } from "@/app/routes.constants";
 import type { MatrixFilters, EmployeeRow, SOPColumn } from "../../types";
 import { MOCK_SOPS, getCell } from "../../mockData";
 import { CELL_CONFIG } from "./constants";
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 interface MatrixTableProps {
   employees: EmployeeRow[];
@@ -91,7 +92,7 @@ export const MatrixTable: React.FC<MatrixTableProps> = React.memo(({
             </div>
           )}
 
-          <table className="w-full border-separate border-spacing-0 text-sm md:text-base">
+          <TableMarkup.Root className="w-full border-separate border-spacing-0 text-sm md:text-base">
             <MatrixHead onSOPHeaderClick={onSOPHeaderClick} />
             <MatrixBody
               employees={employees}
@@ -102,7 +103,7 @@ export const MatrixTable: React.FC<MatrixTableProps> = React.memo(({
               onEmployeeClick={onEmployeeClick}
               navigateTo={navigateTo}
             />
-          </table>
+          </TableMarkup.Root>
         </div>
       </div>
 
@@ -123,25 +124,25 @@ interface MatrixHeadProps {
 }
 
 const MatrixHead: React.FC<MatrixHeadProps> = React.memo(({ onSOPHeaderClick }) => (
-  <thead>
-    <tr>
+  <TableMarkup.Head>
+    <TableMarkup.Row>
       {/* No. column - smaller on mobile */}
-      <th className="sticky top-0 left-0 z-30 bg-white border-b border-r border-slate-200/80 px-1.5 sm:px-2 py-2 sm:py-3 min-w-[36px] sm:min-w-[44px] max-w-[36px] sm:max-w-[44px] text-center shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+      <TableMarkup.HeaderCell className="sticky top-0 left-0 z-30 bg-white border-b border-r border-slate-200/80 px-1.5 sm:px-2 py-2 sm:py-3 min-w-[36px] sm:min-w-[44px] max-w-[36px] sm:max-w-[44px] text-center shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
         <span className="text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">
           No.
         </span>
-      </th>
+      </TableMarkup.HeaderCell>
 
       {/* Employee column - responsive width */}
-      <th className="sticky top-0 left-[36px] sm:left-[44px] z-30 bg-white border-b border-r border-slate-200/80 px-2 sm:px-3 py-2 sm:py-3 min-w-[120px] sm:min-w-[140px] md:min-w-[180px] text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+      <TableMarkup.HeaderCell className="sticky top-0 left-[36px] sm:left-[44px] z-30 bg-white border-b border-r border-slate-200/80 px-2 sm:px-3 py-2 sm:py-3 min-w-[120px] sm:min-w-[140px] md:min-w-[180px] text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
         <span className="text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">
           Employee
         </span>
-      </th>
+      </TableMarkup.HeaderCell>
 
       {/* SOP columns - responsive widths and fonts */}
       {MOCK_SOPS.map((sop) => (
-        <th
+        <TableMarkup.HeaderCell
           key={sop.id}
           className="sticky top-0 z-20 bg-white backdrop-blur-sm border-b border-r border-slate-200/80 px-1 sm:px-1.5 py-2 sm:py-3 min-w-[55px] sm:min-w-[70px] md:min-w-[90px] max-w-[80px] sm:max-w-[100px] md:max-w-[130px] cursor-pointer hover:bg-slate-100/90 transition-all duration-200 group/sop text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
           onClick={(e) => onSOPHeaderClick(e, sop)}
@@ -155,10 +156,10 @@ const MatrixHead: React.FC<MatrixHeadProps> = React.memo(({ onSOPHeaderClick }) 
               {sop.title}
             </span>
           </div>
-        </th>
+        </TableMarkup.HeaderCell>
       ))}
-    </tr>
-  </thead>
+    </TableMarkup.Row>
+  </TableMarkup.Head>
 ));
 
 // ─── Body sub-component ───────────────────────────────────────────────────────
@@ -183,9 +184,9 @@ const MatrixBody: React.FC<MatrixBodyProps> = React.memo(({
 }) => {
   if (employees.length === 0) {
     return (
-      <tbody>
-        <tr>
-          <td colSpan={MOCK_SOPS.length + 2} className="py-16 sm:py-20 text-center">
+      <TableMarkup.Body>
+        <TableMarkup.Row>
+          <TableMarkup.Cell colSpan={MOCK_SOPS.length + 2} className="py-16 sm:py-20 text-center">
             <div className="flex flex-col items-center gap-2 sm:gap-3">
               <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-slate-100 flex items-center justify-center shadow-inner">
                 <Search className="h-6 w-6 sm:h-7 sm:w-7 text-slate-400" aria-hidden="true" />
@@ -205,23 +206,23 @@ const MatrixBody: React.FC<MatrixBodyProps> = React.memo(({
                 </Button>
               )}
             </div>
-          </td>
-        </tr>
-      </tbody>
+          </TableMarkup.Cell>
+        </TableMarkup.Row>
+      </TableMarkup.Body>
     );
   }
 
   return (
-    <tbody>
+    <TableMarkup.Body>
       {employees.map((emp, index) => (
-        <tr key={emp.id} className="group/row transition-colors duration-150 hover:bg-slate-50/60">
+        <TableMarkup.Row key={emp.id} className="group/row transition-colors duration-150 hover:bg-slate-50/60">
           {/* No. */}
-          <td className="sticky left-0 z-10 bg-white border-b border-r border-slate-200/60 px-1.5 sm:px-2 py-1.5 sm:py-2 min-w-[36px] sm:min-w-[44px] max-w-[36px] sm:max-w-[44px] text-center group-hover/row:bg-slate-50">
+          <TableMarkup.Cell className="sticky left-0 z-10 bg-white border-b border-r border-slate-200/60 px-1.5 sm:px-2 py-1.5 sm:py-2 min-w-[36px] sm:min-w-[44px] max-w-[36px] sm:max-w-[44px] text-center group-hover/row:bg-slate-50">
             <span className="text-2xs sm:text-xs text-slate-500 font-medium">{index + 1}</span>
-          </td>
+          </TableMarkup.Cell>
 
           {/* Employee name - responsive with department hidden on very small screens */}
-          <td
+          <TableMarkup.Cell
             className="sticky left-[36px] sm:left-[44px] z-10 bg-white border-b border-r border-slate-200/60 px-2 sm:px-3 py-1.5 sm:py-2 min-w-[120px] sm:min-w-[140px] md:min-w-[180px] cursor-pointer hover:bg-slate-50 transition-colors group-hover/row:bg-slate-50"
             onClick={(e) => onEmployeeClick(e, emp)}
             title={`View details for ${emp.fullName}`}
@@ -234,14 +235,14 @@ const MatrixBody: React.FC<MatrixBodyProps> = React.memo(({
                 {emp.department}
               </span>
             </div>
-          </td>
+          </TableMarkup.Cell>
 
           {/* Status cells - optimized for touch */}
           {MOCK_SOPS.map((sop) => {
             const cell = getCell(emp.id, sop.id);
             if (!cell) {
               return (
-                <td
+                <TableMarkup.Cell
                   key={sop.id}
                   className="border-b border-r border-slate-200/60 p-0 min-w-[70px] sm:min-w-[85px] md:min-w-[120px]"
                 />
@@ -252,7 +253,7 @@ const MatrixBody: React.FC<MatrixBodyProps> = React.memo(({
             const isGapHidden = filters.gapAnalysis && cell.status === "Qualified";
 
             return (
-              <td
+              <TableMarkup.Cell
                 key={sop.id}
                 className="border-b border-r border-slate-200/60 p-0 min-w-[70px] sm:min-w-[85px] md:min-w-[120px] h-px"
               >
@@ -315,11 +316,11 @@ const MatrixBody: React.FC<MatrixBodyProps> = React.memo(({
                     </>
                   )}
                 </button>
-              </td>
+              </TableMarkup.Cell>
             );
           })}
-        </tr>
+        </TableMarkup.Row>
       ))}
-    </tbody>
+    </TableMarkup.Body>
   );
 });

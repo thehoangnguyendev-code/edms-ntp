@@ -13,6 +13,7 @@ import { useTableDragScroll, useDebounce } from "@/hooks";
 import { cn } from "@/components/ui/utils";
 import { securityApi, type AuthorizationRelationDefinition } from "@/services/api/security";
 import { formatDateTime } from "@/utils/format";
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "All Resource Types", value: "ALL" },
@@ -268,16 +269,16 @@ export const RelationDefinitionsTab: React.FC = () => {
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[72rem] table-fixed">
-                  <colgroup>
-                    {TABLE_COLUMN_WIDTHS.map((width, index) => <col key={index} style={{ width }} />)}
-                  </colgroup>
-                  <thead className="sticky top-0 z-30">
-                    <tr>
+                <TableMarkup.Root className="w-full min-w-[72rem] table-fixed">
+                  <TableMarkup.ColumnGroup>
+                    {TABLE_COLUMN_WIDTHS.map((width, index) => <TableMarkup.Column key={index} style={{ width }} />)}
+                  </TableMarkup.ColumnGroup>
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
                       {TABLE_COLS.map((col) => {
                         const isSorted = col.sortable && sortConfig.key === col.id;
                         return (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={col.id}
                             onClick={col.sortable ? () => handleSort(col.id as SortKey) : undefined}
                             className={cn(thBase, col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700", col.id === "no" && "w-14 text-center")}
@@ -291,15 +292,15 @@ export const RelationDefinitionsTab: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         );
                       })}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!loading && items.length === 0 ? (
-                      <tr>
-                        <td colSpan={TABLE_COLS.length} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={TABLE_COLS.length} className="p-0">
                           {error ? (
                             <TableEmptyState title="Failed to Load" description={error} />
                           ) : (
@@ -309,23 +310,23 @@ export const RelationDefinitionsTab: React.FC = () => {
                               description={hasFilters ? "Try adjusting your search or filters." : "No relation definitions match this filter."}
                             />
                           )}
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                       items.map((d, idx) => {
                         const configEntries = d.resolverConfig ? Object.entries(d.resolverConfig) : [];
                         return (
-                        <tr key={d.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-4 py-3 align-middle text-center text-xs sm:text-sm text-slate-500 whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
-                          <td className="px-4 py-3 align-middle">
+                        <TableMarkup.Row key={d.id} className="hover:bg-slate-50/80 transition-colors">
+                          <TableMarkup.Cell className="px-4 py-3 align-middle text-center text-xs sm:text-sm text-slate-500 whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-4 py-3 align-middle">
                             <div className="break-all  text-xs sm:text-sm font-medium text-slate-800">{d.code}</div>
                             <div className="break-words text-2xs text-slate-400">{d.displayName}</div>
-                          </td>
-                          <td className="px-4 py-3 align-middle whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-4 py-3 align-middle whitespace-nowrap">
                             <Badge color="purple" size="xs">{d.resourceType}</Badge>
-                          </td>
-                          <td className="px-4 py-3 align-middle  text-xs sm:text-sm text-slate-600 break-all">{d.resolverCode}</td>
-                          <td className="px-4 py-3 align-middle">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-4 py-3 align-middle  text-xs sm:text-sm text-slate-600 break-all">{d.resolverCode}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-4 py-3 align-middle">
                             {configEntries.length > 0 ? (
                               <div className="flex w-full flex-wrap items-center gap-1">
                                 {configEntries.map(([key, value]) => (
@@ -337,17 +338,17 @@ export const RelationDefinitionsTab: React.FC = () => {
                             ) : (
                               <span className="text-2xs text-slate-300">—</span>
                             )}
-                          </td>
-                          <td className="px-4 py-3 align-middle whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-4 py-3 align-middle whitespace-nowrap">
                             <Badge color={d.active ? "emerald" : "slate"} size="sm">{d.active ? "Active" : "Inactive"}</Badge>
-                          </td>
-                          <td className="px-4 py-3 align-middle text-xs sm:text-sm text-slate-600 whitespace-nowrap">{formatDateTime(d.updatedAt)}</td>
-                        </tr>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-4 py-3 align-middle text-xs sm:text-sm text-slate-600 whitespace-nowrap">{formatDateTime(d.updatedAt)}</TableMarkup.Cell>
+                        </TableMarkup.Row>
                         );
                       })
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
               {totalItems > 0 && (
                 <div className="border-t border-slate-200">

@@ -11,6 +11,7 @@ import { cn } from "@/components/ui/utils";
 import type { AssignmentScope } from "../../../../types/assignment.types";
 import type { EmployeeRow } from "../../../types";
 import { DEPARTMENTS, BUSINESS_UNITS, SCOPE_TABS, getInitials } from "../AssignTrainingView";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 export interface Step2Props {
   scopeTab: AssignmentScope;
@@ -269,79 +270,79 @@ export const Step2Assignees: React.FC<Step2Props> = ({
             <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col bg-white shadow-sm transition-all duration-300">
               {/* ==================== DESKTOP TABLE VIEW (>= 1024px) ==================== */}
               <div className="hidden lg:block overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400 pb-1.5 transition-colors">
-                <table className="w-full min-w-max border-spacing-0 text-left">
-                  <thead>
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors w-16">
+                <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
+                  <TableMarkup.Head>
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors w-16">
                         No.
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors w-36">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors w-36">
                         Employee ID
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors">
                         Full Name
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors w-64">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors w-64">
                         Email
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors w-44">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell31}>
                         Position
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors w-44">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell31}>
                         Department
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors w-44">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell31}>
                         Business Unit
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="bg-white">
                     {resolvedAssignees.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={7} className="p-0">
                           <TableEmptyState title="No assignees selected" description="Select assignees from the scope selector on the left." />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                       currentAssignees.map((emp, idx) => {
                         const tdClass = "py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap";
                         return (
-                          <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors group">
-                            <td className={cn(tdClass, "text-center font-medium text-slate-500 w-16")}>
+                          <TableMarkup.Row key={emp.id} className="hover:bg-slate-50/80 transition-colors group">
+                            <TableMarkup.Cell className={cn(tdClass, "text-center font-medium text-slate-500 w-16")}>
                               {(currentPage - 1) * itemsPerPage + idx + 1}
-                            </td>
-                            <td className={tdClass}>
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>
                               <span className="font-semibold text-emerald-600">
                                 {emp.employeeCode}
                               </span>
-                            </td>
-                            <td className={tdClass}>
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-slate-900">
                                   {emp.fullName}
                                 </span>
                               </div>
-                            </td>
-                            <td className={tdClass}>
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>
                               <span className="flex items-center gap-2 text-slate-700">
                                 {emp.email}
                               </span>
-                            </td>
-                            <td className={tdClass}>
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>
                               {emp.position}
-                            </td>
-                            <td className={tdClass}>
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>
                               {emp.department}
-                            </td>
-                            <td className={tdClass}>
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>
                               {emp.businessUnit || "Operation Unit"}
-                            </td>
-                          </tr>
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
                         );
                       })
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {/* ==================== PREMIUM MOBILE CARD VIEW (< 1024px) ==================== */}

@@ -37,7 +37,14 @@ public record ControlledCopyStatusMarking(
         /** ALL (every page) or FIRST (cover page only). */
         String stampPages,
         /** Per-page placement rules (see MarkingPlacementRule); null / empty = the corner and centre settings above. */
-        java.util.List<MarkingPlacementRule> placements
+        java.util.List<MarkingPlacementRule> placements,
+        /** Uncontrolled Copy watermark only: whether the "Issued to: {recipient}" line is drawn. Null/true = shown
+         *  (matches the behavior every existing stored policy row had before this field existed). */
+        Boolean watermarkShowRecipient,
+        /** Uncontrolled Copy watermark only: whether the "Issued: {timestamp}" line is drawn. Null/true = shown. */
+        Boolean watermarkShowIssuedDate,
+        /** Uncontrolled Copy stamp only: whether the copy number line is drawn. Null/true = shown. */
+        Boolean stampShowCopyNumber
 ) {
 
     public static final String OBSOLETED = "OBSOLETED";
@@ -48,7 +55,7 @@ public record ControlledCopyStatusMarking(
         return new ControlledCopyStatusMarking(
                 true, "ABOVE", "", "#C00000", 35, 35, "NOTO_SANS", true, "ALL",
                 true, cancelled ? "CANCELLED" : "WITHDRAWN", "#C00000", "TOP_RIGHT", 4, "SMALL", 100,
-                true, "NOTO_SANS", "ALL", java.util.List.of());
+                true, "NOTO_SANS", "ALL", java.util.List.of(), true, true, true);
     }
 
     /** This value with every null field taken from {@code base}. */
@@ -63,7 +70,9 @@ public record ControlledCopyStatusMarking(
                 pick(stampMarginMm, base.stampMarginMm), pick(stampSize, base.stampSize),
                 pick(stampOpacityPercent, base.stampOpacityPercent),
                 pick(stampShowDate, base.stampShowDate), pick(stampFontFamily, base.stampFontFamily), pick(stampPages, base.stampPages),
-                pick(placements, base.placements));
+                pick(placements, base.placements),
+                pick(watermarkShowRecipient, base.watermarkShowRecipient), pick(watermarkShowIssuedDate, base.watermarkShowIssuedDate),
+                pick(stampShowCopyNumber, base.stampShowCopyNumber));
     }
 
     private static <T> T pick(T value, T fallback) {

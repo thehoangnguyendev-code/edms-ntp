@@ -79,11 +79,6 @@ export const RevisionListView: React.FC = () => {
   const [warningMessage, setWarningMessage] = useState("");
   const [nonEffectiveDocs, setNonEffectiveDocs] = useState<Array<{ field: string; message: string }>>([]);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [pendingPublishParams, setPendingPublishParams] = useState<{
-    revisionId: string;
-    reason: string;
-    signatureToken: string;
-  } | null>(null);
 
   const {
     searchQuery,
@@ -286,7 +281,6 @@ export const RevisionListView: React.FC = () => {
     reason: string;
     comment: string;
     signatureToken: string;
-    forcePublish?: boolean;
   }) => {
     try {
       await documentApi.publishRevision(revisionId, params);
@@ -299,15 +293,12 @@ export const RevisionListView: React.FC = () => {
       setSelectedRevisionForPublish(null);
     } catch (error) {
       const responseData = (error as any)?.response?.data;
-      if (responseData?.error?.code === "RELATED_DOCUMENTS_NOT_EFFECTIVE") {
+      if (responseData?.error?.code === "RELATED_DOCUMENTS_NOT_READY") {
+        // Hard block, no override: a Related Document has a revision in progress that has not
+        // yet reached Ready for Publishing. Informational only -- there is no "publish anyway".
         setIsNavigating(false);
         setWarningMessage(responseData.error.message);
         setNonEffectiveDocs(responseData.error.details || []);
-        setPendingPublishParams({
-          revisionId,
-          reason: params.reason,
-          signatureToken: params.signatureToken,
-        });
         setShowWarningModal(true);
       } else {
         console.error("Failed to publish revision", error);
@@ -322,20 +313,6 @@ export const RevisionListView: React.FC = () => {
     } finally {
       setIsNavigating(false);
     }
-  };
-
-  const handleWarningConfirm = async () => {
-    if (!pendingPublishParams) return;
-    setShowWarningModal(false);
-    const params = pendingPublishParams;
-    setPendingPublishParams(null);
-    setIsNavigating(true);
-    await executePublish(params.revisionId, {
-      reason: params.reason,
-      comment: params.reason,
-      signatureToken: params.signatureToken,
-      forcePublish: true,
-    });
   };
 
   const handleMenuAction = (action: string, id: string) => {
@@ -828,21 +805,19 @@ export const RevisionListView: React.FC = () => {
         }}
       />
 
-      {/* Warning Override Modal */}
+      {/* Publish blocked: a Related Document has a revision in progress not yet Ready for
+          Publishing. Informational only -- there is no override/force option. */}
       <AlertModal
         isOpen={showWarningModal}
-        onClose={() => {
-          setShowWarningModal(false);
-          setPendingPublishParams(null);
-        }}
-        onConfirm={handleWarningConfirm}
-        title="Publish Warning"
+        onClose={() => setShowWarningModal(false)}
+        onConfirm={() => setShowWarningModal(false)}
+        title="Cannot Publish Yet"
         type="warning"
-        confirmText="Publish Anyway"
-        cancelText="Cancel"
+        confirmText="OK"
+        showCancel={false}
         description={
           <div className="space-y-3">
-            <p className="font-semibold text-slate-900">One or more Related Documents are not currently Effective:</p>
+            <p className="font-semibold text-slate-900">One or more Related Documents are not yet Ready for Publishing:</p>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1 text-xs text-slate-700">
               {nonEffectiveDocs.map((doc, idx) => (
                 <div key={idx} className="flex justify-between">
@@ -851,7 +826,7 @@ export const RevisionListView: React.FC = () => {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-slate-500">Please verify the document package before publishing. Do you want to publish anyway?</p>
+            <p className="text-xs text-slate-500">Bring the listed document(s) to Ready for Publishing first, then publish again.</p>
           </div>
         }
       />

@@ -80,6 +80,11 @@ services:
 
   onlyoffice-documentserver:
     <<: *default-resources
+    # Overrides the shared 3g default: pluginsmanager's startup plugin scan repeatedly got
+    # SIGKILL'd by the cgroup OOM killer at 3g (see "Killed" in
+    # /var/log/onlyoffice/documentserver/pluginsmanager.log / docker logs), each kill leaving a
+    # multi-GB WSL2 crash dump under %LOCALAPPDATA%\Temp\wsl-crashes.
+    mem_limit: ${ONLYOFFICE_MEMORY_LIMIT:-5g}
     image: onlyoffice/documentserver:8.2
     container_name: eqms-onlyoffice
     restart: unless-stopped

@@ -9,6 +9,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useTableDragScroll, useDebounce, usePortalDropdown } from "@/hooks";
 import { cn } from "@/components/ui/utils";
 import { settingsApi, type PermissionCatalogFlatItem, type PermissionLifecycleUsage } from "@/services/api/settings";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 type SortKey = "code" | "name" | "module" | "groupName";
 
@@ -164,13 +165,13 @@ export const PermissionCatalogTab: React.FC = () => {
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[1000px]">
-                  <thead className="sticky top-0 z-30">
-                    <tr>
+                <TableMarkup.Root className="w-full min-w-[1000px]">
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
                       {TABLE_COLS.map((col) => {
                         const isSorted = col.sortable && sortConfig.key === col.id;
                         return (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={col.id}
                             onClick={col.sortable ? () => handleSort(col.id as SortKey) : undefined}
                             className={cn(thBase, col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700", col.id === "no" && "w-14 text-center")}
@@ -184,15 +185,15 @@ export const PermissionCatalogTab: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         );
                       })}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!loading && items.length === 0 ? (
-                      <tr>
-                        <td colSpan={TABLE_COLS.length} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={TABLE_COLS.length} className="p-0">
                           {error ? (
                             <TableEmptyState title="Failed to Load" description={error} />
                           ) : (
@@ -202,28 +203,28 @@ export const PermissionCatalogTab: React.FC = () => {
                               description={hasFilters ? "Try adjusting your search or filters." : "No permissions match this filter."}
                             />
                           )}
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                       items.map((p, idx) => (
-                        <tr key={p.code} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4 align-middle text-center text-xs text-slate-500 whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
-                          <td className="py-3 px-4 align-middle whitespace-nowrap">
+                        <TableMarkup.Row key={p.code} className="hover:bg-slate-50/80 transition-colors">
+                          <TableMarkup.Cell className="py-3 px-4 align-middle text-center text-xs text-slate-500 whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 align-middle whitespace-nowrap">
                             <span className="text-xs sm:text-sm font-medium text-slate-800">{p.code}</span>
-                          </td>
-                          <td className="py-3 px-4 align-middle text-xs sm:text-sm text-slate-700 whitespace-nowrap">{p.name}</td>
-                          <td className="py-3 px-4 align-middle whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 align-middle text-xs sm:text-sm text-slate-700 whitespace-nowrap">{p.name}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 align-middle whitespace-nowrap">
                             <Badge semantic="info" size="sm">{p.module}</Badge>
-                          </td>
-                          <td className="py-3 px-4 align-middle text-xs sm:text-sm text-slate-500 whitespace-nowrap">{p.groupName}</td>
-                          <td className="py-3 px-4 align-middle whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={TABLE_STYLES.cell23}>{p.groupName}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 align-middle whitespace-nowrap">
                             {p.requiresAudit ? (
                               <Badge semantic="warning" size="sm">Audited</Badge>
                             ) : (
                               <span className="text-sm text-slate-300">—</span>
                             )}
-                          </td>
-                          <td className="py-3 px-4 align-middle whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 align-middle whitespace-nowrap">
                             {p.lifecycleUsages && p.lifecycleUsages.length > 0 ? (
                               <span className="inline-flex items-center gap-1">
                                 <Badge semantic="info" size="sm" title={formatLifecycleUsage(p.lifecycleUsages[0])}>
@@ -243,15 +244,15 @@ export const PermissionCatalogTab: React.FC = () => {
                             ) : (
                               <span className="text-sm text-slate-300">—</span>
                             )}
-                          </td>
-                          <td className="py-3 px-4 align-middle text-xs sm:text-sm text-slate-500 whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={TABLE_STYLES.cell23}>
                             {p.description || "—"}
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
               {totalItems > 0 && (
                 <div className="border-t border-slate-200">

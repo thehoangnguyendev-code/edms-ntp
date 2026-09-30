@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, AlertTriangle, Ban, ShieldOff, RefreshCw, MoreVertical, X, Check, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Search, AlertTriangle, Ban, MoreVertical, X, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { IconFilter2, IconPencilMinus, IconTrash } from "@tabler/icons-react";
 import { NavigationGuardModal } from "@/components/ui/modal/NavigationGuardModal";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
@@ -23,133 +23,19 @@ import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { usePortalDropdown, useTableDragScroll, useDebounce } from "@/hooks";
 import { cn } from "@/components/ui/utils";
 import { settingsApi } from "@/services/api";
-import type { SodConstraintResponse, SodViolationResponse } from "@/services/api/settings";
+import type { SodConstraintResponse } from "@/services/api/settings";
 import { segregationOfDuties as segregationOfDutiesBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { DocumentWorkflowRulesPanel } from "./DocumentWorkflowRulesPanel";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
-
-// ─── Violations Panel ─────────────────────────────────────────────────────────
-
-const ViolationsPanel: React.FC = () => {
-  const { showToast } = useToast();
-  const [violations, setViolations] = useState<SodViolationResponse[] | null>(null);
-  const [scanning, setScanning] = useState(false);
-
-  const scan = async () => {
-    setScanning(true);
-    try {
-      setViolations(await settingsApi.getSodViolations());
-    } catch {
-      showToast({ type: "error", message: "Scan failed" });
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  return (
-    <FormSection
-      title="Violation Scanner"
-      icon={<ShieldOff className="h-4 w-4" />}
-      headerRight={
-        <Button variant="outline" size="sm" className="whitespace-nowrap gap-2" onClick={scan} disabled={scanning}>
-          <RefreshCw className={cn("h-4 w-4", scanning && "animate-spin")} />
-          {scanning ? "Scanning…" : "Scan Now"}
-        </Button>
-      }
-    >
-      <p className="mb-4 text-xs text-slate-500">
-        Checks every active Access Profile alone, and every active user's combined profiles, for SoD conflicts.
-      </p>
-
-      {violations === null ? (
-        <p className="py-6 text-center text-sm text-slate-400">Click "Scan Now" to check for violations across all Access Profiles.</p>
-      ) : violations.length === 0 ? (
-        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-emerald-700">
-          <ShieldOff className="h-5 w-5 shrink-0" />
-          <span className="text-sm font-medium">No violations found — all Access Profiles comply with SoD constraints.</span>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {violations.map((v) => (
-            <div
-              key={v.constraintId}
-              className={cn("rounded-lg border p-4", v.severity === "BLOCK" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50")}
-            >
-              <div className="flex items-start gap-2">
-                <AlertTriangle className={cn("h-4 w-4 mt-0.5 shrink-0", v.severity === "BLOCK" ? "text-red-600" : "text-amber-600")} />
-                <div className="flex-1 min-w-0">
-                  <p className={cn("text-sm font-semibold", v.severity === "BLOCK" ? "text-red-800" : "text-amber-800")}>
-                    {v.constraintName}
-                    <Badge
-                      semantic={v.severity === "BLOCK" ? "danger" : "warning"}
-                      variant="solid"
-                      size="xs"
-                      className="ml-2 align-middle"
-                    >
-                      {v.severity}
-                    </Badge>
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {v.permissionCodeA} ⊕ {v.permissionCodeB}
-                  </p>
-                  {v.regulationRef && <p className="text-xs text-slate-500 mt-1">{v.regulationRef}</p>}
-
-                  {v.violatingAccessProfiles.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                        Profile alone grants both sides — fix the profile:
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {v.violatingAccessProfiles.map((profile) => (
-                          <Badge key={profile.accessProfileId} color="slate" variant="outline" size="xs">
-                            {profile.accessProfileName}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {v.violatingUserCombinations.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                        No single profile is at fault — this person's combined profiles are:
-                      </p>
-                      {v.violatingUserCombinations.map((combo) => (
-                        <div key={combo.userId} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                          <p className="text-xs font-semibold text-slate-800">
-                            {combo.fullName ?? combo.username}
-                            <span className="ml-1.5 font-normal text-slate-400">@{combo.username}</span>
-                          </p>
-                          <div className="mt-1 flex flex-wrap items-center gap-1 text-2xs">
-                            <span className="text-slate-500">grants {v.permissionCodeA} via</span>
-                            {combo.profilesGrantingA.map((p) => (
-                              <Badge key={p.accessProfileId} color="slate" variant="outline" size="xs">{p.accessProfileName}</Badge>
-                            ))}
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-1 text-2xs">
-                            <span className="text-slate-500">grants {v.permissionCodeB} via</span>
-                            {combo.profilesGrantingB.map((p) => (
-                              <Badge key={p.accessProfileId} color="slate" variant="outline" size="xs">{p.accessProfileName}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </FormSection>
-  );
-};
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // ─── Main View ────────────────────────────────────────────────────────────────
+// Violation Scanner moved to its own screen: SodViolationReviewView.tsx (sibling to Access
+// Review under Security & Authorization) -- keeps its own scan history for GxP self-inspection
+// evidence, instead of a panel here with no persistence.
 
 const TYPE_OPTIONS: SelectOption[] = [
   { label: "All Types", value: "ALL" },
@@ -342,10 +228,10 @@ export const SegregationOfDutiesView: React.FC = () => {
     );
 
   const sortableTh = (key: string, label: string) => (
-    <th
+    <TableMarkup.HeaderCell
       key={key}
       onClick={() => handleSort(key)}
-      className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors group"
+      className={TABLE_STYLES.headerCell38}
     >
       <div className="flex w-full items-center justify-between gap-2">
         <span className="truncate">{label}</span>
@@ -354,7 +240,7 @@ export const SegregationOfDutiesView: React.FC = () => {
           <ChevronDown className={cn("h-3 w-3", sortKey === key && sortDir === "desc" ? "text-emerald-600" : "")} />
         </div>
       </div>
-    </th>
+    </TableMarkup.HeaderCell>
   );
 
   return (
@@ -436,8 +322,6 @@ export const SegregationOfDutiesView: React.FC = () => {
         </div>
       ) : (
         <div className="flex flex-col gap-4 md:gap-6">
-          <ViolationsPanel />
-
           <div className="w-full flex-1 flex flex-col">
 
               {/* Mobile: search + filter drawer */}
@@ -506,72 +390,67 @@ export const SegregationOfDutiesView: React.FC = () => {
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[1000px]">
-                  <thead className="sticky top-0 z-30">
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-12">No.</th>
+                <TableMarkup.Root className="w-full min-w-[820px]">
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell33}>No.</TableMarkup.HeaderCell>
                       {sortableTh("name", "Constraint")}
                       {sortableTh("permissionCodeA", "Permission A")}
                       {sortableTh("permissionCodeB", "Permission B")}
                       {sortableTh("severity", "Severity")}
-                      {sortableTh("type", "Type")}
-                      {sortableTh("createdAt", "Created Date")}
                       {sortableTh("updatedAt", "Last Updated")}
-                      <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!loading && constraints.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={7} className="p-0">
                           <TableEmptyState
                            
                             title="No SoD Constraints"
                             description={hasFilters ? "Try adjusting your search or filters." : "No Segregation of Duties constraints have been defined yet."}
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                       constraints.map((c, idx) => (
-                        <tr key={c.id} className={cn("hover:bg-slate-50/80 transition-colors group", !c.active && "opacity-50")}>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-500 text-center">
+                        <TableMarkup.Row key={c.id} className={cn("hover:bg-slate-50/80 transition-colors group", !c.active && "opacity-50")}>
+                          <TableMarkup.Cell className={TABLE_STYLES.cell29}>
                             {(currentPage - 1) * itemsPerPage + idx + 1}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <div className="font-medium text-slate-800">{c.name}</div>
                             {c.regulationRef && <div className="text-xs text-slate-400 mt-0.5">{c.regulationRef}</div>}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <span className=" text-slate-600">{c.permissionCodeA}</span>
-                            <div className="text-xs text-slate-400 mt-0.5">{c.permissionNameA}</div>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <span className=" text-slate-600">{c.permissionCodeB}</span>
-                            <div className="text-xs text-slate-400 mt-0.5">{c.permissionNameB}</div>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge
-                              semantic={c.severity === "BLOCK" ? "danger" : "warning"}
-                              size="sm"
-                              icon={c.severity === "BLOCK"
-                                ? <Ban className="h-3.5 w-3.5" />
-                                : <AlertTriangle className="h-3.5 w-3.5" />}
-                            >
-                              {c.severity}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={c.system ? "blue" : "slate"} size="sm">
-                              {c.system ? "System" : "Custom"}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(c.createdAt)}</td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(c.updatedAt)}</td>
-                          <td
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                            <div className="font-medium text-slate-800">{c.permissionNameA}</div>
+                            <div className="text-2xs text-slate-400 mt-0.5 font-mono">{c.permissionCodeA}</div>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                            <div className="font-medium text-slate-800">{c.permissionNameB}</div>
+                            <div className="text-2xs text-slate-400 mt-0.5 font-mono">{c.permissionCodeB}</div>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <Badge
+                                semantic={c.severity === "BLOCK" ? "danger" : "warning"}
+                                size="sm"
+                                icon={c.severity === "BLOCK"
+                                  ? <Ban className="h-3.5 w-3.5" />
+                                  : <AlertTriangle className="h-3.5 w-3.5" />}
+                              >
+                                {c.severity}
+                              </Badge>
+                              {c.system && <Badge color="blue" size="xs">System</Badge>}
+                            </div>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(c.updatedAt)}</TableMarkup.Cell>
+                          <TableMarkup.Cell
                             onClick={(e) => e.stopPropagation()}
-                            className="sticky right-0 bg-white py-3 px-4 text-center z-10 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
+                            className={TABLE_STYLES.emptyCell2}
                           >
                             <button
                               ref={getRef(c.id)}
@@ -591,7 +470,6 @@ export const SegregationOfDutiesView: React.FC = () => {
                                         navigate(`${ROUTES.SECURITY.SOD}/${c.id}/edit`);
                                         close();
                                       }}
-                                      disabled={c.system}
                                     >
                                       Edit
                                     </DropdownMenuItem>
@@ -609,12 +487,12 @@ export const SegregationOfDutiesView: React.FC = () => {
                                 )}
                               </div>
                             </PortalDropdownMenu>
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {totalItems > 0 && (

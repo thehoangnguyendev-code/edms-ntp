@@ -38,6 +38,8 @@ export { navigationApi } from './navigation';
 export type { FlatMenuItem } from './navigation';
 export { controlledCopyPolicyApi } from './controlledCopyPolicy';
 export type { ControlledCopyPolicy } from './controlledCopyPolicy';
+export { uncontrolledCopyApi } from './uncontrolledCopy';
+export { uncontrolledCopyPolicyApi } from './uncontrolledCopyPolicy';
 export { workflowActionPolicyApi } from './workflowActionPolicy';
 
 // Param/filter types for each API module

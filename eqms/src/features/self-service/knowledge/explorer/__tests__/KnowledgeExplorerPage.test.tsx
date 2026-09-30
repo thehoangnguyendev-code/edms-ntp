@@ -101,7 +101,7 @@ describe("KnowledgeExplorerPage", () => {
   it("shows the knowledge bases as folders with their document counts and the widgets", async () => {
     renderPage();
     expect(await screen.findByRole("option", { name: /Manufacturing/ })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Welcome back, Test User" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Welcome to Knowledge , Test User" })).toBeTruthy();
     expect(within(folder("Manufacturing")).getByText("3 documents")).toBeTruthy();
     expect(within(folder("Quality")).getByText("2 documents")).toBeTruthy();
     for (const title of ["Most viewed", "Most helpful", "Featured", "Subscriptions", "At a glance"]) {

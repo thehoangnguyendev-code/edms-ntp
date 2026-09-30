@@ -10,6 +10,7 @@ import {
   buildRevisionDetailSnapshotState,
 } from "@/features/documents/shared/detailSnapshotHelpers";
 import { getStatusBadgeColor } from "@/utils/status";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const getBadgeColor = (statusCode?: string, statusLabel?: string): BadgeColor =>
   getStatusBadgeColor(statusLabel, statusCode) ?? "slate";
@@ -89,7 +90,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   useEffect(() => {
-    if (!isExpanded) return;
+    if (!isExpanded || !hasDocs) return;
 
     let isMounted = true;
     const loadDetails = async () => {
@@ -125,7 +126,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [isExpanded, documentId, revisionId, fetchedRevisions, fetchedParentDocument]);
+  }, [isExpanded, hasDocs, documentId, revisionId, fetchedRevisions, fetchedParentDocument]);
 
   const normalizedRevision = useMemo(() => {
     const mapRelation = (r: ExpandedDocumentRelation) => ({
@@ -180,7 +181,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
           transition={transitionConfig}
           className="bg-slate-50/50"
         >
-          <td colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
+          <TableMarkup.Cell colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -203,59 +204,59 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                         Revisions ({fetchedRevisions.length})
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
-                        <table className="text-xs table-auto w-auto">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-200">
-                              <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-10">
+                        <TableMarkup.Root className="text-xs table-auto w-auto">
+                          <TableMarkup.Head>
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>
                                 No.
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Revision Number
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Created
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Opened by
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Revision Name
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Status
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
+                              </TableMarkup.HeaderCell>
+                            </TableMarkup.Row>
+                          </TableMarkup.Head>
+                          <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                             {fetchedRevisions.map((rev, idx) => (
-                              <tr key={rev.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="py-1.5 px-2.5 text-slate-500 text-center font-medium">
+                              <TableMarkup.Row key={rev.id} className="hover:bg-slate-50 transition-colors">
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-500 text-center font-medium">
                                   {idx + 1}
-                                </td>
-                                <td
-                                  className="py-1.5 px-2.5 font-medium text-emerald-600 whitespace-nowrap cursor-pointer hover:underline"
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell
+                                  className={TABLE_STYLES.table5}
                                   onClick={() => openRevisionDetail(rev.id)}
                                 >
                                   {rev.revisionNumber}
-                                </td>
-                                <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                   {formatDateTimeFull(rev.created)}
-                                </td>
-                                <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                   {rev.openedBy || "-"}
-                                </td>
-                                <td className="py-1.5 px-2.5 text-slate-700 whitespace-normal min-w-[200px] max-w-[360px]">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-700 whitespace-normal min-w-[200px] max-w-[360px]">
                                   {rev.revisionName || rev.revisionNumber}
-                                </td>
-                                <td className="py-1.5 px-2.5 whitespace-nowrap">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 whitespace-nowrap">
                                   <Badge color={getBadgeColor(rev.statusCode, rev.status)} size="xs">
                                     {rev.status}
                                   </Badge>
-                                </td>
-                              </tr>
+                                </TableMarkup.Cell>
+                              </TableMarkup.Row>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableMarkup.Body>
+                        </TableMarkup.Root>
                       </div>
                     </div>
                   )}
@@ -266,69 +267,69 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                         Document Master
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
-                        <table className="text-xs table-auto w-auto">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-200">
-                              <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-10">
+                        <TableMarkup.Root className="text-xs table-auto w-auto">
+                          <TableMarkup.Head>
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>
                                 No.
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Document Number
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Created
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Opened by
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Document Name
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Status
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Author
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Valid Until
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
-                            <tr className="hover:bg-slate-50 transition-colors">
-                              <td className="py-1.5 px-2.5 text-slate-500 text-center font-medium">
+                              </TableMarkup.HeaderCell>
+                            </TableMarkup.Row>
+                          </TableMarkup.Head>
+                          <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
+                            <TableMarkup.Row className="hover:bg-slate-50 transition-colors">
+                              <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-500 text-center font-medium">
                                 1
-                              </td>
-                              <td
-                                className="py-1.5 px-2.5 font-medium text-emerald-600 whitespace-nowrap cursor-pointer hover:underline"
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell
+                                className={TABLE_STYLES.table5}
                                 onClick={() => openDocumentDetail(fetchedParentDocument.id)}
                               >
                                 {fetchedParentDocument.documentNumber}
-                              </td>
-                              <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                 {formatDateTimeFull(fetchedParentDocument.created)}
-                              </td>
-                              <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                 {fetchedParentDocument.openedBy || "-"}
-                              </td>
-                              <td className="py-1.5 px-2.5 text-slate-700 whitespace-normal min-w-[220px] max-w-[360px]">
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={TABLE_STYLES.table10}>
                                 {fetchedParentDocument.documentName}
-                              </td>
-                              <td className="py-1.5 px-2.5 whitespace-nowrap">
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className="py-1.5 px-2.5 whitespace-nowrap">
                                 <Badge color={getBadgeColor(fetchedParentDocument.statusCode, fetchedParentDocument.status)} size="xs">
                                   {fetchedParentDocument.status}
                                 </Badge>
-                              </td>
-                              <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                 {fetchedParentDocument.author || "-"}
-                              </td>
-                              <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                 {formatDateTimeFull(fetchedParentDocument.validUntil)}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
+                              </TableMarkup.Cell>
+                            </TableMarkup.Row>
+                          </TableMarkup.Body>
+                        </TableMarkup.Root>
                       </div>
                     </div>
                   )}
@@ -339,51 +340,51 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                         Related Documents ({normalizedRevision.relatedDocuments.length})
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
-                        <table className="text-xs table-auto w-auto">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-200">
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                        <TableMarkup.Root className="text-xs table-auto w-auto">
+                          <TableMarkup.Head>
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Document Number
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Document Name
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Revision
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Type
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Status
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
+                              </TableMarkup.HeaderCell>
+                            </TableMarkup.Row>
+                          </TableMarkup.Head>
+                          <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                             {normalizedRevision.relatedDocuments.map((doc) => (
-                              <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                                <td
-                                  className="py-1.5 px-2.5 font-medium text-emerald-600 whitespace-nowrap cursor-pointer hover:underline"
+                              <TableMarkup.Row key={doc.id} className="hover:bg-slate-50 transition-colors">
+                                <TableMarkup.Cell
+                                  className={TABLE_STYLES.table5}
                                   onClick={() => openRevisionDetail(doc.id)}
                                 >
                                   {doc.documentNumber}
-                                </td>
-                                <td className="py-1.5 px-2.5 text-slate-700 whitespace-normal min-w-[220px] max-w-[360px]">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className={TABLE_STYLES.table10}>
                                   {doc.documentName}
-                                </td>
-                                <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                   {doc.revisionNumber}
-                                </td>
-                                <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                   {doc.type}
-                                </td>
-                                <td className="py-1.5 px-2.5 whitespace-nowrap">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 whitespace-nowrap">
                                   <Badge color={getBadgeColor(doc.statusCode, doc.state)} size="xs">{doc.state}</Badge>
-                                </td>
-                              </tr>
+                                </TableMarkup.Cell>
+                              </TableMarkup.Row>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableMarkup.Body>
+                        </TableMarkup.Root>
                       </div>
                     </div>
                   )}
@@ -394,69 +395,69 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                         Correlated Documents ({normalizedRevision.correlatedDocuments.length})
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
-                        <table className="text-xs table-auto w-auto">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-200">
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                        <TableMarkup.Root className="text-xs table-auto w-auto">
+                          <TableMarkup.Head>
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Document Number
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Document Name
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Revision
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Type
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Status
-                              </th>
+                              </TableMarkup.HeaderCell>
                               {showCorrelationType && (
-                                <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                                <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                   Correlation Type
-                                </th>
+                                </TableMarkup.HeaderCell>
                               )}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
+                            </TableMarkup.Row>
+                          </TableMarkup.Head>
+                          <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                             {normalizedRevision.correlatedDocuments.map((doc) => (
-                              <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                                <td
-                                  className="py-1.5 px-2.5 font-medium text-emerald-600 whitespace-nowrap cursor-pointer hover:underline"
+                              <TableMarkup.Row key={doc.id} className="hover:bg-slate-50 transition-colors">
+                                <TableMarkup.Cell
+                                  className={TABLE_STYLES.table5}
                                   onClick={() => openRevisionDetail(doc.id)}
                                 >
                                   {doc.documentNumber}
-                                </td>
-                                <td className="py-1.5 px-2.5 text-slate-700 whitespace-normal min-w-[220px] max-w-[360px]">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className={TABLE_STYLES.table10}>
                                   {doc.documentName}
-                                </td>
-                                <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                   {doc.revisionNumber}
-                                </td>
-                                <td className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
                                   {doc.type}
-                                </td>
-                                <td className="py-1.5 px-2.5 whitespace-nowrap">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 whitespace-nowrap">
                                   <Badge color={getBadgeColor(doc.statusCode, doc.state)} size="xs">{doc.state}</Badge>
-                                </td>
+                                </TableMarkup.Cell>
                                 {showCorrelationType && (
-                                  <td className="py-1.5 px-2.5 text-slate-500 whitespace-nowrap">
+                                  <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-500 whitespace-nowrap">
                                     {doc.correlationType ?? "—"}
-                                  </td>
+                                  </TableMarkup.Cell>
                                 )}
-                              </tr>
+                              </TableMarkup.Row>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableMarkup.Body>
+                        </TableMarkup.Root>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
             </motion.div>
-          </td>
-          <td className="p-0 border-b border-slate-200 sticky right-0 z-10 bg-slate-50/50 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]"></td>
+          </TableMarkup.Cell>
+          <TableMarkup.Cell className={TABLE_STYLES.emptyCell1}></TableMarkup.Cell>
         </motion.tr>
       )}
       {isNavigating && <FullPageLoading text="Loading document details..." />}

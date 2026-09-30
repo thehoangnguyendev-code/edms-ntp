@@ -37,6 +37,8 @@ public class SodConstraintService {
     private final com.eqms.repository.UserAccountRepository userAccountRepository;
     private final com.eqms.repository.UserAccessProfileRepository userAccessProfileRepository;
     private final com.eqms.repository.AccessProfilePermissionSetRepository accessProfilePermissionSetRepository;
+    private final com.eqms.repository.SodViolationScanRepository violationScanRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     public SodConstraintService(
             SodConstraintRepository sodRepository,
@@ -49,7 +51,9 @@ public class SodConstraintService {
             SecurityChangeSignatureService securityChangeSignatureService,
             com.eqms.repository.UserAccountRepository userAccountRepository,
             com.eqms.repository.UserAccessProfileRepository userAccessProfileRepository,
-            com.eqms.repository.AccessProfilePermissionSetRepository accessProfilePermissionSetRepository) {
+            com.eqms.repository.AccessProfilePermissionSetRepository accessProfilePermissionSetRepository,
+            com.eqms.repository.SodViolationScanRepository violationScanRepository,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.sodRepository = sodRepository;
         this.roleRepository = roleRepository;
         this.effectivePermissionService = effectivePermissionService;
@@ -61,6 +65,8 @@ public class SodConstraintService {
         this.userAccountRepository = userAccountRepository;
         this.userAccessProfileRepository = userAccessProfileRepository;
         this.accessProfilePermissionSetRepository = accessProfilePermissionSetRepository;
+        this.violationScanRepository = violationScanRepository;
+        this.objectMapper = objectMapper;
     }
 
     /** Server-side list: search, filters, sort and pagination resolved here. */
@@ -127,6 +133,53 @@ public class SodConstraintService {
      * profiles individually, both assigned to the same person). Grounded in each user's actual
      * assigned profiles and each profile's actual effective permissions -- never inferred.
      */
+    /**
+     * Runs {@link #scanViolations()} and persists the result as one row in the SoD Violation
+     * Review history (V505) -- the "Scan Now" action on that screen, kept as its own domain
+     * history the same way Access Review / Audit Trail Periodic Review each keep theirs.
+     */
+    @Transactional
+    public List<SodViolationResponse> recordScan() {
+        List<SodViolationResponse> violations = scanViolations();
+        com.eqms.entity.SodViolationScan run = new com.eqms.entity.SodViolationScan();
+        run.setScannedBy(currentUserService.requireCurrentUser());
+        run.setScannedAt(java.time.Instant.now());
+        run.setViolationCount(violations.size());
+        run.setResults(objectMapper.valueToTree(violations));
+        violationScanRepository.save(run);
+        return violations;
+    }
+
+    /** Paged history of past scan runs (summary only, no results payload). */
+    @Transactional
+    public com.eqms.dto.user.PageResponse<com.eqms.dto.user.SodViolationScanSummaryResponse> listScanHistory(int page, int limit) {
+        requireView();
+        var pageResult = violationScanRepository.findAllByOrderByScannedAtDesc(
+                org.springframework.data.domain.PageRequest.of(Math.max(page - 1, 0), Math.max(limit, 1)));
+        List<com.eqms.dto.user.SodViolationScanSummaryResponse> data = pageResult.getContent().stream()
+                .map(run -> new com.eqms.dto.user.SodViolationScanSummaryResponse(
+                        run.getId(), run.getScannedAt(),
+                        run.getScannedBy() == null ? null : run.getScannedBy().getFullName(),
+                        run.getViolationCount()))
+                .toList();
+        return new com.eqms.dto.user.PageResponse<>(data, new com.eqms.dto.user.PaginationResponse(
+                page, limit, pageResult.getTotalElements(), pageResult.getTotalPages()));
+    }
+
+    /** Full detail (including the results snapshot) of one past scan run. */
+    @Transactional
+    public com.eqms.dto.user.SodViolationScanDetailResponse getScanDetail(UUID id) {
+        requireView();
+        com.eqms.entity.SodViolationScan run = violationScanRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Scan run not found: " + id));
+        List<SodViolationResponse> results = objectMapper.convertValue(
+                run.getResults(), objectMapper.getTypeFactory().constructCollectionType(List.class, SodViolationResponse.class));
+        return new com.eqms.dto.user.SodViolationScanDetailResponse(
+                run.getId(), run.getScannedAt(),
+                run.getScannedBy() == null ? null : run.getScannedBy().getFullName(),
+                run.getViolationCount(), results);
+    }
+
     @Transactional
     public List<SodViolationResponse> scanViolations() {
         requireView();
@@ -214,6 +267,79 @@ public class SodConstraintService {
     }
 
     /**
+     * Preview real-world impact for an AD-HOC permission pair not yet saved as a constraint --
+     * used by the New/Edit SoD Constraint form so an admin can see, before saving, which Access
+     * Profiles and users currently hold both sides. Mirrors {@link #scanViolations()}'s per-pair
+     * logic exactly but for one pair, kept as a separate method (not extracted/shared) so this
+     * read-only preview path can never affect the already-working saved-constraint scan.
+     */
+    @Transactional
+    public SodViolationResponse previewImpact(String codeA, String codeB) {
+        requireView();
+        if (codeA == null || codeB == null || codeA.isBlank() || codeB.isBlank() || codeA.equals(codeB)) {
+            return new SodViolationResponse(null, null, null, codeA, codeB, null, List.of(), List.of());
+        }
+        List<RoleDefinition> accessProfiles = roleRepository.findAll().stream()
+                .filter(RoleDefinition::isActive).toList();
+        Map<UUID, Set<String>> profilePermissionCodes = new HashMap<>();
+        for (RoleDefinition profile : accessProfiles) {
+            profilePermissionCodes.put(profile.getId(), effectivePermissionService.getEffectivePermissionCodes(profile));
+        }
+        Map<UUID, RoleDefinition> profileById = accessProfiles.stream()
+                .collect(Collectors.toMap(RoleDefinition::getId, p -> p));
+
+        List<UserAccount> activeUsers = userAccountRepository.findAll().stream()
+                .filter(u -> u.getStatus() == com.eqms.entity.UserStatus.Active)
+                .toList();
+        Map<UUID, UserAccount> userById = new HashMap<>();
+        Map<UUID, List<UUID>> userActiveProfileIds = new HashMap<>();
+        for (UserAccount user : activeUsers) {
+            List<UUID> ids = userAccessProfileRepository.findByUserId(user.getId()).stream()
+                    .map(com.eqms.entity.UserAccessProfile::getAccessProfileId)
+                    .filter(profileById::containsKey)
+                    .distinct()
+                    .toList();
+            if (ids.size() > 1) {
+                userById.put(user.getId(), user);
+                userActiveProfileIds.put(user.getId(), ids);
+            }
+        }
+
+        List<SodViolationResponse.ViolatingAccessProfile> violatingProfiles = new ArrayList<>();
+        Set<UUID> singleProfileViolatorIds = new HashSet<>();
+        for (RoleDefinition profile : accessProfiles) {
+            Set<String> codes = profilePermissionCodes.getOrDefault(profile.getId(), Set.of());
+            if (codes.contains(codeA) && codes.contains(codeB)) {
+                violatingProfiles.add(new SodViolationResponse.ViolatingAccessProfile(
+                        profile.getId(), profile.getName(), profile.getCode()));
+                singleProfileViolatorIds.add(profile.getId());
+            }
+        }
+
+        List<SodViolationResponse.ViolatingUserCombination> combinationViolations = new ArrayList<>();
+        for (Map.Entry<UUID, List<UUID>> entry : userActiveProfileIds.entrySet()) {
+            List<UUID> profileIds = entry.getValue();
+            if (profileIds.stream().anyMatch(singleProfileViolatorIds::contains)) continue;
+            List<SodViolationResponse.ProfileRef> grantingA = new ArrayList<>();
+            List<SodViolationResponse.ProfileRef> grantingB = new ArrayList<>();
+            for (UUID profileId : profileIds) {
+                Set<String> codes = profilePermissionCodes.getOrDefault(profileId, Set.of());
+                RoleDefinition profile = profileById.get(profileId);
+                if (profile == null) continue;
+                if (codes.contains(codeA)) grantingA.add(new SodViolationResponse.ProfileRef(profile.getId(), profile.getName(), profile.getCode()));
+                if (codes.contains(codeB)) grantingB.add(new SodViolationResponse.ProfileRef(profile.getId(), profile.getName(), profile.getCode()));
+            }
+            if (!grantingA.isEmpty() && !grantingB.isEmpty()) {
+                UserAccount user = userById.get(entry.getKey());
+                combinationViolations.add(new SodViolationResponse.ViolatingUserCombination(
+                        user.getId(), user.getUsername(), user.getFullName(), grantingA, grantingB));
+            }
+        }
+
+        return new SodViolationResponse(null, null, null, codeA, codeB, null, violatingProfiles, combinationViolations);
+    }
+
+    /**
      * Check a proposed SET of Access Profiles (e.g. the profiles about to be assigned to a user)
      * for SoD violations that only emerge from the combination — including the case where a
      * single profile in the set already contains both sides of a pair. Unlike {@link #checkPermissions},
@@ -291,6 +417,22 @@ public class SodConstraintService {
                 .toList();
     }
 
+    /**
+     * Runtime (action-time) hook: is there an ACTIVE constraint for this permission pair, in either order?
+     * Unlike the role-assignment checks above this is not gated by SoD view permission -- it is called by
+     * business services at the moment an action happens (e.g. "may the requester decide on their own request?"),
+     * so that an administrator deactivating the constraint via the SoD admin screen changes the enforced rule.
+     * Reuses {@link SodConstraintRepository#findConflict} (the same unordered, active-only pair lookup used
+     * for duplicate detection on create/update).
+     */
+    public boolean isActiveConstraint(String permissionCodeA, String permissionCodeB) {
+        if (!org.springframework.util.StringUtils.hasText(permissionCodeA)
+                || !org.springframework.util.StringUtils.hasText(permissionCodeB)) {
+            return false;
+        }
+        return sodRepository.findConflict(permissionCodeA.trim(), permissionCodeB.trim()).isPresent();
+    }
+
     @Transactional
     public SodConstraintResponse create(SodConstraintRequest request) {
         requireManage();
@@ -327,7 +469,7 @@ public class SodConstraintService {
         SodConstraint c = require(id);
 
         if (c.isSystem()) {
-            throw new IllegalArgumentException("System SoD constraints cannot be modified");
+            return updateSystemActiveFlag(actor, c, request);
         }
 
         sodRepository.findConflict(request.permissionCodeA(), request.permissionCodeB()).ifPresent(existing -> {
@@ -367,6 +509,35 @@ public class SodConstraintService {
         auditTrailService.logAs(actor, "SOD_CONSTRAINT", c.getName(), c.getId(),
                 "UPDATED", oldStatus, c.isActive() ? "Active" : "Inactive",
                 withReason("Updated SoD constraint", request.reason()),
+                changes, esig == null ? null : esig.getId());
+        return toResponse(c);
+    }
+
+    /**
+     * System constraints keep their definition (name, pair, severity, regulation reference) fixed and cannot be
+     * deleted, but an administrator may activate/deactivate them -- that is the admin toggle for runtime-enforced
+     * rules (see {@link #isActiveConstraint}). Every other field of the request is ignored for a system row.
+     * Same e-signature + audit trail as any other SoD change.
+     */
+    private SodConstraintResponse updateSystemActiveFlag(UserAccount actor, SodConstraint c, SodConstraintRequest request) {
+        String oldStatus = c.isActive() ? "Active" : "Inactive";
+        String newStatus = request.active() ? "Active" : "Inactive";
+        if (oldStatus.equals(newStatus)) {
+            throw new IllegalArgumentException("System SoD constraints can only be activated or deactivated");
+        }
+        c.setActive(request.active());
+        c.setUpdatedBy(actor);
+        sodRepository.save(c);
+
+        List<AuditTrailChangeResponse> changes = new ArrayList<>();
+        addSodChange(changes, "Status", oldStatus, newStatus);
+        ElectronicSignature esig = securityChangeSignatureService.record(actor, request.signatureToken(),
+                SecurityChangeSignatureService.MEANING_SOD_RULE_CHANGE,
+                "SOD_CONSTRAINT", c.getId(), c.getName(), request.reason(),
+                oldStatus, newStatus);
+        auditTrailService.logAs(actor, "SOD_CONSTRAINT", c.getName(), c.getId(),
+                "UPDATED", oldStatus, newStatus,
+                withReason((request.active() ? "Activated" : "Deactivated") + " system SoD constraint", request.reason()),
                 changes, esig == null ? null : esig.getId());
         return toResponse(c);
     }

@@ -57,6 +57,7 @@ type ModulePreferenceKey = typeof MODULE_OPTIONS[number]['key'];
 
 interface NotificationSettingsTabProps {
   onRegisterSaveHandler?: (handler: (() => Promise<void>) | null) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const Chip: React.FC<{
@@ -93,7 +94,7 @@ const readModulePreferences = (value: unknown): Record<ModulePreferenceKey, bool
   }, defaults);
 };
 
-export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = ({ onRegisterSaveHandler }) => {
+export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = ({ onRegisterSaveHandler, onDirtyChange }) => {
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
 
@@ -198,6 +199,12 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
       onRegisterSaveHandler?.(null);
     };
   }, [onRegisterSaveHandler, saveChanges]);
+
+  useEffect(() => {
+    onDirtyChange?.(pendingChanges);
+    return () => onDirtyChange?.(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingChanges, onDirtyChange]);
 
   return (
     <div className="p-1 animate-in fade-in slide-in-from-bottom-2 duration-300">

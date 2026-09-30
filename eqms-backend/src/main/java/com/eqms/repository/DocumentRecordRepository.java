@@ -30,6 +30,7 @@ public interface DocumentRecordRepository extends JpaRepository<DocumentRecord, 
     List<DocumentRecord> findAllByDocumentType_Id(UUID documentTypeId);
     boolean existsByDocumentType_Id(UUID documentTypeId);
     boolean existsByBusinessUnit_Id(UUID businessUnitId);
+
     boolean existsByDepartment_Id(UUID departmentId);
     boolean existsByDocumentType_IdAndSubTypeIgnoreCase(UUID documentTypeId, String subType);
     boolean existsBySubTypeId(UUID subTypeId);

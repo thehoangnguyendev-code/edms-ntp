@@ -14,6 +14,7 @@ import { cn } from "@/components/ui/utils";
 import { useTableDragScroll, usePortalDropdown, PortalDropdownPosition } from "@/hooks";
 import { ROUTES } from "@/app/routes.constants";
 import { CATEGORY_OPTIONS, METHOD_OPTIONS, ApprovedCourse } from "../AssignTrainingView";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface CourseDropdownMenuProps {
   course: ApprovedCourse;
@@ -224,14 +225,14 @@ export const Step1CourseSelect: React.FC<Step1Props> = ({
               )}
               {...dragEvents}
             >
-              <table className="w-full min-w-[1000px] border-spacing-0 text-left">
-                <thead>
-                  <tr>
-                    <th className="sticky top-0 z-20 bg-slate-50 py-3 px-2 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-8">
-                    </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
+              <TableMarkup.Root className="w-full min-w-[1000px] border-spacing-0 text-left">
+                <TableMarkup.Head>
+                  <TableMarkup.Row>
+                    <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-2 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-8">
+                    </TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
                       No.
-                    </th>
+                    </TableMarkup.HeaderCell>
                     {[
                       { label: "Course ID", id: "trainingId", width: "w-32" },
                       { label: "Course Name", id: "title", width: "min-w-[200px]" },
@@ -245,14 +246,14 @@ export const Step1CourseSelect: React.FC<Step1Props> = ({
                     ].map((col) => {
                       if (col.sortable === false) {
                         return (
-                          <th key={col.id} className={cn("sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap", col.width, col.align || "text-left")}>
+                          <TableMarkup.HeaderCell key={col.id} className={cn("sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap", col.width, col.align || "text-left")}>
                             {col.label}
-                          </th>
+                          </TableMarkup.HeaderCell>
                         );
                       }
                       const isSorted = sortField === col.id;
                       return (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={col.id}
                           onClick={() => handleSort(col.id as keyof ApprovedCourse)}
                           className={cn(
@@ -268,30 +269,30 @@ export const Step1CourseSelect: React.FC<Step1Props> = ({
                               <ChevronDown className={cn("h-3 w-3", isSorted && sortOrder === 'desc' ? "text-emerald-600" : "")} />
                             </div>
                           </div>
-                        </th>
+                        </TableMarkup.HeaderCell>
                       );
                     })}
-                    <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
                       Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
+                    </TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body className="bg-white">
                   {currentCourses.length === 0 && (
-                    <tr>
-                      <td colSpan={12} className="p-0">
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell colSpan={12} className="p-0">
                         <TableEmptyState
                          
                           title="No courses found"
                           description="Try adjusting your search criteria to see more results."
                         />
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   )}
                   {currentCourses.map((c, idx) => {
                     const tdClass = "py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap";
                     return (
-                      <tr
+                      <TableMarkup.Row
                         key={c.id}
                         onClick={() => onSelectCourse(c.id)}
                         className={cn(
@@ -299,23 +300,23 @@ export const Step1CourseSelect: React.FC<Step1Props> = ({
                           selectedCourseId === c.id && "bg-emerald-50/50",
                         )}
                       >
-                        <td className="py-3 px-2 border-b border-slate-200 text-center w-8">
+                        <TableMarkup.Cell className="py-3 px-2 border-b border-slate-200 text-center w-8">
                           <div className="flex justify-center">
                             <Checkbox
                               checked={selectedCourseId === c.id}
                               onChange={() => onSelectCourse(c.id)}
                             />
                           </div>
-                        </td>
-                        <td className={cn(tdClass, "text-center font-medium text-slate-500")}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={cn(tdClass, "text-center font-medium text-slate-500")}>
                           {(currentPage - 1) * itemsPerPage + idx + 1}
-                        </td>
-                        <td className={tdClass}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={tdClass}>
                           <span className="font-medium text-emerald-600 hover:underline">
                             {c.trainingId}
                           </span>
-                        </td>
-                        <td className={tdClass}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={tdClass}>
                           <div className="flex items-start gap-2">
                             <GraduationCap className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                             <div className="max-w-[200px] md:max-w-md">
@@ -327,35 +328,35 @@ export const Step1CourseSelect: React.FC<Step1Props> = ({
                               </p>
                             </div>
                           </div>
-                        </td>
-                        <td className={tdClass}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={tdClass}>
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200">
                             {c.type}
                           </span>
-                        </td>
-                        <td className={tdClass}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={tdClass}>
                           {c.trainingMethod}
-                        </td>
-                        <td className={cn(tdClass, "text-center")}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={cn(tdClass, "text-center")}>
                             <span className="font-medium">{c.duration}h</span>
-                        </td>
-                        <td className={cn(tdClass, "text-center font-semibold text-emerald-600")}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={cn(tdClass, "text-center font-semibold text-emerald-600")}>
                           {c.passScore}%
-                        </td>
-                        <td className={tdClass}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={tdClass}>
                           <Badge color="emerald" size="sm" pill>
                             Effective
                           </Badge>
-                        </td>
-                        <td className={tdClass}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={tdClass}>
                           {c.instructor}
-                        </td>
-                        <td className={tdClass}>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={tdClass}>
                           25/03/2026
-                        </td>
-                        <td
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell
                           onClick={(e) => e.stopPropagation()}
-                          className="sticky right-0 z-10 bg-white border-b border-slate-200 py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
+                          className={TABLE_STYLES.cell33}
                         >
                           <button
                             ref={getRef(c.id)}
@@ -372,12 +373,12 @@ export const Step1CourseSelect: React.FC<Step1Props> = ({
                             position={dropdownPosition}
                             onNavigate={navigateTo}
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     )
                   })}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
 
             {/* ==================== PREMIUM MOBILE CARD VIEW (< 1024px) ==================== */}

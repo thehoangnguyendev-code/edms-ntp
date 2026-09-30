@@ -63,7 +63,8 @@ public class ControlledCopyMarkingPreviewService {
         }
     };
 
-    private record CachedBase(byte[] pdf, String note, long storedAt) {
+    /** Two-page base PDF (cover, body) of a Publishing Template, shared with {@link UncontrolledCopyMarkingPreviewService}. */
+    public record CachedBase(byte[] pdf, String note, long storedAt) {
     }
 
     public ControlledCopyMarkingPreviewService(
@@ -126,7 +127,8 @@ public class ControlledCopyMarkingPreviewService {
         return response(finalPdf, base, pageIndex, issuedMarks, statusMarks);
     }
 
-    private ControlledCopyMarkingPreviewResponse response(byte[] pdf, CachedBase base, int pageIndex,
+    /** Renders {@code pageIndex} of the marked PDF to PNG plus the mark boxes/warnings. Shared with the Uncontrolled Copy preview. */
+    public ControlledCopyMarkingPreviewResponse response(byte[] pdf, CachedBase base, int pageIndex,
                                                           List<ControlledCopyPdfMarkingService.Placement> issuedMarks,
                                                           List<ControlledCopyPdfMarkingService.Placement> statusMarks) {
         List<ControlledCopyMarkingPreviewResponse.MarkBox> boxes = new ArrayList<>();
@@ -176,7 +178,8 @@ public class ControlledCopyMarkingPreviewService {
         }
     }
 
-    private CachedBase baseDocument(String templateId, String layout) {
+    /** Cached two-page base document of the chosen (or first active) Publishing Template. Shared with the Uncontrolled Copy preview. */
+    public CachedBase baseDocument(String templateId, String layout) {
         PublishingTemplate template = resolveTemplate(templateId);
         String key = template.getId() + "|" + layout + "|" + template.getUpdatedAt();
         synchronized (cache) {

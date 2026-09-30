@@ -9,6 +9,7 @@ import { useNavigateWithLoading } from "@/hooks";
 import { documentApi } from "@/services/api/documents";
 import { buildDocumentDetailSnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import { buildRevisionWorkspaceNavigationState, type RevisionWorkspaceState } from "@/features/documents/shared/navigationContext";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 type DocumentState = "Draft" | "Active" | "Obsoleted" | "Closed - Cancelled" | string;
 
@@ -123,46 +124,46 @@ export const OriginalDocumentTab: React.FC<OriginalDocumentTabProps> = ({ docume
 
       <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">
+          <TableMarkup.Root className="w-full">
+            <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
+              <TableMarkup.Row>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell16}>
                   No.
-                </th>
-                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                </TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
                   Document Number
-                </th>
-                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
+                </TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
                   Created
-                </th>
-                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
+                </TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
                   Opened by
-                </th>
-                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                </TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
                   Document Name
-                </th>
-                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                </TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
                   Status
-                </th>
-                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
+                </TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>
                   Author
-                </th>
-                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
+                </TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>
                   Valid Until
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
+                </TableMarkup.HeaderCell>
+              </TableMarkup.Row>
+            </TableMarkup.Head>
+            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
               {documents.length > 0 ? (
                 documents.map((doc, index) => (
-                  <tr
+                  <TableMarkup.Row
                     key={doc.id || doc.documentNumber || index}
                     className="hover:bg-slate-50 transition-colors"
                   >
-                    <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm text-slate-500 whitespace-nowrap">
+                    <TableMarkup.Cell className={TABLE_STYLES.cell18}>
                       {index + 1}
-                    </td>
-                    <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => handleDocumentClick(doc)}
@@ -171,30 +172,30 @@ export const OriginalDocumentTab: React.FC<OriginalDocumentTabProps> = ({ docume
                       >
                         {displayValue(doc.documentNumber)}
                       </button>
-                    </td>
-                    <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm text-slate-600 whitespace-nowrap hidden md:table-cell">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell20}>
                       {formatDateTimeFull(doc.created)}
-                    </td>
-                    <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm text-slate-600 whitespace-nowrap hidden md:table-cell">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell20}>
                       {displayValue(doc.openedBy)}
-                    </td>
-                    <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm text-slate-900 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm text-slate-900 whitespace-nowrap">
                       {displayValue(doc.documentName)}
-                    </td>
-                    <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap">
                       {doc.status ? <StatusBadge status={mapDocumentStateToStatusType(doc.status, doc.statusInfo)} /> : "-"}
-                    </td>
-                    <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm text-slate-600 whitespace-nowrap hidden lg:table-cell">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell19}>
                       {displayValue(doc.author)}
-                    </td>
-                    <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm text-slate-600 whitespace-nowrap hidden lg:table-cell">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell19}>
                       {formatDateTimeFull(doc.validUntil)}
-                    </td>
-                  </tr>
+                    </TableMarkup.Cell>
+                  </TableMarkup.Row>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center">
+                <TableMarkup.Row>
+                  <TableMarkup.Cell colSpan={8} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-2.5">
                       <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center">
                         <Search className="h-5 w-5 text-slate-300" />
@@ -203,11 +204,11 @@ export const OriginalDocumentTab: React.FC<OriginalDocumentTabProps> = ({ docume
                         No records to display
                       </p>
                     </div>
-                  </td>
-                </tr>
+                  </TableMarkup.Cell>
+                </TableMarkup.Row>
               )}
-            </tbody>
-          </table>
+            </TableMarkup.Body>
+          </TableMarkup.Root>
         </div>
       </div>
     </div>

@@ -25,6 +25,7 @@ import { dictionaryApi } from "@/services/api/dictionary";
 import { usePermissions } from "@/hooks/usePermissions";
 import { IconUsersGroup } from "@tabler/icons-react";
 import type { ControlledCopyRequestRouteState } from "@/features/documents/shared/controlledCopyRequest";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // --- Types ---
 type DistributionScope = "business-unit" | "department" | "individual";
@@ -1306,75 +1307,75 @@ export const RequestControlledCopyView: React.FC = () => {
             <div className="space-y-4">
               <div className="overflow-hidden rounded-xl border border-slate-200">
                 <div className="max-h-[420px] overflow-auto">
-                  <table className="w-full min-w-full">
-                    <thead className="sticky top-0 z-10 bg-slate-50">
-                      <tr>
-                        <th className="w-14 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                  <TableMarkup.Root className="w-full min-w-full">
+                    <TableMarkup.Head className="sticky top-0 z-10 bg-slate-50">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className="w-14 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
                           No.
-                        </th>
-                        <th className="py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                        </TableMarkup.HeaderCell>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell19}>
                           Recipient
-                        </th>
+                        </TableMarkup.HeaderCell>
                         {distributionMode === "internal" ? (
                           <>
-                            <th className="py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                            <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell19}>
                               Username
-                            </th>
-                            <th className="py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                            </TableMarkup.HeaderCell>
+                            <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell19}>
                               Position
-                            </th>
+                            </TableMarkup.HeaderCell>
                           </>
                         ) : (
-                          <th className="py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell19}>
                             Detail
-                          </th>
+                          </TableMarkup.HeaderCell>
                         )}
-                        <th className="w-32 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                        <TableMarkup.HeaderCell className="w-32 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
                           Quantity
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                        </TableMarkup.HeaderCell>
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                       {recipientRows.length > 0 ? (
                         recipientRows.map((row, index) => (
-                          <tr
+                          <TableMarkup.Row
                             key={row.id}
                             className="hover:bg-slate-50/80 transition-colors"
                           >
-                            <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 text-center">
+                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 text-center">
                               {index + 1}
-                            </td>
-                            <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={TABLE_STYLES.cell28}>
                               {row.displayName}
-                            </td>
+                            </TableMarkup.Cell>
                             {distributionMode === "internal" ? (
                               <>
-                                <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                                <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                                   {row.username || "-"}
-                                </td>
-                                <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                                </TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                                   {row.position || "-"}
-                                </td>
+                                </TableMarkup.Cell>
                               </>
                             ) : (
-                              <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                              <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                                 {row.detail || "-"}
-                              </td>
+                              </TableMarkup.Cell>
                             )}
-                            <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900">
+                            <TableMarkup.Cell className={TABLE_STYLES.cell28}>
                               {row.quantity}
-                            </td>
-                          </tr>
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
                         ))
                       ) : (
-                        <tr>
-                          <td colSpan={distributionMode === "internal" ? 5 : 4} className="p-0">
+                        <TableMarkup.Row>
+                          <TableMarkup.Cell colSpan={distributionMode === "internal" ? 5 : 4} className="p-0">
                             <TableEmptyState title="No recipients selected yet." />
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       )}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
               </div>
             </div>

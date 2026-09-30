@@ -6,7 +6,9 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { EmptyState } from "@/components/ui/page/EmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { ExpandedDocumentRow } from "./ExpandedDocumentRow";
+import { hasRevisionExpansion } from "../rowExpansion";
 import type { RelatedDocument, CorrelatedDocument } from "@/features/documents/document-revisions/views/types";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 export interface TableColumn {
   id: string;
@@ -31,6 +33,7 @@ interface SortConfig {
 interface RevisionTableViewProps<
   T extends {
     id: string;
+    documentId?: string | null;
     relatedDocuments?: RelatedDocument[];
     correlatedDocuments?: CorrelatedDocument[];
   }
@@ -84,6 +87,7 @@ interface RevisionTableViewProps<
 const RevisionTableViewInner = <
   T extends {
     id: string;
+    documentId?: string | null;
     relatedDocuments?: RelatedDocument[];
     correlatedDocuments?: CorrelatedDocument[];
   }
@@ -169,12 +173,12 @@ const RevisionTableViewInner = <
           )}
           {...dragEvents}
         >
-          <table className="w-full min-w-max border-spacing-0 text-left">
+          <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
             {/* Table Header */}
-            <thead>
-              <tr>
+            <TableMarkup.Head>
+              <TableMarkup.Row>
                 {/* Expand/collapse column */}
-                <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-9" />
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell32} />
 
                 {/* Data columns */}
                 {visibleColumns.map((column) => {
@@ -187,7 +191,7 @@ const RevisionTableViewInner = <
                     column.id !== "template";
 
                   return (
-                    <th
+                    <TableMarkup.HeaderCell
                       key={column.id}
                       onClick={canSort ? () => onSort(column.id) : undefined}
                       className={cn(
@@ -217,20 +221,19 @@ const RevisionTableViewInner = <
                           </div>
                         )}
                       </div>
-                    </th>
+                    </TableMarkup.HeaderCell>
                   );
                 })}
-              </tr>
-            </thead>
+              </TableMarkup.Row>
+            </TableMarkup.Head>
 
             {/* Table Body */}
-            <tbody className="bg-white">
+            <TableMarkup.Body className="bg-white">
               {paginatedRevisions.map((item, index) => {
                 const itemId = item.id;
                 const isExpanded = expandedRowId === itemId;
-                const showExpand = shouldShowExpandIcon ? shouldShowExpandIcon(item) : true;
-                const relatedCount = item.relatedDocuments?.length ?? 0;
-                const correlatedCount = item.correlatedDocuments?.length ?? 0;
+                const showExpand = hasRevisionExpansion(item)
+                  && (shouldShowExpandIcon ? shouldShowExpandIcon(item) : true);
                 const hasDocs = showExpand;
 
                 const tdClass =
@@ -239,9 +242,9 @@ const RevisionTableViewInner = <
                 return (
                   <React.Fragment key={itemId}>
                     {/* Main Row */}
-                    <tr className="hover:bg-slate-50/80 transition-colors group">
+                    <TableMarkup.Row className="hover:bg-slate-50/80 transition-colors group">
                       {/* Expand/collapse button */}
-                      <td
+                      <TableMarkup.Cell
                         className="py-3 px-4 border-b border-slate-200 whitespace-nowrap"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -249,7 +252,7 @@ const RevisionTableViewInner = <
                         }}
                       >
                         {hasDocs ? (
-                          <button className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors">
+                          <button type="button" aria-label={`${isExpanded ? "Collapse" : "Expand"} revision ${itemId}`} aria-expanded={isExpanded} className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors">
                             <motion.span
                               animate={{ rotate: isExpanded ? 90 : 0 }}
                               transition={transitionConfig}
@@ -259,7 +262,7 @@ const RevisionTableViewInner = <
                             </motion.span>
                           </button>
                         ) : null}
-                      </td>
+                      </TableMarkup.Cell>
 
                       {/* Data cells */}
                       {visibleColumns.map((column) => {
@@ -267,10 +270,10 @@ const RevisionTableViewInner = <
 
                         if (column.id === "action") {
                           return (
-                            <td
+                            <TableMarkup.Cell
                               key={column.id}
                               onClick={(e) => e.stopPropagation()}
-                              className="sticky right-0 z-10 bg-white border-b border-slate-200 py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
+                              className={TABLE_STYLES.cell33}
                             >
                               {menuActions.length > 0 && (
                                 <button
@@ -284,12 +287,12 @@ const RevisionTableViewInner = <
                                   <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
                                 </button>
                               )}
-                            </td>
+                            </TableMarkup.Cell>
                           );
                         }
 
                         return (
-                          <td
+                          <TableMarkup.Cell
                             key={column.id}
                             className={cn(
                               tdClass,
@@ -303,25 +306,25 @@ const RevisionTableViewInner = <
                             }
                           >
                             {renderCell(column, item, index)}
-                          </td>
+                          </TableMarkup.Cell>
                         );
                       })}
-                    </tr>
+                    </TableMarkup.Row>
 
                     {/* Expanded Row */}
                     <ExpandedDocumentRow
                       revision={item}
                       isExpanded={isExpanded}
                       visibleColumnsLength={visibleColumns.length + 1} // +1 for expand column
-                      hasDocs={true}
+                      hasDocs={hasDocs}
                       showCorrelationType={showCorrelationType}
                       revisionId={itemId}
                     />
                   </React.Fragment>
                 );
               })}
-            </tbody>
-          </table>
+            </TableMarkup.Body>
+          </TableMarkup.Root>
         </div>
 
         {/* Pagination */}
@@ -341,6 +344,7 @@ const RevisionTableViewInner = <
 export const RevisionTableView = React.forwardRef(RevisionTableViewInner) as <
   T extends {
     id: string;
+    documentId?: string | null;
     relatedDocuments?: RelatedDocument[];
     correlatedDocuments?: CorrelatedDocument[];
   }

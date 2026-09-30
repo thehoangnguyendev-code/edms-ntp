@@ -28,6 +28,7 @@ import { useServerTable } from "../shared/hooks/useServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 /** Application Settings > Education > Degree Levels -- its own page, not part of "Dictionaries". */
 export const EducationDegreeLevelsView: React.FC = () => {
@@ -196,10 +197,10 @@ export const EducationDegreeLevelsView: React.FC = () => {
           )}
         <div className={cn("flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white flex flex-col transition-all duration-300", isLoading && "blur-[2px] opacity-80")}>
           <div ref={scrollerRef} {...dragEvents} className="flex-1 overflow-x-auto">
-            <table className="w-full">
-              <thead className="sticky top-0 z-30">
-                <tr>
-                  <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">No.</th>
+            <TableMarkup.Root className="w-full">
+              <TableMarkup.Head className="sticky top-0 z-30">
+                <TableMarkup.Row>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>No.</TableMarkup.HeaderCell>
                   {[
                     { label: "Degree / Qualification Level", id: "name" },
                     { label: "Order", id: "displayOrder" },
@@ -208,8 +209,8 @@ export const EducationDegreeLevelsView: React.FC = () => {
                   ].map((col) => {
                     const isSorted = sortConfig.key === col.id;
                     return (
-                      <th key={col.id} onClick={() => handleSort(col.id)}
-                        className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors group">
+                      <TableMarkup.HeaderCell key={col.id} onClick={() => handleSort(col.id)}
+                        className={TABLE_STYLES.headerCell38}>
                         <div className="flex items-center justify-between gap-2 w-full">
                           <span className="truncate">{col.label}</span>
                           <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
@@ -217,47 +218,47 @@ export const EducationDegreeLevelsView: React.FC = () => {
                             <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600 font-bold" : "")} />
                           </div>
                         </div>
-                      </th>
+                      </TableMarkup.HeaderCell>
                     );
                   })}
-                  <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>Action</TableMarkup.HeaderCell>
+                </TableMarkup.Row>
+              </TableMarkup.Head>
+              <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                 {isLoading ? (
-                  <tr><td colSpan={6} className="py-14 text-center text-slate-500">Loading degree levels...</td></tr>
+                  <TableMarkup.Row><TableMarkup.Cell colSpan={6} className="py-14 text-center text-slate-500">Loading degree levels...</TableMarkup.Cell></TableMarkup.Row>
                 ) : items.length > 0 ? (
                   items.map((item, index) => (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                      <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700 text-center">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                      <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900">{item.name}</td>
-                      <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{item.displayOrder}</td>
-                      <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                    <TableMarkup.Row key={item.id} className="hover:bg-slate-50/80 transition-colors group">
+                      <TableMarkup.Cell className={TABLE_STYLES.cell30}>{(currentPage - 1) * itemsPerPage + index + 1}</TableMarkup.Cell>
+                      <TableMarkup.Cell className={TABLE_STYLES.cell28}>{item.name}</TableMarkup.Cell>
+                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{item.displayOrder}</TableMarkup.Cell>
+                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                         {item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>}
-                      </td>
-                      <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{item.modifiedDate}</td>
-                      <td onClick={(e) => e.stopPropagation()} className="sticky right-0 bg-white py-3 px-4 text-xs sm:text-sm text-center z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{item.modifiedDate}</TableMarkup.Cell>
+                      <TableMarkup.Cell onClick={(e) => e.stopPropagation()} className={TABLE_STYLES.emptyCell3}>
                         {canManage && (
                           <button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions">
                             <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
                           </button>
                         )}
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan={6} className="p-0">
+                  <TableMarkup.Row>
+                    <TableMarkup.Cell colSpan={6} className="p-0">
                       <TableEmptyState
                        
                         title="No degree levels found"
                         description="Try adjusting your search"
                       />
-                    </td>
-                  </tr>
+                    </TableMarkup.Cell>
+                  </TableMarkup.Row>
                 )}
-              </tbody>
-            </table>
+              </TableMarkup.Body>
+            </TableMarkup.Root>
           </div>
           {!isLoading && totalItems > 0 && (
             <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage}

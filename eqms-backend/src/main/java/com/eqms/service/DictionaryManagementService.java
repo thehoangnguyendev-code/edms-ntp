@@ -898,7 +898,7 @@ public class DictionaryManagementService {
         // which would silently drop every department with no Department Head from the sorted
         // page. Only primaryContactPhone (a plain column) is sortable below.
         return switch (normalized) {
-            case "name", "abbreviation", "shortCode", "currentSequence", "description", "isActive", "primaryContactPhone" -> normalized;
+            case "name", "abbreviation", "shortCode", "currentSequence", "description", "isActive", "primaryContactPhone", "displayOrder" -> normalized;
             default -> defaultSortKey;
         };
     }

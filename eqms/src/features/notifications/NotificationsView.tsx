@@ -52,6 +52,7 @@ import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { FilterOptionButton } from "@/components/ui/filter/FilterOptionButton";
 import { IconFilter2 } from "@tabler/icons-react";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // Helper functions
 const getTypeIcon = (type: NotificationType) => {
@@ -238,7 +239,7 @@ const NotificationRow: React.FC<{
     })();
 
     return (
-      <tr
+      <TableMarkup.Row
         className={cn(
           "group relative transition-colors",
           notification.status === "unread"
@@ -246,7 +247,7 @@ const NotificationRow: React.FC<{
             : "bg-white hover:bg-emerald-50/50",
         )}
       >
-        <td
+        <TableMarkup.Cell
           onClick={(e) => e.stopPropagation()}
           className={cn("py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap", "text-center w-10")}
         >
@@ -257,16 +258,16 @@ const NotificationRow: React.FC<{
             className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             aria-label="Select notification"
           />
-        </td>
+        </TableMarkup.Cell>
 
-        <td className={cn("py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap", "text-center text-slate-500 w-14 relative")}>
+        <TableMarkup.Cell className={cn("py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap", "text-center text-slate-500 w-14 relative")}>
           {notification.status === "unread" && (
             <div className="absolute inset-y-0 left-0 w-1 bg-emerald-500" title="Unread" />
           )}
           {index}
-        </td>
+        </TableMarkup.Cell>
 
-        <td className={tdClass}>
+        <TableMarkup.Cell className={tdClass}>
           <div className="flex items-start gap-3">
             <div className="relative shrink-0">
               <div
@@ -308,18 +309,18 @@ const NotificationRow: React.FC<{
               )}
             </div>
           </div>
-        </td>
+        </TableMarkup.Cell>
 
-        <td className={tdClass}>
+        <TableMarkup.Cell className={tdClass}>
           <StatusBadge
             status="draft"
             label={notification.module}
             className="text-slate-700 bg-slate-50 border-slate-200"
             size="sm"
           />
-        </td>
+        </TableMarkup.Cell>
 
-        <td className={tdClass}>
+        <TableMarkup.Cell className={tdClass}>
           {notification.relatedItem ? (
             <span className="font-medium text-emerald-600">
               {notification.relatedItem.documentNumber}
@@ -327,21 +328,21 @@ const NotificationRow: React.FC<{
           ) : (
             <span className="text-slate-400">—</span>
           )}
-        </td>
+        </TableMarkup.Cell>
 
-        <td className={tdClass}>
+        <TableMarkup.Cell className={tdClass}>
           <Badge color={getPriorityColor(notification.priority)} size="sm" className="capitalize">
             {notification.priority}
           </Badge>
-        </td>
+        </TableMarkup.Cell>
 
-        <td className={cn(tdClass, "text-slate-500")}>
+        <TableMarkup.Cell className={cn(tdClass, "text-slate-500")}>
           {formatNotificationDateTime(notification.createdAt)}
-        </td>
+        </TableMarkup.Cell>
 
-        <td
+        <TableMarkup.Cell
           onClick={(e) => e.stopPropagation()}
-          className="sticky right-0 z-10 bg-white border-b border-slate-200 py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
+          className={TABLE_STYLES.cell33}
         >
           <button
             ref={getRef(notification.id)}
@@ -351,8 +352,8 @@ const NotificationRow: React.FC<{
           >
             <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
           </button>
-        </td>
-      </tr>
+        </TableMarkup.Cell>
+      </TableMarkup.Row>
     );
   };
 
@@ -1067,10 +1068,10 @@ export const NotificationsView: React.FC = () => {
               )}
               {...dragEvents}
             >
-              <table className="w-full min-w-max  border-spacing-0 text-left">
-                <thead>
-                  <tr>
-                    <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-10 text-center">
+              <TableMarkup.Root className="w-full min-w-max  border-spacing-0 text-left">
+                <TableMarkup.Head>
+                  <TableMarkup.Row>
+                    <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-10 text-center">
                       <input
                         type="checkbox"
                         checked={notifications.length > 0 && selectedIds.size === notifications.length}
@@ -1078,10 +1079,10 @@ export const NotificationsView: React.FC = () => {
                         className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                         aria-label="Select all notifications"
                       />
-                    </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-14 text-center">
+                    </TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-14 text-center">
                       No.
-                    </th>
+                    </TableMarkup.HeaderCell>
                     {[
                       { label: "Notification", id: "title", sortable: true },
                       { label: "Module", id: "module", sortable: true },
@@ -1092,7 +1093,7 @@ export const NotificationsView: React.FC = () => {
                       const isSorted = sortConfig.key === col.id;
                       const canSort = col.sortable;
                       return (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={idx}
                           onClick={canSort ? () => handleSort(col.id as keyof Notification) : undefined}
                           className={cn(
@@ -1109,15 +1110,15 @@ export const NotificationsView: React.FC = () => {
                               </div>
                             )}
                           </div>
-                        </th>
+                        </TableMarkup.HeaderCell>
                       );
                     })}
-                    <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider text-center whitespace-nowrap border-b-2 border-slate-200 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell25}>
                       Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
+                    </TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body className="bg-white">
                   {notifications.length > 0 ? (
                     notifications.map((notification, idx) => (
                       <NotificationRow
@@ -1133,18 +1134,18 @@ export const NotificationsView: React.FC = () => {
                       />
                     ))
                   ) : (
-                    <tr>
-                      <td colSpan={8} className="border-b border-slate-200">
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell colSpan={8} className="border-b border-slate-200">
                         <EmptyState
                           type={activeTab}
                           hasActiveFilters={hasActiveFilters}
                           onClearFilters={handleClearFilters}
                         />
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   )}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
 
             <TablePagination

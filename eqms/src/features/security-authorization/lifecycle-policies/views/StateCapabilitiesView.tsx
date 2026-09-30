@@ -22,6 +22,7 @@ import { workflowAuthorization as workflowAuthorizationBreadcrumb } from "@/comp
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { ROUTES } from "@/app/routes.constants";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const BASE_PATH = `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/state-policies`;
 
@@ -167,10 +168,10 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
     );
 
   const sortableTh = (key: string, label: string) => (
-    <th
+    <TableMarkup.HeaderCell
       key={key}
       onClick={() => handleSort(key)}
-      className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors group"
+      className={TABLE_STYLES.headerCell38}
     >
       <div className="flex items-center gap-2">
         <span>{label}</span>
@@ -179,7 +180,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
           <ChevronDown className={cn("h-3 w-3", sortKey === key && sortDir === "desc" ? "text-emerald-600" : "")} />
         </div>
       </div>
-    </th>
+    </TableMarkup.HeaderCell>
   );
 
   if (!canView) {
@@ -285,76 +286,76 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[1120px]">
-                  <thead className="sticky top-0 z-30">
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-12">No.</th>
+                <TableMarkup.Root className="w-full min-w-[1120px]">
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell33}>No.</TableMarkup.HeaderCell>
                       {sortableTh("capability", "Capability")}
                       {sortableTh("status", "Status")}
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">Document Type</th>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>Document Type</TableMarkup.HeaderCell>
                       {sortableTh("actorScope", "Actor Scope")}
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">Required Permission</th>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>Required Permission</TableMarkup.HeaderCell>
                       {sortableTh("priority", "Priority")}
                       {sortableTh("type", "Type")}
                       {sortableTh("createdAt", "Created Date")}
                       {sortableTh("updatedAt", "Last Updated")}
-                      <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!loading && policies.length === 0 ? (
-                      <tr>
-                        <td colSpan={11} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={11} className="p-0">
                           <TableEmptyState
                            
                             title="No State Policies"
                             description={hasFilters ? "Try adjusting your search or filters." : "No lifecycle state policies have been defined yet."}
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                       policies.map((p, idx) => (
-                        <tr key={p.id} className={cn("hover:bg-slate-50/80 transition-colors group", !p.active && "opacity-50")}>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-500 text-center">
+                        <TableMarkup.Row key={p.id} className={cn("hover:bg-slate-50/80 transition-colors group", !p.active && "opacity-50")}>
+                          <TableMarkup.Cell className={TABLE_STYLES.cell29}>
                             {(currentPage - 1) * itemsPerPage + idx + 1}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <span className="font-medium text-slate-800">{p.capabilityCode.replace(/_/g, " ")}</span>
                             {!p.active && (
                               <Badge color="slate" size="xs" className="ml-2">
                                 Inactive
                               </Badge>
                             )}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {p.statusCode ? (p.statusLabel ?? p.statusCode) : <span className="text-slate-400 italic">Any status</span>}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {p.documentTypeName ?? <span className="text-slate-400 italic">All types</span>}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge color={p.actorScope === "ANY" ? "blue" : "emerald"} size="sm">
                               {p.actorScope}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             {p.requiredPermissionCode ? (
                               <span className=" text-slate-600">{p.requiredPermissionCode}</span>
                             ) : (
                               <span className="text-slate-400 italic">None</span>
                             )}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{p.priority}</td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{p.priority}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge color={p.system ? "blue" : "slate"} size="sm">
                               {p.system ? "System" : "Custom"}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(p.createdAt)}</td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(p.updatedAt)}</td>
-                          <td
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(p.createdAt)}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(p.updatedAt)}</TableMarkup.Cell>
+                          <TableMarkup.Cell
                             onClick={(e) => e.stopPropagation()}
                             className="sticky right-0 bg-white py-3 px-4 text-center z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
                           >
@@ -393,12 +394,12 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
                                 )}
                               </div>
                             </PortalDropdownMenu>
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {totalItems > 0 && (

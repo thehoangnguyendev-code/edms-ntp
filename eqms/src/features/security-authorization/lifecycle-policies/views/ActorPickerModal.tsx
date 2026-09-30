@@ -9,6 +9,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { cn } from "@/components/ui/utils";
 import { useDebounce, useTableDragScroll } from "@/hooks";
 import { metadataApi } from "@/services/api/metadata";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 export interface SimulatorActor {
   id: string;
@@ -196,17 +197,17 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
                   )}
                   {...dragEvents}
                 >
-                  <table className="w-full min-w-max border-spacing-0 text-left">
-                    <thead className="sticky top-0 z-30">
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center">No.</th>
+                  <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
+                    <TableMarkup.Head className="sticky top-0 z-30">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell29}>No.</TableMarkup.HeaderCell>
                         {SORTABLE_COLUMNS.map((col) => {
                           const isSorted = sortBy === col.field;
                           return (
-                            <th
+                            <TableMarkup.HeaderCell
                               key={col.field}
                               onClick={() => toggleSort(col.field)}
-                              className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors cursor-pointer hover:bg-slate-100 hover:text-slate-700 group"
+                              className={TABLE_STYLES.headerCell30}
                             >
                               <div className="flex items-center justify-between gap-2 w-full">
                                 <span className="truncate">{col.label}</span>
@@ -215,24 +216,24 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
                                   <ChevronDown className={cn("h-3 w-3", isSorted && sortDir === "desc" ? "text-emerald-600" : "")} />
                                 </div>
                               </div>
-                            </th>
+                            </TableMarkup.HeaderCell>
                           );
                         })}
-                        <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell24}>
                           Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                        </TableMarkup.HeaderCell>
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                       {actors.map((actor, index) => {
                         const selected = selectedActor?.id === actor.id;
                         const tdClass = "py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap";
                         return (
-                          <tr key={actor.id} className={cn("transition-colors group", selected ? "bg-emerald-50/70" : "hover:bg-slate-50/80")}>
-                            <td className={cn(tdClass, "text-center")}>
+                          <TableMarkup.Row key={actor.id} className={cn("transition-colors group", selected ? "bg-emerald-50/70" : "hover:bg-slate-50/80")}>
+                            <TableMarkup.Cell className={cn(tdClass, "text-center")}>
                               <span className="text-slate-500 font-medium">{(page - 1) * PAGE_SIZE + index + 1}</span>
-                            </td>
-                            <td className={tdClass}>
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>
                               <div className="flex items-center gap-2.5">
                                 <Avatar name={actor.fullName || "User"} tone="brand" className="h-8 w-8" />
                                 <div className="min-w-0">
@@ -240,10 +241,10 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
                                   <p className="text-xs text-slate-500">{actor.email || actor.employeeCode || "No email on file"}</p>
                                 </div>
                               </div>
-                            </td>
-                            <td className={tdClass}>{actor.department || "-"}</td>
-                            <td className={tdClass}>{actor.position || "-"}</td>
-                            <td className={cn(
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>{actor.department || "-"}</TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>{actor.position || "-"}</TableMarkup.Cell>
+                            <TableMarkup.Cell className={cn(
                               "sticky right-0 z-10 py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] transition-colors",
                               selected ? "bg-emerald-50" : "bg-white group-hover:bg-slate-50",
                             )}>
@@ -255,12 +256,12 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
                               >
                                 {selected ? "Selected" : "Choose"}
                               </Button>
-                            </td>
-                          </tr>
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
                 {totalItems > 0 && (
                   <TablePagination

@@ -59,7 +59,7 @@ class ControlledCopyStatusMarkingTest {
     }
 
     private static ControlledCopyStatusMarking patch(Boolean watermarkEnabled, Boolean stampEnabled, Integer opacity, String stampText) {
-        return new ControlledCopyStatusMarking(watermarkEnabled, null, null, null, opacity, null, null, null, null, stampEnabled, stampText, null, null, null, null, null, null, null, null, null);
+        return new ControlledCopyStatusMarking(watermarkEnabled, null, null, null, opacity, null, null, null, null, stampEnabled, stampText, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -126,9 +126,9 @@ class ControlledCopyStatusMarkingTest {
 
     @Test
     void watermarkLayer_decidesWhetherItIsBehindOrAboveTheContent() throws IOException {
-        ControlledCopyStatusMarking behind = new ControlledCopyStatusMarking(null, "BEHIND", null, null, null, null, null, null, null, false, null, null, null, null, null, null, null, null, null, null)
+        ControlledCopyStatusMarking behind = new ControlledCopyStatusMarking(null, "BEHIND", null, null, null, null, null, null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, null)
                 .mergedOver(ControlledCopyStatusMarking.defaults("OBSOLETED"));
-        ControlledCopyStatusMarking above = new ControlledCopyStatusMarking(null, "ABOVE", null, null, null, null, null, null, null, false, null, null, null, null, null, null, null, null, null, null)
+        ControlledCopyStatusMarking above = new ControlledCopyStatusMarking(null, "ABOVE", null, null, null, null, null, null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, null)
                 .mergedOver(ControlledCopyStatusMarking.defaults("OBSOLETED"));
 
         String behindText = text(service.applyStatusMarking(pdf(PDRectangle.A4), behind, List.of("WATERMARK TEXT"), List.of()));
@@ -265,7 +265,7 @@ class ControlledCopyStatusMarkingTest {
         assertTrue(stampOn(withStatus, 0).adjusted(), "the configured spot collided, so the stamp was moved");
         // A spot that is free is left alone.
         ControlledCopyStatusMarking elsewhere = new ControlledCopyStatusMarking(null, null, null, null, null, null, null, null, null, null, null, null,
-                "BOTTOM_LEFT", null, null, null, null, null, null, null).mergedOver(ControlledCopyStatusMarking.defaults("OBSOLETED"));
+                "BOTTOM_LEFT", null, null, null, null, null, null, null, null, null, null).mergedOver(ControlledCopyStatusMarking.defaults("OBSOLETED"));
         ControlledCopyPdfMarkingService.Marked free = service.applyStatusMarkingWithLayout(
                 issued.pdf(), elsewhere, List.of("RECALLED"), List.of("WITHDRAWN"), issued.placements());
         assertFalse(stampOn(free, 0).adjusted());

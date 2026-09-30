@@ -23,6 +23,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const EFFECT_OPTIONS: SelectOption[] = [
   { label: "All Effects", value: "ALL" },
@@ -300,15 +301,15 @@ export const ObjectAccessRulesView: React.FC = () => {
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[1100px]">
-                  <thead className="sticky top-0 z-30">
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-12">No.</th>
+                <TableMarkup.Root className="w-full min-w-[1100px]">
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell33}>No.</TableMarkup.HeaderCell>
                       {SORTABLE_COLS.map((col) => (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={col.key}
                           onClick={() => handleSort(col.key)}
-                          className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors group"
+                          className={TABLE_STYLES.headerCell38}
                         >
                           <div className="flex w-full items-center justify-between gap-2">
                             <span className="truncate">{col.label}</span>
@@ -317,18 +318,18 @@ export const ObjectAccessRulesView: React.FC = () => {
                               <ChevronDown className={cn("h-3 w-3", sortKey === col.key && sortDir === "desc" ? "text-emerald-600" : "")} />
                             </div>
                           </div>
-                        </th>
+                        </TableMarkup.HeaderCell>
                       ))}
                       {["Access Profile Scope", "Actions"].map((label) => (
-                        <th key={label} className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                        <TableMarkup.HeaderCell key={label} className={TABLE_STYLES.headerCell37}>
                           {label}
-                        </th>
+                        </TableMarkup.HeaderCell>
                       ))}
                       {([{ key: "effect", label: "Effect" }, { key: "priority", label: "Priority" }] as const).map((col) => (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={col.key}
                           onClick={() => handleSort(col.key)}
-                          className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors group"
+                          className={TABLE_STYLES.headerCell38}
                         >
                           <div className="flex w-full items-center justify-between gap-2">
                             <span className="truncate">{col.label}</span>
@@ -337,64 +338,64 @@ export const ObjectAccessRulesView: React.FC = () => {
                               <ChevronDown className={cn("h-3 w-3", sortKey === col.key && sortDir === "desc" ? "text-emerald-600" : "")} />
                             </div>
                           </div>
-                        </th>
+                        </TableMarkup.HeaderCell>
                       ))}
-                      <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!loading && rules.length === 0 ? (
-                      <tr>
-                        <td colSpan={10} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={10} className="p-0">
                           <TableEmptyState
 
                             title="No Object Access Rules"
                             description={hasFilters ? "Try adjusting your search or filters." : "No object access rules have been defined yet."}
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                       rules.map((r, idx) => (
-                        <tr key={r.id} className={cn("hover:bg-slate-50/80 transition-colors group", !r.active && "opacity-50")}>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-500 text-center">
+                        <TableMarkup.Row key={r.id} className={cn("hover:bg-slate-50/80 transition-colors group", !r.active && "opacity-50")}>
+                          <TableMarkup.Cell className={TABLE_STYLES.cell29}>
                             {(currentPage - 1) * itemsPerPage + idx + 1}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <div className="font-medium text-slate-800">{r.name}</div>
                             {!r.active && (
                               <Badge color="slate" size="xs" className="mt-0.5">
                                 Inactive
                               </Badge>
                             )}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <span className="text-slate-500">{r.resourceType.replace(/_/g, " ")}</span>
                             {r.resourceName && <div className="text-xs text-slate-600 mt-0.5">{r.resourceName}</div>}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(r.createdAt)}</td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(r.updatedAt)}</td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(r.createdAt)}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(r.updatedAt)}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {r.accessProfileName ?? <span className="text-slate-400 italic">All Access Profiles</span>}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <div className="flex flex-wrap gap-1">
                               {r.actions.map((a) => (
                                 <Badge key={a} color="slate" size="xs">{a}</Badge>
                               ))}
                             </div>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge color={r.effect === "ALLOW" ? "emerald" : "red"} size="sm" pill className="gap-1">
                               {r.effect === "ALLOW" ? <ShieldCheck className="h-3 w-3" /> : <ShieldX className="h-3 w-3" />}
                               {r.effect}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{r.priority}</td>
-                          <td
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{r.priority}</TableMarkup.Cell>
+                          <TableMarkup.Cell
                             onClick={(e) => e.stopPropagation()}
-                            className="sticky right-0 bg-white py-3 px-4 text-center z-10 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
+                            className={TABLE_STYLES.emptyCell2}
                           >
                             <button
                               ref={getRef(r.id)}
@@ -430,12 +431,12 @@ export const ObjectAccessRulesView: React.FC = () => {
                                 )}
                               </div>
                             </PortalDropdownMenu>
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {totalItems > 0 && (

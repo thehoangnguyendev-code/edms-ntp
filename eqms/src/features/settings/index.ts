@@ -29,6 +29,7 @@ export { PublishingTemplatesView } from './document-administration/publishing-te
 export { PublishingTemplateEditorView } from './document-administration/publishing-templates/PublishingTemplateEditorView';
 export { ElectronicSignatureSettingsView } from './electronic-signature/ElectronicSignatureSettingsView';
 export { ControlledCopiesPolicyView } from './document-administration/controlled-copies-policy/ControlledCopiesPolicyView';
+export { UncontrolledCopyPolicyView } from './document-administration/uncontrolled-copy-policy/UncontrolledCopyPolicyView';
 export { NotificationPolicyView } from './notification-policy/NotificationPolicyView';
 export { NotificationPolicyDetailView } from './notification-policy/NotificationPolicyDetailView';
 export { NotificationPolicyCreateView } from './notification-policy/NotificationPolicyCreateView';

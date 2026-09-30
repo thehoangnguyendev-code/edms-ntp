@@ -20,6 +20,7 @@ import { formatWorkflowStatusLabel } from "@/features/audit-trail/utils/statusLa
 import { USER_MANAGEMENT_ROUTES } from "@/features/security-authorization/user-management/constants";
 import type { AuditTrailRecord, AuditAction, AuditModule } from "@/features/audit-trail/types";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 export type { AuditTrailRecord };
 
 interface DropdownMenuProps {
@@ -621,12 +622,12 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                 )}
               </div>
             ) : (
-              <table className="w-full min-w-[1600px]">
-                <thead className="sticky top-0 z-30">
-                  <tr>
-                    <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
+              <TableMarkup.Root className="w-full min-w-[1600px]">
+                <TableMarkup.Head className="sticky top-0 z-30">
+                  <TableMarkup.Row>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
                       No.
-                    </th>
+                    </TableMarkup.HeaderCell>
                     {[
                       { label: "Timestamp", key: "timestamp" as const },
                       { label: "User", key: "user" as const },
@@ -641,7 +642,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                       { label: "IP Address" },
                       { label: "Device / Browser" },
                     ].map(({ label, key }) => (
-                      <th
+                      <TableMarkup.HeaderCell
                         key={label}
                         onClick={key ? () => handleSort(key) : undefined}
                         className={cn(
@@ -668,15 +669,15 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                             </div>
                           )}
                         </div>
-                      </th>
+                      </TableMarkup.HeaderCell>
                     ))}
-                    <th className="sticky top-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center right-0 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                    <TableMarkup.HeaderCell className="sticky top-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center right-0 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
                       Action
-                    </th>
-                  </tr>
-                </thead>
+                    </TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
 
-                <tbody className="divide-y divide-slate-200 bg-white">
+                <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                   {recordsList.map((record, index) => {
                     const user = record.user;
                     const fullName = user?.fullName || record.fullName || "-";
@@ -693,20 +694,20 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                     const rowNumber = startIndex + index + 1;
 
                     return (
-                      <tr key={record.id} className="hover:bg-slate-50/80 transition-colors group">
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-700 font-medium">
+                      <TableMarkup.Row key={record.id} className="hover:bg-slate-50/80 transition-colors group">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-700 font-medium">
                           {rowNumber}
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           {formatDateTime(record.timestamp) || "-"}
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           {fullName}
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           {profileId ? (
                             <button
                               type="button"
@@ -718,9 +719,9 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                           ) : (
                             <span className="text-emerald-600">{employeeId}</span>
                           )}
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           {accessProfileNames.length === 0 ? (
                             <Badge size="sm" color="amber" title="No Access Profile was assigned at the time of this event.">
                               Unassigned
@@ -735,35 +736,35 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                               )}
                             </span>
                           )}
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           {position}
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           {department}
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium", getAuditActionBadgeClass(action))}>
                             {formatAuditActionLabel(action)}
                           </span>
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           <div className="max-w-[240px] truncate" title={entity}>
                             {entity}
                           </div>
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700">
                           <div className="max-w-[340px] truncate" title={changeSummary}>
                             {changeSummary}
                           </div>
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           <span
                             className={cn(
                               "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
@@ -774,21 +775,21 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                           >
                             {signature}
                           </span>
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           <div className="max-w-[220px] truncate" title={record.ipAddress || "-"}>
                             {record.ipAddress || "-"}
                           </div>
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           <div className="max-w-[260px] truncate" title={device}>
                             {device}
                           </div>
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td
+                        <TableMarkup.Cell
                           onClick={(e) => e.stopPropagation()}
                           className="sticky right-0 bg-white py-3 px-4 text-xs sm:text-sm text-center z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
                         >
@@ -800,12 +801,12 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                           >
                             <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
                           </button>
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             )}
           </div>
 

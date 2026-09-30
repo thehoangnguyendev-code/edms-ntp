@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select/Select";
 import { FullPageLoading } from "@/components/ui/loading";
 import { useNavigateWithLoading, useTableDragScroll } from "@/hooks";
 import { FilterAccordionItem, FilterDrawer } from "@/components/ui/filter/FilterDrawer";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // --- Mock Data ---
 interface TrainingTask {
@@ -491,12 +492,12 @@ export const MyTrainingView: React.FC = () => {
                 )}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[800px] md:min-w-[950px] lg:min-w-[1100px] xl:min-w-[1300px]">
-                  <thead className="bg-slate-50 border-b-2 border-slate-200 sticky top-0 z-10">
-                    <tr>
-                      <th className="py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">
+                <TableMarkup.Root className={TABLE_STYLES.table11}>
+                  <TableMarkup.Head className="bg-slate-50 border-b-2 border-slate-200 sticky top-0 z-10">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell18}>
                         No.
-                      </th>
+                      </TableMarkup.HeaderCell>
                       {[
                         { label: "Course ID", id: "id", sortable: true },
                         { label: "Course Name", id: "title", sortable: true },
@@ -509,7 +510,7 @@ export const MyTrainingView: React.FC = () => {
                         const isSorted = sortConfig.key === col.id;
                         const canSort = col.sortable;
                         return (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={idx}
                             onClick={canSort ? () => handleSort(col.id!) : undefined}
                             className={cn(
@@ -527,34 +528,34 @@ export const MyTrainingView: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         );
                       })}
-                      <th className="sticky right-0 bg-slate-50 py-3 px-4 lg:px-6 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider z-20 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 min-w-[100px] w-[100px] sm:min-w-[120px] sm:w-[120px] md:min-w-[140px] md:w-[140px] lg:min-w-[160px] lg:w-[160px]">
+                      <TableMarkup.HeaderCell className="sticky right-0 bg-slate-50 py-3 px-4 lg:px-6 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider z-20 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 min-w-[100px] w-[100px] sm:min-w-[120px] sm:w-[120px] md:min-w-[140px] md:w-[140px] lg:min-w-[160px] lg:w-[160px]">
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {paginatedTasks.map((task, index) => {
                       const isExpiring = task.status === "Expiring Soon";
                       const statusStyle = TODO_STATUS_MAP[task.status];
                       return (
-                        <tr
+                        <TableMarkup.Row
                           key={task.id}
                           className="hover:bg-slate-50 transition-colors cursor-pointer group"
                         >
-                          <td className="py-2.5 px-2 md:py-3 md:px-4 whitespace-nowrap text-center">
+                          <TableMarkup.Cell className="py-2.5 px-2 md:py-3 md:px-4 whitespace-nowrap text-center">
                             <div className="text-xs md:text-sm text-slate-500">
                               {(currentPage - 1) * itemsPerPage + index + 1}
                             </div>
-                          </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 whitespace-nowrap">
                             <span className="text-xs md:text-sm font-medium text-emerald-600">
                               {task.id}
                             </span>
-                          </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 whitespace-nowrap">
                             <div className="flex items-center gap-1.5 sm:gap-2">
                               <div
                                 className={cn(
@@ -576,19 +577,19 @@ export const MyTrainingView: React.FC = () => {
                                 </p>
                               </div>
                             </div>
-                          </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 whitespace-nowrap">
                             <span className="text-xs md:text-sm text-slate-700 font-medium">
                               {task.materialType}
                             </span>
-                          </td>
-                          <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap text-slate-700">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={TABLE_STYLES.cell21}>
                             {task.type}
-                          </td>
-                          <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap text-slate-700">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={TABLE_STYLES.cell21}>
                             {task.testType}
-                          </td>
-                          <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap">
                             <div
                               className={cn(
                                 "flex items-center gap-1",
@@ -607,8 +608,8 @@ export const MyTrainingView: React.FC = () => {
                               />
                               {task.deadline}
                             </div>
-                          </td>
-                          <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap text-center">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap text-center">
                             <Badge
                               color={statusStyle.color}
                               size="sm"
@@ -619,20 +620,20 @@ export const MyTrainingView: React.FC = () => {
                             >
                               {statusStyle.label}
                             </Badge>
-                          </td>
-                          <td className="sticky right-0 bg-white group-hover:bg-slate-50 py-3 px-4 lg:px-6 text-center whitespace-nowrap z-20 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 min-w-[100px] w-[100px] sm:min-w-[120px] sm:w-[120px] md:min-w-[140px] md:w-[140px] lg:min-w-[160px] lg:w-[160px]">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="sticky right-0 bg-white group-hover:bg-slate-50 py-3 px-4 lg:px-6 text-center whitespace-nowrap z-20 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 min-w-[100px] w-[100px] sm:min-w-[120px] sm:w-[120px] md:min-w-[140px] md:w-[140px] lg:min-w-[160px] lg:w-[160px]">
                             <Button
                               size="xs"
                               className="bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
                               Start
                             </Button>
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {sortedTasks.length > 0 && (
@@ -706,12 +707,12 @@ export const MyTrainingView: React.FC = () => {
                 )}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[800px] md:min-w-[950px] lg:min-w-[1100px] xl:min-w-[1300px]">
-                  <thead className="bg-slate-50 border-b-2 border-slate-200 sticky top-0 z-10">
-                    <tr>
-                      <th className="py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">
+                <TableMarkup.Root className={TABLE_STYLES.table11}>
+                  <TableMarkup.Head className="bg-slate-50 border-b-2 border-slate-200 sticky top-0 z-10">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell18}>
                         No.
-                      </th>
+                      </TableMarkup.HeaderCell>
                       {[
                         { label: "Course ID", id: "id", sortable: true },
                         { label: "Course Name", id: "title", sortable: true },
@@ -722,7 +723,7 @@ export const MyTrainingView: React.FC = () => {
                         const isSorted = sortConfig.key === col.id;
                         const canSort = col.sortable;
                         return (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={idx}
                             onClick={canSort ? () => handleSort(col.id!) : undefined}
                             className={cn(
@@ -740,31 +741,31 @@ export const MyTrainingView: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         );
                       })}
-                      <th className="sticky right-0 bg-slate-50 py-3 px-4 lg:px-6 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider z-20 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 w-[80px] sm:w-[150px] md:w-[170px] lg:w-[190px]">
+                      <TableMarkup.HeaderCell className="sticky right-0 bg-slate-50 py-3 px-4 lg:px-6 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider z-20 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 w-[80px] sm:w-[150px] md:w-[170px] lg:w-[190px]">
                         E-Certificate
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {paginatedTranscript.map((record, index) => (
-                      <tr
+                      <TableMarkup.Row
                         key={record.id}
                         className="hover:bg-slate-50 transition-colors cursor-pointer group"
                       >
-                        <td className="py-2.5 px-2 md:py-3 md:px-4 whitespace-nowrap text-center">
+                        <TableMarkup.Cell className="py-2.5 px-2 md:py-3 md:px-4 whitespace-nowrap text-center">
                           <div className="text-xs md:text-sm text-slate-500">
                             {(currentPage - 1) * itemsPerPage + index + 1}
                           </div>
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-3 px-4 whitespace-nowrap">
                           <span className="text-xs md:text-sm font-medium text-emerald-600">
                             {record.id}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-3 px-4 whitespace-nowrap">
                           <div className="flex items-center gap-1.5 sm:gap-2">
                             <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
                               <Award className="h-4 w-4" />
@@ -775,14 +776,14 @@ export const MyTrainingView: React.FC = () => {
                               </p>
                             </div>
                           </div>
-                        </td>
-                        <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap text-slate-700">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={TABLE_STYLES.cell21}>
                           {record.type}
-                        </td>
-                        <td className="py-2.5 px-2 md:py-3 md:px-4 text-xs md:text-sm whitespace-nowrap text-slate-700">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={TABLE_STYLES.cell21}>
                           {record.completedDate}
-                        </td>
-                        <td className="py-2.5 px-2 md:py-3 md:px-4 text-center whitespace-nowrap">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-2.5 px-2 md:py-3 md:px-4 text-center whitespace-nowrap">
                           <Badge
                             color={record.score >= 90 ? "emerald" : "blue"}
                             pill
@@ -791,8 +792,8 @@ export const MyTrainingView: React.FC = () => {
                           >
                             {record.score}%
                           </Badge>
-                        </td>
-                        <td className="sticky right-0 bg-white group-hover:bg-slate-50 py-3 px-4 lg:px-6 text-center whitespace-nowrap z-20 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 w-[80px] sm:w-[150px] md:w-[170px] lg:w-[190px]">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="sticky right-0 bg-white group-hover:bg-slate-50 py-3 px-4 lg:px-6 text-center whitespace-nowrap z-20 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 w-[80px] sm:w-[150px] md:w-[170px] lg:w-[190px]">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -801,11 +802,11 @@ export const MyTrainingView: React.FC = () => {
                             <ExternalLink className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">View Cert</span>
                           </Button>
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ))}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {sortedTranscript.length > 0 && (

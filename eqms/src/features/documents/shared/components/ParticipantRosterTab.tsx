@@ -8,6 +8,7 @@ import { securityApi } from "@/services/api/security";
 import { settingsApi } from "@/services/api/settings";
 import { filterOutExcludedWorkflowParticipants } from "@/features/documents/shared/workflowParticipantFilters";
 import type { User as AppUser } from "@/types";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 export interface Participant extends Pick<AppUser, "id" | "fullName" | "username" | "position" | "email" | "department"> {
     order?: number;
@@ -398,23 +399,23 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
             {sorted.length > 0 ? (
                 <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">No.</th>
-                                    <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">User</th>
-                                    <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">Email</th>
-                                    <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">Position</th>
-                                    <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">Department</th>
-                                    <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">{multiSelect ? "Sequence" : "Role"}</th>
+                        <TableMarkup.Root className="w-full">
+                            <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
+                                <TableMarkup.Row>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>No.</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>User</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>Email</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>Position</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>Department</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>{multiSelect ? "Sequence" : "Role"}</TableMarkup.HeaderCell>
                                     {allowRemove && (
-                                        <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-16 sm:w-24">Action</th>
+                                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell11}>Action</TableMarkup.HeaderCell>
                                     )}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200 bg-white">
+                                </TableMarkup.Row>
+                            </TableMarkup.Head>
+                            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                                 {sorted.map((participant, index) => (
-                                    <tr
+                                    <TableMarkup.Row
                                         key={participant.id}
                                         draggable={allowReorder}
                                         onDragStart={allowReorder ? (e) => handleDragStart(e, index) : undefined}
@@ -427,15 +428,15 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
                                             draggedIndex === index && "opacity-40 bg-slate-100"
                                         )}
                                     >
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-500 whitespace-nowrap text-center font-medium">{index + 1}</td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell5}>{index + 1}</TableMarkup.Cell>
+                                        <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                                             <div className="font-medium text-slate-900">{participant.fullName}</div>
                                             <div className="text-2xs text-slate-500">{participant.username}</div>
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-600 whitespace-nowrap hidden md:table-cell">{participant.email}</td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-600 whitespace-nowrap hidden lg:table-cell">{participant.position}</td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-600 whitespace-nowrap hidden md:table-cell">{participant.department}</td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell8}>{participant.email}</TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell7}>{participant.position}</TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell8}>{participant.department}</TableMarkup.Cell>
+                                        <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                                             {multiSelect ? (
                                                 <div className="flex items-center gap-1.5 sm:gap-2">
                                                     {allowReorder && <GripVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400" />}
@@ -446,9 +447,9 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
                                             ) : (
                                                 <Badge color="emerald" size="sm">{roleLabel}</Badge>
                                             )}
-                                        </td>
+                                        </TableMarkup.Cell>
                                         {allowRemove && (
-                                            <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                                            <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
                                                 <Button
                                                     onClick={() => removeParticipant(participant.id)}
                                                     variant="ghost"
@@ -458,12 +459,12 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
-                                            </td>
+                                            </TableMarkup.Cell>
                                         )}
-                                    </tr>
+                                    </TableMarkup.Row>
                                 ))}
-                            </tbody>
-                        </table>
+                            </TableMarkup.Body>
+                        </TableMarkup.Root>
                     </div>
                 </div>
             ) : (

@@ -44,6 +44,9 @@
 # Build artifacts
 /HashGen.class
 
+# Graphify architecture graph output (regenerated locally, not shared with the team)
+/graphify-out/
+
 # Contains live secrets (SMTP password, Azure client secret) - never commit
 /update_config.sql
 /update_msgraph.sql

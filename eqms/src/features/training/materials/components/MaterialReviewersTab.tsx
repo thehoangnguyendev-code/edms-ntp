@@ -12,6 +12,7 @@ import {
 } from "./materialTabMockData";
 
 import { type Reviewer } from "@/features/documents/document-list/document-creation/new-tabs/subtabs/types";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface MaterialReviewersTabProps {
   reviewers?: Reviewer[];
@@ -323,23 +324,23 @@ export const MaterialReviewersTab: React.FC<MaterialReviewersTabProps> = ({
       {resolvedReviewers.length > 0 ? (
         <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">No.</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">User</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">Email</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">Position</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">Department</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Sequence</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-16 sm:w-24">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
+            <TableMarkup.Root className="w-full">
+              <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
+                <TableMarkup.Row>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>No.</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>User</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>Email</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>Position</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>Department</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>Sequence</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell11}>Action</TableMarkup.HeaderCell>
+                </TableMarkup.Row>
+              </TableMarkup.Head>
+              <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                 {[...resolvedReviewers]
                   .sort((a, b) => a.order - b.order)
                   .map((reviewer, index) => (
-                    <tr
+                    <TableMarkup.Row
                       key={reviewer.id}
                       draggable={true}
                       onDragStart={(e) => handleDragStart(e, index)}
@@ -351,35 +352,35 @@ export const MaterialReviewersTab: React.FC<MaterialReviewersTabProps> = ({
                         draggedIndex === index && "opacity-40 bg-slate-100",
                       )}
                     >
-                      <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-500 whitespace-nowrap text-center font-medium">
+                      <TableMarkup.Cell className={TABLE_STYLES.cell5}>
                         {index + 1}
-                      </td>
-                      <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div>
                             <div className="font-medium text-slate-900">{reviewer.fullName}</div>
                             <div className="text-2xs text-slate-500">{reviewer.username}</div>
                           </div>
                         </div>
-                      </td>
-                      <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-600 whitespace-nowrap hidden md:table-cell">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className={TABLE_STYLES.cell8}>
                         {reviewer.email}
-                      </td>
-                      <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-600 whitespace-nowrap hidden lg:table-cell">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className={TABLE_STYLES.cell7}>
                         {reviewer.position}
-                      </td>
-                      <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-600 whitespace-nowrap hidden md:table-cell">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className={TABLE_STYLES.cell8}>
                         {reviewer.department}
-                      </td>
-                      <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                         <div className="flex items-center gap-1.5 sm:gap-2">
                           <GripVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400" />
                           <span className="inline-flex items-center justify-center h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-emerald-100 text-emerald-700 text-2xs font-bold">
                             {reviewer.order}
                           </span>
                         </div>
-                      </td>
-                      <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
                         <Button
                           onClick={() => removeReviewer(reviewer.id)}
                           variant="ghost"
@@ -389,11 +390,11 @@ export const MaterialReviewersTab: React.FC<MaterialReviewersTabProps> = ({
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   ))}
-              </tbody>
-            </table>
+              </TableMarkup.Body>
+            </TableMarkup.Root>
           </div>
         </div>
       ) : (

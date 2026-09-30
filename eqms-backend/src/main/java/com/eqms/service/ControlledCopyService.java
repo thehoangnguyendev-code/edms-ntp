@@ -447,8 +447,11 @@ public class ControlledCopyService {
         writer.flush();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ControlledCopyListItemResponse getById(UUID id) {
+        // Self-invocation: getControlledCopyDetail()'s own @Transactional is skipped by the Spring
+        // proxy here, so this method's own annotation is what actually governs the transaction --
+        // it must stay writable so the "Opened By" mark-opened logic inside can persist.
         return getControlledCopyDetail(id);
     }
 
@@ -526,13 +529,29 @@ public class ControlledCopyService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ControlledCopyListItemResponse getControlledCopyDetail(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         ControlledCopyRecord copy = requireControlledCopyForDetail(id);
         if (!canViewControlledCopy(currentUser, copy)) {
             throw new AccessDeniedException("Controlled copy access denied");
         }
+        // "Opened By" reflects whoever last opened this copy's detail view, matching the same
+        // pattern DocumentService/RevisionService already use for their own "Opened By" column --
+        // previously this copy had no such tracking at all and the DTO field was fabricated from
+        // requestedBy (see toResponse below).
+        copy.setOpenedBy(currentUser);
+        controlledCopyRepository.save(copy);
+        auditTrailService.logAs(
+                currentUser,
+                "Controlled Copy",
+                copy.getControlledCopyNumber(),
+                copy.getId(),
+                "VIEW",
+                null,
+                copy.getStatus(),
+                "Opened controlled copy detail"
+        );
         return toResponse(copy, true);
     }
 
@@ -637,15 +656,31 @@ public class ControlledCopyService {
         return new FileDownload(pdf, "Withdrawal-Notice-" + copy.getControlledCopyNumber() + ".pdf", "application/pdf");
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Object getControlledCopyResolvedDetail(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         Optional<ControlledCopyRecord> copy = controlledCopyRepository.findById(id);
         if (copy.isPresent()) {
-            if (!canViewControlledCopy(currentUser, copy.get())) {
+            ControlledCopyRecord record = copy.get();
+            if (!canViewControlledCopy(currentUser, record)) {
                 throw new AccessDeniedException("Controlled copy access denied");
             }
-            return toResponse(copy.get(), true);
+            // Same "Opened By" tracking as getControlledCopyDetail() -- this is the endpoint the
+            // frontend's detail view actually calls (getControlledCopyDetailById -> /resolved-detail),
+            // so this is the real path that must mark the copy opened, not just the /{id} one.
+            record.setOpenedBy(currentUser);
+            controlledCopyRepository.save(record);
+            auditTrailService.logAs(
+                    currentUser,
+                    "Controlled Copy",
+                    record.getControlledCopyNumber(),
+                    record.getId(),
+                    "VIEW",
+                    null,
+                    record.getStatus(),
+                    "Opened controlled copy detail"
+            );
+            return toResponse(record, true);
         }
 
         ControlledCopyDistributionBatch batch = requireDistributionBatch(id);
@@ -3377,7 +3412,7 @@ public class ControlledCopyService {
                 controlledCopyNumber,
                 createdDate,
                 createdTime,
-                copy.getRequestedBy() == null ? null : copy.getRequestedBy().getFullName(),
+                copy.getOpenedBy() == null ? null : copy.getOpenedBy().getFullName(),
                 buildControlledCopyName(documentTitle, revisionNumber, copy.getCopyNumber()),
                 copy.getStatus(),
                 copy.getStatusCode(),

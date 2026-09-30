@@ -15,21 +15,30 @@ import {
 interface LocalizationTabProps {
   onRegisterSaveHandler?: ((handler: (() => Promise<void>) | null) => void);
   onRegisterResetHandler?: ((handler: (() => void) | null) => void);
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const DATE_TIME_FORMATS = ['DD/MM/YYYY HH:mm:ss', 'DD/MM/YYYY HH:mm', 'MM/DD/YYYY HH:mm:ss', 'MM/DD/YYYY HH:mm', 'YYYY-MM-DD HH:mm:ss', 'YYYY-MM-DD HH:mm', 'DD-MMM-YYYY HH:mm:ss', 'DD-MMM-YYYY HH:mm', 'MMMM DD, YYYY HH:mm:ss', 'MMMM DD, YYYY HH:mm'].map(value => ({ value, label: value }));
 const NUMBER_FORMATS = [{ value: 'en-US', label: '1,234.56 (US/UK)' }, { value: 'de-DE', label: '1.234,56 (EU)' }, { value: 'fr-FR', label: '1 234,56 (FR)' }, { value: 'ja-JP', label: '1,234.56 (JP)' }];
 const TIME_ZONES = ['Asia/Ho_Chi_Minh', 'UTC', 'Asia/Tokyo', 'Asia/Seoul', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Los_Angeles'].map(value => ({ value, label: value.replace('_', ' ') }));
 
-export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSaveHandler, onRegisterResetHandler }) => {
+export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSaveHandler, onRegisterResetHandler, onDirtyChange }) => {
   const [system, setSystem] = useState<SystemLocalizationSettings>(readSystemLocalizationSettings);
   const [preferences, setPreferences] = useState<UserLocalizationPreferences>({ useSystemDefaults: true });
+  const [originalPreferences, setOriginalPreferences] = useState<UserLocalizationPreferences | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void localizationApi.getSystem().then(value => setSystem({ ...DEFAULT_LOCALIZATION_SETTINGS, ...value, language: 'en' })).catch(() => setSystem(readSystemLocalizationSettings));
-    void localizationApi.getMine().then(setPreferences).finally(() => setLoading(false));
+    void localizationApi.getMine().then((value) => { setPreferences(value); setOriginalPreferences(value); }).finally(() => setLoading(false));
   }, []);
+
+  const isDirty = originalPreferences !== null && JSON.stringify(preferences) !== JSON.stringify(originalPreferences);
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDirty, onDirtyChange]);
 
   const effective = { ...DEFAULT_LOCALIZATION_SETTINGS, ...(preferences.useSystemDefaults ? system : { ...system, ...preferences }), language: 'en' };
   const setValue = <K extends Exclude<keyof SystemLocalizationSettings, 'language'>>(key: K, value: SystemLocalizationSettings[K]) => setPreferences(current => ({ ...current, useSystemDefaults: false, [key]: value }));
@@ -37,7 +46,9 @@ export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSave
   const saveChanges = useCallback(async () => {
     const { language: _language, ...regionalPreferences } = preferences;
     const saved = await localizationApi.updateMine(preferences.useSystemDefaults ? { useSystemDefaults: true } : regionalPreferences);
-    setPreferences({ ...saved, language: 'en' });
+    const normalized = { ...saved, language: 'en' };
+    setPreferences(normalized);
+    setOriginalPreferences(normalized);
     const next = saved.useSystemDefaults ? system : { ...system, ...saved, language: 'en' };
     writeSystemLocalizationSettings(next);
   }, [preferences, system]);

@@ -18,6 +18,7 @@ const WorkflowRolesView = lazy(() => import('@/features/security-authorization')
 const ObjectAccessRulesView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.ObjectAccessRulesView })));
 const ObjectAccessRuleFormView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.ObjectAccessRuleFormView })));
 const SegregationOfDutiesView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.SegregationOfDutiesView })));
+const SodViolationReviewView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.SodViolationReviewView })));
 const SodConstraintFormView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.SodConstraintFormView })));
 const AccessReviewView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.AccessReviewView })));
 const AccessReviewCampaignDetailView = lazy(() => import('@/features/security-authorization').then(m => ({ default: m.AccessReviewCampaignDetailView })));
@@ -89,6 +90,7 @@ export function securityRoutes() {
         <Route path="new" element={<SecurityGuard permission="security.sod.manage"><Suspense fallback={<LoadingFallback />}><SodConstraintFormView /></Suspense></SecurityGuard>} />
         <Route path=":id/edit" element={<SecurityGuard permission="security.sod.manage"><Suspense fallback={<LoadingFallback />}><SodConstraintFormView /></Suspense></SecurityGuard>} />
       </Route>
+      <Route path="sod-violation-review" element={<SecurityGuard permission="security.sod.view"><Suspense fallback={<LoadingFallback />}><SodViolationReviewView /></Suspense></SecurityGuard>} />
       <Route path="access-review">
         <Route index element={<SecurityGuard permission="security.access_review.view"><Suspense fallback={<LoadingFallback />}><AccessReviewView /></Suspense></SecurityGuard>} />
         <Route path="new" element={<Navigate to="/security/access-review" replace />} />

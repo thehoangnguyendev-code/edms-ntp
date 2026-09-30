@@ -730,19 +730,21 @@ public class RevisionBusinessRulesTest {
     }
 
     @Test
-    public void publishRevision_withNonEffectiveRelatedDocuments_throwsException() {
+    public void publishRevision_withRelatedDocumentDraftInProgress_throwsException() {
         UUID revisionId = UUID.randomUUID();
         makeDocumentActive();
         DocumentRevisionRecord revision = new DocumentRevisionRecord();
         revision.setId(revisionId);
         revision.setRevisionNumber("1.0.1");
         revision.setDocument(document);
-        
+
         RevisionStatusDefinition readyPublishStatus = new RevisionStatusDefinition();
         readyPublishStatus.setCode("READY_FOR_PUBLISHING");
         revision.setStatus(readyPublishStatus);
 
-        // Related Document Setup
+        // Related Document Setup -- its latest revision is DRAFT: a revision is in progress but
+        // has not yet reached Ready for Publishing, so the batch publish must be blocked outright
+        // (no Force Publish path exists any more).
         DocumentRecord relatedDoc = new DocumentRecord();
         relatedDoc.setId(UUID.randomUUID());
         relatedDoc.setDocumentNumber("FORM-001");
@@ -767,8 +769,8 @@ public class RevisionBusinessRulesTest {
         when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
         when(documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED"))
                 .thenReturn(List.of(relation));
-        when(revisionRepository.findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(relatedDoc.getId(), "EFFECTIVE"))
-                .thenReturn(Optional.empty());
+        when(revisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(relatedDoc.getId()))
+                .thenReturn(Optional.of(latestRelatedRev));
 
         RevisionWorkflowActionRequest request = new RevisionWorkflowActionRequest("reason", "comment", "signature_token");
 
@@ -776,90 +778,24 @@ public class RevisionBusinessRulesTest {
         assertThrows(RelatedDocumentsNotEffectiveException.class, () -> {
             revisionService.publishRevision(revisionId, request);
         });
+        verify(revisionRepository, never()).save(revision);
     }
 
     @Test
-    public void publishRevision_withNonEffectiveRelatedDocuments_forcePublish_proceedsNormally() {
+    public void publishRevision_withNoRelatedDocumentRevisionInProgress_proceedsNormally() {
         UUID revisionId = UUID.randomUUID();
         makeDocumentActive();
         DocumentRevisionRecord revision = new DocumentRevisionRecord();
         revision.setId(revisionId);
         revision.setRevisionNumber("1.0.1");
         revision.setDocument(document);
-        
+
         RevisionStatusDefinition readyPublishStatus = new RevisionStatusDefinition();
         readyPublishStatus.setCode("READY_FOR_PUBLISHING");
         revision.setStatus(readyPublishStatus);
 
-        // Related Document Setup
-        DocumentRecord relatedDoc = new DocumentRecord();
-        relatedDoc.setId(UUID.randomUUID());
-        relatedDoc.setDocumentNumber("FORM-001");
-        relatedDoc.setDocumentName("Related Form");
-
-        DocumentRelation relation = new DocumentRelation();
-        relation.setSourceDocument(document);
-        relation.setTargetDocument(relatedDoc);
-        relation.setRelationType("RELATED");
-
-        DocumentRevisionRecord latestRelatedRev = new DocumentRevisionRecord();
-        latestRelatedRev.setDocument(relatedDoc);
-        latestRelatedRev.setRevisionNumber("1.0.1");
-        RevisionStatusDefinition relatedDraftStatus = new RevisionStatusDefinition();
-        relatedDraftStatus.setCode("DRAFT");
-        relatedDraftStatus.setLabel("Draft");
-        latestRelatedRev.setStatus(relatedDraftStatus);
-
-        when(currentUserService.requireCurrentUser()).thenReturn(currentUser);
-        lenient().when(revisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
-        lenient().when(revisionRepository.findByIdForUpdate(revisionId)).thenReturn(Optional.of(revision));
-        when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
-        when(documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED"))
-                .thenReturn(List.of(relation));
-        when(revisionRepository.findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(relatedDoc.getId(), "EFFECTIVE"))
-                .thenReturn(Optional.empty());
-
-        RevisionStatusDefinition effectiveStatus = new RevisionStatusDefinition();
-        effectiveStatus.setCode("EFFECTIVE");
-        when(revisionStatusRepository.findById("EFFECTIVE")).thenReturn(Optional.of(effectiveStatus));
-
-        DocumentStatusDefinition activeDocStatus = new DocumentStatusDefinition();
-        activeDocStatus.setCode("ACTIVE");
-        when(documentStatusRepository.findById("ACTIVE")).thenReturn(Optional.of(activeDocStatus));
-        when(permissionEvaluationService.hasPermission(currentUser, "documents.revision.force_publish")).thenReturn(true);
-
-        RevisionWorkflowActionRequest request = new RevisionWorkflowActionRequest("reason", "comment", "signature_token", true);
-
-        // When
-        var response = revisionService.publishRevision(revisionId, request);
-
-        // Then
-        assertNotNull(response);
-        verify(auditTrailService).logAs(
-                eq(currentUser),
-                eq("REVISION"),
-                any(),
-                eq(revisionId),
-                eq("WARNING_OVERRIDE"),
-                any(),
-                eq("EFFECTIVE"),
-                contains("FORM-001 - No Effective Revision")
-        );
-    }
-
-    @Test
-    public void publishRevision_withEffectiveRelatedDocumentAndNewerDraft_proceedsNormally() {
-        UUID revisionId = UUID.randomUUID();
-        makeDocumentActive();
-        DocumentRevisionRecord revision = new DocumentRevisionRecord();
-        revision.setId(revisionId);
-        revision.setRevisionNumber("1.0.1");
-        revision.setDocument(document);
-        
-        RevisionStatusDefinition readyPublishStatus = new RevisionStatusDefinition();
-        readyPublishStatus.setCode("READY_FOR_PUBLISHING");
-        revision.setStatus(readyPublishStatus);
-
+        // Related Document's latest revision is already EFFECTIVE (stable, not being revised
+        // right now) -- nothing about it needs to publish together, so it must not block.
         DocumentRecord relatedDoc = new DocumentRecord();
         relatedDoc.setId(UUID.randomUUID());
         relatedDoc.setDocumentNumber("SOP-002");
@@ -877,23 +813,14 @@ public class RevisionBusinessRulesTest {
         effectiveRelatedStatus.setCode("EFFECTIVE");
         effectiveRelatedRevision.setStatus(effectiveRelatedStatus);
 
-        DocumentRevisionRecord newerDraftRevision = new DocumentRevisionRecord();
-        newerDraftRevision.setId(UUID.randomUUID());
-        newerDraftRevision.setDocument(relatedDoc);
-        RevisionStatusDefinition draftRelatedStatus = new RevisionStatusDefinition();
-        draftRelatedStatus.setCode("DRAFT");
-        newerDraftRevision.setStatus(draftRelatedStatus);
-
         when(currentUserService.requireCurrentUser()).thenReturn(currentUser);
         lenient().when(revisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
         lenient().when(revisionRepository.findByIdForUpdate(revisionId)).thenReturn(Optional.of(revision));
         when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
         when(documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED"))
                 .thenReturn(List.of(relation));
-        when(revisionRepository.findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(relatedDoc.getId(), "EFFECTIVE"))
+        when(revisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(relatedDoc.getId()))
                 .thenReturn(Optional.of(effectiveRelatedRevision));
-        lenient().when(revisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(relatedDoc.getId()))
-                .thenReturn(Optional.of(newerDraftRevision));
 
         RevisionStatusDefinition effectiveStatus = new RevisionStatusDefinition();
         effectiveStatus.setCode("EFFECTIVE");
@@ -910,10 +837,9 @@ public class RevisionBusinessRulesTest {
 
         // Then
         assertNotNull(response);
-        verify(auditTrailService, never()).logAs(
-                any(), any(), any(), any(), eq("WARNING_OVERRIDE"), any(), any(), any()
-        );
-        verify(revisionRepository, never()).findFirstByDocument_IdOrderByCreatedAtDesc(relatedDoc.getId());
+        // The related document's own EFFECTIVE revision is never touched/re-saved -- it was not
+        // part of the batch.
+        verify(revisionRepository, never()).save(effectiveRelatedRevision);
     }
 
     // ── saveRevisionParticipantsFromRequest: partial-update semantics ──────────────────────────
@@ -1061,103 +987,6 @@ public class RevisionBusinessRulesTest {
 
         assertThrows(RevisionLifecycleConflictException.class, () ->
                 ReflectionTestUtils.invokeMethod(revisionService, "requireRevisionSourceFile", revision));
-    }
-
-    // ── Force Publish: permission and reason are mandatory ─────────────────────────────────────
-
-    @Test
-    void publishRevision_forcePublish_withoutPermission_isRejected() {
-        UUID revisionId = UUID.randomUUID();
-        makeDocumentActive();
-        DocumentRevisionRecord revision = new DocumentRevisionRecord();
-        revision.setId(revisionId);
-        revision.setRevisionNumber("1.0.1");
-        revision.setDocument(document);
-        RevisionStatusDefinition readyPublishStatus = new RevisionStatusDefinition();
-        readyPublishStatus.setCode("READY_FOR_PUBLISHING");
-        revision.setStatus(readyPublishStatus);
-
-        DocumentRecord relatedDoc = new DocumentRecord();
-        relatedDoc.setId(UUID.randomUUID());
-        relatedDoc.setDocumentNumber("FORM-001");
-        relatedDoc.setDocumentName("Related Form");
-
-        DocumentRelation relation = new DocumentRelation();
-        relation.setSourceDocument(document);
-        relation.setTargetDocument(relatedDoc);
-        relation.setRelationType("RELATED");
-
-        DocumentRevisionRecord latestRelatedRev = new DocumentRevisionRecord();
-        latestRelatedRev.setDocument(relatedDoc);
-        latestRelatedRev.setRevisionNumber("1.0.1");
-        RevisionStatusDefinition relatedDraftStatus = new RevisionStatusDefinition();
-        relatedDraftStatus.setCode("DRAFT");
-        relatedDraftStatus.setLabel("Draft");
-        latestRelatedRev.setStatus(relatedDraftStatus);
-
-        when(currentUserService.requireCurrentUser()).thenReturn(currentUser);
-        lenient().when(revisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
-        lenient().when(revisionRepository.findByIdForUpdate(revisionId)).thenReturn(Optional.of(revision));
-        when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
-        when(documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED"))
-                .thenReturn(List.of(relation));
-        when(revisionRepository.findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(relatedDoc.getId(), "EFFECTIVE"))
-                .thenReturn(Optional.empty());
-
-        when(permissionEvaluationService.hasPermission(currentUser, "documents.revision.force_publish")).thenReturn(false);
-
-        RevisionWorkflowActionRequest request = new RevisionWorkflowActionRequest("reason", "comment", "signature_token", true);
-
-        assertThrows(IllegalArgumentException.class, () -> revisionService.publishRevision(revisionId, request));
-        verify(revisionRepository, never()).save(revision);
-    }
-
-    @Test
-    void publishRevision_forcePublish_withoutReason_isRejected() {
-        UUID revisionId = UUID.randomUUID();
-        makeDocumentActive();
-        DocumentRevisionRecord revision = new DocumentRevisionRecord();
-        revision.setId(revisionId);
-        revision.setRevisionNumber("1.0.1");
-        revision.setDocument(document);
-        RevisionStatusDefinition readyPublishStatus = new RevisionStatusDefinition();
-        readyPublishStatus.setCode("READY_FOR_PUBLISHING");
-        revision.setStatus(readyPublishStatus);
-
-        DocumentRecord relatedDoc = new DocumentRecord();
-        relatedDoc.setId(UUID.randomUUID());
-        relatedDoc.setDocumentNumber("FORM-001");
-        relatedDoc.setDocumentName("Related Form");
-
-        DocumentRelation relation = new DocumentRelation();
-        relation.setSourceDocument(document);
-        relation.setTargetDocument(relatedDoc);
-        relation.setRelationType("RELATED");
-
-        DocumentRevisionRecord latestRelatedRev = new DocumentRevisionRecord();
-        latestRelatedRev.setDocument(relatedDoc);
-        latestRelatedRev.setRevisionNumber("1.0.1");
-        RevisionStatusDefinition relatedDraftStatus = new RevisionStatusDefinition();
-        relatedDraftStatus.setCode("DRAFT");
-        relatedDraftStatus.setLabel("Draft");
-        latestRelatedRev.setStatus(relatedDraftStatus);
-
-        when(currentUserService.requireCurrentUser()).thenReturn(currentUser);
-        lenient().when(revisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
-        lenient().when(revisionRepository.findByIdForUpdate(revisionId)).thenReturn(Optional.of(revision));
-        when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
-        when(documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED"))
-                .thenReturn(List.of(relation));
-        when(revisionRepository.findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(relatedDoc.getId(), "EFFECTIVE"))
-                .thenReturn(Optional.empty());
-
-        when(permissionEvaluationService.hasPermission(currentUser, "documents.revision.force_publish")).thenReturn(true);
-
-        // reason and comment both blank -- Force Publish must not proceed without a justification.
-        RevisionWorkflowActionRequest request = new RevisionWorkflowActionRequest("  ", "  ", "signature_token", true);
-
-        assertThrows(IllegalArgumentException.class, () -> revisionService.publishRevision(revisionId, request));
-        verify(revisionRepository, never()).save(revision);
     }
 
     // ── S6: review-requirement snapshot drift between Document and Revision ────────────────────

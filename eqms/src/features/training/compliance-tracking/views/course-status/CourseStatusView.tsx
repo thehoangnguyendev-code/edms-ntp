@@ -42,6 +42,7 @@ import { usePortalDropdown, useNavigateWithLoading, useTableDragScroll } from "@
 import type { PortalDropdownPosition, UsePortalDropdownReturn } from "@/hooks";
 import type { CourseComplianceRecord, CourseStatusFilters } from "../../../types";
 import { complianceTrackingRepository } from "../../repository";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // --- Sub-components ---
 const CourseRow: React.FC<{
@@ -88,20 +89,20 @@ const CourseRow: React.FC<{
   const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
 
   return (
-    <tr
+    <TableMarkup.Row
       key={course.id}
       className="hover:bg-slate-50/80 transition-colors group"
     >
-      <td className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm text-center text-slate-500 font-medium border-b border-slate-200">
+      <TableMarkup.Cell className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm text-center text-slate-500 font-medium border-b border-slate-200">
         {rowNumber}
-      </td>
-      <td
+      </TableMarkup.Cell>
+      <TableMarkup.Cell
         className={cn("py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm whitespace-nowrap border-b border-slate-200 cursor-pointer")}
         onClick={() => onViewProgress(course.id)}
       >
         <span className="font-medium text-emerald-600 hover:underline hover:underline">{course.courseId}</span>
-      </td>
-      <td className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200">
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className={TABLE_STYLES.cell22}>
         <div className="flex items-start gap-2">
           <GraduationCap className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
@@ -113,13 +114,13 @@ const CourseRow: React.FC<{
             </p>
           </div>
         </div>
-      </td>
-      <td className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200">
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className={TABLE_STYLES.cell22}>
         <Badge color="blue" size="sm">
           {course.courseType}
         </Badge>
-      </td>
-      <td className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200">
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className={TABLE_STYLES.cell22}>
         <div
           className="flex items-center gap-2 hover:bg-slate-100 p-1 rounded transition-colors group/stat"
           onClick={(e) => {
@@ -132,8 +133,8 @@ const CourseRow: React.FC<{
             {course.totalAssigned}
           </span>
         </div>
-      </td>
-      <td className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 text-emerald-700">
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 text-emerald-700">
         <div
           onClick={(e) => { e.stopPropagation(); showDetailList(course, "Completed"); }}
           className="flex items-center gap-2 hover:bg-emerald-50 p-1 rounded transition-colors group/stat"
@@ -142,8 +143,8 @@ const CourseRow: React.FC<{
             {course.completed}
           </span>
         </div>
-      </td>
-      <td className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 text-blue-700">
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 text-blue-700">
         <div
           onClick={(e) => { e.stopPropagation(); showDetailList(course, "InProgress"); }}
           className="flex items-center gap-2 hover:bg-blue-50 p-1 rounded transition-colors group/stat"
@@ -152,8 +153,8 @@ const CourseRow: React.FC<{
             {course.inProgress}
           </span>
         </div>
-      </td>
-      <td className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 text-red-700">
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 text-red-700">
         <div
           onClick={(e) => { e.stopPropagation(); showDetailList(course, "Overdue"); }}
           className="flex items-center gap-2 hover:bg-red-50 p-1 rounded transition-colors group/stat"
@@ -162,11 +163,11 @@ const CourseRow: React.FC<{
             {course.overdue}
           </span>
         </div>
-      </td>
-      <td className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 font-semibold text-slate-900">
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 font-semibold text-slate-900">
         {course.averageScore}%
-      </td>
-      <td className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 min-w-[120px]">
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className="py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm border-b border-slate-200 min-w-[120px]">
         <div className="flex items-center gap-2">
           <div className="flex-1 max-w-[80px]">
             <Progress
@@ -184,8 +185,8 @@ const CourseRow: React.FC<{
             {completionRate}%
           </span>
         </div>
-      </td>
-      <td
+      </TableMarkup.Cell>
+      <TableMarkup.Cell
         className="sticky right-0 bg-white border-b border-slate-200 py-2.5 px-2 md:py-3.5 md:px-4 text-center z-10 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
@@ -205,8 +206,8 @@ const CourseRow: React.FC<{
           onResultEntry={handleResultEntry}
           onCloseArchive={handleCloseArchive}
         />
-      </td>
-    </tr>
+      </TableMarkup.Cell>
+    </TableMarkup.Row>
   );
 });
 
@@ -742,12 +743,12 @@ export const CourseStatusView: React.FC = () => {
               )}
               {...dragEvents}
             >
-              <table className="w-full  border-spacing-0 text-left">
-                <thead>
-                  <tr>
-                    <th className="sticky top-0 z-20 bg-slate-50 py-2.5 px-2 md:py-3.5 md:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
+              <TableMarkup.Root className="w-full  border-spacing-0 text-left">
+                <TableMarkup.Head>
+                  <TableMarkup.Row>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell28}>
                       No.
-                    </th>
+                    </TableMarkup.HeaderCell>
                     {[
                       { label: "Course ID", id: "courseId" },
                       { label: "Course Name", id: "courseName" },
@@ -761,7 +762,7 @@ export const CourseStatusView: React.FC = () => {
                     ].map((col, idx) => {
                       const isSorted = sortConfig.key === col.id;
                       return (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={idx}
                           onClick={() => handleSort(col.id)}
                           className={cn(
@@ -776,15 +777,15 @@ export const CourseStatusView: React.FC = () => {
                               <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === 'desc' ? "text-emerald-600" : "")} />
                             </div>
                           </div>
-                        </th>
+                        </TableMarkup.HeaderCell>
                       );
                     })}
-                    <th className="sticky top-0 right-0 z-30 bg-slate-50 py-2.5 px-2 md:py-3.5 md:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell23}>
                       Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
+                    </TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body className="bg-white">
                   {paginatedData.map((course, index) => (
                     <CourseRow
                       key={course.id}
@@ -803,8 +804,8 @@ export const CourseStatusView: React.FC = () => {
                       handleResultEntry={handleResultEntry}
                     />
                   ))}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
 
             <TablePagination
@@ -844,20 +845,20 @@ export const CourseStatusView: React.FC = () => {
           </div>
 
           <div className="border rounded-lg flex-1 overflow-auto scrollbar-always-visible scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400 scrollbar-thumb-rounded-full scrollbar-track-rounded-full pb-1.5">
-            <table className="w-full text-2xs sm:text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-2 text-left font-bold text-slate-500 uppercase tracking-wider text-2xs md:text-xs whitespace-nowrap">Employee ID</th>
-                  <th className="px-4 py-2 text-left font-bold text-slate-500 uppercase tracking-wider text-2xs md:text-xs whitespace-nowrap">Name</th>
-                  <th className="px-4 py-2 text-left font-bold text-slate-500 uppercase tracking-wider text-2xs md:text-xs whitespace-nowrap">Department</th>
-                  <th className="px-4 py-2 text-left font-bold text-slate-500 uppercase tracking-wider text-2xs md:text-xs whitespace-nowrap">Status</th>
-                  <th className="px-4 py-2 text-left font-bold text-slate-500 uppercase tracking-wider text-2xs md:text-xs whitespace-nowrap">Completed Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+            <TableMarkup.Root className="w-full text-2xs sm:text-sm">
+              <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
+                <TableMarkup.Row>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell5}>Employee ID</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell5}>Name</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell5}>Department</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell5}>Status</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell5}>Completed Date</TableMarkup.HeaderCell>
+                </TableMarkup.Row>
+              </TableMarkup.Head>
+              <TableMarkup.Body className="divide-y divide-slate-100">
                 {getMockEmployees(detailsModalType).map((emp) => (
-                  <tr key={emp.id} className="hover:bg-slate-50/50">
-                    <td className="px-4 py-3 font-medium text-emerald-600 hover:underline whitespace-nowrap">
+                  <TableMarkup.Row key={emp.id} className="hover:bg-slate-50/50">
+                    <TableMarkup.Cell className="px-4 py-3 font-medium text-emerald-600 hover:underline whitespace-nowrap">
                       <a
                         href={ROUTES.SETTINGS.USERS_PROFILE(emp.id)}
                         target="_blank"
@@ -866,22 +867,22 @@ export const CourseStatusView: React.FC = () => {
                       >
                         {emp.id}
                       </a>
-                    </td>
-                    <td className="px-4 py-3 text-slate-900 font-semibold whitespace-nowrap">{emp.fullName}</td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{emp.dept}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-4 py-3 text-slate-900 font-semibold whitespace-nowrap">{emp.fullName}</TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-4 py-3 text-slate-600 whitespace-nowrap">{emp.dept}</TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-4 py-3 whitespace-nowrap">
                       <Badge
                         color={emp.status === "Completed" ? "emerald" : emp.status === "In Progress" ? "blue" : "red"}
                         size="sm"
                       >
                         {emp.status}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{emp.date}</td>
-                  </tr>
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-4 py-3 text-slate-500 whitespace-nowrap">{emp.date}</TableMarkup.Cell>
+                  </TableMarkup.Row>
                 ))}
-              </tbody>
-            </table>
+              </TableMarkup.Body>
+            </TableMarkup.Root>
           </div>
         </div>
       </FormModal>

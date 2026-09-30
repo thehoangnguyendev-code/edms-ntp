@@ -24,6 +24,7 @@ import { accessReview as accessReviewBreadcrumb } from "@/components/ui/breadcru
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime, formatDateUS } from "@/utils/format";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const statusBadge = (status: AccessReviewCampaignSummary["status"]) =>
   status === "COMPLETED" ? "emerald" : status === "CANCELLED" ? "slate" : "blue";
@@ -316,12 +317,12 @@ export const AccessReviewView: React.FC = () => {
               ) : (
                 <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1050px]">
-                    <thead className="sticky top-0 z-30">
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-14">
+                  <TableMarkup.Root className="w-full min-w-[1050px]">
+                    <TableMarkup.Head className="sticky top-0 z-30">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell34}>
                           No.
-                        </th>
+                        </TableMarkup.HeaderCell>
                         {([
                           { key: "name", label: "Campaign", sortable: true },
                           { key: "period", label: "Period", sortable: false },
@@ -332,7 +333,7 @@ export const AccessReviewView: React.FC = () => {
                           { key: "createdAt", label: "Created Date", sortable: true },
                           { key: "updatedAt", label: "Last Updated", sortable: true },
                         ] as const).map((col) => (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={col.key}
                             onClick={col.sortable ? () => handleSort(col.key) : undefined}
                             className={cn(
@@ -349,25 +350,25 @@ export const AccessReviewView: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         ))}
-                        <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
                           Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
+                        </TableMarkup.HeaderCell>
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-200">
                       {campaigns.map((c, index) => (
-                        <tr
+                        <TableMarkup.Row
                           key={c.id}
                           className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                           onClick={() => navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${c.id}`)}
                         >
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-500">
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-500">
                             {(currentPage - 1) * itemsPerPage + index + 1}
-                          </td>
-                          <td
-                            className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-emerald-600 cursor-pointer hover:underline"
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell
+                            className={TABLE_STYLES.cell27}
                             onClick={(event) => {
                               event.stopPropagation();
                               navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${c.id}`);
@@ -375,27 +376,27 @@ export const AccessReviewView: React.FC = () => {
                           >
                             {c.name}
                             {c.description && <div className="max-w-[280px] truncate text-xs text-slate-400">{c.description}</div>}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {c.reviewPeriodStart ? formatDateUS(c.reviewPeriodStart) : "—"} → {c.reviewPeriodEnd ? formatDateUS(c.reviewPeriodEnd) : "—"}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge color={statusBadge(c.status)} size="sm">
                               {c.statusLabel}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{c.totalItems}</td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{c.totalItems}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <span className={c.pendingItems > 0 ? "text-amber-600 font-medium" : "text-emerald-600"}>{c.pendingItems}</span>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{c.reviewerName ?? "—"}</td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{c.reviewerName ?? "—"}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {formatDateTime(c.createdAt)}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {formatDateTime(c.updatedAt)}
-                          </td>
-                          <td
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell
                             onClick={(event) => event.stopPropagation()}
                             className="sticky right-0 z-10 bg-white py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
                           >
@@ -422,11 +423,11 @@ export const AccessReviewView: React.FC = () => {
                                 )}
                               </div>
                             </PortalDropdownMenu>
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
                 {totalItems > 0 && (
                   <div className="border-t border-slate-200">

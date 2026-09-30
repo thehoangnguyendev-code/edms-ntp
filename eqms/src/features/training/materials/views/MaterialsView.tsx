@@ -48,6 +48,7 @@ import type { TrainingMaterial, MaterialFilters } from "../types";
 import { VersionHistoryDrawer } from "../components/VersionHistoryDrawer";
 import { usePortalDropdown, useNavigateWithLoading, useTableDragScroll, PortalDropdownPosition } from "@/hooks";
 import { useTrainingPermissions } from "@/features/training/useTrainingPermissions";
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 /* ─── Dashboard Stats Calculation ───────────────────────────────── */
 const calcDashboardStats = (materials: TrainingMaterial[]) => {
@@ -1059,12 +1060,12 @@ export const MaterialsView: React.FC = () => {
                   )}
                   {...dragEvents}
                 >
-                  <table className="w-full min-w-[1200px] border-spacing-0">
-                    <thead>
-                      <tr className="bg-slate-50 border-b-2 border-slate-200">
-                        <th className="sticky top-0 z-10 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-12">
+                  <TableMarkup.Root className="w-full min-w-[1200px] border-spacing-0">
+                    <TableMarkup.Head>
+                      <TableMarkup.Row className="bg-slate-50 border-b-2 border-slate-200">
+                        <TableMarkup.HeaderCell className="sticky top-0 z-10 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-12">
                           No.
-                        </th>
+                        </TableMarkup.HeaderCell>
                         {[
                           { label: "Material Number", key: "materialNumber" },
                           { label: "Material Name", key: "title" },
@@ -1078,7 +1079,7 @@ export const MaterialsView: React.FC = () => {
                         ].map((col) => {
                           const isSorted = sortConfig.key === col.key;
                           return (
-                            <th
+                            <TableMarkup.HeaderCell
                               key={col.key as string}
                               className={cn(
                                 "sticky top-0 z-10 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors group",
@@ -1093,28 +1094,28 @@ export const MaterialsView: React.FC = () => {
                                   <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === 'desc' ? "text-emerald-600 font-bold" : "")} />
                                 </div>
                               </div>
-                            </th>
+                            </TableMarkup.HeaderCell>
                           );
                         })}
-                        <th className="sticky top-0 right-0 z-20 bg-slate-50 py-3 px-4 lg:px-6 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap border-l border-slate-200">
+                        <TableMarkup.HeaderCell className="sticky top-0 right-0 z-20 bg-slate-50 py-3 px-4 lg:px-6 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap border-l border-slate-200">
                           Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                        </TableMarkup.HeaderCell>
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                       {paginatedData.length > 0 ? (
                         paginatedData.map((m, index) => {
                           const tdClass = "py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap";
                           return (
-                            <tr
+                            <TableMarkup.Row
                               key={m.id}
                               className="hover:bg-slate-50/80 transition-colors group"
                             >
-                              <td className={cn(tdClass, "text-center text-slate-500 font-medium")}>
+                              <TableMarkup.Cell className={cn(tdClass, "text-center text-slate-500 font-medium")}>
                                 {(currentPage - 1) * itemsPerPage + index + 1}
-                              </td>
+                              </TableMarkup.Cell>
 
-                              <td
+                              <TableMarkup.Cell
                                 className={cn(tdClass, "cursor-pointer")}
                                 onClick={() => {
                                   const fromPath = `?tab=${activeTab}`;
@@ -1122,9 +1123,9 @@ export const MaterialsView: React.FC = () => {
                                 }}
                               >
                                 <span className="font-medium text-emerald-600 hover:underline">{m.materialNumber}</span>
-                              </td>
+                              </TableMarkup.Cell>
 
-                              <td className={tdClass}>
+                              <TableMarkup.Cell className={tdClass}>
                                 <div className="max-w-[200px] md:max-w-md">
                                   <p
                                     className={cn(
@@ -1140,41 +1141,41 @@ export const MaterialsView: React.FC = () => {
                                     {m.description}
                                   </p>
                                 </div>
-                              </td>
+                              </TableMarkup.Cell>
 
-                              <td className={tdClass}>
+                              <TableMarkup.Cell className={tdClass}>
                                 <div className="flex items-center gap-2">
                                   {getTypeIcon(m.type)}
                                   <span className="font-medium">{m.type}</span>
                                 </div>
-                              </td>
+                              </TableMarkup.Cell>
 
 
-                              <td className={cn(tdClass, "font-medium")}> 
+                              <TableMarkup.Cell className={cn(tdClass, "font-medium")}> 
                                 {m.version}
-                              </td>
+                              </TableMarkup.Cell>
 
-                              <td className={tdClass}>
+                              <TableMarkup.Cell className={tdClass}>
                                 <StatusBadge status={mapMaterialStatusToStatusType(getEffectiveStatus(m) as TrainingMaterial["status"])} size="sm" />
-                              </td>
+                              </TableMarkup.Cell>
 
-                              <td className={tdClass}>
+                              <TableMarkup.Cell className={tdClass}>
                                 {m.department}
-                              </td>
+                              </TableMarkup.Cell>
 
-                              <td className={tdClass}>
+                              <TableMarkup.Cell className={tdClass}>
                                 {m.uploadedBy}
-                              </td>
+                              </TableMarkup.Cell>
 
-                              <td className={tdClass}>
+                              <TableMarkup.Cell className={tdClass}>
                                 {formatDateUS(m.uploadedAt)}
-                              </td>
+                              </TableMarkup.Cell>
 
-                              <td className={cn(tdClass, "text-center")}>
+                              <TableMarkup.Cell className={cn(tdClass, "text-center")}>
                                 <span className="font-medium">{m.usageCount}</span>
-                              </td>
+                              </TableMarkup.Cell>
 
-                              <td
+                              <TableMarkup.Cell
                                 className="sticky right-0 z-10 bg-white border-b border-slate-200 py-3 px-4 lg:px-6 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 group-hover:bg-slate-50 transition-colors"
                               >
                                 <button
@@ -1204,22 +1205,22 @@ export const MaterialsView: React.FC = () => {
                                   canApproveTrainingMaterials={canApproveTrainingMaterials}
                                   canObsoleteTrainingMaterials={canObsoleteTrainingMaterials}
                                 />
-                              </td>
-                            </tr>
+                              </TableMarkup.Cell>
+                            </TableMarkup.Row>
                           );
                         })
                       ) : (
-                        <tr>
-                          <td colSpan={10}>
+                        <TableMarkup.Row>
+                          <TableMarkup.Cell colSpan={10}>
                             <TableEmptyState
                               title="No Training Materials Found"
                               description="We couldn’t find any training materials matching your filters. Try adjusting your search criteria."
                             />
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       )}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
 
                 {filteredData.length > 0 && (

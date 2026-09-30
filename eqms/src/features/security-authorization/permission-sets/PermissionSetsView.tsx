@@ -26,6 +26,7 @@ import { PermissionCatalogTab } from "./PermissionCatalogTab";
 import { ROUTES } from "@/app/routes.constants";
 import { permissionSets as permissionSetsBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { formatDateTime } from "@/utils/format";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const downloadJson = (filename: string, data: unknown) => {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -478,10 +479,10 @@ export const PermissionSetsView: React.FC = () => {
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full text-sm min-w-[860px]">
-                  <thead className="sticky top-0 z-30">
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-12">No.</th>
+                <TableMarkup.Root className="w-full text-sm min-w-[860px]">
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell33}>No.</TableMarkup.HeaderCell>
                       {([
                         { key: "name",            label: "Name",        sortable: true  },
                         { key: "description",     label: "Description", sortable: false },
@@ -493,7 +494,7 @@ export const PermissionSetsView: React.FC = () => {
                         { key: "createdAt",        label: "Created Date", sortable: true },
                         { key: "updatedAt",        label: "Last Updated", sortable: true },
                       ] as const).map((col) => (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={col.key}
                           onClick={col.sortable ? () => handleSort(col.key) : undefined}
                           className={cn(
@@ -510,68 +511,68 @@ export const PermissionSetsView: React.FC = () => {
                               </div>
                             )}
                           </div>
-                        </th>
+                        </TableMarkup.HeaderCell>
                       ))}
-                      <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>Action</TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!loading && sets.length === 0 ? (
-                      <tr>
-                        <td colSpan={11} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={11} className="p-0">
                           <TableEmptyState
                             title="No Shared Permission Sets Found"
                             description="We couldn't find any shared permission sets matching your filters. Try adjusting your search criteria."
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : sets.map((ps, index) => {
                       const capabilities = capabilityBySetId[ps.id];
                       const can = (action: string) => Boolean(capabilities?.actions?.[action]?.allowed);
                       const reason = (action: string) => capabilities?.actions?.[action]?.reason || "Action is not currently allowed";
                       const loaded = Boolean(capabilities);
                       return (
-                        <tr
+                        <TableMarkup.Row
                           key={ps.id}
                           className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
                           onClick={() => navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}`)}
                         >
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700 text-center">
+                          <TableMarkup.Cell className={TABLE_STYLES.cell30}>
                             {(currentPage - 1) * itemsPerPage + index + 1}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <div className="font-semibold text-slate-900">{ps.name}</div>
                             <div className="mt-0.5 text-xs text-slate-400">{ps.code}</div>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-600">
                             <p className="line-clamp-2">{ps.description || "—"}</p>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                             {ps.modules?.length ?? 0}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                             {ps.permissionCount}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {ps.category ?? "—"}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge color={ps.active ? "emerald" : "slate"} size="sm" >
                               {ps.active ? "Active" : "Inactive"}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge color={ps.system ? "blue" : "slate"} size="sm">
                               {ps.system ? "System" : "Custom"}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {formatDateTime(ps.createdAt)}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {formatDateTime(ps.updatedAt)}
-                          </td>
-                          <td
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell
                             className="sticky right-0 bg-white py-3 px-4 text-center z-10 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50/80 transition-colors"
                             onClick={(e) => e.stopPropagation()}
                           >
@@ -626,12 +627,12 @@ export const PermissionSetsView: React.FC = () => {
                                 </DropdownMenuItem>
                               </div>
                             </PortalDropdownMenu>
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {totalItems > 0 && (

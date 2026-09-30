@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
 import { SortableTh } from "./components/SortableTh";
 import { buildControlledCopySnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface ControlledCopiesTabProps {
     copies?: ControlledCopy[];
@@ -143,12 +144,12 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
             {/* Table */}
             <div className={cn("border rounded-xl bg-white shadow-sm overflow-hidden transition-opacity", isLoading && "opacity-60")}>
                 <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">
+                    <TableMarkup.Root className="w-full">
+                        <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
+                            <TableMarkup.Row>
+                                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>
                                     No.
-                                </th>
+                                </TableMarkup.HeaderCell>
                                 {sortableTh("name", "Controlled Copy Name")}
                                 {sortableTh("controlledCopyNumber", "Copy Number", "hidden md:table-cell")}
                                 {sortableTh("created", "Created", "hidden md:table-cell")}
@@ -157,55 +158,55 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                 {sortableTh("validUntil", "Valid Until", "hidden lg:table-cell")}
                                 {sortableTh("revisionName", "Document Revision", "hidden xl:table-cell")}
                                 {sortableTh("controlledCopyNumber", "Document Number")}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 bg-white">
+                            </TableMarkup.Row>
+                        </TableMarkup.Head>
+                        <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                             {error ? (
-                                <tr>
-                                    <td colSpan={9} className="py-12 text-center">
+                                <TableMarkup.Row>
+                                    <TableMarkup.Cell colSpan={9} className="py-12 text-center">
                                         <div className="flex flex-col items-center justify-center gap-2.5">
                                             <div className="h-10 w-10 rounded-full bg-rose-50 flex items-center justify-center">
                                                 <Search className="h-5 w-5 text-rose-300" />
                                             </div>
                                             <p className="text-sm font-medium text-slate-500">{error}</p>
                                         </div>
-                                    </td>
-                                </tr>
+                                    </TableMarkup.Cell>
+                                </TableMarkup.Row>
                             ) : currentCopies.length === 0 ? (
-                                <tr>
-                                    <td colSpan={9} className="p-0">
+                                <TableMarkup.Row>
+                                    <TableMarkup.Cell colSpan={9} className="p-0">
                                         <TableEmptyState title={emptyMessage} />
-                                    </td>
-                                </tr>
+                                    </TableMarkup.Cell>
+                                </TableMarkup.Row>
                             ) : (
                                 currentCopies.map((copy, index) => (
-                                    <tr
+                                    <TableMarkup.Row
                                         key={copy.id}
                                         className={cn("hover:bg-slate-50/80 transition-colors", (onRowClick || documentId) && "cursor-pointer")}
                                         onClick={() => handleRowClick(copy)}
                                     >
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-500 font-medium">
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell12}>
                                             {(currentPage - 1) * itemsPerPage + index + 1}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell11}>
                                             {copy.controlledCopiesName}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-700 hidden md:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-700 hidden md:table-cell">
                                             {copy.copyNumber}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden md:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell15}>
                                             {copy.created}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                                             <StatusBadge status={(copy.status || "").toLowerCase().replace(/ /g, "") as any} />
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden lg:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell14}>
                                             {copy.openedBy}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden lg:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell14}>
                                             {copy.validUntil}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden xl:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell16}>
                                             {copy.sourceRevisionId ? (
                                                 <button
                                                     type="button"
@@ -220,15 +221,15 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                             ) : (
                                                 copy.documentRevision
                                             )}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell11}>
                                             {copy.controlledCopyNumber || copy.documentNumber}
-                                        </td>
-                                    </tr>
+                                        </TableMarkup.Cell>
+                                    </TableMarkup.Row>
                                 ))
                             )}
-                        </tbody>
-                    </table>
+                        </TableMarkup.Body>
+                    </TableMarkup.Root>
                 </div>
 
                 {/* Pagination */}

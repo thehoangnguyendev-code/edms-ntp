@@ -100,6 +100,12 @@ public record RevisionDetailResponse(
         // Legacy Import reference-only fields (never a real electronic signature event -- see
         // RevisionService#createLegacyImportRevisionsBatch). Non-null only for a revision created
         // through Legacy Import.
-        LegacyImportInfoResponse legacyImportInfo
+        LegacyImportInfoResponse legacyImportInfo,
+        /** Display labels of Related Documents that will publish TOGETHER with this one -- i.e. each
+         *  has a revision in progress that has already reached Ready for Publishing. Empty/null when
+         *  this revision is not itself Ready for Publishing, or no Related Document qualifies. Shown
+         *  to the user in a confirmation modal before they sign the Publish action; the same list
+         *  RevisionService#publishRevision actually publishes together (single source of truth). */
+        List<String> relatedDocumentsPublishingTogether
 ) {
 }

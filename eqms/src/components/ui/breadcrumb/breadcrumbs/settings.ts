@@ -317,6 +317,11 @@ export const controlledCopiesPolicy = (navigate?: NavigateFn): BreadcrumbItem[] 
   { label: "Controlled Copies Policy", isActive: true },
 ];
 
+export const uncontrolledCopiesPolicy = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...documentControlBase(navigate),
+  { label: "Uncontrolled Copies Policy", isActive: true },
+];
+
 export const documentProperties = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...documentControlBase(navigate),
   { label: "Document Properties", isActive: true },
@@ -551,3 +556,8 @@ export const accessReview = (navigate?: NavigateFn, campaignName?: string): Brea
         ...securityAuthorizationBase(navigate),
         { label: "Access Review", isActive: true },
       ];
+
+export const sodViolationReview = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...securityAuthorizationBase(navigate),
+  { label: "SoD Violation Review", isActive: true },
+];

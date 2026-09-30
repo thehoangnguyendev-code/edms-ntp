@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useNavigate } from "react-router-dom";
 import { Check, Search, X } from "lucide-react";
@@ -14,6 +15,7 @@ import { lifecycleStatePolicyApi } from "@/services/api/lifecycleStatePolicy";
 import { ROUTES } from "@/app/routes.constants";
 import type { WorkflowActionPolicy } from "../types";
 
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 /**
  * Canonical lifecycle order per object type. Keys must match the raw
  * workflow_action_policies.object_type values (REVISION, CONTROLLED_COPY, …)
@@ -234,39 +236,39 @@ export const ActionStatusMatrix: React.FC = () => {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full text-xs sm:text-sm">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="text-left px-4 py-3 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap border-r border-slate-200">
+        <TableMarkup.Root className="w-full text-xs sm:text-sm">
+          <TableMarkup.Head className="bg-slate-50">
+            <TableMarkup.Row>
+              <TableMarkup.HeaderCell className="text-left px-4 py-3 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap border-r border-slate-200">
                 Action
-              </th>
+              </TableMarkup.HeaderCell>
               {statuses.map((s, i) => (
-                <th key={s} className={`text-center px-3 py-3 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap ${i > 0 ? "border-l border-slate-100" : ""}`}>
+                <TableMarkup.HeaderCell key={s} className={`text-center px-3 py-3 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap ${i > 0 ? "border-l border-slate-100" : ""}`}>
                   {prettify(s)}
-                </th>
+                </TableMarkup.HeaderCell>
               ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+            </TableMarkup.Row>
+          </TableMarkup.Head>
+          <TableMarkup.Body className="divide-y divide-slate-100">
             {actions.length === 0 && (
-              <tr>
-                <td colSpan={statuses.length + 1} className="p-0">
+              <TableMarkup.Row>
+                <TableMarkup.Cell colSpan={statuses.length + 1} className="p-0">
                   <TableEmptyState title="No actions found" description="No actions match your search." />
-                </td>
-              </tr>
+                </TableMarkup.Cell>
+              </TableMarkup.Row>
             )}
             {actions.map((action) => (
-              <tr key={action}>
-                <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap border-r border-slate-200">{prettify(action)}</td>
+              <TableMarkup.Row key={action}>
+                <TableMarkup.Cell className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap border-r border-slate-200">{prettify(action)}</TableMarkup.Cell>
                 {statuses.map((status, i) => {
                   const colBorder = i > 0 ? "border-l border-slate-100" : "";
                   const cell = cellPolicies(action, status);
                   const top = cell[0];
-                  if (!top) return <td key={status} className={`px-3 py-3 ${colBorder}`} />;
+                  if (!top) return <TableMarkup.Cell key={status} className={`px-3 py-3 ${colBorder}`} />;
                   const hasOverride = cell.some((p) => p.documentTypeId);
                   const hasActivePolicy = cell.some((p) => p.active);
                   return (
-                    <td key={status} className={`px-3 py-3 text-center ${colBorder}`}>
+                    <TableMarkup.Cell key={status} className={`px-3 py-3 text-center ${colBorder}`}>
                       <button
                         type="button"
                         onClick={() => setDetail({ policies: cell, action, status })}
@@ -283,13 +285,13 @@ export const ActionStatusMatrix: React.FC = () => {
                       {hasOverride && (
                         <Badge color="amber" size="xs" className="mt-0.5">+doc-type</Badge>
                       )}
-                    </td>
+                    </TableMarkup.Cell>
                   );
                 })}
-              </tr>
+              </TableMarkup.Row>
             ))}
-          </tbody>
-        </table>
+          </TableMarkup.Body>
+        </TableMarkup.Root>
       </div>
 
       <FormModal

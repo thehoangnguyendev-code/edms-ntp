@@ -20,10 +20,19 @@ import { IconApiBook, IconFileTextShield } from "@tabler/icons-react";
 
 type RevisionSeed = "0.0.1" | "0.1";
 type EffectiveDateBasis = "AFTER_APPROVAL" | "AFTER_TRAINING" | "AFTER_PUBLISH";
+type EffectiveDateBasisNoTraining = "AFTER_APPROVAL" | "AFTER_PUBLISH";
 
+/** Offered only for documents flagged "Requires Training" at creation -- that flag is the user's own
+ *  choice when the document is first created (Author/DCO decide it then; it is not editable per revision
+ *  afterward), so a document without it never has a training completion event to count from. */
 const EFFECTIVE_DATE_BASIS_OPTIONS: { value: EffectiveDateBasis; label: string }[] = [
   { value: "AFTER_APPROVAL", label: "After Approval (last Approver completes)" },
   { value: "AFTER_TRAINING", label: "After Training completion" },
+  { value: "AFTER_PUBLISH", label: "After DCO Publish" },
+];
+
+const EFFECTIVE_DATE_BASIS_NO_TRAINING_OPTIONS: { value: EffectiveDateBasisNoTraining; label: string }[] = [
+  { value: "AFTER_APPROVAL", label: "After Approval (last Approver completes)" },
   { value: "AFTER_PUBLISH", label: "After DCO Publish" },
 ];
 
@@ -49,10 +58,17 @@ interface DocumentPolicy {
   knowledgePortalTopCount?: number;
   /** Days of views counted for "Most Viewed" in the Knowledge portal (default 30). */
   knowledgePortalViewsWindowDays?: number;
-  /** What event the Effective Date is counted from (default AFTER_APPROVAL). */
+  /** Legacy single Effective Date rule (default AFTER_APPROVAL), superseded by the Required/Non-Required
+   *  Training split below. Kept only as the read-time fallback for installs saved before the split. */
   effectiveDateBasis?: EffectiveDateBasis;
-  /** Calendar days added to that event to get the Effective Date (0-365, default 0). */
+  /** @deprecated superseded by effectiveDateOffsetDaysTrainingRequired/TrainingNotRequired. */
   effectiveDateOffsetDays?: number;
+  /** Effective Date rule for documents flagged "Requires Training" at creation. */
+  effectiveDateBasisTrainingRequired?: EffectiveDateBasis;
+  effectiveDateOffsetDaysTrainingRequired?: number;
+  /** Effective Date rule for documents NOT flagged "Requires Training" -- AFTER_TRAINING is never offered here. */
+  effectiveDateBasisTrainingNotRequired?: EffectiveDateBasisNoTraining;
+  effectiveDateOffsetDaysTrainingNotRequired?: number;
   /** One independent on/off setting per Document Master participant role: when true, a user
    *  REMOVED from that specific role (e.g. via "Edit Revision for Upgrade") keeps read-only
    *  visibility of the Document afterwards, based on a permanent record of everyone who was ever
@@ -214,7 +230,6 @@ export const DocumentPropertiesView: React.FC = () => {
           {/* 1. How documents are identified and dated */}
           <FormSection
             title="Numbering & Effective Date"
-            description="How new documents and revisions are numbered, and when a published revision becomes effective."
             icon={<FileDigit className="h-4 w-4" />}
           >
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -262,34 +277,66 @@ export const DocumentPropertiesView: React.FC = () => {
                 </div>
               </Group>
 
-              <div className="lg:col-span-2">
-                <Group title="Effective date">
+              <div className="lg:col-span-2 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <Group title="Effective date — Required Training documents">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <Select
                       label="Effective Date is counted from"
                       disabled={!canManage}
-                      value={documents.effectiveDateBasis ?? "AFTER_APPROVAL"}
-                      onChange={(value) => patch({ effectiveDateBasis: String(value) as EffectiveDateBasis })}
+                      value={documents.effectiveDateBasisTrainingRequired ?? documents.effectiveDateBasis ?? "AFTER_APPROVAL"}
+                      onChange={(value) => patch({ effectiveDateBasisTrainingRequired: String(value) as EffectiveDateBasis })}
                       options={EFFECTIVE_DATE_BASIS_OPTIONS}
                     />
                     <NumberField
                       label="Number of days after that event"
-                      value={documents.effectiveDateOffsetDays ?? 0}
+                      value={documents.effectiveDateOffsetDaysTrainingRequired ?? documents.effectiveDateOffsetDays ?? 0}
                       min={0}
                       max={365}
                       fallback={0}
                       disabled={!canManage}
-                      onChange={(v) => patch({ effectiveDateOffsetDays: v })}
+                      onChange={(v) => patch({ effectiveDateOffsetDaysTrainingRequired: v })}
                     />
                   </div>
                   <p className="text-xs text-slate-500">
-                    Effective Date = the chosen event + this many calendar days (0 = the same day). It is fixed when the DCO
-                    publishes, using the setting in force at that moment, and the rule used is recorded in the Audit Trail. If
-                    a revision has no training, or no approval record, the date falls back to the approval date and then the
-                    publish date. A date earlier than the publish day means the document is effective from before it was
-                    published.
+                    Applies to documents whose Author/DCO flagged "Requires Training" when the document was created (this
+                    is decided once, at creation, and is not editable per revision afterward). If the revision has no
+                    training completion or no approval record when the DCO publishes, the date falls back to the approval
+                    date and then the publish date.
                   </p>
                 </Group>
+
+                <Group title="Effective date — Non-Required Training documents">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <Select
+                      label="Effective Date is counted from"
+                      disabled={!canManage}
+                      value={documents.effectiveDateBasisTrainingNotRequired ?? "AFTER_APPROVAL"}
+                      onChange={(value) => patch({ effectiveDateBasisTrainingNotRequired: String(value) as EffectiveDateBasisNoTraining })}
+                      options={EFFECTIVE_DATE_BASIS_NO_TRAINING_OPTIONS}
+                    />
+                    <NumberField
+                      label="Number of days after that event"
+                      value={documents.effectiveDateOffsetDaysTrainingNotRequired ?? 0}
+                      min={0}
+                      max={365}
+                      fallback={0}
+                      disabled={!canManage}
+                      onChange={(v) => patch({ effectiveDateOffsetDaysTrainingNotRequired: v })}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Applies to documents without the "Requires Training" flag -- no training event exists for them, so
+                    only After Approval or After DCO Publish are offered. If the revision has no approval record when
+                    the DCO publishes, the date falls back to the publish date.
+                  </p>
+                </Group>
+
+                <p className="md:col-span-2 xl:col-span-2 text-xs text-slate-500">
+                  Effective Date = the chosen event + the configured calendar days (0 = the same day). It is fixed when
+                  the DCO publishes, using the rule in force for that document at that moment, and the rule used is
+                  recorded in the Audit Trail. A date earlier than the publish day means the document is effective from
+                  before it was published.
+                </p>
               </div>
             </div>
           </FormSection>
@@ -298,27 +345,22 @@ export const DocumentPropertiesView: React.FC = () => {
           <FormSection title="Review & Approval Workflow" icon={<Users className="h-4 w-4" />}>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <Group title="Review mode">
-                <div className="space-y-2.5">
-                  <Checkbox
-                    id="parallelReviewEnabled"
-                    label="Enable Parallel Review"
-                    disabled={!canManage}
-                    checked={!!documents.parallelReviewEnabled}
-                    onChange={(checked) => patch({ parallelReviewEnabled: checked })}
-                  />
-                  <Checkbox
-                    id="sequentialReviewEnabled"
-                    label="Enable Sequential Review"
-                    disabled={!canManage}
-                    checked={!documents.parallelReviewEnabled}
-                    onChange={(checked) => patch({ parallelReviewEnabled: !checked })}
-                  />
-                </div>
+                <Select
+                  label="Reviewer order"
+                  disabled={!canManage}
+                  value={documents.parallelReviewEnabled ? "PARALLEL" : "SEQUENTIAL"}
+                  onChange={(value) => patch({ parallelReviewEnabled: value === "PARALLEL" })}
+                  options={[
+                    { value: "SEQUENTIAL", label: "Sequential (default) — one Reviewer at a time" },
+                    { value: "PARALLEL", label: "Parallel — any Reviewer, any order" },
+                  ]}
+                  enableSearch={false}
+                />
                 <p className="text-xs text-slate-500">
-                  Sequential (default): Reviewers act one at a time, in the order configured on the Revision. Parallel: any
-                  assigned Reviewer may act in any order; the Revision still moves on only once every Reviewer has reviewed, and
-                  a single Reject sends it back to Draft. The mode is fixed when a Revision is submitted, so a change only
-                  affects Revisions submitted afterwards. Enabling one disables the other.
+                  {documents.parallelReviewEnabled
+                    ? "Parallel: any assigned Reviewer may act in any order; the Revision still moves on only once every Reviewer has reviewed, and a single Reject sends it back to Draft."
+                    : "Sequential (default): Reviewers act one at a time, in the order configured on the Revision."}{" "}
+                  The mode is fixed when a Revision is submitted, so a change only affects Revisions submitted afterwards.
                 </p>
               </Group>
 

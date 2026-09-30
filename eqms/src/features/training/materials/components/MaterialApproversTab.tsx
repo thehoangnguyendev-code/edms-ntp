@@ -12,6 +12,7 @@ import {
 } from "./materialTabMockData";
 
 import { type Approver } from "@/features/documents/document-list/document-creation/new-tabs/subtabs/types";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface MaterialApproversTabProps {
   approvers?: Approver[];
@@ -267,47 +268,47 @@ export const MaterialApproversTab: React.FC<MaterialApproversTabProps> = ({
       {resolvedApprovers.length > 0 ? (
         <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">No.</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">User</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">Email</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">Position</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">Department</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Role</th>
-                  <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-16 sm:w-24">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
+            <TableMarkup.Root className="w-full">
+              <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
+                <TableMarkup.Row>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>No.</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>User</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>Email</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>Position</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>Department</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>Role</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell11}>Action</TableMarkup.HeaderCell>
+                </TableMarkup.Row>
+              </TableMarkup.Head>
+              <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                 {resolvedApprovers.map((approver, index) => (
-                  <tr key={approver.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-500 whitespace-nowrap text-center font-medium">
+                  <TableMarkup.Row key={approver.id} className="hover:bg-slate-50/80 transition-colors">
+                    <TableMarkup.Cell className={TABLE_STYLES.cell5}>
                       {index + 1}
-                    </td>
-                    <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                       <div className="flex items-center gap-2 sm:gap-3">
                         <div>
                           <div className="font-medium text-slate-900">{approver.fullName}</div>
                           <div className="text-2xs text-slate-500">{approver.username}</div>
                         </div>
                       </div>
-                    </td>
-                    <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-600 whitespace-nowrap hidden md:table-cell">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell8}>
                       {approver.email}
-                    </td>
-                    <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-600 whitespace-nowrap hidden lg:table-cell">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell7}>
                       {approver.position}
-                    </td>
-                    <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm text-slate-600 whitespace-nowrap hidden md:table-cell">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell8}>
                       {approver.department}
-                    </td>
-                    <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                       <Badge color="emerald" size="sm">
                         Approver
                       </Badge>
-                    </td>
-                    <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
                       <Button
                         onClick={removeApprover}
                         variant="ghost"
@@ -317,11 +318,11 @@ export const MaterialApproversTab: React.FC<MaterialApproversTabProps> = ({
                       >
                         <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
-                    </td>
-                  </tr>
+                    </TableMarkup.Cell>
+                  </TableMarkup.Row>
                 ))}
-              </tbody>
-            </table>
+              </TableMarkup.Body>
+            </TableMarkup.Root>
           </div>
         </div>
       ) : (

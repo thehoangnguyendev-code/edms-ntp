@@ -8,6 +8,7 @@ import { formatControlledCopyNumber } from "../../display";
 import { getControlledCopyDistributionListText, getControlledCopyDistributionModeLabel, getControlledCopyMemberRecipientText } from "../../distributionDisplay";
 import { normalizeControlledCopyStatusLabel } from "../../status";
 import { getCachedControlledCopyChildren, preloadControlledCopyChildren } from "../../components/ExpandControlledCopiesRow";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface DistributionInformationTabProps {
   controlledCopy: ControlledCopy & { copyIds?: string[] };
@@ -124,26 +125,26 @@ export const DistributionInformationTab: React.FC<DistributionInformationTabProp
             </div>
           ) : (
             <div className="max-h-80 overflow-auto rounded-lg border border-slate-200">
-              <table className="w-full text-xs sm:text-sm">
-                <thead className="sticky top-0 bg-slate-50">
-                  <tr className="border-b border-slate-200">
-                    <th className="py-2 px-3 text-center text-2xs md:text-xs font-semibold text-slate-600 w-10">No.</th>
-                    <th className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Document Number</th>
-                    <th className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Recipient</th>
-                    <th className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Employee Code</th>
-                    <th className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Department</th>
-                    <th className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Email</th>
-                    <th className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Status</th>
-                    <th className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Distributed On</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
+              <TableMarkup.Root className="w-full text-xs sm:text-sm">
+                <TableMarkup.Head className="sticky top-0 bg-slate-50">
+                  <TableMarkup.Row className="border-b border-slate-200">
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-center text-2xs md:text-xs font-semibold text-slate-600 w-10">No.</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Document Number</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Recipient</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>Employee Code</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>Department</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Email</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Status</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>Distributed On</TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                   {members.map((member, index) => {
                     const statusLabel = normalizeControlledCopyStatusLabel(member.status, member.statusInfo as any);
                     return (
-                      <tr key={member.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-2 px-3 text-center text-slate-500 font-medium">{index + 1}</td>
-                        <td className="py-2 px-3">
+                      <TableMarkup.Row key={member.id} className="hover:bg-slate-50 transition-colors">
+                        <TableMarkup.Cell className="py-2 px-3 text-center text-slate-500 font-medium">{index + 1}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-2 px-3">
                           {onNavigateToLinkedCopy ? (
                             <button
                               type="button"
@@ -155,24 +156,24 @@ export const DistributionInformationTab: React.FC<DistributionInformationTabProp
                           ) : (
                             <span className="font-medium text-slate-900">{formatControlledCopyNumber(member.controlledCopyNumber)}</span>
                           )}
-                        </td>
-                        <td className="py-2 px-3 text-slate-700">{getControlledCopyMemberRecipientText(member) || "-"}</td>
-                        <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{member.recipientEmployeeCode || "-"}</td>
-                        <td className="py-2 px-3 text-slate-600">{member.recipientDepartment || "-"}</td>
-                        <td className="py-2 px-3 text-slate-600">{member.recipientEmail || "-"}</td>
-                        <td className="py-2 px-3">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-2 px-3 text-slate-700">{getControlledCopyMemberRecipientText(member) || "-"}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-2 px-3 text-slate-600 whitespace-nowrap">{member.recipientEmployeeCode || "-"}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-2 px-3 text-slate-600">{member.recipientDepartment || "-"}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-2 px-3 text-slate-600">{member.recipientEmail || "-"}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-2 px-3">
                           <Badge color={getBadgeColor(member.statusCode || member.statusInfo?.id, statusLabel)} size="sm">
                             {statusLabel}
                           </Badge>
-                        </td>
-                        <td className="py-2 px-3 text-slate-500 whitespace-nowrap">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="py-2 px-3 text-slate-500 whitespace-nowrap">
                           {member.distributedDate ? formatDateTime(member.distributedDate) : "-"}
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
           )}
         </div>

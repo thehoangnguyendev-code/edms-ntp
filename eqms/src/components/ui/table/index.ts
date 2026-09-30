@@ -4,11 +4,21 @@ export {
   TableBody,
   TableCell,
   TableRow,
-} from './ResponsiveTable';
-export type { ResponsiveTableProps } from './ResponsiveTable';
+} from "./ResponsiveTable";
+export type { ResponsiveTableProps } from "./ResponsiveTable";
 
-export { TablePagination } from './TablePagination';
-export type { TablePaginationProps } from './TablePagination';
+export { DataTable } from "./DataTable";
+export { TableMarkup, TABLE_STYLES } from "./TablePrimitives";
+export type {
+  DataTableAction,
+  DataTableColumn,
+  DataTableProps,
+  DataTableSelection,
+  DataTableSortDirection,
+} from "./DataTable";
 
-export { TableEmptyState } from './TableEmptyState';
-export type { TableEmptyStateProps } from './TableEmptyState';
+export { TablePagination } from "./TablePagination";
+export type { TablePaginationProps } from "./TablePagination";
+
+export { TableEmptyState } from "./TableEmptyState";
+export type { TableEmptyStateProps } from "./TableEmptyState";

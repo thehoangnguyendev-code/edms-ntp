@@ -21,6 +21,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { knowledgeApi, type KnowledgeComponent } from "@/services/api/knowledge";
 import { formatDateTime } from "@/utils/format";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const COLUMNS = [
   { key: "name", label: "Name" },
@@ -200,15 +201,15 @@ export const KnowledgeComponentsView: React.FC = () => {
                 <div ref={scrollerRef}
                   className={cn("flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                   {...dragEvents}>
-                  <table className="w-full min-w-max border-spacing-0 text-left">
-                    <thead className="sticky top-0 z-30">
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center">No.</th>
+                  <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
+                    <TableMarkup.Head className="sticky top-0 z-30">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell29}>No.</TableMarkup.HeaderCell>
                         {COLUMNS.map((col) => {
                           const isSorted = sortKey === col.key;
                           return (
-                            <th key={col.key} onClick={() => handleSort(col.key)}
-                              className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors cursor-pointer hover:bg-slate-100 hover:text-slate-700 group">
+                            <TableMarkup.HeaderCell key={col.key} onClick={() => handleSort(col.key)}
+                              className={TABLE_STYLES.headerCell30}>
                               <div className="flex items-center justify-between gap-2 w-full">
                                 <span className="truncate">{col.label}</span>
                                 <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
@@ -216,40 +217,40 @@ export const KnowledgeComponentsView: React.FC = () => {
                                   <ChevronDown className={cn("h-3 w-3", isSorted && sortDir === "desc" ? "text-emerald-600" : "")} />
                                 </div>
                               </div>
-                            </th>
+                            </TableMarkup.HeaderCell>
                           );
                         })}
-                        <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell24}>Action</TableMarkup.HeaderCell>
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                       {rows.map((row, index) => {
                         const tdClass = "py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap";
                         return (
-                          <tr key={row.id} className="hover:bg-slate-50/80 transition-colors group">
-                            <td className={cn(tdClass, "text-center")}><span className="text-slate-500 font-medium">{(page - 1) * pageSize + index + 1}</span></td>
-                            <td className={tdClass}>
+                          <TableMarkup.Row key={row.id} className="hover:bg-slate-50/80 transition-colors group">
+                            <TableMarkup.Cell className={cn(tdClass, "text-center")}><span className="text-slate-500 font-medium">{(page - 1) * pageSize + index + 1}</span></TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>
                               <span className="font-medium text-emerald-600 cursor-pointer hover:underline" onClick={() => navigate(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS_EDIT(row.id))}>{row.name}</span>
                               {row.systemDefined && <Badge size="sm" color="blue" className="ml-2">System</Badge>}
                               {row.description && <div className="text-xs text-slate-500 max-w-md truncate" title={row.description}>{row.description}</div>}
-                            </td>
-                            <td className={tdClass}>{row.sourceLabel}</td>
-                            <td className={tdClass}>{row.usedByHierarchies} {row.usedByHierarchies === 1 ? "hierarchy" : "hierarchies"}</td>
-                            <td className={tdClass}><Badge size="sm" color={row.active ? "emerald" : "slate"} pill>{row.active ? "Active" : "Inactive"}</Badge></td>
-                            <td className={tdClass}>{row.updatedAt ? formatDateTime(row.updatedAt) : "-"}</td>
-                            <td className={tdClass}>{row.updatedByName || "-"}</td>
-                            <td onClick={(e) => e.stopPropagation()}
-                              className="sticky right-0 z-10 bg-white py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>{row.sourceLabel}</TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>{row.usedByHierarchies} {row.usedByHierarchies === 1 ? "hierarchy" : "hierarchies"}</TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}><Badge size="sm" color={row.active ? "emerald" : "slate"} pill>{row.active ? "Active" : "Inactive"}</Badge></TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>{row.updatedAt ? formatDateTime(row.updatedAt) : "-"}</TableMarkup.Cell>
+                            <TableMarkup.Cell className={tdClass}>{row.updatedByName || "-"}</TableMarkup.Cell>
+                            <TableMarkup.Cell onClick={(e) => e.stopPropagation()}
+                              className={TABLE_STYLES.cell34}>
                               <button ref={getRef(row.id)} onClick={(e) => toggle(row.id, e, { menuWidth: 220, menuHeight: 120 })}
                                 className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors">
                                 <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
                               </button>
-                            </td>
-                          </tr>
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
                 <TablePagination currentPage={page} totalPages={totalPages} totalItems={total} itemsPerPage={pageSize}
                   onPageChange={setPage} onItemsPerPageChange={(value) => { setPageSize(value); setPage(1); }} showItemCount />

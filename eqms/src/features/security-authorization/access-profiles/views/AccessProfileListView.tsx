@@ -25,6 +25,7 @@ import { settingsApi, type AccessProfileCapabilitiesResponse, type AccessProfile
 import { ROUTES } from "@/app/routes.constants";
 import { accessProfiles as accessProfilesBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { formatDateTime } from "@/utils/format";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // ── Action Dropdown ────────────────────────────────────────────────────────────
 
@@ -640,14 +641,14 @@ export const AccessProfileListView: React.FC = () => {
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[1120px]">
-                  <thead className="sticky top-0 z-30">
-                    <tr>
+                <TableMarkup.Root className="w-full min-w-[1120px]">
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
                       {TABLE_COLS.map(col => {
                         const isSorted = sortConfig.key === col.id;
                         const isAction = col.id === "action";
                         return (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={col.id}
                             onClick={col.sortable ? () => handleSort(col.id as SortKey) : undefined}
                             className={cn(
@@ -666,35 +667,35 @@ export const AccessProfileListView: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         );
                       })}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!isLoading && sortedProfiles.length === 0 ? (
-                      <tr>
-                        <td colSpan={TABLE_COLS.length} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={TABLE_COLS.length} className="p-0">
                           <TableEmptyState
 
                             title="No access profiles found"
                             description={hasFilters ? "Try adjusting your search or filters." : "Create your first access profile to get started."}
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : sortedProfiles.map((profile, idx) => (
-                      <tr
+                      <TableMarkup.Row
                         key={profile.id}
                         className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
                         onClick={() => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
                       >
                         {/* No. */}
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-500 text-center">
+                        <TableMarkup.Cell className={TABLE_STYLES.cell29}>
                           {(currentPage - 1) * itemsPerPage + idx + 1}
-                        </td>
+                        </TableMarkup.Cell>
 
                         {/* Access Profile name */}
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-slate-800 truncate">{profile.name}</p>
@@ -703,32 +704,32 @@ export const AccessProfileListView: React.FC = () => {
                               )}
                             </div>
                           </div>
-                        </td>
+                        </TableMarkup.Cell>
 
                         {/* Type */}
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                           <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="sm">
                             {profile.type === "SYSTEM" ? "System" : "Custom"}
                           </Badge>
-                        </td>
+                        </TableMarkup.Cell>
 
                         {/* Status */}
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                           <Badge color={profile.active ? "emerald" : "slate"} size="sm" showDot>
                             {profile.active ? "Active" : "Inactive"}
                           </Badge>
-                        </td>
+                        </TableMarkup.Cell>
 
                         {/* Permission Sets */}
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           <div className="flex items-center gap-1.5">
                             <span className="font-medium">{profile.permissionSetCount}</span>
                             <span className="text-slate-400 text-xs">sets</span>
                           </div>
-                        </td>
+                        </TableMarkup.Cell>
 
                         {/* Workflow Roles */}
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                           <div className="flex flex-wrap gap-1 max-w-[200px]">
                             {profile.workflowRoles.slice(0, 2).map(r => (
                               <Badge key={r} color="blue" size="sm">{workflowRoleLabels[r] ?? r}</Badge>
@@ -740,29 +741,29 @@ export const AccessProfileListView: React.FC = () => {
                               <span className="text-slate-400">—</span>
                             )}
                           </div>
-                        </td>
+                        </TableMarkup.Cell>
 
                         {/* Assigned Users */}
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           <div className="flex items-center gap-1.5">
                             <Users className="h-3.5 w-3.5 text-slate-400" />
                             <span className="font-medium">{profile.assignedUserCount}</span>
                           </div>
-                        </td>
+                        </TableMarkup.Cell>
 
                         {/* Created */}
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                           {profile.createdAt ? formatDateTime(profile.createdAt) : "—"}
-                        </td>
+                        </TableMarkup.Cell>
 
-                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                           {profile.updatedAt ? formatDateTime(profile.updatedAt) : "—"}
-                        </td>
+                        </TableMarkup.Cell>
 
                         {/* Action — sticky right */}
-                        <td
+                        <TableMarkup.Cell
                           onClick={e => e.stopPropagation()}
-                          className="sticky right-0 bg-white py-3 px-4 text-xs sm:text-sm text-center z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
+                          className={TABLE_STYLES.emptyCell3}
                         >
                           <button
                             ref={getRef(profile.id)}
@@ -784,11 +785,11 @@ export const AccessProfileListView: React.FC = () => {
                             onToggle={()     => handleToggle(profile)}
                             onDelete={()     => setDeleteModal({ open: true, profile })}
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ))}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {totalItems > 0 && (

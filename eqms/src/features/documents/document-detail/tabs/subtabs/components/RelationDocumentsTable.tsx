@@ -7,6 +7,7 @@ import { documentApi } from "@/services/api/documents";
 import { useServerPagedList } from "@/features/documents/shared/useServerPagedList";
 import type { DocumentRelationBase } from "@/features/documents/shared/documentRelation.types";
 import { SortableTh, nextSort, type SortDirection } from "./SortableTh";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface RelationDocumentsTableProps {
     /** The documents currently selected (possibly unsaved); the server resolves, filters, sorts and pages them. */
@@ -79,12 +80,12 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
 
             <div className={cn("border rounded-xl bg-white shadow-sm overflow-hidden transition-opacity", loading && hasLoadedOnce && "opacity-60")}>
                 <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="py-2.5 px-2 sm:py-3.5 sm:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">
+                    <TableMarkup.Root className="w-full">
+                        <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
+                            <TableMarkup.Row>
+                                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>
                                     No.
-                                </th>
+                                </TableMarkup.HeaderCell>
                                 {th("Document Number", "documentNumber")}
                                 {th("Created", "created", "hidden md:table-cell")}
                                 {th("Opened by", "openedBy", "hidden lg:table-cell")}
@@ -95,20 +96,20 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
                                 {th("Author/Co-Author", "author", "hidden xl:table-cell")}
                                 {th("Effective Date", "effectiveDate", "hidden lg:table-cell")}
                                 {th("Valid Until", "validUntil", "hidden xl:table-cell")}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 bg-white">
+                            </TableMarkup.Row>
+                        </TableMarkup.Head>
+                        <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                             {loading && !hasLoadedOnce && documents.length > 0 ? (
-                                <tr>
-                                    <td colSpan={11} className="py-12 text-center text-sm text-slate-500">Loading...</td>
-                                </tr>
+                                <TableMarkup.Row>
+                                    <TableMarkup.Cell colSpan={11} className="py-12 text-center text-sm text-slate-500">Loading...</TableMarkup.Cell>
+                                </TableMarkup.Row>
                             ) : error ? (
-                                <tr>
-                                    <td colSpan={11} className="py-12 text-center text-sm font-medium text-slate-500">{error}</td>
-                                </tr>
+                                <TableMarkup.Row>
+                                    <TableMarkup.Cell colSpan={11} className="py-12 text-center text-sm font-medium text-slate-500">{error}</TableMarkup.Cell>
+                                </TableMarkup.Row>
                             ) : showEmpty ? (
-                                <tr>
-                                    <td colSpan={11} className="py-12 text-center">
+                                <TableMarkup.Row>
+                                    <TableMarkup.Cell colSpan={11} className="py-12 text-center">
                                         <div className="flex flex-col items-center justify-center gap-2.5">
                                             <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center">
                                                 <Search className="h-5 w-5 text-slate-300" />
@@ -117,49 +118,49 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
                                                 {debouncedSearch ? "No records matching your search" : "No records to display"}
                                             </p>
                                         </div>
-                                    </td>
-                                </tr>
+                                    </TableMarkup.Cell>
+                                </TableMarkup.Row>
                             ) : (
                                 items.map((doc, index) => (
-                                    <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-500 font-medium">
+                                    <TableMarkup.Row key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell12}>
                                             {startIndex + index + 1}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-emerald-600">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell10}>
                                             {doc.documentNumber}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden md:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell15}>
                                             {doc.created}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden lg:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell14}>
                                             {doc.openedBy}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell13}>
                                             {doc.documentName}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                                             <StatusBadge status={String(doc.status || "").toLowerCase().replace(/ /g, "") as any} />
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden md:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell15}>
                                             {doc.type}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden lg:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell14}>
                                             {doc.department}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden xl:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell16}>
                                             {doc.author}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden lg:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell14}>
                                             {doc.effectiveDate}
-                                        </td>
-                                        <td className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600 hidden xl:table-cell">
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className={TABLE_STYLES.cell16}>
                                             {doc.validUntil}
-                                        </td>
-                                    </tr>
+                                        </TableMarkup.Cell>
+                                    </TableMarkup.Row>
                                 ))
                             )}
-                        </tbody>
-                    </table>
+                        </TableMarkup.Body>
+                    </TableMarkup.Root>
                 </div>
 
                 {total > 0 && (

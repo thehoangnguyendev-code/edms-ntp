@@ -40,6 +40,7 @@ import { EmployeeDropdownMenu } from "../components/EmployeeDropdownMenu";
 import type { EmployeeTrainingFile, EmployeeFilters, PendingSignatureRecord, CompletedCourseRecord } from "@/features/training/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconFilter2 } from "@tabler/icons-react";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 export const EmployeeTrainingFilesView: React.FC = () => {
   const { navigateTo, isNavigating } = useNavigateWithLoading();
@@ -483,10 +484,10 @@ export const EmployeeTrainingFilesView: React.FC = () => {
         <div className="px-4 md:px-5 pb-4 md:pb-5 flex-1 flex flex-col relative">
           <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300">
             <div ref={scrollerRef} className={cn("flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400", isDragging ? "cursor-grabbing select-none" : "cursor-grab")} {...dragEvents}>
-              <table className="w-full  border-spacing-0 text-left">
-                <thead>
-                  <tr>
-                    <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">No.</th>
+              <TableMarkup.Root className="w-full  border-spacing-0 text-left">
+                <TableMarkup.Head>
+                  <TableMarkup.Row>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>No.</TableMarkup.HeaderCell>
                     {[
                       { label: "Employee ID", id: "employeeId" },
                       { label: "Employee Name", id: "employeeName" },
@@ -500,7 +501,7 @@ export const EmployeeTrainingFilesView: React.FC = () => {
                     ].map((col, idx) => {
                       const isSorted = sortConfig.key === col.id;
                       return (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={idx}
                           onClick={() => handleSort(col.id)}
                           className={cn(
@@ -515,13 +516,13 @@ export const EmployeeTrainingFilesView: React.FC = () => {
                               <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === 'desc' ? "text-emerald-600" : "")} />
                             </div>
                           </div>
-                        </th>
+                        </TableMarkup.HeaderCell>
                       );
                     })}
-                    <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
+                    <TableMarkup.HeaderCell className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200">Action</TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body className="bg-white">
                   {paginatedSortedData.length > 0 ? (
                     paginatedSortedData.map((emp, index) => {
                       const tdClass = "py-3 px-4 text-xs md:text-sm text-slate-500 font-medium border-b border-slate-200 whitespace-nowrap";
@@ -530,28 +531,28 @@ export const EmployeeTrainingFilesView: React.FC = () => {
                       const hasGaps = emp.coursesCompleted < emp.totalCoursesRequired;
 
                       return (
-                        <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors group">
-                          <td className={cn(tdClass, "text-center")}>{startIndex + index + 1}</td>
-                          <td className={cn(tdClass, "font-medium text-emerald-600 hover:underline transition-colors cursor-pointer")}>
+                        <TableMarkup.Row key={emp.id} className="hover:bg-slate-50/80 transition-colors group">
+                          <TableMarkup.Cell className={cn(tdClass, "text-center")}>{startIndex + index + 1}</TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "font-medium text-emerald-600 hover:underline transition-colors cursor-pointer")}>
                             <button onClick={() => navigateTo(ROUTES.TRAINING.EMPLOYEE_DOSSIER(emp.id))}>{emp.employeeId}</button>
-                          </td>
-                          <td className={cn(tdClass)}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass)}>
                             <div className="flex flex-col">
                               <span className="text-xs md:text-sm font-medium text-slate-900 whitespace-nowrap">{emp.employeeName}</span>
                               <span className="text-2xs md:text-xs text-slate-500 mt-0.5 whitespace-nowrap">{emp.jobPosition}</span>
                             </div>
-                          </td>
-                          <td className={tdClass}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={tdClass}>
                             <Badge
                               color={emp.employeeType === 'Internal' ? 'blue' : 'slate'}
                               size="sm"
                             >
                               {emp.employeeType === 'Internal' ? 'FTE' : 'EXT'}
                             </Badge>
-                          </td>
-                          <td className={tdClass}>{emp.businessUnit}</td>
-                          <td className={tdClass}>{emp.department}</td>
-                          <td className={tdClass}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={tdClass}>{emp.businessUnit}</TableMarkup.Cell>
+                          <TableMarkup.Cell className={tdClass}>{emp.department}</TableMarkup.Cell>
+                          <TableMarkup.Cell className={tdClass}>
                             <Badge
                               color={
                                 emp.qualificationStatus === 'Qualified' ? 'emerald' :
@@ -563,8 +564,8 @@ export const EmployeeTrainingFilesView: React.FC = () => {
                             >
                               {emp.qualificationStatus}
                             </Badge>
-                          </td>
-                          <td className={cn(tdClass, "min-w-[160px]")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "min-w-[160px]")}>
                             <div className="flex items-center gap-3">
                               <div className="flex-1 max-w-[70px]">
                                 <Progress
@@ -595,9 +596,9 @@ export const EmployeeTrainingFilesView: React.FC = () => {
                                 )}
                               </div>
                             </div>
-                          </td>
-                          <td className={cn(tdClass, "text-center text-xs md:text-sm font-semibold text-slate-900")}>{emp.averageScore === 0 ? "-" : `${emp.averageScore}%`}</td>
-                          <td className={tdClass}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-center text-xs md:text-sm font-semibold text-slate-900")}>{emp.averageScore === 0 ? "-" : `${emp.averageScore}%`}</TableMarkup.Cell>
+                          <TableMarkup.Cell className={tdClass}>
                             <div className="flex flex-col">
                               <span className={cn(
                                 "font-bold",
@@ -611,8 +612,8 @@ export const EmployeeTrainingFilesView: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                          </td>
-                          <td className="sticky right-0 z-10 bg-white border-b border-slate-200 py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 group-hover:bg-slate-50 transition-colors">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="sticky right-0 z-10 bg-white border-b border-slate-200 py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 group-hover:bg-slate-50 transition-colors">
                             <button
                               ref={getRef(emp.id)}
                               onClick={(e) => handleDropdownToggle(emp.id, e)}
@@ -620,22 +621,22 @@ export const EmployeeTrainingFilesView: React.FC = () => {
                             >
                               <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500" />
                             </button>
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       );
                     })
                   ) : (
-                    <tr>
-                      <td colSpan={10}>
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell colSpan={10}>
                         <TableEmptyState
                           title="No Training Records Found"
                           description="Try broadening your search or adjusting compliance filters."
                         />
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   )}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
 
             <TablePagination

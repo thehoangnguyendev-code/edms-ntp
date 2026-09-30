@@ -47,6 +47,7 @@ import {
   WatermarkFields,
 } from "./MarkingEditors";
 import { MarkingPreviewPane } from "./MarkingPreviewPane";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 type PolicyTabKey = "policy" | "markings";
 
@@ -386,6 +387,9 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [policy, setPolicy] = useState<PolicyState>(defaultPolicy);
+  // Snapshot taken right after load and right after a successful save -- Save Changes stays
+  // disabled until something in policy/expiryLimits actually diverges from it.
+  const [original, setOriginal] = useState<{ policy: PolicyState; expiryLimits: ControlledCopyExpiryLimit[] } | null>(null);
   const [markingTab, setMarkingTab] = useState<MarkingTabKey>("ISSUED");
   const [previewPageKind, setPreviewPageKind] = useState<"COVER" | "BODY">(
     "COVER",
@@ -532,7 +536,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       .getPolicy()
       .then((data) => {
         if (!active) return;
-        setPolicy({
+        const loadedPolicy: PolicyState = {
           distributionSecurity: {
             allowEmailDistribution:
               data.distributionSecurity?.allowEmailDistribution ??
@@ -600,10 +604,11 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               ...(data.statusMarking?.CLOSED_CANCELLED ?? {}),
             },
           },
-        });
-        setExpiryLimits(
-          sortExpiryLimits((data.expiryLimits as ControlledCopyExpiryLimit[]) ?? []),
-        );
+        };
+        const loadedExpiryLimits = sortExpiryLimits((data.expiryLimits as ControlledCopyExpiryLimit[]) ?? []);
+        setPolicy(loadedPolicy);
+        setExpiryLimits(loadedExpiryLimits);
+        setOriginal({ policy: loadedPolicy, expiryLimits: loadedExpiryLimits });
       })
       .catch((error) => {
         if (active)
@@ -682,9 +687,13 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       );
       // The round trip returns real ids for any newly-added rule, so the draft can keep editing
       // (e.g. clicking Edit again) without treating an already-created rule as still-new.
+      const savedExpiryLimits = saved.expiryLimits
+        ? sortExpiryLimits(saved.expiryLimits as ControlledCopyExpiryLimit[])
+        : expiryLimits;
       if (saved.expiryLimits) {
-        setExpiryLimits(sortExpiryLimits(saved.expiryLimits as ControlledCopyExpiryLimit[]));
+        setExpiryLimits(savedExpiryLimits);
       }
+      setOriginal({ policy, expiryLimits: savedExpiryLimits });
       showToast({
         type: "success",
         title: "Success",
@@ -744,6 +753,60 @@ export const ControlledCopiesPolicyView: React.FC = () => {
     key: K,
     value: ControlledCopyPolicyMarking[K],
   ) => setPolicy((p) => ({ ...p, marking: { ...p.marking, [key]: value } }));
+
+  const hasCustomPosition = (kind: "stamp" | "watermark") =>
+    (markingTab === "ISSUED"
+      ? policy.marking.placements
+      : policy.statusMarking[markingTab].placements
+    )?.some((placement) =>
+      Object.entries(placement).some(([key, value]) =>
+        key.startsWith(kind) && value != null,
+      ),
+    ) ?? false;
+
+  const resetPosition = (kind: "stamp" | "watermark") => {
+    if (!canManagePolicy || saving) return;
+    setPolicy((previous) => {
+      const marking = markingTab === "ISSUED"
+        ? previous.marking
+        : previous.statusMarking[markingTab];
+      const placements = (marking.placements ?? [])
+        .map((placement) => {
+          if (kind === "stamp") {
+            const { stampX, stampY, stampWidthPercent, ...remaining } = placement;
+            return remaining;
+          }
+          const { watermarkX, watermarkY, watermarkScalePercent, watermarkAngleDegrees, ...remaining } = placement;
+          return remaining;
+        })
+        .filter((placement) => Object.entries(placement)
+          .some(([key, value]) => key !== "pages" && value != null));
+      return markingTab === "ISSUED"
+        ? { ...previous, marking: { ...previous.marking, placements } }
+        : {
+            ...previous,
+            statusMarking: {
+              ...previous.statusMarking,
+              [markingTab]: { ...previous.statusMarking[markingTab], placements },
+            },
+          };
+    });
+  };
+
+  const renderResetPosition = (kind: "stamp" | "watermark") =>
+    canManagePolicy && hasCustomPosition(kind) && (
+      <div className="mt-4 flex justify-end border-t border-slate-200 pt-3">
+        <Button
+          size="sm"
+          variant="outline-emerald"
+          aria-label={`Reset ${kind === "stamp" ? "Stamp" : "Watermark"} Position`}
+          onClick={() => resetPosition(kind)}
+          disabled={saving}
+        >
+          Reset Position
+        </Button>
+      </div>
+    );
 
   /** Adds/updates/removes one placement rule for the given pages, keeping the rest untouched. */
   const upsertPlacement = (
@@ -805,6 +868,11 @@ export const ControlledCopiesPolicyView: React.FC = () => {
 
   if (loading) return <FullPageLoading />;
 
+  const isDirty =
+    original !== null &&
+    (JSON.stringify(policy) !== JSON.stringify(original.policy) ||
+      JSON.stringify(expiryLimits) !== JSON.stringify(original.expiryLimits));
+
   const selectedDurationUnit =
     DURATION_UNIT_OPTIONS.find((u) => u.value === limitForm.durationUnit) ||
     DURATION_UNIT_OPTIONS[1];
@@ -842,7 +910,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               size="sm"
               variant="outline-emerald"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !isDirty}
               className="gap-2 whitespace-nowrap"
             >
               {saving ? "Saving..." : "Save Changes"}
@@ -1058,32 +1126,32 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                 }
               >
                 <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-                  <table className="w-full text-xs sm:text-sm">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="text-left px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <TableMarkup.Root className="w-full text-xs sm:text-sm">
+                    <TableMarkup.Head className="bg-slate-50">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell43}>
                           Document Type
-                        </th>
-                        <th className="text-left px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        </TableMarkup.HeaderCell>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell43}>
                           Department
-                        </th>
-                        <th className="text-left px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        </TableMarkup.HeaderCell>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell43}>
                           Duration
-                        </th>
-                        <th className="text-right px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        </TableMarkup.HeaderCell>
+                        <TableMarkup.HeaderCell className="text-right px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
+                        </TableMarkup.HeaderCell>
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-100">
                       {expiryLimits.map((limit) => (
-                        <tr
+                        <TableMarkup.Row
                           key={limit.id}
                           className={
                             limit.isSystem ? "bg-emerald-50/40" : undefined
                           }
                         >
-                          <td className="px-3 py-2 text-slate-700">
+                          <TableMarkup.Cell className="px-3 py-2 text-slate-700">
                             {limit.isSystem ? (
                               <span className="font-semibold text-emerald-700">
                                 Global Default
@@ -1091,19 +1159,19 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                             ) : (
                               limit.documentTypeName || "Any"
                             )}
-                          </td>
-                          <td className="px-3 py-2 text-slate-700">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-3 py-2 text-slate-700">
                             {limit.isSystem
                               ? "Any"
                               : limit.departmentName || "Any"}
-                          </td>
-                          <td className="px-3 py-2 text-slate-700 font-medium whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-3 py-2 text-slate-700 font-medium whitespace-nowrap">
                             {limit.durationValue}{" "}
                             {DURATION_UNIT_OPTIONS.find(
                               (u) => u.value === limit.durationUnit,
                             )?.label || limit.durationUnit}
-                          </td>
-                          <td className="px-3 py-2 text-right whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-3 py-2 text-right whitespace-nowrap">
                             {canManagePolicy && (
                               <button
                                 type="button"
@@ -1124,11 +1192,11 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             )}
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
               </FormSection>
             </div>
@@ -1208,6 +1276,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                             },
                           ]}
                         />
+                        {renderResetPosition("stamp")}
                       </MarkCard>
 
                       <MarkCard
@@ -1269,6 +1338,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                             },
                           ]}
                         />
+                        {renderResetPosition("watermark")}
                       </MarkCard>
                     </div>
                   ) : (
@@ -1314,6 +1384,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 },
                               ]}
                             />
+                            {renderResetPosition("stamp")}
                           </MarkCard>
                           <MarkCard
                             title="Watermark"
@@ -1358,6 +1429,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 },
                               ]}
                             />
+                            {renderResetPosition("watermark")}
                           </MarkCard>
                         </div>
                       );

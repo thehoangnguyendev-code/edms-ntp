@@ -12,6 +12,7 @@ export { WorkflowRolesView } from './lifecycle-policies/views/WorkflowRolesView'
 export { ObjectAccessRulesView } from './object-rules/ObjectAccessRulesView';
 export { ObjectAccessRuleFormView } from './object-rules/ObjectAccessRuleFormView';
 export { SegregationOfDutiesView } from './sod/SegregationOfDutiesView';
+export { SodViolationReviewView } from './sod/SodViolationReviewView';
 export { SodConstraintFormView } from './sod/SodConstraintFormView';
 export { AccessReviewView } from './access-review/AccessReviewView';
 export { AccessReviewCampaignDetailView } from './access-review/AccessReviewCampaignDetailView';

@@ -66,6 +66,7 @@ import {
   IconActivity,
   IconReport,
   IconServerCog,
+  IconViewfinder,
 } from "@tabler/icons-react";
 import { NavItem } from "@/types";
 import { ROUTES } from "./routes.constants";
@@ -206,6 +207,28 @@ const FOUNDATION_MODULES: NavItem[] = [
             id: "cc-distributed",
             label: "Distributed Copies",
             path: ROUTES.DOCUMENTS.CONTROLLED_COPIES.DISTRIBUTED,
+          },
+        ],
+      },
+      {
+        id: "uncontrolled-copies",
+        label: "Uncontrolled Copies",
+        allowedPermissions: ["documents.uncontrolled_copy.view", "documents.uncontrolled_copy.request"],
+        children: [
+          {
+            id: "uc-all",
+            label: "All Uncontrolled Copies",
+            path: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.ALL,
+          },
+          {
+            id: "uc-pending-approval",
+            label: "Pending Approval",
+            path: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.PENDING_APPROVAL,
+          },
+          {
+            id: "uc-distributed",
+            label: "Distributed Copies",
+            path: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.DISTRIBUTED,
           },
         ],
       },
@@ -410,6 +433,13 @@ const SYSTEM_MODULES: NavItem[] = [
         path: ROUTES.SECURITY.ACCESS_REVIEW,
         allowedPermissions: ["security.access_review.view"],
       },
+      {
+        id: "sec-sod-violation-review",
+        label: "SoD Violation Review",
+        icon: IconViewfinder,
+        path: ROUTES.SECURITY.SOD_VIOLATION_REVIEW,
+        allowedPermissions: ["security.sod.view"],
+      },
       // One-time / expert configuration — grouped so the everyday items above stay scannable.
       {
         id: "sec-advanced",
@@ -535,7 +565,7 @@ const SYSTEM_MODULES: NavItem[] = [
       "documents.admin.document_types.view", "documents.admin.document_types.manage",
       "documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage",
       "documents.admin.publishing_templates.view", "documents.admin.publishing_templates.manage",
-      "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage",
+      "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage", "documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage",
       "training.admin.view",
     ],
     children: [
@@ -562,7 +592,7 @@ const SYSTEM_MODULES: NavItem[] = [
           "documents.admin.document_types.view", "documents.admin.document_types.manage",
           "documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage",
           "documents.admin.publishing_templates.view", "documents.admin.publishing_templates.manage",
-          "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage",
+          "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage", "documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage",
         ],
         children: [
           {
@@ -618,6 +648,12 @@ const SYSTEM_MODULES: NavItem[] = [
             label: "Controlled Copies Policy",
             path: ROUTES.DOCUMENTS.ADMIN.CONTROLLED_COPIES_POLICY,
             allowedPermissions: ["documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage"],
+          },
+          {
+            id: "uncontrolled-copy-policy",
+            label: "Uncontrolled Copies Policy",
+            path: ROUTES.DOCUMENTS.ADMIN.UNCONTROLLED_COPIES_POLICY,
+            allowedPermissions: ["documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage"],
           },
         ],
       },

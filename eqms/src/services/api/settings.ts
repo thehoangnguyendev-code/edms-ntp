@@ -193,6 +193,19 @@ export interface SodViolationResponse {
   }[];
 }
 
+/** One row in the SoD Violation Review history list (V505) -- summary only, no results payload. */
+export interface SodViolationScanSummary {
+  id: string;
+  scannedAt: string;
+  scannedByName: string | null;
+  violationCount: number;
+}
+
+/** Full detail of one historical SoD violation scan run, including its results snapshot. */
+export interface SodViolationScanDetail extends SodViolationScanSummary {
+  results: SodViolationResponse[];
+}
+
 export interface SodRemediationPermissionSet {
   permissionSetId: string;
   permissionSetName: string;
@@ -1097,12 +1110,31 @@ export const settingsApi = {
     const r = await api.get<SodViolationResponse[]>('/security/sod-constraints/violations');
     return r.data;
   },
+  /** "Scan Now" on the SoD Violation Review screen -- runs the scan and records it in history. */
+  recordSodScan: async (): Promise<SodViolationResponse[]> => {
+    const r = await api.post<SodViolationResponse[]>('/security/sod-constraints/violations/scan');
+    return r.data;
+  },
+  listSodScanHistory: async (params: { page?: number; limit?: number }): Promise<PaginatedResponse<SodViolationScanSummary>> => {
+    const r = await api.get<PaginatedResponse<SodViolationScanSummary>>('/security/sod-constraints/violations/history', { params });
+    return r.data;
+  },
+  getSodScanDetail: async (id: string): Promise<SodViolationScanDetail> => {
+    const r = await api.get<SodViolationScanDetail>(`/security/sod-constraints/violations/history/${id}`);
+    return r.data;
+  },
   checkSodPermissions: async (codes: string[]): Promise<SodConstraintResponse[]> => {
     const r = await api.post<SodConstraintResponse[]>('/security/sod-constraints/check', codes);
     return r.data;
   },
   checkSodAccessProfileCombination: async (accessProfileIds: string[]): Promise<SodProfileCombinationViolationResponse[]> => {
     const r = await api.post<SodProfileCombinationViolationResponse[]>('/security/sod-constraints/check-access-profiles', accessProfileIds);
+    return r.data;
+  },
+  /** Real-world impact preview for a permission pair not yet saved -- used by the New/Edit
+   *  SoD Constraint form. */
+  previewSodImpact: async (codeA: string, codeB: string): Promise<SodViolationResponse> => {
+    const r = await api.get<SodViolationResponse>('/security/sod-constraints/preview-impact', { params: { codeA, codeB } });
     return r.data;
   },
   createSodConstraint: async (payload: SodConstraintPayload, sig?: SecuritySignaturePayload): Promise<SodConstraintResponse> => {

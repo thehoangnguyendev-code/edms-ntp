@@ -143,6 +143,10 @@ public class ControlledCopyRecord {
     @JoinColumn(name = "requested_by_user_id")
     private UserAccount requestedBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "opened_by_user_id")
+    private UserAccount openedBy;
+
     @Column(name = "requested_at")
     private Instant requestedAt;
 
@@ -367,6 +371,8 @@ public class ControlledCopyRecord {
     public void setCurrentStage(String currentStage) { this.currentStage = currentStage; }
     public UserAccount getRequestedBy() { return requestedBy; }
     public void setRequestedBy(UserAccount requestedBy) { this.requestedBy = requestedBy; }
+    public UserAccount getOpenedBy() { return openedBy; }
+    public void setOpenedBy(UserAccount openedBy) { this.openedBy = openedBy; }
     public Instant getRequestedAt() { return requestedAt; }
     public void setRequestedAt(Instant requestedAt) { this.requestedAt = requestedAt; }
     public UserAccount getApprovedBy() { return approvedBy; }

@@ -9,6 +9,7 @@ import { cn } from "@/components/ui/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/services/api/auth";
 import { electronicSignatureSettingsApi, type ElectronicSignatureMeaning } from "@/services/api/electronicSignatureSettings";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 export interface ESignatureModalProps {
   isOpen: boolean;
@@ -362,42 +363,42 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                     {/* <span className="text-2xs font-medium text-slate-400 shrink-0">{itemLabel} to sign</span> */}
                   </div>
                   <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                    <table className="w-full text-left border-collapse table-fixed">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200">
-                          <th className="px-3 py-2 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">Property</th>
-                          <th className="px-3 py-2 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">Old Value</th>
-                          <th className="px-3 py-2 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider">New Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-emerald-100 bg-emerald-50/40">
-                          <td className="px-3 py-3 text-xs font-bold text-slate-900">
+                    <TableMarkup.Root className="w-full text-left border-collapse table-fixed">
+                      <TableMarkup.Head>
+                        <TableMarkup.Row className="bg-slate-50 border-b border-slate-200">
+                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell4}>Property</TableMarkup.HeaderCell>
+                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell4}>Old Value</TableMarkup.HeaderCell>
+                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell4}>New Value</TableMarkup.HeaderCell>
+                        </TableMarkup.Row>
+                      </TableMarkup.Head>
+                      <TableMarkup.Body>
+                        <TableMarkup.Row className="border-b border-emerald-100 bg-emerald-50/40">
+                          <TableMarkup.Cell className="px-3 py-3 text-xs font-bold text-slate-900">
                             <span aria-hidden="true" className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 align-middle" />
                             Signing Action
-                          </td>
-                          <td className="px-3 py-3 text-xs text-slate-400 italic font-medium">—</td>
-                          <td className="px-3 py-3 text-xs font-medium text-emerald-700 break-words">{actionTitle}</td>
-                        </tr>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-3 py-3 text-xs text-slate-400 italic font-medium">—</TableMarkup.Cell>
+                          <TableMarkup.Cell className="px-3 py-3 text-xs font-medium text-emerald-700 break-words">{actionTitle}</TableMarkup.Cell>
+                        </TableMarkup.Row>
                         {changes.length > 0 ? (
                           changes.map((change, idx) => (
-                            <tr key={idx} className={cn("hover:bg-slate-50/50", idx !== changes.length - 1 ? "border-b border-slate-200" : "")}>
-                              <td className="px-3 py-2.5 text-xs font-semibold text-slate-700 truncate max-w-0" title={change.action}>{change.action}</td>
-                              <td className="px-3 py-2.5 max-w-0">
+                            <TableMarkup.Row key={idx} className={cn("hover:bg-slate-50/50", idx !== changes.length - 1 ? "border-b border-slate-200" : "")}>
+                              <TableMarkup.Cell className="px-3 py-2.5 text-xs font-semibold text-slate-700 truncate max-w-0" title={change.action}>{change.action}</TableMarkup.Cell>
+                              <TableMarkup.Cell className="px-3 py-2.5 max-w-0">
                                 <span className="text-2xs text-slate-400 font-medium line-through decoration-slate-300 break-words">{change.oldValue || '—'}</span>
-                              </td>
-                              <td className="px-3 py-2.5 max-w-0">
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className="px-3 py-2.5 max-w-0">
                                 <span className="text-xs font-medium text-emerald-700 break-words">{change.newValue}</span>
-                              </td>
-                            </tr>
+                              </TableMarkup.Cell>
+                            </TableMarkup.Row>
                           ))
                         ) : (
-                          <tr>
-                            <td colSpan={3} className="px-3 py-3 text-2xs text-slate-400 text-center italic">No additional property changes in this transaction.</td>
-                          </tr>
+                          <TableMarkup.Row>
+                            <TableMarkup.Cell colSpan={3} className="px-3 py-3 text-2xs text-slate-400 text-center italic">No additional property changes in this transaction.</TableMarkup.Cell>
+                          </TableMarkup.Row>
                         )}
-                      </tbody>
-                    </table>
+                      </TableMarkup.Body>
+                    </TableMarkup.Root>
                   </div>
                 </div>
 

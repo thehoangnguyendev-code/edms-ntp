@@ -9,6 +9,8 @@ import { useToast } from '@/components/ui/toast';
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { PageHeader } from '@/components/ui/page/PageHeader';
 import { myProfile } from '@/components/ui/breadcrumb/breadcrumbs/settings';
+import { resolveConfiguredNavigationLabel } from '@/app/navigation';
+import { useBranding } from '@/components/branding/BrandLogo';
 import { navigateBack } from '@/app/navigation/backNavigation';
 import { AccountInfoTab } from "./AccountInfoTab";
 import { PasswordTab } from "./PasswordTab";
@@ -26,6 +28,7 @@ interface ProfileViewProps {
 export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     const navigate = useNavigate();
     const { user: authUser, updateUser: updateAuthUser } = useAuth();
+    const { navigationLabelOverrides } = useBranding();
     const [activeTab, setActiveTab] = useState('account');
     const { showToast } = useToast();
     const [avatarPreview, setAvatarPreview] = useState<string>('');
@@ -323,7 +326,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     return (
         <div className="space-y-4 sm:space-y-6 w-full flex-1 flex flex-col">
             <PageHeader
-                title="My Profile"
+                title={(() => {
+                    const base = resolveConfiguredNavigationLabel('My Profile', navigationLabelOverrides);
+                    const displayName = authUser?.fullName || authUser?.username;
+                    return displayName ? `${base} - ${displayName}` : base;
+                })()}
                 breadcrumbItems={myProfile(navigate)}
                 actions={
                     <div className="flex items-center gap-2 md:gap-3 flex-wrap">

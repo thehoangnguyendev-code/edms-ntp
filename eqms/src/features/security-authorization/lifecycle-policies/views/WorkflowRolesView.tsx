@@ -25,6 +25,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce, usePortalDropdown, useTableDragScroll } from "@/hooks";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { formatDateTime } from "@/utils/format";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface WorkflowRoleCatalogEntry {
   id: string;
@@ -592,12 +593,12 @@ export const WorkflowRolesView: React.FC = () => {
                     )}
                     {...dragEvents}
                   >
-                    <table className="w-full min-w-max border-spacing-0 text-left">
-                      <thead>
-                        <tr>
-                          <th className="sticky top-0 z-20 w-16 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                    <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
+                      <TableMarkup.Head>
+                        <TableMarkup.Row>
+                          <TableMarkup.HeaderCell className="sticky top-0 z-20 w-16 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
                             No.
-                          </th>
+                          </TableMarkup.HeaderCell>
                           <SortHeader
                             label="Role Code"
                             field="code"
@@ -616,15 +617,15 @@ export const WorkflowRolesView: React.FC = () => {
                             sort={sort}
                             onSort={toggleSort}
                           />
-                          <th className="sticky top-0 z-20 w-[28rem] min-w-[18rem] border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                          <TableMarkup.HeaderCell className="sticky top-0 z-20 w-[28rem] min-w-[18rem] border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
                             Description
-                          </th>
-                          <th className="sticky top-0 z-20 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                          </TableMarkup.HeaderCell>
+                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell41}>
                             Type
-                          </th>
-                          <th className="sticky top-0 z-20 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                          </TableMarkup.HeaderCell>
+                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell41}>
                             Status
-                          </th>
+                          </TableMarkup.HeaderCell>
                           <SortHeader
                             label="Created Date"
                             field="createdAt"
@@ -637,15 +638,15 @@ export const WorkflowRolesView: React.FC = () => {
                             sort={sort}
                             onSort={toggleSort}
                           />
-                          <th className="sticky right-0 top-0 z-30 w-20 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs font-bold uppercase tracking-wider text-slate-500 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 md:text-xs">
+                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell21}>
                             Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white">
+                          </TableMarkup.HeaderCell>
+                        </TableMarkup.Row>
+                      </TableMarkup.Head>
+                      <TableMarkup.Body className="bg-white">
                         {roles.length === 0 ? (
-                          <tr>
-                            <td
+                          <TableMarkup.Row>
+                            <TableMarkup.Cell
                               colSpan={10}
                               className="border-b border-slate-200 py-12 text-center"
                             >
@@ -653,60 +654,60 @@ export const WorkflowRolesView: React.FC = () => {
                                 title="No Workflow Roles Found"
                                 description="We couldn't find workflow roles matching your filters. Try adjusting your search criteria."
                               />
-                            </td>
-                          </tr>
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
                         ) : (
                           roles.map((role, index) => (
-                            <tr
+                            <TableMarkup.Row
                               key={role.id}
                               className="group transition-colors hover:bg-slate-50/80"
                             >
-                              <td className={tdClass}>
+                              <TableMarkup.Cell className={tdClass}>
                                 {(pagination.page - 1) * pagination.limit +
                                   index +
                                   1}
-                              </td>
-                              <td
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell
                                 className={`${tdClass} font-medium`}
                               >
                                 {role.code}
-                              </td>
-                              <td
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell
                                 className={`${tdClass} font-medium text-slate-900`}
                               >
                                 {role.label}
-                              </td>
-                              <td className={tdClass}>{role.moduleKey}</td>
-                              <td className={`${tdClass} w-[28rem] min-w-[18rem] whitespace-normal break-words align-top leading-5`}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>{role.moduleKey}</TableMarkup.Cell>
+                              <TableMarkup.Cell className={`${tdClass} w-[28rem] min-w-[18rem] whitespace-normal break-words align-top leading-5`}>
                                 {role.description || "-"}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <Badge
                                   color={role.system ? "blue" : "slate"}
                                   size="sm"
                                 >
                                   {role.system ? "System" : "Custom"}
                                 </Badge>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <Badge
                                   color={role.active ? "emerald" : "slate"}
                                   size="sm"
                                 >
                                   {role.active ? "Active" : "Inactive"}
                                 </Badge>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {role.createdAt
                                   ? formatDateTime(role.createdAt)
                                   : "-"}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {role.updatedAt
                                   ? formatDateTime(role.updatedAt)
                                   : "-"}
-                              </td>
-                              <td className="sticky right-0 z-10 whitespace-nowrap border-b border-slate-200 bg-white px-4 py-3 text-center shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 transition-colors group-hover:bg-slate-50">
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className="sticky right-0 z-10 whitespace-nowrap border-b border-slate-200 bg-white px-4 py-3 text-center shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 transition-colors group-hover:bg-slate-50">
                                 <button
                                   ref={getRef(role.id)}
                                   onClick={(event) => toggle(role.id, event)}
@@ -715,12 +716,12 @@ export const WorkflowRolesView: React.FC = () => {
                                 >
                                   <MoreVertical className="h-4 w-4" />
                                 </button>
-                              </td>
-                            </tr>
+                              </TableMarkup.Cell>
+                            </TableMarkup.Row>
                           ))
                         )}
-                      </tbody>
-                    </table>
+                      </TableMarkup.Body>
+                    </TableMarkup.Root>
                   </div>
                   {roles.length > 0 && (
                     <TablePagination
@@ -869,7 +870,7 @@ const SortHeader: React.FC<{
 }> = ({ label, field, sort, onSort }) => {
   const active = sort.field === field;
   return (
-    <th
+    <TableMarkup.HeaderCell
       onClick={() => onSort(field)}
       className="sticky top-0 z-20 cursor-pointer whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 md:text-xs"
     >
@@ -894,7 +895,7 @@ const SortHeader: React.FC<{
           />
         </div>
       </div>
-    </th>
+    </TableMarkup.HeaderCell>
   );
 };
 

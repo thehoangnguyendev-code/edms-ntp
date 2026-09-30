@@ -87,6 +87,14 @@ public class NavigationService {
                 copyChildren.add(new NavigationItemResponse("cc-ready", "Ready for Distribution", null, "/documents/controlled-copies/ready", false, null));
                 copyChildren.add(new NavigationItemResponse("cc-distributed", "Distributed Copies", null, "/documents/controlled-copies/distributed", false, null));
                 docChildren.add(new NavigationItemResponse("controlled-copies", "Controlled Copies", null, null, false, copyChildren));
+                // Uncontrolled Copies: a separate feature/table/API from Controlled Copies, listed as a sibling node.
+                if (hasAnyPermission(normalizedPermissions, "documents.uncontrolled_copy.view", "documents.uncontrolled_copy.request")) {
+                    List<NavigationItemResponse> uncontrolledChildren = new ArrayList<>();
+                    uncontrolledChildren.add(new NavigationItemResponse("uc-all", "All Uncontrolled Copies", null, "/documents/uncontrolled-copies/all", false, null));
+                    uncontrolledChildren.add(new NavigationItemResponse("uc-pending-approval", "Pending Approval", null, "/documents/uncontrolled-copies/pending-approval", false, null));
+                    uncontrolledChildren.add(new NavigationItemResponse("uc-distributed", "Distributed Copies", null, "/documents/uncontrolled-copies/distributed", false, null));
+                    docChildren.add(new NavigationItemResponse("uncontrolled-copies", "Uncontrolled Copies", null, null, false, uncontrolledChildren));
+                }
             }
 
             if (!docChildren.isEmpty()) {
@@ -182,6 +190,9 @@ public class NavigationService {
         }
         if (hasPermission(normalizedPermissions, "security.access_review.view")) {
             securityChildren.add(new NavigationItemResponse("sec-access-review", "Access Review", "ScanSearch", "/security/access-review", false, null));
+        }
+        if (hasAnyPermission(normalizedPermissions, "security.sod.view")) {
+            securityChildren.add(new NavigationItemResponse("sec-sod-violation-review", "SoD Violation Review", "BrickWallShield", "/security/sod-violation-review", false, null));
         }
 
         List<NavigationItemResponse> securityAdvancedChildren = new ArrayList<>();
@@ -295,6 +306,9 @@ public class NavigationService {
             }
             if (hasAnyPermission(normalizedPermissions, "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage")) {
                 docAdminChildren.add(new NavigationItemResponse("controlled-copy-policy", "Controlled Copies Policy", null, "/documents/administration/controlled-copies-policy", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage")) {
+                docAdminChildren.add(new NavigationItemResponse("uncontrolled-copy-policy", "Uncontrolled Copies Policy", null, "/documents/administration/uncontrolled-copies-policy", false, null));
             }
             if (!docAdminChildren.isEmpty()) {
                 sysAdminChildren.add(new NavigationItemResponse("doc-administration", "Document Administration", "IconFileDescription", null, false, docAdminChildren));

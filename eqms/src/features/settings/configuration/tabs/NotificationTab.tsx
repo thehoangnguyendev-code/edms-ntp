@@ -11,6 +11,7 @@ import gmailLogo from '@/assets/images/logo-app/gmail.svg';
 import { settingsApi } from '@/services/api';
 import type { SmtpConnectionTestPayload } from '@/services/api/settings';
 import { notificationApi, type NotificationDeliveryFailure } from '@/services/api/notifications';
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 interface NotificationTabProps {
   config: NotificationConfig;
@@ -168,17 +169,17 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
           <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">No failed notification deliveries.</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-slate-200">
-            <table className="min-w-full text-xs">
-              <thead className="bg-slate-50 text-slate-600"><tr><th className="px-3 py-2 text-left font-semibold">Recipient</th><th className="px-3 py-2 text-left font-semibold">Type</th><th className="px-3 py-2 text-left font-semibold">Attempts</th><th className="px-3 py-2 text-right font-semibold">Action</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">
-                {deliveryFailures.map((failure) => <tr key={failure.id}>
-                  <td className="max-w-48 truncate px-3 py-2 text-slate-700" title={failure.recipient}>{failure.recipient}</td>
-                  <td className="px-3 py-2 text-slate-600">{failure.notificationType}</td>
-                  <td className="px-3 py-2 text-slate-600">{failure.attempts}/5</td>
-                  <td className="px-3 py-2 text-right"><Button size="sm" variant="ghost" onClick={() => void handleRetryDeliveryFailure(failure)} disabled={retryingFailureId === failure.id || failure.attempts >= 5} className="gap-1 text-emerald-700"><RotateCcw className="h-3.5 w-3.5" />Retry</Button></td>
-                </tr>)}
-              </tbody>
-            </table>
+            <TableMarkup.Root className="min-w-full text-xs">
+              <TableMarkup.Head className="bg-slate-50 text-slate-600"><TableMarkup.Row><TableMarkup.HeaderCell className="px-3 py-2 text-left font-semibold">Recipient</TableMarkup.HeaderCell><TableMarkup.HeaderCell className="px-3 py-2 text-left font-semibold">Type</TableMarkup.HeaderCell><TableMarkup.HeaderCell className="px-3 py-2 text-left font-semibold">Attempts</TableMarkup.HeaderCell><TableMarkup.HeaderCell className="px-3 py-2 text-right font-semibold">Action</TableMarkup.HeaderCell></TableMarkup.Row></TableMarkup.Head>
+              <TableMarkup.Body className="divide-y divide-slate-100">
+                {deliveryFailures.map((failure) => <TableMarkup.Row key={failure.id}>
+                  <TableMarkup.Cell className="max-w-48 truncate px-3 py-2 text-slate-700" title={failure.recipient}>{failure.recipient}</TableMarkup.Cell>
+                  <TableMarkup.Cell className="px-3 py-2 text-slate-600">{failure.notificationType}</TableMarkup.Cell>
+                  <TableMarkup.Cell className="px-3 py-2 text-slate-600">{failure.attempts}/5</TableMarkup.Cell>
+                  <TableMarkup.Cell className="px-3 py-2 text-right"><Button size="sm" variant="ghost" onClick={() => void handleRetryDeliveryFailure(failure)} disabled={retryingFailureId === failure.id || failure.attempts >= 5} className="gap-1 text-emerald-700"><RotateCcw className="h-3.5 w-3.5" />Retry</Button></TableMarkup.Cell>
+                </TableMarkup.Row>)}
+              </TableMarkup.Body>
+            </TableMarkup.Root>
           </div>
         )}
       </FormSection>

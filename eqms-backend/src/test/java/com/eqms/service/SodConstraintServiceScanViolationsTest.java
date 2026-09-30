@@ -58,7 +58,8 @@ class SodConstraintServiceScanViolationsTest {
         service = new SodConstraintService(sodRepository, roleRepository, effectivePermissionService,
                 permissionRepository, currentUserService, auditTrailService, permissionEvaluationService,
                 securityChangeSignatureService, userAccountRepository, userAccessProfileRepository,
-                accessProfilePermissionSetRepository);
+                accessProfilePermissionSetRepository, org.mockito.Mockito.mock(com.eqms.repository.SodViolationScanRepository.class),
+                new com.fasterxml.jackson.databind.ObjectMapper());
 
         actor = user("qa-reviewer");
         when(currentUserService.requireCurrentUser()).thenReturn(actor);

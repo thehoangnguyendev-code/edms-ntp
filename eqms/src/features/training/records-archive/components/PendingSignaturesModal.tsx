@@ -9,6 +9,7 @@ import { cn } from "@/components/ui/utils";
 import { usePortalDropdown, PortalDropdownPosition } from "@/hooks";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import type { EmployeeTrainingFile, PendingSignatureRecord } from "../../types";
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 const CURRENT_TRAINER_ID = "trainer-001";
 
@@ -198,11 +199,11 @@ export const PendingSignaturesModal: React.FC<PendingSignaturesModalProps> = ({
                 className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400 [&::-webkit-scrollbar]:h-1"
                 style={{ maxHeight: "300px" }}
               >
-                <table className="w-full text-left  border-spacing-0">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
+                <TableMarkup.Root className="w-full text-left  border-spacing-0">
+                  <TableMarkup.Head>
+                    <TableMarkup.Row className="bg-slate-50 border-b border-slate-200">
                       {["Course & Version", "Missing Roles", "Completion Date", "Days Pending", "Action"].map((h) => (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={h}
                           className={cn(
                             "sticky top-0 z-20 bg-slate-50 px-3 py-1.5 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap border-b border-slate-200",
@@ -210,14 +211,14 @@ export const PendingSignaturesModal: React.FC<PendingSignaturesModalProps> = ({
                           )}
                         >
                           {h}
-                        </th>
+                        </TableMarkup.HeaderCell>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-slate-100">
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="bg-white divide-y divide-slate-100">
                     {pendingRecords.map((record) => (
-                      <tr key={record.id} className="hover:bg-slate-50/80 transition-colors group">
-                        <td className="px-3 py-1.5 min-w-[160px] border-b border-slate-100">
+                      <TableMarkup.Row key={record.id} className="hover:bg-slate-50/80 transition-colors group">
+                        <TableMarkup.Cell className="px-3 py-1.5 min-w-[160px] border-b border-slate-100">
                           <p className="text-2xs font-bold text-slate-900 leading-tight">{record.courseCode}</p>
                           <p className="text-2xs text-slate-500 mt-0.5 max-w-[180px] truncate leading-none">{record.courseName}</p>
                           <div className="flex items-center gap-1">
@@ -228,8 +229,8 @@ export const PendingSignaturesModal: React.FC<PendingSignaturesModalProps> = ({
                               </span>
                             )}
                           </div>
-                        </td>
-                        <td className="px-3 py-1.5 border-b border-slate-100">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-3 py-1.5 border-b border-slate-100">
                           <div className="flex flex-wrap gap-1">
                             {record.missingRoles.map((role) => (
                               <span key={role} title={role === "Trainer" ? (record.trainerName || "Assigned Trainer") : undefined}>
@@ -239,13 +240,13 @@ export const PendingSignaturesModal: React.FC<PendingSignaturesModalProps> = ({
                               </span>
                             ))}
                           </div>
-                        </td>
-                        <td className="px-3 py-1.5 text-2xs text-slate-600 whitespace-nowrap border-b border-slate-100">{record.completionDate}</td>
-                        <td className="px-3 py-1.5 whitespace-nowrap border-b border-slate-100">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-3 py-1.5 text-2xs text-slate-600 whitespace-nowrap border-b border-slate-100">{record.completionDate}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-3 py-1.5 whitespace-nowrap border-b border-slate-100">
                           <DaysPendingCell days={record.daysPending} />
-                        </td>
+                        </TableMarkup.Cell>
                         {/* Sticky action column */}
-                        <td className="sticky right-0 z-30 bg-white border-b border-slate-100 px-2 md:px-4 py-1.5 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 group-hover:bg-slate-50 transition-colors">
+                        <TableMarkup.Cell className="sticky right-0 z-30 bg-white border-b border-slate-100 px-2 md:px-4 py-1.5 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 group-hover:bg-slate-50 transition-colors">
                           <button
                             ref={getRef(record.id)}
                             onClick={(e) => {
@@ -256,11 +257,11 @@ export const PendingSignaturesModal: React.FC<PendingSignaturesModalProps> = ({
                           >
                             <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
                           </button>
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ))}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
             </div>
 

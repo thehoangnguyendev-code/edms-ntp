@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/utils";
 import { useNavigateWithLoading } from "@/hooks";
 import { ROUTES } from "@/app/routes.constants";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface TrainingFile {
   id: string;
@@ -57,7 +58,7 @@ export const ExpandedCourseRow: React.FC<ExpandedCourseRowProps> = ({
           transition={transitionConfig}
           className="bg-slate-50/50"
         >
-          <td colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
+          <TableMarkup.Cell colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -74,18 +75,18 @@ export const ExpandedCourseRow: React.FC<ExpandedCourseRowProps> = ({
                         Training Materials ({files.length})
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden bg-white shadow-sm inline-block">
-                        <table className="text-xs table-auto">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-200">
-                              <th className="py-1.5 px-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">Material Number</th>
-                              <th className="py-1.5 px-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">Material Name</th>
-                              <th className="py-1.5 px-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">Type</th>
-                              <th className="py-1.5 px-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">Size</th>
-                              <th className="py-1.5 px-2.5 text-center font-semibold text-slate-600 whitespace-nowrap">Status</th>
-                              <th className="py-1.5 px-2.5 text-center font-semibold text-slate-600 whitespace-nowrap">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
+                        <TableMarkup.Root className="text-xs table-auto">
+                          <TableMarkup.Head>
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                              <TableMarkup.HeaderCell className="py-1.5 px-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">Material Number</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className="py-1.5 px-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">Material Name</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className="py-1.5 px-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">Type</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className="py-1.5 px-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">Size</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table6}>Status</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table6}>Action</TableMarkup.HeaderCell>
+                            </TableMarkup.Row>
+                          </TableMarkup.Head>
+                          <TableMarkup.Body className="divide-y divide-slate-100">
                             {files.map((file) => {
                               const extension = file.name.split('.').pop()?.toUpperCase() || 'FILE';
                               const isVideo = ['MP4', 'MOV', 'AVI'].includes(extension);
@@ -93,18 +94,18 @@ export const ExpandedCourseRow: React.FC<ExpandedCourseRowProps> = ({
                               const isImage = ['JPG', 'PNG', 'GIF'].includes(extension);
 
                               return (
-                                <tr key={file.id} className="hover:bg-slate-50 transition-colors">
-                                  <td 
-                                    className="py-1.5 px-2.5 font-medium text-emerald-600 whitespace-nowrap cursor-pointer hover:underline"
+                                <TableMarkup.Row key={file.id} className="hover:bg-slate-50 transition-colors">
+                                  <TableMarkup.Cell 
+                                    className={TABLE_STYLES.table5}
                                     onClick={() => navigateTo(ROUTES.TRAINING.COURSE_DETAIL(item.id))}
                                   >
                                     {file.id.toUpperCase()}
-                                  </td>
-                                  <td className="py-1.5 px-2.5 whitespace-nowrap">
+                                  </TableMarkup.Cell>
+                                  <TableMarkup.Cell className="py-1.5 px-2.5 whitespace-nowrap">
                                     <p className="font-medium text-slate-900">{file.name}</p>
                                     <p className="text-2xs text-slate-500">Training document version</p>
-                                  </td>
-                                  <td className="py-1.5 px-2.5 whitespace-nowrap">
+                                  </TableMarkup.Cell>
+                                  <TableMarkup.Cell className="py-1.5 px-2.5 whitespace-nowrap">
                                     <div className="flex items-center gap-2">
                                       {isVideo ? <Video className="h-3.5 w-3.5 text-purple-600" /> :
                                         isPDF ? <FileText className="h-3.5 w-3.5 text-red-600" /> :
@@ -112,26 +113,26 @@ export const ExpandedCourseRow: React.FC<ExpandedCourseRowProps> = ({
                                             <FileText className="h-3.5 w-3.5 text-slate-600" />}
                                       <span className="font-medium text-slate-700">{isVideo ? 'Video' : isPDF ? 'PDF' : isImage ? 'Image' : 'Document'}</span>
                                     </div>
-                                  </td>
-                                  <td className="py-1.5 px-2.5 text-slate-500 whitespace-nowrap">
+                                  </TableMarkup.Cell>
+                                  <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-500 whitespace-nowrap">
                                     {formatFileSize(file.size)}
-                                  </td>
-                                  <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
+                                  </TableMarkup.Cell>
+                                  <TableMarkup.Cell className="py-1.5 px-2.5 text-center whitespace-nowrap">
                                     <StatusBadge
                                       status={file.status === 'success' ? 'effective' : file.status === 'error' ? 'rejected' : 'pendingReview'}
                                       size="sm"
                                     />
-                                  </td>
-                                  <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
+                                  </TableMarkup.Cell>
+                                  <TableMarkup.Cell className="py-1.5 px-2.5 text-center whitespace-nowrap">
                                     <button className="p-1 hover:bg-slate-100 rounded text-emerald-600 transition-colors">
                                       <Download className="h-3.5 w-3.5" />
                                     </button>
-                                  </td>
-                                </tr>
+                                  </TableMarkup.Cell>
+                                </TableMarkup.Row>
                               );
                             })}
-                          </tbody>
-                        </table>
+                          </TableMarkup.Body>
+                        </TableMarkup.Root>
                       </div>
                     </div>
                   )}
@@ -160,8 +161,8 @@ export const ExpandedCourseRow: React.FC<ExpandedCourseRowProps> = ({
                 </div>
               </div>
             </motion.div>
-          </td>
-          <td className="p-0 border-b border-slate-200 sticky right-0 z-10 bg-slate-50/50 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]"></td>
+          </TableMarkup.Cell>
+          <TableMarkup.Cell className={TABLE_STYLES.emptyCell1}></TableMarkup.Cell>
         </motion.tr>
       )}
       {isNavigating && <FullPageLoading text="Loading course details..." />}

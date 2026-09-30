@@ -79,6 +79,16 @@ export const ROUTES = {
       DCO_BATCH_ZIP: (batchId: string) => `/documents/controlled-copies/batches/${batchId}/dco-zip`,
     },
 
+    // Uncontrolled Copies -- separate feature/table/API from Controlled Copies (never recalled/tracked after issue)
+    UNCONTROLLED_COPIES: {
+      ALL: '/documents/uncontrolled-copies/all',
+      PENDING_APPROVAL: '/documents/uncontrolled-copies/pending-approval',
+      DISTRIBUTED: '/documents/uncontrolled-copies/distributed',
+      DETAIL: (id: string) => `/documents/uncontrolled-copies/${id}`,
+      /** The "download" link inside the distribution e-mail; login-required, never a public/token link. */
+      DOWNLOAD: (id: string) => `/documents/uncontrolled-copies/${id}/download`,
+    },
+
     // Document Administration (admin-only, now under System Administration -- URLs unchanged
     // since documents/administration/* is also the backend @RequestMapping base path)
     ADMIN: {
@@ -101,6 +111,7 @@ export const ROUTES = {
       PUBLISHING_TEMPLATES_NEW: '/documents/administration/publishing-templates/new',
       PUBLISHING_TEMPLATES_EDIT: (id: string) => `/documents/administration/publishing-templates/edit/${id}`,
       CONTROLLED_COPIES_POLICY: '/documents/administration/controlled-copies-policy',
+      UNCONTROLLED_COPIES_POLICY: '/documents/administration/uncontrolled-copies-policy',
     },
   },
 
@@ -212,6 +223,7 @@ export const ROUTES = {
     AUTHORIZATION_DIAGNOSTICS: '/security/authorization-diagnostics',
     OBJECT_RULES: '/security/object-rules',
     SOD: '/security/sod',
+    SOD_VIOLATION_REVIEW: '/security/sod-violation-review',
     ACCESS_REVIEW: '/security/access-review',
   },
 

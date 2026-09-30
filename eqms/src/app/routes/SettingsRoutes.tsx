@@ -52,6 +52,7 @@ const KnowledgeComponentEditorView = lazy(() => import('@/features/settings').th
 const PublishingTemplatesView = lazy(() => import('@/features/settings').then(m => ({ default: m.PublishingTemplatesView })));
 const PublishingTemplateEditorView = lazy(() => import('@/features/settings').then(m => ({ default: m.PublishingTemplateEditorView })));
 const ControlledCopiesPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.ControlledCopiesPolicyView })));
+const UncontrolledCopyPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.UncontrolledCopyPolicyView })));
 
 // Training Administration -- coming soon placeholders, one per sub-screen
 const TrainingPropertiesView = lazy(() => import('@/features/settings').then(m => ({ default: m.TrainingPropertiesView })));
@@ -174,6 +175,7 @@ export function settingsRoutes(navigate: NavigateFunction) {
           <Route path="edit/:id" element={<ProtectedRoute requiredPermissions={["documents.admin.publishing_templates.manage"]}><Suspense fallback={<LoadingFallback />}><PublishingTemplateEditorView /></Suspense></ProtectedRoute>} />
         </Route>
         <Route path="controlled-copies-policy" element={<ProtectedRoute requiredPermissions={["documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage"]}><Suspense fallback={<LoadingFallback />}><ControlledCopiesPolicyView /></Suspense></ProtectedRoute>} />
+        <Route path="uncontrolled-copies-policy" element={<ProtectedRoute requiredPermissions={["documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage"]}><Suspense fallback={<LoadingFallback />}><UncontrolledCopyPolicyView /></Suspense></ProtectedRoute>} />
       </Route>
 
       {/* ===== TRAINING ADMINISTRATION (coming soon sub-screens) ===== */}

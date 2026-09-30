@@ -11,6 +11,10 @@ export interface PdfPreviewSettings {
   showZoomControls?: boolean;
   showFullScreen?: boolean;
   showInsertTools?: boolean;
+  showOpenDocumentAction?: boolean;
+  showCloseDocumentAction?: boolean;
+  showSecurityAction?: boolean;
+  showScreenshotAction?: boolean;
   allowTextSelection?: boolean;
   watermarkText?: string;
   watermarkShowViewerName?: boolean;

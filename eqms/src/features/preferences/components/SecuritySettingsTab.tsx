@@ -14,9 +14,10 @@ const OTP_LENGTH = 6;
 
 interface SecuritySettingsTabProps {
   onRegisterSaveHandler?: ((handler: (() => Promise<void>) | null) => void);
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegisterSaveHandler }) => {
+export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegisterSaveHandler, onDirtyChange }) => {
   const { user, updateUser } = useAuth();
 
   const [persistedAppMfaEnabled, setPersistedAppMfaEnabled] = useState(user?.mfaEnabled || false);
@@ -198,6 +199,19 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
       onRegisterSaveHandler?.(null);
     };
   }, [onRegisterSaveHandler, saveChanges]);
+
+  const pendingChanges = useMemo(
+    () =>
+      appMfaEnabled !== persistedAppMfaEnabled ||
+      emailFallbackEnabled !== persistedEmailFallbackEnabled ||
+      rememberDeviceEnabled !== persistedRememberDeviceEnabled,
+    [appMfaEnabled, persistedAppMfaEnabled, emailFallbackEnabled, persistedEmailFallbackEnabled, rememberDeviceEnabled, persistedRememberDeviceEnabled],
+  );
+  useEffect(() => {
+    onDirtyChange?.(pendingChanges);
+    return () => onDirtyChange?.(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingChanges, onDirtyChange]);
 
   const stageAppMfaEnabled = useCallback(() => {
     setAppMfaEnabled(true);

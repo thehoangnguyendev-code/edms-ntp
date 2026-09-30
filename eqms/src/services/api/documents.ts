@@ -37,6 +37,7 @@ import type {
 import { formatDocumentTypeLookupLabel } from '@/features/documents/shared/documentTypeDisplay';
 
 const DOCUMENTS_ENDPOINT = '/documents';
+
 const REVISIONS_ENDPOINT = '/revisions';
 const CONTROLLED_COPIES_ENDPOINT = '/controlled-copies';
 
@@ -586,13 +587,14 @@ export const documentApi = {
   },
 
   /** GET /documents/:id/snapshot */
-  getDocumentDetailSnapshot: async (id: string) => {
+  getDocumentDetailSnapshot: async (id: string, options?: { force?: boolean }) => {
+    const force = options?.force === true;
     const resolvedCache = documentDetailSnapshotResolvedCache.get(id);
-    if (resolvedCache && resolvedCache.expiresAt > Date.now()) {
+    if (!force && resolvedCache && resolvedCache.expiresAt > Date.now()) {
       return resolvedCache.data;
     }
 
-    const cachedRequest = documentDetailSnapshotRequestCache.get(id);
+    const cachedRequest = force ? undefined : documentDetailSnapshotRequestCache.get(id);
     if (cachedRequest) {
       return cachedRequest;
     }
@@ -607,10 +609,14 @@ export const documentApi = {
         return data;
       })
       .finally(() => {
-        documentDetailSnapshotRequestCache.delete(id);
+        if (!force) {
+          documentDetailSnapshotRequestCache.delete(id);
+        }
       });
 
-    documentDetailSnapshotRequestCache.set(id, request);
+    if (!force) {
+      documentDetailSnapshotRequestCache.set(id, request);
+    }
     return request;
   },
 
@@ -1290,7 +1296,7 @@ export const documentApi = {
   },
 
   /** POST /revisions/:revisionId/publish  Effective */
-  publishRevision: async (revisionId: string, data?: { comment?: string; reason?: string; signatureToken?: string; forcePublish?: boolean }) => {
+  publishRevision: async (revisionId: string, data?: { comment?: string; reason?: string; signatureToken?: string }) => {
     const response = await api.post<RevisionDetailResponse>(`${REVISIONS_ENDPOINT}/${revisionId}/publish`, data ?? {}, {
       timeout: LONG_RUNNING_REQUEST_TIMEOUT_MS,
     });

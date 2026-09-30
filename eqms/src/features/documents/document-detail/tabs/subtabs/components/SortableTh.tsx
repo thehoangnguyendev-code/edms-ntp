@@ -1,6 +1,7 @@
 import React from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 export type SortDirection = "asc" | "desc";
 
@@ -18,7 +19,7 @@ interface SortableThProps {
 export const SortableTh: React.FC<SortableThProps> = ({ label, sortKey, activeKey, direction, onSort, className }) => {
     const active = activeKey === sortKey;
     return (
-        <th
+        <TableMarkup.HeaderCell
             onClick={() => onSort(sortKey)}
             aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
             className={cn(
@@ -33,7 +34,7 @@ export const SortableTh: React.FC<SortableThProps> = ({ label, sortKey, activeKe
                     <ChevronDown className={cn("h-3 w-3", active && direction === "desc" ? "text-emerald-600" : "")} />
                 </div>
             </div>
-        </th>
+        </TableMarkup.HeaderCell>
     );
 };
 

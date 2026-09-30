@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { documentNameFormatApi } from "@/services/api";
 import type { DocumentComponentItem, DocumentNameFormatItem } from "./documentNameFormatTypes";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface ExpandedDocumentNameFormatRowProps {
   format: DocumentNameFormatItem;
@@ -72,7 +73,7 @@ export const ExpandedDocumentNameFormatRow: React.FC<ExpandedDocumentNameFormatR
           transition={transitionConfig}
           className="bg-slate-50/50"
         >
-          <td colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
+          <TableMarkup.Cell colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -95,45 +96,45 @@ export const ExpandedDocumentNameFormatRow: React.FC<ExpandedDocumentNameFormatR
                         Document Components ({orderedComponents.length})
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
-                        <table className="text-xs table-auto w-auto">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-200">
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                        <TableMarkup.Root className="text-xs table-auto w-auto">
+                          <TableMarkup.Head>
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Name
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Value
-                              </th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Description
-                              </th>
-                              <th className="py-1.5 px-2.5 text-right text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
+                              </TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className="py-1.5 px-2.5 text-right text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
                                 Order
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
+                              </TableMarkup.HeaderCell>
+                            </TableMarkup.Row>
+                          </TableMarkup.Head>
+                          <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                             {orderedComponents.map((component) => {
                               const detail = componentCatalog?.get(component.componentId);
                               return (
-                                <tr key={component.componentId} className="hover:bg-slate-50 transition-colors">
-                                  <td className="py-1.5 px-2.5 font-medium text-emerald-700 whitespace-nowrap">
+                                <TableMarkup.Row key={component.componentId} className="hover:bg-slate-50 transition-colors">
+                                  <TableMarkup.Cell className="py-1.5 px-2.5 font-medium text-emerald-700 whitespace-nowrap">
                                     {component.name}
-                                  </td>
-                                  <td className="py-1.5 px-2.5 whitespace-nowrap">
+                                  </TableMarkup.Cell>
+                                  <TableMarkup.Cell className="py-1.5 px-2.5 whitespace-nowrap">
                                     <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{component.value}</code>
-                                  </td>
-                                  <td className="py-1.5 px-2.5 text-slate-700 whitespace-normal min-w-[220px] max-w-[360px]">
+                                  </TableMarkup.Cell>
+                                  <TableMarkup.Cell className={TABLE_STYLES.table10}>
                                     {detail?.shortDescription || "-"}
-                                  </td>
-                                  <td className="py-1.5 px-2.5 text-slate-600 text-right whitespace-nowrap">
+                                  </TableMarkup.Cell>
+                                  <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-600 text-right whitespace-nowrap">
                                     {component.displayOrder}
-                                  </td>
-                                </tr>
+                                  </TableMarkup.Cell>
+                                </TableMarkup.Row>
                               );
                             })}
-                          </tbody>
-                        </table>
+                          </TableMarkup.Body>
+                        </TableMarkup.Root>
                       </div>
                     </div>
                   )}
@@ -144,8 +145,8 @@ export const ExpandedDocumentNameFormatRow: React.FC<ExpandedDocumentNameFormatR
                 </div>
               </div>
             </motion.div>
-          </td>
-          <td className="p-0 border-b border-slate-200 sticky right-0 z-10 bg-slate-50/50 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]"></td>
+          </TableMarkup.Cell>
+          <TableMarkup.Cell className={TABLE_STYLES.emptyCell1}></TableMarkup.Cell>
         </motion.tr>
       )}
     </AnimatePresence>

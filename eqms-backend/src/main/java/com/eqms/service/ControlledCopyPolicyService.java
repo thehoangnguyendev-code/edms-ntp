@@ -405,8 +405,12 @@ public class ControlledCopyPolicyService {
         s.setStatusMarking(all);
     }
 
-    /** Every field of a fully merged status marking is checked here, so a bad value can never be stored. */
-    private com.eqms.dto.controlledcopypolicy.ControlledCopyStatusMarking validatedStatusMarking(
+    /**
+     * Every field of a fully merged status marking is checked here, so a bad value can never be stored. Public so the
+     * Uncontrolled Copies Policy (which reuses the same ControlledCopyStatusMarking shape and PDF engine) applies the
+     * identical rules instead of a second copy of them.
+     */
+    public com.eqms.dto.controlledcopypolicy.ControlledCopyStatusMarking validatedStatusMarking(
             com.eqms.dto.controlledcopypolicy.ControlledCopyStatusMarking m) {
         if (m == null) {
             throw new IllegalArgumentException("Status marking must be an object");
@@ -427,15 +431,19 @@ public class ControlledCopyPolicyService {
                 requireRange(m.stampOpacityPercent(), "Stamp opacity", 30, 100),
                 m.stampShowDate(), requireOneOf(m.stampFontFamily(), "Stamp font", FONT_FAMILIES),
                 requireOneOf(m.stampPages(), "Stamp pages", "ALL", "FIRST"),
-                validatedPlacements(m.placements()));
+                validatedPlacements(m.placements()), m.watermarkShowRecipient(), m.watermarkShowIssuedDate(),
+                m.stampShowCopyNumber());
     }
 
     /** Must match the families bundled by {@link ControlledCopyPdfMarkingService}. */
     private static final String[] FONT_FAMILIES = {"NOTO_SANS", "NOTO_SERIF", "ROBOTO_MONO", "OSWALD"};
 
     private static final java.util.regex.Pattern COLOR = java.util.regex.Pattern.compile("^#[0-9A-Fa-f]{6}$");
-    /** Letters (any script), digits and a few separators; nothing that could be read as markup or a control code. */
-    private static final java.util.regex.Pattern MARK_TEXT = java.util.regex.Pattern.compile("^[\\p{L}\\p{N} .,:;/()\\-]{1,40}$");
+    /** Letters (any script), digits and a few separators (including an em dash, used by the mandatory
+     *  Uncontrolled Copy watermark default text); nothing that could be read as markup or a control code.
+     *  60 chars accommodates that default ("UNCONTROLLED COPY — NOT VALID FOR PRODUCTION USE", 49 chars)
+     *  with headroom; existing 40-char-or-shorter stamp/watermark text is unaffected. */
+    private static final java.util.regex.Pattern MARK_TEXT = java.util.regex.Pattern.compile("^[\\p{L}\\p{N} .,:;/()\\-\\u2014]{1,60}$");
 
     private void applyMarking(ControlledCopyPolicySetting s, com.eqms.dto.controlledcopypolicy.ControlledCopyPolicyMarkingSection m) {
         if (m.stampEnabled() != null) s.setStampEnabled(m.stampEnabled());

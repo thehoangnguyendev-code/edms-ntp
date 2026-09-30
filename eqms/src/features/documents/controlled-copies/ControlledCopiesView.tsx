@@ -1,5 +1,6 @@
 import React, { useState, createRef, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
+import { hasControlledCopyExpansion } from "@/features/documents/shared/rowExpansion";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { motion, useReducedMotion } from "framer-motion";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -64,6 +65,7 @@ import {
   useControlledCopyBatchActionCapabilities,
 } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // Default Columns Configuration
 const DEFAULT_COLUMNS: TableColumn[] = [
@@ -1850,17 +1852,17 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                 )}
                 {...dragEvents}
               >
-                <table className="w-full min-w-max border-spacing-0 text-left">
-                  <thead>
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-9" />
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
+                <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
+                  <TableMarkup.Head>
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell32} />
+                      <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
                         No.
-                      </th>
+                      </TableMarkup.HeaderCell>
                       {DEFAULT_COLUMNS.filter((c) => c.visible).map((col) => {
                         const isSorted = sortConfig.key === col.id;
                         return (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={col.id}
                             onClick={() => handleSort(col.id)}
                             className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors group"
@@ -1872,18 +1874,18 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                                 <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === 'desc' ? "text-emerald-600" : "")} />
                               </div>
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         );
                       })}
-                      <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider text-center whitespace-nowrap border-b-2 border-slate-200 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell25}>
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="bg-white">
                     {controlledCopiesData.length === 0 ? (
-                      <tr>
-                        <td
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell
                           colSpan={DEFAULT_COLUMNS.filter((c) => c.visible).length + 3}
                           className="py-12 text-center border-b border-slate-200"
                         >
@@ -1902,8 +1904,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                                 : "We couldn't find any controlled copies matching your filters. Try adjusting your search criteria.")
                             }
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                     controlledCopiesData.map((copy, index) => {
                         const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
@@ -1912,17 +1914,16 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                         // A single-copy request is still stored as a batch for
                         // audit/distribution consistency, but it should render as
                         // one normal record instead of a redundant expandable row.
-                        const batchSize = Number(copy.batchQuantity ?? copy.totalCopies ?? copy.copyIds?.length ?? 0);
-                        const isExpandable = Boolean(expandableBatchId) && batchSize > 1;
+                        const isExpandable = hasControlledCopyExpansion(copy);
                         const isExpanded = expandedBatchId === expandableBatchId;
                         const displayFields = resolveBatchDisplayFields(copy);
 
                         return (
                           <React.Fragment key={copy.id}>
-                            <tr
+                            <TableMarkup.Row
                               className={cn("transition-colors group hover:bg-slate-50/80")}
                             >
-                              <td
+                              <TableMarkup.Cell
                                 className="py-3 px-4 border-b border-slate-200 whitespace-nowrap"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1930,7 +1931,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                                 }}
                               >
                                 {isExpandable ? (
-                                  <button className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors">
+                                  <button type="button" aria-label={`${isExpanded ? "Collapse" : "Expand"} controlled copy batch ${expandableBatchId}`} aria-expanded={isExpanded} className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors">
                                     <motion.span
                                       animate={{ rotate: isExpanded ? 90 : 0 }}
                                       transition={transitionConfig}
@@ -1940,11 +1941,11 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                                     </motion.span>
                                   </button>
                                 ) : null}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {rowNumber}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <button
                                   type="button"
                                   onClick={() => handleViewDetails(copy)}
@@ -1953,20 +1954,20 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                                 >
                                   {controlledCopyDisplayNumber(copy, isExpandable)}
                                 </button>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {formatDateTimeParts(displayFields.createdDate, displayFields.createdTime)}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {copy.openedBy}
-                              </td>
-                              <td className={cn(tdClass, "font-medium text-slate-900")}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={cn(tdClass, "font-medium text-slate-900")}>
                                 {copy.name}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {isExpandable ? (copy.batchQuantity ?? copy.totalCopies ?? "-") : (copy.totalCopies ?? "-")}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <Badge
                                   color={getBadgeColor(
                                     copy.statusCode || copy.statusInfo?.id,
@@ -1975,34 +1976,34 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                                 >
                                   {normalizeControlledCopyStatusLabel(copy.status, copy.statusInfo as any)}
                                 </Badge>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {formatDateUS(displayFields.validUntil)}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {displayFields.expiryDate ? formatDateUS(displayFields.expiryDate) : "-"}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <span className="font-medium text-slate-900">{formatDocumentLabel(copy)}</span>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {getControlledCopyDistributionListText(copy) || "-"}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {copy.recallDate ? formatDateUS(copy.recallDate) : "-"}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {copy.recallReason || "-"}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-"}
-                              </td>
-                              <td
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell
                                 onClick={(e) => e.stopPropagation()}
-                                className="sticky right-0 z-10 bg-white border-b border-slate-200 py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
+                                className={TABLE_STYLES.cell33}
                               >
                                 <button
                                   ref={getRef(copy.id)}
@@ -2015,8 +2016,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                                 >
                                   <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
                                 </button>
-                              </td>
-                            </tr>
+                              </TableMarkup.Cell>
+                            </TableMarkup.Row>
                             {isExpandable && (
                               <ExpandControlledCopiesRow
                                 source={copy}
@@ -2035,8 +2036,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                         );
                       })
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {controlledCopiesData.length > 0 && (

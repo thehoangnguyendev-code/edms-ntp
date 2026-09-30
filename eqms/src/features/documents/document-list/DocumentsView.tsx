@@ -18,6 +18,7 @@ import { ChevronDown, ChevronUp, ChevronRight, Download, History, MoreVertical, 
 import { formatDateTimeLong, formatDateUS } from "@/utils/format";
 import { DocumentFilters } from "@/features/documents/shared/components/DocumentFilters";
 import { ExpandedDocumentRow } from "@/features/documents/shared/components/ExpandedDocumentRow";
+import { hasDocumentExpansion } from "@/features/documents/shared/rowExpansion";
 import { useDocumentServerTable } from "@/features/documents/hooks";
 import { useDocumentPermissions } from "@/features/documents/shared/useDocumentPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -35,6 +36,7 @@ import type { DocumentViewType, DocumentListItem } from "./types";
 import type { SelectOption } from "@/components/ui/select/Select";
 import { mapRevisionSummaryFromApi } from "@/features/documents/shared/statusMapping";
 import { getStatusBadgeColor } from "@/utils/status";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface DocumentsViewProps {
   viewType: DocumentViewType;
@@ -567,18 +569,18 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[1600px]">
-            <thead className="sticky top-0 z-30">
-              <tr>
-                <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-9" />
-                <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
+                <TableMarkup.Root className="w-full min-w-[1600px]">
+            <TableMarkup.Head className="sticky top-0 z-30">
+              <TableMarkup.Row>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell36} />
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
                   No.
-                </th>
+                </TableMarkup.HeaderCell>
                 {tableColumns.map((col) => {
                   const isSorted = sortConfig.key === col.id;
                   const canSort = col.sortable;
                   return (
-                    <th
+                    <TableMarkup.HeaderCell
                       key={col.id}
                       onClick={canSort ? () => handleSort(col.id) : undefined}
                       className={cn(
@@ -597,88 +599,90 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                           </div>
                         )}
                       </div>
-                    </th>
+                    </TableMarkup.HeaderCell>
                   );
                 })}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
+              </TableMarkup.Row>
+            </TableMarkup.Head>
+            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
               {!isLoading && documents.length === 0 ? (
-                <tr>
-                  <td colSpan={tableColumns.length + 2} className="p-0">
+                <TableMarkup.Row>
+                  <TableMarkup.Cell colSpan={tableColumns.length + 2} className="p-0">
                     <TableEmptyState
                       title={error ? "Unable to load documents" : "No Documents Found"}
                       description={error || "We couldn't find any documents matching your filters. Try adjusting your search criteria."}
                     />
-                  </td>
-                </tr>
+                  </TableMarkup.Cell>
+                </TableMarkup.Row>
               ) : (
                 documents.map((doc, index) => (
                   <React.Fragment key={doc.id}>
-                  <tr className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center border-b border-slate-200">
-                      <button
+                  <TableMarkup.Row className="hover:bg-slate-50/80 transition-colors group">
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center border-b border-slate-200">
+                      {hasDocumentExpansion(doc) && <button
                         type="button"
                         onClick={() => handleExpandDocument(doc.id)}
+                        aria-label={`${expandedDocumentId === doc.id ? "Collapse" : "Expand"} document ${doc.documentNumber}`}
+                        aria-expanded={expandedDocumentId === doc.id}
                         className="inline-flex items-center justify-center h-5 w-5 rounded-lg transition-colors hover:bg-slate-200"
                       >
                         <ChevronRight className={cn("h-3.5 w-3.5 text-slate-500 transition-transform", expandedDocumentId === doc.id ? "rotate-90" : "rotate-0")} />
-                      </button>
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700 text-center">
+                      </button>}
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell30}>
                       {(currentPage - 1) * itemsPerPage + index + 1}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-emerald-600 cursor-pointer hover:underline"
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell27}
                       onClick={() => {
                         void navigateToDocument(doc.id);
                       }}
                     >
                       {doc.documentNumber}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                       {formatDateTimeLong(doc.created)}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                       {doc.openedBy || "-"}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell28}>
                       {doc.documentName || "-"}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                       <Badge color={getBadgeColor(doc.statusCode, doc.status)} size="sm">
                         {doc.status}
                       </Badge>
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                       {doc.type || "-"}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                       {doc.hasRelatedDocuments ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-400">No</span>}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                       {doc.hasCorrelatedDocuments ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-400">No</span>}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                       {doc.isTemplate ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-400">No</span>}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                       {doc.businessUnit || "-"}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                       {doc.department || "-"}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                       {doc.author || "-"}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                       {formatCellDate(doc.effectiveDate)}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                       {formatCellDate(doc.validUntil)}
-                    </td>
-                    <td
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell
                       onClick={(e) => e.stopPropagation()}
-                      className="sticky right-0 bg-white py-3 px-4 text-xs sm:text-sm text-center z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
+                      className={TABLE_STYLES.emptyCell3}
                     >
                       <button
                         ref={getRef(doc.id)}
@@ -713,20 +717,20 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                         canEditDocument={canCurrentUserEditDocument(doc)}
                         canRequestControlledCopy={canRequestControlledCopyForRow(doc)}
                       />
-                    </td>
-                  </tr>
+                    </TableMarkup.Cell>
+                  </TableMarkup.Row>
                   <ExpandedDocumentRow
                     revision={doc}
                     isExpanded={expandedDocumentId === doc.id}
                     visibleColumnsLength={tableColumns.length + 2}
-                    hasDocs={true}
+                    hasDocs={hasDocumentExpansion(doc)}
                     documentId={doc.id}
                   />
                   </React.Fragment>
                 ))
               )}
-            </tbody>
-                </table>
+            </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {totalItems > 0 && (

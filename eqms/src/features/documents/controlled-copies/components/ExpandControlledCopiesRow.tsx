@@ -8,6 +8,7 @@ import { CONTROLLED_COPY_MUTATED_EVENT, documentApi } from "@/services/api/docum
 import { buildControlledCopySnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import { formatDateTime, formatDateTimeParts, formatDateUS } from "@/utils/format";
 import { getStatusBadgeColor } from "@/utils/status";
+import { hasControlledCopyExpansion } from "@/features/documents/shared/rowExpansion";
 import { cn } from "@/components/ui/utils";
 import { formatControlledCopyNumber, formatDocumentLabel, formatDocumentRevisionLabel } from "../display";
 import { getControlledCopyMemberRecipientText } from "../distributionDisplay";
@@ -20,6 +21,7 @@ import {
   getControlledCopyActionDecision,
 } from "../controlledCopyCapabilities";
 import { useControlledCopyActionCapabilities } from "@/hooks";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const CONTROLLED_COPY_CHILDREN_CACHE = new Map<string, ControlledCopy[]>();
 const CONTROLLED_COPY_CHILDREN_IN_FLIGHT = new Map<string, Promise<ControlledCopy[]>>();
@@ -167,37 +169,37 @@ const ExpandedControlledCopyRow: React.FC<{
   const statusLabel = normalizeControlledCopyStatusLabel(copy.status, copy.statusInfo as any);
 
   return (
-    <tr className="hover:bg-slate-50 transition-colors">
-      <td className={cn(tdClass, "text-center text-slate-500 font-medium")}>{rowNumber}</td>
-      <td
+    <TableMarkup.Row className="hover:bg-slate-50 transition-colors">
+      <TableMarkup.Cell className={cn(tdClass, "text-center text-slate-500 font-medium")}>{rowNumber}</TableMarkup.Cell>
+      <TableMarkup.Cell
         className={cn(tdClass, "font-medium text-emerald-600 cursor-pointer hover:underline")}
         onClick={() => onViewDetails(copy)}
       >
         {formatControlledCopyNumber(copy.controlledCopyNumber)}
-      </td>
-      <td className={tdClass}>{formatDateTimeParts(copy.createdDate, copy.createdTime)}</td>
-      <td className={tdClass}>{copy.openedBy || "-"}</td>
-      <td className={cn(tdClass, "font-medium text-slate-900")}>{copy.name || "-"}</td>
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>{formatDateTimeParts(copy.createdDate, copy.createdTime)}</TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>{copy.openedBy || "-"}</TableMarkup.Cell>
+      <TableMarkup.Cell className={cn(tdClass, "font-medium text-slate-900")}>{copy.name || "-"}</TableMarkup.Cell>
       {/* Each child row is exactly one physical copy. */}
-      <td className={tdClass}>1</td>
-      <td className={tdClass}>
+      <TableMarkup.Cell className={tdClass}>1</TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>
         <Badge color={getBadgeColor(copy.statusCode || copy.statusInfo?.id, statusLabel)} size="sm">
           {statusLabel}
         </Badge>
-      </td>
-      <td className={tdClass}>{formatDateUS(copy.validUntil)}</td>
-      <td className={tdClass}>{copy.expiryDate ? formatDateUS(copy.expiryDate) : "-"}</td>
-      <td className={tdClass}>
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>{formatDateUS(copy.validUntil)}</TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>{copy.expiryDate ? formatDateUS(copy.expiryDate) : "-"}</TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>
         <span className="font-medium text-slate-900">{formatDocumentLabel(copy)}</span>
-      </td>
-      <td className={tdClass}>{getControlledCopyMemberRecipientText(copy) || "-"}</td>
-      <td className={tdClass}>{copy.recallDate ? formatDateUS(copy.recallDate) : "-"}</td>
-      <td className={tdClass}>{copy.recallReason || "-"}</td>
-      <td className={tdClass}>
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>{getControlledCopyMemberRecipientText(copy) || "-"}</TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>{copy.recallDate ? formatDateUS(copy.recallDate) : "-"}</TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>{copy.recallReason || "-"}</TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>
         <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span>
-      </td>
-      <td className={tdClass}>{copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-"}</td>
-      <td
+      </TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}>{copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-"}</TableMarkup.Cell>
+      <TableMarkup.Cell
         onClick={(e) => e.stopPropagation()}
         className="border-b border-l border-slate-200 bg-white py-3 px-4 text-center whitespace-nowrap group-hover:bg-slate-50 transition-colors"
       >
@@ -230,8 +232,8 @@ const ExpandedControlledCopyRow: React.FC<{
           onReportLostDamaged={onReportLostDamaged ? () => onReportLostDamaged(copy) : undefined}
           onReissue={onReissue ? () => onReissue(copy) : undefined}
         />
-      </td>
-    </tr>
+      </TableMarkup.Cell>
+    </TableMarkup.Row>
   );
 };
 
@@ -239,24 +241,24 @@ const SkeletonRow: React.FC<{ rowNumber: number }> = ({ rowNumber }) => {
   const tdClass = "py-1.5 px-2.5 text-slate-700 whitespace-nowrap border-b border-slate-100";
   const skeletonClass = "h-3.5 rounded bg-slate-200/70 animate-pulse";
   return (
-    <tr className="bg-white">
-      <td className={cn(tdClass, "text-center text-slate-500 font-medium")}>{rowNumber}</td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-24")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-28")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-20")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-40")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-8")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-20")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-24")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-24")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-28")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-32")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-24")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-32")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-28")} /></td>
-      <td className={tdClass}><div className={cn(skeletonClass, "w-28")} /></td>
-      <td className={cn(tdClass, "text-center")}><div className={cn(skeletonClass, "w-7 mx-auto")} /></td>
-    </tr>
+    <TableMarkup.Row className="bg-white">
+      <TableMarkup.Cell className={cn(tdClass, "text-center text-slate-500 font-medium")}>{rowNumber}</TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-24")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-28")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-20")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-40")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-8")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-20")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-24")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-24")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-28")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-32")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-24")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-32")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-28")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={tdClass}><div className={cn(skeletonClass, "w-28")} /></TableMarkup.Cell>
+      <TableMarkup.Cell className={cn(tdClass, "text-center")}><div className={cn(skeletonClass, "w-7 mx-auto")} /></TableMarkup.Cell>
+    </TableMarkup.Row>
   );
 };
 
@@ -427,6 +429,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
   const [isLoading, setIsLoading] = useState(false);
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const batchKey = source.batchId || source.distributionBatchId || source.id;
+  const hasChildren = hasControlledCopyExpansion(source);
   const expectedChildCount = Number(source.batchQuantity ?? source.copyIds?.length ?? 0);
   const [copies, setCopies] = useState<ControlledCopy[] | null>(() => getCachedControlledCopyChildren(batchKey));
   const [childPage, setChildPage] = useState(1);
@@ -440,7 +443,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
   }, [batchKey, expectedChildCount]);
 
   useEffect(() => {
-    if (!isExpanded) return;
+    if (!isExpanded || !hasChildren) return;
     let mounted = true;
 
     const cached = childPage === 1 && batchKey ? getCachedControlledCopyChildren(batchKey) : null;
@@ -487,7 +490,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
     return () => {
       mounted = false;
     };
-  }, [batchKey, childPage, isExpanded]);
+  }, [batchKey, childPage, isExpanded, hasChildren]);
 
   const openDetail = (copyId: string) => {
       void navigateToPrepared(
@@ -559,7 +562,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
 
   return (
     <AnimatePresence initial={false}>
-      {isExpanded && (
+      {isExpanded && hasChildren && (
         <motion.tr
           key={`expanded-controlled-copies-${source.id}`}
           initial={{ opacity: 0 }}
@@ -568,7 +571,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
           transition={transitionConfig}
           className="bg-slate-50/50"
         >
-          <td colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
+          <TableMarkup.Cell colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -584,35 +587,35 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                         Controlled Copies ({totalChildren})
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
-                        <table className="text-xs table-auto w-auto">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-200">
-                              <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-10">No.</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document Number</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Created</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Opened by</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Controlled Copy Name</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Quantity</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Status</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Valid Until</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Expiry Date</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Distribution List</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Recall Date</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Reason for Recall</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document Revision</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Last Updated</th>
-                              <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-14 border-l border-slate-200 bg-slate-100">
+                        <TableMarkup.Root className="text-xs table-auto w-auto">
+                          <TableMarkup.Head>
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>No.</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Number</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Created</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Opened by</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Controlled Copy Name</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Quantity</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Status</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Valid Until</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Expiry Date</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Distribution List</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Recall Date</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Reason for Recall</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Revision</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Last Updated</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table8}>
                                 Action
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
+                              </TableMarkup.HeaderCell>
+                            </TableMarkup.Row>
+                          </TableMarkup.Head>
+                          <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                             {Array.from({ length: Math.min(CHILD_PAGE_SIZE, Math.max(0, totalChildren - ((childPage - 1) * CHILD_PAGE_SIZE))) }).map((_, idx) => (
                               <SkeletonRow key={`controlled-copy-skeleton-${idx}`} rowNumber={((childPage - 1) * CHILD_PAGE_SIZE) + idx + 1} />
                             ))}
-                          </tbody>
-                        </table>
+                          </TableMarkup.Body>
+                        </TableMarkup.Root>
                       </div>
                     </div>
                   )}
@@ -623,30 +626,30 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                         Controlled Copies ({totalChildren || copies.length})
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
-                        <table className="text-xs table-auto w-auto">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-200">
-                              <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-10">No.</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document Number</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Created</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Opened by</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Controlled Copy Name</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Quantity</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Status</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Valid Until</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Expiry Date</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Distribution List</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Recall Date</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Reason for Recall</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Document Revision</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Last Updated</th>
-                              <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-14 border-l border-slate-200 bg-slate-100">
+                        <TableMarkup.Root className="text-xs table-auto w-auto">
+                          <TableMarkup.Head>
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>No.</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Number</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Created</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Opened by</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Controlled Copy Name</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Quantity</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Status</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Valid Until</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Expiry Date</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Distribution List</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Recall Date</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Reason for Recall</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Revision</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Last Updated</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table8}>
                                 Action
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
+                              </TableMarkup.HeaderCell>
+                            </TableMarkup.Row>
+                          </TableMarkup.Head>
+                          <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                             {copies.map((copy, idx) => (
                               <ExpandedControlledCopyRow
                                 key={copy.id}
@@ -661,8 +664,8 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                                 onReissue={onReissue}
                               />
                             ))}
-                          </tbody>
-                        </table>
+                          </TableMarkup.Body>
+                        </TableMarkup.Root>
                       </div>
                       {totalChildPages > 1 && (
                         <div className="mt-3 flex items-center justify-end gap-3 text-2xs text-slate-600">
@@ -698,7 +701,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                 </div>
               </div>
             </motion.div>
-          </td>
+          </TableMarkup.Cell>
         </motion.tr>
       )}
     </AnimatePresence>

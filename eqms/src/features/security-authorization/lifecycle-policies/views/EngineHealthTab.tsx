@@ -13,6 +13,7 @@ import {
   type AuthorizationShadowMismatch,
 } from "@/services/api/security";
 import { formatDateTime } from "@/utils/format";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "All Resource Types", value: "ALL" },
@@ -32,9 +33,9 @@ const SortHeader: React.FC<{
   direction: "asc" | "desc";
   onSort: (column: SortKey) => void;
 }> = ({ label, column, current, direction, onSort }) => (
-  <th
+  <TableMarkup.HeaderCell
     onClick={() => onSort(column)}
-    className="sticky top-0 z-20 cursor-pointer whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 group md:text-xs"
+    className={TABLE_STYLES.headerCell39}
   >
     <div className="flex w-full items-center justify-between gap-2">
       <span className="truncate">{label}</span>
@@ -53,7 +54,7 @@ const SortHeader: React.FC<{
         />
       </div>
     </div>
-  </th>
+  </TableMarkup.HeaderCell>
 );
 
 /** Server-driven diagnostic table used to verify hybrid-engine shadow decisions before cutover. */
@@ -270,12 +271,12 @@ export const EngineHealthTab: React.FC = () => {
                 )}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[900px] border-spacing-0 text-left">
-                  <thead className="sticky top-0 z-30">
-                    <tr>
-                      <th className="sticky top-0 z-20 w-14 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                <TableMarkup.Root className="w-full min-w-[900px] border-spacing-0 text-left">
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className="sticky top-0 z-20 w-14 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
                         No.
-                      </th>
+                      </TableMarkup.HeaderCell>
                       <SortHeader
                         label="Resource"
                         column="resource"
@@ -311,12 +312,12 @@ export const EngineHealthTab: React.FC = () => {
                         direction={sortConfig.direction}
                         onSort={handleSort}
                       />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!loading && items.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={6} className="p-0">
                           {error ? (
                             <TableEmptyState
                               title="Failed to Load"
@@ -333,35 +334,35 @@ export const EngineHealthTab: React.FC = () => {
                               }
                             />
                           )}
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                       items.map((entry, index) => {
                         const isMismatch =
                           entry.policyAllowed !== entry.legacyAllowed;
                         return (
-                          <tr
+                          <TableMarkup.Row
                             key={entry.id}
                             className={cn(
                               "transition-colors hover:bg-slate-50/80",
                               isMismatch && "bg-red-50/40",
                             )}
                           >
-                            <td className="whitespace-nowrap px-4 py-3 text-center text-xs text-slate-500 sm:text-sm">
+                            <TableMarkup.Cell className={TABLE_STYLES.cell36}>
                               {(currentPage - 1) * itemsPerPage + index + 1}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
                               <div className="font-medium text-slate-800">
                                 {entry.resourceType}
                               </div>
                               <div className="max-w-[160px] truncate  text-2xs text-slate-400">
                                 {entry.resourceId}
                               </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3  text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3  text-xs text-slate-700 sm:text-sm">
                               {entry.actionCode}
-                            </td>
-                            <td className="px-4 py-3">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="px-4 py-3">
                               <Badge
                                 semantic={
                                   entry.policyAllowed ? "success" : "neutral"
@@ -375,8 +376,8 @@ export const EngineHealthTab: React.FC = () => {
                                   {entry.policyReasonCode}
                                 </div>
                               )}
-                            </td>
-                            <td className="px-4 py-3">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="px-4 py-3">
                               <Badge
                                 semantic={
                                   entry.legacyAllowed ? "success" : "neutral"
@@ -390,16 +391,16 @@ export const EngineHealthTab: React.FC = () => {
                                   {entry.legacyReasonCode}
                                 </div>
                               )}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
                               {formatDateTime(entry.createdAt)}
-                            </td>
-                          </tr>
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
                         );
                       })
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
               {totalItems > 0 && (
                 <div className="border-t border-slate-200">

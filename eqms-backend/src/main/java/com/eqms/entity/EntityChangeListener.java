@@ -26,6 +26,9 @@ public class EntityChangeListener {
         } else if (entity instanceof ControlledCopyDistributionBatch batch) {
             EntityChangeBroadcaster.changed("CONTROLLED_COPY_BATCH", batch.getId(),
                     batch.getDocument() == null ? null : batch.getDocument().getId());
+        } else if (entity instanceof UncontrolledCopyRecord copy) {
+            EntityChangeBroadcaster.changed("UNCONTROLLED_COPY", copy.getId(),
+                    copy.getDocument() == null ? null : copy.getDocument().getId());
         }
     }
 }

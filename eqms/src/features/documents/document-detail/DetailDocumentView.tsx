@@ -35,6 +35,9 @@ import {
 import { UploadRevisionModal } from "@/features/documents/document-list/document-creation/UploadRevisionModal";
 import { documentApi } from "@/services/api/documents";
 import { securityApi, type ResourceCapabilities } from "@/services/api/security";
+import { uncontrolledCopyApi } from "@/services/api/uncontrolledCopy";
+import { usePermissions } from "@/hooks/usePermissions";
+import { RequestUncontrolledCopyModal } from "@/features/documents/uncontrolled-copies/RequestUncontrolledCopyModal";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
@@ -86,6 +89,7 @@ import type {
   RevisionWorkspaceState,
   WorkspaceNavigationMode,
 } from "@/features/documents/shared/navigationContext";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // --- Types ---
 type TabType = "general" | "training" | "document" | "signatures" | "audit";
@@ -206,12 +210,6 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   >([]);
   const [showObsoleteModal, setShowObsoleteModal] = useState(false);
   const [isObsoleteSubmitting, setIsObsoleteSubmitting] = useState(false);
-  const [pendingPublishParams, setPendingPublishParams] = useState<{
-    revisionId: string;
-    reason: string;
-    comment: string;
-    signatureToken: string;
-  } | null>(null);
   const [isBackLoading, setIsBackLoading] = useState(false);
   const { showToast } = useToast();
   const [document, setDocument] = useState<DetailDocumentModel>(() => ({
@@ -561,7 +559,11 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
 
         void refreshDetailAfterSnapshot({
           enabled: isSnapshotPreload,
-          fetchLive: () => documentApi.getDocumentDetailSnapshot(documentId),
+          // The list's row-click prefetch (buildDocumentDetailSnapshotState) always uses the
+          // non-marking snapshot endpoint for an instant paint. This follow-up call must hit the
+          // real "Opened By" marking endpoint -- using the snapshot here again meant ordinary
+          // navigation from the list never marked the document opened.
+          fetchLive: () => documentApi.getDocumentDetail(documentId),
           onSuccess: (freshDetail) => {
             if (!isMounted) {
               return;
@@ -658,8 +660,13 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   const refreshLifecycleState = React.useCallback(async () => {
     if (!documentId) return;
     try {
+      // force:true bypasses the 5s resolved-response cache: without it, this SSE-triggered
+      // refresh (which fires ~800ms after this exact tab's own "Opened By" write, since that
+      // write's own change-broadcast comes right back here) could still be inside the cache
+      // window populated by the list's row-click prefetch *before* this visit, silently
+      // reverting "Opened By" back to whoever it was before the page was even opened.
       const [detail, auditTrailResponse] = await Promise.all([
-        documentApi.getDocumentDetailSnapshot(documentId),
+        documentApi.getDocumentDetailSnapshot(documentId, { force: true }),
         documentApi.getDocumentAuditTrail(documentId).catch(() => []),
       ]);
       applyDocumentDetail(detail, auditTrailResponse as unknown as AuditEntry[]);
@@ -829,6 +836,37 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     () => findLatestEffectiveRevision(revisions),
     [revisions],
   );
+
+  // Request Uncontrolled Copy: the permission check only avoids a pointless call; the server's request-context is
+  // authoritative (permission + document type "Allow Uncontrolled Copy" + current Effective revision + Active
+  // document + not a template), the same "server decides, view renders" rule as the Controlled Copy capability.
+  const { hasPermission } = usePermissions();
+  const hasUncontrolledCopyRequestPermission = hasPermission("documents.uncontrolled_copy.request");
+  const latestEffectiveRevisionId = latestEffectiveRevision?.id ? String(latestEffectiveRevision.id) : "";
+  const [canRequestUncontrolledCopy, setCanRequestUncontrolledCopy] = useState(false);
+  const [uncontrolledCopyContextMessage, setUncontrolledCopyContextMessage] = useState<string | null>(null);
+  const [isUncontrolledCopyModalOpen, setIsUncontrolledCopyModalOpen] = useState(false);
+  useEffect(() => {
+    setCanRequestUncontrolledCopy(false);
+    setUncontrolledCopyContextMessage(null);
+    if (!documentId || !hasUncontrolledCopyRequestPermission || !latestEffectiveRevisionId || document.isTemplate) {
+      return;
+    }
+    let alive = true;
+    uncontrolledCopyApi
+      .getUncontrolledCopyRequestContext({ documentId })
+      .then((context) => {
+        if (!alive) return;
+        setCanRequestUncontrolledCopy(Boolean(context.canRequest));
+        setUncontrolledCopyContextMessage(context.message ?? null);
+      })
+      .catch(() => {
+        if (alive) setCanRequestUncontrolledCopy(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [documentId, hasUncontrolledCopyRequestPermission, latestEffectiveRevisionId, document.isTemplate, document.status]);
 
   // An upgrade revision that has already been started (Draft) but is not yet locked -- the backend
   // capability check still reports the next revision as configurable in this window. When it exists,
@@ -1222,6 +1260,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       });
       const refreshed = await documentApi.getDocumentDetailSnapshot(
         response.id || document.id,
+        { force: true },
       );
       const refreshedAuditTrail = await documentApi
         .getDocumentAuditTrail(document.id)
@@ -1302,15 +1341,16 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       reason: string;
       comment: string;
       signatureToken: string;
-      forcePublish?: boolean;
     },
   ) => {
     try {
       setIsNavigating(true);
       await documentApi.publishRevision(revisionId, params);
 
+      // force:true -- same cache-staleness reason as refreshLifecycleState() above: this refetch
+      // right after a real write must not be served the pre-visit cached response.
       const [detail, auditTrailResponse] = await Promise.all([
-        documentApi.getDocumentDetailSnapshot(documentId),
+        documentApi.getDocumentDetailSnapshot(documentId, { force: true }),
         documentApi.getDocumentAuditTrail(documentId).catch(() => []),
       ]);
       applyDocumentDetail(
@@ -1355,16 +1395,12 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     } catch (error) {
       setIsSubmitting(false);
       const responseData = (error as any)?.response?.data;
-      if (responseData?.error?.code === "RELATED_DOCUMENTS_NOT_EFFECTIVE") {
+      if (responseData?.error?.code === "RELATED_DOCUMENTS_NOT_READY") {
+        // Hard block, no override: a Related Document has a revision in progress that has not
+        // yet reached Ready for Publishing. Informational only -- there is no "publish anyway".
         setIsNavigating(false);
         setWarningMessage(responseData.error.message);
         setNonEffectiveDocs(responseData.error.details || []);
-        setPendingPublishParams({
-          revisionId,
-          reason: params.reason,
-          comment: params.comment,
-          signatureToken: params.signatureToken,
-        });
         setShowWarningModal(true);
       } else {
         console.error("Failed to publish document revision", error);
@@ -1380,20 +1416,6 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         setIsNavigating(false);
       }
     }
-  };
-
-  const handleWarningConfirm = async () => {
-    if (!pendingPublishParams) return;
-    setShowWarningModal(false);
-    const params = pendingPublishParams;
-    setPendingPublishParams(null);
-    setIsSubmitting(true);
-    await executePublish(params.revisionId, {
-      reason: params.reason,
-      comment: params.comment,
-      signatureToken: params.signatureToken,
-      forcePublish: true,
-    });
   };
 
   // Sub-tab state (for active documents)
@@ -1740,6 +1762,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         {/* Tab Content */}
         <div className="p-4 md:p-5">
           {activeTab === "general" && (
+            <>
             <GeneralInformationTab
               document={document as any}
               isReadOnly={false}
@@ -1769,6 +1792,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
               }))}
               onSearchWorkflowUsers={searchWorkflowUsers}
             />
+            </>
           )}
           {activeTab === "training" && (
             <TrainingInformationTab
@@ -1898,6 +1922,17 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             onClick={handleRequestControlledCopy}
           >
             Request Controlled Copy
+          </Button>
+        )}
+        {canRequestUncontrolledCopy && (
+          <Button
+            size="sm"
+            variant="outline-emerald"
+            className="whitespace-nowrap gap-2"
+            onClick={() => setIsUncontrolledCopyModalOpen(true)}
+            title={uncontrolledCopyContextMessage || undefined}
+          >
+            Request Uncontrolled Copy
           </Button>
         )}
         {canUploadRevision && (
@@ -2079,44 +2114,75 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           return (
             <div className="mt-4 rounded-lg border border-slate-200 overflow-hidden">
               <div className="max-h-72 overflow-y-auto overflow-x-auto">
-                <table className="w-full min-w-[480px]">
-                  <thead className="sticky top-0 border-b border-slate-200 bg-slate-50">
-                    <tr>
-                      <th className="w-1/4 px-4 py-2.5 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                <TableMarkup.Root className="w-full min-w-[480px]">
+                  <TableMarkup.Head className="sticky top-0 border-b border-slate-200 bg-slate-50">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell45}>
                         Field
-                      </th>
-                      <th className="w-1/3 px-4 py-2.5 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell44}>
                         Before
-                      </th>
-                      <th className="px-4 py-2.5 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell7}>
                         <span className="flex items-center gap-1.5">
                           <ArrowRight className="h-3 w-3 text-emerald-500" />
                           After
                         </span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                     {changes.map((change) => (
-                      <tr key={change.label} className="transition-colors hover:bg-slate-50/80">
-                        <td className="px-4 py-3 text-xs font-semibold text-slate-900 md:text-sm">
+                      <TableMarkup.Row key={change.label} className="transition-colors hover:bg-slate-50/80">
+                        <TableMarkup.Cell className="px-4 py-3 text-xs font-semibold text-slate-900 md:text-sm">
                           {change.label}
-                        </td>
-                        <td className="px-4 py-3 text-xs md:text-sm">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-4 py-3 text-xs md:text-sm">
                           <span className="text-slate-400 line-through">{change.before}</span>
-                        </td>
-                        <td className="px-4 py-3 text-xs md:text-sm">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-4 py-3 text-xs md:text-sm">
                           <span className="font-medium text-emerald-700">{change.after}</span>
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ))}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
             </div>
           );
         })()}
       </FormModal>
+
+      {/* Publish blocked: a Related Document has a revision in progress not yet Ready for
+          Publishing. Informational only -- there is no override/force option. Previously this
+          state was set but never rendered anywhere on this page (dead state, silent failure). */}
+      <AlertModal
+        isOpen={showWarningModal}
+        onClose={() => setShowWarningModal(false)}
+        onConfirm={() => setShowWarningModal(false)}
+        title="Cannot Publish Yet"
+        type="warning"
+        confirmText="OK"
+        showCancel={false}
+        description={
+          <div className="space-y-3">
+            <p className="font-semibold text-slate-900">
+              One or more Related Documents are not yet Ready for Publishing:
+            </p>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1 text-xs text-slate-700">
+              {nonEffectiveDocs.map((doc, idx) => (
+                <div key={idx} className="flex justify-between">
+                  <span>{doc.field}</span>
+                  <span className="font-semibold text-amber-600">{doc.message}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500">
+              Bring the listed document(s) to Ready for Publishing first, then publish again.
+            </p>
+          </div>
+        }
+      />
 
       <AlertModal
         isOpen={showAuthorHandoffWarning}
@@ -2167,6 +2233,15 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         canUseTemplate={canUseDocumentTemplate}
         isSubmitting={isRevisionUploadLoading}
       />
+
+      {canRequestUncontrolledCopy && (
+        <RequestUncontrolledCopyModal
+          isOpen={isUncontrolledCopyModalOpen}
+          onClose={() => setIsUncontrolledCopyModalOpen(false)}
+          documentId={documentId}
+          revisionId={latestEffectiveRevisionId || undefined}
+        />
+      )}
 
       <ESignatureModal
         isOpen={showObsoleteModal}

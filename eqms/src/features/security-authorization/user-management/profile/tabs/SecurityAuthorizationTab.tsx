@@ -25,6 +25,7 @@ import { IconPencilMinus, IconUserKey } from "@tabler/icons-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditAccessProfilesModal } from "../components/EditAccessProfilesModal";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 /** One normalized table row, shared by both modes so the Access Profiles table renders
  *  identically in the Add New User flow and the Detail/Edit screen -- only the Action column's
@@ -156,29 +157,29 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
     ) : (
       <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
-              <tr>
-                <th className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-center text-2xs md:text-xs font-bold uppercase tracking-wider whitespace-nowrap w-10 sm:w-12">No.</th>
-                <th className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-left text-2xs md:text-xs font-bold uppercase tracking-wider whitespace-nowrap">Access Profile</th>
-                <th className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-left text-2xs md:text-xs font-bold uppercase tracking-wider whitespace-nowrap">Status</th>
-                <th className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-center text-2xs md:text-xs font-bold uppercase tracking-wider whitespace-nowrap">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
+          <TableMarkup.Root className="w-full">
+            <TableMarkup.Head className="bg-slate-50 border-b border-slate-200 text-slate-500">
+              <TableMarkup.Row>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell8}>No.</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Access Profile</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Status</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-center text-2xs md:text-xs font-bold uppercase tracking-wider whitespace-nowrap">Action</TableMarkup.HeaderCell>
+              </TableMarkup.Row>
+            </TableMarkup.Head>
+            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
               {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="p-0">
+                <TableMarkup.Row>
+                  <TableMarkup.Cell colSpan={4} className="p-0">
                     <TableEmptyState title="No access profiles match your search" description={noSearchMatchDescription} />
-                  </td>
-                </tr>
+                  </TableMarkup.Cell>
+                </TableMarkup.Row>
               ) : (
                 rows.map((row, index) => (
-                  <tr key={row.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-xs sm:text-sm text-center text-slate-500 font-medium">
+                  <TableMarkup.Row key={row.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <TableMarkup.Cell className={TABLE_STYLES.cell1}>
                       {index + 1}
-                    </td>
-                    <td className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-xs sm:text-sm">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-xs sm:text-sm">
                       <div className="flex items-center gap-2.5">
                         <div className="h-7 w-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
                           <IconUserKey className="h-3.5 w-3.5 text-emerald-600" />
@@ -188,20 +189,20 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
                           <p className="text-2xs text-slate-400 truncate">{row.code}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                       <Badge color={row.active ? "emerald" : "slate"} size="sm" showDot>
                         {row.active ? "Active" : "Inactive"}
                       </Badge>
-                    </td>
-                    <td className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-center whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-1.5 px-2 sm:py-2.5 sm:px-4 text-center whitespace-nowrap">
                       {row.actionSlot}
-                    </td>
-                  </tr>
+                    </TableMarkup.Cell>
+                  </TableMarkup.Row>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableMarkup.Body>
+          </TableMarkup.Root>
         </div>
       </div>
     )}

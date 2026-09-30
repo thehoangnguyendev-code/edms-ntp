@@ -18,6 +18,7 @@ import {
   type MaterialAuditEntry,
 } from "./materialTabMockData";
 import { formatAuditActionLabel } from "@/features/audit-trail/utils/actionBadge";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface MaterialAuditTrailTabProps {
   mockData?: MaterialAuditEntry[];
@@ -395,39 +396,39 @@ export const MaterialAuditTrailTab: React.FC<MaterialAuditTrailTabProps> = ({
             isDragging ? "cursor-grabbing select-none" : "cursor-grab"
           )}
         >
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-30">
-              <tr>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-16">No.</th>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Timestamp</th>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">User</th>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Employee ID</th>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Position</th>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Department</th>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Action</th>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Changes</th>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Reason</th>
-                <th className="px-2 py-2.5 sm:px-4 sm:py-3.5 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">IP / Device</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
+          <TableMarkup.Root className="w-full">
+            <TableMarkup.Head className="bg-slate-50 border-b border-slate-200 sticky top-0 z-30">
+              <TableMarkup.Row>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell2}>No.</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell3}>Timestamp</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell3}>User</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell3}>Employee ID</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell3}>Position</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell3}>Department</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell3}>Action</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell3}>Changes</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell3}>Reason</TableMarkup.HeaderCell>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell3}>IP / Device</TableMarkup.HeaderCell>
+              </TableMarkup.Row>
+            </TableMarkup.Head>
+            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
               {paginatedData.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="p-0">
+                <TableMarkup.Row>
+                  <TableMarkup.Cell colSpan={10} className="p-0">
                     <TableEmptyState
                      
                       title="No audit entries found"
                       description={searchQuery || selectedAction !== "all" ? "Try adjusting your filters or search query" : emptyMessage}
                     />
-                  </td>
-                </tr>
+                  </TableMarkup.Cell>
+                </TableMarkup.Row>
               ) : (
                 paginatedData.map((entry, index) => (
-                  <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap text-center">
+                  <TableMarkup.Row key={entry.id} className="hover:bg-slate-50/80 transition-colors">
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap text-center">
                       <div className="text-xs sm:text-sm text-slate-500 font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</div>
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <span className="text-xs sm:text-sm font-medium text-slate-700">
                           {entry.timestamp.split(" ")[0]}
@@ -436,33 +437,33 @@ export const MaterialAuditTrailTab: React.FC<MaterialAuditTrailTabProps> = ({
                           {entry.timestamp.split(" ")[1]}
                         </span>
                       </div>
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                       <div className="text-xs sm:text-sm font-medium text-slate-900">{entry.user.fullName}</div>
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                       <div
                         className="text-xs sm:text-sm font-medium text-emerald-600 cursor-pointer hover:underline"
                         onClick={() => navigateTo(USER_MANAGEMENT_ROUTES.PROFILE(entry.user.id))}
                       >
                         {entry.user.employeeCode}
                       </div>
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                       <div className="text-xs sm:text-sm text-slate-600">{entry.user.position}</div>
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                       <div className="text-xs sm:text-sm text-slate-500">{entry.user.department}</div>
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                       <span className={cn(
                         "inline-flex items-center px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-2xs font-medium border",
                         getActionBadge(entry.actionType)
                       )}>
                         {formatAuditActionLabel(entry.action)}
                       </span>
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                       {entry.changes && entry.changes.length > 0 ? (
                         <button
                           onClick={() => openChangesModal(entry)}
@@ -473,15 +474,15 @@ export const MaterialAuditTrailTab: React.FC<MaterialAuditTrailTabProps> = ({
                       ) : (
                         <span className="text-xs sm:text-sm text-slate-400">No changes</span>
                       )}
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                       {entry.reason ? (
                         <p className="text-xs sm:text-sm text-slate-700">{entry.reason}</p>
                       ) : (
                         <span className="text-xs sm:text-sm text-slate-400">—</span>
                       )}
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="px-2 py-2 sm:px-4 sm:py-4 whitespace-nowrap">
                       <div className="flex items-start gap-1.5 sm:gap-2">
                         <Monitor className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0 mt-0.5" />
                         <div>
@@ -489,12 +490,12 @@ export const MaterialAuditTrailTab: React.FC<MaterialAuditTrailTabProps> = ({
                           <div className="text-2xs text-slate-500 mt-0.5">{entry.device}</div>
                         </div>
                       </div>
-                    </td>
-                  </tr>
+                    </TableMarkup.Cell>
+                  </TableMarkup.Row>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableMarkup.Body>
+          </TableMarkup.Root>
         </div>
 
         <TablePagination

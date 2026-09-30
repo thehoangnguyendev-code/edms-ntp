@@ -2,6 +2,7 @@ import React from "react";
 import {
   PDFViewer,
   ZoomPlugin,
+  ZoomMode,
   type PDFViewerConfig,
   type PluginRegistry,
   type ZoomLevel,
@@ -60,9 +61,9 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
   const effectiveAllowDownload = systemAllowsDownloadAndPrint && (allowDownload ?? true) && !forceHideDownloadAndPrint;
   const effectiveAllowPrint = systemAllowsDownloadAndPrint && (allowPrint ?? true) && !forceHideDownloadAndPrint;
   const defaultZoomLevel: ZoomLevel = pdfPreview.defaultZoom === "page-fit"
-    ? "fit-page"
+    ? ZoomMode.FitPage
     : pdfPreview.defaultZoom === "page-width"
-      ? "fit-width"
+      ? ZoomMode.FitWidth
       : 1;
   // The EmbedPDF React wrapper initialises its engine once per mount. Include
   // every viewer policy input in the key so a live Admin configuration update

@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Badge } from "@/components/ui/badge/Badge";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface ExpandUserAccessProfilesRowProps {
   userId: string;
@@ -38,7 +39,7 @@ export const ExpandUserAccessProfilesRow: React.FC<ExpandUserAccessProfilesRowPr
           transition={transitionConfig}
           className="bg-slate-50/50"
         >
-          <td colSpan={totalColumnsCount} className="p-0 border-b border-slate-200">
+          <TableMarkup.Cell colSpan={totalColumnsCount} className="p-0 border-b border-slate-200">
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -54,24 +55,24 @@ export const ExpandUserAccessProfilesRow: React.FC<ExpandUserAccessProfilesRowPr
                         Access Profiles ({accessProfileNames.length})
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
-                        <table className="text-xs table-auto w-auto">
-                          <thead>
-                            <tr className="bg-slate-100 border-b border-slate-200">
-                              <th className="py-1.5 px-2.5 text-center text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap w-10">No.</th>
-                              <th className="py-1.5 px-2.5 text-left text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">Access Profile</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
+                        <TableMarkup.Root className="text-xs table-auto w-auto">
+                          <TableMarkup.Head>
+                            <TableMarkup.Row className="bg-slate-100 border-b border-slate-200">
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>No.</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Access Profile</TableMarkup.HeaderCell>
+                            </TableMarkup.Row>
+                          </TableMarkup.Head>
+                          <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                             {accessProfileNames.map((name, idx) => (
-                              <tr key={name} className="hover:bg-slate-50 transition-colors">
-                                <td className="py-1.5 px-2.5 text-center text-slate-500 font-medium border-b border-slate-100">{idx + 1}</td>
-                                <td className="py-1.5 px-2.5 text-slate-700 border-b border-slate-100">
+                              <TableMarkup.Row key={name} className="hover:bg-slate-50 transition-colors">
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-center text-slate-500 font-medium border-b border-slate-100">{idx + 1}</TableMarkup.Cell>
+                                <TableMarkup.Cell className="py-1.5 px-2.5 text-slate-700 border-b border-slate-100">
                                   {name}
-                                </td>
-                              </tr>
+                                </TableMarkup.Cell>
+                              </TableMarkup.Row>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableMarkup.Body>
+                        </TableMarkup.Root>
                       </div>
                     </div>
                   ) : (
@@ -82,7 +83,7 @@ export const ExpandUserAccessProfilesRow: React.FC<ExpandUserAccessProfilesRowPr
                 </div>
               </div>
             </motion.div>
-          </td>
+          </TableMarkup.Cell>
         </motion.tr>
       )}
     </AnimatePresence>

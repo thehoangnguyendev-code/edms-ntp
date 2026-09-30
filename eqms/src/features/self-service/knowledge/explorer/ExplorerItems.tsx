@@ -10,6 +10,7 @@ import type { KnowledgePortalDocument } from "@/services/api/knowledge";
 import { FileIcon, FolderIcon } from "./ExplorerIcons";
 import { FOCUS_RING, GROUP_LABEL } from "./explorerStyles";
 import { folderColor, pluralize, typeBadgeColor, type FolderEntry, type Selection, type ViewMode } from "./explorerModel";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface ExplorerItemsProps {
   folders: FolderEntry[];
@@ -128,26 +129,26 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
             })}
           </div> : (
             <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <table className="w-full border-collapse">
-                <thead><tr className="bg-slate-50 text-left">
-                  <th className="border-b border-slate-200 px-2.5 py-2 text-2xs font-semibold text-slate-600 md:text-xs">Name</th>
-                  <th className="hidden border-b border-slate-200 px-2.5 py-2 text-2xs font-semibold text-slate-600 sm:table-cell md:text-xs">Type</th>
-                  <th className="border-b border-slate-200 px-2.5 py-2 text-right text-2xs font-semibold text-slate-600 md:text-xs">Documents</th>
-                </tr></thead>
-                <tbody role="listbox" aria-label="Folders" className="divide-y divide-slate-100">
+              <TableMarkup.Root className="w-full border-collapse">
+                <TableMarkup.Head><TableMarkup.Row className="bg-slate-50 text-left">
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.table1}>Name</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.table2}>Type</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className="border-b border-slate-200 px-2.5 py-2 text-right text-2xs font-semibold text-slate-600 md:text-xs">Documents</TableMarkup.HeaderCell>
+                </TableMarkup.Row></TableMarkup.Head>
+                <TableMarkup.Body role="listbox" aria-label="Folders" className="divide-y divide-slate-100">
                   {folders.map((folder) => {
                     const sel = { type: "folder", key: folder.key } as const;
                     const selected = isFolderSelected(folder.key);
                     return <motion.tr key={folder.key} layout={!reduceMotion} {...stagger(order++)} role="option" aria-selected={selected} tabIndex={0} data-item={`folder:${folder.key}`}
                       onClick={() => (singleTapOpen ? onOpen(sel) : onSelect(sel))} onDoubleClick={() => onOpen(sel)} onContextMenu={(e) => onContextMenu(e, sel)} onKeyDown={itemKeys(() => onOpen(sel), () => onSelect(sel))}
                       className={cn("cursor-default select-none bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500", selected ? "bg-emerald-50" : "hover:bg-slate-50")}>
-                      <td className="px-2.5 py-2"><span className="flex min-w-0 items-center gap-2.5"><FolderIcon color={folderColor(folder.label)} className="h-7 w-8 shrink-0" /><span className="min-w-0"><span className="block truncate text-xs font-medium text-slate-900 md:text-sm"><Highlight text={folder.label} term={highlight} /></span><span className="block text-2xs text-slate-500 sm:hidden">{pluralize(folder.documentCount, "document")}</span></span></span></td>
-                      <td className="hidden px-2.5 py-2 text-xs text-slate-600 sm:table-cell md:text-sm">{folder.isKnowledgeBase ? "Knowledge Base" : "Folder"}</td>
-                      <td className="px-2.5 py-2 text-right text-xs tabular-nums text-slate-600 md:text-sm">{folder.documentCount}</td>
+                      <TableMarkup.Cell className="px-2.5 py-2"><span className="flex min-w-0 items-center gap-2.5"><FolderIcon color={folderColor(folder.label)} className="h-7 w-8 shrink-0" /><span className="min-w-0"><span className="block truncate text-xs font-medium text-slate-900 md:text-sm"><Highlight text={folder.label} term={highlight} /></span><span className="block text-2xs text-slate-500 sm:hidden">{pluralize(folder.documentCount, "document")}</span></span></span></TableMarkup.Cell>
+                      <TableMarkup.Cell className="hidden px-2.5 py-2 text-xs text-slate-600 sm:table-cell md:text-sm">{folder.isKnowledgeBase ? "Knowledge Base" : "Folder"}</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-2.5 py-2 text-right text-xs tabular-nums text-slate-600 md:text-sm">{folder.documentCount}</TableMarkup.Cell>
                     </motion.tr>;
                   })}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
           )}
         </section>
@@ -189,18 +190,18 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
             </div>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 text-left">
-                    <th className="border-b border-slate-200 px-2.5 py-2 text-2xs font-semibold text-slate-600 md:text-xs">Name</th>
-                    <th className="hidden border-b border-slate-200 px-2.5 py-2 text-2xs font-semibold text-slate-600 sm:table-cell md:text-xs">Number</th>
-                    <th className="hidden border-b border-slate-200 px-2.5 py-2 text-2xs font-semibold text-slate-600 lg:table-cell md:text-xs">Department</th>
-                    <th className="hidden border-b border-slate-200 px-2.5 py-2 text-2xs font-semibold text-slate-600 sm:table-cell md:text-xs">Type</th>
-                    <th className="hidden border-b border-slate-200 px-2.5 py-2 text-right text-2xs font-semibold text-slate-600 md:table-cell md:text-xs">Views</th>
-                    <th className="hidden border-b border-slate-200 px-2.5 py-2 text-right text-2xs font-semibold text-slate-600 md:table-cell md:text-xs">Helpful</th>
-                  </tr>
-                </thead>
-                <tbody role="listbox" aria-label="Documents" className="divide-y divide-slate-100">
+              <TableMarkup.Root className="w-full border-collapse">
+                <TableMarkup.Head>
+                  <TableMarkup.Row className="bg-slate-50 text-left">
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.table1}>Name</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.table2}>Number</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="hidden border-b border-slate-200 px-2.5 py-2 text-2xs font-semibold text-slate-600 lg:table-cell md:text-xs">Department</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.table2}>Type</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.table3}>Views</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.table3}>Helpful</TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body role="listbox" aria-label="Documents" className="divide-y divide-slate-100">
                   {docs.map((item) => {
                     const doc = item.document;
                     const sel = { type: "doc", id: doc.id } as const;
@@ -220,7 +221,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                         onKeyDown={itemKeys(() => onOpen(sel), () => onSelect(sel))}
                         className={cn("cursor-default select-none bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500", selected ? "bg-emerald-50" : "hover:bg-slate-50")}
                       >
-                        <td className="px-2.5 py-2">
+                        <TableMarkup.Cell className="px-2.5 py-2">
                           <span className="flex min-w-0 items-center gap-2.5">
                             <FileIcon type={doc.documentType} className="h-6 w-5 shrink-0" />
                             <span className="min-w-0">
@@ -229,19 +230,19 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                             </span>
                             {item.featured && <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-500" aria-label="Featured" />}
                           </span>
-                        </td>
-                        <td className="hidden whitespace-nowrap px-2.5 py-2 text-xs tabular-nums text-slate-600 sm:table-cell md:text-sm"><Highlight text={doc.documentNumber} term={highlight} /></td>
-                        <td className="hidden whitespace-nowrap px-2.5 py-2 text-xs text-slate-600 lg:table-cell md:text-sm">{doc.department || "-"}</td>
-                        <td className="hidden px-2.5 py-2 sm:table-cell">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="hidden whitespace-nowrap px-2.5 py-2 text-xs tabular-nums text-slate-600 sm:table-cell md:text-sm"><Highlight text={doc.documentNumber} term={highlight} /></TableMarkup.Cell>
+                        <TableMarkup.Cell className="hidden whitespace-nowrap px-2.5 py-2 text-xs text-slate-600 lg:table-cell md:text-sm">{doc.department || "-"}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="hidden px-2.5 py-2 sm:table-cell">
                           <Badge color={typeBadgeColor(doc.documentType)} size="sm">{doc.documentType || "Document"}</Badge>
-                        </td>
-                        <td className="hidden px-2.5 py-2 text-right text-xs tabular-nums text-slate-600 md:table-cell md:text-sm">{item.views}</td>
-                        <td className="hidden px-2.5 py-2 text-right text-xs tabular-nums text-slate-600 md:table-cell md:text-sm">{item.helpfulVotes}</td>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={TABLE_STYLES.table4}>{item.views}</TableMarkup.Cell>
+                        <TableMarkup.Cell className={TABLE_STYLES.table4}>{item.helpfulVotes}</TableMarkup.Cell>
                       </motion.tr>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
           )}
         </section>

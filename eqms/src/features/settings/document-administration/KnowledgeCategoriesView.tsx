@@ -41,6 +41,7 @@ import {
   type KnowledgeHierarchy,
 } from "@/services/api/knowledge";
 import { formatDateTime } from "@/utils/format";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const COLUMNS = [
   { key: "name", label: "Name", sortable: true },
@@ -405,20 +406,20 @@ export const KnowledgeCategoriesView: React.FC = () => {
                   )}
                   {...dragEvents}
                 >
-                  <table className="w-full min-w-max border-spacing-0 text-left">
-                    <thead className="sticky top-0 z-30">
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 py-3 px-2 border-b-2 border-slate-200 w-8" />
-                        <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center">
+                  <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
+                    <TableMarkup.Head className="sticky top-0 z-30">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.emptyCell4} />
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell29}>
                           No.
-                        </th>
+                        </TableMarkup.HeaderCell>
                         {COLUMNS.map((col) => {
                           const isSorted = sortKey === col.key;
                           return (
-                            <th
+                            <TableMarkup.HeaderCell
                               key={col.key}
                               onClick={() => handleSort(col.key)}
-                              className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors cursor-pointer hover:bg-slate-100 hover:text-slate-700 group"
+                              className={TABLE_STYLES.headerCell30}
                             >
                               <div className="flex items-center justify-between gap-2 w-full">
                                 <span className="truncate">{col.label}</span>
@@ -441,22 +442,22 @@ export const KnowledgeCategoriesView: React.FC = () => {
                                   />
                                 </div>
                               </div>
-                            </th>
+                            </TableMarkup.HeaderCell>
                           );
                         })}
-                        <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell24}>
                           Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                        </TableMarkup.HeaderCell>
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                       {rows.map((row, index) => {
                         const tdClass =
                           "py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap";
                         return (
                           <React.Fragment key={row.id}>
-                            <tr className="hover:bg-slate-50/80 transition-colors group">
-                              <td
+                            <TableMarkup.Row className="hover:bg-slate-50/80 transition-colors group">
+                              <TableMarkup.Cell
                                 className="py-3 px-2 text-center whitespace-nowrap"
                                 onClick={() => toggleExpanded(row.id)}
                               >
@@ -474,13 +475,13 @@ export const KnowledgeCategoriesView: React.FC = () => {
                                     <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500" />
                                   </motion.span>
                                 </button>
-                              </td>
-                              <td className={cn(tdClass, "text-center")}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={cn(tdClass, "text-center")}>
                                 <span className="text-slate-500 font-medium">
                                   {(page - 1) * pageSize + index + 1}
                                 </span>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <span
                                   className="font-medium text-emerald-600 cursor-pointer hover:underline"
                                   onClick={() =>
@@ -510,12 +511,12 @@ export const KnowledgeCategoriesView: React.FC = () => {
                                     {row.description}
                                   </div>
                                 )}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {row.determinatorLabel}
-                              </td>
-                              <td className={tdClass}>{row.levels.length}</td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>{row.levels.length}</TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <Badge
                                   size="sm"
                                   color={row.active ? "emerald" : "slate"}
@@ -523,18 +524,18 @@ export const KnowledgeCategoriesView: React.FC = () => {
                                 >
                                   {row.active ? "Active" : "Inactive"}
                                 </Badge>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {row.updatedAt
                                   ? formatDateTime(row.updatedAt)
                                   : "-"}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {row.updatedByName || "-"}
-                              </td>
-                              <td
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell
                                 onClick={(e) => e.stopPropagation()}
-                                className="sticky right-0 z-10 bg-white py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
+                                className={TABLE_STYLES.cell34}
                               >
                                 <button
                                   ref={getRef(row.id)}
@@ -548,8 +549,8 @@ export const KnowledgeCategoriesView: React.FC = () => {
                                 >
                                   <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
                                 </button>
-                              </td>
-                            </tr>
+                              </TableMarkup.Cell>
+                            </TableMarkup.Row>
                             <AnimatePresence initial={false}>
                               {expanded.has(row.id) && (
                                 <motion.tr
@@ -560,7 +561,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                                   transition={transitionConfig}
                                   className="bg-slate-50/50"
                                 >
-                                  <td
+                                  <TableMarkup.Cell
                                     colSpan={COLUMNS.length + 3}
                                     className="p-0 border-b border-slate-200"
                                   >
@@ -600,15 +601,15 @@ export const KnowledgeCategoriesView: React.FC = () => {
                                         </div>
                                       </div>
                                     </motion.div>
-                                  </td>
+                                  </TableMarkup.Cell>
                                 </motion.tr>
                               )}
                             </AnimatePresence>
                           </React.Fragment>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
                 <TablePagination
                   currentPage={page}

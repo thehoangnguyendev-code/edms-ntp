@@ -7,6 +7,7 @@ import { reportsApi, type ReportDefinition, type ReportFormat } from "@/services
 import { ROUTES } from "@/app/routes.constants";
 import { ReportPageSection } from "../shared/ReportPageSection";
 import { parseReportFormats } from "../shared/reportUtils";
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 export function ReportTemplatesView() {
   const navigate = useNavigate();
@@ -73,6 +74,6 @@ export function ReportTemplatesView() {
         <p className="mt-4 text-xs text-slate-500">Preview is server-scoped and never creates an official artifact.</p><div className="mt-5 flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={!selected.active || previewing} onClick={preview}><Eye className="h-4 w-4" />{previewing ? "Loading..." : "Preview"}</Button><Button size="sm" disabled={!selected.active || submitting} onClick={generate}><Play className="h-4 w-4" />{submitting ? "Queueing..." : "Generate Report"}</Button></div>
       </> : <p className="mt-3 text-sm text-slate-500">Select a report definition.</p>}</div>
     </div>
-    {previewRows && <div className="mt-5 overflow-hidden rounded-xl border border-slate-200"><div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3"><p className="text-sm font-semibold text-slate-800">Server-scoped preview</p><Button variant="ghost" size="sm" onClick={() => setPreviewRows(null)}>Close</Button></div><div className="max-h-80 overflow-auto"><table className="w-full min-w-max text-sm"><tbody>{previewRows.map((row, index) => <tr key={index} className="border-b border-slate-100 last:border-b-0">{row.map((cell, cellIndex) => index === 0 ? <th key={cellIndex} className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">{cell}</th> : <td key={cellIndex} className="px-3 py-2 text-slate-700">{cell}</td>)}</tr>)}</tbody></table></div></div>}
+    {previewRows && <div className="mt-5 overflow-hidden rounded-xl border border-slate-200"><div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3"><p className="text-sm font-semibold text-slate-800">Server-scoped preview</p><Button variant="ghost" size="sm" onClick={() => setPreviewRows(null)}>Close</Button></div><div className="max-h-80 overflow-auto"><TableMarkup.Root className="w-full min-w-max text-sm"><TableMarkup.Body>{previewRows.map((row, index) => <TableMarkup.Row key={index} className="border-b border-slate-100 last:border-b-0">{row.map((cell, cellIndex) => index === 0 ? <TableMarkup.HeaderCell key={cellIndex} className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500">{cell}</TableMarkup.HeaderCell> : <TableMarkup.Cell key={cellIndex} className="px-3 py-2 text-slate-700">{cell}</TableMarkup.Cell>)}</TableMarkup.Row>)}</TableMarkup.Body></TableMarkup.Root></div></div>}
   </ReportPageSection>;
 }

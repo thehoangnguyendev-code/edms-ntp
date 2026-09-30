@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/filter/FilterDrawer";
 import { FilterOptionButton } from "@/components/ui/filter/FilterOptionButton";
 import type { AuditTrailRecord } from "./types";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const formatSignatureId = (id?: string | null): string => {
   if (!id || !id.trim()) return "";
@@ -697,12 +698,12 @@ export const AuditTrailView: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  <table className="w-full min-w-[1760px]">
-                    <thead className="sticky top-0 z-30">
-                      <tr>
-                        <th className="sticky top-0 z-20 w-16 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <TableMarkup.Root className="w-full min-w-[1760px]">
+                    <TableMarkup.Head className="sticky top-0 z-30">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell40}>
                           No.
-                        </th>
+                        </TableMarkup.HeaderCell>
                         {[
                           { label: "Timestamp", key: "timestamp" },
                           { label: "User", key: "user" },
@@ -718,7 +719,7 @@ export const AuditTrailView: React.FC = () => {
                           { label: "IP Address" },
                           { label: "Device / Browser" },
                         ].map(({ label, key }) => (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={label}
                             onClick={
                               key
@@ -754,15 +755,15 @@ export const AuditTrailView: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         ))}
-                        <th className="sticky right-0 top-0 z-30 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-500 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200">
+                        <TableMarkup.HeaderCell className="sticky right-0 top-0 z-30 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-500 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200">
                           Action
-                        </th>
-                      </tr>
-                    </thead>
+                        </TableMarkup.HeaderCell>
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
 
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                       {records.map((record, index) => {
                         const user = record.user;
                         const fullName =
@@ -784,20 +785,20 @@ export const AuditTrailView: React.FC = () => {
                         const statusChange = buildStatusChange(record);
 
                         return (
-                          <tr
+                          <TableMarkup.Row
                             key={record.id}
                             className="group transition-colors hover:bg-slate-50/80"
                           >
-                            <td className="whitespace-nowrap px-4 py-3 text-center text-xs font-medium text-slate-700 sm:text-sm">
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-center text-xs font-medium text-slate-700 sm:text-sm">
                               {(currentPage - 1) * itemsPerPage + index + 1}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               {formatDateTime(record.timestamp) || "-"}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               {fullName}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
                               {profileId && user?.employeeCode ? (
                                 <button
                                   type="button"
@@ -815,8 +816,8 @@ export const AuditTrailView: React.FC = () => {
                                   {employeeId}
                                 </span>
                               )}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               {accessProfileNames.length === 0 ? (
                                 <Badge size="sm" color="amber" title="No Access Profile was assigned at the time of this event.">
                                   Unassigned
@@ -831,22 +832,22 @@ export const AuditTrailView: React.FC = () => {
                                   )}
                                 </span>
                               )}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               {moduleLabel}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               {objectType}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               <div
                                 className="max-w-[200px] truncate"
                                 title={objectCode}
                               >
                                 {objectCode}
                               </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               <span
                                 className={cn(
                                   "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
@@ -855,11 +856,11 @@ export const AuditTrailView: React.FC = () => {
                               >
                                 {formatAuditActionLabel(action)}
                               </span>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               {statusChange}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               <div className="flex flex-col gap-1 items-start">
                                 <Badge
                                   color={
@@ -878,29 +879,29 @@ export const AuditTrailView: React.FC = () => {
                                   </span>
                                 )} */}
                               </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               {formatProgressDuration(
                                 record.progressDurationSeconds,
                               )}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               <div
                                 className="max-w-[220px] truncate"
                                 title={record.ipAddress || "-"}
                               >
                                 {record.ipAddress || "-"}
                               </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                               <div
                                 className="max-w-[260px] truncate"
                                 title={device}
                               >
                                 {device}
                               </div>
-                            </td>
-                            <td
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell
                               onClick={(e) => e.stopPropagation()}
                               className="sticky right-0 z-30 whitespace-nowrap bg-white px-4 py-3 text-center text-xs shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:bottom-0 before:left-0 before:top-0 before:w-[1px] before:bg-slate-200 group-hover:bg-slate-50 sm:text-sm"
                             >
@@ -914,12 +915,12 @@ export const AuditTrailView: React.FC = () => {
                               >
                                 <MoreVertical className="h-3.5 w-3.5 text-slate-600 sm:h-4 sm:w-4" />
                               </button>
-                            </td>
-                          </tr>
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 )}
               </div>
 

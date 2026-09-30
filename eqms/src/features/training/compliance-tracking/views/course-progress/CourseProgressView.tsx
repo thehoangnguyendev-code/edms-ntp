@@ -49,6 +49,7 @@ import { getStatusColorClass } from "@/utils/status";
 import type { EnrollmentStatus, ResultStatus, EmployeeProgress, CourseProgressInfo } from "../../../types";
 import { complianceTrackingRepository } from "../../repository";
 import { IconFilter2 } from "@tabler/icons-react";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 /* ------------------------------------------------------------------ */
 /*  Local Dropdown Component                                           */
@@ -772,12 +773,12 @@ export const CourseProgressView: React.FC = () => {
               )}
               {...dragEvents}
             >
-              <table className="w-full  border-spacing-0 text-left">
-                <thead>
-                  <tr>
-                    <th className="sticky top-0 z-20 bg-slate-50 py-2.5 px-2 md:py-3.5 md:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
+              <TableMarkup.Root className="w-full  border-spacing-0 text-left">
+                <TableMarkup.Head>
+                  <TableMarkup.Row>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell28}>
                       No.
-                    </th>
+                    </TableMarkup.HeaderCell>
                     {[
                       { label: "Employee ID", id: "userId" },
                       { label: "Name", id: "name" },
@@ -794,7 +795,7 @@ export const CourseProgressView: React.FC = () => {
                       const isSorted = sortConfig.key === col.id;
                       const canSort = col.id !== null && col.sortable !== false;
                       return (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={idx}
                           onClick={canSort ? () => handleSort(col.id!) : undefined}
                           className={cn(
@@ -813,52 +814,52 @@ export const CourseProgressView: React.FC = () => {
                               </div>
                             )}
                           </div>
-                        </th>
+                        </TableMarkup.HeaderCell>
                       );
                     })}
-                    <th className="sticky top-0 right-0 z-30 bg-slate-50 py-2.5 px-2 md:py-3.5 md:px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell23}>
                       Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
+                    </TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body className="bg-white">
                   {paginatedEmployees.length === 0 ? (
-                    <tr>
-                      <td colSpan={13}>
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell colSpan={13}>
                         <TableEmptyState
                           title="No Results Found"
                           description="No employees match your current filters. Try adjusting your search or filter criteria."
                         />
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   ) : (
                     paginatedEmployees.map((emp, index) => {
                       const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
                       const tdClass = "py-2.5 px-2 md:py-3.5 md:px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap";
                       return (
-                        <tr key={emp.userId} className="hover:bg-slate-50/80 transition-colors group">
-                          <td className={cn(tdClass, "text-center text-slate-500 font-medium")}>
+                        <TableMarkup.Row key={emp.userId} className="hover:bg-slate-50/80 transition-colors group">
+                          <TableMarkup.Cell className={cn(tdClass, "text-center text-slate-500 font-medium")}>
                             {rowNumber}
-                          </td>
-                          <td className={tdClass}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={tdClass}>
                             <span className="font-medium text-emerald-600 hover:underline hover:underline">{emp.userId}</span>
-                          </td>
-                          <td className={tdClass}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={tdClass}>
                             <div>
                               <p className="font-medium text-slate-900">{emp.fullName}</p>
                               <p className="text-2xs md:text-xs text-slate-500 mt-0.5">{emp.position}</p>
                             </div>
-                          </td>
-                          <td className={cn(tdClass, "text-slate-600 hidden lg:table-cell")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-slate-600 hidden lg:table-cell")}>
                             {emp.email}
-                          </td>
-                          <td className={cn(tdClass, "text-slate-700 hidden md:table-cell")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-slate-700 hidden md:table-cell")}>
                             {emp.department}
-                          </td>
-                          <td className={cn(tdClass, "text-slate-700 hidden lg:table-cell")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-slate-700 hidden lg:table-cell")}>
                             {emp.businessUnit}
-                          </td>
-                          <td className={cn(tdClass, "text-center")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-center")}>
                             <Badge
                               color={
                                 emp.enrollmentStatus === "Completed" ? "emerald" :
@@ -870,8 +871,8 @@ export const CourseProgressView: React.FC = () => {
                             >
                               {emp.enrollmentStatus}
                             </Badge>
-                          </td>
-                          <td className={cn(tdClass, "text-center")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-center")}>
                             {emp.score !== null ? (
                               <span
                                 className={cn(
@@ -886,22 +887,22 @@ export const CourseProgressView: React.FC = () => {
                             ) : (
                               <span className="text-slate-400">—</span>
                             )}
-                          </td>
-                          <td className={cn(tdClass, "text-center")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-center")}>
                             <Badge
                               color={emp.resultStatus === "Pass" ? "emerald" : emp.resultStatus === "Fail" ? "red" : "slate"}
                               size="sm"
                             >
                               {emp.resultStatus}
                             </Badge>
-                          </td>
-                          <td className={cn(tdClass, "text-center text-slate-700 hidden lg:table-cell")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-center text-slate-700 hidden lg:table-cell")}>
                             {emp.attempts > 0 ? emp.attempts : "—"}
-                          </td>
-                          <td className={cn(tdClass, "text-slate-700 hidden xl:table-cell")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-slate-700 hidden xl:table-cell")}>
                             {emp.completedAt ? formatDateUS(emp.completedAt) : "—"}
-                          </td>
-                          <td className={cn(tdClass, "text-center")}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className={cn(tdClass, "text-center")}>
                             {emp.enrollmentStatus === "Completed" ? (
                               <button
                                 className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-200 transition-colors"
@@ -916,8 +917,8 @@ export const CourseProgressView: React.FC = () => {
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
-                          </td>
-                          <td className="sticky right-0 z-10 bg-white border-b border-slate-200 py-2.5 px-2 md:py-3.5 md:px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="sticky right-0 z-10 bg-white border-b border-slate-200 py-2.5 px-2 md:py-3.5 md:px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors">
                             <button
                               ref={getRef(emp.userId)}
                               onClick={(e) => handleDropdownToggle(emp.userId, e)}
@@ -934,13 +935,13 @@ export const CourseProgressView: React.FC = () => {
                               position={dropdownPosition}
                               onNavigate={navigateTo}
                             />
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
 
             {filteredEmployees.length > 0 && (

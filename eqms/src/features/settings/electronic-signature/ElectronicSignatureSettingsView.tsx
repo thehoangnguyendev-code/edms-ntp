@@ -30,6 +30,7 @@ import {
 } from "@/services/api/electronicSignatureSettings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { IconCalendarTime } from "@tabler/icons-react";
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 const defaultSettings: ElectronicSignatureSettings = {
   signatureTimestampFormat: "dd-MMM-uuuu HH:mm:ss",
@@ -299,6 +300,8 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
     return <FullPageLoading text="Loading E-Sign Config..." />;
   }
 
+  const isDirty = JSON.stringify(settings) !== JSON.stringify(savedSettings);
+
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
@@ -310,7 +313,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
               size="sm"
               variant="outline-emerald"
               onClick={beginSave}
-              disabled={saving}
+              disabled={saving || !isDirty}
               className="gap-2 whitespace-nowrap"
             >
               {saving ? "Saving..." : "Save Changes"}
@@ -471,13 +474,13 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                 {/* Header lives in its own non-scrolling table, so the scrollbar below applies
                     only to the body rows, not the header row. Fixed layout + matching colgroup
                     widths keep the two tables' columns aligned. */}
-                <table className="w-full table-fixed">
-                  <colgroup>
-                    <col className="w-2/5" />
-                    <col className="w-3/5" />
-                  </colgroup>
-                  <thead>
-                    <tr>
+                <TableMarkup.Root className="w-full table-fixed">
+                  <TableMarkup.ColumnGroup>
+                    <TableMarkup.Column className="w-2/5" />
+                    <TableMarkup.Column className="w-3/5" />
+                  </TableMarkup.ColumnGroup>
+                  <TableMarkup.Head>
+                    <TableMarkup.Row>
                       {[
                         {
                           label: "Code",
@@ -488,17 +491,17 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                           hint: "Readable label shown in the signing modal (e.g. Prepared).",
                         },
                       ].map((col) => (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={col.label}
                           title={col.hint}
                           className="bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-help text-left"
                         >
                           {col.label}
-                        </th>
+                        </TableMarkup.HeaderCell>
                       ))}
-                    </tr>
-                  </thead>
-                </table>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                </TableMarkup.Root>
                 <div
                   ref={scrollerRef as React.RefObject<HTMLDivElement>}
                   className={cn(
@@ -507,40 +510,40 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                   )}
                   {...dragEvents}
                 >
-                  <table className="w-full table-fixed">
-                    <colgroup>
-                      <col className="w-2/5" />
-                      <col className="w-3/5" />
-                    </colgroup>
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                  <TableMarkup.Root className="w-full table-fixed">
+                    <TableMarkup.ColumnGroup>
+                      <TableMarkup.Column className="w-2/5" />
+                      <TableMarkup.Column className="w-3/5" />
+                    </TableMarkup.ColumnGroup>
+                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                       {meaningSearchLoading ? (
-                        <tr>
-                          <td
+                        <TableMarkup.Row>
+                          <TableMarkup.Cell
                             colSpan={2}
                             className="px-4 py-6 text-center text-sm text-slate-400"
                           >
                             Searching...
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       ) : displayedMeanings.length === 0 ? (
-                        <tr>
-                          <td
+                        <TableMarkup.Row>
+                          <TableMarkup.Cell
                             colSpan={2}
                             className="px-4 py-6 text-center text-sm text-slate-400"
                           >
                             No signature meanings match "{meaningSearch}".
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       ) : (
                         displayedMeanings.map((meaning) => (
-                          <tr
+                          <TableMarkup.Row
                             key={meaning.code}
                             className="hover:bg-slate-50/80 transition-colors"
                           >
-                            <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900 align-middle truncate">
+                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900 align-middle truncate">
                               {meaning.code}
-                            </td>
-                            <td className="py-3 px-4 align-middle">
+                            </TableMarkup.Cell>
+                            <TableMarkup.Cell className="py-3 px-4 align-middle">
                               <input
                                 className="w-full min-w-[100px] h-9 rounded-lg border border-slate-200 px-2.5 text-xs sm:text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                 value={meaning.displayName}
@@ -550,12 +553,12 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                                   })
                                 }
                               />
-                            </td>
-                          </tr>
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
                         ))
                       )}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
               </div>
             )}

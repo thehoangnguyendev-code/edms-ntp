@@ -12,6 +12,7 @@ import { cn } from "@/components/ui/utils";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { ROUTES } from "@/app/routes.constants";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // ─── Types ───────────────────────────────────────────────────────────
 export interface ImpactMaterial {
@@ -131,33 +132,33 @@ export const ImpactAssessmentModal: React.FC<ImpactAssessmentModalProps> = ({
               {...dragEvents}
               className="border border-slate-200 rounded-xl overflow-x-auto select-none cursor-grab active:cursor-grabbing"
             >
-              <table className="w-full text-xs sm:text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="px-4 py-2.5 text-left font-bold text-slate-500 uppercase tracking-wider text-2xs md:text-xs whitespace-nowrap">
+              <TableMarkup.Root className="w-full text-xs sm:text-sm">
+                <TableMarkup.Head>
+                  <TableMarkup.Row className="bg-slate-50 border-b border-slate-200">
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell6}>
                       No.
-                    </th>
-                    <th className="px-4 py-2.5 text-left font-bold text-slate-500 uppercase tracking-wider text-2xs md:text-xs whitespace-nowrap">
+                    </TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell6}>
                       Course ID
-                    </th>
-                    <th className="px-4 py-2.5 text-left font-bold text-slate-500 uppercase tracking-wider text-2xs md:text-xs whitespace-nowrap">
+                    </TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell6}>
                       Course Name
-                    </th>
-                    <th className="px-4 py-2.5 text-left font-bold text-slate-500 uppercase tracking-wider text-2xs md:text-xs whitespace-nowrap">
+                    </TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell6}>
                       Employees
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
+                    </TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body className="divide-y divide-slate-100">
                   {linkedCourses.map((course, index) => (
-                    <tr
+                    <TableMarkup.Row
                       key={course.courseId}
                       className="bg-white hover:bg-slate-50/80 transition-colors"
                     >
-                      <td className="px-4 py-2.5 text-slate-500 font-medium">
+                      <TableMarkup.Cell className="px-4 py-2.5 text-slate-500 font-medium">
                         {index + 1}
-                      </td>
-                      <td className="px-4 py-2.5 font-medium text-emerald-600 hover:underline whitespace-nowrap">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-4 py-2.5 font-medium text-emerald-600 hover:underline whitespace-nowrap">
                         <a
                           href={ROUTES.TRAINING.COURSE_DETAIL(course.courseId)}
                           target="_blank"
@@ -166,19 +167,19 @@ export const ImpactAssessmentModal: React.FC<ImpactAssessmentModalProps> = ({
                         >
                           {course.courseId}
                         </a>
-                      </td>
-                      <td className="px-4 py-2.5 font-medium text-slate-900 whitespace-nowrap">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-4 py-2.5 font-medium text-slate-900 whitespace-nowrap">
                         {course.courseName}
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-4 py-2.5 text-right">
                         <span className="inline-flex items-center gap-1 text-slate-700 font-semibold">
                           {course.employeeCount}
                         </span>
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   ))}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
           )}
         </div>

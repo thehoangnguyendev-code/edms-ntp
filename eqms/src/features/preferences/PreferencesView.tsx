@@ -27,6 +27,7 @@ export const PreferencesView: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [saveHandler, setSaveHandler] = useState<null | (() => Promise<void>)>(null);
     const [resetHandler, setResetHandler] = useState<null | (() => void)>(null);
+    const [isDirty, setIsDirty] = useState(false);
   // Wrap setSaveHandler so React doesn't treat the passed function as a state updater.
   const registerSaveHandler = useCallback((handler: (() => Promise<void>) | null) => {
     setSaveHandler(() => handler);
@@ -38,6 +39,9 @@ export const PreferencesView: React.FC = () => {
 
     useEffect(() => {
         setActiveTab(getTabFromSearchParams());
+        // Only the active tab's own dirty state is meaningful -- clear the flag on every tab switch so
+        // it doesn't keep showing the previous tab's unsaved state until the new tab reports its own.
+        setIsDirty(false);
     }, [searchParams]);
 
     const TABS: TabItem[] = [
@@ -70,11 +74,11 @@ export const PreferencesView: React.FC = () => {
     const renderTabContent = () => {
         switch (activeTab) {
             case 'localization':
-                return <LocalizationTab onRegisterSaveHandler={registerSaveHandler} onRegisterResetHandler={registerResetHandler} />;
+                return <LocalizationTab onRegisterSaveHandler={registerSaveHandler} onRegisterResetHandler={registerResetHandler} onDirtyChange={setIsDirty} />;
             case 'notifications':
-                return <NotificationSettingsTab onRegisterSaveHandler={registerSaveHandler} />;
+                return <NotificationSettingsTab onRegisterSaveHandler={registerSaveHandler} onDirtyChange={setIsDirty} />;
             case 'security':
-                return <SecuritySettingsTab onRegisterSaveHandler={registerSaveHandler} />;
+                return <SecuritySettingsTab onRegisterSaveHandler={registerSaveHandler} onDirtyChange={setIsDirty} />;
             default:
                 return null;
         }
@@ -106,6 +110,7 @@ export const PreferencesView: React.FC = () => {
                             variant="outline-emerald"
                             size="sm"
                             onClick={handleSave}
+                            disabled={isSaving || !isDirty}
                             className="min-w-[120px]"
                         >
                             Save Changes

@@ -146,7 +146,7 @@ export const WatermarkFields: React.FC<{
         <input
           className={FIELD_INPUT}
           value={value.watermarkText}
-          maxLength={40}
+          maxLength={60}
           onChange={(e) => onChange("watermarkText", e.target.value)}
           disabled={disabled}
         />

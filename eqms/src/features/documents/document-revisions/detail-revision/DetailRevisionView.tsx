@@ -4,6 +4,7 @@ import { cn } from "@/components/ui/utils";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { ReplaceAssigneeBanner } from "./components/ReplaceAssigneeBanner";
+import { PublishBatchProgressModal } from "./components/PublishBatchProgressModal";
 import {
   GeneralInformationTab,
   WorkingNotesTab,
@@ -254,16 +255,20 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
   const [nonEffectiveDocs, setNonEffectiveDocs] = useState<
     Array<{ field: string; message: string }>
   >([]);
+  // Proactive confirmation shown BEFORE the e-signature step, when this revision has one or more
+  // Related Documents that will publish together with it (each already Ready for Publishing).
+  const [showBatchPublishConfirmModal, setShowBatchPublishConfirmModal] = useState(false);
+  // Progress overlay shown WHILE the batch-publish request is in flight (only when there are
+  // Related Documents publishing together) -- same visual language as Controlled Copy's
+  // distribution progress modal, adapted for one synchronous request/response.
+  const [publishBatchStatus, setPublishBatchStatus] = useState<
+    "in_progress" | "completed" | null
+  >(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showCancelESignModal, setShowCancelESignModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelReasonError, setCancelReasonError] = useState("");
   const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
-  const [pendingPublishParams, setPendingPublishParams] = useState<{
-    reason: string;
-    comment: string;
-    signatureToken: string;
-  } | null>(null);
   const { showToast } = useToast();
   const { user } = usePermissions();
   const [isRegeneratingPdf, setIsRegeneratingPdf] = useState(false);
@@ -650,6 +655,22 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     }
   };
 
+  // Publish button entry point: if Related Documents will publish together with this revision,
+  // show that confirmation first so the user knows before they sign -- otherwise go straight to
+  // the e-signature step exactly as before.
+  const handlePublishClick = () => {
+    if ((currentRevision?.relatedDocumentsPublishingTogether?.length ?? 0) > 0) {
+      setShowBatchPublishConfirmModal(true);
+    } else {
+      setShowESignModal(true);
+    }
+  };
+
+  const handleBatchPublishConfirm = () => {
+    setShowBatchPublishConfirmModal(false);
+    setShowESignModal(true);
+  };
+
   const handlePublishConfirm = async (signature: {
     username: string;
     password: string;
@@ -659,11 +680,25 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     if (!currentRevision) return;
 
     setShowESignModal(false);
-    await executePublish({
+    const isBatch = (currentRevision.relatedDocumentsPublishingTogether?.length ?? 0) > 0;
+    if (isBatch) {
+      setPublishBatchStatus("in_progress");
+    }
+    const succeeded = await executePublish({
       reason: signature.reason,
       comment: signature.reason,
       signatureToken: signature.signatureToken as string,
     });
+    if (isBatch) {
+      if (succeeded) {
+        setPublishBatchStatus("completed");
+        setTimeout(() => setPublishBatchStatus(null), 1200);
+      } else {
+        // The block/error modal (RELATED_DOCUMENTS_NOT_READY warning or a generic toast) is
+        // already shown by executePublish -- just dismiss the progress overlay underneath it.
+        setPublishBatchStatus(null);
+      }
+    }
   };
 
   const handleRegeneratePdf = async () => {
@@ -693,9 +728,8 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     reason: string;
     comment: string;
     signatureToken: string;
-    forcePublish?: boolean;
-  }) => {
-    if (!currentRevision) return;
+  }): Promise<boolean> => {
+    if (!currentRevision) return false;
     try {
       setIsNavigating(true);
       setIsPublished(true);
@@ -720,17 +754,15 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
           void reloadRevisionPreview(resolvedDetail);
         },
       });
+      return true;
     } catch (error) {
       setIsPublished(false);
       const responseData = (error as any)?.response?.data;
-      if (responseData?.error?.code === "RELATED_DOCUMENTS_NOT_EFFECTIVE") {
+      if (responseData?.error?.code === "RELATED_DOCUMENTS_NOT_READY") {
+        // Hard block, no override: a Related Document has a revision in progress that has not
+        // yet reached Ready for Publishing. Informational only -- there is no "publish anyway".
         setWarningMessage(responseData.error.message);
         setNonEffectiveDocs(responseData.error.details || []);
-        setPendingPublishParams({
-          reason: params.reason,
-          comment: params.comment,
-          signatureToken: params.signatureToken,
-        });
         setShowWarningModal(true);
       } else {
         console.error("Failed to publish revision", error);
@@ -743,22 +775,10 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             "Failed to publish revision.",
         });
       }
+      return false;
     } finally {
       setIsNavigating(false);
     }
-  };
-
-  const handleWarningConfirm = async () => {
-    if (!pendingPublishParams) return;
-    setShowWarningModal(false);
-    const params = pendingPublishParams;
-    setPendingPublishParams(null);
-    await executePublish({
-      reason: params.reason,
-      comment: params.comment,
-      signatureToken: params.signatureToken,
-      forcePublish: true,
-    });
   };
 
   const handleAddWorkingNote = async (content: string) => {
@@ -847,10 +867,11 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         setIsLoadingDetail(true);
         setDetailError(null);
 
-        // Workflow status and its PDF snapshot can change immediately after an electronic
-        // signature. Detail must therefore bypass the short client-side snapshot cache, rather
-        // than trusting route state or a response from a few seconds earlier.
-        const detail = await documentApi.getRevisionByIdSnapshot(revisionId, { force: true });
+        // Real, marking endpoint: opening the revision detail must record the current user as
+        // "Opened By" (revisionService.getRevision() sets it on both the revision and its parent
+        // document). getRevisionByIdSnapshot() never marks anything -- using it here meant
+        // ordinary navigation to a revision's detail page never updated "Opened By" at all.
+        const detail = await documentApi.getRevisionById(revisionId);
         if (!mounted) {
           return;
         }
@@ -999,22 +1020,20 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         }}
       />
 
-      {/* Warning Override Modal */}
+      {/* Publish blocked: a Related Document has a revision in progress not yet Ready for
+          Publishing. Informational only -- there is no override/force option. */}
       <AlertModal
         isOpen={showWarningModal}
-        onClose={() => {
-          setShowWarningModal(false);
-          setPendingPublishParams(null);
-        }}
-        onConfirm={handleWarningConfirm}
-        title="Publish Warning"
+        onClose={() => setShowWarningModal(false)}
+        onConfirm={() => setShowWarningModal(false)}
+        title="Cannot Publish Yet"
         type="warning"
-        confirmText="Publish Anyway"
-        cancelText="Cancel"
+        confirmText="OK"
+        showCancel={false}
         description={
           <div className="space-y-3">
             <p className="font-semibold text-slate-900">
-              One or more Related Documents are not currently Effective:
+              One or more Related Documents are not yet Ready for Publishing:
             </p>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1 text-xs text-slate-700">
               {nonEffectiveDocs.map((doc, idx) => (
@@ -1027,11 +1046,44 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
               ))}
             </div>
             <p className="text-xs text-slate-500">
-              Please verify the document package before publishing. Do you want
-              to publish anyway?
+              Bring the listed document(s) to Ready for Publishing first, then publish again.
             </p>
           </div>
         }
+      />
+
+      {/* Proactive confirmation: this revision has Related Documents that will publish together
+          with it. Shown before the e-signature step so the user knows the scope of what they are
+          about to sign. */}
+      <AlertModal
+        isOpen={showBatchPublishConfirmModal}
+        onClose={() => setShowBatchPublishConfirmModal(false)}
+        onConfirm={handleBatchPublishConfirm}
+        title="Publish Together With Related Documents"
+        type="warning"
+        confirmText="Continue to Sign"
+        cancelText="Cancel"
+        description={
+          <div className="space-y-3">
+            <p className="font-semibold text-slate-900">
+              Publishing this document will also publish the following Related Document(s):
+            </p>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1 text-xs text-slate-700">
+              {(currentRevision?.relatedDocumentsPublishingTogether ?? []).map((label) => (
+                <div key={label}>{label}</div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500">
+              All of the above will become Effective at the same time, in this single action.
+            </p>
+          </div>
+        }
+      />
+
+      <PublishBatchProgressModal
+        isOpen={publishBatchStatus !== null}
+        status={publishBatchStatus ?? "in_progress"}
+        relatedLabels={currentRevision?.relatedDocumentsPublishingTogether ?? []}
       />
 
       {/* Header: Title + Breadcrumb + Actions */}
@@ -1079,7 +1131,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                   size="sm"
                   variant="outline-emerald"
                   className="whitespace-nowrap gap-2"
-                  onClick={() => setShowESignModal(true)}
+                  onClick={handlePublishClick}
                 >
                   Publish
                 </Button>
@@ -1299,7 +1351,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             size="sm"
             variant="default"
             className="whitespace-nowrap gap-2"
-            onClick={() => setShowESignModal(true)}
+            onClick={handlePublishClick}
           >
             Publish
           </Button>

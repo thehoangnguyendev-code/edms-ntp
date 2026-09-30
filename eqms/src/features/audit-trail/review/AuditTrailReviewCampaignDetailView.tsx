@@ -42,6 +42,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
 import { formatDateTime, formatDateUS } from "@/utils/format";
 import { auditTrailReviewCampaignDetail as breadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const DECISION_OPTIONS = [
   { label: "All Decisions", value: "ALL" },
@@ -74,9 +75,9 @@ const SortHeader: React.FC<{
   onSort: (column: SortKey) => void;
 }> = ({ label, column, current, direction, onSort }) => {
   return (
-    <th
+    <TableMarkup.HeaderCell
       onClick={() => onSort(column)}
-      className="sticky top-0 z-20 cursor-pointer whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 group md:text-xs"
+      className={TABLE_STYLES.headerCell39}
     >
       <div className="flex w-full items-center justify-between gap-2">
         <span className="truncate">{label}</span>
@@ -95,7 +96,7 @@ const SortHeader: React.FC<{
           />
         </div>
       </div>
-    </th>
+    </TableMarkup.HeaderCell>
   );
 };
 
@@ -574,9 +575,9 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
               )}
               {...dragEvents}
             >
-              <table className="w-full min-w-[72rem] border-spacing-0 text-left">
-                <thead className="sticky top-0 z-30">
-                  <tr>
+              <TableMarkup.Root className="w-full min-w-[72rem] border-spacing-0 text-left">
+                <TableMarkup.Head className="sticky top-0 z-30">
+                  <TableMarkup.Row>
                     <SortHeader
                       label="Timestamp"
                       column="timestamp"
@@ -605,12 +606,12 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                       direction={sortDirection}
                       onSort={changeSort}
                     />
-                    <th className="sticky top-0 z-20 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell42}>
                       Entity
-                    </th>
-                    <th className="sticky top-0 z-20 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                    </TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell42}>
                       E-Sig
-                    </th>
+                    </TableMarkup.HeaderCell>
                     <SortHeader
                       label="Decision"
                       column="decision"
@@ -619,16 +620,16 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                       onSort={changeSort}
                     />
                     {canManage && inProgress && (
-                      <th className="sticky right-0 top-0 z-30 w-20 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs font-bold uppercase tracking-wider text-slate-500 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 md:text-xs">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell21}>
                         Action
-                      </th>
+                      </TableMarkup.HeaderCell>
                     )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                   {!itemsLoading && items.length === 0 ? (
-                    <tr>
-                      <td
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell
                         colSpan={canManage && inProgress ? 8 : 7}
                         className="py-12"
                       >
@@ -636,42 +637,42 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                           title="No audit log entries found"
                           description="Try changing the search or decision filter."
                         />
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   ) : (
                     items.map((item) => (
-                      <tr
+                      <TableMarkup.Row
                         key={item.id}
                         className="transition-colors hover:bg-slate-50/80"
                       >
-                        <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
+                        <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
                           {item.timestamp
                             ? formatDateTime(item.timestamp)
                             : "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                           <div>{item.userFullName || "—"}</div>
                           {item.employeeCode && (
                             <div className="mt-0.5 text-xs text-slate-400">
                               {item.employeeCode}
                             </div>
                           )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
                           {item.module || "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
                           {item.action || "—"}
-                        </td>
-                        <td className="max-w-xs px-4 py-3 text-xs text-slate-600 sm:text-sm">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="max-w-xs px-4 py-3 text-xs text-slate-600 sm:text-sm">
                           <div
                             className="truncate"
                             title={item.entityLabel ?? undefined}
                           >
                             {item.entityLabel || "—"}
                           </div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="whitespace-nowrap px-4 py-3">
                           <Badge
                             color={
                               item.electronicSignatureApplied
@@ -682,14 +683,14 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                           >
                             {item.electronicSignatureApplied ? "Yes" : "No"}
                           </Badge>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="whitespace-nowrap px-4 py-3">
                           <Badge color={decisionBadge(item.decision)} size="sm">
                             {item.decisionLabel}
                           </Badge>
-                        </td>
+                        </TableMarkup.Cell>
                         {canManage && inProgress && (
-                          <td className="sticky right-0 z-30 whitespace-nowrap bg-white px-4 py-3 text-center shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 group-hover:bg-slate-50">
+                          <TableMarkup.Cell className={TABLE_STYLES.cell35}>
                             <button
                               ref={getActionRef(item.id)}
                               onClick={(event) =>
@@ -726,13 +727,13 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                                 </DropdownMenuItem>
                               </div>
                             </PortalDropdownMenu>
-                          </td>
+                          </TableMarkup.Cell>
                         )}
-                      </tr>
+                      </TableMarkup.Row>
                     ))
                   )}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
             {totalItems > 0 && (
               <div className="border-t border-slate-200">

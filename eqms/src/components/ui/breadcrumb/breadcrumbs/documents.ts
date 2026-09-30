@@ -16,42 +16,70 @@ const REVISION_PARENT_MAP = [
   { key: ROUTES.DOCUMENTS.ALL, label: "All Documents" },
   { key: ROUTES.DOCUMENTS.OWNED, label: "Documents Owned By Me" },
   { key: ROUTES.DOCUMENTS.REVISIONS.OWNED, label: "Revisions Owned By Me" },
-  { key: ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW, label: "Pending My Review" },
-  { key: ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL, label: "Pending My Approval" },
+  {
+    key: ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW,
+    label: "Pending My Review",
+  },
+  {
+    key: ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL,
+    label: "Pending My Approval",
+  },
 ];
 
-const getRevisionParent = (from?: string, navigate?: NavigateFn): BreadcrumbItem => {
-  const match = REVISION_PARENT_MAP.find(p => from === p.key);
+const getRevisionParent = (
+  from?: string,
+  navigate?: NavigateFn,
+): BreadcrumbItem => {
+  const match = REVISION_PARENT_MAP.find((p) => from === p.key);
   if (match) {
     return { label: match.label, onClick: () => navigate?.(match.key) };
   }
-  return { label: "All Revisions", onClick: () => navigate?.(ROUTES.DOCUMENTS.REVISIONS.ALL) };
+  return {
+    label: "All Revisions",
+    onClick: () => navigate?.(ROUTES.DOCUMENTS.REVISIONS.ALL),
+  };
 };
 
 const CONTROLLED_COPY_PARENT_MAP = [
-  { key: ROUTES.DOCUMENTS.CONTROLLED_COPIES.READY, label: "Ready for Distribution" },
-  { key: ROUTES.DOCUMENTS.CONTROLLED_COPIES.DISTRIBUTED, label: "Distributed Copies" },
+  {
+    key: ROUTES.DOCUMENTS.CONTROLLED_COPIES.READY,
+    label: "Ready for Distribution",
+  },
+  {
+    key: ROUTES.DOCUMENTS.CONTROLLED_COPIES.DISTRIBUTED,
+    label: "Distributed Copies",
+  },
 ];
 
-const getControlledCopyParent = (from?: string, navigate?: NavigateFn): BreadcrumbItem => {
-  const match = CONTROLLED_COPY_PARENT_MAP.find(p => from === p.key);
+const getControlledCopyParent = (
+  from?: string,
+  navigate?: NavigateFn,
+): BreadcrumbItem => {
+  const match = CONTROLLED_COPY_PARENT_MAP.find((p) => from === p.key);
   if (match) {
     return { label: match.label, onClick: () => navigate?.(match.key) };
   }
-  return { label: "All Controlled Copies", onClick: () => navigate?.(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL) };
+  return {
+    label: "All Controlled Copies",
+    onClick: () => navigate?.(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL),
+  };
 };
 
 const documentRevisionsLabel = { label: "Document Revisions" };
 const controlledCopiesLabel = { label: "Controlled Copies" };
+const uncontrolledCopiesLabel = { label: "Uncontrolled Copies" };
 
 // --- Exported Breadcrumb Builders ---
 
 export const documentList = (
   navigate?: NavigateFn,
-  activeTab?: string
+  activeTab?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
-  { label: activeTab === "owned" ? "Documents Owned By Me" : "All Documents", isActive: true },
+  {
+    label: activeTab === "owned" ? "Documents Owned By Me" : "All Documents",
+    isActive: true,
+  },
 ];
 
 export const newDocument = (navigate?: NavigateFn): BreadcrumbItem[] => [
@@ -66,21 +94,17 @@ export const legacyImport = (navigate?: NavigateFn): BreadcrumbItem[] => [
   { label: "Legacy Import", isActive: true },
 ];
 
-
 export const documentDetail = (
   navigate?: NavigateFn,
-  options?: { fromOwned?: boolean }
+  options?: { fromOwned?: boolean },
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   {
-    label: options?.fromOwned
-      ? "Documents Owned By Me"
-      : "All Documents",
-    onClick: () => navigate?.(
-      options?.fromOwned
-        ? ROUTES.DOCUMENTS.OWNED
-        : ROUTES.DOCUMENTS.ALL
-    )
+    label: options?.fromOwned ? "Documents Owned By Me" : "All Documents",
+    onClick: () =>
+      navigate?.(
+        options?.fromOwned ? ROUTES.DOCUMENTS.OWNED : ROUTES.DOCUMENTS.ALL,
+      ),
   },
   { label: "Document Details", isActive: true },
 ];
@@ -91,9 +115,14 @@ export const revisionList = (navigate?: NavigateFn): BreadcrumbItem[] => [
   { label: "All Revisions", isActive: true },
 ];
 
-export const publishingWorkspace = (navigate?: NavigateFn): BreadcrumbItem[] => [
+export const publishingWorkspace = (
+  navigate?: NavigateFn,
+): BreadcrumbItem[] => [
   dashboard(navigate),
-  { label: "All Revisions", onClick: () => navigate?.(ROUTES.DOCUMENTS.REVISIONS.ALL) },
+  {
+    label: "All Revisions",
+    onClick: () => navigate?.(ROUTES.DOCUMENTS.REVISIONS.ALL),
+  },
   { label: "Publishing Workspace", isActive: true },
 ];
 
@@ -105,7 +134,7 @@ export const revisionsOwnedByMe = (navigate?: NavigateFn): BreadcrumbItem[] => [
 
 export const pendingDocuments = (
   navigate?: NavigateFn,
-  activeTab?: string
+  activeTab?: string,
 ): BreadcrumbItem[] => {
   const tabLabels: Record<string, string> = {
     "pending-review": "Pending My Review",
@@ -114,13 +143,16 @@ export const pendingDocuments = (
   return [
     ...docControlBase(navigate),
     documentRevisionsLabel,
-    { label: tabLabels[activeTab || ""] || "Pending Documents", isActive: true },
+    {
+      label: tabLabels[activeTab || ""] || "Pending Documents",
+      isActive: true,
+    },
   ];
 };
 
 export const requestControlledCopy = (
   navigate?: NavigateFn,
-  from?: string
+  from?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   documentRevisionsLabel,
@@ -130,7 +162,7 @@ export const requestControlledCopy = (
 
 export const revisionWorkspace = (
   navigate?: NavigateFn,
-  from?: string
+  from?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   documentRevisionsLabel,
@@ -140,7 +172,7 @@ export const revisionWorkspace = (
 
 export const createRevision = (
   navigate?: NavigateFn,
-  from?: string
+  from?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   documentRevisionsLabel,
@@ -150,7 +182,7 @@ export const createRevision = (
 
 export const revisionDetail = (
   navigate?: NavigateFn,
-  from?: string
+  from?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   documentRevisionsLabel,
@@ -160,27 +192,33 @@ export const revisionDetail = (
 
 export const revisionReview = (
   navigate?: NavigateFn,
-  from?: string
+  from?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   documentRevisionsLabel,
-  getRevisionParent(from || ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW, navigate),
+  getRevisionParent(
+    from || ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW,
+    navigate,
+  ),
   { label: "Review Revision", isActive: true },
 ];
 
 export const revisionApproval = (
   navigate?: NavigateFn,
-  from?: string
+  from?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   documentRevisionsLabel,
-  getRevisionParent(from || ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL, navigate),
+  getRevisionParent(
+    from || ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL,
+    navigate,
+  ),
   { label: "Approve Revision", isActive: true },
 ];
 
 export const revisionTraining = (
   navigate?: NavigateFn,
-  from?: string
+  from?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   documentRevisionsLabel,
@@ -190,7 +228,7 @@ export const revisionTraining = (
 
 export const controlledCopies = (
   navigate?: NavigateFn,
-  activeTab?: string
+  activeTab?: string,
 ): BreadcrumbItem[] => {
   const tabLabels: Record<string, string> = {
     all: "All Controlled Copies",
@@ -200,21 +238,27 @@ export const controlledCopies = (
   return [
     ...docControlBase(navigate),
     controlledCopiesLabel,
-    { label: tabLabels[activeTab || "all"] || "All Controlled Copies", isActive: true },
+    {
+      label: tabLabels[activeTab || "all"] || "All Controlled Copies",
+      isActive: true,
+    },
   ];
 };
 
 export const controlledCopyBatchStatusDiscrepancies = (
-  navigate?: NavigateFn
+  navigate?: NavigateFn,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
-  { label: "Controlled Copies", onClick: () => navigate?.(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL) },
+  {
+    label: "Controlled Copies",
+    onClick: () => navigate?.(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL),
+  },
   { label: "Batch Status Discrepancies", isActive: true },
 ];
 
 export const controlledCopyDetail = (
   navigate?: NavigateFn,
-  from?: string
+  from?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   controlledCopiesLabel,
@@ -225,10 +269,73 @@ export const controlledCopyDetail = (
 export const destroyControlledCopy = (
   navigate?: NavigateFn,
   from?: string,
-  reportType?: string
+  reportType?: string,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
   controlledCopiesLabel,
   getControlledCopyParent(from, navigate),
-  { label: reportType ? `Report ${reportType} Controlled Copy` : "Controlled Copy Destruction Report", isActive: true },
+  {
+    label: reportType
+      ? `Report ${reportType} Controlled Copy`
+      : "Controlled Copy Destruction Report",
+    isActive: true,
+  },
+];
+
+const UNCONTROLLED_COPY_TAB_LABELS: Record<string, string> = {
+  all: "All Uncontrolled Copies",
+  pending: "Pending Approval",
+  distributed: "Distributed Uncontrolled Copies",
+};
+
+const UNCONTROLLED_COPY_PARENT_MAP = [
+  {
+    key: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.PENDING_APPROVAL,
+    label: "Pending Approval",
+  },
+  {
+    key: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.DISTRIBUTED,
+    label: "Distributed Uncontrolled Copies",
+  },
+];
+
+const getUncontrolledCopyParent = (
+  from?: string,
+  navigate?: NavigateFn,
+): BreadcrumbItem => {
+  const sourcePath = from?.split("?")[0];
+  const match = UNCONTROLLED_COPY_PARENT_MAP.find(
+    (parent) => sourcePath === parent.key,
+  );
+  if (match) {
+    return { label: match.label, onClick: () => navigate?.(match.key) };
+  }
+  return {
+    label: "All Uncontrolled Copies",
+    onClick: () => navigate?.(ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.ALL),
+  };
+};
+
+export const uncontrolledCopies = (
+  navigate?: NavigateFn,
+  activeTab?: string,
+): BreadcrumbItem[] => [
+  ...docControlBase(navigate),
+  uncontrolledCopiesLabel,
+  {
+    label:
+      UNCONTROLLED_COPY_TAB_LABELS[activeTab || "all"] ||
+      "All Uncontrolled Copies",
+    isActive: true,
+  },
+];
+
+export const uncontrolledCopyDetail = (
+  navigate?: NavigateFn,
+  from?: string,
+): BreadcrumbItem[] => [
+  ...docControlBase(navigate),
+  uncontrolledCopiesLabel,
+  getUncontrolledCopyParent(from, navigate),
+  { label: "Uncontrolled Copy Details", isActive: true },
 ];

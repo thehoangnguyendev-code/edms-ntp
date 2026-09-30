@@ -135,7 +135,6 @@ type ApiLanguage = {
   value: string;
 };
 
-
 export type DictionaryBusinessUnitPayload = {
   name: string;
   abbreviation: string;
@@ -190,7 +189,6 @@ export type DictionaryRetentionPolicyPayload = {
   retentionDays?: number | null;
   isActive: boolean;
 };
-
 
 const mapBusinessUnit = (item: ApiBusinessUnit): BusinessUnitItem => ({
   id: item.id,

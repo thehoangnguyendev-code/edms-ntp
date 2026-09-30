@@ -25,6 +25,7 @@ import { buildPreviewVersionCacheBuster, replaceObjectUrlPreview, revokeObjectUr
 import { cn } from "@/components/ui/utils";
 import { BORDER_RADIUS, COLORS, COMPONENT_PRESETS, PADDING, SHADOW, TYPOGRAPHY } from "@/config/ui-standards";
 import { IconBookmark, IconFileOrientation, IconFileTypePdf } from "@tabler/icons-react";
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 const extractApiMessage = (error: unknown, fallback: string): string => {
   if (typeof error === "object" && error !== null) {
@@ -921,29 +922,29 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
               </p>
 
               <div className={cn(BORDER_RADIUS.card, COLORS.bg.secondary, "overflow-hidden border border-slate-200")}>
-                <table className="w-full text-xs sm:text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-left text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                      <th className="px-3 py-2">Layer</th>
-                      <th className="px-3 py-2">From</th>
-                      <th className="px-3 py-2">To</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    <tr>
-                      <td className="px-3 py-2 font-medium text-slate-700">Cover</td>
-                      <td className="px-3 py-2 text-slate-600">{pageRangeDraft.coverSourcePageFrom}</td>
-                      <td className="px-3 py-2 text-slate-600">{pageRangeDraft.coverSourcePageTo}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-3 py-2 font-medium text-slate-700">Body</td>
-                      <td className="px-3 py-2 text-slate-600">{pageRangeDraft.bodySourcePageFrom}</td>
-                      <td className="px-3 py-2 text-slate-600">{pageRangeDraft.bodySourcePageTo || "end"}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-3 py-2 font-medium text-slate-700">Header</td>
-                      <td className="px-3 py-2 text-slate-600">{bodyStartPage}</td>
-                      <td className="px-3 py-1.5">
+                <TableMarkup.Root className="w-full text-xs sm:text-sm">
+                  <TableMarkup.Head>
+                    <TableMarkup.Row className="border-b border-slate-200 text-left text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                      <TableMarkup.HeaderCell className="px-3 py-2">Layer</TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className="px-3 py-2">From</TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className="px-3 py-2">To</TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200">
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">Cover</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 text-slate-600">{pageRangeDraft.coverSourcePageFrom}</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 text-slate-600">{pageRangeDraft.coverSourcePageTo}</TableMarkup.Cell>
+                    </TableMarkup.Row>
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">Body</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 text-slate-600">{pageRangeDraft.bodySourcePageFrom}</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 text-slate-600">{pageRangeDraft.bodySourcePageTo || "end"}</TableMarkup.Cell>
+                    </TableMarkup.Row>
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">Header</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 text-slate-600">{bodyStartPage}</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-1.5">
                         <Input
                           type="number"
                           min={bodyStartPage}
@@ -952,12 +953,12 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                           placeholder="end"
                           aria-label="Header to page"
                         />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-3 py-2 font-medium text-slate-700">Footer</td>
-                      <td className="px-3 py-2 text-slate-600">{bodyStartPage}</td>
-                      <td className="px-3 py-1.5">
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">Footer</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 text-slate-600">{bodyStartPage}</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-1.5">
                         <Input
                           type="number"
                           min={bodyStartPage}
@@ -966,10 +967,10 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                           placeholder="end"
                           aria-label="Footer to page"
                         />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
                 <p className="border-t border-slate-200 px-3 py-1.5 text-2xs text-slate-400">Cover, Body and the From column are locked.</p>
               </div>
 

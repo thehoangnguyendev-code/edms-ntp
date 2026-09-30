@@ -36,6 +36,7 @@ import {
   IconCircleMinus,
   IconPencilMinus,
 } from "@tabler/icons-react";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const DECISIONS: {
   value: AccessReviewItem["decision"];
@@ -544,14 +545,14 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
                   )}
                   {...dragEvents}
                 >
-                  <table className="w-full min-w-max border-spacing-0 text-left">
-                    <thead className="sticky top-0 z-30">
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-14">
+                  <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
+                    <TableMarkup.Head className="sticky top-0 z-30">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell34}>
                           No.
-                        </th>
+                        </TableMarkup.HeaderCell>
                         {ITEM_COLUMNS.map((col) => (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={col.key}
                             onClick={col.sortable ? () => handleSort(col.key) : undefined}
                             className={cn(
@@ -568,22 +569,22 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         ))}
                         {inProgress && canManage && (
-                          <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
                             Actions
-                          </th>
+                          </TableMarkup.HeaderCell>
                         )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                       {items.map((item, idx) => (
-                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-500 font-medium">
+                        <TableMarkup.Row key={item.id} className="hover:bg-slate-50/80 transition-colors group">
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-500 font-medium">
                             {(itemPage - 1) * itemPageSize + idx + 1}
-                          </td>
-                          <td
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell
                             className={cn(
                               "py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium",
                               item.userId ? "text-emerald-600 cursor-pointer hover:underline" : "text-slate-400",
@@ -597,31 +598,31 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
                             }}
                           >
                             {item.employeeCode ?? "—"}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <div className="flex items-center gap-2.5">
                               <Avatar name={item.fullName || item.username || "User"} tone="brand" className="h-8 w-8" />
                               <span className="font-medium text-slate-900">{item.fullName ?? item.username}</span>
                             </div>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{item.username}</td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{item.username}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge color={userStatusBadge(item.userStatus)} size="sm">{item.userStatusLabel ?? "—"}</Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap" title={item.accessProfiles ?? undefined}>
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap" title={item.accessProfiles ?? undefined}>
                             {item.accessProfiles || <span className="italic text-slate-400">None</span>}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                             {item.superAdmin ? "All (super admin)" : item.permissionCount}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <div className="flex gap-1">
                               {item.superAdmin && <Badge color="purple" size="sm">Super Admin</Badge>}
                               {!item.superAdmin && item.permissionCount === 0 && <Badge color="slate" size="sm">No Permissions</Badge>}
                               {!item.superAdmin && item.permissionCount !== 0 && <span className="text-slate-400">—</span>}
                             </div>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge
                               size="sm"
                               color={
@@ -641,8 +642,8 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
                                 {item.decisionNote}
                               </div>
                             )}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                             {item.decidedAt ? (
                               <>
                                 <div>{formatDateTime(item.decidedAt)}</div>
@@ -651,9 +652,9 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
                             ) : (
                               "—"
                             )}
-                          </td>
+                          </TableMarkup.Cell>
                           {inProgress && canManage && (
-                            <td
+                            <TableMarkup.Cell
                               onClick={(e) => e.stopPropagation()}
                               className="sticky right-0 bg-white py-3 px-4 text-center z-10 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
                             >
@@ -690,12 +691,12 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
                                   ))}
                                 </div>
                               </PortalDropdownMenu>
-                            </td>
+                            </TableMarkup.Cell>
                           )}
-                        </tr>
+                        </TableMarkup.Row>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
                 {itemTotal > 0 && (
                   <TablePagination

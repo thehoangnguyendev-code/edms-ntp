@@ -43,6 +43,7 @@ import {
 import { settingsApi } from "@/services/api/settings";
 import type { UserActionCapabilitiesResponse } from "@/services/api/settings";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // --- Main Component ---
 
@@ -700,15 +701,15 @@ export const UserManagementView: React.FC = () => {
                   )}
                   {...dragEvents}
                 >
-                  <table className="w-full min-w-max  border-spacing-0 text-left">
-                    <thead className="sticky top-0 z-30">
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 py-3 px-2 border-b-2 border-slate-200 w-8" />
+                  <TableMarkup.Root className="w-full min-w-max  border-spacing-0 text-left">
+                    <TableMarkup.Head className="sticky top-0 z-30">
+                      <TableMarkup.Row>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.emptyCell4} />
                         {visibleColumns.map((col) => {
                           const isSorted = sortConfig.key === col.id;
                           const canSort = col.id !== "no";
                           return (
-                            <th
+                            <TableMarkup.HeaderCell
                               key={col.id}
                               onClick={
                                 canSort ? () => handleSort(col.id) : undefined
@@ -750,15 +751,15 @@ export const UserManagementView: React.FC = () => {
                                   </div>
                                 )}
                               </div>
-                            </th>
+                            </TableMarkup.HeaderCell>
                           );
                         })}
-                        <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell24}>
                           Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                        </TableMarkup.HeaderCell>
+                      </TableMarkup.Row>
+                    </TableMarkup.Head>
+                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                       {currentUsers.map((user, index) => {
                         const tdClass =
                           "py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap";
@@ -767,10 +768,10 @@ export const UserManagementView: React.FC = () => {
 
                         return (
                           <React.Fragment key={user.id}>
-                          <tr
+                          <TableMarkup.Row
                             className="hover:bg-slate-50/80 transition-colors group"
                           >
-                            <td
+                            <TableMarkup.Cell
                               className="py-3 px-2 text-center whitespace-nowrap"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -786,9 +787,9 @@ export const UserManagementView: React.FC = () => {
                                   <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500" />
                                 </motion.span>
                               </button>
-                            </td>
+                            </TableMarkup.Cell>
                             {visibleColumns.map((col) => (
-                              <td
+                              <TableMarkup.Cell
                                 key={col.id}
                                 className={cn(
                                   tdClass,
@@ -936,11 +937,11 @@ export const UserManagementView: React.FC = () => {
                                     {String(user[col.id as keyof User] ?? "")}
                                   </span>
                                 )}
-                              </td>
+                              </TableMarkup.Cell>
                             ))}
-                            <td
+                            <TableMarkup.Cell
                               onClick={(e) => e.stopPropagation()}
-                              className="sticky right-0 z-10 bg-white py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
+                              className={TABLE_STYLES.cell34}
                             >
                               <button
                                 ref={getRef(user.id)}
@@ -951,8 +952,8 @@ export const UserManagementView: React.FC = () => {
                               >
                                 <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
                               </button>
-                            </td>
-                          </tr>
+                            </TableMarkup.Cell>
+                          </TableMarkup.Row>
                           <ExpandUserAccessProfilesRow
                             userId={user.id}
                             accessProfileNames={user.accessProfileNames ?? []}
@@ -962,8 +963,8 @@ export const UserManagementView: React.FC = () => {
                           </React.Fragment>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </TableMarkup.Body>
+                  </TableMarkup.Root>
                 </div>
 
                 {/* Pagination */}

@@ -206,6 +206,12 @@ export interface ControlledCopyStatusMarking {
   stampPages: 'ALL' | 'FIRST';
   /** Per-page drag-and-drop placement; overrides the corner/centre fields above for pages it covers. */
   placements?: MarkingPlacementRule[];
+  /** Uncontrolled Copy watermark only: whether "Issued to: {recipient}" is drawn. Unused by Controlled Copy's per-status marking. */
+  watermarkShowRecipient?: boolean;
+  /** Uncontrolled Copy watermark only: whether "Issued: {timestamp}" is drawn. Unused by Controlled Copy's per-status marking. */
+  watermarkShowIssuedDate?: boolean;
+  /** Uncontrolled Copy stamp only: whether the copy number line is drawn. Unused by Controlled Copy's per-status marking. */
+  stampShowCopyNumber?: boolean;
 }
 
 export type ControlledCopyStatusMarkingKey = 'OBSOLETED' | 'CLOSED_CANCELLED';

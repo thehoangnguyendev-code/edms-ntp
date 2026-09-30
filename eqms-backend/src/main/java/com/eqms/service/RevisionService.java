@@ -1918,75 +1918,63 @@ public class RevisionService {
         DocumentRecord document = requireDocument(revision.getDocument().getId());
         requireDocumentActiveForPublish(document);
         UUID signatureSessionId = requireValidSignatureToken(request, currentUser, "publish");
-        validatePublishableRevision(revision, false);
-        List<DocumentRelation> relatedRelations = documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED");
+        validatePublishableRevision(revision);
 
-        List<ApiErrorResponse.ErrorDetail> nonEffectiveDetails = new java.util.ArrayList<>();
-        StringBuilder warningBuilder = new StringBuilder();
-
-        for (DocumentRelation relation : relatedRelations) {
-            DocumentRecord relatedDoc = relation.getTargetDocument();
-            if (relatedDoc == null || relatedDoc.getId() == null) {
-                continue;
-            }
-
-            DocumentRevisionRecord latestRelatedRev = revisionRepository
-                    .findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(relatedDoc.getId(), "EFFECTIVE")
-                    .orElse(null);
-            String statusLabel = "No Effective Revision";
-            String statusCode = "NOT_EFFECTIVE";
-            if (latestRelatedRev != null && latestRelatedRev.getStatus() != null) {
-                statusLabel = latestRelatedRev.getStatus().getLabel();
-                statusCode = latestRelatedRev.getStatus().getCode();
-            }
-
-            boolean isEffective = "EFFECTIVE".equals(statusCode);
-            if (!isEffective) {
-                nonEffectiveDetails.add(new ApiErrorResponse.ErrorDetail(relatedDoc.getDocumentNumber(), statusLabel));
-                warningBuilder.append(relatedDoc.getDocumentNumber()).append(" - ").append(statusLabel).append("\n");
-            }
+        RelatedPublishBatchResolution batchResolution = resolveRelatedPublishBatch(document);
+        if (!batchResolution.blocking().isEmpty()) {
+            String message = "One or more Related Documents have a revision in progress that has not yet reached "
+                    + "Ready for Publishing. This document cannot be published until they do, so the whole package "
+                    + "publishes together.\n\n"
+                    + batchResolution.blockMessagePlain()
+                    + "\nBring the listed document(s) to Ready for Publishing first, then publish again.";
+            throw new RelatedDocumentsNotEffectiveException(message, batchResolution.blocking());
         }
-
-        if (!nonEffectiveDetails.isEmpty()) {
-            boolean forcePublish = request != null && Boolean.TRUE.equals(request.forcePublish());
-            if (!forcePublish) {
-                String warningMsg = "One or more Related Documents are not currently Effective.\n\n"
-                        + warningBuilder.toString()
-                        + "\nPlease verify the document package before publishing.";
-                throw new RelatedDocumentsNotEffectiveException(warningMsg, nonEffectiveDetails);
-            } else {
-                // Force Publish is a GMP exception/deviation: requires its own dedicated
-                // permission (granted to nobody by default) and a mandatory, non-blank reason --
-                // never inferred from documents.revision.publish/documents.workspace.manage.
-                if (!permissionEvaluationService.hasPermission(currentUser, "documents.revision.force_publish")) {
-                    throw new IllegalArgumentException("You do not have permission to force publish over non-effective Related Documents");
-                }
-                String forcePublishReason = request == null ? null : firstNonBlank(request.reason(), request.comment());
-                if (!StringUtils.hasText(forcePublishReason)) {
-                    throw new IllegalArgumentException("A reason is required to force publish over non-effective Related Documents");
-                }
-                // Log warning override decision in audit trail
-                String overrideDetail = "Revision published with non-effective Related Documents. Reason: " + forcePublishReason.trim()
-                        + "\n\n" + warningBuilder.toString();
-                auditTrailService.logAs(
-                        currentUser,
-                        "REVISION",
-                        revision.getRevisionName(),
-                        revision.getId(),
-                        "WARNING_OVERRIDE",
-                        revision.getStatus() == null ? null : revision.getStatus().getCode(),
-                        "EFFECTIVE",
-                        overrideDetail
-                );
-            }
+        List<DocumentRevisionRecord> relatedRevisionsToPublish = batchResolution.ready();
+        // Batch publishing never grants authority the actor does not already hold: each
+        // Related Document is checked exactly as if it were being published on its own.
+        for (DocumentRevisionRecord relatedRevision : relatedRevisionsToPublish) {
+            revisionWorkflowAuthorizationService.require(
+                    currentUser,
+                    relatedRevision,
+                    RevisionWorkflowAction.PUBLISH,
+                    com.eqms.dto.security.RevisionWorkflowAuthorizationContext.of(relatedRevision)
+            );
         }
 
         Instant publishedAt = Instant.now();
         String comment = request == null ? null : firstNonBlank(request.comment(), request.reason());
-        
-        // Remove batch publish behavior: only publish the primary revision
-        publishRevisionRecord(revision, currentUser, publishedAt, comment, signatureSessionId, request == null ? null : request.signatureToken());
-        notifyKnowledgeSubscribers(revision);
+
+        List<DocumentRevisionRecord> bundle = new java.util.ArrayList<>();
+        bundle.add(revision);
+        bundle.addAll(relatedRevisionsToPublish);
+
+        EffectiveDateResolution resolution = resolveEffectiveDate(bundle, publishedAt);
+        String basisLabel = switch (resolution.basis()) {
+            case SystemConfigurationService.EFFECTIVE_DATE_AFTER_TRAINING -> "training completion";
+            case SystemConfigurationService.EFFECTIVE_DATE_AFTER_PUBLISH -> "publish";
+            default -> "approval";
+        };
+        String effectiveDateRuleText = resolution.offsetDays() + " day(s) after " + basisLabel
+                + (bundle.size() > 1 ? " (latest across linked documents, published together)" : "");
+
+        for (DocumentRevisionRecord member : bundle) {
+            List<String> siblingLabels = bundle.stream()
+                    .filter(other -> !Objects.equals(other.getId(), member.getId()))
+                    .map(other -> safeDocumentLabel(other.getDocument()))
+                    .toList();
+            publishRevisionRecord(
+                    member,
+                    currentUser,
+                    publishedAt,
+                    comment,
+                    signatureSessionId,
+                    request == null ? null : request.signatureToken(),
+                    resolution.date(),
+                    effectiveDateRuleText,
+                    siblingLabels
+            );
+            notifyKnowledgeSubscribers(member);
+        }
 
         return toDetailResponse(revision);
     }
@@ -2242,60 +2230,58 @@ public class RevisionService {
         return resolveNextDraftRevisionNumberFromEffective(effectiveRevisionNumber);
     }
 
-    private List<DocumentRevisionRecord> resolvePublishBatch(DocumentRevisionRecord primaryRevision) {
-        validatePublishableRevision(primaryRevision, false);
+    private record RelatedPublishBatchResolution(
+            List<DocumentRevisionRecord> ready,
+            List<ApiErrorResponse.ErrorDetail> blocking,
+            String blockMessagePlain
+    ) {}
 
-        DocumentRecord document = requireDocument(primaryRevision.getDocument().getId());
+    /**
+     * Single source of truth for which Related Documents (RELATED relation, source = the given
+     * Document) publish together with it: a Related Document with no revision currently in
+     * progress (latest revision EFFECTIVE/OBSOLETED/CLOSED_CANCELLED, or none at all) is left
+     * alone -- {@code ready} omits it, {@code blocking} stays empty for it. A Related Document
+     * with a revision in progress must have already reached Ready for Publishing to join
+     * {@code ready}; otherwise it is added to {@code blocking}. Used both by the real publish
+     * action (publishRevision) and by the read-only "will publish together" preview surfaced on
+     * the Revision detail response before the user ever clicks Publish.
+     */
+    private RelatedPublishBatchResolution resolveRelatedPublishBatch(DocumentRecord document) {
         List<DocumentRelation> relatedRelations = documentRelationRepository.findAllBySourceDocument_IdAndRelationType(document.getId(), "RELATED");
-        if (relatedRelations.isEmpty()) {
-            return List.of(primaryRevision);
-        }
-
-        List<DocumentRevisionRecord> revisionsToPublish = new ArrayList<>();
-        revisionsToPublish.add(primaryRevision);
+        List<DocumentRevisionRecord> ready = new java.util.ArrayList<>();
+        List<ApiErrorResponse.ErrorDetail> blocking = new java.util.ArrayList<>();
+        StringBuilder blockMessageBuilder = new StringBuilder();
 
         for (DocumentRelation relation : relatedRelations) {
-            DocumentRecord relatedDocument = relation.getTargetDocument();
-            if (relatedDocument == null || relatedDocument.getId() == null) {
+            DocumentRecord relatedDoc = relation.getTargetDocument();
+            if (relatedDoc == null || relatedDoc.getId() == null) {
                 continue;
             }
-
-            DocumentRevisionRecord relatedRevision = revisionRepository
-                    .findFirstByDocument_IdOrderByCreatedAtDesc(relatedDocument.getId())
-                    .orElseThrow(() -> new IllegalStateException(
-                            "Related document " + safeDocumentLabel(relatedDocument) + " has no revision to publish"
-                    ));
-
-            String relatedStatus = relatedRevision.getStatus() == null ? null : relatedRevision.getStatus().getCode();
-            if (Objects.equals(relatedStatus, "DRAFT")) {
-                throw new IllegalStateException(
-                        "Cannot publish because related document " + safeDocumentLabel(relatedDocument) + " is still Draft"
-                );
+            DocumentRevisionRecord latestRelatedRevision = revisionRepository
+                    .findFirstByDocument_IdOrderByCreatedAtDesc(relatedDoc.getId())
+                    .orElse(null);
+            String latestStatus = latestRelatedRevision == null || latestRelatedRevision.getStatus() == null
+                    ? null : latestRelatedRevision.getStatus().getCode();
+            if (latestStatus == null || !IN_PROGRESS_REVISION_STATUS_CODES.contains(latestStatus)) {
+                continue;
             }
-
-            validatePublishableRevision(relatedRevision, true);
-            revisionsToPublish.add(relatedRevision);
+            if (!"READY_FOR_PUBLISHING".equals(latestStatus)) {
+                String statusLabel = latestRelatedRevision.getStatus().getLabel();
+                blocking.add(new ApiErrorResponse.ErrorDetail(relatedDoc.getDocumentNumber(), statusLabel));
+                blockMessageBuilder.append(relatedDoc.getDocumentNumber()).append(" - ").append(statusLabel).append("\n");
+                continue;
+            }
+            ready.add(latestRelatedRevision);
         }
-
-        return revisionsToPublish;
+        return new RelatedPublishBatchResolution(ready, blocking, blockMessageBuilder.toString());
     }
 
-    private void validatePublishableRevision(DocumentRevisionRecord revision, boolean relatedDocument) {
+    private void validatePublishableRevision(DocumentRevisionRecord revision) {
         String currentStatus = revision.getStatus() == null ? null : revision.getStatus().getCode();
         if (currentStatus != null && !"READY_FOR_PUBLISHING".equals(currentStatus)) {
-            if (relatedDocument) {
-                throw new IllegalStateException(
-                        "Related document " + safeDocumentLabel(revision.getDocument()) + " must be Ready for Publishing before publishing together"
-                );
-            }
             throw new IllegalStateException("Revision must be in READY_FOR_PUBLISHING state");
         }
         if (revision.isRequiresTraining() && revision.getTrainingCompletionDate() == null) {
-            if (relatedDocument) {
-                throw new IllegalStateException(
-                        "Related document " + safeDocumentLabel(revision.getDocument()) + " requires training completion before publishing"
-                );
-            }
             throw new IllegalStateException("Training completion is required before publishing");
         }
     }
@@ -2442,11 +2428,13 @@ public class RevisionService {
             Instant publishedAt,
             String comment,
             UUID signatureSessionId,
-            String signatureToken
+            String signatureToken,
+            LocalDate effectiveDate,
+            String effectiveDateRuleText,
+            List<String> batchMemberLabels
     ) {
         String fromStatus = revision.getStatus() == null ? null : revision.getStatus().getCode();
         String promotedVersion = promoteToNextMajorVersion(revision.getRevisionNumber());
-        LocalDate effectiveDate = calculateEffectiveDate(revision, publishedAt);
         Integer periodicReviewCycle = revision.getPeriodicReviewCycle() != null
                 ? revision.getPeriodicReviewCycle()
                 : (revision.getDocument() == null ? null : revision.getDocument().getPeriodicReviewCycle());
@@ -2474,6 +2462,17 @@ public class RevisionService {
         document.setStatus(requireDocumentStatus("ACTIVE"));
         document.setOpenedBy(currentUser);
         documentRepository.save(document);
+        List<AuditTrailChangeResponse> publishAuditChanges = new java.util.ArrayList<>(List.of(
+                new AuditTrailChangeResponse("effectiveDate", "-", DateTimeFormatUtils.formatDate(effectiveDate)),
+                new AuditTrailChangeResponse("effectiveDateRule", "-", effectiveDateRuleText),
+                new AuditTrailChangeResponse("validUntil", "-", DateTimeFormatUtils.formatDate(validUntil)),
+                new AuditTrailChangeResponse("reviewDate", "-", DateTimeFormatUtils.formatDate(reviewDate)),
+                new AuditTrailChangeResponse("currentRevision", "-", promotedVersion)
+        ));
+        if (batchMemberLabels != null && !batchMemberLabels.isEmpty()) {
+            publishAuditChanges.add(new AuditTrailChangeResponse(
+                    "publishedTogetherWith", "-", String.join(", ", batchMemberLabels)));
+        }
         auditTrailService.logAs(
                 currentUser,
                 "DOCUMENT",
@@ -2482,14 +2481,10 @@ public class RevisionService {
                 "PUBLISH",
                 documentFromStatus,
                 "ACTIVE",
-                "Document Master updated after revision publish.",
-                List.of(
-                        new AuditTrailChangeResponse("effectiveDate", "-", DateTimeFormatUtils.formatDate(effectiveDate)),
-                        new AuditTrailChangeResponse("effectiveDateRule", "-", describeEffectiveDateRule(revision, publishedAt)),
-                        new AuditTrailChangeResponse("validUntil", "-", DateTimeFormatUtils.formatDate(validUntil)),
-                        new AuditTrailChangeResponse("reviewDate", "-", DateTimeFormatUtils.formatDate(reviewDate)),
-                        new AuditTrailChangeResponse("currentRevision", "-", promotedVersion)
-                ),
+                batchMemberLabels != null && !batchMemberLabels.isEmpty()
+                        ? "Document Master updated after batch publish with linked Related Documents."
+                        : "Document Master updated after revision publish.",
+                publishAuditChanges,
                 signatureSessionId
         );
 
@@ -2648,11 +2643,15 @@ public class RevisionService {
      * (e.g. no training, or an imported revision without approvals) it falls back approval -> publish.
      */
     private LocalDate calculateEffectiveDate(DocumentRevisionRecord revision, Instant publishedAt) {
-        return resolveEffectiveDate(revision, publishedAt).date();
+        return resolveEffectiveDate(List.of(revision), publishedAt).date();
     }
 
     private String describeEffectiveDateRule(DocumentRevisionRecord revision, Instant publishedAt) {
-        EffectiveDateResolution resolution = resolveEffectiveDate(revision, publishedAt);
+        return describeEffectiveDateRule(List.of(revision), publishedAt);
+    }
+
+    private String describeEffectiveDateRule(List<DocumentRevisionRecord> bundle, Instant publishedAt) {
+        EffectiveDateResolution resolution = resolveEffectiveDate(bundle, publishedAt);
         String basis = switch (resolution.basis()) {
             case SystemConfigurationService.EFFECTIVE_DATE_AFTER_TRAINING -> "training completion";
             case SystemConfigurationService.EFFECTIVE_DATE_AFTER_PUBLISH -> "publish";
@@ -2663,43 +2662,73 @@ public class RevisionService {
 
     private record EffectiveDateResolution(LocalDate date, String basis, int offsetDays) {}
 
-    private EffectiveDateResolution resolveEffectiveDate(DocumentRevisionRecord revision, Instant publishedAt) {
-        String configuredBasis = systemConfigurationService.getEffectiveDateBasis();
-        int offsetDays = systemConfigurationService.getEffectiveDateOffsetDays();
-
-        LocalDate approvalDate = null;
-        if (revision != null && revision.getId() != null) {
-            approvalDate = revisionWorkflowParticipantRepository
-                    .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "APPROVER")
-                    .stream()
-                    .filter(participant -> "APPROVED".equalsIgnoreCase(participant.getActionStatus()))
-                    .map(RevisionWorkflowParticipant::getActedAt)
-                    .filter(java.util.Objects::nonNull)
-                    .max(java.util.Comparator.naturalOrder())
-                    .map(instant -> instant.atZone(SYSTEM_ZONE).toLocalDate())
-                    .orElse(null);
-        }
-        LocalDate trainingDate = revision != null && revision.isRequiresTraining() ? revision.getTrainingCompletionDate() : null;
+    /**
+     * A single revision is simply a bundle of one -- the same formula applies either way. When
+     * publishing several linked documents together (a Document Master and its RELATED documents,
+     * batch-published as one action), the basis date used is the LATEST (max) qualifying date
+     * across every member of the bundle, never just the primary document's own: nothing in the
+     * bundle may become Effective before every member has actually reached that basis event.
+     * AFTER_PUBLISH is naturally already shared (one publishedAt for the whole batch).
+     */
+    private EffectiveDateResolution resolveEffectiveDate(List<DocumentRevisionRecord> bundle, Instant publishedAt) {
         LocalDate publishDate = (publishedAt == null ? Instant.now() : publishedAt).atZone(SYSTEM_ZONE).toLocalDate();
 
-        LocalDate base = null;
+        // The basis/offset rule is chosen per revision from whether its document was flagged
+        // "Requires Training" at creation (Required Training vs Non-Required Training, configured
+        // separately in Settings > Document Properties). A bundle publish (primary + Related
+        // Documents) may therefore mix rules; as before, the LATEST (max) resulting date across the
+        // bundle wins, so nothing becomes Effective before every member has reached its own basis.
+        LocalDate maxBase = null;
         String usedBasis = null;
-        if (SystemConfigurationService.EFFECTIVE_DATE_AFTER_PUBLISH.equals(configuredBasis)) {
-            base = publishDate;
-            usedBasis = configuredBasis;
-        } else if (SystemConfigurationService.EFFECTIVE_DATE_AFTER_TRAINING.equals(configuredBasis) && trainingDate != null) {
-            base = trainingDate;
-            usedBasis = configuredBasis;
+        int usedOffsetDays = 0;
+        for (DocumentRevisionRecord revision : bundle) {
+            boolean requiresTraining = revision != null && revision.isRequiresTraining();
+            String configuredBasis = systemConfigurationService.getEffectiveDateBasis(requiresTraining);
+            int offsetDays = systemConfigurationService.getEffectiveDateOffsetDays(requiresTraining);
+
+            LocalDate candidate;
+            String candidateBasis;
+            if (SystemConfigurationService.EFFECTIVE_DATE_AFTER_PUBLISH.equals(configuredBasis)) {
+                candidate = publishDate;
+                candidateBasis = configuredBasis;
+            } else {
+                LocalDate approvalDate = null;
+                if (revision != null && revision.getId() != null) {
+                    approvalDate = revisionWorkflowParticipantRepository
+                            .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "APPROVER")
+                            .stream()
+                            .filter(participant -> "APPROVED".equalsIgnoreCase(participant.getActionStatus()))
+                            .map(RevisionWorkflowParticipant::getActedAt)
+                            .filter(java.util.Objects::nonNull)
+                            .max(java.util.Comparator.naturalOrder())
+                            .map(instant -> instant.atZone(SYSTEM_ZONE).toLocalDate())
+                            .orElse(null);
+                }
+                LocalDate trainingDate = requiresTraining ? revision.getTrainingCompletionDate() : null;
+
+                if (SystemConfigurationService.EFFECTIVE_DATE_AFTER_TRAINING.equals(configuredBasis) && trainingDate != null) {
+                    candidate = trainingDate;
+                    candidateBasis = configuredBasis;
+                } else if (approvalDate != null) {
+                    candidate = approvalDate;
+                    candidateBasis = SystemConfigurationService.EFFECTIVE_DATE_AFTER_APPROVAL;
+                } else {
+                    candidate = publishDate;
+                    candidateBasis = SystemConfigurationService.EFFECTIVE_DATE_AFTER_PUBLISH;
+                }
+            }
+            LocalDate candidateWithOffset = candidate.plusDays(offsetDays);
+            if (maxBase == null || candidateWithOffset.isAfter(maxBase)) {
+                maxBase = candidateWithOffset;
+                usedBasis = candidateBasis;
+                usedOffsetDays = offsetDays;
+            }
         }
-        if (base == null && approvalDate != null) {
-            base = approvalDate;
-            usedBasis = SystemConfigurationService.EFFECTIVE_DATE_AFTER_APPROVAL;
-        }
-        if (base == null) {
-            base = publishDate;
+        if (maxBase == null) {
+            maxBase = publishDate;
             usedBasis = SystemConfigurationService.EFFECTIVE_DATE_AFTER_PUBLISH;
         }
-        return new EffectiveDateResolution(base.plusDays(offsetDays), usedBasis, offsetDays);
+        return new EffectiveDateResolution(maxBase, usedBasis, usedOffsetDays);
     }
 
     private LocalDate calculateValidUntil(LocalDate effectiveDate, Integer periodicReviewCycleMonths, LocalDate fallbackValidUntil) {
@@ -3766,6 +3795,13 @@ public class RevisionService {
                         DateTimeFormatUtils.formatDate(revision.getLegacyHistoricalApprovalDate())
                 );
 
+        String revisionStatusCode = revision.getStatus() == null ? null : revision.getStatus().getCode();
+        List<String> relatedDocumentsPublishingTogether = sourceDocument == null || !"READY_FOR_PUBLISHING".equals(revisionStatusCode)
+                ? List.of()
+                : resolveRelatedPublishBatch(sourceDocument).ready().stream()
+                        .map(r -> safeDocumentLabel(r.getDocument()))
+                        .toList();
+
         return new RevisionDetailResponse(
                 revision.getId().toString(),
                 sourceDocument == null ? null : sourceDocument.getId().toString(),
@@ -3859,7 +3895,8 @@ public class RevisionService {
                 canCompleteTraining,
                 canPublishRevision,
                 message,
-                legacyImportInfo
+                legacyImportInfo,
+                relatedDocumentsPublishingTogether
         );
     }
 
@@ -5237,15 +5274,16 @@ public class RevisionService {
         String previousFilePath = revision.getFilePath();
         String previousPreviewPath = revision.getPreviewFilePath();
         String safeOriginalName = sanitizeFileName(file.getOriginalFilename());
+        String displayFileName = buildRevisionSourceDisplayName(revision, safeOriginalName);
         FileStorageService.StorageWriteResult target = fileStorageService.storeRevisionSourceFile(
                 revision.getId(),
-                safeOriginalName,
+                displayFileName,
                 file.getInputStream(),
                 revision.getDocumentNumber(),
                 revision.getRevisionNumber()
         );
 
-        revision.setFileName(safeOriginalName);
+        revision.setFileName(displayFileName);
         revision.setFilePath(target.storedPath());
         revision.setPreviewFilePath(null);
         if (!validatedFile.sha256().equalsIgnoreCase(target.checksum())) {
@@ -5779,6 +5817,30 @@ public class RevisionService {
             return "revision-file";
         }
         return fileName.replaceAll("[\\\\/:*?\"<>|]", "_");
+    }
+
+    /**
+     * The stored/displayed revision source file is always renamed on upload to
+     * "{DocumentNumber}_{DocumentName}{extension}" (e.g. "SOP.0007_Data Integrity.docx"), regardless
+     * of what the uploader's own file was named -- a stable, predictable name across every revision
+     * of a document, matching the printed Document Number/Name shown everywhere else in the system.
+     * The extension is taken from the uploaded file; the storage object key itself does not depend
+     * on this name (StoragePathBuilder only reads the extension), so renaming here is display-only.
+     */
+    private String buildRevisionSourceDisplayName(DocumentRevisionRecord revision, String sanitizedOriginalName) {
+        int dot = sanitizedOriginalName.lastIndexOf('.');
+        String extension = dot >= 0 ? sanitizedOriginalName.substring(dot) : "";
+        String documentNumber = StringUtils.hasText(revision.getDocumentNumber()) ? revision.getDocumentNumber().trim() : "";
+        String documentName = StringUtils.hasText(revision.getDocumentName()) ? revision.getDocumentName().trim() : "";
+        String baseName = StringUtils.hasText(documentNumber) && StringUtils.hasText(documentName)
+                ? documentNumber + "_" + documentName
+                : StringUtils.hasText(documentNumber) ? documentNumber
+                : StringUtils.hasText(documentName) ? documentName
+                : null;
+        if (baseName == null) {
+            return sanitizedOriginalName;
+        }
+        return sanitizeFileName(baseName) + extension;
     }
 
     private RevisionStatusDefinition requireRevisionStatus(String code) {

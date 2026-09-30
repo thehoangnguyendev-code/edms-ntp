@@ -373,6 +373,32 @@ public class FileStorageService {
         return localResult(targetFile, provider);
     }
 
+    /**
+     * Stores a generated (watermarked) Uncontrolled Copy PDF under its own immutable key -- a new object per
+     * generation, never overwriting a previous one. Kept apart from the Controlled Copy key space on purpose.
+     */
+    public StorageWriteResult storeUncontrolledCopyPdf(UUID uncontrolledCopyId, String uncontrolledCopyNumber, InputStream contentStream) throws IOException {
+        JsonNode storageConfig = getStorageConfig();
+        String provider = storageConfig.path("provider").asText("local");
+        String id = String.valueOf(uncontrolledCopyId == null ? UUID.randomUUID() : uncontrolledCopyId);
+        String safeNumber = StringUtils.hasText(uncontrolledCopyNumber)
+                ? uncontrolledCopyNumber.trim().replaceAll("[^A-Za-z0-9._-]", "_")
+                : id;
+        String fileName = "uncontrolled-copy-" + System.currentTimeMillis() + ".pdf";
+        if (isMinioProvider(provider)) {
+            return storeInMinio(storageConfig, "uncontrolled-copies/" + safeNumber + "/" + id + "/" + fileName, contentStream, "application/pdf");
+        }
+        Path root = Paths.get(System.getProperty("user.dir"), "storage", "uncontrolled-copies", "files").normalize();
+        Path targetDir = root.resolve(id).normalize();
+        if (!targetDir.startsWith(root)) {
+            throw new IOException("Invalid uncontrolled copy storage path");
+        }
+        Files.createDirectories(targetDir);
+        Path targetFile = targetDir.resolve(fileName);
+        Files.copy(contentStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
+        return localResult(targetFile, provider);
+    }
+
     private StorageWriteResult storeInMinio(JsonNode storageConfig, String relativeKey, InputStream contentStream, String contentType) throws IOException {
         MinioObjectStorageService.StoredObject stored = minioObjectStorageService.store(
                 storageConfig,

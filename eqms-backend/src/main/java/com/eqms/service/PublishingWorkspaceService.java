@@ -300,8 +300,7 @@ public class PublishingWorkspaceService {
         revisionService.publishRevision(revisionId, new com.eqms.dto.document.RevisionWorkflowActionRequest(
                 request == null ? null : request.changeSummary(),
                 request == null || request.reason() == null ? (request == null ? null : request.changeSummary()) : request.reason(),
-                request == null ? null : request.signatureToken(),
-                false
+                request == null ? null : request.signatureToken()
         ), currentUser);
 
         // Recompose from the current template/placeholder-style state instead of trusting the

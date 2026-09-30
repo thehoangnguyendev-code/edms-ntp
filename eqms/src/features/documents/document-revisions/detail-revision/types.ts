@@ -212,4 +212,8 @@ export interface RevisionDetailResponse {
     historicalApprover?: string | null;
     historicalApprovalDate?: string | null;
   } | null;
+  /** Display labels of Related Documents that will publish TOGETHER with this one when Publish is
+   *  clicked (each already has a revision in progress that reached Ready for Publishing). Only
+   *  populated while this revision itself is Ready for Publishing. */
+  relatedDocumentsPublishingTogether?: string[];
 }

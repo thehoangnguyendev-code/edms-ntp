@@ -420,6 +420,24 @@ public class SettingsUserController {
         if (offset != null && !offset.isNull() && (!offset.canConvertToInt() || offset.asInt() < 0 || offset.asInt() > 365)) {
             throw new IllegalArgumentException("Effective Date offset must be between 0 and 365 days");
         }
+        com.fasterxml.jackson.databind.JsonNode basisRequired = documents == null ? null : documents.get("effectiveDateBasisTrainingRequired");
+        if (basisRequired != null && !basisRequired.isNull()
+                && !java.util.Set.of("AFTER_APPROVAL", "AFTER_TRAINING", "AFTER_PUBLISH").contains(basisRequired.asText())) {
+            throw new IllegalArgumentException("Effective Date basis (Required Training) must be AFTER_APPROVAL, AFTER_TRAINING or AFTER_PUBLISH");
+        }
+        com.fasterxml.jackson.databind.JsonNode basisNotRequired = documents == null ? null : documents.get("effectiveDateBasisTrainingNotRequired");
+        if (basisNotRequired != null && !basisNotRequired.isNull()
+                && !java.util.Set.of("AFTER_APPROVAL", "AFTER_PUBLISH").contains(basisNotRequired.asText())) {
+            throw new IllegalArgumentException("Effective Date basis (Non-Required Training) must be AFTER_APPROVAL or AFTER_PUBLISH");
+        }
+        com.fasterxml.jackson.databind.JsonNode offsetRequired = documents == null ? null : documents.get("effectiveDateOffsetDaysTrainingRequired");
+        if (offsetRequired != null && !offsetRequired.isNull() && (!offsetRequired.canConvertToInt() || offsetRequired.asInt() < 0 || offsetRequired.asInt() > 365)) {
+            throw new IllegalArgumentException("Effective Date offset (Required Training) must be between 0 and 365 days");
+        }
+        com.fasterxml.jackson.databind.JsonNode offsetNotRequired = documents == null ? null : documents.get("effectiveDateOffsetDaysTrainingNotRequired");
+        if (offsetNotRequired != null && !offsetNotRequired.isNull() && (!offsetNotRequired.canConvertToInt() || offsetNotRequired.asInt() < 0 || offsetNotRequired.asInt() > 365)) {
+            throw new IllegalArgumentException("Effective Date offset (Non-Required Training) must be between 0 and 365 days");
+        }
         SystemConfigurationResponse updated = systemConfigurationService.updateConfiguration(
                 new SystemConfigurationRequest(null, null, documents, null, null, null));
         return ResponseEntity.ok(updated.documents());

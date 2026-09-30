@@ -49,6 +49,7 @@ import {
 } from "../mockData";
 import { usePortalDropdown, useNavigateWithLoading, useTableFilter, useTableDragScroll, PortalDropdownPosition } from "@/hooks";
 import { useTrainingPermissions } from "@/features/training/useTrainingPermissions";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // ── Types ─────────────────────────────────────────────────────────
 type CourseInventoryMode = "list" | "review" | "approval";
@@ -644,13 +645,13 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                 )}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[800px] md:min-w-[980px] lg:min-w-[1160px] xl:min-w-[1320px] border-spacing-0 text-left">
-                  <thead>
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-9"></th>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
+                <TableMarkup.Root className="w-full min-w-[800px] md:min-w-[980px] lg:min-w-[1160px] xl:min-w-[1320px] border-spacing-0 text-left">
+                  <TableMarkup.Head>
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell32}></TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
                         No.
-                      </th>
+                      </TableMarkup.HeaderCell>
                       {[
                         { label: "Course ID", id: "trainingId" },
                         { label: "Course Name", id: "courseName" },
@@ -665,7 +666,7 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                       ].map((col, idx) => {
                         const isSorted = sortConfig.key === col.id;
                         return (
-                          <th
+                          <TableMarkup.HeaderCell
                             key={idx}
                             onClick={() => handleSort(col.id)}
                             className={cn(
@@ -680,15 +681,15 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                                 <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === 'desc' ? "text-emerald-600" : "")} />
                               </div>
                             </div>
-                          </th>
+                          </TableMarkup.HeaderCell>
                         );
                       })}
-                      <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="bg-white">
                     {paginatedSortedData.length > 0 ? (
                       paginatedSortedData.map((item, index) => {
                         const tdClass = "py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap";
@@ -704,10 +705,10 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
 
                         return (
                           <React.Fragment key={item.id}>
-                            <tr
+                            <TableMarkup.Row
                               className="hover:bg-slate-50/80 transition-colors group"
                             >
-                              <td className="py-3 px-4 border-b border-slate-200 whitespace-nowrap" onClick={(e) => {
+                              <TableMarkup.Cell className="py-3 px-4 border-b border-slate-200 whitespace-nowrap" onClick={(e) => {
                                 e.stopPropagation();
                                 if (hasMaterials) setExpandedRowId(isExpanded ? null : item.id);
                               }}>
@@ -722,11 +723,11 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                                     </motion.span>
                                   </button>
                                 )}
-                              </td>
-                              <td className={cn(tdClass, "text-center text-slate-500 font-medium")}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={cn(tdClass, "text-center text-slate-500 font-medium")}>
                                 {startIndex + index + 1}
-                              </td>
-                              <td
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell
                                 className={cn(tdClass, "cursor-pointer")}
                                 onClick={() => {
                                   const detailRoute = mode === 'list'
@@ -743,8 +744,8 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                                 <span className="font-medium text-emerald-600 hover:underline">
                                   {item.trainingId}
                                 </span>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <div className="flex items-start gap-2">
                                   <GraduationCap className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                                   <div className="max-w-[200px] md:max-w-md">
@@ -756,15 +757,15 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                                     </p>
                                   </div>
                                 </div>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {type && (
                                   <Badge color="blue" size="sm" className="font-medium">
                                     {type}
                                   </Badge>
                                 )}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {item.trainingMethod && (() => {
                                   const cfg = getTrainingMethodConfig(item.trainingMethod);
                                   return (
@@ -777,17 +778,17 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                                     </Badge>
                                   );
                                 })()}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <StatusBadge
                                   status={mapStatusToStatusType(status) as any}
                                   size="sm"
                                 />
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {item.instructor || "—"}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {item.recurrence?.enabled ? (
                                   <div className="flex flex-col gap-0.5">
                                     <span className="inline-flex items-center gap-1.5 text-emerald-600 font-medium">
@@ -801,24 +802,24 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                                 ) : (
                                   <span className="text-slate-500 text-xs sm:text-sm">Disabled</span>
                                 )}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {formatDate(scheduledDate)}
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 <div className="flex items-center gap-2">
                                   <Users className="h-4 w-4 text-slate-400" />
                                   <span className="text-slate-900 font-medium">
                                     {item.enrolled ?? 0}/{item.capacity ?? 0}
                                   </span>
                                 </div>
-                              </td>
-                              <td className={tdClass}>
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell className={tdClass}>
                                 {item.createdAt || "—"}
-                              </td>
-                              <td
+                              </TableMarkup.Cell>
+                              <TableMarkup.Cell
                                 onClick={(e) => e.stopPropagation()}
-                                className="sticky right-0 z-10 bg-white border-b border-slate-200 py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
+                                className={TABLE_STYLES.cell33}
                               >
                                 <button
                                   ref={getRef(item.id)}
@@ -840,8 +841,8 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                                   canApproveCourses={canApproveCourses}
                                   canObsoleteCourses={canObsoleteCourses}
                                 />
-                              </td>
-                            </tr>
+                              </TableMarkup.Cell>
+                            </TableMarkup.Row>
                             <ExpandedCourseRow
                               item={item}
                               isExpanded={isExpanded}
@@ -851,17 +852,17 @@ const CourseInventoryView: React.FC<{ mode: CourseInventoryMode }> = ({ mode }) 
                         );
                       })
                     ) : (
-                      <tr>
-                        <td colSpan={13}>
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={13}>
                           <TableEmptyState
                             title={config.emptyTitle}
                             description={config.emptyDescription}
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               <TablePagination

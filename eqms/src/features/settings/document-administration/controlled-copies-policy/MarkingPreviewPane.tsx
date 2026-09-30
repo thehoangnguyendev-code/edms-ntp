@@ -4,11 +4,13 @@ import { Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } fro
 import { ImageOff } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { controlledCopyPolicyApi } from "@/services/api";
+import { uncontrolledCopyPolicyApi } from "@/services/api/uncontrolledCopyPolicy";
 import { publishingTemplatesApi } from "@/services/api/publishingTemplates";
 import type { PublishingTemplateResponse } from "@/features/documents/publishing/types";
 import type {
   ControlledCopyMarkingPreview,
   ControlledCopyMarkingPreviewRequest,
+  ControlledCopyStatusMarking,
   MarkingPlacementRule,
 } from "@/services/api/controlledCopyPolicy";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
@@ -84,13 +86,33 @@ function useNormalizedTransform<T extends Konva.Node>() {
   return { ref, resetScale };
 }
 
-export const MarkingPreviewPane: React.FC<{
-  scenario: ControlledCopyMarkingPreviewRequest["scenario"];
-  draft: Draft;
+interface CommonPaneProps {
   pageKind: "COVER" | "BODY";
   onPageKindChange: (kind: "COVER" | "BODY") => void;
   onPlacementChange: (kind: "stamp" | "watermark", pagesKey: PagesKey, patch: Partial<MarkingPlacementRule> | null) => void;
-}> = ({ scenario, draft, pageKind, onPageKindChange, onPlacementChange }) => {
+}
+
+/**
+ * CONTROLLED (default): the Controlled Copies Policy draft + scenario, previewed by the controlled-copies-policy endpoint.
+ * UNCONTROLLED: the single Uncontrolled Copies Policy marking, previewed by the uncontrolled-copies-policy endpoint. The
+ * server reports its marks under the "Status" layer, so the same drag/resize editor below works unchanged for both.
+ */
+export type MarkingPreviewPaneProps = CommonPaneProps &
+  (
+    | { copyType?: "CONTROLLED"; scenario: ControlledCopyMarkingPreviewRequest["scenario"]; draft: Draft }
+    | { copyType: "UNCONTROLLED"; marking: ControlledCopyStatusMarking }
+  );
+
+type PreviewNav = Pick<ControlledCopyMarkingPreviewRequest, "templateId" | "layout" | "pageKind">;
+
+const requestPreview = (props: MarkingPreviewPaneProps, nav: PreviewNav): Promise<ControlledCopyMarkingPreview> =>
+  props.copyType === "UNCONTROLLED"
+    ? uncontrolledCopyPolicyApi.previewMarking({ ...nav, marking: props.marking })
+    : controlledCopyPolicyApi.previewMarking({ ...props.draft, ...nav, scenario: props.scenario });
+
+export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => {
+  const { pageKind, onPageKindChange, onPlacementChange } = props;
+  const scenario = props.copyType === "UNCONTROLLED" ? undefined : props.scenario;
   const [templates, setTemplates] = useState<PreviewTemplateOption[]>([]);
   const [templateId, setTemplateId] = useState("");
   const [layout, setLayout] = useState<PreviewLayout>("portrait");
@@ -154,12 +176,12 @@ export const MarkingPreviewPane: React.FC<{
     return () => observer.disconnect();
   }, []);
 
-  const draftKey = JSON.stringify(draft);
+  const draftKey = JSON.stringify(props.copyType === "UNCONTROLLED" ? props.marking : props.draft);
   // Navigation (which page/template/layout/scenario to look at) fetches immediately -- debouncing it just
   // makes switching "Position for" back and forth look like it forgot the position for half a second, which is easy
   // to mistake for the drag itself being lost. Only draftKey (a field edit or a drag commit, which can fire rapidly)
   // is debounced, to avoid flooding the server while the administrator is still typing/dragging.
-  const navKey = JSON.stringify({ templateId, layout, pageKind, scenario });
+  const navKey = JSON.stringify({ copyType: props.copyType ?? "CONTROLLED", templateId, layout, pageKind, scenario });
   const previousNavKey = useRef(navKey);
   useEffect(() => {
     if (!templateId) return;
@@ -175,8 +197,7 @@ export const MarkingPreviewPane: React.FC<{
     const requestId = ++requestRef.current;
     const fetchPreview = () => {
       setLoading(true);
-      controlledCopyPolicyApi
-        .previewMarking({ ...draft, templateId, layout, pageKind, scenario })
+      requestPreview(props, { templateId, layout, pageKind })
         .then((result) => {
           if (requestId !== requestRef.current) return;
           setPreview(result);
@@ -217,7 +238,7 @@ export const MarkingPreviewPane: React.FC<{
     };
   }, [preview?.imageBase64]);
 
-  const editable = editableLayer(scenario);
+  const editable = scenario ? editableLayer(scenario) : "Status";
   const marks = preview?.marks ?? [];
   const stampMark = marks.find((m) => m.kind === "STAMP" && m.layer.startsWith(editable));
   const watermarkMark = marks.find((m) => m.kind === "WATERMARK" && m.layer.startsWith(editable));
@@ -251,9 +272,15 @@ export const MarkingPreviewPane: React.FC<{
   // The scale% a placement rule already holds for this page group (if the administrator set one before), so a further
   // resize multiplies it further rather than guessing an absolute size from the rendered (already-scaled) preview.
   const existingWatermarkScalePercent = useMemo(() => {
-    const placements = scenario === "ISSUED" ? draft.marking.placements : draft.statusMarking[scenario]?.placements;
+    const placements =
+      props.copyType === "UNCONTROLLED"
+        ? props.marking.placements
+        : props.scenario === "ISSUED"
+          ? props.draft.marking.placements
+          : props.draft.statusMarking[props.scenario]?.placements;
     return placements?.find((rule) => rule.pages === pagesKey)?.watermarkScalePercent ?? 100;
-  }, [draft, scenario, pagesKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey, scenario, pagesKey]);
   const watermarkScalePercentRef = useRef(existingWatermarkScalePercent);
   watermarkScalePercentRef.current = existingWatermarkScalePercent;
 
@@ -261,13 +288,18 @@ export const MarkingPreviewPane: React.FC<{
   // decides whether a mark exists at all on page 2+; it is a different setting from the page picker above, which only
   // chooses which page's position you are dragging right now. Warn here so setting a position on a page the mark
   // will never actually appear on (because its own Pages scope excludes it) isn't mistaken for a bug.
+  // Uncontrolled copy: the watermark is forced onto every page by the server; only the stamp honours "First page only".
   const hiddenOnThisPage =
-    scenario === "ISSUED" && pageKind === "BODY"
-      ? [
-          draft.marking.watermarkPages === "FIRST" ? "watermark" : null,
-          draft.marking.stampPages === "FIRST" ? "stamp" : null,
-        ].filter((v): v is string => v !== null)
-      : [];
+    pageKind !== "BODY"
+      ? []
+      : props.copyType === "UNCONTROLLED"
+        ? props.marking.stampEnabled && props.marking.stampPages === "FIRST" ? ["stamp"] : []
+        : props.scenario === "ISSUED"
+          ? [
+              props.draft.marking.watermarkPages === "FIRST" ? "watermark" : null,
+              props.draft.marking.stampPages === "FIRST" ? "stamp" : null,
+            ].filter((v): v is string => v !== null)
+          : [];
 
   const pageAspect = preview ? preview.pageHeightPt / preview.pageWidthPt : 1;
   const stageHeight = stageWidth * pageAspect;

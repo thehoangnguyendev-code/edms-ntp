@@ -5,6 +5,7 @@ import { Search, Eye } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { Button } from "@/components/ui/button/Button";
 import { ROUTES } from "@/app/routes.constants";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // Dynamically import all file icons from the assets folder
 const ALL_ICONS = import.meta.glob("../../../assets/images/image-file/*.png", { eager: true, import: "default" }) as Record<string, string>;
@@ -155,47 +156,47 @@ export const FolderDocumentsList: React.FC<FolderDocumentsListProps> = ({
                     ) : viewMode === "list" ? (
                         /* List View (Table with Borders) - Optimized for density with Fixed Name Column */
                         <div className="min-w-full overflow-x-auto rounded-lg border border-slate-200 shadow-sm relative">
-                            <table className="w-full text-2xs md:text-sm text-left border-collapse translate-x-0">
-                                <thead className="bg-slate-50 relative z-20">
-                                    <tr className="text-slate-700">
-                                        <th className="sticky left-0 z-30 px-2 md:px-4 py-2 md:py-3 text-2xs md:text-xs font-semibold border-b border-r border-slate-200 cursor-pointer bg-slate-50 hover:bg-white transition-colors group whitespace-nowrap min-w-[160px] md:min-w-[240px]" onClick={() => handleSort("name")}>
+                            <TableMarkup.Root className="w-full text-2xs md:text-sm text-left border-collapse translate-x-0">
+                                <TableMarkup.Head className="bg-slate-50 relative z-20">
+                                    <TableMarkup.Row className="text-slate-700">
+                                        <TableMarkup.HeaderCell className="sticky left-0 z-30 px-2 md:px-4 py-2 md:py-3 text-2xs md:text-xs font-semibold border-b border-r border-slate-200 cursor-pointer bg-slate-50 hover:bg-white transition-colors group whitespace-nowrap min-w-[160px] md:min-w-[240px]" onClick={() => handleSort("name")}>
                                             <div className="flex items-center justify-between gap-1.5">
                                                 <span>File Name</span>
                                                 <SortIcon field="name" />
                                             </div>
-                                        </th>
-                                        <th className="px-2 md:px-4 py-2 md:py-3 text-2xs md:text-xs font-semibold border-b border-r border-slate-200 cursor-pointer hover:bg-white transition-colors whitespace-nowrap" onClick={() => handleSort("fileType")}>
+                                        </TableMarkup.HeaderCell>
+                                        <TableMarkup.HeaderCell className={TABLE_STYLES.interactiveRow1} onClick={() => handleSort("fileType")}>
                                             <div className="flex items-center justify-between gap-1.5">
                                                 <span>File Type</span>
                                                 <SortIcon field="fileType" />
                                             </div>
-                                        </th>
-                                        <th className="px-2 md:px-4 py-2 md:py-3 text-2xs md:text-xs font-semibold border-b border-r border-slate-200 cursor-pointer hover:bg-white transition-colors whitespace-nowrap" onClick={() => handleSort("lastOpened")}>
+                                        </TableMarkup.HeaderCell>
+                                        <TableMarkup.HeaderCell className={TABLE_STYLES.interactiveRow1} onClick={() => handleSort("lastOpened")}>
                                             <div className="flex items-center justify-between gap-1.5">
                                                 <span>Last Opened</span>
                                                 <SortIcon field="lastOpened" />
                                             </div>
-                                        </th>
-                                        <th className="px-2 md:px-4 py-2 md:py-3 text-2xs md:text-xs font-semibold border-b border-slate-200 cursor-pointer hover:bg-white transition-colors whitespace-nowrap" onClick={() => handleSort("fileSize")}>
+                                        </TableMarkup.HeaderCell>
+                                        <TableMarkup.HeaderCell className="px-2 md:px-4 py-2 md:py-3 text-2xs md:text-xs font-semibold border-b border-slate-200 cursor-pointer hover:bg-white transition-colors whitespace-nowrap" onClick={() => handleSort("fileSize")}>
                                             <div className="flex items-center justify-between gap-1.5">
                                                 <span>File Size</span>
                                                 <SortIcon field="fileSize" />
                                             </div>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-200">
+                                        </TableMarkup.HeaderCell>
+                                    </TableMarkup.Row>
+                                </TableMarkup.Head>
+                                <TableMarkup.Body className="divide-y divide-slate-200">
                                     {filteredAndSortedDocs.map((doc) => (
-                                        <tr key={doc.id} className="group hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => handleViewDetails(doc)}>
-                                            <td className="sticky left-0 z-10 px-2 md:px-4 py-2 md:py-3 border-r border-slate-200 bg-white group-hover:bg-slate-50 transition-colors shadow-[1px_0_0_0_rgb(226,232,240)] md:shadow-none">
+                                        <TableMarkup.Row key={doc.id} className="group hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => handleViewDetails(doc)}>
+                                            <TableMarkup.Cell className="sticky left-0 z-10 px-2 md:px-4 py-2 md:py-3 border-r border-slate-200 bg-white group-hover:bg-slate-50 transition-colors shadow-[1px_0_0_0_rgb(226,232,240)] md:shadow-none">
                                                 <div className="flex items-center gap-2 md:gap-3">
                                                     <div className="shrink-0">{getFileIcon(doc.fileType)}</div>
                                                     <span className="font-medium text-slate-900 truncate max-w-[120px] sm:max-w-[200px] lg:max-w-[400px] leading-tight hover:text-emerald-600 transition-colors">{doc.name}</span>
                                                 </div>
-                                            </td>
-                                            <td className="px-2 md:px-4 py-2 md:py-3 border-r border-slate-200 text-slate-600 font-medium whitespace-nowrap">{doc.fileType}</td>
-                                            <td className="px-2 md:px-4 py-2 md:py-3 border-r border-slate-200 text-slate-600 whitespace-nowrap">{doc.lastOpened}</td>
-                                            <td className="px-2 md:px-4 py-2 md:py-3 text-slate-600 whitespace-nowrap">
+                                            </TableMarkup.Cell>
+                                            <TableMarkup.Cell className="px-2 md:px-4 py-2 md:py-3 border-r border-slate-200 text-slate-600 font-medium whitespace-nowrap">{doc.fileType}</TableMarkup.Cell>
+                                            <TableMarkup.Cell className="px-2 md:px-4 py-2 md:py-3 border-r border-slate-200 text-slate-600 whitespace-nowrap">{doc.lastOpened}</TableMarkup.Cell>
+                                            <TableMarkup.Cell className="px-2 md:px-4 py-2 md:py-3 text-slate-600 whitespace-nowrap">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span>{doc.fileSize}</span>
                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -213,11 +214,11 @@ export const FolderDocumentsList: React.FC<FolderDocumentsListProps> = ({
                                                         </Button>
                                                     </div>
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </TableMarkup.Cell>
+                                        </TableMarkup.Row>
                                     ))}
-                                </tbody>
-                            </table>
+                                </TableMarkup.Body>
+                            </TableMarkup.Root>
                         </div>
                     ) : (
                         /* Grid View - Simplified */

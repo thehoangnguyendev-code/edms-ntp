@@ -452,6 +452,75 @@ public class EmailNotificationService {
         return resolvePublicAppBaseUrl() + "/documents/controlled-copies/batches/" + batchId + "/dco-zip";
     }
 
+    /** The "download" link inside an Uncontrolled Copy distribution email: an ordinary, login-required
+     *  app route (never a public/token link), mirroring {@link #buildControlledCopyDcoZipDownloadUrl}. */
+    public String buildUncontrolledCopyDownloadUrl(java.util.UUID uncontrolledCopyId) {
+        if (uncontrolledCopyId == null) {
+            return "";
+        }
+        return resolvePublicAppBaseUrl() + "/documents/uncontrolled-copies/" + uncontrolledCopyId + "/download";
+    }
+
+    /**
+     * Sends the one Uncontrolled Copy distribution email (PDF attached + login-required download link),
+     * mirroring {@link #sendControlledCopyBatchZipToDco}. Returns true only when the provider accepted it,
+     * so the async distribution job can record a real SUCCESS/FAILED item outcome.
+     */
+    public boolean sendUncontrolledCopyDistribution(
+            String recipientEmail,
+            UserAccount recipientUser,
+            UserAccount actor,
+            Map<String, String> variables,
+            String attachmentFileName,
+            byte[] attachmentBytes
+    ) {
+        if (!StringUtils.hasText(recipientEmail)) {
+            log.warn("Cannot send uncontrolled copy distribution email: no recipient email.");
+            return false;
+        }
+        String normalizedType = EmailTemplateTypeUtils.normalize("uncontrolled-copy-distribution");
+        EmailTemplate template = templateRepository
+                .findTopByTypeIgnoreCaseAndStatusIgnoreCaseOrderByUpdatedDateDesc(normalizedType, "Active")
+                .orElse(null);
+        if (template == null) {
+            log.warn("No active email template found for type '{}'. Skipping uncontrolled copy distribution email.", normalizedType);
+            recordDeliveryFailure(recipientEmail, normalizedType, "UNCONTROLLED_COPY",
+                    new IllegalStateException("No active email template"), Map.of());
+            return false;
+        }
+        Map<String, String> payload = buildUserVariables(recipientUser, actor, variables);
+        if (recipientUser == null) {
+            payload.put("recipientName", recipientEmail.trim());
+            payload.put("recipientEmail", recipientEmail.trim());
+        }
+        String label = recipientUser != null && StringUtils.hasText(recipientUser.getFullName()) ? recipientUser.getFullName() : recipientEmail;
+        try {
+            EmailService emailService = emailServiceProvider.getIfAvailable();
+            if (emailService == null) {
+                log.warn("EmailService is not available. Skipping uncontrolled copy distribution email to {}", recipientEmail);
+                recordDeliveryFailure(recipientEmail, normalizedType, "UNCONTROLLED_COPY",
+                        new IllegalStateException("EmailService is not available"), payload);
+                return false;
+            }
+            boolean sent = attachmentBytes == null || attachmentBytes.length == 0
+                    ? sendTemplateEmailWithRetry(emailService, recipientEmail.trim(), template, payload, true)
+                    : emailService.sendTemplateEmailWithAttachment(recipientEmail.trim(), template, payload, attachmentFileName, attachmentBytes);
+            if (!sent) {
+                String reason = "Email provider rejected delivery or is not configured";
+                recordDeliveryFailure(recipientEmail, normalizedType, "UNCONTROLLED_COPY", new IllegalStateException(reason), payload);
+                auditEmailAttempt(label, recipientEmail, template.getName(), payload, false, reason);
+                return false;
+            }
+            auditEmailAttempt(label, recipientEmail, template.getName(), payload, true, null);
+            return true;
+        } catch (Exception ex) {
+            recordDeliveryFailure(recipientEmail, normalizedType, "UNCONTROLLED_COPY", ex, payload);
+            auditEmailAttempt(label, recipientEmail, template.getName(), payload, false, ex.getMessage());
+            log.warn("Failed to send uncontrolled copy distribution email to {}: {}", recipientEmail, ex.getMessage(), ex);
+            return false;
+        }
+    }
+
     private String resolvePublicAppBaseUrl() {
         String configured = null;
         SystemConfigurationService systemConfigurationService = systemConfigurationServiceProvider.getIfAvailable();

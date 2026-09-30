@@ -169,3 +169,14 @@ Known limits / open items:
 - Defect found by the validation matrix: decimals (50.5) were silently truncated. Fixed with `StrictIntegerDeserializer` (now 400).
 - Evidence: 91/91 status-marking API checks + issued-marking matrix, unit tests (ControlledCopyStatusMarkingTest 9, ControlledCopyPdfMarkingServiceTest 12), 919 backend tests in the related run with 0 failures, rendered PDFs for OBSOLETED and CLOSED_CANCELLED with layer ABOVE.
 - Not covered: browser check of the new settings UI, GitNexus impact/detect_changes (tool unavailable), QA Decision Log approval, printed copies cannot show a later recall.
+
+## 12. Per-card Reset Position (2026-09-30)
+
+- Request: mirror the user-tested Uncontrolled Copies Policy reset controls in Controlled Copies Policy.
+- Scope: `ControlledCopiesPolicyView.tsx` and its focused regression tests only; no API, backend, schema, or shared MarkCard changes.
+- Invariants: existing policy-management permission remains required; reset modifies the local draft only. Existing Save Changes, signature request, server validation, and audit persistence are unchanged. No lifecycle, issued artefact/checksum, parent-child, or async generation changes.
+- Stamp and Watermark each have a right-aligned outline-emerald Reset Position footer, shown only when that kind has a custom placement. Reset removes that kind's coordinates and placement size/angle across page groups in the selected scenario only (ISSUED, OBSOLETED, or CLOSED_CANCELLED). Other kinds/scenarios and base text/style/enable settings are preserved; empty placement rules are removed.
+- GitNexus upstream impact for the component: LOW, 0 indexed direct callers and 0 affected processes. This is static index evidence, not proof of runtime isolation.
+- Automated evidence: `ControlledCopiesPolicyView.test.tsx` 8 tests, covering both kinds in all 3 scenarios, page-group cleanup, scenario switching, preservation of other placements and base defaults, signed Save payload, read-only access, and no-custom-placement visibility. Together with `UncontrolledCopyPolicyView.test.tsx`, 15/15 tests passed.
+- TypeScript `tsc --noEmit --pretty false` passed; scoped `git diff --check` passed. GitNexus `detect-changes -s all` reported 150 files / 516 symbols / 100 flows, CRITICAL for the entire pre-existing dirty worktree; this aggregate cannot be attributed to this 3-file UI/test/evidence change. No commit was made.
+- Limitations: focused UI tests mock preview rendering and the API; live browser/rendered PDF and server audit integration were not retested. No deployment or compliance claim is made.

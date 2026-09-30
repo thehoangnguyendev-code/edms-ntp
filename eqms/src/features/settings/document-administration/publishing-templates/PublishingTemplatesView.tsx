@@ -24,6 +24,7 @@ import { IconBrandTelegram, IconFilter2, IconPencilMinus } from "@tabler/icons-r
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { publishingTemplates as publishingTemplatesBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 type SortConfig = {
   key: string;
@@ -489,16 +490,16 @@ export const PublishingTemplatesView: React.FC = () => {
             className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
             {...dragEvents}
           >
-            <table className="w-full min-w-[1500px]">
-              <thead className="sticky top-0 z-30">
-                <tr>
-                  <th className="sticky top-0 z-20 w-16 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-500">
+            <TableMarkup.Root className="w-full min-w-[1500px]">
+              <TableMarkup.Head className="sticky top-0 z-30">
+                <TableMarkup.Row>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell40}>
                     No.
-                  </th>
+                  </TableMarkup.HeaderCell>
                   {tableColumns.map((column) => {
                     const isSorted = sortConfig.key === column.id;
                     return (
-                      <th
+                      <TableMarkup.HeaderCell
                         key={column.id}
                         onClick={column.sortable ? () => handleSort(column.id) : undefined}
                         className={cn(
@@ -517,28 +518,28 @@ export const PublishingTemplatesView: React.FC = () => {
                             </div>
                           )}
                         </div>
-                      </th>
+                      </TableMarkup.HeaderCell>
                     );
                   })}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
+                </TableMarkup.Row>
+              </TableMarkup.Head>
+              <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                 {!isLoading && templates.length === 0 ? (
-                  <tr>
-                    <td colSpan={tableColumns.length + 1} className="p-0">
+                  <TableMarkup.Row>
+                    <TableMarkup.Cell colSpan={tableColumns.length + 1} className="p-0">
                       <TableEmptyState
                         title="No Publishing Templates Found"
                         description="No templates match the current filters. Adjust filters or create a new publishing template."
                       />
-                    </td>
-                  </tr>
+                    </TableMarkup.Cell>
+                  </TableMarkup.Row>
                 ) : (
                   templates.map((template, index) => (
-                    <tr key={template.id} className="group transition-colors hover:bg-slate-50/80">
-                      <td className="whitespace-nowrap px-4 py-3 text-center text-xs text-slate-700 sm:text-sm">
+                    <TableMarkup.Row key={template.id} className="group transition-colors hover:bg-slate-50/80">
+                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-center text-xs text-slate-700 sm:text-sm">
                         {startIndex + index + 1}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
                         <button
                           type="button"
                           onClick={() => navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(template.id || ""))}
@@ -549,30 +550,30 @@ export const PublishingTemplatesView: React.FC = () => {
                         {template.description && (
                           <p className="mt-0.5 max-w-[320px] truncate text-2xs text-slate-500">{template.description}</p>
                         )}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                         {formatPublishingMode(template.publishingMode)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                         {template.versionNumber ?? 1}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
                         <Badge color={getStatusColor(template.status)} size="sm">{formatStatus(template.status)}</Badge>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                         <span className="font-medium text-slate-900">{configuredFileCount(template)}</span>
                         <span className="ml-1 text-slate-500">files</span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
                         {template.createdBy || "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
                         {template.updatedAt ? formatDateTimeLong(template.updatedAt) : "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
                         {template.publishedAt ? formatDateTimeLong(template.publishedAt) : "-"}
-                      </td>
-                      <td
+                      </TableMarkup.Cell>
+                      <TableMarkup.Cell
                         onClick={(event) => event.stopPropagation()}
                         className="sticky right-0 z-30 whitespace-nowrap bg-white px-4 py-3 text-center text-xs shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-slate-200 group-hover:bg-slate-50 sm:text-sm"
                       >
@@ -635,12 +636,12 @@ export const PublishingTemplatesView: React.FC = () => {
                             </DropdownMenuItem>
                           </div>
                         </PortalDropdownMenu>
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableMarkup.Body>
+            </TableMarkup.Root>
           </div>
 
           {totalItems > 0 && (

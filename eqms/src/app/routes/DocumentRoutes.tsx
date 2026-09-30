@@ -28,6 +28,9 @@ const ControlledCopyDetailView = lazy(() => import('@/features/documents/control
 const DestroyControlledCopyView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.DestroyControlledCopyView })));
 const DcoBatchZipDownloadView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.DcoBatchZipDownloadView })));
 const RequestControlledCopyView = lazy(() => import('@/features/documents/document-revisions/views/RequestControlledCopyView').then(m => ({ default: m.RequestControlledCopyView })));
+const UncontrolledCopiesView = lazy(() => import('@/features/documents/uncontrolled-copies').then(m => ({ default: m.UncontrolledCopiesView })));
+const UncontrolledCopyDetailView = lazy(() => import('@/features/documents/uncontrolled-copies').then(m => ({ default: m.UncontrolledCopyDetailView })));
+const UncontrolledCopyDownloadView = lazy(() => import('@/features/documents/uncontrolled-copies').then(m => ({ default: m.UncontrolledCopyDownloadView })));
 
 // ==================== ROUTE WRAPPER ====================
 interface RouteWrapperProps {
@@ -214,6 +217,16 @@ export function documentRoutes(navigate: NavigateFunction) {
         <Route path="*" element={<Suspense fallback={<LoadingFallback />}><DocumentsView viewType="all" /></Suspense>} />
       </Route>
       <Route path="controlled-copy/request" element={<Suspense fallback={<LoadingFallback />}><RequestControlledCopyView /></Suspense>} />
+
+      {/* Uncontrolled Copies -- separate feature/API from Controlled Copies */}
+      <Route path="uncontrolled-copies">
+        <Route index element={<Navigate to={ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.ALL} replace />} />
+        <Route path="all" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopiesView viewType="all" /></Suspense>} />
+        <Route path="pending-approval" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopiesView viewType="pending" /></Suspense>} />
+        <Route path="distributed" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopiesView viewType="distributed" /></Suspense>} />
+        <Route path=":id/download" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopyDownloadView /></Suspense>} />
+        <Route path=":id" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopyDetailView /></Suspense>} />
+      </Route>
     </Route>
   );
 }

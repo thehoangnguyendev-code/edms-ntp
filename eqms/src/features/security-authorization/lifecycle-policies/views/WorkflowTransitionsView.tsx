@@ -35,6 +35,7 @@ import type {
   WorkflowActionPolicy,
   WorkflowActionPolicyOptions,
 } from "../types";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -447,12 +448,12 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                 className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[1900px]">
-                  <thead className="sticky top-0 z-30">
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 w-10">
+                <TableMarkup.Root className="w-full min-w-[1900px]">
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 w-10">
                         No.
-                      </th>
+                      </TableMarkup.HeaderCell>
                       {(
                         [
                           { key: "workflowKey", label: "Workflow" },
@@ -467,7 +468,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                           { key: "updatedAt", label: "Last Updated" },
                         ] as { key: SortKey; label: string }[]
                       ).map((col) => (
-                        <th
+                        <TableMarkup.HeaderCell
                           key={col.key}
                           onClick={() => handleSort(col.key)}
                           className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors group"
@@ -479,23 +480,23 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                               <ChevronDown className={cn("h-3 w-3", sortKey === col.key && sortDir === "desc" ? "text-emerald-600" : "")} />
                             </div>
                           </div>
-                        </th>
+                        </TableMarkup.HeaderCell>
                       ))}
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>
                         Actors
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>
                         Relations (New)
-                      </th>
-                      <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {policies.length === 0 ? (
-                      <tr>
-                        <td colSpan={14} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={14} className="p-0">
                           <TableEmptyState
                             title="No Workflow Authorization Policies Found"
                             description={
@@ -504,8 +505,8 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                                 : "No policies found. Use 'New Policy' to create a custom policy, or check backend seed data."
                             }
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                       paginated.map((policy, index) => (
                         <PolicyRow
@@ -527,8 +528,8 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                         />
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {totalItems > 0 && (
@@ -757,21 +758,21 @@ const PolicyRow: React.FC<PolicyRowProps> = ({
   const hasWarnings = (policy.warnings?.length ?? 0) > 0;
 
   return (
-    <tr className="hover:bg-slate-50/80 transition-colors group">
-      <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700 text-left align-middle">{index}</td>
+    <TableMarkup.Row className="hover:bg-slate-50/80 transition-colors group">
+      <TableMarkup.Cell className={TABLE_STYLES.cell31}>{index}</TableMarkup.Cell>
 
       {/* Workflow */}
-      <td className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
+      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
         <Badge
           color={policy.workflowKey === "CONTROLLED_COPY" ? "purple" : "blue"}
           size="sm"
         >
           {policy.workflowLabel ?? policy.workflowKey}
         </Badge>
-      </td>
+      </TableMarkup.Cell>
 
       {/* Action */}
-      <td className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
+      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
         <div className="flex flex-col items-start gap-1">
           <div>
             <div className="font-semibold text-slate-900">{policy.actionLabel ?? policy.actionCode}</div>
@@ -779,56 +780,56 @@ const PolicyRow: React.FC<PolicyRowProps> = ({
           </div>
           {hasWarnings && <Badge color="amber" size="sm">Warning</Badge>}
         </div>
-      </td>
+      </TableMarkup.Cell>
 
       {/* From Status */}
-      <td className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap text-slate-700 align-middle">
+      <TableMarkup.Cell className={TABLE_STYLES.cell25}>
         {policy.fromStatusLabel ?? policy.fromStatus}
-      </td>
+      </TableMarkup.Cell>
 
       {/* Doc Type */}
-      <td className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
+      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
         {policy.documentTypeName ? (
           <Badge color="purple" size="sm">{policy.documentTypeName}</Badge>
         ) : (
           <span className="text-slate-400 italic">Global</span>
         )}
-      </td>
+      </TableMarkup.Cell>
 
       {/* Permission */}
-      <td className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap text-slate-700 align-middle">
+      <TableMarkup.Cell className={TABLE_STYLES.cell25}>
         {policy.requiredPermissionCode}
-      </td>
+      </TableMarkup.Cell>
 
       {/* Priority */}
-      <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700 text-left align-middle">
+      <TableMarkup.Cell className={TABLE_STYLES.cell31}>
         {policy.priority}
-      </td>
+      </TableMarkup.Cell>
 
       {/* Active */}
-      <td className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
+      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
         <Badge color={policy.active ? "emerald" : "slate"} size="sm">
           {policy.active ? "Active" : "Inactive"}
         </Badge>
-      </td>
+      </TableMarkup.Cell>
 
       {/* System/Custom */}
-      <td className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
+      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
         <Badge color={policy.system ? "blue" : "slate"} size="sm">
           {policy.system ? "System" : "Custom"}
         </Badge>
-      </td>
+      </TableMarkup.Cell>
 
-      <td className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap text-slate-600 align-middle">
+      <TableMarkup.Cell className={TABLE_STYLES.cell24}>
         {policy.createdAt ? formatDateTime(policy.createdAt) : "—"}
-      </td>
+      </TableMarkup.Cell>
 
-      <td className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap text-slate-600 align-middle">
+      <TableMarkup.Cell className={TABLE_STYLES.cell24}>
         {policy.updatedAt ? formatDateTime(policy.updatedAt) : "—"}
-      </td>
+      </TableMarkup.Cell>
 
       {/* Actors: one per line and never split mid-word, so long permission codes stay readable */}
-      <td className="py-3 px-4 text-left text-xs sm:text-sm min-w-[300px] align-middle">
+      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm min-w-[300px] align-middle">
         {policy.actors.length === 0 ? (
           <span className="text-slate-400 italic">none</span>
         ) : (
@@ -840,10 +841,10 @@ const PolicyRow: React.FC<PolicyRowProps> = ({
             ))}
           </ul>
         )}
-      </td>
+      </TableMarkup.Cell>
 
       {/* Relations (new hybrid engine): one code per line, full width, no mid-word breaks */}
-      <td className="py-3 px-4 text-left text-xs min-w-[360px] align-middle">
+      <TableMarkup.Cell className="py-3 px-4 text-left text-xs min-w-[360px] align-middle">
         {(policy.relations ?? []).length === 0 ? (
           <span className="text-amber-600 italic text-xs sm:text-sm">none</span>
         ) : (
@@ -855,10 +856,10 @@ const PolicyRow: React.FC<PolicyRowProps> = ({
             ))}
           </ul>
         )}
-      </td>
+      </TableMarkup.Cell>
 
       {/* Row actions */}
-      <td
+      <TableMarkup.Cell
         className="sticky right-0 bg-white py-3 px-4 text-left align-middle z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
         onClick={(e) => e.stopPropagation()}
       >
@@ -921,7 +922,7 @@ const PolicyRow: React.FC<PolicyRowProps> = ({
             )}
           </div>
         </PortalDropdownMenu>
-      </td>
-    </tr>
+      </TableMarkup.Cell>
+    </TableMarkup.Row>
   );
 };

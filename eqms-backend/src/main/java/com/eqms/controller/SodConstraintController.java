@@ -59,6 +59,24 @@ public class SodConstraintController {
         return ResponseEntity.ok(service.scanViolations());
     }
 
+    /** "Scan Now" on the SoD Violation Review screen -- runs the scan and records it in history. */
+    @PostMapping("/violations/scan")
+    public ResponseEntity<List<SodViolationResponse>> recordScan() {
+        return ResponseEntity.ok(service.recordScan());
+    }
+
+    @GetMapping("/violations/history")
+    public ResponseEntity<com.eqms.dto.user.PageResponse<com.eqms.dto.user.SodViolationScanSummaryResponse>> listScanHistory(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(service.listScanHistory(page, limit));
+    }
+
+    @GetMapping("/violations/history/{id}")
+    public ResponseEntity<com.eqms.dto.user.SodViolationScanDetailResponse> getScanDetail(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getScanDetail(id));
+    }
+
     /** Check a proposed permission set before saving a role. */
     @PostMapping("/check")
     public ResponseEntity<List<SodConstraintResponse>> checkPermissions(
@@ -71,6 +89,14 @@ public class SodConstraintController {
     public ResponseEntity<List<com.eqms.dto.user.SodProfileCombinationViolationResponse>> checkAccessProfileCombination(
             @RequestBody List<UUID> accessProfileIds) {
         return ResponseEntity.ok(service.checkAccessProfileCombination(accessProfileIds));
+    }
+
+    /** Preview real-world impact for a permission pair not yet saved -- used by the New/Edit
+     *  SoD Constraint form to show which Access Profiles/users hold both sides before saving. */
+    @GetMapping("/preview-impact")
+    public ResponseEntity<com.eqms.dto.user.SodViolationResponse> previewImpact(
+            @RequestParam String codeA, @RequestParam String codeB) {
+        return ResponseEntity.ok(service.previewImpact(codeA, codeB));
     }
 
     @PostMapping

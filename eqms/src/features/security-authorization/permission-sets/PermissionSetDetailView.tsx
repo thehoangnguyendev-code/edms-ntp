@@ -22,6 +22,7 @@ import type { PermissionSetAssignedAccessProfile, PermissionSetResponse } from "
 import type { PermissionGroup } from "@/features/security-authorization/shared/permission-types";
 import { formatDateUS } from "@/utils/format";
 import { IconChartColumn } from "@tabler/icons-react";
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 
 type TabId = "general" | "permissions" | "access-profiles" | "audit";
 
@@ -350,35 +351,35 @@ export const PermissionSetDetailView: React.FC = () => {
                   className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
                   {...dragEvents}
                 >
-                <table className="w-full min-w-[720px] text-sm">
-                  <thead className="sticky top-0 z-10 border-b-2 border-slate-200 bg-slate-50">
-                    <tr>
+                <TableMarkup.Root className="w-full min-w-[720px] text-sm">
+                  <TableMarkup.Head className="sticky top-0 z-10 border-b-2 border-slate-200 bg-slate-50">
+                    <TableMarkup.Row>
                       {["No.", "Access Profile", "Business Unit", "Department", "Users", "Status"].map((h) => (
-                        <th key={h} className="whitespace-nowrap px-4 py-3 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                        <TableMarkup.HeaderCell key={h} className="whitespace-nowrap px-4 py-3 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
                           {h}
-                        </th>
+                        </TableMarkup.HeaderCell>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {assignedProfilesLoading ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">Loading…</td>
-                      </tr>
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">Loading…</TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : assignedProfiles.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={6} className="p-0">
                           <TableEmptyState
                            
                             title="No Access Profiles assigned"
                             description="Assign this permission set to an Access Profile from the Access Profiles module."
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : assignedProfiles.map((profile, idx) => (
-                      <tr key={profile.id} className="transition-colors hover:bg-slate-50/80">
-                        <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">{idx + 1}</td>
-                        <td className="px-4 py-3 align-top">
+                      <TableMarkup.Row key={profile.id} className="transition-colors hover:bg-slate-50/80">
+                        <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">{idx + 1}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-4 py-3 align-top">
                           <button
                             type="button"
                             onClick={() => navigate(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
@@ -386,19 +387,19 @@ export const PermissionSetDetailView: React.FC = () => {
                           >
                             {profile.name}
                           </button>
-                        </td>
-                        <td className="px-4 py-3 text-slate-700">{profile.businessUnitScope || "—"}</td>
-                        <td className="px-4 py-3 text-slate-700">{profile.departmentScope || "—"}</td>
-                        <td className="px-4 py-3 text-slate-700">{profile.userCount}</td>
-                        <td className="px-4 py-3">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-4 py-3 text-slate-700">{profile.businessUnitScope || "—"}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-4 py-3 text-slate-700">{profile.departmentScope || "—"}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-4 py-3 text-slate-700">{profile.userCount}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-4 py-3">
                           <Badge color={profile.active ? "emerald" : "slate"} size="xs" >
                             {profile.active ? "Active" : "Inactive"}
                           </Badge>
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ))}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
                 </div>
               </div>
             </div>

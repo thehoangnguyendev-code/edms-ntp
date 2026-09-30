@@ -21,6 +21,7 @@ import {
   type UsageReportMaterialType,
   type UsageReportCourseStatus,
 } from "./usageReportMockData";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -582,28 +583,28 @@ export const UsageReportView: React.FC = () => {
             </div>
 
             <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full min-w-[920px] md:min-w-[1120px] lg:min-w-[1280px] xl:min-w-[1420px]">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-12">No.</th>
-                    <th className="py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Course ID</th>
-                    <th className="py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Course Name</th>
-                    <th className="py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Department</th>
-                    <th className="py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Version Used</th>
-                    <th className="py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Instructor</th>
-                    <th className="py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Period</th>
-                    <th className="py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Learners</th>
-                    <th className="py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Completion</th>
-                    <th className="py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
+              <TableMarkup.Root className="w-full min-w-[920px] md:min-w-[1120px] lg:min-w-[1280px] xl:min-w-[1420px]">
+                <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
+                  <TableMarkup.Row>
+                    <TableMarkup.HeaderCell className="py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-10 sm:w-12">No.</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell20}>Course ID</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell20}>Course Name</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell20}>Department</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell17}>Version Used</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell20}>Instructor</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell20}>Period</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell17}>Learners</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell17}>Completion</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell17}>Status</TableMarkup.HeaderCell>
+                  </TableMarkup.Row>
+                </TableMarkup.Head>
+                <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                   {filteredRecords.length === 0 ? (
-                    <tr>
-                      <td colSpan={10} className="p-0">
+                    <TableMarkup.Row>
+                      <TableMarkup.Cell colSpan={10} className="p-0">
                         <TableEmptyState title="No records found" description="Try adjusting your filters." />
-                      </td>
-                    </tr>
+                      </TableMarkup.Cell>
+                    </TableMarkup.Row>
                   ) : (
                     filteredRecords.map((record, index) => {
                       const completionRate = record.learnersEnrolled > 0
@@ -611,21 +612,21 @@ export const UsageReportView: React.FC = () => {
                         : 0;
                       const statusConfig = getCourseStatusConfig(record.courseStatus);
                       return (
-                        <tr key={record.courseId} className="hover:bg-slate-50/80 transition-colors">
+                        <TableMarkup.Row key={record.courseId} className="hover:bg-slate-50/80 transition-colors">
                           {/* No */}
-                          <td className="py-3 px-4 text-xs sm:text-sm text-center text-slate-500 font-medium">{index + 1}</td>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-center text-slate-500 font-medium">{index + 1}</TableMarkup.Cell>
                           {/* Course ID */}
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <span className="font-medium text-emerald-700">{record.courseId}</span>
-                          </td>
+                          </TableMarkup.Cell>
                           {/* Course Name */}
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <p className="font-medium text-slate-900">{record.courseName}</p>
-                          </td>
+                          </TableMarkup.Cell>
                           {/* Department */}
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{record.department}</td>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{record.department}</TableMarkup.Cell>
                           {/* Version Used */}
-                          <td className="py-3 px-4 text-xs sm:text-sm text-center whitespace-nowrap">
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-center whitespace-nowrap">
                             <span className={cn(
                               "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border",
                               record.isCurrentVersion
@@ -635,25 +636,25 @@ export const UsageReportView: React.FC = () => {
                               v{record.materialVersion}
                               {record.isCurrentVersion && <Check className="h-3 w-3 text-emerald-600" />}
                             </span>
-                          </td>
+                          </TableMarkup.Cell>
                           {/* Instructor */}
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{record.instructor}</td>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{record.instructor}</TableMarkup.Cell>
                           {/* Period */}
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <div className="text-slate-700">{formatDateUS(record.startDate)}</div>
                             {record.endDate ? (
                               <div className="text-xs text-slate-500">→ {formatDateUS(record.endDate)}</div>
                             ) : (
                               <div className="text-xs text-blue-500 font-medium">Ongoing</div>
                             )}
-                          </td>
+                          </TableMarkup.Cell>
                           {/* Learners */}
-                          <td className="py-3 px-4 text-xs sm:text-sm text-center whitespace-nowrap">
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-center whitespace-nowrap">
                             <span className="font-semibold text-slate-900">{record.learnersCompleted}</span>
                             <span className="text-slate-400 text-xs"> / {record.learnersEnrolled}</span>
-                          </td>
+                          </TableMarkup.Cell>
                           {/* Completion Rate */}
-                          <td className="py-3 px-4 text-xs sm:text-sm text-center whitespace-nowrap">
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-center whitespace-nowrap">
                             <div className="flex flex-col items-center gap-1">
                               <span className={cn(
                                 "text-sm font-bold",
@@ -673,21 +674,21 @@ export const UsageReportView: React.FC = () => {
                                 }
                               />
                             </div>
-                          </td>
+                          </TableMarkup.Cell>
                           {/* Status */}
-                          <td className="py-3 px-4 text-xs sm:text-sm text-center whitespace-nowrap">
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-center whitespace-nowrap">
                             <StatusBadge
                               status={statusConfig.type}
                               label={statusConfig.label}
                               size="sm"
                             />
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableMarkup.Body>
+              </TableMarkup.Root>
             </div>
 
             {/* Footer summary */}

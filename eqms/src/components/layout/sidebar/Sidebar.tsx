@@ -172,13 +172,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
 
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
-    const [navCounts, setNavCounts] = useState<Record<string, number>>({
-      'notifications': 12,
-      'pending-review': 0,
-      'pending-approval': 0,
-      'training-pending-review': 2,
-      'training-pending-approval': 4,
-    });
+    // Empty until the real fetches below resolve -- a fabricated starting number (e.g. a fake
+    // "12" for notifications) would be indistinguishable from real regulated-workflow counts.
+    const [navCounts, setNavCounts] = useState<Record<string, number>>({});
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user, logout } = useAuth();
     const { showSidebarUserProfile, knowledgeExplorerEnabled } = useBranding();
@@ -315,6 +311,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
       },
       [user?.permissions, authorizedNavigationIds, navigationLabels],
     );
+
     const [hoverMenu, setHoverMenu] = useState<HoverMenuState>({
       isOpen: false,
       item: null,
@@ -664,6 +661,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 onMouseLeave={handleTooltipHide}
                 aria-expanded={hasChildren ? isExpanded : undefined}
                 aria-controls={hasChildren && !isCollapsed ? submenuId : undefined}
+                aria-current={!hasChildren && isActive ? "page" : undefined}
+                aria-haspopup={isCollapsed && hasChildren ? "menu" : undefined}
                 className={cn(
                   "w-full flex items-center group relative overflow-visible z-10 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/20",
                   "h-11 md:h-11",
@@ -750,28 +749,30 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                     className={cn(
                       "flex items-center w-full text-left whitespace-nowrap leading-tight",
                       "overflow-hidden",
-                      "text-sm",
+                      level >= 2 ? "text-[13px]" : "text-sm",
                       isActive
                         ? "font-semibold text-emerald-700"
-                        : "font-medium",
+                        : level >= 2
+                          ? "font-normal text-slate-500 group-hover:text-slate-800"
+                          : "font-medium",
                     )}
                   >
                     <span className="truncate">{item.label}</span>
 
-                    {/* Display count from config, mock state, or auto-detect Pending */}
+                    {/* Pending/unread count, same pill styling the collapsed flyout uses for the same data. */}
                     {(() => {
                       const val = item.count ?? navCounts[item.id];
                       if (val === undefined || val <= 0) return null;
                       return (
                         <span
                           className={cn(
-                            "ml-auto mr-1.5 text-xs font-semibold text-slate-500",
+                            "ml-auto mr-1.5 text-2xs px-1.5 py-0.5 rounded-full font-semibold min-w-[20px] text-center shrink-0",
                             isActive
-                              ? "text-emerald-700"
-                              : "group-hover/navitem:text-slate-800"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-slate-100 text-slate-600 group-hover/navitem:bg-slate-200",
                           )}
                         >
-                          ({val})
+                          {val}
                         </span>
                       );
                     })()}
@@ -936,6 +937,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
             <button
               type="button"
               onClick={() => handleSubItemClick(item, hasChildren)}
+              aria-expanded={hasChildren ? isExpanded : undefined}
+              aria-current={!hasChildren && isActive ? "page" : undefined}
               className={cn(
                 "w-full flex items-center gap-2 px-4 py-2.5 text-sm transition-colors group",
                 isActive

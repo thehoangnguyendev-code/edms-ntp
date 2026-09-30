@@ -32,6 +32,7 @@ import {
 import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
 import { notificationPolicy as notificationPolicyBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const ALL_OPTION: SelectOption = { label: "All", value: "All" };
 
@@ -257,7 +258,7 @@ export const NotificationPolicyView: React.FC = () => {
     });
 
   const sortableTh = (key: SortKey, label: string, extraClass?: string) => (
-    <th
+    <TableMarkup.HeaderCell
       key={key}
       onClick={() => handleSort(key)}
       className={cn(
@@ -282,7 +283,7 @@ export const NotificationPolicyView: React.FC = () => {
           />
         </div>
       </div>
-    </th>
+    </TableMarkup.HeaderCell>
   );
 
   return (
@@ -405,35 +406,35 @@ export const NotificationPolicyView: React.FC = () => {
                 )}
                 {...dragEvents}
               >
-                <table className="w-full min-w-[900px]">
-                  <thead className="sticky top-0 z-30">
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-12">
+                <TableMarkup.Root className="w-full min-w-[900px]">
+                  <TableMarkup.Head className="sticky top-0 z-30">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell33}>
                         No.
-                      </th>
+                      </TableMarkup.HeaderCell>
                       {sortableTh("name", "Event")}
                       {sortableTh("module", "Module")}
                       {sortableTh("priority", "Priority")}
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>
                         Compliance
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>
                         Status
-                      </th>
+                      </TableMarkup.HeaderCell>
                       {sortableTh(
                         "updatedAt",
                         "Updated",
                         "hidden lg:table-cell",
                       )}
-                      <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {!isLoading && policies.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="p-0">
+                      <TableMarkup.Row>
+                        <TableMarkup.Cell colSpan={8} className="p-0">
                           <TableEmptyState
 
                             title="No events found"
@@ -443,11 +444,11 @@ export const NotificationPolicyView: React.FC = () => {
                                 : "No notification events are configured yet."
                             }
                           />
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ) : (
                       policies.map((policy, idx) => (
-                        <tr
+                        <TableMarkup.Row
                           key={policy.eventCode}
                           onClick={() =>
                             navigate(
@@ -456,10 +457,10 @@ export const NotificationPolicyView: React.FC = () => {
                           }
                           className="group hover:bg-slate-50/80 transition-colors cursor-pointer"
                         >
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-500 text-center">
+                          <TableMarkup.Cell className={TABLE_STYLES.cell29}>
                             {(currentPage - 1) * itemsPerPage + idx + 1}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm max-w-[320px]">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm max-w-[320px]">
                             <div className="font-medium text-slate-800">
                               {policy.name}
                             </div>
@@ -468,19 +469,19 @@ export const NotificationPolicyView: React.FC = () => {
                                 {policy.description}
                               </div>
                             )}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                             {moduleLabel(policy.module)}
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge
                               color={PRIORITY_COLOR[policy.priority] ?? "slate"}
                               size="sm"
                             >
                               {policy.priority}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <Badge
                               color={
                                 COMPLIANCE_COLOR[policy.complianceGroup] ??
@@ -491,20 +492,20 @@ export const NotificationPolicyView: React.FC = () => {
                               {COMPLIANCE_LABEL[policy.complianceGroup] ??
                                 policy.complianceGroup}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                             <PolicyStatusBadge
                               status={policy.policyStatus}
                               mandatory={policy.mandatory}
                               size="sm"
                             />
-                          </td>
-                          <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-500 hidden lg:table-cell">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-500 hidden lg:table-cell">
                             {formatDateTime(policy.updatedAt) || "—"}
-                          </td>
-                          <td
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell
                             onClick={(e) => e.stopPropagation()}
-                            className="sticky right-0 bg-white py-3 px-4 text-xs sm:text-sm text-center z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
+                            className={TABLE_STYLES.emptyCell3}
                           >
                             <button
                               ref={getRef(policy.eventCode)}
@@ -515,12 +516,12 @@ export const NotificationPolicyView: React.FC = () => {
                             >
                               <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
                             </button>
-                          </td>
-                        </tr>
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
 
               {totalItems > 0 && (

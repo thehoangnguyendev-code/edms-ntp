@@ -211,7 +211,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiErrorResponse(
                         new ApiErrorResponse.ErrorBody(
-                                "RELATED_DOCUMENTS_NOT_EFFECTIVE",
+                                "RELATED_DOCUMENTS_NOT_READY",
                                 exception.getMessage(),
                                 exception.getDetails()
                         )

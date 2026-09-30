@@ -2,6 +2,31 @@
 
 Status: implemented; runtime QA pending.
 
+## 2026-09-30 frontend type and regression-test repair
+
+- Scope: `DocumentPdfViewer.tsx`, `useDocumentPreviewSettings.ts`, and frontend tests.
+  No backend, database, permission, lifecycle, audit/e-signature, stored artifact/checksum,
+  parent-child rule, or asynchronous generation changes.
+- Source-confirmed: the installed EmbedPDF `ZoomLevel` accepts `ZoomMode | number`.
+  Initial fit-page/fit-width now use `ZoomMode.FitPage`/`ZoomMode.FitWidth` rather than
+  string literals; actual size remains `1`. Runtime values are unchanged.
+- The preview settings interface now declares the four already-persisted Document-menu
+  booleans (Open, Close, Security, Screenshot); defaults and enforcement are unchanged.
+- Lifecycle tests isolate the unrelated Uncontrolled Copy eligibility card, consistent
+  with their existing subtree mocks. Knowledge Explorer tests assert the current heading
+  instead of the retired greeting; production lifecycle and Knowledge code are unchanged.
+- Test-confirmed: added viewer policy mapping coverage for all three initial zoom values,
+  disabled/enabled menu actions on rerender, and export/print denial despite caller flags.
+- Verification: frontend Vitest 14 files / 96 tests passed; `tsc --noEmit --pretty false`
+  passed; Vite production build passed. These are automated frontend checks, not browser
+  rendering QA or a claim of GMP compliance. No Docker rebuild/deployment was performed.
+- GitNexus upstream impact for the shared viewer: 8 direct dependants, 5 affected process
+  entries, CRITICAL. User explicitly approved the narrow repair after the warning.
+  Whole-worktree detect-changes includes pre-existing unrelated edits and table migration;
+  it is not a scoped release assessment for this repair. No commit was made.
+- The referenced governance/system/change-record-template directories are absent in this
+  checkout. This existing change record is used for evidence; no new business rule is defined.
+
 ## Scope and source-confirmed as-is
 
 The React frontend previously used `@react-pdf-viewer` with a PDF.js worker loaded from

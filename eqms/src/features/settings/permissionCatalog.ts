@@ -169,14 +169,6 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "document_control_access",
   },
   {
-    code: "documents.revision.force_publish",
-    label: "Force Publish Revision (Override Related Documents Check)",
-    description:
-      "Allows publishing a Revision even when one or more Related Documents are not currently Effective. GMP exception/deviation -- not granted by default.",
-    module: "documents",
-    group: "revision_workflow",
-  },
-  {
     code: "documents.controlled_copy.print",
     label: "Print Controlled Copy",
     description: "Print an authorized controlled copy.",

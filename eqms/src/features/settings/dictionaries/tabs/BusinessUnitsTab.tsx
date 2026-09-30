@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/toast";
 import { extractApiMessage } from "../utils";
 import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 export const BusinessUnitsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -327,12 +328,12 @@ export const BusinessUnitsTab = React.forwardRef<
       {/* Table */}
       <div className="flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col">
         <div className="flex-1 overflow-x-auto">
-          <table className="w-full">
-            <thead className="sticky top-0 z-30">
-              <tr>
-                <th className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
+          <TableMarkup.Root className="w-full">
+            <TableMarkup.Head className="sticky top-0 z-30">
+              <TableMarkup.Row>
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
                   No.
-                </th>
+                </TableMarkup.HeaderCell>
                 {[
                   { label: "Business Unit Name", id: "name" },
                   { label: "Abbreviation", id: "abbreviation" },
@@ -344,7 +345,7 @@ export const BusinessUnitsTab = React.forwardRef<
                   const isSorted = sortConfig.key === col.id;
                   const isSortable = col.id !== "departments";
                   return (
-                    <th
+                    <TableMarkup.HeaderCell
                       key={col.id}
                       onClick={() => isSortable && handleSort(col.id)}
                       className={cn(
@@ -361,51 +362,51 @@ export const BusinessUnitsTab = React.forwardRef<
                           </div>
                         )}
                       </div>
-                    </th>
+                    </TableMarkup.HeaderCell>
                   );
                 })}
-                <th className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
                   Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
+                </TableMarkup.HeaderCell>
+              </TableMarkup.Row>
+            </TableMarkup.Head>
+            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
               {items.length > 0 ? (
                 items.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700 text-center">
+                  <TableMarkup.Row key={item.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <TableMarkup.Cell className={TABLE_STYLES.cell30}>
                       {(currentPage - 1) * itemsPerPage + index + 1}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium text-slate-900">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className={TABLE_STYLES.cell28}>
                       {item.name}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                       <Badge color="blue" size="sm">{item.abbreviation}</Badge>
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 text-slate-600">
                         <span className="font-semibold text-slate-900">
                           {departmentCountByUnit[item.id] ?? 0}
                         </span>
                         {" "}department{(departmentCountByUnit[item.id] ?? 0) !== 1 ? "s" : ""}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-xs truncate">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-xs truncate">
                       {item.description || "-"}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
                       {item.isActive ? (
                         <Badge color="emerald" size="sm" >Active</Badge>
                       ) : (
                         <Badge color="slate" size="sm" >Inactive</Badge>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
                       {item.modifiedDate}
-                    </td>
-                    <td
+                    </TableMarkup.Cell>
+                    <TableMarkup.Cell
                       onClick={(e) => e.stopPropagation()}
-                      className="sticky right-0 bg-white py-3 px-4 text-xs sm:text-sm text-center z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
+                      className={TABLE_STYLES.emptyCell3}
                     >
                       {canManage && (
                         <button
@@ -417,18 +418,18 @@ export const BusinessUnitsTab = React.forwardRef<
                           <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
                         </button>
                       )}
-                    </td>
-                  </tr>
+                    </TableMarkup.Cell>
+                  </TableMarkup.Row>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={8} className="p-0">
+                <TableMarkup.Row>
+                  <TableMarkup.Cell colSpan={8} className="p-0">
                     <TableEmptyState title="No business units found" description="Try adjusting your search" />
-                  </td>
-                </tr>
+                  </TableMarkup.Cell>
+                </TableMarkup.Row>
               )}
-            </tbody>
-          </table>
+            </TableMarkup.Body>
+          </TableMarkup.Root>
         </div>
 
         {totalItems > 0 && (

@@ -302,7 +302,8 @@ class Sprint10AuthorizationHardcodeRegressionTest {
 
         var service = new SodConstraintService(sodRepository, roleDefinitionRepository, effectivePermissionService,
                 permissionRepository, currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService,
-                userAccountRepository, userAccessProfileRepository, accessProfilePermissionSetRepository);
+                userAccountRepository, userAccessProfileRepository, accessProfilePermissionSetRepository,
+                org.mockito.Mockito.mock(com.eqms.repository.SodViolationScanRepository.class), new com.fasterxml.jackson.databind.ObjectMapper());
         assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 
@@ -312,7 +313,8 @@ class Sprint10AuthorizationHardcodeRegressionTest {
 
         var service = new SodConstraintService(sodRepository, roleDefinitionRepository, effectivePermissionService,
                 permissionRepository, currentUserService, auditTrailService, permissionEvaluationService, securityChangeSignatureService,
-                userAccountRepository, userAccessProfileRepository, accessProfilePermissionSetRepository);
+                userAccountRepository, userAccessProfileRepository, accessProfilePermissionSetRepository,
+                org.mockito.Mockito.mock(com.eqms.repository.SodViolationScanRepository.class), new com.fasterxml.jackson.databind.ObjectMapper());
         assertThatThrownBy(service::listAll).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 

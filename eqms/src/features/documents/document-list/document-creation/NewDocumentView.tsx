@@ -138,6 +138,7 @@ type SubTabId =
   | "correlated";
 
 import type { Reviewer, Approver } from "@/features/documents/types";
+import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 type WorkflowUserOption = {
   id: string;
@@ -2553,39 +2554,39 @@ export const NewDocumentView: React.FC = () => {
           return (
             <div className="mt-4 rounded-lg border border-slate-200 overflow-hidden">
               <div className="max-h-72 overflow-y-auto overflow-x-auto">
-                <table className="w-full min-w-[480px]">
-                  <thead className="sticky top-0 border-b border-slate-200 bg-slate-50">
-                    <tr>
-                      <th className="w-1/4 px-4 py-2.5 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                <TableMarkup.Root className="w-full min-w-[480px]">
+                  <TableMarkup.Head className="sticky top-0 border-b border-slate-200 bg-slate-50">
+                    <TableMarkup.Row>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell45}>
                         Field
-                      </th>
-                      <th className="w-1/3 px-4 py-2.5 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell44}>
                         Before
-                      </th>
-                      <th className="px-4 py-2.5 text-left text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
+                      </TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell7}>
                         <span className="flex items-center gap-1.5">
                           <ArrowRight className="h-3 w-3 text-emerald-500" />
                           After
                         </span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
+                      </TableMarkup.HeaderCell>
+                    </TableMarkup.Row>
+                  </TableMarkup.Head>
+                  <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
                     {changes.map((change) => (
-                      <tr key={change.label} className="transition-colors hover:bg-slate-50/80">
-                        <td className="px-4 py-3 text-xs font-semibold text-slate-900 md:text-sm">
+                      <TableMarkup.Row key={change.label} className="transition-colors hover:bg-slate-50/80">
+                        <TableMarkup.Cell className="px-4 py-3 text-xs font-semibold text-slate-900 md:text-sm">
                           {change.label}
-                        </td>
-                        <td className="px-4 py-3 text-xs md:text-sm">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-4 py-3 text-xs md:text-sm">
                           <span className="text-slate-400 line-through">{change.before}</span>
-                        </td>
-                        <td className="px-4 py-3 text-xs md:text-sm">
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className="px-4 py-3 text-xs md:text-sm">
                           <span className="font-medium text-emerald-700">{change.after}</span>
-                        </td>
-                      </tr>
+                        </TableMarkup.Cell>
+                      </TableMarkup.Row>
                     ))}
-                  </tbody>
-                </table>
+                  </TableMarkup.Body>
+                </TableMarkup.Root>
               </div>
             </div>
           );

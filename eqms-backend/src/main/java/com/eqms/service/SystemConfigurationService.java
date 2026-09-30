@@ -508,7 +508,9 @@ public class SystemConfigurationService {
     /**
      * What event the Effective Date is counted from: AFTER_APPROVAL (last Approver completed, the
      * default), AFTER_TRAINING (training completion date) or AFTER_PUBLISH (the DCO publishing).
-     * Unknown or missing values fall back to the default.
+     * Unknown or missing values fall back to the default. Legacy single setting, superseded by the
+     * Required/Non-Required Training split below but kept as the migration fallback for installs
+     * saved before the split.
      */
     @Transactional(readOnly = true)
     public String getEffectiveDateBasis() {
@@ -521,11 +523,55 @@ public class SystemConfigurationService {
         return EFFECTIVE_DATE_AFTER_APPROVAL;
     }
 
-    /** Calendar days added to the basis event to get the Effective Date (0-365, default 0 = same day). */
+    /** Calendar days added to the basis event to get the Effective Date (0-365, default 0 = same day). Legacy
+     *  single setting; see {@link #getEffectiveDateBasis()}. */
     @Transactional(readOnly = true)
     public int getEffectiveDateOffsetDays() {
         int value = getDaysDocumentsConfig("effectiveDateOffsetDays", 0);
         return value >= 0 && value <= 365 ? value : 0;
+    }
+
+    /**
+     * What event the Effective Date is counted from, split by whether the revision's document was
+     * flagged "Requires Training" at creation (a per-document decision the user makes when the
+     * document is created, not editable afterward). A Non-Required-Training document is never
+     * offered AFTER_TRAINING -- there is no training completion event to count from -- so an
+     * invalid/legacy value for that case falls back to AFTER_APPROVAL, not AFTER_TRAINING.
+     * Falls back to the legacy single {@link #getEffectiveDateBasis()} setting when the split key was
+     * never saved (pre-split installs), so existing configuration is not silently reset.
+     */
+    @Transactional(readOnly = true)
+    public String getEffectiveDateBasis(boolean requiresTraining) {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        String key = requiresTraining ? "effectiveDateBasisTrainingRequired" : "effectiveDateBasisTrainingNotRequired";
+        String value = readOptionalText(documents, key);
+        if (value == null) {
+            value = getEffectiveDateBasis();
+        }
+        java.util.Set<String> allowed = requiresTraining
+                ? java.util.Set.of(EFFECTIVE_DATE_AFTER_APPROVAL, EFFECTIVE_DATE_AFTER_TRAINING, EFFECTIVE_DATE_AFTER_PUBLISH)
+                : java.util.Set.of(EFFECTIVE_DATE_AFTER_APPROVAL, EFFECTIVE_DATE_AFTER_PUBLISH);
+        return allowed.contains(value) ? value : EFFECTIVE_DATE_AFTER_APPROVAL;
+    }
+
+    /** Calendar days added to the basis event, split by Required/Non-Required Training; see
+     *  {@link #getEffectiveDateBasis(boolean)}. Falls back to the legacy single
+     *  {@link #getEffectiveDateOffsetDays()} setting when the split key was never saved. */
+    @Transactional(readOnly = true)
+    public int getEffectiveDateOffsetDays(boolean requiresTraining) {
+        String key = requiresTraining ? "effectiveDateOffsetDaysTrainingRequired" : "effectiveDateOffsetDaysTrainingNotRequired";
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        JsonNode value = documents == null ? null : documents.get(key);
+        if (value == null || value.isNull() || !value.isIntegralNumber()) {
+            return getEffectiveDateOffsetDays();
+        }
+        int days = value.asInt(0);
+        return days >= 0 && days <= 365 ? days : 0;
+    }
+
+    private String readOptionalText(JsonNode documents, String key) {
+        JsonNode node = documents == null ? null : documents.get(key);
+        return node == null || node.isNull() ? null : node.asText(null);
     }
 
     private int getDaysDocumentsConfig(String key, int defaultDays) {
@@ -1349,7 +1395,19 @@ public class SystemConfigurationService {
         requireIntInRange(documents, "knowledgePortalTopCount", 1, 20, "Knowledge portal list size");
         requireIntInRange(documents, "knowledgePortalViewsWindowDays", 1, 365, "Most Viewed window (days)");
         requireIntInRange(documents, "effectiveDateOffsetDays", 0, 365, "Effective Date offset");
+        requireIntInRange(documents, "effectiveDateOffsetDaysTrainingRequired", 0, 365, "Effective Date offset (Required Training)");
+        requireIntInRange(documents, "effectiveDateOffsetDaysTrainingNotRequired", 0, 365, "Effective Date offset (Non-Required Training)");
         requireIntInRange(documents, "defaultRetentionPeriodDays", 0, 36500, "Default retention period");
+        JsonNode basisRequired = documents.get("effectiveDateBasisTrainingRequired");
+        if (basisRequired != null && !basisRequired.isNull()
+                && !java.util.Set.of(EFFECTIVE_DATE_AFTER_APPROVAL, EFFECTIVE_DATE_AFTER_TRAINING, EFFECTIVE_DATE_AFTER_PUBLISH).contains(basisRequired.asText())) {
+            throw new IllegalArgumentException("Effective Date basis (Required Training) must be AFTER_APPROVAL, AFTER_TRAINING or AFTER_PUBLISH");
+        }
+        JsonNode basisNotRequired = documents.get("effectiveDateBasisTrainingNotRequired");
+        if (basisNotRequired != null && !basisNotRequired.isNull()
+                && !java.util.Set.of(EFFECTIVE_DATE_AFTER_APPROVAL, EFFECTIVE_DATE_AFTER_PUBLISH).contains(basisNotRequired.asText())) {
+            throw new IllegalArgumentException("Effective Date basis (Non-Required Training) must be AFTER_APPROVAL or AFTER_PUBLISH");
+        }
         JsonNode seed = documents.get("revisionNumberSeed");
         if (seed != null && !seed.isNull() && !java.util.Set.of("0.0.1", "0.1").contains(seed.asText())) {
             throw new IllegalArgumentException("Revision number seed must be 0.0.1 or 0.1");

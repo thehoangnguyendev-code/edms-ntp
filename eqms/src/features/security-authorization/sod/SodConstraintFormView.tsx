@@ -1,20 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, Ban, Search, Shield } from "lucide-react";
+import { AlertTriangle, Ban, Shield, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FormSection } from "@/components/ui/form/FormSection";
-import { FullPageLoading } from "@/components/ui/loading/Loading";
-import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
+import { FullPageLoading, InlineLoading } from "@/components/ui/loading/Loading";
+import { Select, type SelectOptionGroup } from "@/components/ui/select/Select";
+import { Badge } from "@/components/ui/badge/Badge";
 import { useToast } from "@/components/ui/toast/Toast";
 import { cn } from "@/components/ui/utils";
 import { settingsApi } from "@/services/api";
-import type { SodConstraintResponse, SodConstraintPayload } from "@/services/api/settings";
+import type { SodConstraintResponse, SodConstraintPayload, SodViolationResponse } from "@/services/api/settings";
 import { segregationOfDuties as segregationOfDutiesBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { usePermissionCatalog } from "@/features/security-authorization/shared/usePermissionCatalog";
+import { useDebounce } from "@/hooks";
 import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
 import { IconInfoCircle, IconSettingsAutomation } from "@tabler/icons-react";
@@ -44,13 +46,28 @@ export const SodConstraintFormView: React.FC = () => {
     [permissionGroups],
   );
 
+  /** One grouped-options list per side, excluding whatever is selected on the OTHER side (a
+   *  permission cannot conflict with itself). Reuses the app-wide searchable Select instead of a
+   *  bespoke scrollable table. */
+  const buildGroups = (excludeCode: string): SelectOptionGroup[] =>
+    permissionGroups
+      .map((group) => ({
+        groupLabel: group.name,
+        options: group.permissions
+          .filter((p) => p.id !== excludeCode)
+          .map((p) => ({
+            label: p.label,
+            value: p.id,
+            icon: <span className="text-2xs text-slate-400 font-mono">{p.id}</span>,
+          })),
+      }))
+      .filter((g) => g.options.length > 0);
+
   const [initial, setInitial] = useState<SodConstraintResponse | null>(null);
   const [loading, setLoading] = useState(isEdit);
   const [name, setName] = useState("");
   const [codeA, setCodeA] = useState("");
   const [codeB, setCodeB] = useState("");
-  const [permissionSearchA, setPermissionSearchA] = useState("");
-  const [permissionSearchB, setPermissionSearchB] = useState("");
   const [severity, setSeverity] = useState<"WARN" | "BLOCK">("WARN");
   const [regulationRef, setRegulationRef] = useState("");
   const [active, setActive] = useState(true);
@@ -59,6 +76,36 @@ export const SodConstraintFormView: React.FC = () => {
   // selected, undefined once checked and no duplicate found, otherwise the existing constraint.
   const [duplicateConstraint, setDuplicateConstraint] = useState<SodConstraintResponse | null>(null);
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+
+  // Real-world impact preview: which Access Profiles/users currently hold BOTH sides of the
+  // selected pair, computed server-side (server always re-checks its own EligibilityResult-style
+  // logic -- this preview is a UI hint for the admin, never itself an authorization decision).
+  const [impact, setImpact] = useState<SodViolationResponse | null>(null);
+  const [checkingImpact, setCheckingImpact] = useState(false);
+  const debouncedCodeA = useDebounce(codeA, 300);
+  const debouncedCodeB = useDebounce(codeB, 300);
+  useEffect(() => {
+    if (!debouncedCodeA || !debouncedCodeB || debouncedCodeA === debouncedCodeB) {
+      setImpact(null);
+      return;
+    }
+    let cancelled = false;
+    setCheckingImpact(true);
+    settingsApi
+      .previewSodImpact(debouncedCodeA, debouncedCodeB)
+      .then((result) => {
+        if (!cancelled) setImpact(result);
+      })
+      .catch(() => {
+        if (!cancelled) setImpact(null);
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingImpact(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedCodeA, debouncedCodeB]);
 
   useEffect(() => {
     if (!id) return;
@@ -176,86 +223,6 @@ export const SodConstraintFormView: React.FC = () => {
 
   const title = isEdit ? "Edit SoD Constraint" : "New SoD Constraint";
 
-  const renderPermissionTable = (
-    label: "Permission A" | "Permission B",
-    selectedCode: string,
-    onSelect: (code: string) => void,
-    search: string,
-    onSearchChange: (value: string) => void,
-    otherCode: string,
-  ) => {
-    const normalizedSearch = search.trim().toLowerCase();
-    const rows = permissionRows.filter((permission) =>
-      !normalizedSearch
-      || `${permission.id} ${permission.label} ${permission.groupName}`.toLowerCase().includes(normalizedSearch),
-    );
-    return (
-      <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
-        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-sm font-semibold text-slate-800">{label}</p>
-          <p className="mt-0.5 text-xs text-slate-500">Select one permission to compare.</p>
-          <div className="relative mt-3">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition-colors focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-              value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search permission..."
-              disabled={isSystem || catalogLoading}
-            />
-          </div>
-        </div>
-        <div className="max-h-72 overflow-y-auto">
-          {catalogLoading ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">Loading permissions...</div>
-          ) : rows.length === 0 ? (
-            <TableEmptyState title="No permissions found" description="Try a different search term." />
-          ) : (
-            <table className="w-full min-w-[360px]">
-              <thead className="sticky top-0 z-10 bg-white">
-                <tr>
-                  <th className="w-10 border-b border-slate-200 px-3 py-2 text-left text-2xs font-bold uppercase tracking-wider text-slate-500">Select</th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-left text-2xs font-bold uppercase tracking-wider text-slate-500">Permission</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rows.map((permission) => {
-                  const selected = selectedCode === permission.id;
-                  const unavailable = otherCode === permission.id;
-                  return (
-                    <tr key={permission.id} className={cn(selected && "bg-emerald-50", unavailable && "opacity-45")}>
-                      <td className="px-3 py-2.5">
-                        <Checkbox
-                          checked={selected}
-                          onChange={() => onSelect(permission.id)}
-                          disabled={isSystem || unavailable}
-                        />
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <button
-                          type="button"
-                          disabled={isSystem || unavailable}
-                          onClick={() => onSelect(permission.id)}
-                          className="block w-full text-left disabled:cursor-not-allowed"
-                        >
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-                            <span className="font-medium text-slate-800">{permission.label}</span>
-                            <span className=" text-[11px] text-slate-500">{permission.id}</span>
-                            <span className="text-[11px] text-slate-400">{permission.groupName}</span>
-                          </div>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       {signatureModal}
@@ -267,7 +234,7 @@ export const SodConstraintFormView: React.FC = () => {
             <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">
               Cancel
             </Button>
-            <Button size="sm" variant="outline-emerald" onClick={() => void handleSave()} disabled={saving || isSystem} className="whitespace-nowrap">
+            <Button size="sm" variant="outline-emerald" onClick={() => void handleSave()} disabled={saving || (isSystem && active === initial?.active)} className="whitespace-nowrap">
               {saving ? "Saving…" : "Save"}
             </Button>
           </>
@@ -276,7 +243,7 @@ export const SodConstraintFormView: React.FC = () => {
 
       {isSystem && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-800">
-          This is a system-defined constraint and cannot be modified.
+          This is a system-defined constraint. Its definition cannot be modified or deleted; it can only be activated or deactivated.
         </div>
       )}
 
@@ -317,13 +284,33 @@ export const SodConstraintFormView: React.FC = () => {
         icon={<Ban className="h-4 w-4" />}
         contentClassName="p-4 md:p-5 space-y-4"
       >
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
-          Select a different permission on each side. The selected permission is disabled in the opposite table.
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Select
+            label="Permission A"
+            value={codeA}
+            onChange={(v) => setCodeA(String(v))}
+            groups={buildGroups(codeB)}
+            options={[]}
+            placeholder="Search and select a permission..."
+            searchPlaceholder="Search permission..."
+            disabled={isSystem}
+            isLoading={catalogLoading}
+            maxVisibleRows={8}
+          />
+          <Select
+            label="Permission B"
+            value={codeB}
+            onChange={(v) => setCodeB(String(v))}
+            groups={buildGroups(codeA)}
+            options={[]}
+            placeholder="Search and select a permission..."
+            searchPlaceholder="Search permission..."
+            disabled={isSystem}
+            isLoading={catalogLoading}
+            maxVisibleRows={8}
+          />
         </div>
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {renderPermissionTable("Permission A", codeA, setCodeA, permissionSearchA, setPermissionSearchA, codeB)}
-          {renderPermissionTable("Permission B", codeB, setCodeB, permissionSearchB, setPermissionSearchB, codeA)}
-        </div>
+
         {codeA && codeB && checkingDuplicate && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
             Checking for an existing constraint on this pair...
@@ -342,6 +329,52 @@ export const SodConstraintFormView: React.FC = () => {
             <span className="font-semibold">{permissionRows.find((p) => p.id === codeA)?.label ?? codeA}</span> and{" "}
             <span className="font-semibold">{permissionRows.find((p) => p.id === codeB)?.label ?? codeB}</span> as a
             Segregation of Duties {severity === "BLOCK" ? "violation to block" : "warning"}.
+          </div>
+        )}
+
+        {codeA && codeB && codeA !== codeB && (
+          <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+              <Users className="h-4 w-4 text-slate-500" />
+              <span className="text-sm font-semibold text-slate-800">Real-world impact preview</span>
+              {checkingImpact && <InlineLoading size="sm" className="ml-auto" />}
+            </div>
+            <div className="p-4">
+              {checkingImpact ? (
+                <p className="text-sm text-slate-500">Checking who currently holds both permissions...</p>
+              ) : !impact || (impact.violatingAccessProfiles.length === 0 && impact.violatingUserCombinations.length === 0) ? (
+                <p className="text-sm text-slate-500">
+                  No active Access Profile or user currently holds both permissions — this rule would not flag anyone today.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {impact.violatingAccessProfiles.length > 0 && (
+                    <div>
+                      <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                        {impact.violatingAccessProfiles.length} Access Profile{impact.violatingAccessProfiles.length === 1 ? "" : "s"} grant both sides:
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {impact.violatingAccessProfiles.map((p) => (
+                          <Badge key={p.accessProfileId} color="slate" variant="outline" size="xs">{p.accessProfileName}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {impact.violatingUserCombinations.length > 0 && (
+                    <div>
+                      <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                        {impact.violatingUserCombinations.length} user{impact.violatingUserCombinations.length === 1 ? "" : "s"} hold both via combined profiles:
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {impact.violatingUserCombinations.map((c) => (
+                          <Badge key={c.userId} color="amber" variant="outline" size="xs">{c.fullName ?? c.username}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </FormSection>
@@ -380,7 +413,7 @@ export const SodConstraintFormView: React.FC = () => {
               </div>
             </div>
           <div className="self-start">
-            <Checkbox checked={active} onChange={setActive} disabled={isSystem} label="Active" />
+            <Checkbox checked={active} onChange={setActive} label="Active" />
           </div>
         </div>
       </FormSection>
