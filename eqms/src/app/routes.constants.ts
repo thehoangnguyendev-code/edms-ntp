@@ -21,6 +21,7 @@ export const ROUTES = {
 
   // Notifications
   NOTIFICATIONS: '/notifications',
+  CALENDAR: '/calendar',
 
   // Self-Service
   SELF_SERVICE: {
@@ -40,6 +41,8 @@ export const ROUTES = {
     // not the Self-Service Knowledge page.
     KNOWLEDGE_EXPLORER: '/documents/knowledge/explorer',
     KNOWLEDGE_PREVIEW: (id: string) => `/documents/knowledge/preview/${id}`,
+    // New-tab live OnlyOffice Form Creator session -- mirrors the onlyoffice-editor route below.
+    DESIGN_EFORM: (formDocumentId: string) => `/documents/forms/${formDocumentId}/design-eform-fields`,
     SNAPSHOT_HISTORY_PREVIEW: (revisionId: string, historyId: string) =>
       `/documents/revisions/${revisionId}/snapshot-history/${historyId}/preview`,
 
@@ -88,6 +91,7 @@ export const ROUTES = {
       /** The "download" link inside the distribution e-mail; login-required, never a public/token link. */
       DOWNLOAD: (id: string) => `/documents/uncontrolled-copies/${id}/download`,
     },
+    RECORDS: '/documents/records',
 
     // Document Administration (admin-only, now under System Administration -- URLs unchanged
     // since documents/administration/* is also the backend @RequestMapping base path)
@@ -181,7 +185,6 @@ export const ROUTES = {
     DICTIONARIES_POSITIONS: '/settings/dictionaries/positions',
     DICTIONARIES_STORAGE_LOCATIONS: '/settings/dictionaries/storage-locations',
     DICTIONARIES_RETENTION_POLICIES: '/settings/dictionaries/retention-policies',
-    COUNTRIES: '/settings/countries',
     EDUCATION_DEGREE_LEVELS: '/settings/education/degree-levels',
     EDUCATION_SCHOOLS: '/settings/education/schools',
     EDUCATION_SCHOOLS_NEW: '/settings/education/schools/new',

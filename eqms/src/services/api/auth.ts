@@ -221,7 +221,7 @@ export const authApi = {
 
   /** POST /auth/verify-signature — xác minh e-signature */
   verifyESignature: async (credentials: {
-    username?: string;
+    username: string;
     password: string;
   }): Promise<{ valid: boolean; userId: string; username: string; fullName: string; position?: string; department?: string; signatureToken: string; timestamp: string }> => {
     const response = await apiClient.post<{

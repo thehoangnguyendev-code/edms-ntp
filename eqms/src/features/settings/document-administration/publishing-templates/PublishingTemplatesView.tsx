@@ -22,6 +22,8 @@ import type { PublishingTemplateResponse } from "@/features/documents/publishing
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { IconBrandTelegram, IconFilter2, IconPencilMinus } from "@tabler/icons-react";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
+import { DesktopSelectFilters } from '@/components/ui/filter/DesktopSelectFilters';
+import { useBranding } from '@/components/branding/BrandLogo';
 import { publishingTemplates as publishingTemplatesBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
@@ -89,6 +91,7 @@ const configuredFileCount = (template: PublishingTemplateResponse) =>
   (template.components || []).filter((component) => Boolean(component.fileName || component.objectKey)).length;
 
 export const PublishingTemplatesView: React.FC = () => {
+  const { compactDesktopFilters = false } = useBranding();
   const navigate = useNavigate();
   const { hasPermissionAlias } = usePermissions();
   const canManageTemplates = hasPermissionAlias('documents.admin.publishing_templates.manage');
@@ -342,7 +345,15 @@ export const PublishingTemplatesView: React.FC = () => {
             </div>
 
             {/* Desktop: full filter grid */}
-            <div className="hidden md:grid grid-cols-1 gap-4 items-end md:grid-cols-2 xl:grid-cols-3">
+            {compactDesktopFilters && <DesktopSelectFilters
+              search={<input aria-label="Search publishing templates" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Search name, description, type..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+              filters={[
+                { id: 'status', label: 'Status', value: statusFilter, defaultValue: 'All', options: STATUS_OPTIONS, onChange: setStatusFilter },
+                { id: 'mode', label: 'Publishing Mode', value: publishingModeFilter, defaultValue: 'All', options: PUBLISHING_MODE_OPTIONS, onChange: setPublishingModeFilter },
+                { id: 'creator', label: 'Created By', value: createdByFilter, defaultValue: '', options: createdByFilter ? [{ label: createdByFilter, value: createdByFilter }] : [], onChange: setCreatedByFilter,
+                  onSearch: async query => (await metadataApi.getUsersLookup({ search: query })).map(u => ({ label: u.fullName, value: u.fullName })) },
+              ]} onApplied={() => setCurrentPage(1)} />}
+            <div className={cn("hidden md:grid grid-cols-1 gap-4 items-end md:grid-cols-2 xl:grid-cols-3", compactDesktopFilters && "md:!hidden")}>
               {/* Search */}
               <div className="w-full">
                 <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Search</label>

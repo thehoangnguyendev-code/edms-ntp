@@ -2055,6 +2055,9 @@ export const documentApi = {
     purpose: string;
     copies: number;
     quantity?: number;
+    /** "PAPER" (default) or "ELECTRONIC" -- only accepted when the target Document's
+     *  FormSettings.allowEform is true, and only valid with exactly one internal recipient. */
+    deliveryMode?: "PAPER" | "ELECTRONIC";
     distributionMode?: "internal" | "external";
     distributionScope?: "business-unit" | "department" | "individual";
     hasExpiryDate?: boolean;

@@ -1,11 +1,10 @@
+import { Drawer, type DrawerHandle } from "@/components/ui/drawer";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createPortal } from "react-dom";
-import { X, Check, KeyRound, ExternalLink } from "lucide-react";
+import { Check, KeyRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { SectionLoading } from "@/components/ui/loading/Loading";
-import { cn } from "@/components/ui/utils";
 import { ROUTES } from "@/app/routes.constants";
 import { settingsApi, type PermissionCatalogGroup, type PermissionLifecycleUsage, type PermissionSetResponse, type PermissionSetSummary } from "@/services/api/settings";
 
@@ -22,52 +21,21 @@ interface PermissionSetDrawerProps {
   onClose: () => void;
 }
 
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window !== "undefined") return window.innerWidth < 768;
-    return false;
-  });
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  return isMobile;
-};
-
 export const AccessProfilePermissionSetDrawer: React.FC<PermissionSetDrawerProps> = ({ ps, onClose }) => {
+  const drawer = React.useRef<DrawerHandle>(null);
+
   const navigate = useNavigate();
   const [expandedLifecycle, setExpandedLifecycle] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<PermissionSetResponse | null>(null);
   const [catalog, setCatalog] = useState<PermissionCatalogGroup[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [drawerHeight, setDrawerHeight] = useState(88);
-  const isMobile = useIsMobile();
-  const dragStartY = React.useRef(0);
-  const dragStartHeight = React.useRef(88);
-
-  const MIN_HEIGHT = 40;
-  const MAX_HEIGHT = 100;
-  const CLOSE_THRESHOLD = 25;
-
-  const handleClose = () => {
-    setIsClosing(true);
-    window.setTimeout(() => {
-      setIsClosing(false);
-      onClose();
-    }, 300);
-  };
 
   useEffect(() => {
     if (!ps) return;
     setLoading(true);
     settingsApi.getPermissionSet(ps.id)
       .then(setDetail)
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, [ps?.id]);
 
@@ -82,55 +50,6 @@ export const AccessProfilePermissionSetDrawer: React.FC<PermissionSetDrawerProps
       });
     return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
-
-  const handleDragStart = (clientY: number) => {
-    setIsDragging(true);
-    dragStartY.current = clientY;
-    dragStartHeight.current = drawerHeight;
-  };
-
-  const handleDragMove = (clientY: number) => {
-    if (!isDragging) return;
-    const viewportHeight = window.innerHeight;
-    const deltaY = dragStartY.current - clientY;
-    const deltaVh = (deltaY / viewportHeight) * 100;
-    let newHeight = dragStartHeight.current + deltaVh;
-    newHeight = Math.max(0, Math.min(MAX_HEIGHT, newHeight));
-    setDrawerHeight(newHeight);
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    if (drawerHeight < CLOSE_THRESHOLD) {
-      handleClose();
-    } else {
-      setDrawerHeight(88);
-    }
-  };
-
-  useEffect(() => {
-    if (!isDragging) return;
-    const onMove = (e: MouseEvent) => handleDragMove(e.clientY);
-    const onEnd = () => handleDragEnd();
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onEnd);
-    return () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onEnd);
-    };
-  }, [isDragging, drawerHeight]);
 
   if (!ps) return null;
 
@@ -168,172 +87,94 @@ export const AccessProfilePermissionSetDrawer: React.FC<PermissionSetDrawerProps
     return acc;
   }, {});
 
-  const isFullHeight = drawerHeight >= 98;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-center md:justify-end items-end md:items-center">
-      <style>{`
-        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
-        @keyframes slideInBottom { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes slideOutBottom { from { transform: translateY(0); opacity: 1; } to { transform: translateY(100%); opacity: 0; } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-        .desktop-drawer-enter { animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .desktop-drawer-exit { animation: slideOutRight 0.25s cubic-bezier(0.4, 0, 1, 1) forwards; }
-        .mobile-drawer-enter { animation: slideInBottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .mobile-drawer-exit { animation: slideOutBottom 0.3s cubic-bezier(0.4, 0, 1, 1) forwards; }
-        .backdrop-enter { animation: fadeIn 0.3s ease-out forwards; }
-        .backdrop-exit { animation: fadeOut 0.25s ease-in forwards; }
-      `}</style>
-
-      <div
-        className={cn(
-          "absolute inset-0 bg-slate-900/60 backdrop-blur-sm pointer-events-auto",
-          isClosing ? "backdrop-exit" : "backdrop-enter"
-        )}
-        onClick={handleClose}
-      />
-
-      <div
-        className={cn(
-          "pointer-events-auto bg-white flex flex-col relative overflow-hidden shadow-2xl",
-          isMobile
-            ? cn("w-full transition-all flex flex-col", isFullHeight ? "rounded-none" : "rounded-t-2xl")
-            : "w-[500px] h-[calc(100vh-32px)] mr-4 rounded-2xl border border-slate-200",
-          isClosing
-            ? (isMobile ? "mobile-drawer-exit" : "desktop-drawer-exit")
-            : (isMobile ? (!isDragging && "mobile-drawer-enter") : "desktop-drawer-enter"),
-        )}
-        style={isMobile ? {
-          height: `${drawerHeight}dvh`,
-          transition: isDragging ? "none" : "transform 400ms cubic-bezier(0.16, 1, 0.3, 1), height 400ms cubic-bezier(0.16, 1, 0.3, 1), border-radius 200ms ease",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-          paddingTop: isFullHeight ? "env(safe-area-inset-top, 0px)" : "0px",
-        } : {}}
+  return <Drawer
+    ref={drawer}
+    onClose={onClose}
+    title={ps.name}
+    subtitle="Permission Set"
+    icon={<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50"><KeyRound className="h-4 w-4 text-emerald-600" /></span>}
+    description={ps.description}
+    bodyClassName="space-y-4"
+    footer={<>
+      <Button
+        variant="outline-emerald"
+        size="sm"
+        className="w-fit gap-1.5"
+        onClick={() => navigate(ROUTES.SECURITY.PERMISSION_SETS)}
       >
-        {isMobile && (
-          <div
-            className="flex flex-col items-center py-3 cursor-grab active:cursor-grabbing select-none touch-none bg-white shrink-0"
-            onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
-            onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
-            onTouchEnd={handleDragEnd}
-            onMouseDown={(e) => handleDragStart(e.clientY)}
-          >
-            <div className={cn(
-              "rounded-full transition-all duration-200",
-              isDragging ? "w-20 h-1.5 bg-slate-400" : "w-12 h-1 bg-slate-200 hover:bg-slate-300"
-            )} />
-          </div>
-        )}
+        Open Permission Sets
+      </Button>
+    </>}
+  >
 
-        <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-emerald-50">
-              <KeyRound className="h-4 w-4 text-emerald-600" />
+    {loading ? (
+      <SectionLoading />
+    ) : detail?.permissionCodes && detail.permissionCodes.length > 0 ? (
+      <div className="space-y-4">
+        {Object.entries(groupedPermissions).map(([module, section]) => (
+          <div key={module} className="rounded-xl border border-slate-200 bg-slate-50/60 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-200 bg-white">
+              <p className="text-sm font-semibold text-slate-900">{module}</p>
+              {section.description ? <p className="text-xs text-slate-500 mt-0.5">{section.description}</p> : null}
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">Access Profile</p>
-              <p className="text-xs sm:text-sm font-bold text-slate-900 truncate" title={ps.name}>{ps.name}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleClose}
-            className="flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4 text-slate-500" />
-          </button>
-        </div>
-
-        {ps.description && (
-          <div className="px-4 sm:px-5 py-3 border-b border-slate-100 bg-white">
-            <p className="text-xs text-slate-500">{ps.description}</p>
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30 scroll-smooth custom-scrollbar" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
-          {loading ? (
-            <SectionLoading />
-          ) : detail?.permissionCodes && detail.permissionCodes.length > 0 ? (
-            <div className="space-y-4">
-              {Object.entries(groupedPermissions).map(([module, section]) => (
-                <div key={module} className="rounded-xl border border-slate-200 bg-slate-50/60 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-200 bg-white">
-                    <p className="text-sm font-semibold text-slate-900">{module}</p>
-                    {section.description ? <p className="text-xs text-slate-500 mt-0.5">{section.description}</p> : null}
+            <div className="divide-y divide-slate-100">
+              {section.items.map((item) => (
+                <div key={item.code} className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900">{item.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
+                    </div>
+                    <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                   </div>
-                  <div className="divide-y divide-slate-100">
-                    {section.items.map((item) => (
-                      <div key={item.code} className="px-4 py-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-900">{item.name}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
-                          </div>
-                          <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          <Badge size="xs" color="slate">{item.code}</Badge>
-                          {item.action ? <Badge size="xs" color="blue">{item.action}</Badge> : null}
-                          {item.riskLevel ? <Badge size="xs" color={item.riskLevel === "CRITICAL" ? "red" : item.riskLevel === "HIGH" ? "orange" : "slate"}>{item.riskLevel}</Badge> : null}
-                          {item.requiresAudit ? <Badge size="xs" color="indigo">Audit</Badge> : null}
-                          {item.requiresESign ? <Badge size="xs" color="emerald">E-sign</Badge> : null}
-                          {item.lifecycleUsages && item.lifecycleUsages.length > 0 && (
-                            expandedLifecycle.has(item.code) ? (
-                              <>
-                                {item.lifecycleUsages.map((u, i) => (
-                                  <Badge key={i} size="xs" color="purple">{formatLifecycleUsage(u)}</Badge>
-                                ))}
-                                <button
-                                  type="button"
-                                  onClick={() => setExpandedLifecycle((prev) => { const next = new Set(prev); next.delete(item.code); return next; })}
-                                  className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline"
-                                >
-                                  Show less
-                                </button>
-                              </>
-                            ) : (
-                              <span className="inline-flex items-center gap-1">
-                                <Badge size="xs" color="purple" title={formatLifecycleUsage(item.lifecycleUsages[0])}>
-                                  {formatLifecycleState(item.lifecycleUsages[0])}
-                                </Badge>
-                                {item.lifecycleUsages.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setExpandedLifecycle((prev) => new Set(prev).add(item.code))}
-                                    className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline"
-                                  >
-                                    +{item.lifecycleUsages.length - 1} more
-                                  </button>
-                                )}
-                              </span>
-                            )
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <Badge size="xs" color="slate">{item.code}</Badge>
+                    {item.action ? <Badge size="xs" color="blue">{item.action}</Badge> : null}
+                    {item.riskLevel ? <Badge size="xs" color={item.riskLevel === "CRITICAL" ? "red" : item.riskLevel === "HIGH" ? "orange" : "slate"}>{item.riskLevel}</Badge> : null}
+                    {item.requiresAudit ? <Badge size="xs" color="indigo">Audit</Badge> : null}
+                    {item.requiresESign ? <Badge size="xs" color="emerald">E-sign</Badge> : null}
+                    {item.lifecycleUsages && item.lifecycleUsages.length > 0 && (
+                      expandedLifecycle.has(item.code) ? (
+                        <>
+                          {item.lifecycleUsages.map((u, i) => (
+                            <Badge key={i} size="xs" color="purple">{formatLifecycleUsage(u)}</Badge>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setExpandedLifecycle((prev) => { const next = new Set(prev); next.delete(item.code); return next; })}
+                            className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline"
+                          >
+                            Show less
+                          </button>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <Badge size="xs" color="purple" title={formatLifecycleUsage(item.lifecycleUsages[0])}>
+                            {formatLifecycleState(item.lifecycleUsages[0])}
+                          </Badge>
+                          {item.lifecycleUsages.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedLifecycle((prev) => new Set(prev).add(item.code))}
+                              className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline"
+                            >
+                              +{item.lifecycleUsages.length - 1} more
+                            </button>
                           )}
-                        </div>
-                      </div>
-                    ))}
+                        </span>
+                      )
+                    )}
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-32 text-xs text-slate-400 italic">No permissions assigned</div>
-          )}
-        </div>
-
-        <div className="flex justify-end border-t border-slate-100 bg-slate-50 px-4 py-3 sm:px-5 shrink-0">
-          <Button
-            variant="outline-emerald"
-            size="sm"
-            className="w-fit gap-1.5"
-            onClick={() => navigate(ROUTES.SECURITY.PERMISSION_SETS)}
-          >
-            Open Permission Sets
-          </Button>
-        </div>
+          </div>
+        ))}
       </div>
-    </div>,
-    document.body,
-  );
+    ) : (
+      <div className="flex items-center justify-center h-32 text-xs text-slate-400 italic">No permissions assigned</div>
+    )}
+
+  </Drawer>;
 };

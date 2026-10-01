@@ -7,6 +7,9 @@ import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/Filter
 import { cn } from "@/components/ui/utils";
 import type { DocumentType, DocumentStatus } from "@/features/documents/types";
 import { IconFilter2 } from "@tabler/icons-react";
+import { DesktopFilterPanel, type DesktopFilterField } from '@/components/ui/filter/DesktopFilterPanel';
+import { FilterOptionList } from '@/components/ui/filter/FilterOptionList';
+import { useBranding } from '@/components/branding/BrandLogo';
 
 interface DocumentFiltersProps {
   searchQuery: string;
@@ -58,6 +61,8 @@ interface DocumentFiltersProps {
   onAuthorSearch?: (query: string) => Promise<SelectOption[]>;
   hideSearch?: boolean;
   showCard?: boolean;
+  /** Atomic URL update for URL-owned filters. State-owned callers may use existing setters. */
+  onApplyFilters?: (values: Record<string, string>) => void;
 }
 
 const ALL_OPTION: SelectOption = { label: "All", value: "All" };
@@ -111,7 +116,9 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
   onAuthorSearch,
   hideSearch = false,
   showCard = true,
+  onApplyFilters,
 }) => {
+  const { compactDesktopFilters = false } = useBranding();
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = React.useState(false);
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
     new Set(["status", "type"])
@@ -153,6 +160,56 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
     { label: "No", value: "no" },
   ];
 
+  const committed = {
+    status: String(statusFilter), documentType: String(typeFilter), businessUnit: businessUnitFilter,
+    department: departmentFilter, authorId: authorFilter, relatedDocument: relatedDocumentFilter,
+    correlatedDocument: correlatedDocumentFilter, isTemplate: templateFilter,
+    createdFrom: createdFromDate, createdTo: createdToDate, effectiveFrom: effectiveFromDate,
+    effectiveTo: effectiveToDate, validFrom: validFromDate, validTo: validToDate,
+  };
+  const defaults = Object.fromEntries(Object.keys(committed).map(key => [key, key.endsWith('From') || key.endsWith('To') ? '' : 'All']));
+  if (disableStatusFilter) defaults.status = committed.status;
+  if (authorFilterDisabled) defaults.authorId = committed.authorId;
+  const fields: DesktopFilterField[] = [];
+  const addSelect = (id: string, label: string, options: SelectOption[], visible = true, disabled = false) => {
+    if (visible) fields.push({ id, label, render: (draft, change, active) =>
+      <FilterOptionList label={label} value={draft[id]} options={options} disabled={disabled} active={active}
+        onChange={value => { if (!disabled) change(id, String(value)); }}
+        onSearch={id === 'authorId' ? onAuthorSearch : undefined} /> });
+  };
+  addSelect('status', 'Status', resolvedStatusOptions, true, disableStatusFilter);
+  addSelect('documentType', 'Document Type', resolvedTypeOptions, showTypeFilter);
+  addSelect('businessUnit', 'Business Unit', resolvedBusinessUnitOptions, showBusinessUnitFilter);
+  addSelect('department', 'Department', resolvedDepartmentOptions, showDepartmentFilter);
+  addSelect('authorId', 'Author', resolvedAuthorOptions, true, authorFilterDisabled);
+  addSelect('relatedDocument', 'Related Document', binaryOptions, showRelatedDocumentFilter);
+  addSelect('correlatedDocument', 'Correlated Document', binaryOptions, showCorrelatedDocumentFilter);
+  addSelect('isTemplate', 'Is Template', binaryOptions, showTemplateFilter);
+  for (const [id, label] of [['created', 'Created Date Range'], ['effective', 'Effective Date Range'], ['valid', 'Valid Date Range']]) {
+    fields.push({ id, label, render: (draft, change, active) => active ? <DateRangePicker inline label={label}
+      startDate={draft[`${id}From`]} endDate={draft[`${id}To`]}
+      onStartDateChange={value => change(`${id}From`, value)} onEndDateChange={value => change(`${id}To`, value)} /> : null });
+  }
+  const applyCompactFilters = (draft: Record<string, string>) => {
+    const setters: Record<string, (value: string) => void> = {
+      status: value => onStatusChange(value as DocumentStatus | 'All'),
+      documentType: value => onTypeChange(value as DocumentType | 'All'), businessUnit: onBusinessUnitChange,
+      department: onDepartmentChange, authorId: onAuthorChange, relatedDocument: onRelatedDocumentFilterChange,
+      correlatedDocument: onCorrelatedDocumentFilterChange, isTemplate: onTemplateFilterChange,
+      createdFrom: onCreatedFromDateChange, createdTo: onCreatedToDateChange,
+      effectiveFrom: onEffectiveFromDateChange, effectiveTo: onEffectiveToDateChange,
+      validFrom: onValidFromDateChange, validTo: onValidToDateChange,
+    };
+    const allowed = new Set(fields.flatMap(field => ['created', 'effective', 'valid'].includes(field.id)
+      ? [`${field.id}From`, `${field.id}To`] : [field.id]));
+    if (disableStatusFilter) allowed.delete('status');
+    if (authorFilterDisabled) allowed.delete('authorId');
+    const changes = Object.fromEntries(Object.entries(draft).filter(([key, value]) => allowed.has(key) && value !== committed[key as keyof typeof committed]));
+    if (Object.keys(changes).length === 0) return;
+    if (onApplyFilters) onApplyFilters(changes);
+    else Object.entries(changes).forEach(([key, value]) => setters[key]?.(value));
+  };
+
   const filterContent = (
     <div className="flex flex-col w-full">
       {!hideSearch && (
@@ -191,7 +248,11 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         </div>
       )}
 
-      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+      {compactDesktopFilters && <DesktopFilterPanel values={committed} defaults={defaults} fields={fields} onApply={applyCompactFilters}
+        search={!hideSearch && <input type="search" aria-label="Search documents" placeholder="Search documents..." value={searchQuery}
+          onChange={event => onSearchChange(event.target.value)}
+          className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none" />} />}
+      <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
         {!hideSearch && (
           <div className="w-full">
             <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">

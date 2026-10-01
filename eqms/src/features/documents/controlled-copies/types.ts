@@ -90,6 +90,9 @@ export interface ControlledCopy {
   replacedControlledCopyNumber?: string;
   replacementControlledCopyId?: string;
   replacementControlledCopyNumber?: string;
+  /** "PAPER" (default) or "ELECTRONIC" -- ELECTRONIC drives the eForm Fill/Sign flow instead of
+   *  the print-and-scan-back paper path. */
+  deliveryMode?: "PAPER" | "ELECTRONIC";
 }
 
 export interface ControlledCopyEvidenceFile {

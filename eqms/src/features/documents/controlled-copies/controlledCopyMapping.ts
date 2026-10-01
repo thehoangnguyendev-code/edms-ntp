@@ -140,6 +140,7 @@ export const normalizeControlledCopyRecord = (payload: any, fallbackId = ""): Co
     replacementControlledCopyId: firstText(payload?.replacementControlledCopyId) || undefined,
     replacementControlledCopyNumber: firstText(payload?.replacementControlledCopyNumber) || undefined,
     lastUpdatedAt: firstText(payload?.lastUpdatedAt) || undefined,
+    deliveryMode: (firstText(payload?.deliveryMode) as ControlledCopy["deliveryMode"]) || "PAPER",
   };
 };
 

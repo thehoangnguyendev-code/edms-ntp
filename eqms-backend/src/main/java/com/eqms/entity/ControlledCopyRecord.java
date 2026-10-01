@@ -58,6 +58,13 @@ public class ControlledCopyRecord {
     @Column(name = "document_number", nullable = false, length = 100)
     private String documentNumber;
 
+    /** PAPER (default, zero behavior change for every non-Form document) or ELECTRONIC -- only
+     *  selectable when the target Document's FormSettings.allowEform is true. ELECTRONIC drives
+     *  the eForm Fill/Sign flow (see EformEditSessionService / EformSignerAssignment) instead of
+     *  the print-and-scan-back paper path. */
+    @Column(name = "delivery_mode", nullable = false, length = 20)
+    private String deliveryMode = "PAPER";
+
     @Column(name = "document_title", length = 500)
     private String documentTitle;
 
@@ -319,6 +326,8 @@ public class ControlledCopyRecord {
     public void setTotalCopies(int totalCopies) { this.totalCopies = totalCopies; }
     public String getDocumentNumber() { return documentNumber; }
     public void setDocumentNumber(String documentNumber) { this.documentNumber = documentNumber; }
+    public String getDeliveryMode() { return deliveryMode; }
+    public void setDeliveryMode(String deliveryMode) { this.deliveryMode = deliveryMode; }
     public String getDocumentTitle() { return documentTitle; }
     public void setDocumentTitle(String documentTitle) { this.documentTitle = documentTitle; }
     public String getRevisionNumber() { return revisionNumber; }

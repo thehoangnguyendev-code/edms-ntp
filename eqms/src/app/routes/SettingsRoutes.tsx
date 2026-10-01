@@ -18,7 +18,6 @@ const TimeLimitedUserCreateView = lazy(() => import('@/features/settings').then(
 const TimeLimitedUserDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.TimeLimitedUserDetailView })));
 const TimeLimitedUserEditView = lazy(() => import('@/features/settings').then(m => ({ default: m.TimeLimitedUserEditView })));
 const DictionariesView = lazy(() => import('@/features/settings').then(m => ({ default: m.DictionariesView })));
-const CountriesView = lazy(() => import('@/features/settings').then(m => ({ default: m.CountriesView })));
 const EducationDegreeLevelsView = lazy(() => import('@/features/settings').then(m => ({ default: m.EducationDegreeLevelsView })));
 const EducationSchoolsView = lazy(() => import('@/features/settings').then(m => ({ default: m.EducationSchoolsView })));
 const EducationSchoolEditorView = lazy(() => import('@/features/settings').then(m => ({ default: m.EducationSchoolEditorView })));
@@ -86,7 +85,6 @@ export function settingsRoutes(navigate: NavigateFunction) {
               "settings.position.view",
               "settings.storage_location.view",
               "settings.retention_policy.view",
-              "settings.country.view",
               "settings.education.degree_level.view",
               "settings.education.school.view",
               "settings.email_template.view",
@@ -118,7 +116,6 @@ export function settingsRoutes(navigate: NavigateFunction) {
           <Route path="storage-locations" element={<ProtectedRoute requiredPermissions={["settings.storage_location.view", "settings.storage_location.manage"]}><Suspense fallback={<LoadingFallback />}><DictionariesView /></Suspense></ProtectedRoute>} />
           <Route path="retention-policies" element={<ProtectedRoute requiredPermissions={["settings.retention_policy.view", "settings.retention_policy.manage"]}><Suspense fallback={<LoadingFallback />}><DictionariesView /></Suspense></ProtectedRoute>} />
         </Route>
-        <Route path="countries" element={<ProtectedRoute requiredPermissions={["settings.country.view", "settings.country.manage"]}><Suspense fallback={<LoadingFallback />}><CountriesView /></Suspense></ProtectedRoute>} />
         <Route path="education">
           <Route index element={<Navigate to="degree-levels" replace />} />
           <Route path="degree-levels" element={<ProtectedRoute requiredPermissions={["settings.education.degree_level.view", "settings.education.degree_level.manage"]}><Suspense fallback={<LoadingFallback />}><EducationDegreeLevelsView /></Suspense></ProtectedRoute>} />

@@ -1,5 +1,7 @@
 ﻿import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { DesktopSelectFilters } from '@/components/ui/filter/DesktopSelectFilters';
+import { useBranding } from '@/components/branding/BrandLogo';
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { notifications as notificationsBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import {
@@ -395,6 +397,7 @@ const EmptyState: React.FC<{
 
 // --- Main View ---
 export const NotificationsView: React.FC = () => {
+  const { compactDesktopFilters = false } = useBranding();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
@@ -940,7 +943,16 @@ export const NotificationsView: React.FC = () => {
               </div>
             </div>
 
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+            {compactDesktopFilters && <DesktopSelectFilters
+              search={<input aria-label="Search notifications" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Search notifications..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+              filters={[
+                { id: 'status', label: 'Status', value: statusFilter, defaultValue: 'all', onChange: setStatusFilter, options: [{ label: 'All Status', value: 'all' }, { label: 'Unread Only', value: 'unread' }, { label: 'Read Only', value: 'read' }] },
+                { id: 'module', label: 'Module', value: module, defaultValue: 'all', onChange: setModule, options: [{ label: 'All Modules', value: 'all' }, ...['Document', 'Deviation', 'CAPA', 'Training', 'Change Control'].map(value => ({ label: value, value }))] },
+                { id: 'priority', label: 'Priority', value: priority, defaultValue: 'all', onChange: setPriority, options: [{ label: 'All Priorities', value: 'all' }, ...['critical', 'high', 'medium', 'low'].map(value => ({ label: value[0].toUpperCase() + value.slice(1), value }))] },
+              ]}
+              dates={[{ id: 'time', label: 'Time Range', from: dateFrom, to: dateTo, onFromChange: setDateFrom, onToChange: setDateTo }]}
+              onApplied={() => setCurrentPage(1)} />}
+            <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end", compactDesktopFilters && "md:!hidden")}>
               <div className="w-full">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 block transition-colors px-0.5 mb-1.5">
                   Search

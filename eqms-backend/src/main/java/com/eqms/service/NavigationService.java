@@ -48,6 +48,8 @@ public class NavigationService {
                 && systemConfigurationService.isFeatureEnabled("feat-notifications")) {
             menu.add(new NavigationItemResponse("notifications", "Notifications", "Bell", "/notifications", false, null));
         }
+        // Every authenticated user has a private calendar. Source data retains its own authorization.
+        menu.add(new NavigationItemResponse("calendar", "Calendar", "CalendarDays", "/calendar", false, null));
         // Self-Service groups the two personal-workspace surfaces (Dashboard, Knowledge) that used
         // to live at top-level / nested inside Document Control -- shown if either child is visible.
         List<NavigationItemResponse> selfServiceChildren = new ArrayList<>();
@@ -239,9 +241,6 @@ public class NavigationService {
             }
             if (!dictionaryChildren.isEmpty()) {
                 settingsChildren.add(new NavigationItemResponse("dictionaries", "Dictionaries", "BookText", null, false, dictionaryChildren));
-            }
-            if (hasAnyPermission(normalizedPermissions, "settings.country.view", "settings.country.manage")) {
-                settingsChildren.add(new NavigationItemResponse("countries", "Countries", "Globe2", "/settings/countries", false, null));
             }
             List<NavigationItemResponse> educationChildren = new ArrayList<>();
             if (hasAnyPermission(normalizedPermissions, "settings.education.degree_level.view", "settings.education.degree_level.manage")) {

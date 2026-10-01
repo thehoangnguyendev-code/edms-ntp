@@ -330,6 +330,11 @@ export const uncontrolledCopies = (
   },
 ];
 
+export const executedRecords = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...docControlBase(navigate),
+  { label: "Records", isActive: true },
+];
+
 export const uncontrolledCopyDetail = (
   navigate?: NavigateFn,
   from?: string,

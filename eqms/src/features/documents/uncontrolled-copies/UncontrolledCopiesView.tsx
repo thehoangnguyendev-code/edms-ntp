@@ -36,6 +36,8 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { uncontrolledCopies as uncontrolledCopiesBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { cn } from "@/components/ui/utils";
+import { CopyDesktopFilters } from '@/components/ui/filter/CopyDesktopFilters';
+import { useBranding } from '@/components/branding/BrandLogo';
 import {
   useDebounce,
   useNavigateWithLoading,
@@ -94,6 +96,7 @@ const formatOptional = (value?: string | null) =>
 export const UncontrolledCopiesView: React.FC<{
   viewType?: UncontrolledCopiesViewType;
 }> = ({ viewType = "all" }) => {
+  const { compactDesktopFilters = false } = useBranding();
   const { navigateTo } = useNavigateWithLoading();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -526,7 +529,25 @@ export const UncontrolledCopiesView: React.FC<{
             </div>
           </div>
 
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+          {compactDesktopFilters && <CopyDesktopFilters
+            search={<input aria-label="Search uncontrolled copies" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Search uncontrolled copies..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+            status={viewType === 'all' ? statusFilter : VIEW_STATUS[viewType] ?? 'ALL'} statusOptions={statusOptions}
+            statusLocked={viewType !== 'all'} allStatus="ALL"
+            dates={[
+              { id: 'created', label: 'Requested Date Range', from: createdFrom, to: createdTo },
+              { id: 'valid', label: 'Valid Until Date Range', from: validFrom, to: validTo },
+              { id: 'approved', label: 'Approved Date Range', from: approvedFrom, to: approvedTo },
+              { id: 'distributed', label: 'Distributed Date Range', from: distributedFrom, to: distributedTo },
+            ]}
+            onApply={draft => {
+              if (viewType === 'all') setStatusFilter(draft.status);
+              setCreatedFrom(draft.createdFrom); setCreatedTo(draft.createdTo);
+              setValidFrom(draft.validFrom); setValidTo(draft.validTo);
+              setApprovedFrom(draft.approvedFrom); setApprovedTo(draft.approvedTo);
+              setDistributedFrom(draft.distributedFrom); setDistributedTo(draft.distributedTo);
+              setCurrentPage(1);
+            }} />}
+          <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
             <div>
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
                 Search

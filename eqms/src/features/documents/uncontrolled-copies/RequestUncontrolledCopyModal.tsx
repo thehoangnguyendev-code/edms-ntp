@@ -210,7 +210,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
                   </p>
                   <p className="text-xs text-slate-500">
                     {context.approvalRequired ? "Approval is required before generation." : "No approval step (policy)."} Valid for{" "}
-                    <span className="font-bold text-emerald-600">{context.validityHours}</span> hours after distribution.
+                    <span className="font-bold text-emerald-600">{context.validityHours} hours</span> after distribution.
                   </p>
                 </div>
 

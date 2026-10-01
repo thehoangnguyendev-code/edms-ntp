@@ -11,6 +11,7 @@ import {
   TrainingInformationTab,
   DocumentTab,
   SignaturesTab,
+  ExecutedRecordsTab,
   AuditTrailTab,
 } from "./tabs";
 import type { AuditEntry } from "./tabs/AuditTab";
@@ -92,7 +93,7 @@ import type {
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // --- Types ---
-type TabType = "general" | "training" | "document" | "signatures" | "audit";
+type TabType = "general" | "training" | "document" | "signatures" | "records" | "audit";
 type SubTabType =
   | "revisions"
   | "reviewers"
@@ -275,8 +276,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   const [isSavingWorkflowConfiguration, setIsSavingWorkflowConfiguration] =
     useState(false);
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
+  const tabFromQuery = searchParams.get("tab");
   const initialActiveTab =
-    searchParams.get("tab") === "audit" ? "audit" : initialTab;
+    tabFromQuery === "audit" || tabFromQuery === "records" ? tabFromQuery : initialTab;
   const revisionWorkspaceMode: WorkspaceNavigationMode =
     state?.workspaceState?.revisionWorkspaceMode === "edit"
       ? "edit"
@@ -776,7 +778,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   }, [activeTab, documentId]);
 
   useEffect(() => {
-    setActiveTab(searchParams.get("tab") === "audit" ? "audit" : initialTab);
+    const tab = searchParams.get("tab");
+    setActiveTab(tab === "audit" || tab === "records" ? tab : initialTab);
   }, [searchParams, initialTab]);
 
   const handleBack = () => {
@@ -1476,6 +1479,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     { id: "training" as TabType, label: "Training Information" },
     { id: "document" as TabType, label: "Document" },
     { id: "signatures" as TabType, label: "Signatures" },
+    ...(document.isTemplate ? [] : [{ id: "records" as TabType, label: "Executed Records" }]),
     { id: "audit" as TabType, label: "Audit Trail" },
   ];
 
@@ -1858,6 +1862,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             ))}
           {activeTab === "signatures" && (
             <SignaturesTab records={signatureRecords} />
+          )}
+          {activeTab === "records" && !document.isTemplate && (
+            <ExecutedRecordsTab formDocumentId={document.id} />
           )}
           {activeTab === "audit" && (
             <AuditTrailTab

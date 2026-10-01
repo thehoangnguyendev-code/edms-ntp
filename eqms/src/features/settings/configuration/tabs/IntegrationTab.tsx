@@ -9,12 +9,10 @@ import { useToast } from '@/components/ui/toast/Toast';
 import {
   Eye,
   EyeOff,
-  Link2,
-  Key,
   Cloud,
 } from 'lucide-react';
 import { settingsApi, type StorageTestPayload } from '@/services/api/settings';
-import { formatDateTime } from '@/utils/format';
+import { IconServer2 } from '@tabler/icons-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types & Constants
@@ -104,45 +102,6 @@ const buildStorageTestPayload = (storage: IntegrationConfig['storage']): Storage
         auditPrefix: storage.auditPrefix || 'audit',
         tempPrefix: storage.tempPrefix || 'temp',
       };
-    case 'google-drive':
-      return {
-        provider: 'google-drive',
-        googleDriveClientId: storage.googleDriveClientId,
-        googleDriveClientSecret: storage.googleDriveClientSecret,
-        googleDriveFolderId: storage.googleDriveFolderId,
-      };
-    case 'onedrive':
-      return {
-        provider: 'onedrive',
-        msTenantId: storage.msTenantId,
-        msClientId: storage.msClientId,
-        msClientSecret: storage.msClientSecret,
-        msDriveId: storage.msDriveId,
-        msLibraryFolder: storage.msLibraryFolder,
-      };
-    case 'sharepoint':
-      return {
-        provider: 'sharepoint',
-        msTenantId: storage.msTenantId,
-        msClientId: storage.msClientId,
-        msClientSecret: storage.msClientSecret,
-        msSiteId: storage.msSiteId,
-        msDriveId: storage.msDriveId,
-        msLibraryFolder: storage.msLibraryFolder,
-      };
-    case 'dropbox':
-      return {
-        provider: 'dropbox',
-        dropboxAccessToken: storage.dropboxAccessToken,
-        dropboxAppKey: storage.dropboxAppKey,
-        dropboxAppSecret: storage.dropboxAppSecret,
-        dropboxFolderPath: storage.dropboxFolderPath,
-      };
-    default:
-      return {
-        provider: 'local',
-        basePath: storage.basePath,
-      };
   }
 };
 
@@ -156,11 +115,7 @@ interface IntegrationTabProps {
 
 export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange }) => {
   const { showToast } = useToast();
-  const [showLdapPassword, setShowLdapPassword] = useState(false);
   const [showStorageKey, setShowStorageKey] = useState(false);
-  const [showLdapServerUrl, setShowLdapServerUrl] = useState(false);
-  const [showLdapBaseDn, setShowLdapBaseDn] = useState(false);
-  const [showLdapBindDn, setShowLdapBindDn] = useState(false);
   const [showStorageAccessKeyId, setShowStorageAccessKeyId] = useState(false);
   const [showMinioSecretAccessKey, setShowMinioSecretAccessKey] = useState(false);
   const [showNasPassword, setShowNasPassword] = useState(false);
@@ -200,13 +155,6 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
     }
   };
 
-  const handleLdapChange = (key: keyof IntegrationConfig['ldap'], value: any) => {
-    onChange({
-      ...config,
-      ldap: { ...config.ldap, [key]: value },
-    });
-  };
-
   const handleStorageChange = (key: keyof IntegrationConfig['storage'], value: any) => {
     onChange({
       ...config,
@@ -243,159 +191,11 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
 
   return (
     <div className="p-4 md:p-5 space-y-4">
-      {/* LDAP Directory */}
-      <FormSection title="LDAP / Active Directory" icon={<Key className="h-4 w-4" />}>
-        <div className="space-y-4">
-          <div>
-            <Checkbox
-              id="enableLdap"
-              label="Enable LDAP Integration"
-              checked={config.ldap.enableLdap}
-              onChange={(checked) => handleLdapChange('enableLdap', checked)}
-            />
-            <p className="text-xs text-slate-500 ml-7">
-              Synchronize users and groups from your LDAP/AD directory
-            </p>
-          </div>
-
-          {config.ldap.enableLdap && (
-            <div className="ml-4 sm:ml-7 p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    LDAP Server URL
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showLdapServerUrl ? 'text' : 'password'}
-                      value={config.ldap.serverUrl}
-                      onChange={(e) => handleLdapChange('serverUrl', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="ldaps://ldap.company.com:636"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowLdapServerUrl(!showLdapServerUrl)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showLdapServerUrl ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Base DN
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showLdapBaseDn ? 'text' : 'password'}
-                      value={config.ldap.baseDn}
-                      onChange={(e) => handleLdapChange('baseDn', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="dc=company,dc=com"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowLdapBaseDn(!showLdapBaseDn)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showLdapBaseDn ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Bind DN (Service Account)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showLdapBindDn ? 'text' : 'password'}
-                      value={config.ldap.bindDn}
-                      onChange={(e) => handleLdapChange('bindDn', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="cn=admin,dc=company,dc=com"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowLdapBindDn(!showLdapBindDn)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showLdapBindDn ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Bind Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showLdapPassword ? 'text' : 'password'}
-                      value={config.ldap.bindPassword}
-                      onChange={(e) => handleLdapChange('bindPassword', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Enter bind password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowLdapPassword(!showLdapPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showLdapPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    User Search Filter
-                  </label>
-                  <input
-                    type="text"
-                    value={config.ldap.userSearchFilter}
-                    onChange={(e) => handleLdapChange('userSearchFilter', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="(sAMAccountName={username})"
-                  />
-                </div>
-                <Select
-                  label="Sync Schedule"
-                  value={config.ldap.syncSchedule}
-                  onChange={(val) => handleLdapChange('syncSchedule', val as any)}
-                  options={[
-                    { label: 'Hourly', value: 'hourly' },
-                    { label: 'Daily', value: 'daily' },
-                    { label: 'Manual Only', value: 'manual' },
-                  ]}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                {config.ldap.lastSyncDate && (
-                  <p className="text-xs text-slate-500 font-medium">
-                    Last synchronized: {formatDateTime(config.ldap.lastSyncDate)}
-                  </p>
-                )}
-                <div className="flex-1" />
-                <Button variant="outline" size="sm" onClick={() => {
-                  showToast({ type: 'info', title: 'Info', message: 'LDAP connection test initiated...' });
-                  setTimeout(() => {
-                    showToast({ type: 'success', title: 'Success', message: 'LDAP connection successful — 142 users found' });
-                  }, 2000);
-                }} className="gap-2 shadow-sm">
-                  <Link2 className="h-3.5 w-3.5" />
-                  Test Connection
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </FormSection>
 
 
 
       {/* Cloud Storage */}
-      <FormSection title="Cloud Storage Integration" icon={<Cloud className="h-4 w-4" />}>
+      <FormSection title="Storage Integration" icon={<IconServer2 className="h-4 w-4" />}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select

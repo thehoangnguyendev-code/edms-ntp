@@ -171,16 +171,14 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
                 >
                   Reset Secret
                 </Button>
+                <Button type="button" variant="outline-emerald" onClick={handleTestConnection} disabled={isTesting} size="sm">
+                  {isTesting ? 'Testing...' : 'Test Connection'}
+                </Button>
               </div>
             </div>
 
           </div>
 
-          <div className="flex justify-end mt-4">
-            <Button type="button" variant="outline-emerald" onClick={handleTestConnection} disabled={isTesting} size="sm">
-              {isTesting ? 'Testing...' : 'Test Connection'}
-            </Button>
-          </div>
         </div>
       </FormSection>
     </div>

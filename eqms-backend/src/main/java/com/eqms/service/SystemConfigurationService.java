@@ -170,6 +170,7 @@ public class SystemConfigurationService {
         JsonNode nextGeneral = request.general() == null
                 ? config.getGeneralConfig()
                 : onlyOfficeConfigurationService.mergeGeneralConfigForStorage(request.general(), config.getGeneralConfig());
+        validateDesktopFilterConfig(nextGeneral);
         config.setGeneralConfig(nextGeneral);
         config.setSecurityConfig(defaultIfNull(request.security(), config.getSecurityConfig()));
         if (request.documents() != null) {
@@ -328,10 +329,19 @@ public class SystemConfigurationService {
                         : textValue(general, "systemSidebarCollapsedLogo"),
                 appearance != null && appearance.path("showSidebarUserProfile").asBoolean(false),
                 appearance != null && appearance.path("knowledgeExplorerEnabled").asBoolean(false),
+                appearance != null && appearance.path("compactDesktopFilters").asBoolean(false),
                 textValue(general, "systemFavicon"),
                 appearance == null ? null : textValue(appearance, "systemFooter"),
                 readStringMap(general == null ? null : general.get("navigationLabelOverrides"))
         );
+    }
+
+    static void validateDesktopFilterConfig(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode compact = appearance == null ? null : appearance.get("compactDesktopFilters");
+        if (compact != null && !compact.isBoolean()) {
+            throw new IllegalArgumentException("compactDesktopFilters must be true or false");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -1430,7 +1440,7 @@ public class SystemConfigurationService {
             for (String flag : java.util.List.of(
                     "watermarkShowViewerName", "watermarkShowOpenedAt",
                     "showThumbnailSidebar", "showSearch", "showPageNavigation",
-                    "showZoomControls", "showFullScreen", "showInsertTools",
+                    "showZoomControls", "showFullScreen", "showInsertTools", "allowAnnotations",
                     "showOpenDocumentAction", "showCloseDocumentAction", "showSecurityAction",
                     "showScreenshotAction", "allowTextSelection")) {
                 JsonNode value = pdfPreview.get(flag);

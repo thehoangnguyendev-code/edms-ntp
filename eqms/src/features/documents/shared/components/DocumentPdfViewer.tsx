@@ -86,6 +86,15 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
 
   const viewerConfig = React.useMemo<PDFViewerConfig>(() => {
     const disabledCategories = new Set<string>(BASE_READ_ONLY_CATEGORIES);
+    const allowAnnotations = pdfPreview.allowAnnotations === true;
+    if (!allowAnnotations) {
+      // Categories remove toolbar, selection-menu and shortcut commands;
+      // the permission override below also denies annotation modification.
+      disabledCategories.add("annotation");
+      disabledCategories.add("panel-comment");
+      disabledCategories.add("mode-annotate");
+      disabledCategories.add("mode-shapes");
+    }
     if (!effectiveAllowDownload) {
       disabledCategories.add("export");
       disabledCategories.add("document-export");
@@ -111,13 +120,10 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
     }
     // EmbedPDF's Insert tab contains annotation tools. It is hidden by default for a regulated
     // read-only preview, but can be explicitly enabled as session-only markup by an administrator.
-    if (pdfPreview.showInsertTools !== true) {
+    if (!allowAnnotations || pdfPreview.showInsertTools !== true) {
       disabledCategories.add("insert");
       disabledCategories.add("mode-insert");
     }
-    // Never expose the other editing modes in a preview, even when Insert is enabled.
-    disabledCategories.add("mode-annotate");
-    disabledCategories.add("mode-shapes");
     // Pan/rotate are editing-style utilities rather than document-viewing
     // controls. Keep them unavailable across all regulated preview surfaces.
     disabledCategories.add("pan");
@@ -143,6 +149,11 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
         overrides: {
           print: effectiveAllowPrint,
           copyContents: pdfPreview.allowTextSelection === true && effectiveAllowDownload,
+          // Enabling the policy does not bypass restrictions embedded in the PDF.
+          ...(allowAnnotations ? {} : { modifyAnnotations: false }),
+          modifyContents: false,
+          fillForms: false,
+          assembleDocument: false,
         },
       },
       disabledCategories: [...disabledCategories],

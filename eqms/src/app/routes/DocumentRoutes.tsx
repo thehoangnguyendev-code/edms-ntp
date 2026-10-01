@@ -31,6 +31,7 @@ const RequestControlledCopyView = lazy(() => import('@/features/documents/docume
 const UncontrolledCopiesView = lazy(() => import('@/features/documents/uncontrolled-copies').then(m => ({ default: m.UncontrolledCopiesView })));
 const UncontrolledCopyDetailView = lazy(() => import('@/features/documents/uncontrolled-copies').then(m => ({ default: m.UncontrolledCopyDetailView })));
 const UncontrolledCopyDownloadView = lazy(() => import('@/features/documents/uncontrolled-copies').then(m => ({ default: m.UncontrolledCopyDownloadView })));
+const ExecutedRecordsView = lazy(() => import('@/features/documents/executed-records/ExecutedRecordsView').then(m => ({ default: m.ExecutedRecordsView })));
 
 // ==================== ROUTE WRAPPER ====================
 interface RouteWrapperProps {
@@ -227,6 +228,9 @@ export function documentRoutes(navigate: NavigateFunction) {
         <Route path=":id/download" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopyDownloadView /></Suspense>} />
         <Route path=":id" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopyDetailView /></Suspense>} />
       </Route>
+
+      {/* Records -- global list of Executed Records (eForm submissions + scanned paper copies) across every Form */}
+      <Route path="records" element={<Suspense fallback={<LoadingFallback />}><ExecutedRecordsView /></Suspense>} />
     </Route>
   );
 }

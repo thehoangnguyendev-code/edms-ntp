@@ -50,7 +50,6 @@ public class CapabilityService {
                         "settings.position.manage",
                         "settings.storage_location.manage",
                         "settings.retention_policy.manage",
-                        "settings.country.manage",
                         "settings.education.degree_level.manage",
                         "settings.education.school.manage",
                         "settings.configuration.manage"),

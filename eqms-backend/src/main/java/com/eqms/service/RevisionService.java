@@ -4583,6 +4583,36 @@ public class RevisionService {
         }
     }
 
+    /**
+     * Writes the eForm fillable template (.docxf with OnlyOffice form fields) designed for this
+     * Revision -- see {@code EformEditSessionService#commitDesign}. Gated by the exact same
+     * Draft-only lock {@link #uploadRevisionFile} enforces for the Revision's own source file, so
+     * field design has the identical edit window as every other Document content change: open
+     * during Draft, permanently locked once Effective (redesign requires an upgrade Revision).
+     * Deliberately skips the rest of {@code uploadRevisionFile}'s pipeline (OOXML upload
+     * validation, snapshotting, file-access/role checks) -- those exist for a human uploading a
+     * replacement file; this is the system recording a design session's own already-converted
+     * output against a Revision the caller (EformEditSessionService) has already authorized.
+     */
+    @Transactional
+    public void setFillableTemplate(UUID revisionId, String fileName, String storageProvider, String storageBucket,
+                                     String storageObjectKey, String storageVersionId, String checksum) {
+        DocumentRevisionRecord revision = requireRevision(revisionId);
+        requireRevisionStatus(revision, "DRAFT");
+        requireRevisionNotCompletedEditing(revision);
+        revision.setFillableTemplateFileName(fileName);
+        revision.setFillableTemplateStorageProvider(storageProvider);
+        revision.setFillableTemplateStorageBucket(storageBucket);
+        revision.setFillableTemplateStorageObjectKey(storageObjectKey);
+        revision.setFillableTemplateStorageVersionId(storageVersionId);
+        revision.setFillableTemplateChecksum(checksum);
+        // Records what the content's OWN checksum was at this exact moment -- lets a later Design
+        // session detect "the static content changed (via Edit) since fields were last placed" and
+        // warn instead of silently resuming a layout that may no longer line up with the text.
+        revision.setFillableTemplateSourceChecksum(revision.getSourceFileChecksum());
+        revisionRepository.save(revision);
+    }
+
     @Transactional
     public RevisionDetailResponse uploadRevisionFile(UUID revisionId, MultipartFile file) {
         UserAccount currentUser = currentUserService.requireCurrentUser();

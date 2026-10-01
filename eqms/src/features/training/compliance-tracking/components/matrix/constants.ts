@@ -24,28 +24,6 @@ export const CELL_CONFIG: Record<
   Qualified:   { bg: "bg-emerald-100", hoverBg: "hover:bg-emerald-200", Icon: IconCheck,          iconColor: "text-emerald-600", label: "Qualified",    border: "border-emerald-300" },
 };
 
-// ─── Shared drawer animation styles ──────────────────────────────────────────
-export const DRAWER_STYLES = `
-  @keyframes tmSlideInRight  { from { transform: translateX(calc(100% + 20px)); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-  @keyframes tmSlideInBottom { from { transform: translateY(calc(100% + 16px)); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  @keyframes tmSlideOutRight  { from { transform: translateX(0); opacity: 1; } to { transform: translateX(calc(100% + 20px)); opacity: 0; } }
-  @keyframes tmSlideOutBottom { from { transform: translateY(0); opacity: 1; } to { transform: translateY(calc(100% + 16px)); opacity: 0; } }
-  @keyframes tmFadeIn  { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes tmFadeOut { from { opacity: 1; } to { opacity: 0; } }
-  .tm-drawer-enter { animation-duration: 0.32s; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); animation-fill-mode: forwards; }
-  .tm-drawer-exit  { animation-duration: 0.22s; animation-timing-function: cubic-bezier(0.4, 0, 1, 1);   animation-fill-mode: forwards; }
-  @media (max-width: 767px) {
-    .tm-drawer-enter { animation-name: tmSlideInBottom; }
-    .tm-drawer-exit  { animation-name: tmSlideOutBottom; }
-  }
-  @media (min-width: 768px) {
-    .tm-drawer-enter { animation-name: tmSlideInRight; }
-    .tm-drawer-exit  { animation-name: tmSlideOutRight; }
-  }
-  .tm-backdrop-enter { animation: tmFadeIn  0.25s ease-out forwards; }
-  .tm-backdrop-exit  { animation: tmFadeOut 0.22s ease-in  forwards; }
-`;
-
 // ─── Utility ──────────────────────────────────────────────────────────────────
 /** Parse dd/MM/yyyy (or ISO YYYY-MM-DD) string to a Date object */
 const parseDMY = (d: string): Date => {

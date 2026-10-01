@@ -54,7 +54,7 @@ describe("DocumentPdfViewer policy mapping", () => {
       "document-open", "document-close", "document-protect", "security",
       "document-capture", "capture-screenshot", "document-export", "document-print", "selection",
     ]));
-    expect(state.config.permissions.overrides).toEqual({ print: false, copyContents: false });
+    expect(state.config.permissions.overrides).toMatchObject({ print: false, copyContents: false });
 
     state.settings.pdfPreview = {
       showOpenDocumentAction: true,
@@ -67,5 +67,40 @@ describe("DocumentPdfViewer policy mapping", () => {
       expect(state.config.disabledCategories).not.toContain(category);
     }
     expect(state.config.permissions.overrides.print).toBe(false);
+  });
+
+  it.each([undefined, false])("denies annotations when the policy is %s, without disabling permitted text copy", (value) => {
+    state.settings.pdfPreview = { allowAnnotations: value, allowTextSelection: true, showInsertTools: true };
+    render(<DocumentPdfViewer fileUrl="blob:test" />);
+    expect(state.config.disabledCategories).toEqual(expect.arrayContaining([
+      "annotation", "panel-comment", "mode-annotate", "mode-shapes", "insert", "mode-insert",
+    ]));
+    expect(state.config.disabledCategories).not.toContain("selection");
+    expect(state.config.permissions.overrides.modifyAnnotations).toBe(false);
+    expect(state.config.permissions.overrides.copyContents).toBe(true);
+  });
+
+  it("allows annotation tools without overriding embedded PDF permissions, but keeps Insert independent", () => {
+    state.settings.pdfPreview = { allowAnnotations: true, showInsertTools: false };
+    render(<DocumentPdfViewer fileUrl="blob:test" />);
+    for (const category of ["annotation", "panel-comment", "mode-annotate", "mode-shapes"]) {
+      expect(state.config.disabledCategories).not.toContain(category);
+    }
+    expect(state.config.disabledCategories).toContain("insert");
+    expect(state.config.permissions.overrides).not.toHaveProperty("modifyAnnotations");
+    expect(state.config.permissions.enforceDocumentPermissions).toBe(true);
+    expect(state.config.permissions.overrides).toMatchObject({ modifyContents: false, fillForms: false, assembleDocument: false });
+  });
+
+  it("applies policy changes to an already mounted viewer and revokes Insert when annotations are disabled", () => {
+    state.settings.pdfPreview = { allowAnnotations: true, showInsertTools: true };
+    const view = render(<DocumentPdfViewer fileUrl="blob:test" />);
+    expect(state.config.disabledCategories).not.toContain("insert");
+    state.settings.pdfPreview = { allowAnnotations: false, showInsertTools: true };
+    view.rerender(<DocumentPdfViewer fileUrl="blob:test" />);
+    expect(state.config.disabledCategories).toContain("annotation");
+    expect(state.config.disabledCategories).toContain("panel-comment");
+    expect(state.config.disabledCategories).toContain("insert");
+    expect(state.config.permissions.overrides.modifyAnnotations).toBe(false);
   });
 });

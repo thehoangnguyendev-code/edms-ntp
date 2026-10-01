@@ -9,6 +9,7 @@
 import React from "react";
 import {
   Bell,
+  CalendarDays,
   Package,
   Scale,
   ShieldCheck,
@@ -73,6 +74,7 @@ import { ROUTES } from "./routes.constants";
 
 export const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Bell,
+  CalendarDays,
   Package,
   Scale,
   ShieldCheck,
@@ -121,6 +123,12 @@ const CORE_NAV: NavItem[] = [
     icon: Bell,
     path: ROUTES.NOTIFICATIONS,
     allowedPermissions: ["notifications.module.view"],
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    icon: CalendarDays,
+    path: ROUTES.CALENDAR,
   },
   {
     id: "self-service",
@@ -231,6 +239,12 @@ const FOUNDATION_MODULES: NavItem[] = [
             path: ROUTES.DOCUMENTS.UNCONTROLLED_COPIES.DISTRIBUTED,
           },
         ],
+      },
+      {
+        id: "records",
+        label: "Records",
+        path: ROUTES.DOCUMENTS.RECORDS,
+        allowedPermissions: ["documents.form.view_executed_records"],
       },
     ],
   },
@@ -511,13 +525,6 @@ const SYSTEM_MODULES: NavItem[] = [
           { id: "dict-storage-locations", label: "Storage Locations", path: ROUTES.SETTINGS.DICTIONARIES_STORAGE_LOCATIONS, allowedPermissions: ["settings.storage_location.view", "settings.storage_location.manage"] },
           { id: "dict-retention-policies", label: "Retention Policies", path: ROUTES.SETTINGS.DICTIONARIES_RETENTION_POLICIES, allowedPermissions: ["settings.retention_policy.view", "settings.retention_policy.manage"] },
         ],
-      },
-      {
-        id: "countries",
-        label: "Countries",
-        icon: Globe2,
-        path: ROUTES.SETTINGS.COUNTRIES,
-        allowedPermissions: ["settings.country.view", "settings.country.manage"],
       },
       {
         id: "education",

@@ -45,6 +45,8 @@ export interface LocaleSettings {
 }
 
 export interface AppearanceSettings {
+  /** Desktop Search + two-column draft filter panel. */
+  compactDesktopFilters?: boolean;
   systemSidebarCollapsedLogo?: string;
   /** When enabled by an administrator, show the signed-in user's profile at the bottom of the sidebar. */
   showSidebarUserProfile?: boolean;
@@ -120,6 +122,8 @@ export interface PdfPreviewConfig {
   showPageNavigation?: boolean;
   showZoomControls?: boolean;
   showFullScreen?: boolean;
+  /** Allow temporary annotations/comments in PDF previews. Missing means disabled. */
+  allowAnnotations?: boolean;
   /** Shows EmbedPDF's Insert tab. Inserted marks stay in the browser session and are never persisted by EQMS. */
   showInsertTools?: boolean;
   /** Allow selecting another local PDF from EmbedPDF's Document menu. */
@@ -199,24 +203,12 @@ export interface NotificationConfig {
 
 export interface SsoConfig {
   enableSso: boolean;
-  provider: 'saml' | 'oidc' | 'ldap' | 'azure-ad';
+  provider: 'saml' | 'oidc' | 'azure-ad';
   entityId: string;
   ssoUrl: string;
   certificate: string;
   autoProvisionUsers: boolean;
   defaultRole: string;
-}
-
-export interface LdapConfig {
-  enableLdap: boolean;
-  serverUrl: string;
-  baseDn: string;
-  bindDn: string;
-  bindPassword: string;
-  userSearchFilter: string;
-  groupSearchFilter: string;
-  syncSchedule: 'hourly' | 'daily' | 'manual';
-  lastSyncDate: string;
 }
 
 export interface WebhookConfig {
@@ -273,7 +265,6 @@ export interface StorageIntegration {
 
 export interface IntegrationConfig {
   sso: SsoConfig;
-  ldap: LdapConfig;
   webhooks: WebhookConfig[];
   storage: StorageIntegration;
   enableApiKeyAuth: boolean;

@@ -27,7 +27,6 @@ export { dashboardApi } from './dashboard';
 export { settingsApi } from './settings';
 export { emailTemplateApi } from './emailTemplates';
 export { dictionaryApi } from './dictionary';
-export { countriesApi } from './countries';
 export { educationApi } from './education';
 export { documentNameFormatApi } from './documentNameFormats';
 export { sharedApi } from './shared';

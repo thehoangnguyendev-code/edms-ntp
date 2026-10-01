@@ -1,0 +1,19 @@
+.body {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+.body::-webkit-scrollbar { width: 5px; }
+.body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+/* Preserve Training markers without duplicate global style injections per drawer. */
+@keyframes markerPulse {
+  0% { box-shadow: 0 0 0 0 rgb(16 185 129 / 60%); }
+  70% { box-shadow: 0 0 0 8px rgb(16 185 129 / 0%); }
+  100% { box-shadow: 0 0 0 0 rgb(16 185 129 / 0%); }
+}
+.body :global(.animate-pulse-emerald) { animation: markerPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .body :global(.animate-pulse-emerald) { animation: none; }
+}

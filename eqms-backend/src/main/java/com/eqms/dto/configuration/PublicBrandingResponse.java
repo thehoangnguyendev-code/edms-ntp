@@ -9,6 +9,7 @@ public record PublicBrandingResponse(
         String systemSidebarCollapsedLogo,
         boolean showSidebarUserProfile,
         boolean knowledgeExplorerEnabled,
+        boolean compactDesktopFilters,
         String systemFavicon,
         String systemFooter,
         Map<String, String> navigationLabelOverrides

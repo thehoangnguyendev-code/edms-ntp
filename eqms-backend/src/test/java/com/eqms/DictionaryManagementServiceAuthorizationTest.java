@@ -294,11 +294,6 @@ class DictionaryManagementServiceAuthorizationTest {
         verifyNoInteractions(retentionPolicyRepository);
     }
 
-    // Country tests removed: Application Settings > Countries no longer goes through
-    // DictionaryManagementService/countryRepository at all -- it's live-sourced from REST
-    // Countries v5 via CountryManagementService/RestCountriesClient (read-only, no manage gate to
-    // regression-test here anymore).
-
     // Education (Degree Levels, Schools) create/update/delete/page tests moved to
     // EducationManagementServiceAuthorizationTest.
 

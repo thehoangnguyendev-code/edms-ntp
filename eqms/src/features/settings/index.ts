@@ -16,7 +16,6 @@ export { RequirementTemplatesView } from './training-administration/RequirementT
 export { CreateQuizView } from './training-administration/CreateQuizView';
 export { CurriculumsView } from './training-administration/CurriculumsView';
 export { DictionariesView } from './dictionaries/DictionariesView';
-export { CountriesView } from './countries/CountriesView';
 export { EducationDegreeLevelsView } from './education/EducationDegreeLevelsView';
 export { EducationSchoolsView } from './education/EducationSchoolsView';
 export { EducationSchoolEditorView } from './education/EducationSchoolEditorView';

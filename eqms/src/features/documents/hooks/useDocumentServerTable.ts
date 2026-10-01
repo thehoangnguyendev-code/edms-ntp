@@ -94,6 +94,15 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
     setSearchQueryDraft(value);
   }, []);
   const setStatusFilter = useCallback((value: string) => updateFilter("status", value), [updateFilter]);
+  const applyFilters = useCallback((values: Record<string, string>) => {
+    const allowed = new Set(['status', 'documentType', 'businessUnit', 'department', 'authorId',
+      'relatedDocument', 'correlatedDocument', 'isTemplate', 'createdFrom', 'createdTo',
+      'effectiveFrom', 'effectiveTo', 'validFrom', 'validTo']);
+    if (viewType === 'owned-by-me') allowed.delete('authorId');
+    const updates = Object.fromEntries(Object.entries(values).filter(([key]) => allowed.has(key))
+      .map(([key, value]) => [key, value === 'All' || value === '' ? null : value]));
+    updateSearchParams({ ...updates, page: null });
+  }, [updateSearchParams, viewType]);
   const setTypeFilter = useCallback((value: string) => updateFilter("documentType", value), [updateFilter]);
   const setBusinessUnitFilter = useCallback((value: string) => updateFilter("businessUnit", value), [updateFilter]);
   const setDepartmentFilter = useCallback((value: string) => updateFilter("department", value), [updateFilter]);
@@ -442,6 +451,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
 
   return {
     searchQuery,
+    applyFilters,
     setSearchQuery,
     statusFilter,
     setStatusFilter,

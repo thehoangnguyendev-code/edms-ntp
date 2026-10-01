@@ -21,6 +21,7 @@ export * from './tabs';
 
 // Feedback Components
 export * from './modal';
+export * from './drawer';
 export * from './toast';
 export * from './badge';
 export * from './avatar';

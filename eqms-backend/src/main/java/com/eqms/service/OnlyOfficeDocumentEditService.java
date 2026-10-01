@@ -178,6 +178,95 @@ public class OnlyOfficeDocumentEditService {
         return UUID.fromString(claims.getSubject());
     }
 
+    /**
+     * Generic counterpart to {@link #buildEditorConfig} for a file that is NOT a
+     * {@link DocumentRevisionRecord} -- a Form's fillable-template design session or an end
+     * user's fill session (see {@code EformEditSessionService}). {@code mode} is {@link EditMode#EDIT}
+     * for a design session (Author needs real editing to place fields; the Document Server shows
+     * its Forms ribbon automatically for a PDF) or {@link EditMode#FILL} for a fill session
+     * (static content locked, only form fields editable -- same "permissions carry the real
+     * restriction, not the editorConfig.mode string" convention {@link #buildEditorConfig} already
+     * uses for its REVIEW mode).
+     */
+    public ObjectNode buildFormSessionConfig(
+            UUID sessionId, int saveVersion, String purpose, String fileName, EditMode mode, UserAccount currentUser
+    ) {
+        OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
+        if (!config.enabled() || !StringUtils.hasText(config.jwtSecret())) {
+            throw new IllegalStateException("OnlyOffice Document Server is not configured");
+        }
+
+        String accessToken = mintFormSessionAccessToken(sessionId, currentUser.getId(), purpose, config.jwtSecret());
+        // Must change on every saved edit, same reasoning as buildDocumentKey's comment below.
+        String documentKey = sessionId + "-" + saveVersion;
+
+        ObjectNode documentNode = objectMapper.createObjectNode();
+        documentNode.put("fileType", fileExtension(fileName));
+        documentNode.put("key", documentKey);
+        documentNode.put("title", fileName);
+        documentNode.put("url", config.callbackBaseUrl() + "/onlyoffice/forms/source/" + sessionId + "?token=" + accessToken + "&purpose=" + purpose);
+
+        ObjectNode permissions = objectMapper.createObjectNode();
+        boolean canEdit = mode == EditMode.EDIT;
+        permissions.put("edit", canEdit);
+        permissions.put("review", false);
+        permissions.put("comment", false);
+        // Lets a FILL-mode user interact with the designed fields despite edit=false; harmless
+        // (and simply unused) for an EDIT-mode design session.
+        permissions.put("fillForms", true);
+        permissions.put("download", canEdit);
+        permissions.put("print", canEdit);
+        documentNode.set("permissions", permissions);
+
+        ObjectNode editorConfigNode = objectMapper.createObjectNode();
+        editorConfigNode.put("mode", "edit");
+        editorConfigNode.put("callbackUrl", config.callbackBaseUrl() + "/onlyoffice/forms/callback/" + sessionId + "?token=" + accessToken + "&purpose=" + purpose);
+        ObjectNode user = objectMapper.createObjectNode();
+        user.put("id", currentUser.getId().toString());
+        user.put("name", currentUser.getFullName());
+        editorConfigNode.set("user", user);
+        editorConfigNode.set("customization", objectMapper.createObjectNode());
+
+        ObjectNode rootConfig = objectMapper.createObjectNode();
+        rootConfig.put("documentType", documentTypeFor(fileName));
+        rootConfig.set("document", documentNode);
+        rootConfig.set("editorConfig", editorConfigNode);
+        rootConfig.put("token", signConfig(rootConfig, config.jwtSecret()));
+        return rootConfig;
+    }
+
+    /** Mints an access token for a form edit/fill session (see {@link #buildFormSessionConfig}). The
+     *  {@code purpose} claim ("design" or "fill") stops a design-session token from ever being replayed
+     *  against the fill-session callback endpoint or vice versa. */
+    private String mintFormSessionAccessToken(UUID sessionId, UUID userId, String purpose, String jwtSecret) {
+        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(userId.toString())
+                .claim("session", sessionId.toString())
+                .claim("purpose", purpose)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(Duration.ofHours(8))))
+                .signWith(key)
+                .compact();
+    }
+
+    /** Verifies a token minted by {@link #mintFormSessionAccessToken}; {@code purpose} must match exactly. */
+    public UUID verifyFormSessionAccessToken(UUID sessionId, String purpose, String token) {
+        OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
+        if (!StringUtils.hasText(token) || !StringUtils.hasText(config.jwtSecret())) {
+            throw new IllegalStateException("OnlyOffice access token missing or provider not configured");
+        }
+        SecretKey key = Keys.hmacShaKeyFor(config.jwtSecret().getBytes(StandardCharsets.UTF_8));
+        var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        String subjectSessionId = claims.get("session", String.class);
+        String tokenPurpose = claims.get("purpose", String.class);
+        if (!sessionId.toString().equals(subjectSessionId) || !purpose.equals(tokenPurpose)) {
+            throw new IllegalStateException("OnlyOffice access token does not match this session");
+        }
+        return UUID.fromString(claims.getSubject());
+    }
+
     /** Downloads the edited file OnlyOffice reports as ready in its save-callback payload. */
     public byte[] downloadCallbackFile(String url) throws java.io.IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder(URI.create(toInternalDocumentServerUrl(url))).GET().build();
@@ -199,6 +288,15 @@ public class OnlyOfficeDocumentEditService {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("c", "forcesave");
         body.put("key", buildDocumentKey(revision));
+        return sendCommand(body);
+    }
+
+    /** Generic counterpart to {@link #sendForceSave} for a form session's document key (see
+     *  {@link #buildFormSessionConfig}), which is not backed by a {@link DocumentRevisionRecord}. */
+    public int sendForceSaveForKey(String documentKey) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("c", "forcesave");
+        body.put("key", documentKey);
         return sendCommand(body);
     }
 
@@ -425,6 +523,59 @@ public class OnlyOfficeDocumentEditService {
         }
     }
 
+    /**
+     * Converts an arbitrary local DOCX file to OnlyOffice's DOCXF "form template" format --
+     * the "Forms" ribbon (needed to place NEW fillable fields) only appears in the Document
+     * Editor when the open file's type is docxf, never for a plain docx (confirmed by live
+     * testing: a docx opened with full edit:true permissions still shows no Forms tab). Used by
+     * {@code EformEditSessionService#startDesignSession} to seed a Design session. Mirrors
+     * {@link #convertLocalFileToPdf} exactly, only the ConvertService outputtype differs.
+     */
+    public byte[] convertLocalFileToDocxf(java.nio.file.Path localPath, String fileName) {
+        OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
+        if (!config.enabled() || !StringUtils.hasText(config.jwtSecret()) || !StringUtils.hasText(config.documentServerUrl())) {
+            throw new IllegalStateException("OnlyOffice Document Server is not configured");
+        }
+
+        String accessToken = mintLocalFileToken(localPath, config.jwtSecret());
+
+        ObjectNode requestBody = objectMapper.createObjectNode();
+        requestBody.put("async", false);
+        requestBody.put("filetype", fileExtension(fileName));
+        requestBody.put("outputtype", "docxf");
+        requestBody.put("key", UUID.randomUUID().toString());
+        requestBody.put("title", fileName);
+        requestBody.put("url", config.callbackBaseUrl() + "/onlyoffice/local-file?token=" + accessToken);
+        requestBody.put("token", signConfig(requestBody, config.jwtSecret()));
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(trimTrailingSlash(config.documentServerUrl()) + "/ConvertService.ashx"))
+                    .timeout(Duration.ofMinutes(3))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) {
+                throw new java.io.IOException("OnlyOffice ConvertService returned HTTP " + response.statusCode() + ": " + response.body());
+            }
+            JsonNode result = objectMapper.readTree(response.body());
+            if (result.path("error").asInt(0) != 0) {
+                throw new java.io.IOException("OnlyOffice ConvertService reported error code " + result.path("error").asInt());
+            }
+            String docxfUrl = result.path("fileUrl").asText(null);
+            if (!StringUtils.hasText(docxfUrl)) {
+                throw new java.io.IOException("OnlyOffice ConvertService did not return a fileUrl");
+            }
+            return downloadCallbackFile(docxfUrl);
+        } catch (java.io.IOException | InterruptedException ex) {
+            if (ex instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            throw new IllegalStateException("Failed to convert local file to DOCXF via OnlyOffice", ex);
+        }
+    }
+
     /** Verifies a token minted by {@link #convertLocalFileToPdf} and returns the file path it authorizes. */
     public java.nio.file.Path verifyLocalFileToken(String token) {
         OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
@@ -526,5 +677,17 @@ public class OnlyOfficeDocumentEditService {
     private String fileExtension(String fileName) {
         int dot = fileName.lastIndexOf('.');
         return dot >= 0 && dot < fileName.length() - 1 ? fileName.substring(dot + 1).toLowerCase() : "docx";
+    }
+
+    /** Maps a file extension to the editor family OnlyOffice's {@code documentType} expects. Used by
+     *  {@link #buildFormSessionConfig} -- a form session's file isn't always a PDF (its DOCX-based
+     *  content-control forms only expose the Forms ribbon when opened as "word", not "pdf"). */
+    private String documentTypeFor(String fileName) {
+        return switch (fileExtension(fileName)) {
+            case "xls", "xlsx", "ods", "csv" -> "cell";
+            case "ppt", "pptx", "odp" -> "slide";
+            case "pdf" -> "pdf";
+            default -> "word";
+        };
     }
 }

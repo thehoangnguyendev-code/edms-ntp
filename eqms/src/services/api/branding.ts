@@ -1,6 +1,7 @@
 import { api } from './client';
 
 export interface PublicBranding {
+  compactDesktopFilters?: boolean;
   systemDisplayName: string;
   systemLogo: string;
   systemSidebarCollapsedLogo?: string;

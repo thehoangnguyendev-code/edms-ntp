@@ -13,6 +13,15 @@ import org.junit.jupiter.api.Test;
 
 class SystemConfigurationServiceBrandingTest {
 
+    @Test
+    void compactFiltersAreOptInAndIncludedInUserBranding() throws Exception {
+        assertFalse(serviceWithGeneral("{}").getPublicBranding().compactDesktopFilters());
+        assertTrue(serviceWithGeneral("{\"appearance\":{\"compactDesktopFilters\":true}}")
+                .getPublicBranding().compactDesktopFilters());
+        assertFalse(serviceWithGeneral("{\"appearance\":{\"compactDesktopFilters\":false}}")
+                .getPublicBranding().compactDesktopFilters());
+    }
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     private SystemConfigurationService serviceWithGeneral(String generalJson) throws Exception {

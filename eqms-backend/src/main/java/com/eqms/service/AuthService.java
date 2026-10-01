@@ -986,21 +986,26 @@ public class AuthService {
                 });
     }
 
-    @Transactional
+    // Authentication failures must not roll back the security audit event written below.
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public VerifySignatureResponse verifySignature(VerifySignatureRequest request) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         String normalizedUsername = request.username() == null ? "" : request.username().trim();
-        if (StringUtils.hasText(normalizedUsername) && !currentUser.getUsername().equalsIgnoreCase(normalizedUsername)) {
+        if (!StringUtils.hasText(normalizedUsername)) {
+            auditService.log("esign_verify_failed", currentUser, auditDetails("reason", "signature_username_missing"), null, null);
+            throw new UnauthorizedException("Username is required for electronic signature");
+        }
+        if (!currentUser.getUsername().equalsIgnoreCase(normalizedUsername)) {
             auditService.log("esign_verify_failed", currentUser, auditDetails("identifier", normalizedUsername, "reason", "signature_user_mismatch"), null, null);
             throw new UnauthorizedException("Electronic signature must belong to the current user");
         }
-        if (!passwordEncoder.matches(request.password(), currentUser.getPasswordHash())) {
+        if (!StringUtils.hasText(request.password()) || !passwordEncoder.matches(request.password(), currentUser.getPasswordHash())) {
             auditService.log("esign_verify_failed", currentUser, auditDetails("identifier", currentUser.getUsername()), null, null);
             throw new UnauthorizedException("Password is incorrect");
         }
         String signatureToken = tokenService.createSignatureToken(currentUser);
         // Deliberately NOT a separate "VERIFY_E_SIGNATURE" Audit Trail row. This only checks the
-        // user's password to issue a short-lived signatureToken -- it isn't itself a GxP action on
+        // user's username and password to issue a short-lived signatureToken -- it isn't itself a GxP action on
         // any record, and the resulting signed action (RECALL/APPROVE/...) already shows
         // electronicSignatureApplied=true on its own row. auditService.log() below still records
         // the security-relevant success/failure event in the separate security audit log.

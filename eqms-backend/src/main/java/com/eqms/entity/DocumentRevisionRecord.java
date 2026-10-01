@@ -211,6 +211,37 @@ public class DocumentRevisionRecord {
     @Column(name = "source_uploaded_at")
     private Instant sourceUploadedAt;
 
+    /** The eForm fillable template (.docxf, with OnlyOffice form fields -- see
+     *  EformEditSessionService#startDesignSession/commitDesign) designed for THIS Revision.
+     *  Separate from {@link #filePath} (the plain .docx every Document type uploads) because
+     *  OnlyOffice's Forms ribbon only appears for a docxf, and the generic upload validator only
+     *  accepts .docx -- write-gated to while this Revision is Draft and not yet locked, exactly
+     *  like {@link #filePath} itself (see RevisionService#setFillableTemplate). */
+    @Column(name = "fillable_template_file_name", length = 255)
+    private String fillableTemplateFileName;
+
+    @Column(name = "fillable_template_storage_provider", length = 60)
+    private String fillableTemplateStorageProvider;
+
+    @Column(name = "fillable_template_storage_bucket", length = 255)
+    private String fillableTemplateStorageBucket;
+
+    @Column(name = "fillable_template_storage_object_key", length = 1024)
+    private String fillableTemplateStorageObjectKey;
+
+    @Column(name = "fillable_template_storage_version_id", length = 255)
+    private String fillableTemplateStorageVersionId;
+
+    @Column(name = "fillable_template_checksum", length = 128)
+    private String fillableTemplateChecksum;
+
+    /** The checksum {@link #sourceFileChecksum} held at the moment the fillable template was last
+     *  designed/committed -- if the two now differ, the static content was edited (via the normal
+     *  Edit button) after fields were last placed, so a Design session should warn before silently
+     *  resuming a layout that may no longer line up with the text. */
+    @Column(name = "fillable_template_source_checksum", length = 128)
+    private String fillableTemplateSourceChecksum;
+
     @Column(name = "editing_status", nullable = false, length = 30)
     private String editingStatus = "IN_PROGRESS";
 
@@ -758,6 +789,21 @@ public class DocumentRevisionRecord {
     public Instant getSourceUploadedAt() {
         return sourceUploadedAt;
     }
+
+    public String getFillableTemplateFileName() { return fillableTemplateFileName; }
+    public void setFillableTemplateFileName(String fillableTemplateFileName) { this.fillableTemplateFileName = fillableTemplateFileName; }
+    public String getFillableTemplateStorageProvider() { return fillableTemplateStorageProvider; }
+    public void setFillableTemplateStorageProvider(String fillableTemplateStorageProvider) { this.fillableTemplateStorageProvider = fillableTemplateStorageProvider; }
+    public String getFillableTemplateStorageBucket() { return fillableTemplateStorageBucket; }
+    public void setFillableTemplateStorageBucket(String fillableTemplateStorageBucket) { this.fillableTemplateStorageBucket = fillableTemplateStorageBucket; }
+    public String getFillableTemplateStorageObjectKey() { return fillableTemplateStorageObjectKey; }
+    public void setFillableTemplateStorageObjectKey(String fillableTemplateStorageObjectKey) { this.fillableTemplateStorageObjectKey = fillableTemplateStorageObjectKey; }
+    public String getFillableTemplateStorageVersionId() { return fillableTemplateStorageVersionId; }
+    public void setFillableTemplateStorageVersionId(String fillableTemplateStorageVersionId) { this.fillableTemplateStorageVersionId = fillableTemplateStorageVersionId; }
+    public String getFillableTemplateChecksum() { return fillableTemplateChecksum; }
+    public void setFillableTemplateChecksum(String fillableTemplateChecksum) { this.fillableTemplateChecksum = fillableTemplateChecksum; }
+    public String getFillableTemplateSourceChecksum() { return fillableTemplateSourceChecksum; }
+    public void setFillableTemplateSourceChecksum(String fillableTemplateSourceChecksum) { this.fillableTemplateSourceChecksum = fillableTemplateSourceChecksum; }
 
     public void setSourceUploadedAt(Instant sourceUploadedAt) {
         this.sourceUploadedAt = sourceUploadedAt;

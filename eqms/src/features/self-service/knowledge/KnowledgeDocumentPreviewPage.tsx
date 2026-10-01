@@ -115,7 +115,7 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
           <div className="min-w-0">
             <p className="text-xs md:text-sm font-semibold text-slate-900 truncate">{documentName}</p>
             <p className="text-2xs md:text-xs text-slate-500 truncate">
-              {[documentNumber, revisionNumber && `Rev ${revisionNumber}`, departmentName].filter(Boolean).join(" · ")}
+              {[documentNumber, revisionNumber && `Revision ${revisionNumber}`, departmentName].filter(Boolean).join(" · ")}
             </p>
           </div>
         </div>

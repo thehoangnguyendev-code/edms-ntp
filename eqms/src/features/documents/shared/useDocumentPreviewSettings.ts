@@ -10,6 +10,7 @@ export interface PdfPreviewSettings {
   showPageNavigation?: boolean;
   showZoomControls?: boolean;
   showFullScreen?: boolean;
+  allowAnnotations?: boolean;
   showInsertTools?: boolean;
   showOpenDocumentAction?: boolean;
   showCloseDocumentAction?: boolean;

@@ -32,6 +32,29 @@ const baseConfig = {
 } as unknown as GeneralConfig;
 
 describe("GeneralTab Knowledge Base setting", () => {
+  it("groups the interface options together and organizes branding/localization like SecurityTab", () => {
+    render(<GeneralTab config={baseConfig} onChange={vi.fn()} />);
+    const section = screen.getByRole('heading', { name: 'User Interface' }).closest('.rounded-xl');
+    expect(section).toContainElement(screen.getByLabelText(/Show signed-in user profile/));
+    expect(section).toContainElement(screen.getByLabelText('Use compact desktop filters'));
+    expect(section).toContainElement(screen.getByLabelText(/Knowledge Base in the new Explorer/));
+    for (const title of ['System Identity', 'Footer', 'Logos & Browser Icon', 'Sidebar',
+      'Desktop Filters', 'Knowledge Base', 'Date & Time', 'Language & Numbers']) {
+      expect(screen.getByText(title)).toHaveClass('uppercase', 'tracking-wide');
+    }
+  });
+
+  it("updates desktop filters without changing the other configuration values", () => {
+    const onChange = vi.fn();
+    render(<GeneralTab config={baseConfig} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText('Use compact desktop filters'));
+    const draft = onChange.mock.calls[0][0] as GeneralConfig;
+    expect(draft.appearance.compactDesktopFilters).toBe(true);
+    expect(draft.appearance.showSidebarUserProfile).toBe(true);
+    expect(draft.adminEmail).toBe(baseConfig.adminEmail);
+    expect(draft.locale).toEqual(baseConfig.locale);
+  });
+
   it("is off by default and explains what it does", () => {
     render(<GeneralTab config={baseConfig} onChange={vi.fn()} />);
     const checkbox = screen.getByLabelText(/Knowledge Base in the new Explorer/) as HTMLInputElement;

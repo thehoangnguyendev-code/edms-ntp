@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, Download, Import, Plus, Search, Trash2, X, Check, MoreVertical, ChevronUp, ChevronDown } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { DesktopSelectFilters } from '@/components/ui/filter/DesktopSelectFilters';
+import { useBranding } from '@/components/branding/BrandLogo';
 import { IconFilter2, IconInfoCircle, IconPencilMinus, IconToggleLeft, IconToggleRight } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
@@ -51,6 +53,7 @@ const TYPE_OPTIONS: SelectOption[] = [
 ];
 
 export const PermissionSetsView: React.FC = () => {
+  const { compactDesktopFilters = false } = useBranding();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"sets" | "catalog">("sets");
@@ -402,7 +405,19 @@ export const PermissionSetsView: React.FC = () => {
           </div>
 
           {/* Desktop: labeled filter grid */}
-          <div className="hidden md:grid md:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+          {compactDesktopFilters && <DesktopSelectFilters
+            search={<input aria-label="Search permission sets" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Search by name, description or code..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+            filters={[
+              { id: 'status', label: 'Status', value: statusFilter, defaultValue: 'ALL', options: STATUS_OPTIONS, onChange: setStatusFilter },
+              { id: 'type', label: 'Type', value: typeFilter, defaultValue: 'ALL', options: TYPE_OPTIONS, onChange: setTypeFilter },
+              { id: 'module', label: 'Module', value: moduleFilter, defaultValue: 'ALL', options: moduleOptions, onChange: setModuleFilter },
+              { id: 'category', label: 'Category', value: categoryFilter, defaultValue: 'ALL', options: categoryOptions, onChange: setCategoryFilter },
+            ]}
+            dates={[
+              { id: 'created', label: 'Created Date Range', from: createdFrom, to: createdTo, onFromChange: setCreatedFrom, onToChange: setCreatedTo },
+              { id: 'updated', label: 'Last Updated Range', from: updatedFrom, to: updatedTo, onFromChange: setUpdatedFrom, onToChange: setUpdatedTo },
+            ]} onApplied={() => setCurrentPage(1)} />}
+          <div className={cn("hidden md:grid md:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
             <div className="w-full">
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
               <div className="relative">

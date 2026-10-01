@@ -151,6 +151,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
   const {
     searchQuery,
     setSearchQuery,
+    applyFilters,
     statusFilter,
     setStatusFilter,
     typeFilter,
@@ -511,6 +512,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         <div className="p-4 md:p-5 flex-1 flex flex-col">
           <DocumentFilters
+            onApplyFilters={applyFilters}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             statusFilter={statusFilter as any}

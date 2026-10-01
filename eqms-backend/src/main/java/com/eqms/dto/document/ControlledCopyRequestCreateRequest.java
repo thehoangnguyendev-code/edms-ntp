@@ -22,6 +22,10 @@ public record ControlledCopyRequestCreateRequest(
         @Size(max = 255) String location,
         @Size(max = 2000) String purpose,
         Integer copies,
+        // "PAPER" (default, every existing request stays unaffected) or "ELECTRONIC" -- only
+        // meaningful, and only accepted by the service, when the target Document's
+        // FormSettings.allowEform is true.
+        @Size(max = 20) String deliveryMode,
         @Size(max = 100) String distributionMode,
         @Size(max = 100) String distributionScope,
         Boolean hasExpiryDate,

@@ -435,10 +435,6 @@ public class DictionaryManagementService {
         storageLocationRepository.delete(storageLocation);
     }
 
-    // Countries: no longer a DB-managed dictionary here -- Application Settings > Countries is
-    // live-sourced from REST Countries v5 via CountryManagementService/RestCountriesClient. See
-    // those classes; the countries table/Country entity/CountryRepository have been removed.
-
     // Education (Degree Levels, Schools) moved to EducationManagementService -- see that class.
 
     @Transactional(readOnly = true)

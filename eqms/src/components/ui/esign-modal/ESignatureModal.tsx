@@ -91,12 +91,13 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
   const changes = propChanges || preset?.changes || [];
   const documentDetails = targetDetails ?? legacyDocumentDetails;
 
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [meaningPolicy, setMeaningPolicy] = useState<ElectronicSignatureMeaning | null>(null);
   const [freeReason, setFreeReason] = useState('');
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
   const [formError, setFormError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<'password' | 'reason', string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<'username' | 'password' | 'reason', string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -143,6 +144,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) {
+      setUsername('');
       setPassword('');
       setFreeReason('');
       setIsCapsLockOn(false);
@@ -169,7 +171,11 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
     setFieldErrors({});
     if (isSubmitting) return;
 
-    const nextErrors: Partial<Record<'password' | 'reason', string>> = {};
+    const nextErrors: Partial<Record<'username' | 'password' | 'reason', string>> = {};
+
+    if (!username.trim()) {
+      nextErrors.username = 'Username is required to complete the electronic signature.';
+    }
 
     if (!effectiveReason) {
       nextErrors.reason = 'A signing reason is required for compliance.';
@@ -184,9 +190,9 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      const verification = await authApi.verifyESignature({ password });
+      const verification = await authApi.verifyESignature({ username: username.trim(), password });
       const confirmArgs = {
-        username: currentUsername.trim(),
+        username: verification.username,
         password,
         reason: effectiveReason,
         signatureToken: verification.signatureToken,
@@ -201,6 +207,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
       } else {
         await onConfirm(confirmArgs);
       }
+      setUsername('');
       setPassword('');
       setFreeReason('');
       setFormError('');
@@ -214,9 +221,11 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
         'Unable to verify electronic signature.';
       const normalized = String(message).toLowerCase();
 
-      const nextFieldErrors: Partial<Record<'password' | 'reason', string>> = {};
-      if (normalized.includes('invalid signature credentials') || normalized.includes('password') || normalized.includes('credential')) {
-        nextFieldErrors.password = 'Electronic signature authentication failed. Please verify your password and try again.';
+      const nextFieldErrors: Partial<Record<'username' | 'password' | 'reason', string>> = {};
+      if (normalized.includes('current user') || normalized.includes('username')) {
+        nextFieldErrors.username = 'Enter the username of the currently signed-in account.';
+      } else if (normalized.includes('invalid signature credentials') || normalized.includes('password') || normalized.includes('credential')) {
+        nextFieldErrors.password = 'Electronic signature authentication failed. Please verify your username and password and try again.';
       } else if (normalized.includes('reason')) {
         nextFieldErrors.reason = message;
       } else {
@@ -300,7 +309,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   <h3 id={titleId} className="text-sm md:text-base font-semibold text-slate-900 leading-tight truncate">
                     Electronic Signature
                   </h3>
-                  <p className="text-2xs text-slate-500 font-medium">FDA 21 CFR Part 11 and EU-GMP Annex 11 Compliant</p>
+                  <p className="text-2xs text-slate-500 font-medium">Confirm your identity to sign this action.</p>
                 </div>
               </div>
               <button
@@ -341,6 +350,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                     {[
                       { label: "Full Name", value: currentFullName },
                       { label: "Employee ID", value: currentEmployeeCode },
+                      { label: "Username", value: currentUsername },
                     ].map(({ label, value }) => (
                       <div key={label}>
                         <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
@@ -429,6 +439,32 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                     )}
                   </div>
 
+                  {/* Both credentials are entered for every signing request. */}
+                  <div className="space-y-1">
+                    <label htmlFor={`${modalId}-username`} className="text-xs sm:text-sm font-medium text-slate-700">
+                      Username <span className="text-red-500" aria-hidden="true">*</span>
+                    </label>
+                    <input
+                      id={`${modalId}-username`}
+                      name="username"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      required
+                      aria-invalid={Boolean(fieldErrors.username)}
+                      aria-describedby={fieldErrors.username ? `${modalId}-username-error` : undefined}
+                      className={cn(
+                        "w-full h-9 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm",
+                        fieldErrors.username ? "border-red-400" : "border-slate-200"
+                      )}
+                      placeholder="Enter your username"
+                    />
+                    {fieldErrors.username && <p id={`${modalId}-username-error`} className="text-xs text-red-600 leading-tight">{fieldErrors.username}</p>}
+                  </div>
+
                   {/* Password */}
                   <div className="space-y-1">
                     <label htmlFor={`${modalId}-password`} className="text-xs sm:text-sm font-medium text-slate-700">
@@ -437,7 +473,9 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                     <div className="relative">
                       <input
                         id={`${modalId}-password`}
+                        name="password"
                         type="password"
+                        required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         onKeyDown={handlePasswordKeyEvent}

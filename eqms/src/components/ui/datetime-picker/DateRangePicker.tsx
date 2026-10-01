@@ -29,6 +29,8 @@ export interface DateRangePickerProps {
   autoApply?: boolean;
   /** Show loading state on the Apply button */
   applyLoading?: boolean;
+  /** Embed the full calendar in its parent; selections update the parent's draft immediately. */
+  inline?: boolean;
 }
 
 type PresetKey = 'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'lastYear';
@@ -101,6 +103,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   onApply,
   autoApply = false,
   applyLoading = false,
+  inline = false,
 }) => {
   const pickerIdRef = useRef(`date-range-picker-${Math.random().toString(36).slice(2, 11)}`);
   const pickerId = pickerIdRef.current;
@@ -150,11 +153,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
 
   const closePopover = useCallback((returnFocus: boolean = true) => {
+    if (inline) return;
     setIsOpen(false);
     if (returnFocus) {
       requestAnimationFrame(() => triggerRef.current?.focus());
     }
-  }, []);
+  }, [inline]);
 
   // Close other dropdowns
   useEffect(() => {
@@ -318,7 +322,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen && !inline) return;
     const currentMonth = viewDate.getMonth();
     const currentYear = viewDate.getFullYear();
     const base = activeField === 'start' ? localStart : localEnd;
@@ -327,7 +331,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       return;
     }
     setFocusedDay(1);
-  }, [isOpen, viewDate, activeField, localStart, localEnd]);
+  }, [isOpen, inline, viewDate, activeField, localStart, localEnd]);
 
   useEffect(() => {
     setLiveMessage(`${monthNames[viewDate.getMonth()]} ${viewDate.getFullYear()}`);
@@ -339,8 +343,39 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     setViewDate(d);
   };
 
+  // Inline changes update the containing filter draft, never its final Apply.
+  const publishInlineRange = (start: Date | null, end: Date | null) => {
+    const range = {
+      startDate: start ? formatDateValue(start, includeTime) : '',
+      endDate: end ? formatDateValue(end, includeTime) : '',
+    };
+    if (onApply) onApply(range);
+    else {
+      onStartDateChange(range.startDate);
+      onEndDateChange(range.endDate);
+    }
+  };
+
   const handleDateClick = (day: number) => {
     const clicked = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+    if (inline) {
+      let nextStart = localStart;
+      let nextEnd = localEnd;
+      const time = activeField === 'start' ? startTime : endTime;
+      clicked.setHours(parseInt(time.h), parseInt(time.m), parseInt(time.s));
+      if (activeField === 'start') {
+        nextStart = clicked;
+        if (nextEnd && nextStart > nextEnd) nextEnd = null;
+        if (!includeTime) setActiveField('end');
+      } else if (nextStart && clicked < nextStart) {
+        nextEnd = nextStart;
+        nextStart = clicked;
+      } else nextEnd = clicked;
+      setLocalStart(nextStart);
+      setLocalEnd(nextEnd);
+      publishInlineRange(nextStart, nextEnd);
+      return;
+    }
     if (activeField === 'start') {
       const newStart = new Date(clicked);
       newStart.setHours(parseInt(startTime.h), parseInt(startTime.m), parseInt(startTime.s));
@@ -490,7 +525,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     });
     setViewDate(start);
 
-    if (autoApply) {
+    if (autoApply || inline) {
       const nextStart = formatDateValue(start, includeTime);
       const nextEnd = formatDateValue(end, includeTime);
       if (onApply) {
@@ -602,7 +637,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return (
       <div className="p-3">
-        <div className="flex items-center justify-between mb-2 px-1">
+        <div className={cn("flex items-center justify-between px-1", inline ? "mb-1" : "mb-2")}>
           <button type="button" onClick={() => setViewMode('calendar')} className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-500 flex items-center justify-center" aria-label="Back to calendar view">
             <ChevronLeft className="h-4 w-4 block shrink-0" />
           </button>
@@ -633,7 +668,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const years = Array.from({ length: 12 }, (_, i) => startYear + i);
     return (
       <div className="p-3">
-        <div className="flex items-center justify-between mb-2 px-1">
+        <div className={cn("flex items-center justify-between px-1", inline ? "mb-1" : "mb-2")}>
           <button type="button" onClick={() => { const d = new Date(viewDate); d.setFullYear(d.getFullYear() - 12); setViewDate(d); }} className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-500 flex items-center justify-center" aria-label="Previous year range">
             <ChevronLeft className="h-4 w-4 block shrink-0" />
           </button>
@@ -673,7 +708,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
     const days: React.ReactNode[] = [];
     for (let i = 0; i < startingDay; i++) {
-      days.push(<div key={`e-${i}`} className="h-9 w-9" />);
+      days.push(<div key={`e-${i}`} className={inline ? "h-6 w-6" : "h-9 w-9"} />);
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -692,7 +727,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <div
           key={day}
           className={cn(
-            "relative flex items-center justify-center h-8",
+            "relative flex items-center justify-center",
+            inline ? "h-full min-h-6" : "h-8",
             // Range background spans full cell width
             inRange && "bg-emerald-50",
             isRangeStart && "bg-gradient-to-r from-transparent via-emerald-50 to-emerald-50 rounded-l-full",
@@ -708,7 +744,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             aria-current={isToday ? 'date' : undefined}
             aria-label={`${day} ${monthNames[month]} ${year}`}
             className={cn(
-              "h-9 w-9 rounded-full text-xs flex items-center justify-center transition-colors relative z-10",
+              "rounded-full text-xs flex items-center justify-center transition-colors relative z-10",
+              inline ? "h-6 w-6" : "h-9 w-9",
               isSelected
                 ? 'bg-emerald-600 text-white font-semibold shadow-sm hover:bg-emerald-700'
                 : isToday
@@ -723,13 +760,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     }
 
     return (
-      <div className="px-4 pt-1.5 pb-2">
+      <div className={inline ? "flex flex-1 flex-col px-2 pt-1 pb-1" : "px-4 pt-1.5 pb-2"}>
         {/* Month Navigation */}
-        <div className="flex items-center justify-between mb-2 px-1">
+        <div className={cn("flex items-center justify-between px-1", inline ? "mb-1" : "mb-2")}>
           <button
             type="button"
             onClick={() => navigateMonth('prev')}
-            className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-400 transition-colors flex items-center justify-center"
+            className={cn("hover:bg-slate-100 rounded-full text-slate-400 transition-colors flex items-center justify-center", inline ? "h-7 w-7 p-1" : "min-w-[36px] min-h-[36px] p-1.5")}
             aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4 block shrink-0" />
@@ -755,7 +792,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <button
             type="button"
             onClick={() => navigateMonth('next')}
-            className="min-w-[36px] min-h-[36px] p-1.5 hover:bg-slate-100 rounded-full text-slate-400 transition-colors flex items-center justify-center"
+            className={cn("hover:bg-slate-100 rounded-full text-slate-400 transition-colors flex items-center justify-center", inline ? "h-7 w-7 p-1" : "min-w-[36px] min-h-[36px] p-1.5")}
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4 block shrink-0" />
@@ -765,7 +802,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-0 mb-0.5">
           {dayNames.map((d, i) => (
-            <div key={i} className="h-6 flex items-center justify-center text-xs font-semibold text-slate-400">
+            <div key={i} className={cn("flex items-center justify-center text-xs font-semibold text-slate-400", inline ? "h-5" : "h-6")}>
               {d}
             </div>
           ))}
@@ -777,7 +814,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           aria-label="Calendar days"
           aria-multiselectable="false"
           onKeyDown={handleGridKeyDown}
-          className="grid grid-cols-7 gap-y-0.5"
+          className={cn("grid grid-cols-7 gap-y-0.5", inline && "flex-1 auto-rows-fr items-center")}
         >
           {days}
         </div>
@@ -797,6 +834,16 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         if (parseInt(val) > 59) val = '59';
       }
       setTime(prev => ({ ...prev, [field]: val.padStart(2, '0') }));
+      if (inline) {
+        const nextTime = { ...time, [field]: val.padStart(2, '0') };
+        const date = type === 'start' ? localStart : localEnd;
+        if (date) {
+          const nextDate = new Date(date);
+          nextDate.setHours(parseInt(nextTime.h), parseInt(nextTime.m), parseInt(nextTime.s));
+          if (type === 'start') setLocalStart(nextDate); else setLocalEnd(nextDate);
+          publishInlineRange(type === 'start' ? nextDate : localStart, type === 'end' ? nextDate : localEnd);
+        }
+      }
     };
 
     return (
@@ -835,8 +882,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   };
 
   const renderPresets = () => (
-    <div className="w-full lg:w-[140px] border-t lg:border-t-0 lg:border-l border-slate-200 flex flex-col p-2 bg-slate-50/20 shrink-0">
-      <div className="grid grid-cols-4 lg:flex lg:flex-col gap-1">
+    <div data-date-presets className={cn("border-slate-200 flex flex-col bg-slate-50/20 shrink-0", inline ? "w-[120px] border-l p-1.5" : "w-full lg:w-[140px] border-t lg:border-t-0 lg:border-l p-2")}>
+      <div className={cn("grid gap-1", inline ? "grid-cols-1" : "grid-cols-4 lg:flex lg:flex-col")}>
         {[
           { label: 'Today', key: 'today' },
           { label: 'Yesterday', key: 'yesterday' },
@@ -851,7 +898,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             key={p.key}
             type="button"
             onClick={() => applyPreset(p.key as PresetKey)}
-            className="inline-flex items-center justify-center lg:justify-start px-1.5 py-1 lg:px-2 lg:py-2 text-[10px] lg:text-sm text-slate-600 bg-white border border-slate-200 lg:border-transparent hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 rounded-full lg:rounded-lg transition-all font-medium whitespace-nowrap"
+            className={cn("inline-flex items-center text-slate-600 bg-white border hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all font-medium whitespace-nowrap", inline ? "h-7 justify-start rounded-md border-slate-200 px-2 text-xs" : "justify-center lg:justify-start px-1.5 py-1 lg:px-2 lg:py-2 text-[10px] lg:text-sm border-slate-200 lg:border-transparent rounded-full lg:rounded-lg")}
           >
             {p.label}
           </button>
@@ -859,6 +906,132 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       </div>
     </div>
   );
+
+  const pickerContent = (
+    <>
+              <div className="sr-only" id={dialogTitleId}>Choose date range</div>
+              <div className="sr-only" aria-live="polite" aria-atomic="true">{liveMessage}</div>
+              <div className="min-w-0 flex-1 flex flex-col">
+                {/* Start / Due date inputs */}
+                <div className={inline ? "px-2 pt-2 pb-2" : "px-4 pt-4 pb-2"}>
+                  <div className={cn("flex", inline ? "gap-2" : "gap-3", includeTime ? "flex-col" : "flex-row")}>
+                    {/* Start */}
+                    <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
+                      <div className="flex-1 min-w-0">
+                        <label htmlFor={startFieldId} className="text-xs font-medium text-slate-500 mb-1 block">Start Date</label>
+                        <button
+                          id={startFieldId}
+                          type="button"
+                          onClick={() => setActiveField('start')}
+                          aria-pressed={activeField === 'start'}
+                          className={cn(
+                            "flex items-center gap-1.5 w-full rounded-lg text-sm border transition-colors",
+                            inline ? "h-8 px-2 py-1" : "h-9 px-2.5 py-1.5",
+                            activeField === 'start'
+                              ? "border-emerald-500 ring-1 ring-emerald-500"
+                              : "border-slate-200 hover:border-slate-300"
+                          )}
+                        >
+                          <IconCalendarWeek className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span className={cn("truncate text-xs", localStart ? "text-slate-900" : "text-slate-400")}>
+                            {localStart ? formatDateDisplay(formatDateValue(localStart), false) : 'dd/mm/yyyy'}
+                          </span>
+                        </button>
+                      </div>
+                      {includeTime && (
+                        <div className="shrink-0 pt-5">
+                          {renderTimePicker('start')}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Due/End */}
+                    <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
+                      <div className="flex-1 min-w-0">
+                        <label htmlFor={endFieldId} className="text-xs font-medium text-slate-500 mb-1 block">End Date</label>
+                        <button
+                          id={endFieldId}
+                          type="button"
+                          onClick={() => setActiveField('end')}
+                          aria-pressed={activeField === 'end'}
+                          className={cn(
+                            "flex items-center gap-1.5 w-full rounded-lg text-sm border transition-colors",
+                            inline ? "h-8 px-2 py-1" : "h-9 px-2.5 py-1.5",
+                            activeField === 'end'
+                              ? "border-emerald-500 ring-1 ring-emerald-500"
+                              : "border-slate-200 hover:border-slate-300"
+                          )}
+                        >
+                          <IconCalendarWeek className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span className={cn("truncate text-xs", localEnd ? "text-slate-900" : "text-slate-400")}>
+                            {localEnd ? formatDateDisplay(formatDateValue(localEnd), false) : 'dd/mm/yyyy'}
+                          </span>
+                        </button>
+                      </div>
+                      {includeTime && (
+                        <div className="shrink-0 pt-5">
+                          {renderTimePicker('end')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-slate-200" />
+
+                {/* Calendar */}
+                {renderCalendar()}
+
+                {/* Footer */}
+                {!inline && <div className="border-t border-slate-200 px-4 py-3 bg-slate-50/50">
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleReset}
+                      className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                    >
+                      Reset range
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => closePopover()}
+                        className="h-8 text-xs px-3"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleApply}
+                        disabled={applyLoading}
+                        className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-500 disabled:cursor-wait text-white h-8 text-xs px-4 inline-flex items-center gap-2"
+                      >
+                        {applyLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        {applyLoading ? 'Applying...' : 'Apply'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>}
+                {inline && <div className="border-t border-slate-200 px-2 py-1">
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReset}>Reset range</Button>
+                </div>}
+              </div>
+              {renderPresets()}
+    </>
+  );
+
+  if (inline) {
+    return (
+      <fieldset disabled={disabled} className="h-full min-h-[320px] min-w-0 w-full" aria-label={typeof label === 'string' ? label : 'Choose date range'}>
+        <div ref={popoverRef} data-inline-date-layout className="flex h-full min-w-0 w-full flex-row overflow-hidden rounded-lg border border-slate-200 bg-white">
+          {pickerContent}
+        </div>
+      </fieldset>
+    );
+  }
 
   return (
     <div className="relative w-full">
@@ -919,112 +1092,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 includeTime ? "w-[min(360px,calc(100vw-2rem))] lg:w-[520px]" : "w-[min(340px,calc(100vw-2rem))] lg:w-[480px]"
               )}
             >
-              <div className="sr-only" id={dialogTitleId}>Choose date range</div>
-              <div className="sr-only" aria-live="polite" aria-atomic="true">{liveMessage}</div>
-              <div className="flex-1 flex flex-col">
-                {/* Start / Due date inputs */}
-                <div className="px-4 pt-4 pb-2">
-                  <div className={cn("flex gap-3", includeTime ? "flex-col" : "flex-row")}> 
-                    {/* Start */}
-                    <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
-                      <div className="flex-1 min-w-0">
-                        <label htmlFor={startFieldId} className="text-xs font-medium text-slate-500 mb-1 block">Start Date</label>
-                        <button
-                          id={startFieldId}
-                          type="button"
-                          onClick={() => setActiveField('start')}
-                          aria-pressed={activeField === 'start'}
-                          className={cn(
-                            "flex items-center gap-1.5 w-full px-2.5 py-1.5 h-9 rounded-lg text-sm border transition-colors",
-                            activeField === 'start'
-                              ? "border-emerald-500 ring-1 ring-emerald-500"
-                              : "border-slate-200 hover:border-slate-300"
-                          )}
-                        >
-                          <IconCalendarWeek className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span className={cn("truncate text-xs", localStart ? "text-slate-900" : "text-slate-400")}>
-                            {localStart ? formatDateDisplay(formatDateValue(localStart), false) : 'dd/mm/yyyy'}
-                          </span>
-                        </button>
-                      </div>
-                      {includeTime && (
-                        <div className="shrink-0 pt-5">
-                          {renderTimePicker('start')}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Due/End */}
-                    <div className={cn("flex items-center justify-between gap-4", !includeTime && "flex-1")}> 
-                      <div className="flex-1 min-w-0">
-                        <label htmlFor={endFieldId} className="text-xs font-medium text-slate-500 mb-1 block">End Date</label>
-                        <button
-                          id={endFieldId}
-                          type="button"
-                          onClick={() => setActiveField('end')}
-                          aria-pressed={activeField === 'end'}
-                          className={cn(
-                            "flex items-center gap-1.5 w-full px-2.5 py-1.5 h-9 rounded-lg text-sm border transition-colors",
-                            activeField === 'end'
-                              ? "border-emerald-500 ring-1 ring-emerald-500"
-                              : "border-slate-200 hover:border-slate-300"
-                          )}
-                        >
-                          <IconCalendarWeek className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span className={cn("truncate text-xs", localEnd ? "text-slate-900" : "text-slate-400")}>
-                            {localEnd ? formatDateDisplay(formatDateValue(localEnd), false) : 'dd/mm/yyyy'}
-                          </span>
-                        </button>
-                      </div>
-                      {includeTime && (
-                        <div className="shrink-0 pt-5">
-                          {renderTimePicker('end')}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-slate-200" />
-
-                {/* Calendar */}
-                {renderCalendar()}
-
-                {/* Footer */}
-                <div className="border-t border-slate-200 px-4 py-3 bg-slate-50/50">
-                  <div className="flex items-center justify-between">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleReset}
-                      className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-                    >
-                      Reset range
-                    </Button>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => closePopover()}
-                        className="h-8 text-xs px-3"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleApply}
-                        disabled={applyLoading}
-                        className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-500 disabled:cursor-wait text-white h-8 text-xs px-4 inline-flex items-center gap-2"
-                      >
-                        {applyLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                        {applyLoading ? 'Applying...' : 'Apply'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {renderPresets()}
+              {pickerContent}
             </motion.div>
           )}
         </AnimatePresence>,

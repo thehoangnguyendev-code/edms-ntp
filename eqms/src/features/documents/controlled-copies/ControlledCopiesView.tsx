@@ -12,6 +12,8 @@ import { cn } from "@/components/ui/utils";
 import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
+import { CopyDesktopFilters } from '@/components/ui/filter/CopyDesktopFilters';
+import { useBranding } from '@/components/branding/BrandLogo';
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { formatDateUS, formatDateTimeParts, formatDateTime } from "@/utils/format";
@@ -285,6 +287,7 @@ interface ControlledCopiesViewProps {
 }
 
 export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ viewType: propViewType = "all" }) => {
+  const { compactDesktopFilters = false } = useBranding();
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1602,7 +1605,26 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               </div>
             </div>
 
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+            {compactDesktopFilters && <CopyDesktopFilters
+              search={<input aria-label="Search controlled copies" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Document #, Name, ID..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+              status={viewType === 'all' ? statusFilter : viewType === 'ready' ? 'Ready for Distribution' : 'Distributed'}
+              statusOptions={viewType === 'all' ? statusOptions : [{ value: viewType === 'ready' ? 'Ready for Distribution' : 'Distributed', label: viewType === 'ready' ? 'Ready for Distribution' : 'Distributed' }]}
+              statusLocked={viewType !== 'all'} allStatus="All"
+              dates={[
+                { id: 'created', label: 'Created Date Range', from: createdFromDate, to: createdToDate },
+                { id: 'valid', label: 'Valid Until Date Range', from: validFromDate, to: validToDate },
+                { id: 'expiry', label: 'Expiry Date Range', from: expiryFromDate, to: expiryToDate },
+                { id: 'recall', label: 'Recall Date Range', from: recallFromDate, to: recallToDate },
+              ]}
+              onApply={draft => {
+                if (viewType === 'all') setStatusFilter(draft.status);
+                setCreatedFromDate(draft.createdFrom); setCreatedToDate(draft.createdTo);
+                setValidFromDate(draft.validFrom); setValidToDate(draft.validTo);
+                setExpiryFromDate(draft.expiryFrom); setExpiryToDate(draft.expiryTo);
+                setRecallFromDate(draft.recallFrom); setRecallToDate(draft.recallTo);
+                setCurrentPage(1);
+              }} />}
+            <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
               <div>
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
                 <div className="relative">

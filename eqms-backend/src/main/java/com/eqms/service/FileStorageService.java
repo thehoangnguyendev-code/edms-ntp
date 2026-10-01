@@ -52,6 +52,8 @@ public class FileStorageService {
     private static final Path CONTROLLED_COPY_EVIDENCE_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "controlled-copies", "evidence");
     private static final Path CONTROLLED_COPY_EVIDENCE_STAGE_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "nas-stage", "controlled-copies", "evidence");
     private static final Path PERSONNEL_CERTIFICATION_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "personnel", "certifications");
+    private static final Path EXECUTED_RECORD_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "forms", "executed-records");
+    private static final Path EFORM_SESSION_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "forms", "eform-sessions");
 
     private final SystemConfigurationService systemConfigurationService;
     private final MinioObjectStorageService minioObjectStorageService;
@@ -320,6 +322,54 @@ public class FileStorageService {
         }
 
         Path targetDir = PERSONNEL_CERTIFICATION_ROOT.resolve(userId.toString()).resolve(certificationId.toString());
+        Files.createDirectories(targetDir);
+        Path targetFile = targetDir.resolve(storedFileName);
+        Files.copy(contentStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
+        return localResult(targetFile, provider);
+    }
+
+    /**
+     * A filled eForm submission or a scanned paper Executed Record. Like personnel certifications,
+     * not a GMP document revision, so it skips the WORM/revision-immutability machinery -- a
+     * simple MinIO-or-local store keyed by the Form document + record id is sufficient.
+     */
+    public StorageWriteResult storeExecutedRecordFile(UUID formDocumentId, UUID executedRecordId, String originalName, InputStream contentStream) throws IOException {
+        JsonNode storageConfig = getStorageConfig();
+        String provider = storageConfig.path("provider").asText("local");
+        String storedFileName = UUID.randomUUID() + "_" + storagePathBuilder.sanitizeFileName(originalName);
+
+        if (isMinioProvider(provider)) {
+            String relativeKey = "forms/executed-records/" + formDocumentId + "/" + executedRecordId + "/" + storedFileName;
+            MinioObjectStorageService.StoredObject stored = minioObjectStorageService.store(
+                    storageConfig, relativeKey, contentStream, "application/octet-stream");
+            return new StorageWriteResult(
+                    stored.localPath(), stored.uri(), "minio", stored.bucket(), stored.objectKey(), stored.versionId(), stored.sha256());
+        }
+
+        Path targetDir = EXECUTED_RECORD_ROOT.resolve(formDocumentId.toString()).resolve(executedRecordId.toString());
+        Files.createDirectories(targetDir);
+        Path targetFile = targetDir.resolve(storedFileName);
+        Files.copy(contentStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
+        return localResult(targetFile, provider);
+    }
+
+    /** A live OnlyOffice Design or Fill session's current saved bytes (see EformEditSessionService).
+     *  Same simple MinIO-or-local store as {@link #storeExecutedRecordFile} -- transient working state,
+     *  not a GMP document revision. */
+    public StorageWriteResult storeEformSessionFile(UUID sessionId, String originalName, InputStream contentStream) throws IOException {
+        JsonNode storageConfig = getStorageConfig();
+        String provider = storageConfig.path("provider").asText("local");
+        String storedFileName = UUID.randomUUID() + "_" + storagePathBuilder.sanitizeFileName(originalName);
+
+        if (isMinioProvider(provider)) {
+            String relativeKey = "forms/eform-sessions/" + sessionId + "/" + storedFileName;
+            MinioObjectStorageService.StoredObject stored = minioObjectStorageService.store(
+                    storageConfig, relativeKey, contentStream, "application/octet-stream");
+            return new StorageWriteResult(
+                    stored.localPath(), stored.uri(), "minio", stored.bucket(), stored.objectKey(), stored.versionId(), stored.sha256());
+        }
+
+        Path targetDir = EFORM_SESSION_ROOT.resolve(sessionId.toString());
         Files.createDirectories(targetDir);
         Path targetFile = targetDir.resolve(storedFileName);
         Files.copy(contentStream, targetFile, StandardCopyOption.REPLACE_EXISTING);

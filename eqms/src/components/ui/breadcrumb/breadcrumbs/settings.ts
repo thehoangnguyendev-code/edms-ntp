@@ -188,11 +188,6 @@ export const roleDetail = (
   ];
 };
 
-export const countries = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...appSettingsBase(navigate),
-  { label: "Countries", isActive: true },
-];
-
 /** Base breadcrumb path for the "Education" nested group (Degree Levels, Schools). */
 const educationBase = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...appSettingsBase(navigate),

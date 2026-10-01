@@ -14,5 +14,8 @@ public enum EditMode {
     /** Comment-only -- no content edits, no track-changes, matching Pending Approval's approver role. */
     COMMENT_ONLY,
     /** Read-only viewer (Document tab): no edit/review/comment, no download or print, no save callback. */
-    VIEW
+    VIEW,
+    /** Form-field-filling only (eForm). Static content locked; only the Author-designed fields are
+     *  editable. Used solely by {@code EformEditSessionService}, never by the Revision-based flows above. */
+    FILL
 }

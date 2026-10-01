@@ -749,7 +749,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                     className={cn(
                       "flex items-center w-full text-left whitespace-nowrap leading-tight",
                       "overflow-hidden",
-                      level >= 2 ? "text-[13px]" : "text-sm",
+                      "text-sm",
                       isActive
                         ? "font-semibold text-emerald-700"
                         : level >= 2

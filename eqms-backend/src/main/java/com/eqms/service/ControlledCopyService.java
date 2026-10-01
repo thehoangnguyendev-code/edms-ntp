@@ -207,6 +207,12 @@ public class ControlledCopyService {
     @org.springframework.beans.factory.annotation.Autowired
     private SystemActorProvider systemActorProvider;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private EformSignerAssignmentService eformSignerAssignmentService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private FormSettingsService formSettingsService;
+
     public ControlledCopyService(
             ControlledCopyRepository controlledCopyRepository,
             ControlledCopyEvidenceFileRepository controlledCopyEvidenceFileRepository,
@@ -872,6 +878,16 @@ public class ControlledCopyService {
             }
         }
 
+        String deliveryMode = normalize(firstNonBlank(request == null ? null : request.deliveryMode(), "PAPER")).toUpperCase(Locale.ROOT);
+        if ("ELECTRONIC".equals(deliveryMode)) {
+            var formSettings = formSettingsService.requireSettingsOrNull(document.getId());
+            if (formSettings == null || !formSettings.isAllowEform()) {
+                throw new IllegalArgumentException("This Document does not accept electronic eForm distribution.");
+            }
+        } else {
+            deliveryMode = "PAPER";
+        }
+
         String distributionMode = normalize(firstNonBlank(
                 request == null ? null : request.distributionMode(),
                 request == null || request.externalRecipients() == null || request.externalRecipients().isEmpty() ? "INTERNAL" : "EXTERNAL"
@@ -921,6 +937,12 @@ public class ControlledCopyService {
             throw new IllegalArgumentException(externalMode
                     ? "At least one valid external recipient email is required"
                     : "At least one internal recipient is required");
+        }
+        if ("ELECTRONIC".equals(deliveryMode) && (externalMode || recipients.stream().anyMatch(r -> r.user() == null))) {
+            // One request may still target several people -- the per-recipient loop below already
+            // creates one ControlledCopyRecord per recipient, each individually scoped to exactly
+            // one filler; only external/email-only recipients (no internal account) are rejected.
+            throw new IllegalArgumentException("An electronic eForm distribution requires internal recipients only.");
         }
 
         int totalCopies = recipients.stream().mapToInt(recipient -> Math.max(recipient.quantity(), 1)).sum();
@@ -1028,6 +1050,7 @@ public class ControlledCopyService {
             // retains only its own recipient. This prevents one external
             // email list from appearing on every controlled-copy record.
             copy.setDistributionList(externalMode ? "External" : recipient.displayName());
+            copy.setDeliveryMode(deliveryMode);
             copy.setDistributionMode(distributionMode == null ? null : distributionMode.toUpperCase(Locale.ROOT));
             copy.setDistributionScope(externalMode ? "external" : resolveDistributionScope(request, distributionMode));
             copy.setLocation(externalMode ? "External Recipients" : resolvedLocation);
@@ -1656,6 +1679,12 @@ public class ControlledCopyService {
         Instant distributedAt = parseInstant(request == null ? null : request.distributedAt(), Instant.now());
         anchorExpiryToDistributionIfNeeded(copy, distributedAt);
         ensureControlledCopyNotExpired(copy, distributedAt);
+        if ("ELECTRONIC".equals(copy.getDeliveryMode())) {
+            // Every scanned OnlyOffice Role on the Form's fillable template must have a signer
+            // assigned before this copy can go out -- otherwise the Fill/Sign chain has no one to
+            // hand off to partway through.
+            eformSignerAssignmentService.requireFullyAssignedOrThrow(copy.getId());
+        }
         setControlledCopyStatus(copy, STATUS_DISTRIBUTED);
         copy.setCurrentStage("Distributed");
         copy.setDistributedBy(currentUser);
@@ -1929,6 +1958,41 @@ public class ControlledCopyService {
         eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), currentUser.getId(), "RECALL", auditComment, null));
         controlledCopyBatchStatusService.synchronize(copy);
         return toResponse(copy, false);
+    }
+
+    /**
+     * System-driven closure of the Controlled Copy register once the form it was issued for has
+     * actually been completed and recorded as an {@code ExecutedRecord} -- reuses the exact same
+     * Recall/Obsoleted status machinery {@link #recall} uses, mirroring the already-proven
+     * "system closes a copy without a human e-signature" pattern live in
+     * {@code ControlledCopyExpiryProcessingService#obsoleteExpiredCopy}. No
+     * {@code createEntitySignature} call here: the GxP-significant fact is already signed on the
+     * ExecutedRecord itself (RECORD_LOGGED / EFORM_SUBMITTED); this closure is a system-driven
+     * consequence, not a separately-attested act -- also sidesteps the signature-token single-use
+     * collision a second signature on the same token would hit. {@code actor} may be a real user
+     * (the paper path, where a human just signed the ExecutedRecord) or the system actor (the
+     * electronic path, where the last signer's own signature already covers the GxP event).
+     */
+    @Transactional
+    public void closeAfterExecutedRecord(UUID controlledCopyId, UserAccount actor, String reason) {
+        ControlledCopyRecord copy = requireControlledCopy(controlledCopyId);
+        ensureCanRecall(copy.getCurrentStage(), copy.getStatusCode(), "controlled copy");
+        String fromStatus = copy.getCurrentStage();
+        Instant now = Instant.now();
+        setControlledCopyStatus(copy, STATUS_OBSOLETED);
+        copy.setCurrentStage("Obsoleted");
+        copy.setObsoleteReason(OBSOLETE_REASON_RECALLED);
+        copy.setRecalledBy(actor);
+        copy.setRecalledAt(now);
+        copy.setObsoletedBy(actor);
+        copy.setObsoletedAt(now);
+        copy.setRecallReason(normalize(reason));
+        controlledCopyRepository.saveAndFlush(copy);
+        String auditComment = buildControlledCopyRecordActionComment(copy, "RECALL", reason);
+        auditTrailService.logAs(actor, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(),
+                "RECALL", fromStatus, "Obsoleted", auditComment, List.of(), null);
+        eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), actor.getId(), "RECALL", auditComment, null));
+        controlledCopyBatchStatusService.synchronize(copy);
     }
 
     @Transactional
@@ -3479,7 +3543,8 @@ public class ControlledCopyService {
                 replacedControlledCopy == null ? null : displayControlledCopyNumber(replacedControlledCopy.getControlledCopyNumber()),
                 replacementControlledCopy == null ? null : replacementControlledCopy.getId().toString(),
                 replacementControlledCopy == null ? null : displayControlledCopyNumber(replacementControlledCopy.getControlledCopyNumber()),
-                copy.getUpdatedAt() == null ? null : DateTimeFormatUtils.formatDateTime(copy.getUpdatedAt())
+                copy.getUpdatedAt() == null ? null : DateTimeFormatUtils.formatDateTime(copy.getUpdatedAt()),
+                copy.getDeliveryMode()
         );
     }
 

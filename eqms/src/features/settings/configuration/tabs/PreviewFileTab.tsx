@@ -50,7 +50,8 @@ const PDF_TOGGLE_GROUPS: Array<{ title: string; description: string; options: Pd
     title: 'Session tools',
     description: 'Temporary browser-only tools; none can change the stored PDF.',
     options: [
-      { key: 'showInsertTools', label: 'Insert tab', hint: 'Allow temporary stamps, images, and signatures in this browser session.', defaultValue: false },
+      { key: 'allowAnnotations', label: 'Allow annotations and comments', hint: 'Allow temporary highlighting, drawing, and comments. Disabled by default; EQMS never saves these changes to the stored PDF.', defaultValue: false },
+      { key: 'showInsertTools', label: 'Insert tab', hint: 'Allow temporary stamps, images, and signatures only when annotations are enabled. Exported PDFs may include session marks.', defaultValue: false },
       { key: 'allowTextSelection', label: 'Select and copy text', hint: 'Allow text selection and copying only when export and print are permitted.', defaultValue: false },
     ],
   },
@@ -96,8 +97,8 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
     >
       <div className="space-y-4">
         <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-          The PDF viewer always uses light mode. Preview is read-only: editing, annotations, form filling,
-          stamps, redaction, and signatures are unavailable.
+          The PDF viewer always uses light mode. The stored PDF is read-only. Annotations and Insert tools
+          are available only when enabled below; form filling, content editing, and redaction remain disabled.
         </div>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 xl:col-span-2">

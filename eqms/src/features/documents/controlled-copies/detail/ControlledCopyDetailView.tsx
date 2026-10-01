@@ -13,6 +13,7 @@ import { CopyDocumentTab } from "./tabs/CopyDocumentTab";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import { documentApi } from "@/services/api/documents";
+import { executedRecordApi } from "@/services/api/executedRecords";
 import { controlledCopyPolicyApi, type ControlledCopyPlaceholderField } from "@/services/api/controlledCopyPolicy";
 import { ControlledCopy, ControlledCopyDistributionBatch } from "../types";
 import { controlledCopyDisplayNumber } from "../display";
@@ -20,6 +21,9 @@ import { DestructionTypeSelectionModal } from "../components/DestructionTypeSele
 import { RecallControlledCopyModal } from "../components/RecallControlledCopyModal";
 import { DistributeBatchProgressModal } from "../components/DistributeBatchProgressModal";
 import { DistributeBatchResultModal, type DistributeBatchFailedItem } from "../components/DistributeBatchResultModal";
+import { AssignEformSignersModal } from "../components/AssignEformSignersModal";
+import { eformSessionApi } from "@/services/api/eformSessions";
+import { FillEformFrame } from "@/features/documents/document-detail/components/FillEformFrame";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { controlledCopyDetail } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import {
@@ -81,6 +85,11 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isDestructionModalOpen, setIsDestructionModalOpen] = useState(false);
   const [isDistributeModalOpen, setIsDistributeModalOpen] = useState(false);
+  const [isAssignSignersModalOpen, setIsAssignSignersModalOpen] = useState(false);
+  const [showFillStepPicker, setShowFillStepPicker] = useState(false);
+  const [fillStepRoles, setFillStepRoles] = useState<{ roleName: string; assignedUserName: string }[]>([]);
+  const [showFillFrame, setShowFillFrame] = useState(false);
+  const [fillFrameRole, setFillFrameRole] = useState<string | undefined>(undefined);
   const [activePlaceholderFields, setActivePlaceholderFields] = useState<ControlledCopyPlaceholderField[]>([]);
   const [isPlaceholderFieldsModalOpen, setIsPlaceholderFieldsModalOpen] = useState(false);
   const [placeholderFieldValues, setPlaceholderFieldValues] = useState<Record<string, string>>({});
@@ -90,6 +99,10 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   // Gates handleRecallSuccess on having actually gone through the confirm step -- no data to carry
   // through it any more, the recall date is now stamped by the server at signature time.
   const [hasConfirmedRecall, setHasConfirmedRecall] = useState(false);
+  // Set only when the Recall modal's "form was completed" toggle was on and a scan was attached --
+  // routes handleRecallSuccess to the combined recall-with-executed-record endpoint instead of the
+  // plain recall endpoint.
+  const [recallCompletedFile, setRecallCompletedFile] = useState<File | null>(null);
   const [isReportLostDamagedModalOpen, setIsReportLostDamagedModalOpen] = useState(false);
   const [isReissueModalOpen, setIsReissueModalOpen] = useState(false);
   const [auditTrailRows, setAuditTrailRows] = useState<any[]>([]);
@@ -794,13 +807,21 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       .catch(() => setActivePlaceholderFields([]));
   }, []);
 
-  const handleDistribute = () => {
+  const proceedToDistribute = () => {
     if (activePlaceholderFields.length > 0) {
       setPlaceholderFieldValues({});
       setIsPlaceholderFieldsModalOpen(true);
       return;
     }
     setIsDistributeModalOpen(true);
+  };
+
+  const handleDistribute = () => {
+    if (!isBatchParent && controlledCopy.deliveryMode === "ELECTRONIC") {
+      setIsAssignSignersModalOpen(true);
+      return;
+    }
+    proceedToDistribute();
   };
 
   const handleDistributeSuccess = async (data: { username: string; password: string; reason: string; signatureToken?: string }) => {
@@ -886,7 +907,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     setIsRecallFormOpen(true);
   };
 
-  const handleRecallFormConfirm = () => {
+  const handleRecallFormConfirm = (completedFile: File | null) => {
+    setRecallCompletedFile(completedFile);
     setHasConfirmedRecall(true);
     setIsRecallFormOpen(false);
     setIsRecallESignModalOpen(true);
@@ -957,7 +979,31 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       return;
     }
     setIsActionLoading(true);
+    const completedFile = recallCompletedFile;
+    setRecallCompletedFile(null);
     try {
+      if (completedFile) {
+        // "This copy came back filled in" and "this copy is now closed" as one operator action,
+        // one signature -- combined endpoint, not the plain recall below.
+        await executedRecordApi.recordPhysicalCopyAndClose(getControlledCopyActionTargetId(controlledCopy), {
+          reason: data.reason,
+          signatureToken: data.signatureToken as string,
+          file: completedFile,
+        });
+        const refreshed = await documentApi.getControlledCopyDetailById(controlledCopy.id);
+        setControlledCopy(normalizeControlledCopyDetail(refreshed, controlledCopy.id));
+        await refreshDetailCapabilities();
+        await refreshDetailRelatedData("Controlled Copy", controlledCopy.id, []);
+        showToast({
+          type: "success",
+          title: "Controlled Copy Recalled",
+          message: "The executed record has been filed and the controlled copy closed.",
+          duration: 3500,
+        });
+        setIsRecallESignModalOpen(false);
+        setIsActionLoading(false);
+        return;
+      }
       const updated = isBatchParent
         ? await documentApi.recallControlledCopyBatch(controlledCopy.id, {
             recalledBy: data.username,
@@ -1147,6 +1193,30 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   title={isCapabilityLoading ? "Capability information is still loading." : ""}
                 >
                   {isBatchParent ? "Distribute Batch" : "Distribute"}
+                </Button>
+              )}
+              {!isBatchParent && controlledCopy.deliveryMode === "ELECTRONIC" && controlledCopy.statusCode === "DISTRIBUTED" && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      const roles = await eformSessionApi.listSignerAssignments(controlledCopy.id);
+                      if (roles.length === 0) {
+                        setFillFrameRole(undefined);
+                        setShowFillFrame(true);
+                      } else {
+                        setFillStepRoles(roles);
+                        setShowFillStepPicker(true);
+                      }
+                    } catch {
+                      setFillFrameRole(undefined);
+                      setShowFillFrame(true);
+                    }
+                  }}
+                  variant="outline-emerald"
+                  size="sm"
+                  className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
+                >
+                  Fill / Sign eForm
                 </Button>
               )}
               {!isCapabilityLoading && recallDecision?.allowed && (
@@ -1384,6 +1454,66 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
           ))}
         </div>
       </FormModal>
+
+      {showFillStepPicker && (
+        <FormModal isOpen title="Fill / Sign eForm as..." onClose={() => setShowFillStepPicker(false)}>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                setFillFrameRole(undefined);
+                setShowFillStepPicker(false);
+                setShowFillFrame(true);
+              }}
+              className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:border-emerald-400 hover:bg-emerald-50"
+            >
+              <span className="font-medium text-slate-800">Fill (data entry)</span>
+              <span className="text-xs text-slate-500">Recipient only</span>
+            </button>
+            {fillStepRoles.map((r) => (
+              <button
+                key={r.roleName}
+                type="button"
+                onClick={() => {
+                  setFillFrameRole(r.roleName);
+                  setShowFillStepPicker(false);
+                  setShowFillFrame(true);
+                }}
+                className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:border-emerald-400 hover:bg-emerald-50"
+              >
+                <span className="font-medium text-slate-800">{r.roleName}</span>
+                <span className="text-xs text-slate-500">{r.assignedUserName}</span>
+              </button>
+            ))}
+          </div>
+        </FormModal>
+      )}
+
+      {showFillFrame && (
+        <FillEformFrame
+          controlledCopyId={controlledCopy.id}
+          roleName={fillFrameRole}
+          onClose={(submitted) => {
+            setShowFillFrame(false);
+            if (submitted) {
+              refreshDetailCapabilities();
+              refreshDetailRelatedData("Controlled Copy", controlledCopy.id, []);
+            }
+          }}
+        />
+      )}
+
+      {isAssignSignersModalOpen && (
+        <AssignEformSignersModal
+          isOpen
+          controlledCopyId={controlledCopy.id}
+          onClose={() => setIsAssignSignersModalOpen(false)}
+          onContinue={() => {
+            setIsAssignSignersModalOpen(false);
+            proceedToDistribute();
+          }}
+        />
+      )}
 
       {/* E-Signature Modal for Distribute */}
       <ESignatureModal
