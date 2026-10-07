@@ -19,6 +19,12 @@ public class PublishingTemplatePlaceholderMapperService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ROOT);
 
+    private final ParentDocumentResolver parentDocumentResolver;
+
+    public PublishingTemplatePlaceholderMapperService(ParentDocumentResolver parentDocumentResolver) {
+        this.parentDocumentResolver = parentDocumentResolver;
+    }
+
     public List<PublishingTemplatePlaceholderMappingResponse> mapPlaceholders(List<String> placeholders, RevisionDetailResponse revision) {
         if (placeholders == null || placeholders.isEmpty()) {
             return List.of();
@@ -89,6 +95,14 @@ public class PublishingTemplatePlaceholderMapperService {
             case "status", "state" -> mapping(placeholder, "status", "Status", applyTransform(valueOrDash(revision == null ? null : revision.statusInfo() == null ? revision.status() : revision.statusInfo().label()), transform), "Revision metadata");
             case "page", "pagecount", "page_count" -> mapping(placeholder, "pageCount", "Page", applyTransform(previewPageValue(revision), transform), "Cover layout");
             case "code" -> mapping(placeholder, "code", "Code", applyTransform(buildRevisionCode(revision), transform), "Cover layout");
+            // The parent of a related document (the SOP that lists this form/appendix as Related). Empty when there is none, so one
+            // footer works for every document type: a SOP without a parent simply prints nothing.
+            case "parentdocumentnumber", "parent_document_number" -> mapping(placeholder, "parentDocumentNumber", "Parent Document Number",
+                    applyTransform(parentOf(revision).map(ParentDocumentResolver.Parent::documentNumber).orElse(""), transform), "Related document footer");
+            case "parentdocumentname", "parent_document_name" -> mapping(placeholder, "parentDocumentName", "Parent Document Name",
+                    applyTransform(parentOf(revision).map(ParentDocumentResolver.Parent::documentName).orElse(""), transform), "Related document footer");
+            case "parentdocumentline", "parent_document_line" -> mapping(placeholder, "parentDocumentLine", "Parent Document Line",
+                    applyTransform(parentOf(revision).map(ParentDocumentResolver.Parent::footerLine).orElse(""), transform), "Related document footer");
             case "copyno", "copy_no" -> mapping(placeholder, "copyNumber", "Copy No", applyTransform("-", transform), "Cover footer");
             case "issuedby", "issued_by" -> mapping(placeholder, "publishedBy", "Issued By", applyTransform(valueOrDash(revision == null ? null : revision.publishedBy()), transform), "Cover footer");
             case "date" -> mapping(placeholder, "publishedOn", "Date", applyTransform(valueOrDash(revision == null ? null : revision.publishedOn()), transform), "Cover footer");
@@ -301,6 +315,10 @@ public class PublishingTemplatePlaceholderMapperService {
             return DATE_FORMAT.format(localDate);
         }
         return valueOrDash(value == null ? null : value.toString());
+    }
+
+    private java.util.Optional<ParentDocumentResolver.Parent> parentOf(RevisionDetailResponse revision) {
+        return revision == null ? java.util.Optional.empty() : parentDocumentResolver.parentOf(revision.documentId());
     }
 
     private String valueOrDash(String value) {

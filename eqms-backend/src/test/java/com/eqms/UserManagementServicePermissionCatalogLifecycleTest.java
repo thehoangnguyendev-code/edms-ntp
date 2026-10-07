@@ -51,7 +51,6 @@ class UserManagementServicePermissionCatalogLifecycleTest {
     @Mock private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     @Mock private AuditTrailService auditTrailService;
     @Mock private SystemConfigurationService systemConfigurationService;
-    @Mock private ExternalIdentityProvisioningService externalIdentityProvisioningService;
     @Mock private FileStorageService fileStorageService;
     @Mock private AuthorizationEngineService authorizationEngineService;
     @Mock private NotificationDispatcher notificationDispatcher;
@@ -71,7 +70,7 @@ class UserManagementServicePermissionCatalogLifecycleTest {
                 permissionRepository, permissionEvaluationService,
                 documentWorkflowSettingRepository, sessionRepository,
                 auditService, currentUserService, tokenService, passwordEncoder, auditTrailService,
-                systemConfigurationService, externalIdentityProvisioningService, fileStorageService,
+                systemConfigurationService, fileStorageService,
                 authorizationEngineService, notificationDispatcher, emailService,
                 workflowActionPolicyRepository, lifecycleStatePolicyRepository,
                 userAccessProfileRepository, sodConstraintService

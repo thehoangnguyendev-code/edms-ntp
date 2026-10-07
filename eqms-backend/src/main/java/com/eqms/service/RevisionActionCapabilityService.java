@@ -410,8 +410,8 @@ public class RevisionActionCapabilityService {
             case VIEW_PREVIEW -> "documents.revision.preview";
             case UPLOAD -> "documents.revision.upload_source";
             case REPLACE -> "documents.revision.upload_source";
-            case EDIT_ONLINE -> "documents.revision.edit_online";
-            case SYNC_TO_OFFICE, SYNC_FROM_OFFICE -> "documents.revision.upload_office_online";
+            case EDIT_ONLINE -> "documents.revision.edit_onlyoffice";
+            case SYNC_TO_OFFICE, SYNC_FROM_OFFICE -> "documents.revision.sync_onlyoffice";
             default -> "documents.revision.preview";
         };
     }

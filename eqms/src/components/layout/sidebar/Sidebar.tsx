@@ -1141,6 +1141,16 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           )}
         </AnimatePresence>
 
+        {/* Keep the user-menu backdrop in the layout's stacking context. A body
+            portal would sit above the entire fixed layout, including the menu. */}
+        {showSidebarUserProfile && user && isSidebarUserMenuOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-transparent"
+            onClick={() => setIsSidebarUserMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Sidebar */}
         <motion.aside
           initial={false}
@@ -1347,15 +1357,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               )}
               style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
             >
-              {isSidebarUserMenuOpen && createPortal(
-                <div
-                  className="fixed inset-0 z-40 bg-transparent"
-                  onClick={() => setIsSidebarUserMenuOpen(false)}
-                  aria-hidden="true"
-                />,
-                document.body,
-              )}
-
               <AnimatePresence initial={false}>
                 {isSidebarUserMenuOpen && (
                   <motion.div

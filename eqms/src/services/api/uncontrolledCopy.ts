@@ -88,6 +88,12 @@ export interface UncontrolledCopyRequestContext {
   message?: string | null;
   approvalRequired: boolean;
   validityHours: number;
+  /** What {@code validityHours} is counted from. */
+  validityBasis?: 'DISTRIBUTION' | 'DOCUMENT_VALID_UNTIL';
+  /** The document's Valid Until date (dd/MM/yyyy), when it has one. */
+  documentValidUntil?: string | null;
+  /** The exact date and time the copy would be valid until, worked out by the server (document basis only). */
+  computedValidUntil?: string | null;
   allowRedownload: boolean;
   marking: UncontrolledCopyPolicyMarking;
   mandatoryWatermarkText: string;

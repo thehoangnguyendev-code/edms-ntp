@@ -8,6 +8,7 @@ import { Badge, type BadgeColor } from "@/components/ui/badge/Badge";
 import { FullPageLoading, SectionLoading } from "@/components/ui/loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { Select, type SelectOption } from "@/components/ui/select";
@@ -275,6 +276,39 @@ export const PublishingTemplatesView: React.FC = () => {
     return `${totalItems} publishing template${totalItems === 1 ? "" : "s"}`;
   }, [isLoading, templates.length, totalItems]);
 
+  type Row = (typeof templates)[number];
+  const publishingTemplatesColumns: DataTableColumn<Row>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell40, cell: (item, index) => startIndex + index + 1 },
+    { id: "templateName", header: "Template Name", label: "Template Name", sort: { direction: sortConfig.key === "templateName" ? sortConfig.direction : undefined, onSort: () => handleSort("templateName") }, cell: (item) => (<><button type="button" onClick={() => navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(item.id || ""))} className="font-medium text-emerald-700 hover:underline">{item.templateName || "-"}</button>{item.description && (<p className="mt-0.5 max-w-[320px] truncate text-2xs text-slate-500">{item.description}</p>)}</>) },
+    { id: "publishingMode", header: "Publishing Mode", label: "Publishing Mode", sort: { direction: sortConfig.key === "publishingMode" ? sortConfig.direction : undefined, onSort: () => handleSort("publishingMode") }, cellClassName: "text-slate-700", cell: (item) => formatPublishingMode(item.publishingMode) },
+    { id: "versionNumber", header: "Version", label: "Version", sort: { direction: sortConfig.key === "versionNumber" ? sortConfig.direction : undefined, onSort: () => handleSort("versionNumber") }, cellClassName: "text-slate-700", cell: (item) => item.versionNumber ?? 1 },
+    { id: "status", header: "Status", label: "Status", sort: { direction: sortConfig.key === "status" ? sortConfig.direction : undefined, onSort: () => handleSort("status") }, cell: (item) => (<Badge color={getStatusColor(item.status)} size="sm">{formatStatus(item.status)}</Badge>) },
+    { id: "components", header: "Configured Files", label: "Configured Files", cell: (item) => (<><span className="font-medium text-slate-900">{configuredFileCount(item)}</span><span className="ml-1 text-slate-500">files</span></>) },
+    { id: "createdBy", header: "Created By", label: "Created By", sort: { direction: sortConfig.key === "createdBy" ? sortConfig.direction : undefined, onSort: () => handleSort("createdBy") }, cellClassName: "text-slate-700", cell: (item) => item.createdBy || "-" },
+    { id: "updatedAt", header: "Updated", label: "Updated", sort: { direction: sortConfig.key === "updatedAt" ? sortConfig.direction : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (item) => item.updatedAt ? formatDateTimeLong(item.updatedAt) : "-" },
+    { id: "publishedAt", header: "Published", label: "Published", sort: { direction: sortConfig.key === "publishedAt" ? sortConfig.direction : undefined, onSort: () => handleSort("publishedAt") }, cellClassName: "text-slate-600", cell: (item) => item.publishedAt ? formatDateTimeLong(item.publishedAt) : "-" },
+  ];
+  const publishingTemplatesAction: DataTableAction<Row> = {
+    header: "Action",
+    cell: (item) => (<>
+  {canManageTemplates && (
+    <button ref={getRef(item.id || "")} onClick={(event) => toggle(item.id || "", event)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100" aria-label="More actions">
+      <MoreVertical className="h-4 w-4 text-slate-600" />
+    </button>
+  )}
+  <PortalDropdownMenu isOpen={openId === item.id} onClose={close} position={position}>
+    <div className="py-1">
+      <DropdownMenuItem icon={<IconPencilMinus className="h-4 w-4" />} onClick={() => { navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(item.id || "")); close(); }}>Edit Template</DropdownMenuItem>
+      <DropdownMenuItem icon={<Copy className="h-4 w-4" />} onClick={() => { void handleDuplicate(item.id || ""); close(); }}>Duplicate</DropdownMenuItem>
+      <DropdownMenuItem icon={<ToggleLeft className="h-4 w-4" />} onClick={() => { void handleToggle(item.id || ""); close(); }}>Change Status</DropdownMenuItem>
+      <DropdownMenuItem icon={<IconBrandTelegram className="h-4 w-4" />} onClick={() => { void handlePublish(item.id || ""); close(); }}>Publish Template</DropdownMenuItem>
+      <DropdownMenuItem icon={<Trash2 className="h-4 w-4" />} onClick={() => { setDeleteTarget(item); close(); }}>Delete</DropdownMenuItem>
+    </div>
+  </PortalDropdownMenu>
+</>),
+  };
+  const { layout: publishingTemplatesLayout, control: publishingTemplatesControl } = useCustomColumnLayout("publishingTemplates", publishingTemplatesColumns, publishingTemplatesAction);
+
   return (
     <div className="flex h-full flex-col gap-4 md:gap-6">
       {(isInitialLoading || isSaving) && (
@@ -306,7 +340,7 @@ export const PublishingTemplatesView: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         <div className="p-4 md:p-5 flex-1 flex flex-col">
-          <div className="mb-4">
+          <div className="compact-filter-section mb-4">
             {/* Mobile: search + filter button */}
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-0">
               <label className="text-xs font-medium text-slate-700 block sm:text-sm">Search</label>
@@ -419,7 +453,7 @@ export const PublishingTemplatesView: React.FC = () => {
               </div>
 
               {/* Clear Filters */}
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -428,6 +462,7 @@ export const PublishingTemplatesView: React.FC = () => {
                 >
                   Clear Filters
                 </Button>
+                {publishingTemplatesControl}
               </div>
             </div>
 
@@ -496,179 +531,23 @@ export const PublishingTemplatesView: React.FC = () => {
           )}
 
           <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300 relative">
-          <div
-            ref={scrollerRef as React.RefObject<HTMLDivElement>}
-            className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-            {...dragEvents}
-          >
-            <TableMarkup.Root className="w-full min-w-[1500px]">
-              <TableMarkup.Head className="sticky top-0 z-30">
-                <TableMarkup.Row>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell40}>
-                    No.
-                  </TableMarkup.HeaderCell>
-                  {tableColumns.map((column) => {
-                    const isSorted = sortConfig.key === column.id;
-                    return (
-                      <TableMarkup.HeaderCell
-                        key={column.id}
-                        onClick={column.sortable ? () => handleSort(column.id) : undefined}
-                        className={cn(
-                          "sticky top-0 z-20 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-left text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-500 transition-colors",
-                          column.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700",
-                          column.id === "action" && "right-0 z-30 text-center shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200",
-                          column.className,
-                        )}
-                      >
-                        <div className="flex w-full items-center justify-between gap-2">
-                          <span className="truncate">{column.label}</span>
-                          {column.sortable && (
-                            <div className="flex shrink-0 flex-col text-slate-400">
-                              <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" && "text-emerald-600")} />
-                              <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" && "text-emerald-600")} />
-                            </div>
-                          )}
-                        </div>
-                      </TableMarkup.HeaderCell>
-                    );
-                  })}
-                </TableMarkup.Row>
-              </TableMarkup.Head>
-              <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                {!isLoading && templates.length === 0 ? (
-                  <TableMarkup.Row>
-                    <TableMarkup.Cell colSpan={tableColumns.length + 1} className="p-0">
-                      <TableEmptyState
-                        title="No Publishing Templates Found"
-                        description="No templates match the current filters. Adjust filters or create a new publishing template."
-                      />
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                ) : (
-                  templates.map((template, index) => (
-                    <TableMarkup.Row key={template.id} className="group transition-colors hover:bg-slate-50/80">
-                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-center text-xs text-slate-700 sm:text-sm">
-                        {startIndex + index + 1}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
-                        <button
-                          type="button"
-                          onClick={() => navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(template.id || ""))}
-                          className="font-medium text-emerald-700 hover:underline"
-                        >
-                          {template.templateName || "-"}
-                        </button>
-                        {template.description && (
-                          <p className="mt-0.5 max-w-[320px] truncate text-2xs text-slate-500">{template.description}</p>
-                        )}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
-                        {formatPublishingMode(template.publishingMode)}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
-                        {template.versionNumber ?? 1}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
-                        <Badge color={getStatusColor(template.status)} size="sm">{formatStatus(template.status)}</Badge>
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
-                        <span className="font-medium text-slate-900">{configuredFileCount(template)}</span>
-                        <span className="ml-1 text-slate-500">files</span>
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-700 sm:text-sm">
-                        {template.createdBy || "-"}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
-                        {template.updatedAt ? formatDateTimeLong(template.updatedAt) : "-"}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
-                        {template.publishedAt ? formatDateTimeLong(template.publishedAt) : "-"}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell
-                        onClick={(event) => event.stopPropagation()}
-                        className="sticky right-0 z-30 whitespace-nowrap bg-white px-4 py-3 text-center text-xs shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-slate-200 group-hover:bg-slate-50 sm:text-sm"
-                      >
-                        {canManageTemplates && (
-                          <button
-                            ref={getRef(template.id || "")}
-                            onClick={(event) => toggle(template.id || "", event)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100"
-                            aria-label="More actions"
-                          >
-                            <MoreVertical className="h-4 w-4 text-slate-600" />
-                          </button>
-                        )}
-                        <PortalDropdownMenu isOpen={openId === template.id} onClose={close} position={position}>
-                          <div className="py-1">
-                            <DropdownMenuItem
-                              icon={<IconPencilMinus className="h-4 w-4" />}
-                              onClick={() => {
-                                navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(template.id || ""));
-                                close();
-                              }}
-                            >
-                              Edit Template
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              icon={<Copy className="h-4 w-4" />}
-                              onClick={() => {
-                                void handleDuplicate(template.id || "");
-                                close();
-                              }}
-                            >
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              icon={<ToggleLeft className="h-4 w-4" />}
-                              onClick={() => {
-                                void handleToggle(template.id || "");
-                                close();
-                              }}
-                            >
-                              Change Status
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              icon={<IconBrandTelegram className="h-4 w-4" />}
-                              onClick={() => {
-                                void handlePublish(template.id || "");
-                                close();
-                              }}
-                            >
-                              Publish Template
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              icon={<Trash2 className="h-4 w-4" />}
-                              onClick={() => {
-                                setDeleteTarget(template);
-                                close();
-                              }}
-                            >
-                              Delete
-                            </DropdownMenuItem>
-                          </div>
-                        </PortalDropdownMenu>
-                      </TableMarkup.Cell>
-                    </TableMarkup.Row>
-                  ))
-                )}
-              </TableMarkup.Body>
-            </TableMarkup.Root>
-          </div>
-
-          {totalItems > 0 && (
-            <div className="border-t border-slate-200">
-              <TablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                isLoading={isLoading}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={setItemsPerPage}
-              />
-            </div>
-          )}
-          </div>
+          <DataTable
+            rows={templates}
+            getRowKey={(item) => item.id}
+            columns={publishingTemplatesLayout.columns}
+            columnLayout={publishingTemplatesLayout}
+            action={publishingTemplatesAction}
+            emptyState={
+              <TableEmptyState
+  title="No Publishing Templates Found" description="No templates match the current filters. Adjust filters or create a new publishing template." />
+            }
+            pagination={
+              totalItems > 0 ? (
+                <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage} isLoading={isLoading} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+              ) : undefined
+            }
+          />
+        </div>
         </div>
         </div>
       </div>

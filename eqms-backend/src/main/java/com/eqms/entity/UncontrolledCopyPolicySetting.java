@@ -34,6 +34,10 @@ public class UncontrolledCopyPolicySetting {
     @Column(name = "validity_hours", nullable = false)
     private int validityHours = 72;
 
+    /** DISTRIBUTION = validity_hours after distribution; DOCUMENT_VALID_UNTIL = the document's Valid Until date plus validity_hours. */
+    @Column(name = "validity_basis", nullable = false, length = 30)
+    private String validityBasis = "DISTRIBUTION";
+
     @Column(name = "allow_redownload", nullable = false)
     private boolean allowRedownload = true;
 
@@ -65,6 +69,8 @@ public class UncontrolledCopyPolicySetting {
     public void setId(UUID id) { this.id = id; }
     public boolean isApprovalRequired() { return approvalRequired; }
     public void setApprovalRequired(boolean approvalRequired) { this.approvalRequired = approvalRequired; }
+    public String getValidityBasis() { return validityBasis; }
+    public void setValidityBasis(String validityBasis) { this.validityBasis = validityBasis; }
     public int getValidityHours() { return validityHours; }
     public void setValidityHours(int validityHours) { this.validityHours = validityHours; }
     public boolean isAllowRedownload() { return allowRedownload; }

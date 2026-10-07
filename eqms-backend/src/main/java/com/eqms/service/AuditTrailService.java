@@ -14,7 +14,6 @@ import com.eqms.entity.AuditLog;
 import com.eqms.entity.DocumentRecord;
 import com.eqms.entity.DocumentRevisionRecord;
 import com.eqms.entity.ControlledCopyRecord;
-import com.eqms.entity.ControlledCopyDistributionBatch;
 import com.eqms.entity.UserAccount;
 import com.eqms.repository.AuditLogChangeRepository;
 import com.eqms.repository.AuditLogRepository;
@@ -459,7 +458,12 @@ public class AuditTrailService {
                     case "CANCEL":
                         predicates.add(builder.equal(actionTypeUpper, "CANCEL"));
                         break;
+                    case "REOPEN":
+                    case "REOPENED":
+                        predicates.add(builder.equal(actionTypeUpper, "REOPEN"));
+                        break;
                     case "OBSOLETE":
+                    case "OBSOLETED":
                         predicates.add(builder.equal(actionTypeUpper, "OBSOLETE"));
                         break;
                     case "E-SIGNATURE SUCCESS":
@@ -649,23 +653,13 @@ public class AuditTrailService {
             if (normalized.equals("CONTROLLED COPY")) {
                 ControlledCopyRecord copy = controlledCopyRepository.findById(entityId)
                         .orElseThrow(() -> new AccessDeniedException("Controlled copy audit access denied"));
-                DocumentAuthorizationService authorization = documentAuthorizationServiceProvider.getObject();
-                boolean canViewDocument = copy.getDocument() != null
-                        && authorization.canAccessControlledCopy(actor, copy.getDocument());
-                boolean canViewRevision = copy.getRevision() != null
-                        && authorization.canAccessControlledCopy(actor, copy.getRevision());
-                if (!canViewDocument && !canViewRevision && !matchesControlledCopyViewer(actor, copy)) {
+                if (!documentAuthorizationServiceProvider.getObject().canViewControlledCopy(actor, copy)) {
                     throw new AccessDeniedException("Controlled copy audit access denied");
                 }
             } else {
-                ControlledCopyDistributionBatch batch = controlledCopyDistributionBatchRepository.findById(entityId)
+                controlledCopyDistributionBatchRepository.findById(entityId)
                         .orElseThrow(() -> new AccessDeniedException("Controlled copy batch audit access denied"));
-                DocumentAuthorizationService authorization = documentAuthorizationServiceProvider.getObject();
-                boolean canViewDocument = batch.getDocument() != null
-                        && authorization.canAccessControlledCopy(actor, batch.getDocument());
-                boolean canViewRevision = batch.getRevision() != null
-                        && authorization.canAccessControlledCopy(actor, batch.getRevision());
-                if (!canViewDocument && !canViewRevision && !matchesControlledCopyBatchViewer(actor, batch)) {
+                if (!documentAuthorizationServiceProvider.getObject().canViewControlledCopyBatch(actor)) {
                     throw new AccessDeniedException("Controlled copy batch audit access denied");
                 }
             }
@@ -674,7 +668,7 @@ public class AuditTrailService {
         // GMP decision (HDR-AUTH-001): a direct stakeholder of the Document/Revision (Author,
         // Co-author, Reviewer/Approver, or Admin/DCO) automatically sees its Audit Trail tab --
         // no separate documents.document.view_audit / global audit.view permission required.
-        // Indirect/broad viewers (visible only via the strict-visibility grant) still need it.
+        // Indirect/broad viewers (visible only via Record visibility = "All") still need it.
         if (!resolveIsDirectStakeholder(normalized, entityId, actor)) {
             // DOCUMENT has its own scoped "documents.document.view_audit" permission -- the exact
             // permission CapabilityService already uses to decide whether the FE even shows this
@@ -702,59 +696,6 @@ public class AuditTrailService {
             return documentRevisionRepository.findById(entityId)
                     .map(revision -> authorization.isDirectStakeholder(actor, revision))
                     .orElse(false);
-        }
-        return false;
-    }
-
-    /**
-     * Audit access must use the same object scope as the controlled-copy detail
-     * endpoint. A recipient can legitimately open their assigned copy even when
-     * they are not a document workflow participant; that recipient must also be
-     * able to inspect the copy's audit/signature tabs.
-     */
-    private boolean matchesControlledCopyViewer(UserAccount actor, ControlledCopyRecord copy) {
-        if (actor == null || actor.getId() == null || copy == null) {
-            return false;
-        }
-        return sameUser(actor, copy.getRecipientUser())
-                || matchesReference(actor, copy.getRecipientName())
-                || sameUser(actor, copy.getRequestedBy())
-                || sameUser(actor, copy.getApprovedBy())
-                || sameUser(actor, copy.getPrintedBy())
-                || sameUser(actor, copy.getDistributedBy())
-                || sameUser(actor, copy.getRecalledBy())
-                || sameUser(actor, copy.getDestroyedBy())
-                || sameUser(actor, copy.getCancelledBy())
-                || sameUser(actor, copy.getObsoletedBy());
-    }
-
-    private boolean matchesControlledCopyBatchViewer(UserAccount actor, ControlledCopyDistributionBatch batch) {
-        if (actor == null || actor.getId() == null || batch == null) {
-            return false;
-        }
-        if (sameUser(actor, batch.getRequestedBy()) || sameUser(actor, batch.getDistributedBy())) {
-            return true;
-        }
-        return matchesReference(actor, batch.getDistributionList())
-                || matchesReference(actor, batch.getExternalRecipients());
-    }
-
-    private boolean sameUser(UserAccount left, UserAccount right) {
-        return left != null && right != null && left.getId() != null && left.getId().equals(right.getId());
-    }
-
-    private boolean matchesReference(UserAccount actor, String reference) {
-        if (actor == null || actor.getId() == null || !StringUtils.hasText(reference)) {
-            return false;
-        }
-        String normalized = reference.trim();
-        for (String value : normalized.split("[,;\\n]")) {
-            String candidate = value.trim();
-            if ((StringUtils.hasText(actor.getFullName()) && candidate.equalsIgnoreCase(actor.getFullName()))
-                    || (StringUtils.hasText(actor.getUsername()) && candidate.equalsIgnoreCase(actor.getUsername()))
-                    || (StringUtils.hasText(actor.getEmail()) && candidate.equalsIgnoreCase(actor.getEmail()))) {
-                return true;
-            }
         }
         return false;
     }
@@ -2191,6 +2132,7 @@ public class AuditTrailService {
             case "DISABLE" -> "Disable";
             case "CANCEL" -> "Cancel";
             case "OBSOLETE" -> "Obsoleted";
+            case "REOPEN" -> "Reopened";
             case "SIGNATURE_SUCCESS" -> "E-Signature Success";
             case "SIGNATURE_FAILED" -> "E-Signature Failed";
             case "CHANGE_PERMISSION" -> "Change Permission";

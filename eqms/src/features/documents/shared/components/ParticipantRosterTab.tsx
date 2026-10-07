@@ -37,7 +37,7 @@ export interface ParticipantRosterTabProps {
     /** Reviewer-only: the Sub-Type's resolved requirement. REQUIRED drives a minimum of 1
      * directly in the picker modal, instead of letting the user under-select and only finding
      * out when the server rejects the Save. No maximum exists in either state. */
-    reviewRequirement?: "NONE" | "REQUIRED" | null;
+    reviewRequirement?: "NONE" | "REQUIRED" | "OPTIONAL" | null;
 }
 
 const UserSelectionModal: React.FC<{
@@ -229,7 +229,7 @@ const UserSelectionModal: React.FC<{
                                         key={user.id}
                                         onClick={() => !isDisabled && handleToggleUser(user.id)}
                                         disabled={isDisabled}
-                                        title={isCappedOut ? "Selection limit reached for this Sub-Type" : undefined}
+                                        title={isCappedOut ? "Selection limit reached for this document's saved workflow policy" : undefined}
                                         className={cn(
                                             "w-full flex items-center gap-3 py-2.5 px-3 rounded-lg transition-all group text-left border",
                                             isSelected
@@ -331,7 +331,7 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
     const maxSelectable: number | undefined = undefined;
     const minRequiredTotal = roleLabel === "Reviewer" && reviewRequirement === "REQUIRED" ? 1 : undefined;
     const requirementHint = roleLabel === "Reviewer" && reviewRequirement === "REQUIRED"
-        ? "This Sub-Type requires at least 1 Reviewer."
+        ? "This document's saved workflow policy requires at least 1 Reviewer."
         : undefined;
 
     const handleModalClose = () => {

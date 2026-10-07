@@ -89,6 +89,8 @@ class UncontrolledCopyServiceTest {
         copy.setStatusCode(UncontrolledCopyService.STATUS_REQUESTED);
         copy.setStatus("Requested");
         copy.setRequestedBy(requester);
+        // A self-service request: the requester holds the copy, so is its recipient.
+        copy.setRecipientUserId(requester.getId());
         when(uncontrolledCopyRepository.findById(copy.getId())).thenReturn(Optional.of(copy));
         // Seeded default (V502): the self-decision SoD constraint is active. lenient: not every test reaches it.
         lenient().when(sodConstraintService.isActiveConstraint(
@@ -252,11 +254,58 @@ class UncontrolledCopyServiceTest {
                 .put("email", "holder@example.com")
                 .put("externalRecipient", "J. Smith, ACME auditor");
         copy.setRecipientSnapshot(snapshot);
+        copy.setRecipientUserId(holder.getId());
         actAs(holder);
 
         UncontrolledCopyResponse response = service.getDetail(copy.getId());
 
         assertEquals("J. Smith, ACME auditor", response.externalRecipient());
         assertEquals("holder@example.com", response.recipientEmail());
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Record visibility: recipient or blanket permission only (Decision DOC-VISIBILITY-2026-10-06)
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void requesterWhoIsNotTheRecipient_cannotViewTheCopy() {
+        // Requested on behalf of someone else (request-for-others): the requester is not the named recipient.
+        UserAccount holder = user("holder@example.com", "Holder");
+        copy.setRecipientUserId(holder.getId());
+        actAs(requester, UncontrolledCopyService.P_VIEW);
+
+        assertThrows(AccessDeniedException.class, () -> service.getDetail(copy.getId()));
+    }
+
+    @Test
+    void viewAllUncontrolledCopiesPermission_seesACopyItIsNotTheRecipientOf() {
+        UserAccount holder = user("holder@example.com", "Holder");
+        copy.setRecipientUserId(holder.getId());
+        actAs(approver, UncontrolledCopyService.P_VIEW);
+        when(documentAuthorizationService.canViewAllUncontrolledCopies(approver)).thenReturn(true);
+
+        UncontrolledCopyResponse response = service.getDetail(copy.getId());
+
+        assertEquals(copy.getId().toString(), response.id());
+    }
+
+    @Test
+    void blanketViewStillNeedsTheBaseViewPermission() {
+        UserAccount holder = user("holder@example.com", "Holder");
+        copy.setRecipientUserId(holder.getId());
+        actAs(approver);
+        lenient().when(documentAuthorizationService.canViewAllUncontrolledCopies(approver)).thenReturn(true);
+
+        assertThrows(AccessDeniedException.class, () -> service.getDetail(copy.getId()));
+    }
+
+    @Test
+    void operationalPermissionsNoLongerImplyViewAll() {
+        UserAccount holder = user("holder@example.com", "Holder");
+        copy.setRecipientUserId(holder.getId());
+        actAs(approver, UncontrolledCopyService.P_VIEW, UncontrolledCopyService.P_APPROVE,
+                UncontrolledCopyService.P_REJECT, UncontrolledCopyService.P_DISTRIBUTE);
+
+        assertThrows(AccessDeniedException.class, () -> service.getDetail(copy.getId()));
     }
 }

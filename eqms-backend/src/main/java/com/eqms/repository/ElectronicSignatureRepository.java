@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ElectronicSignatureRepository extends JpaRepository<ElectronicSignature, UUID> {
+    long countByStatusAndSignedAtAfter(String status, java.time.Instant since);
     List<ElectronicSignature> findByRevision_IdOrderBySignedAtAsc(UUID revisionId);
     List<ElectronicSignature> findByDocument_IdOrderBySignedAtAsc(UUID documentId);
     List<ElectronicSignature> findByEntityTypeIgnoreCaseAndEntityIdOrderBySignedAtAsc(String entityType, UUID entityId);

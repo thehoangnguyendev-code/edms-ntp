@@ -10,5 +10,7 @@ import java.util.UUID;
 
 public interface ControlledCopyBatchStatusDiscrepancyRepository extends JpaRepository<ControlledCopyBatchStatusDiscrepancy, UUID> {
     Optional<ControlledCopyBatchStatusDiscrepancy> findByBatch_IdAndStatus(UUID batchId, String status);
-    Page<ControlledCopyBatchStatusDiscrepancy> findAllByStatusOrderByDetectedAtDesc(String status, Pageable pageable);
+    Page<ControlledCopyBatchStatusDiscrepancy> findAllByStatus(String status, Pageable pageable);
+    java.util.List<ControlledCopyBatchStatusDiscrepancy> findAllByStatus(String status);
+    long countByStatus(String status);
 }

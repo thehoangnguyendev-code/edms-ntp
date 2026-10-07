@@ -46,7 +46,6 @@ public record CreateUserRequest(
         String areaOfExpertise,
         String yearsOfExperience,
         String previousEmployer,
-        Boolean inviteExternal,
         /** DASHBOARD (default when omitted) / NOTIFICATIONS / KNOWLEDGE -- landing page immediately
          *  after login. Validated in UserManagementService against the 3 known codes. */
         String homePage,

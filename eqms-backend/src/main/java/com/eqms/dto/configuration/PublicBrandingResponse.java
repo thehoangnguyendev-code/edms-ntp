@@ -10,8 +10,11 @@ public record PublicBrandingResponse(
         boolean showSidebarUserProfile,
         boolean knowledgeExplorerEnabled,
         boolean compactDesktopFilters,
+        String toastPosition,
         String systemFavicon,
         String systemFooter,
+        /** Text of the top bar on the Dashboard; null when the administrator left it empty (the screen then uses its default). */
+        String systemHeaderTitle,
         Map<String, String> navigationLabelOverrides
 ) {
 }

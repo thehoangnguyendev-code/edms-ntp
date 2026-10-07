@@ -45,6 +45,20 @@ public interface DocumentRecordRepository extends JpaRepository<DocumentRecord, 
     long countByStatus_Code(String statusCode);
 
     /**
+     * Documents in the given lifecycle status grouped by Document Type, largest first.
+     * Each row is {typeId, shortCode, name, count}; types with no Document in that status are not returned.
+     * Inactive Document Types are included because their existing Documents still belong to the total.
+     */
+    @Query("""
+            select d.documentType.id, d.documentType.shortCode, d.documentType.name, count(d)
+            from DocumentRecord d
+            where d.status.code = :statusCode
+            group by d.documentType.id, d.documentType.shortCode, d.documentType.name
+            order by count(d) desc, d.documentType.name asc
+            """)
+    List<Object[]> countDocumentsGroupedByTypeForStatus(@Param("statusCode") String statusCode);
+
+    /**
      * Returns the highest issued numeric suffix for a document-number prefix.
      * The lookup deliberately uses the persisted number rather than the assigned
      * Document Type: historical records can have an incorrect type assignment,

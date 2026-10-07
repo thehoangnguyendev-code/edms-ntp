@@ -8,6 +8,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast";
 import { useDebounce } from "@/hooks";
 import { settingsApi } from "@/services/api/settings";
+import { metadataApi } from "@/services/api/metadata";
 import type { AssignDiff } from "../AccessProfileDetailView";
 
 /** Display row shape shared by both the always-visible "currently assigned" set (from
@@ -73,10 +74,11 @@ export const AccessProfileAssignedUsersTab: React.FC<{
     }
     let cancelled = false;
     setSearchLoading(true);
-    settingsApi.getUsers({ search: q, limit: SEARCH_LIMIT })
-      .then((res) => {
+    // Assignment picker: the metadata lookup returns Active users only.
+    metadataApi.getUsersLookup({ search: q })
+      .then((users) => {
         if (cancelled) return;
-        setSearchResults((res.data ?? []).map(u => ({ id: u.id, fullName: u.fullName, email: u.email, department: u.department, status: u.status })));
+        setSearchResults(users.slice(0, SEARCH_LIMIT).map(u => ({ id: u.id, fullName: u.fullName, email: u.email, department: u.department, status: "Active" })));
       })
       .catch(() => { if (!cancelled) setSearchResults([]); })
       .finally(() => { if (!cancelled) setSearchLoading(false); });

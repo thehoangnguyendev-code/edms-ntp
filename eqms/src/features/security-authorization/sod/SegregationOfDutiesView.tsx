@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, AlertTriangle, Ban, MoreVertical, X, Check, ChevronUp, ChevronDown } from "lucide-react";
@@ -17,6 +18,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
@@ -243,6 +245,103 @@ export const SegregationOfDutiesView: React.FC = () => {
     </TableMarkup.HeaderCell>
   );
 
+  type SodRow = (typeof constraints)[number];
+  const sodColumns: DataTableColumn<SodRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell33, cell: (_c, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
+    {
+      id: "name",
+      header: "Constraint",
+      label: "Constraint",
+      sort: { direction: sortKey === "name" ? sortDir : undefined, onSort: () => handleSort("name") },
+      cell: (c) => (
+        <>
+          <div className="font-medium text-slate-800">{c.name}</div>
+          {c.regulationRef && <div className="text-xs text-slate-400 mt-0.5">{c.regulationRef}</div>}
+        </>
+      ),
+    },
+    {
+      id: "permissionCodeA",
+      header: "Permission A",
+      label: "Permission A",
+      sort: { direction: sortKey === "permissionCodeA" ? sortDir : undefined, onSort: () => handleSort("permissionCodeA") },
+      cell: (c) => (
+        <>
+          <div className="font-medium text-slate-800">{c.permissionNameA}</div>
+          <div className="text-2xs text-slate-400 mt-0.5 font-mono">{c.permissionCodeA}</div>
+        </>
+      ),
+    },
+    {
+      id: "permissionCodeB",
+      header: "Permission B",
+      label: "Permission B",
+      sort: { direction: sortKey === "permissionCodeB" ? sortDir : undefined, onSort: () => handleSort("permissionCodeB") },
+      cell: (c) => (
+        <>
+          <div className="font-medium text-slate-800">{c.permissionNameB}</div>
+          <div className="text-2xs text-slate-400 mt-0.5 font-mono">{c.permissionCodeB}</div>
+        </>
+      ),
+    },
+    {
+      id: "severity",
+      header: "Severity",
+      label: "Severity",
+      sort: { direction: sortKey === "severity" ? sortDir : undefined, onSort: () => handleSort("severity") },
+      cell: (c) => (
+        <div className="flex items-center gap-1.5">
+          <Badge
+            semantic={c.severity === "BLOCK" ? "danger" : "warning"}
+            size="sm"
+            icon={c.severity === "BLOCK" ? <Ban className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+          >
+            {c.severity}
+          </Badge>
+          {c.system && <Badge color="blue" size="xs">System</Badge>}
+        </div>
+      ),
+    },
+    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (c) => formatDateTime(c.updatedAt) },
+  ];
+  const sodAction: DataTableAction<SodRow> = {
+    header: "Action",
+    cell: (c) => (
+      <>
+        <button
+          ref={getRef(c.id)}
+          onClick={(e) => toggle(c.id, e)}
+          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
+          aria-label="More actions"
+        >
+          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
+        </button>
+        <PortalDropdownMenu isOpen={openId === c.id} onClose={close} position={position}>
+          <div className="py-1">
+            {canManageSod && (
+              <>
+                <DropdownMenuItem
+                  icon={<IconPencilMinus className="h-4 w-4" />}
+                  onClick={() => { navigate(`${ROUTES.SECURITY.SOD}/${c.id}/edit`); close(); }}
+                >
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  icon={<IconTrash className="h-4 w-4" />}
+                  onClick={() => { setDeleteTarget(c); close(); }}
+                  disabled={c.system}
+                >
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
+          </div>
+        </PortalDropdownMenu>
+      </>
+    ),
+  };
+  const { layout: sodLayout, control: sodControl } = useCustomColumnLayout("sod.constraints", sodColumns, sodAction);
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       <PageHeader
@@ -347,7 +446,84 @@ export const SegregationOfDutiesView: React.FC = () => {
               </div>
 
               {/* Desktop filters */}
-              <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{sodControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={search}
+      onChange={(e) => {
+        setSearch(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search constraints…"}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "severityFilter",
+      label: "Severity",
+      value: String(severityFilter),
+      options: severityOptions,
+      onChange: (v) => {
+        setSeverityFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "typeFilter",
+      label: "Type",
+      value: String(typeFilter),
+      options: TYPE_OPTIONS,
+      onChange: (v) => {
+        setTypeFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: STATUS_OPTIONS,
+      onChange: (v) => {
+        setStatusFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "createdFrom",
+      label: "Created Date Range",
+      from: createdFrom,
+      to: createdTo,
+      onFromChange: (value) => {
+        setCreatedFrom(value);
+        setCurrentPage(1);
+      },
+      onToChange: (value) => {
+        setCreatedTo(value);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "updatedFrom",
+      label: "Last Updated Range",
+      from: updatedFrom,
+      to: updatedTo,
+      onFromChange: (value) => {
+        setUpdatedFrom(value);
+        setCurrentPage(1);
+      },
+      onToChange: (value) => {
+        setUpdatedTo(value);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
                 <div className="w-full">
                   <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
                   <div className="relative">
@@ -365,7 +541,7 @@ export const SegregationOfDutiesView: React.FC = () => {
                 <Select label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={STATUS_OPTIONS} />
                 <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
                 <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
-                <div className="flex items-end">
+                <div className="flex items-end gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -375,8 +551,10 @@ export const SegregationOfDutiesView: React.FC = () => {
                   >
                     Clear Filters
                   </Button>
+                  {sodControl}
                 </div>
               </div>
+</ConfiguredDesktopFilters>
 
               <div className="flex-1 flex flex-col relative">
                 {loading && (
@@ -384,131 +562,40 @@ export const SegregationOfDutiesView: React.FC = () => {
                     <SectionLoading minHeight="150px" />
                   </div>
                 )}
-                <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-[820px]">
-                  <TableMarkup.Head className="sticky top-0 z-30">
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell33}>No.</TableMarkup.HeaderCell>
-                      {sortableTh("name", "Constraint")}
-                      {sortableTh("permissionCodeA", "Permission A")}
-                      {sortableTh("permissionCodeB", "Permission B")}
-                      {sortableTh("severity", "Severity")}
-                      {sortableTh("updatedAt", "Last Updated")}
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                        Action
-                      </TableMarkup.HeaderCell>
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {!loading && constraints.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={7} className="p-0">
-                          <TableEmptyState
-                           
-                            title="No SoD Constraints"
-                            description={hasFilters ? "Try adjusting your search or filters." : "No Segregation of Duties constraints have been defined yet."}
-                          />
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : (
-                      constraints.map((c, idx) => (
-                        <TableMarkup.Row key={c.id} className={cn("hover:bg-slate-50/80 transition-colors group", !c.active && "opacity-50")}>
-                          <TableMarkup.Cell className={TABLE_STYLES.cell29}>
-                            {(currentPage - 1) * itemsPerPage + idx + 1}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <div className="font-medium text-slate-800">{c.name}</div>
-                            {c.regulationRef && <div className="text-xs text-slate-400 mt-0.5">{c.regulationRef}</div>}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <div className="font-medium text-slate-800">{c.permissionNameA}</div>
-                            <div className="text-2xs text-slate-400 mt-0.5 font-mono">{c.permissionCodeA}</div>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <div className="font-medium text-slate-800">{c.permissionNameB}</div>
-                            <div className="text-2xs text-slate-400 mt-0.5 font-mono">{c.permissionCodeB}</div>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <Badge
-                                semantic={c.severity === "BLOCK" ? "danger" : "warning"}
-                                size="sm"
-                                icon={c.severity === "BLOCK"
-                                  ? <Ban className="h-3.5 w-3.5" />
-                                  : <AlertTriangle className="h-3.5 w-3.5" />}
-                              >
-                                {c.severity}
-                              </Badge>
-                              {c.system && <Badge color="blue" size="xs">System</Badge>}
-                            </div>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(c.updatedAt)}</TableMarkup.Cell>
-                          <TableMarkup.Cell
-                            onClick={(e) => e.stopPropagation()}
-                            className={TABLE_STYLES.emptyCell2}
-                          >
-                            <button
-                              ref={getRef(c.id)}
-                              onClick={(e) => toggle(c.id, e)}
-                              className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                              aria-label="More actions"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                            </button>
-                            <PortalDropdownMenu isOpen={openId === c.id} onClose={close} position={position}>
-                              <div className="py-1">
-                                {canManageSod && (
-                                  <>
-                                    <DropdownMenuItem
-                                      icon={<IconPencilMinus className="h-4 w-4" />}
-                                      onClick={() => {
-                                        navigate(`${ROUTES.SECURITY.SOD}/${c.id}/edit`);
-                                        close();
-                                      }}
-                                    >
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      icon={<IconTrash className="h-4 w-4" />}
-                                      onClick={() => {
-                                        setDeleteTarget(c);
-                                        close();
-                                      }}
-                                      disabled={c.system}
-                                    >
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </div>
-                            </PortalDropdownMenu>
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      ))
-                    )}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={loading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
-                    itemsPerPageOptions={[10, 20, 50]}
+                <div className="flex flex-col flex-1">
+              <DataTable
+                rows={constraints}
+                getRowKey={(c) => c.id}
+                columns={sodLayout.columns}
+                columnLayout={sodLayout}
+                action={sodAction}
+                scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
+                scrollProps={dragEvents}
+                isDragging={isDragging}
+                rowClassName={(c) => (c.active ? "" : "opacity-50")}
+                emptyState={
+                  <TableEmptyState
+                    title="No SoD Constraints"
+                    description={hasFilters ? "Try adjusting your search or filters." : "No Segregation of Duties constraints have been defined yet."}
                   />
-                </div>
-              )}
+                }
+                pagination={
+                  totalItems > 0 ? (
+                    <div className="border-t border-slate-200">
+                      <TablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        isLoading={loading}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
+                        itemsPerPageOptions={[10, 20, 50]}
+                      />
+                    </div>
+                  ) : undefined
+                }
+              />
                 </div>
               </div>
         </div>

@@ -19,7 +19,6 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useNavigateWithLoading } from "@/hooks";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { documentApi } from "@/services/api/documents";
-import { formSettingsApi } from "@/services/api/formSettings";
 import { settingsApi } from "@/services/api/settings";
 import { metadataApi } from "@/services/api/metadata";
 import { dictionaryApi } from "@/services/api/dictionary";
@@ -39,7 +38,7 @@ const EXPIRY_DURATION_UNIT_LABELS: Record<string, [string, string]> = {
   MONTHS: ["month", "months"],
 };
 
-// Mirrors the Controlled Copies Policy > Expiry Duration Policy unit set (HOURS/DAYS/WEEKS/MONTHS).
+// Mirrors the Controlled Copies Policy > Download Link Expiry unit set (HOURS/DAYS/WEEKS/MONTHS).
 // Falls back to the raw unit string (lowercased) for forward-compatibility with a unit added there
 // but not yet known here, rather than silently showing nothing.
 function formatExpiryDuration(value: number, unit?: string | null): string {
@@ -154,8 +153,6 @@ export const RequestControlledCopyView: React.FC = () => {
   } = navigationState;
 
   // Form state
-  const [deliveryMode, setDeliveryMode] = useState<"PAPER" | "ELECTRONIC">("PAPER");
-  const [formAllowsEform, setFormAllowsEform] = useState(false);
   const [distributionMode, setDistributionMode] =
     useState<DistributionMode>("internal");
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
@@ -334,28 +331,6 @@ export const RequestControlledCopyView: React.FC = () => {
     };
   }, [documentId, revisionId]);
 
-  useEffect(() => {
-    let mounted = true;
-    if (!documentId) return;
-    formSettingsApi
-      .getFormSettings(documentId)
-      .then((settings) => {
-        if (mounted) setFormAllowsEform(Boolean(settings?.allowEform));
-      })
-      .catch(() => {
-        if (mounted) setFormAllowsEform(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [documentId]);
-
-  // Electronic requires exactly one internal recipient -- the one person who will fill the eForm.
-  useEffect(() => {
-    if (deliveryMode !== "ELECTRONIC") return;
-    if (distributionMode !== "internal") setDistributionMode("internal");
-    if (distributionScope !== "individual") setDistributionScope("individual");
-  }, [deliveryMode, distributionMode, distributionScope]);
   const [reason, setReason] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const distributionModeTabs: TabItem[] = [
@@ -639,9 +614,6 @@ export const RequestControlledCopyView: React.FC = () => {
     (distributionMode === "internal"
       ? selectedRecipientCount > 0
       : parsedExternalRecipients.length > 0) &&
-    // Electronic requires internal recipients only -- each still gets their own 1:1 Controlled
-    // Copy via the server's per-recipient loop, so any count > 0 is valid (no longer capped at 1).
-    (deliveryMode !== "ELECTRONIC" || distributionMode === "internal") &&
     reason.trim().length > 0 &&
     !requestBlocked;
 
@@ -805,7 +777,6 @@ export const RequestControlledCopyView: React.FC = () => {
         purpose: request.reason,
         copies: selectedRecipientCount,
         quantity: selectedRecipientCount,
-        deliveryMode,
         signatureToken: data.signatureToken,
       });
     } catch (error) {
@@ -1108,29 +1079,6 @@ export const RequestControlledCopyView: React.FC = () => {
             icon={<MapPin className="h-4 w-4" />}
           >
             <div className="space-y-5">
-              {formAllowsEform && (
-                <div>
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
-                    Delivery
-                  </label>
-                  <TabNav
-                    tabs={[
-                      { id: "PAPER", label: "Paper" },
-                      { id: "ELECTRONIC", label: "Electronic (eForm)" },
-                    ]}
-                    activeTab={deliveryMode}
-                    onChange={(tabId) => setDeliveryMode(tabId as "PAPER" | "ELECTRONIC")}
-                    variant="pill"
-                    ariaLabel="Delivery mode"
-                  />
-                  {deliveryMode === "ELECTRONIC" && (
-                    <p className="mt-1.5 text-xs text-slate-500">
-                      Electronic copies go to exactly one recipient, who fills the eForm in-browser. Signer roles are
-                      assigned when this copy reaches Ready for Distribution.
-                    </p>
-                  )}
-                </div>
-              )}
               {!canRequestForOthers && (
                 <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5 flex items-start gap-2">
                   <p className="text-xs sm:text-sm text-emerald-800">
@@ -1300,16 +1248,19 @@ export const RequestControlledCopyView: React.FC = () => {
                 </div>
               )}
 
-              {/* Expiry Policy -- resolved from the applicable Controlled Copy Policy expiry rule
-                  (document type + department specificity, falling back to the mandatory Global
-                  Default). There is no "never expires" state; every Controlled Copy always
-                  resolves to one of these, matching exactly what the request will be submitted
-                  against. */}
-              <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
+              {/* A controlled copy is valid as long as its document: until the document's Valid Until date. The policy's Download
+                  Link Expiry (resolved by document type and department, falling back to the Global Default) only limits how long
+                  the link in the distribution e-mail works, counted from when the e-mail is sent. */}
+              <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 space-y-1">
+                <p className="text-xs sm:text-sm text-slate-700">
+                  {displayValidUntil && displayValidUntil !== "-"
+                    ? <>This Controlled Copy is valid until <span className="font-semibold text-slate-900">{displayValidUntil}</span>, the Valid Until date of the document.</>
+                    : "This document has no Valid Until date, so the Controlled Copy stays valid as long as the document does."}
+                </p>
                 <p className="text-xs sm:text-sm text-slate-700">
                   {requestContext?.expiryDurationValue
-                    ? <>This Controlled Copy will be valid for <span className="font-semibold text-slate-900">{formatExpiryDuration(requestContext.expiryDurationValue, requestContext.expiryDurationUnit)}</span> from the date it is distributed.</>
-                    : "Resolving the expiry duration from the Controlled Copies Policy..."}
+                    ? <>The link in the distribution e-mail works for <span className="font-semibold text-slate-900">{formatExpiryDuration(requestContext.expiryDurationValue, requestContext.expiryDurationUnit)}</span> after it is sent.</>
+                    : "Resolving the e-mail link validity from the Controlled Copies Policy..."}
                 </p>
               </div>
 

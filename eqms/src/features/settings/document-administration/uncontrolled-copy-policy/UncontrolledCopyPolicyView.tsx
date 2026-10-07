@@ -26,6 +26,7 @@ import {
   type UncontrolledCopyPolicy,
   type UncontrolledCopyPolicyMarking,
   type UncontrolledCopyEligibilityRule,
+  type UncontrolledCopyValidityBasis,
 } from "@/services/api/uncontrolledCopyPolicy";
 import type { MarkingPlacementRule } from "@/services/api/controlledCopyPolicy";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
@@ -58,8 +59,11 @@ const EMPTY_RULE_FORM: RuleFormData = {
   active: true,
 };
 
-const VALIDITY_MIN_HOURS = 1;
 const VALIDITY_MAX_HOURS = 8760;
+/** Counted from the distribution a copy lasts at least an hour; counted from the document's Valid Until it may add no hours at all. */
+const validityMinHours = (basis: UncontrolledCopyValidityBasis) => (basis === "DOCUMENT_VALID_UNTIL" ? 0 : 1);
+/** What each basis starts with when it is chosen (the document basis adds no extra hours by default). */
+const defaultValidityHours = (basis: UncontrolledCopyValidityBasis) => (basis === "DOCUMENT_VALID_UNTIL" ? 0 : 72);
 
 const DEFAULT_MARKING: UncontrolledCopyPolicyMarking = {
   watermarkEnabled: true,
@@ -90,6 +94,7 @@ const DEFAULT_MARKING: UncontrolledCopyPolicyMarking = {
 const DEFAULT_POLICY: UncontrolledCopyPolicy = {
   approvalRequired: true,
   validityHours: 72,
+  validityBasis: "DISTRIBUTION",
   allowRedownload: true,
   marking: DEFAULT_MARKING,
 };
@@ -150,6 +155,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
         const next: UncontrolledCopyPolicy = {
           approvalRequired: data.approvalRequired ?? DEFAULT_POLICY.approvalRequired,
           validityHours: data.validityHours ?? DEFAULT_POLICY.validityHours,
+          validityBasis: data.validityBasis ?? DEFAULT_POLICY.validityBasis,
           allowRedownload: data.allowRedownload ?? DEFAULT_POLICY.allowRedownload,
           marking: { ...DEFAULT_MARKING, ...(data.marking ?? {}) },
         };
@@ -287,7 +293,6 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
   const setMarking = <K extends keyof UncontrolledCopyPolicyMarking>(key: K, value: UncontrolledCopyPolicyMarking[K]) =>
     setPolicy((prev) => ({ ...prev, marking: { ...prev.marking, [key]: value } }));
 
-  const [previewPageKind, setPreviewPageKind] = useState<"COVER" | "BODY">("COVER");
 
   const hasCustomPosition = (kind: "stamp" | "watermark") =>
     (policy.marking.placements ?? []).some((placement) =>
@@ -330,8 +335,9 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
 
   const handleSave = async () => {
     const hours = Number(validityText);
-    if (!Number.isInteger(hours) || hours < VALIDITY_MIN_HOURS || hours > VALIDITY_MAX_HOURS) {
-      showToast({ type: "error", title: "Error", message: "Validity must be a whole number of hours between 1 and 8760." });
+    const minHours = validityMinHours(policy.validityBasis);
+    if (validityText.trim() === "" || !Number.isInteger(hours) || hours < minHours || hours > VALIDITY_MAX_HOURS) {
+      showToast({ type: "error", title: "Error", message: `Validity must be a whole number of hours between ${minHours} and ${VALIDITY_MAX_HOURS}.` });
       return;
     }
     setSaving(true);
@@ -342,6 +348,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
         {
           approvalRequired: policy.approvalRequired,
           validityHours: hours,
+          validityBasis: policy.validityBasis,
           allowRedownload: policy.allowRedownload,
           // The watermark is mandatory: never send it disabled.
           marking: { ...policy.marking, watermarkEnabled: true },
@@ -434,10 +441,29 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
               <FormSection title="Validity" icon={<TimerReset className="h-4 w-4" />}>
                 <div className="space-y-4">
                   <div className="min-w-0">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Validity after distribution (hours)</label>
+                    <Select
+                      label="Validity counted from"
+                      value={policy.validityBasis}
+                      onChange={(value) => {
+                        const basis = value as UncontrolledCopyValidityBasis;
+                        setPolicy((prev) => ({ ...prev, validityBasis: basis }));
+                        setValidityText(String(defaultValidityHours(basis)));
+                      }}
+                      options={[
+                        { label: "Distribution (hours after it is distributed)", value: "DISTRIBUTION" },
+                        { label: "Document's Valid Until date (plus hours)", value: "DOCUMENT_VALID_UNTIL" },
+                      ]}
+                      enableSearch={false}
+                      disabled={!canManagePolicy}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
+                      {policy.validityBasis === "DOCUMENT_VALID_UNTIL" ? "Extra hours after the document's Valid Until (hours)" : "Validity after distribution (hours)"}
+                    </label>
                     <input
                       type="number"
-                      min={VALIDITY_MIN_HOURS}
+                      min={validityMinHours(policy.validityBasis)}
                       max={VALIDITY_MAX_HOURS}
                       step={1}
                       value={validityText}
@@ -445,7 +471,11 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                       disabled={!canManagePolicy}
                       className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"
                     />
-                    <p className="mt-1 text-2xs text-slate-400">1 to 8760. After this window the file can no longer be viewed or downloaded.</p>
+                    <p className="mt-1 text-2xs text-slate-400">
+                      {policy.validityBasis === "DOCUMENT_VALID_UNTIL"
+                        ? "0 to 8760. A copy stays valid through the whole of its document's Valid Until date, plus these hours (0 = that day only). The exact date and time are worked out when the copy is requested, for example 27/10/2027 + 72 hours. A document without a Valid Until date cannot be issued as an uncontrolled copy. After that the file can no longer be viewed or downloaded."
+                        : "1 to 8760. After this window the file can no longer be viewed or downloaded."}
+                    </p>
                   </div>
                   <div className="divide-y divide-slate-100 -my-2">
                     <SwitchRow
@@ -466,7 +496,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
               <div className="min-w-0 space-y-4 lg:col-span-5">
                 <MarkCard title="Watermark (mandatory)" enabled onToggle={() => undefined} disabled>
                   <WatermarkFields
-                    value={{ ...policy.marking, watermarkPages: undefined }}
+                    value={policy.marking}
                     onChange={(k, v) => setMarking(k as keyof UncontrolledCopyPolicyMarking, v as never)}
                     disabled={!canManagePolicy}
                     textHint='The watermark title line. Leave as the default, or replace it entirely -- the watermark itself always prints, only its wording is editable.'
@@ -540,8 +570,6 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                     <MarkingPreviewPane
                       copyType="UNCONTROLLED"
                       marking={{ ...policy.marking, watermarkEnabled: true }}
-                      pageKind={previewPageKind}
-                      onPageKindChange={setPreviewPageKind}
                       onPlacementChange={handlePlacementChange}
                     />
                   </>

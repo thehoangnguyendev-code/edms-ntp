@@ -16,14 +16,12 @@ const setup = () => {
   return { apply, view };
 };
 describe('Desktop filter drafts', () => {
-  it('adds a decorative search icon and leaves the input behavior unchanged', () => {
+  it('renders the caller-owned search slot unchanged and adds no icon of its own', () => {
     const change = vi.fn();
     render(<DesktopFilterPanel search={<input aria-label="Search" onChange={change} />}
       fields={fields} values={values} defaults={defaults} onApply={vi.fn()} />);
     const input = screen.getByRole('textbox', { name: 'Search' });
-    const wrapper = input.parentElement;
-    expect(wrapper).toHaveClass('relative', '[&_input]:pl-9');
-    expect(wrapper?.querySelector('[data-advanced-search-icon]')).toHaveAttribute('aria-hidden', 'true');
+    expect(input.parentElement?.querySelector('[data-advanced-search-icon]')).toBeNull();
     fireEvent.change(input, { target: { value: 'SOP' } });
     expect(change).toHaveBeenCalledOnce();
   });

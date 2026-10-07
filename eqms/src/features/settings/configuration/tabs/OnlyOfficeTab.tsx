@@ -104,11 +104,11 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
 
   return (
     <div className={embedded ? 'px-4 pb-4 md:px-5 md:pb-5' : 'p-4 md:p-5 space-y-4'}>
-      <FormSection title="OnlyOffice Document Server" icon={<Server className="h-4 w-4" />}>
+      <FormSection title="OnlyOffice Server" icon={<Server className="h-4 w-4" />}>
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h4 className="text-sm font-semibold text-slate-900">OnlyOffice Document Server</h4>
+              <h4 className="text-sm font-semibold text-slate-900">OnlyOffice Server</h4>
             </div>
             <Checkbox
               id="enableOnlyOffice"

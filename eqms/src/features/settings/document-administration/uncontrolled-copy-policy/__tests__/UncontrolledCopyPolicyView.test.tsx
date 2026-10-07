@@ -97,6 +97,16 @@ describe("Eligibility Rules table", () => {
     }), { signatureToken: "signed-token", reason: "reviewed" }));
   });
 
+  it("lets the mandatory watermark go on every page or on the first page only", async () => {
+    mount();
+    await screen.findByRole("table");
+    fireEvent.click(screen.getByRole("tab", { name: "PDF Markings" }));
+
+    const card = screen.getByText("Watermark (mandatory)").closest("div.rounded-xl") as HTMLElement;
+    expect(within(card).getByText("Pages")).toBeInTheDocument();
+    expect(within(card).getByText("Every page")).toBeInTheDocument();
+  });
+
   it("keeps rule mutations hidden from read-only users", async () => {
     mocks.hasPermissionAlias.mockReturnValue(false);
     mount();
@@ -135,5 +145,33 @@ describe("Eligibility Rules table", () => {
     await waitFor(() => expect(mocks.toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error" })));
     expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(3);
     expect(mocks.listEligibilityRules).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets the validity follow the document's Valid Until date with extra hours that start at 0, and saves that choice", async () => {
+    mount();
+    await screen.findByRole("table");
+    expect(screen.getByText("Validity after distribution (hours)")).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton")).toHaveValue(72);
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Validity counted from" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Document's Valid Until date (plus hours)" }));
+
+    expect(screen.getByText("Extra hours after the document's Valid Until (hours)")).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton")).toHaveValue(0);
+    expect(screen.getByText(/for example 27\/10\/2027 \+ 72 hours/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() => expect(mocks.savePolicy).toHaveBeenCalledWith(
+      expect.objectContaining({ validityBasis: "DOCUMENT_VALID_UNTIL", validityHours: 0 }), expect.anything()));
+  });
+
+  it("keeps the distribution basis, and at least one hour, for the policy as it is today", async () => {
+    mount();
+    await screen.findByRole("table");
+    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() => expect(mocks.toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error", message: expect.stringContaining("between 1 and 8760") })));
+    expect(mocks.savePolicy).not.toHaveBeenCalled();
   });
 });

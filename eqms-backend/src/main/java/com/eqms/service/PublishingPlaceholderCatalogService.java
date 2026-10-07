@@ -134,7 +134,10 @@ public class PublishingPlaceholderCatalogService {
                                 item("{{issuedBy}}", "Person or department issuing the document."),
                                 item("{{date}}", "Generic date field for footer use."),
                                 item("{{distributionList}}", "Distribution list assigned to the controlled copy."),
-                                item("{{reviewHistory}}", "Review history section or log. Alias: {{reviewEvaluate}}.")
+                                item("{{reviewHistory}}", "Review history section or log. Alias: {{reviewEvaluate}}."),
+                                item("{{parentDocumentLine}}", "Footer sentence of a related document (a form or appendix listed as Related by a SOP): Issue and append to the document \u201C<parent name>\u201D/ code : <parent number>. Empty when the document has no parent. Alias: {{parent_document_line}}."),
+                                item("{{parentDocumentName}}", "Name of the document that lists this one as a Related Document. Empty when there is none. Alias: {{parent_document_name}}."),
+                                item("{{parentDocumentNumber}}", "Document number of that parent, for example SOP.0007 (no revision number). Empty when there is none. Alias: {{parent_document_number}}.")
                         )
                 )
         ));

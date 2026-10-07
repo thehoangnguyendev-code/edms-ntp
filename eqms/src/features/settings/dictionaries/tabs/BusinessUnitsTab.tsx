@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 ﻿import React, { useState, useMemo } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { Trash2, MoreVertical, Power, PowerOff, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
@@ -8,6 +9,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import type { BusinessUnitItem, DepartmentItem } from "../types";
 import { usePortalDropdown } from "@/hooks";
@@ -216,8 +218,50 @@ export const BusinessUnitsTab = React.forwardRef<
         : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
     );
 
+  type UnitRow = (typeof items)[number];
+  const unitColumns: DataTableColumn<UnitRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    { id: "name", header: "Business Unit Name", label: "Business Unit Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: TABLE_STYLES.cell28, cell: (item) => item.name },
+    { id: "abbreviation", header: "Abbreviation", label: "Abbreviation", sort: { direction: sortConfig.key === "abbreviation" ? sortConfig.direction : undefined, onSort: () => handleSort("abbreviation") }, cell: (item) => <Badge color="blue" size="sm">{item.abbreviation}</Badge> },
+    {
+      id: "departments",
+      header: "Departments",
+      label: "Departments",
+      cell: (item) => (
+        <span className="inline-flex items-center gap-1.5 text-slate-600">
+          <span className="font-semibold text-slate-900">{departmentCountByUnit[item.id] ?? 0}</span>
+          {" "}department{(departmentCountByUnit[item.id] ?? 0) !== 1 ? "s" : ""}
+        </span>
+      ),
+    },
+    { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-xs truncate", cell: (item) => item.description || "-" },
+    {
+      id: "isActive",
+      header: "Status",
+      label: "Status",
+      sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") },
+      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>),
+    },
+    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+  ];
+  const unitAction: DataTableAction<UnitRow> = {
+    header: "Action",
+    cell: (item) =>
+      canManage ? (
+        <button
+          ref={getButtonRef(item.id)}
+          onClick={(e) => handleDropdownToggle(item.id, e)}
+          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
+          aria-label="More actions"
+        >
+          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
+        </button>
+      ) : null,
+  };
+  const { layout: unitLayout, control: unitControl } = useCustomColumnLayout("settings.business-units", unitColumns, unitAction);
+
   return (
-    <div className="flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
+    <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       {/* Filters */}
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
@@ -258,7 +302,54 @@ export const BusinessUnitsTab = React.forwardRef<
           </div>
         </div>
 
-        <div className="hidden md:flex flex-col gap-4">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{unitControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search business units..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: [
+        { label: "All Status", value: "All" },
+        { label: "Active", value: "Active" },
+        { label: "Inactive", value: "Inactive" },
+      ],
+      onChange: (value) => {
+        setStatusFilter(value as "All" | "Active" | "Inactive");
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "modifiedFromDate",
+      label: "Modified Date Range",
+      from: modifiedFromDate,
+      to: modifiedToDate,
+      onFromChange: (v) => {
+        setModifiedFromDate(v);
+        setCurrentPage(1);
+      },
+      onToChange: (v) => {
+        setModifiedToDate(v);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4 items-end">
             <div className="w-full">
               <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
@@ -312,7 +403,7 @@ export const BusinessUnitsTab = React.forwardRef<
             </div>
           </div>
 
-          <div className="flex justify-start">
+          <div className="flex justify-start gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -321,127 +412,34 @@ export const BusinessUnitsTab = React.forwardRef<
             >
               Clear Filters
             </Button>
+            {unitControl}
           </div>
         </div>
+</ConfiguredDesktopFilters>
       </div>
 
       {/* Table */}
       <div className="flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col">
-        <div className="flex-1 overflow-x-auto">
-          <TableMarkup.Root className="w-full">
-            <TableMarkup.Head className="sticky top-0 z-30">
-              <TableMarkup.Row>
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
-                  No.
-                </TableMarkup.HeaderCell>
-                {[
-                  { label: "Business Unit Name", id: "name" },
-                  { label: "Abbreviation", id: "abbreviation" },
-                  { label: "Departments", id: "departments" },
-                  { label: "Description", id: "description" },
-                  { label: "Status", id: "isActive" },
-                  { label: "Modified Date", id: "modifiedDate" },
-                ].map((col) => {
-                  const isSorted = sortConfig.key === col.id;
-                  const isSortable = col.id !== "departments";
-                  return (
-                    <TableMarkup.HeaderCell
-                      key={col.id}
-                      onClick={() => isSortable && handleSort(col.id)}
-                      className={cn(
-                        "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors group",
-                        isSortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700",
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="truncate">{col.label}</span>
-                        {isSortable && (
-                          <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                            <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600" : "")} />
-                            <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600" : "")} />
-                          </div>
-                        )}
-                      </div>
-                    </TableMarkup.HeaderCell>
-                  );
-                })}
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                  Action
-                </TableMarkup.HeaderCell>
-              </TableMarkup.Row>
-            </TableMarkup.Head>
-            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-              {items.length > 0 ? (
-                items.map((item, index) => (
-                  <TableMarkup.Row key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <TableMarkup.Cell className={TABLE_STYLES.cell30}>
-                      {(currentPage - 1) * itemsPerPage + index + 1}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className={TABLE_STYLES.cell28}>
-                      {item.name}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge color="blue" size="sm">{item.abbreviation}</Badge>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 text-slate-600">
-                        <span className="font-semibold text-slate-900">
-                          {departmentCountByUnit[item.id] ?? 0}
-                        </span>
-                        {" "}department{(departmentCountByUnit[item.id] ?? 0) !== 1 ? "s" : ""}
-                      </span>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-xs truncate">
-                      {item.description || "-"}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      {item.isActive ? (
-                        <Badge color="emerald" size="sm" >Active</Badge>
-                      ) : (
-                        <Badge color="slate" size="sm" >Inactive</Badge>
-                      )}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                      {item.modifiedDate}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell
-                      onClick={(e) => e.stopPropagation()}
-                      className={TABLE_STYLES.emptyCell3}
-                    >
-                      {canManage && (
-                        <button
-                          ref={getButtonRef(item.id)}
-                          onClick={(e) => handleDropdownToggle(item.id, e)}
-                          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                          aria-label="More actions"
-                        >
-                          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                        </button>
-                      )}
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                ))
-              ) : (
-                <TableMarkup.Row>
-                  <TableMarkup.Cell colSpan={8} className="p-0">
-                    <TableEmptyState title="No business units found" description="Try adjusting your search" />
-                  </TableMarkup.Cell>
-                </TableMarkup.Row>
-              )}
-            </TableMarkup.Body>
-          </TableMarkup.Root>
-        </div>
-
-        {totalItems > 0 && (
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={setItemsPerPage}
-          />
-        )}
+        <DataTable
+          rows={items}
+          getRowKey={(item) => item.id}
+          columns={unitLayout.columns}
+          columnLayout={unitLayout}
+          action={unitAction}
+          emptyState={undefined}
+          pagination={
+            totalItems > 0 ? (
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+              />
+            ) : undefined
+          }
+        />
       </div>
 
       {/* Portal Dropdown */}
@@ -706,7 +704,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={handleSubmit}
-      title={`${isEdit ? "Edit" : "Add New"} Business Unit`}
+      title={`${isEdit ? "Edit" : "New"} Business Unit`}
       isLoading={isSaving}
       size="lg"
     >

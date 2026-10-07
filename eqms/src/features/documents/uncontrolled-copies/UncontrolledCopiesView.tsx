@@ -31,7 +31,7 @@ import {
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { SectionLoading } from "@/components/ui/loading/Loading";
-import { DataTable, type DataTableColumn } from "@/components/ui/table";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { uncontrolledCopies as uncontrolledCopiesBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs.config";
@@ -365,6 +365,7 @@ export const UncontrolledCopiesView: React.FC<{
     {
       id: "rowNumber",
       header: "No.",
+      locked: true,
       headerClassName: "w-16",
       cell: (_, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
@@ -467,6 +468,24 @@ export const UncontrolledCopiesView: React.FC<{
       cell: (copy) => formatOptional(copy.validUntil),
     },
   ];
+
+  const uncontrolledAction: DataTableAction<UncontrolledCopy> = {
+                cell: (copy) => (
+                  <button
+                    ref={getRef(copy.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggle(copy.id, event);
+                    }}
+                    disabled={busyId === copy.id}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-50 md:h-8 md:w-8"
+                    aria-label="More actions"
+                  >
+                    <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                  </button>
+                ),
+  };
+  const { layout: uncontrolledLayout, control: uncontrolledControl } = useCustomColumnLayout("documents.uncontrolled-copies", columns, uncontrolledAction);
 
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6 w-full flex-1">
@@ -659,7 +678,7 @@ export const UncontrolledCopiesView: React.FC<{
                 placeholder="Select date range"
               />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -668,6 +687,7 @@ export const UncontrolledCopiesView: React.FC<{
               >
                 Clear Filters
               </Button>
+              {uncontrolledControl}
             </div>
           </div>
 
@@ -798,7 +818,8 @@ export const UncontrolledCopiesView: React.FC<{
           <div className="flex-1 flex flex-col relative">
             <DataTable
               rows={rows}
-              columns={columns}
+              columns={uncontrolledLayout.columns}
+              columnLayout={uncontrolledLayout}
               getRowKey={(copy) => copy.id}
               isLoading={loading}
               loadingContent={
@@ -829,22 +850,7 @@ export const UncontrolledCopiesView: React.FC<{
                     />
                   ) : null,
               }}
-              action={{
-                cell: (copy) => (
-                  <button
-                    ref={getRef(copy.id)}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      toggle(copy.id, event);
-                    }}
-                    disabled={busyId === copy.id}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-50 md:h-8 md:w-8"
-                    aria-label="More actions"
-                  >
-                    <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                  </button>
-                ),
-              }}
+              action={uncontrolledAction}
               pagination={
                 <TablePagination
                   currentPage={currentPage}

@@ -11,6 +11,9 @@ import java.util.Collection;
 import java.util.UUID;
 
 public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID>, JpaSpecificationExecutor<AuthSession> {
+    /** Sessions in the given status that were not revoked and have not expired at {@code now}. */
+    long countByStatusAndRevokedAtIsNullAndExpiresAtAfter(AuthSession.SessionStatus status, Instant now);
+
     Optional<AuthSession> findByRefreshTokenHash(String refreshTokenHash);
     List<AuthSession> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
     List<AuthSession> findAllByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(UUID userId);

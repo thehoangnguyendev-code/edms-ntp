@@ -2,24 +2,15 @@ import React from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { OnlyOfficeEditorFrame } from "@/features/documents/shared/components/OnlyOfficeEditorFrame";
 
-/**
- * Standalone, layout-less page hosting the OnlyOffice editor -- opened in a NEW BROWSER TAB by
- * "Edit File Online" (RevisionCreateView.tsx) and "Open File to Comment"
- * (useOfficeOnlineReviewLink.ts) when OnlyOffice is the admin-configured default provider, so it
- * behaves like Microsoft Graph's own "opens Word Online in a new tab" flow instead of an in-page
- * overlay. Mounted directly under AppRoutes.tsx (see the Knowledge preview page for the same
- * "authenticated but no MainLayout chrome" pattern) since a new tab has no app shell to render.
- */
+/** Ordinary online authoring; legacy electronic-Form links cannot start a session. */
 export const OnlyOfficeEditorPage: React.FC = () => {
   const { revisionId = "" } = useParams();
   const [searchParams] = useSearchParams();
-  const title = searchParams.get("title") || undefined;
-
-  return (
-    <OnlyOfficeEditorFrame
-      revisionId={revisionId}
-      title={title}
-      onClose={() => window.close()}
-    />
-  );
+  const format = searchParams.get("format");
+  if (format && format !== "docx") {
+    return <div className="flex min-h-screen items-center justify-center bg-white p-6">
+      <p role="alert" className="text-sm text-slate-700">Electronic Forms have been retired. Open Edit File Online from the revision to edit the DOCX document.</p>
+    </div>;
+  }
+  return <OnlyOfficeEditorFrame revisionId={revisionId} title={searchParams.get("title") || undefined} onClose={() => window.close()} />;
 };

@@ -6,7 +6,7 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 
 export const ReadOnlyReviewersTable: React.FC<{
   reviewers: Reviewer[];
-  reviewRequirement?: "NONE" | "REQUIRED" | null;
+  reviewRequirement?: "NONE" | "REQUIRED" | "OPTIONAL" | null;
 }> = ({ reviewers, reviewRequirement }) => {
   if (reviewRequirement === "NONE") {
     return (

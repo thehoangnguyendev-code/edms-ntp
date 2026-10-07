@@ -3,6 +3,22 @@
    =================================== */
 
 /* Flexbox Utilities */
+/* DesktopFilterPanel owns the 16px toolbar/table gap, like DocumentFilters.
+   Remove only extra screen spacing while that compact toolbar is rendered.
+   Classic filters and mobile keep their existing padding and gaps. */
+@media (min-width: 768px) {
+  .compact-filter-section:has([data-advanced-search-icon]) {
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+  .compact-filter-stack:has([data-advanced-search-icon]) {
+    row-gap: 0;
+  }
+  .compact-filter-stack:has([data-advanced-search-icon]) > div:has([data-advanced-search-icon]) + div:not([hidden]) {
+    margin-top: 0;
+  }
+}
+
 .flex-center {
   display: flex;
   align-items: center;

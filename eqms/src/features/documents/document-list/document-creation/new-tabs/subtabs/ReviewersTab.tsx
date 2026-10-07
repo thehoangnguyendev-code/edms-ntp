@@ -22,7 +22,7 @@ interface ReviewersTabProps {
     isLocked?: boolean;
     /** Sub-Type's resolved requirement — caps/floors the picker modal's selection so the DCO
      * can't pick a count the server will reject on Save. */
-    reviewRequirement?: "NONE" | "REQUIRED" | null;
+    reviewRequirement?: "NONE" | "REQUIRED" | "OPTIONAL" | null;
 }
 
 export const ReviewersTab: React.FC<ReviewersTabProps> = ({

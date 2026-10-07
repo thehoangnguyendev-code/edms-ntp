@@ -25,6 +25,8 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
     @Query("update UserAccount u set u.roleName = :newRoleName where u.roleName = :previousRoleName")
     int replaceRoleName(@Param("previousRoleName") String previousRoleName, @Param("newRoleName") String newRoleName);
     long countByStatus(UserStatus status);
+    /** Users whose lockout is still running at {@code now}. */
+    long countByLockedUntilAfter(java.time.Instant now);
     java.util.List<UserAccount> findAllByStatus(UserStatus status);
     java.util.List<UserAccount> findAllByStatusOrderByFullNameAsc(UserStatus status);
     java.util.List<UserAccount> findAllByStatusNotAndIdNotOrderByEmployeeCodeAsc(UserStatus status, UUID id);

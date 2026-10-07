@@ -314,6 +314,206 @@ public class ControlledCopyPdfMarkingService {
     }
 
     // ------------------------------------------------------------------------------------------------------------------
+    // Scan code (QR)
+    // ------------------------------------------------------------------------------------------------------------------
+
+    /** {@link Placement#kind()} of the scan code. Later status stamps keep clear of it. */
+    public static final String KIND_QR = "QR";
+    private static final float QR_QUIET_MODULES = 3f;
+    private static final String[] CORNERS = {"TOP_LEFT", "TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT"};
+
+    /**
+     * Prints the scan code (a QR symbol on a white quiet zone, with the copy number below it) on the FIRST page, in the
+     * configured corner. When that corner is already occupied by another mark the next free corner is used, so the code is
+     * never hidden. The code is drawn on top of the page's own content: it must stay scannable.
+     *
+     * @param obstacles marks already on the page (for example the issue stamp); only those on page 0 matter
+     */
+    public Marked applyScanCode(byte[] pdf, com.google.zxing.common.BitMatrix symbol, String caption, String position,
+                                int sizeMm, int marginMm, List<Placement> obstacles) {
+        return applyScanCode(pdf, symbol, caption, position, null, null, sizeMm, marginMm, obstacles);
+    }
+
+    /**
+     * As above, but when {@code fractionX} and {@code fractionY} are given the code goes exactly there (fractions of the page, the
+     * top-left of its frame, clamped to stay on the page) and is never moved: the administrator placed it by hand.
+     */
+    public Marked applyScanCode(byte[] pdf, com.google.zxing.common.BitMatrix symbol, String caption, String position,
+                                Double fractionX, Double fractionY,
+                                int sizeMm, int marginMm, List<Placement> obstacles) {
+        return applyScanCodes(pdf, page -> symbol, false, caption, position, fractionX, fractionY, sizeMm, marginMm, obstacles);
+    }
+
+    /**
+     * Prints the scan code on EVERY page when {@code everyPage} is set (each page gets the symbol {@code symbolForPage} returns for
+     * its zero-based index, so the code can carry the page number), otherwise on the first page only. Each page is placed on its
+     * own: the marks of that page (and the marks that apply to every page) are what the code keeps clear of.
+     */
+    public Marked applyScanCodes(byte[] pdf, java.util.function.IntFunction<com.google.zxing.common.BitMatrix> symbolForPage, boolean everyPage,
+                                 String caption, String position, Double fractionX, Double fractionY,
+                                 int sizeMm, int marginMm, List<Placement> obstacles) {
+        if (pdf == null || pdf.length == 0) {
+            throw new IllegalStateException("There is no PDF to print the scan code on");
+        }
+        try (PDDocument document = Loader.loadPDF(pdf); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            if (document.getNumberOfPages() == 0) {
+                throw new IllegalStateException("The PDF has no pages to print the scan code on");
+            }
+            List<Placement> placed = new ArrayList<>();
+            int pages = everyPage ? document.getNumberOfPages() : 1;
+            for (int pageIndex = 0; pageIndex < pages; pageIndex++) {
+            com.google.zxing.common.BitMatrix symbol = symbolForPage.apply(pageIndex);
+            PDPage page = document.getPage(pageIndex);
+            float[] size = visualSize(page);
+            float symbolSize = sizeMm * POINTS_PER_MM;
+            float module = symbolSize / symbol.getWidth();
+            float quiet = module * QR_QUIET_MODULES;
+            PDFont font = new org.apache.pdfbox.pdmodel.font.PDType1Font(org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA);
+            String text = printable(font, caption == null ? "" : caption);
+            float boxWidth = symbolSize + 2 * quiet;
+            float captionSize = 6f;
+            float captionWidth = StringUtils.hasText(text) ? textWidth(font, text, captionSize) : 0f;
+            if (captionWidth > boxWidth - 2f) {
+                captionSize = Math.max(3.5f, captionSize * (boxWidth - 2f) / captionWidth);
+            }
+            float captionHeight = StringUtils.hasText(text) ? captionSize + 2f : 0f;
+            float boxHeight = symbolSize + 2 * quiet + captionHeight;
+            float margin = Math.max(0, marginMm) * POINTS_PER_MM;
+
+            List<Placement> onPage = new ArrayList<>();
+            for (Placement o : obstacles == null ? List.<Placement>of() : obstacles) {
+                if (o.page() == pageIndex || o.page() == -1) {
+                    onPage.add(o.scaledTo(size[0], size[1]));
+                }
+            }
+            Placement chosen = null;
+            boolean moved = false;
+            if (fractionX != null && fractionY != null) {
+                float px = Math.max(0f, Math.min(fractionX.floatValue() * size[0], size[0] - boxWidth));
+                float py = Math.max(0f, Math.min(size[1] - fractionY.floatValue() * size[1] - boxHeight, size[1] - boxHeight));
+                Placement wanted = new Placement(0, KIND_QR, px, py, boxWidth, boxHeight, size[0], size[1], 0f, false);
+                // Like the stamp: a code dropped on another mark is not printed there. It jumps to the nearest free place.
+                chosen = overlapsAny(wanted, onPage) ? nearestFreePlace(wanted, onPage, size) : wanted;
+                moved = chosen != null && chosen != wanted;
+            }
+            int start = Math.max(0, java.util.Arrays.asList(CORNERS).indexOf(position == null ? "" : position.toUpperCase(java.util.Locale.ROOT)));
+            for (int i = 0; i < CORNERS.length && chosen == null; i++) {
+                Placement candidate = qrCandidate(CORNERS[(start + i) % CORNERS.length], boxWidth, boxHeight, margin, size, i > 0);
+                boolean clear = true;
+                for (Placement o : onPage) {
+                    if (!KIND_QR.equals(o.kind()) && candidate.overlaps(o, MARK_GAP)) {
+                        clear = false;
+                        break;
+                    }
+                }
+                if (clear) {
+                    chosen = candidate;
+                    moved = i > 0;
+                }
+            }
+            if (chosen == null) {
+                // Every corner is taken: keep the configured one. A scannable code matters more than a clean corner.
+                chosen = qrCandidate(CORNERS[start], boxWidth, boxHeight, margin, size, false);
+            } else if (moved) {
+                chosen = new Placement(chosen.page(), chosen.kind(), chosen.x(), chosen.y(), chosen.width(), chosen.height(),
+                        chosen.pageWidth(), chosen.pageHeight(), chosen.angle(), true);
+            }
+
+            try (PDPageContentStream content = new PDPageContentStream(
+                    document, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
+                applyVisualTransform(content, page);
+                content.setNonStrokingColor(Color.WHITE);
+                content.addRect(chosen.x(), chosen.y(), chosen.width(), chosen.height());
+                content.fill();
+                content.setNonStrokingColor(Color.BLACK);
+                float left = chosen.x() + quiet;
+                float top = chosen.y() + chosen.height() - quiet;
+                for (int row = 0; row < symbol.getHeight(); row++) {
+                    int col = 0;
+                    while (col < symbol.getWidth()) {
+                        if (!symbol.get(col, row)) {
+                            col++;
+                            continue;
+                        }
+                        int run = col;
+                        while (run < symbol.getWidth() && symbol.get(run, row)) {
+                            run++;
+                        }
+                        // One rectangle per horizontal run of dark modules; a hair of overlap avoids hairline gaps when printed.
+                        content.addRect(left + col * module, top - (row + 1) * module, (run - col) * module + 0.05f, module + 0.05f);
+                        col = run;
+                    }
+                }
+                content.fill();
+                if (StringUtils.hasText(text)) {
+                    content.beginText();
+                    content.setFont(font, captionSize);
+                    content.newLineAtOffset(chosen.x() + (chosen.width() - textWidth(font, text, captionSize)) / 2f, chosen.y() + 1.5f);
+                    content.showText(text);
+                    content.endText();
+                }
+            }
+            placed.add(chosen.page() == pageIndex ? chosen : new Placement(pageIndex, chosen.kind(), chosen.x(), chosen.y(), chosen.width(),
+                    chosen.height(), chosen.pageWidth(), chosen.pageHeight(), chosen.angle(), chosen.adjusted()));
+            }
+            document.save(out);
+            return new Marked(out.toByteArray(), placed);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to print the scan code on the controlled copy", ex);
+        }
+    }
+
+    /** How many pages a PDF has (the scan code of each page names it as "page n of this many"). */
+    public int pageCount(byte[] pdf) {
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            return document.getNumberOfPages();
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to read the controlled copy PDF", ex);
+        }
+    }
+
+    private static boolean overlapsAny(Placement candidate, List<Placement> others) {
+        for (Placement other : others) {
+            if (!KIND_QR.equals(other.kind()) && candidate.overlaps(other, MARK_GAP)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The free place for the code closest to where it was dropped (a grid of about 4 mm, the whole page), or null when the page
+     * has no free place of that size. The stamp and the watermark, rotated or not, are what it keeps clear of.
+     */
+    private static Placement nearestFreePlace(Placement wanted, List<Placement> others, float[] size) {
+        float step = 4f * POINTS_PER_MM;
+        float maxX = size[0] - wanted.width();
+        float maxY = size[1] - wanted.height();
+        Placement best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (float y = 0; y <= maxY + 0.01f; y += step) {
+            for (float x = 0; x <= maxX + 0.01f; x += step) {
+                Placement candidate = new Placement(0, KIND_QR, Math.min(x, maxX), Math.min(y, maxY), wanted.width(), wanted.height(),
+                        size[0], size[1], 0f, true);
+                double distance = Math.hypot(candidate.x() - wanted.x(), candidate.y() - wanted.y());
+                if (distance < bestDistance && !overlapsAny(candidate, others)) {
+                    best = candidate;
+                    bestDistance = distance;
+                }
+            }
+        }
+        return best;
+    }
+
+    private static Placement qrCandidate(String corner, float width, float height, float margin, float[] size, boolean adjusted) {
+        boolean right = corner.endsWith("RIGHT");
+        boolean top = corner.startsWith("TOP");
+        float x = right ? size[0] - margin - width : margin;
+        float y = top ? size[1] - margin - height : margin;
+        return new Placement(0, KIND_QR, Math.max(0, x), Math.max(0, y), width, height, size[0], size[1], 0f, adjusted);
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
     // Rendering
     // ------------------------------------------------------------------------------------------------------------------
 
@@ -343,7 +543,9 @@ public class ControlledCopyPdfMarkingService {
                 for (Placement o : obstacles) {
                     if (o.page() == index || o.page() == -1) {
                         Placement concrete = o.scaledTo(size[0], size[1]);
-                        ("STAMP".equals(concrete.kind()) ? stampObstacles : watermarkObstacles).add(concrete);
+                        // The scan code is a hard obstacle for a stamp (it must stay scannable); a watermark is a
+                        // low-opacity block across the page and does not have to avoid a corner code.
+                        (("STAMP".equals(concrete.kind()) || KIND_QR.equals(concrete.kind())) ? stampObstacles : watermarkObstacles).add(concrete);
                     }
                 }
 

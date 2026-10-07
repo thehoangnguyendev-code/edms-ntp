@@ -122,12 +122,6 @@ interface RevisionCreateRouteState extends RevisionCreateLocationState {
   workspaceState?: RevisionWorkspaceState | null;
 }
 
-interface OfficeOnlineDebugInfo {
-  configuredScope?: string | null;
-  effectiveScope?: string | null;
-  fetchedAt?: string | null;
-}
-
 const emptyTraining: TrainingInformationValue = {
   trainingPlannedDate: "",
   trainingPeriodEndDate: "",
@@ -470,17 +464,10 @@ const RevisionCreateViewContent: React.FC = () => {
   const [reviewComments, setReviewComments] = useState<RevisionReviewCommentItem[]>([]);
   const [currentReviewRound, setCurrentReviewRound] = useState(1);
   const [openCommentCount, setOpenCommentCount] = useState(0);
-  const [officeOnlineDebugInfo, setOfficeOnlineDebugInfo] =
-    useState<OfficeOnlineDebugInfo | null>(null);
-  const [officeOnlineEditUrl, setOfficeOnlineEditUrl] = useState<string | null>(
-    null,
-  );
-  const [isOpeningOfficeOnline, setIsOpeningOfficeOnline] = useState(false);
   const [isCompletingEditing, setIsCompletingEditing] = useState(false);
   const [isSubmittingForReview, setIsSubmittingForReview] = useState(false);
   const [isReplacingFile, setIsReplacingFile] = useState(false);
   const replaceFileInputRef = useRef<HTMLInputElement>(null);
-  const officeOnlineWindowRef = useRef<Window | null>(null);
   const [workingNotes, setWorkingNotes] = useState<RevisionWorkingNoteItem[]>(
     [],
   );
@@ -743,9 +730,6 @@ const RevisionCreateViewContent: React.FC = () => {
   );
 
   useEffect(() => {
-    setOfficeOnlineDebugInfo(null);
-    setOfficeOnlineEditUrl(null);
-    setIsOpeningOfficeOnline(false);
   }, [revisionDisplay?.id]);
 
   const currentStatus = useMemo(
@@ -1389,8 +1373,6 @@ const RevisionCreateViewContent: React.FC = () => {
       if (revId) {
         await refreshRevisionFromBackend(revId).catch(() => null);
       }
-      setOfficeOnlineEditUrl(null);
-      setOfficeOnlineDebugInfo(null);
       showToast({
         type: "success",
         title: "Editing completed",
@@ -1474,8 +1456,9 @@ const RevisionCreateViewContent: React.FC = () => {
 
   const handleOpenEditFileOnline = () => {
     if (!revisionDisplay?.id) return;
-    const title = revisionDisplay.fileName ? `?title=${encodeURIComponent(revisionDisplay.fileName)}` : "";
-    window.open(`/documents/revisions/${revisionDisplay.id}/onlyoffice-editor${title}`, "_blank");
+    const params = new URLSearchParams();
+    if (revisionDisplay.fileName) params.set('title', revisionDisplay.fileName);
+    window.open(`/documents/revisions/${revisionDisplay.id}/onlyoffice-editor?${params}`, "_blank", "noopener,noreferrer");
   };
 
   const handleOpenPublishingWorkspace = async () => {
@@ -1615,6 +1598,13 @@ const RevisionCreateViewContent: React.FC = () => {
     setCommentHistoryOpen(true);
   };
 
+  const onlineEditorActions = (
+    <Button onClick={handleOpenEditFileOnline} size="sm" variant="outline-emerald"
+      className="gap-2">
+      Edit File Online
+    </Button>
+  );
+
   const headerActions = (
     <>
       {!revisionDisplay?.id ? (
@@ -1639,22 +1629,7 @@ const RevisionCreateViewContent: React.FC = () => {
               Save
             </Button>
           )}
-          {canEditOnline && (
-            <div className="flex flex-col items-start gap-1">
-              <Button
-                onClick={handleOpenEditFileOnline}
-                size="sm"
-                variant="outline-emerald"
-                disabled={isOpeningOfficeOnline}
-                className="whitespace-nowrap gap-2"
-              >
-                {isOpeningOfficeOnline ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : null}
-                Edit File Online
-              </Button>
-            </div>
-          )}
+          {canEditOnline && onlineEditorActions}
           {canReplaceRevisionFile && (
             <Button
               onClick={() => replaceFileInputRef.current?.click()}
@@ -1958,22 +1933,7 @@ const RevisionCreateViewContent: React.FC = () => {
                 Save
               </Button>
             )}
-            {canEditOnline && (
-              <div className="flex flex-col items-start gap-1">
-                <Button
-                  onClick={handleOpenEditFileOnline}
-                  size="sm"
-                  variant="outline-emerald"
-                  disabled={isOpeningOfficeOnline}
-                  className="whitespace-nowrap gap-2"
-                >
-                  {isOpeningOfficeOnline ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : null}
-                  Edit File Online
-                </Button>
-              </div>
-            )}
+            {canEditOnline && onlineEditorActions}
             {canReplaceRevisionFile && (
               <Button
                 onClick={() => replaceFileInputRef.current?.click()}

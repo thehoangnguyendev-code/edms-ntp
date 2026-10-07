@@ -117,6 +117,11 @@ public class ControlledCopyObsoleteRaceTest {
         systemActor.setUsername("system");
         systemActor.setFullName("System (Automated)");
         org.mockito.Mockito.lenient().when(systemActorProvider.get()).thenReturn(systemActor);
+        // A paper copy now gets its scan code printed while it is composed; the marking service is a mock here, so pass the PDF through.
+        org.mockito.Mockito.lenient().when(pdfMarkingService.pageCount(any())).thenReturn(1);
+        org.mockito.Mockito.lenient().when(pdfMarkingService.applyScanCodes(any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any(), any(), any(), any(),
+                        org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt(), any()))
+                .thenAnswer(inv -> new com.eqms.service.ControlledCopyPdfMarkingService.Marked(inv.getArgument(0), List.of()));
     }
 
     @Test
@@ -256,6 +261,9 @@ public class ControlledCopyObsoleteRaceTest {
 
         assertEquals(ControlledCopyFinalizationOutcome.SUCCESS, outcome);
         verify(emailNotificationService).sendControlledCopyNotification(any(), org.mockito.ArgumentMatchers.eq(java.util.List.of(recipient)), any());
+        // A paper copy carries its own scan code: a fresh opaque token, recorded as soon as the code was printed on the PDF.
+        org.junit.jupiter.api.Assertions.assertTrue(copy.getScanToken() != null && copy.getScanToken().matches("[A-Z2-7]{26}"));
+        org.junit.jupiter.api.Assertions.assertTrue(copy.isMarkingApplied());
     }
 
     /**
@@ -614,8 +622,7 @@ public class ControlledCopyObsoleteRaceTest {
         batch.setQuantity(1);
         batch.setRevision(new DocumentRevisionRecord());
         when(controlledCopyDistributionBatchRepository.findById(batchId)).thenReturn(Optional.of(batch));
-        when(documentAuthorizationService.canAccessControlledCopy(eq(currentUser), org.mockito.ArgumentMatchers.any(DocumentRevisionRecord.class)))
-                .thenReturn(true);
+        // requireCanViewControlledCopyBatch is void on the mock: it passes unless stubbed to throw.
 
         copy.setCopyNumber(1);
         when(controlledCopyRepository.countByDistributionBatch_Id(batchId)).thenReturn(1L);
@@ -657,5 +664,95 @@ public class ControlledCopyObsoleteRaceTest {
         assertEquals(List.of(), result);
         verify(userAccountRepository).findAllByDepartmentNameOrCodeAndStatus(
                 eq("Quality Control"), eq("QC"), eq(com.eqms.entity.UserStatus.Active));
+    }
+
+    // ── Recall by scan: one copy of a committed batch (Decision COPY-RECALL-SCAN-2026-10-06) ──────────────
+
+    private com.eqms.entity.UserAccount dcoActor() {
+        com.eqms.entity.UserAccount actor = new com.eqms.entity.UserAccount();
+        actor.setId(UUID.randomUUID());
+        actor.setFullName("Dco User");
+        return actor;
+    }
+
+    private void givenDistributedCopy() {
+        copy.setStatusCode("DISTRIBUTED");
+        copy.setStatus("Distributed");
+        copy.setCurrentStage("Distributed");
+        when(controlledCopyRepository.findById(copyId)).thenReturn(Optional.of(copy));
+    }
+
+    @Test
+    void recallFromScanBatch_recallsTheCopy_andLinksTheBatchSignatureToItsAuditEntry() {
+        givenDistributedCopy();
+        com.eqms.entity.UserAccount actor = dcoActor();
+        UUID signatureId = UUID.randomUUID();
+        java.time.Instant received = java.time.Instant.now().minusSeconds(3600);
+
+        controlledCopyService.recallFromScanBatch(copyId, actor, "SOP refresh", received, "RCB-2026-00001", signatureId);
+
+        assertEquals("OBSOLETED", copy.getStatusCode());
+        assertEquals("Obsoleted", copy.getCurrentStage());
+        assertEquals("RECALLED", copy.getObsoleteReason());
+        assertEquals(received, copy.getRecalledAt());
+        assertEquals(received, copy.getObsoletedAt());
+        assertEquals(actor, copy.getRecalledBy());
+        assertEquals("SOP refresh", copy.getRecallReason());
+        verify(controlledCopyAuthorizationService).requireRecallControlledCopy(actor, copy);
+        verify(auditTrailService).logAs(eq(actor), eq("Controlled Copy"), eq("CC-0001"), eq(copyId), eq("RECALL"),
+                eq("Distributed"), eq("Obsoleted"), org.mockito.ArgumentMatchers.contains("RCB-2026-00001"), eq(List.of()), eq(signatureId));
+        verify(eventPublisher).publishEvent(any(ControlledCopyActionNotificationEvent.class));
+        verify(controlledCopyBatchStatusService).synchronize(copy);
+        // The batch's signature covers this copy: no per-copy signature or token is consumed here.
+        verifyNoInteractions(electronicSignatureService, signatureTokenConsumptionService);
+    }
+
+    @Test
+    void recallFromScanBatch_rejectsACopyThatWasAlreadyRecalled() {
+        givenDistributedCopy();
+        copy.setRecalledAt(java.time.Instant.now().minusSeconds(60));
+        copy.setStatusCode("OBSOLETED");
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () ->
+                controlledCopyService.recallFromScanBatch(copyId, dcoActor(), "again", java.time.Instant.now(), "RCB-1", UUID.randomUUID()));
+
+        verify(controlledCopyRepository, never()).saveAndFlush(any());
+        verify(auditTrailService, never()).logAs(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void recallFromScanBatch_rejectsACopyThatIsNotDistributed() {
+        copy.setStatusCode("READY_FOR_DISTRIBUTION");
+        copy.setCurrentStage("Ready for Distribution");
+        when(controlledCopyRepository.findById(copyId)).thenReturn(Optional.of(copy));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () ->
+                controlledCopyService.recallFromScanBatch(copyId, dcoActor(), "reason", java.time.Instant.now(), "RCB-1", UUID.randomUUID()));
+
+        verify(controlledCopyRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void recallFromScanBatch_requiresAReason() {
+        givenDistributedCopy();
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+                controlledCopyService.recallFromScanBatch(copyId, dcoActor(), "  ", java.time.Instant.now(), "RCB-1", UUID.randomUUID()));
+
+        verify(controlledCopyRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void recallFromScanBatch_stopsWhenTheActorMayNotRecallThisCopy() {
+        givenDistributedCopy();
+        com.eqms.entity.UserAccount actor = dcoActor();
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("outside scope"))
+                .when(controlledCopyAuthorizationService).requireRecallControlledCopy(actor, copy);
+
+        org.junit.jupiter.api.Assertions.assertThrows(org.springframework.security.access.AccessDeniedException.class, () ->
+                controlledCopyService.recallFromScanBatch(copyId, actor, "reason", java.time.Instant.now(), "RCB-1", UUID.randomUUID()));
+
+        assertEquals("DISTRIBUTED", copy.getStatusCode());
+        verify(controlledCopyRepository, never()).saveAndFlush(any());
     }
 }

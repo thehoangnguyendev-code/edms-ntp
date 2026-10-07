@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -16,6 +17,7 @@ import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown, useTableDragScroll } from "@/hooks";
 import type { PortalDropdownPosition } from "@/hooks/usePortalDropdown";
@@ -315,6 +317,166 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
     </>
   );
 
+  type PolicyRow = (typeof paginated)[number];
+  const policyColumns: DataTableColumn<PolicyRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-10", cell: (_policy, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    {
+      id: "workflowKey",
+      header: "Workflow",
+      label: "Workflow",
+      sort: { direction: sortKey === "workflowKey" ? sortDir : undefined, onSort: () => handleSort("workflowKey") },
+      cell: (policy) => (
+        <Badge color={policy.workflowKey === "CONTROLLED_COPY" ? "purple" : "blue"} size="sm">
+          {policy.workflowLabel ?? policy.workflowKey}
+        </Badge>
+      ),
+    },
+    {
+      id: "actionCode",
+      header: "Action",
+      label: "Action",
+      sort: { direction: sortKey === "actionCode" ? sortDir : undefined, onSort: () => handleSort("actionCode") },
+      cell: (policy) => (
+        <div className="flex flex-col items-start gap-1">
+          <div>
+            <div className="font-semibold text-slate-900">{policy.actionLabel ?? policy.actionCode}</div>
+            <div className="text-[10px] text-slate-400">{policy.actionCode}</div>
+          </div>
+          {(policy.warnings?.length ?? 0) > 0 && <Badge color="amber" size="sm">Warning</Badge>}
+        </div>
+      ),
+    },
+    { id: "fromStatus", header: "From Status", label: "From Status", sort: { direction: sortKey === "fromStatus" ? sortDir : undefined, onSort: () => handleSort("fromStatus") }, cell: (policy) => policy.fromStatusLabel ?? policy.fromStatus },
+    {
+      id: "documentTypeName",
+      header: "Document Type",
+      label: "Document Type",
+      sort: { direction: sortKey === "documentTypeName" ? sortDir : undefined, onSort: () => handleSort("documentTypeName") },
+      cell: (policy) =>
+        policy.documentTypeName ? <Badge color="purple" size="sm">{policy.documentTypeName}</Badge> : <span className="text-slate-400 italic">Global</span>,
+    },
+    { id: "requiredPermissionCode", header: "Permission", label: "Permission", sort: { direction: sortKey === "requiredPermissionCode" ? sortDir : undefined, onSort: () => handleSort("requiredPermissionCode") }, cell: (policy) => policy.requiredPermissionCode },
+    { id: "priority", header: "Priority", label: "Priority", sort: { direction: sortKey === "priority" ? sortDir : undefined, onSort: () => handleSort("priority") }, cell: (policy) => policy.priority },
+    {
+      id: "active",
+      header: "Active",
+      label: "Active",
+      sort: { direction: sortKey === "active" ? sortDir : undefined, onSort: () => handleSort("active") },
+      cell: (policy) => <Badge color={policy.active ? "emerald" : "slate"} size="sm">{policy.active ? "Active" : "Inactive"}</Badge>,
+    },
+    {
+      id: "system",
+      header: "Type",
+      label: "Type",
+      sort: { direction: sortKey === "system" ? sortDir : undefined, onSort: () => handleSort("system") },
+      cell: (policy) => <Badge color={policy.system ? "blue" : "slate"} size="sm">{policy.system ? "System" : "Custom"}</Badge>,
+    },
+    { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (policy) => (policy.createdAt ? formatDateTime(policy.createdAt) : "—") },
+    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (policy) => (policy.updatedAt ? formatDateTime(policy.updatedAt) : "—") },
+    {
+      id: "actors",
+      header: "Actors",
+      label: "Actors",
+      cell: (policy) =>
+        policy.actors.length === 0 ? (
+          <span className="text-slate-400 italic">none</span>
+        ) : (
+          <ul className="space-y-1 text-left">
+            {policy.actors.map((a, index) => (
+              <li key={`${a.actorType}-${a.actorCode ?? ""}-${index}`} className="text-slate-600 whitespace-nowrap">
+                {(a.actorTypeLabel ?? a.actorType) + (a.actorCode ? ` (${a.actorCode})` : "")}
+              </li>
+            ))}
+          </ul>
+        ),
+    },
+    {
+      id: "relations",
+      header: "Relations (New)",
+      label: "Relations (New)",
+      cell: (policy) =>
+        (policy.relations ?? []).length === 0 ? (
+          <span className="text-amber-600 italic text-xs sm:text-sm">none</span>
+        ) : (
+          <ul className="space-y-1 text-left">
+            {(policy.relations ?? []).map((r) => (
+              <li key={r.relationCode} className="font-mono text-slate-600 whitespace-nowrap">{r.relationCode}</li>
+            ))}
+          </ul>
+        ),
+    },
+  ];
+  const policyAction: DataTableAction<PolicyRow> = {
+    header: "Action",
+    cell: (policy) => {
+      const navigateTo = (path: string) => navigate(path);
+      return (
+        <>
+          <button
+            ref={getRef(policy.id)}
+            onClick={(e) => toggle(policy.id, e)}
+            className="inline-flex items-center justify-center h-7 w-7 rounded-lg hover:bg-slate-100 transition-colors"
+            aria-label="More actions"
+          >
+            <MoreVertical className="h-3.5 w-3.5 text-slate-600" />
+          </button>
+          <PortalDropdownMenu isOpen={openId === policy.id} onClose={close} position={position}>
+            <div className="py-1">
+              <DropdownMenuItem
+                icon={<IconInfoCircle className="h-4 w-4" />}
+                onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/edit`); close(); }}
+              >
+                View / Edit Transition
+              </DropdownMenuItem>
+              {canManage && (
+                <>
+                  <DropdownMenuItem
+                    icon={<IconPencilMinus className="h-4 w-4" />}
+                    onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/edit?mode=override`); close(); }}
+                  >
+                    Create Override
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    icon={<Copy className="h-4 w-4" />}
+                    onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/duplicate`); close(); }}
+                  >
+                    Duplicate
+                  </DropdownMenuItem>
+                  {!policy.active ? (
+                    <DropdownMenuItem
+                      icon={<IconToggleLeft className="h-4 w-4 text-slate-400" />}
+                      onClick={() => { setActivateTarget(policy); close(); }}
+                    >
+                      Activate
+                    </DropdownMenuItem>
+                  ) : (
+                    policy.deactivatable !== false && (
+                      <DropdownMenuItem
+                        icon={<IconToggleRight className="h-4 w-4 text-slate-400" />}
+                        onClick={() => { setDeactivateTarget(policy); close(); }}
+                      >
+                        Deactivate
+                      </DropdownMenuItem>
+                    )
+                  )}
+                  {policy.system && policy.resettable && (
+                    <DropdownMenuItem
+                      icon={<RefreshCw className="h-4 w-4" />}
+                      onClick={() => { setResetTarget(policy); close(); }}
+                    >
+                      Reset Default
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
+            </div>
+          </PortalDropdownMenu>
+        </>
+      );
+    },
+  };
+  const { layout: policyLayout, control: policyControl } = useCustomColumnLayout("workflow-authorization.transitions", policyColumns, policyAction);
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {isInitialLoading && <FullPageLoading text="Loading workflow authorization policies..." />}
@@ -363,7 +525,122 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
           </div>
 
           {/* Desktop filters */}
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{policyControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={search}
+      onChange={(e) => {
+        setSearch(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search policies..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "workflowFilter",
+      label: "Workflow",
+      value: String(workflowFilter),
+      options: workflowFilterOptions,
+      onChange: (v) => {
+        setWorkflowFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "actionFilter",
+      label: "Action",
+      value: String(actionFilter),
+      options: actionOptions,
+      onChange: (v) => {
+        setActionFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "statusFilter",
+      label: "From Status",
+      value: String(statusFilter),
+      options: fromStatusOptions,
+      onChange: (v) => {
+        setStatusFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "docTypeFilter",
+      label: "Document Type",
+      value: String(docTypeFilter),
+      options: docTypeOptions,
+      onChange: (v) => {
+        setDocTypeFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "activeFilter",
+      label: "Active",
+      value: String(activeFilter),
+      options: [
+        { label: "All", value: "ALL" },
+        { label: "Active", value: "ACTIVE" },
+        { label: "Inactive", value: "INACTIVE" },
+      ],
+      onChange: (v) => {
+        setActiveFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "systemFilter",
+      label: "Type",
+      value: String(systemFilter),
+      options: [
+        { label: "All", value: "ALL" },
+        { label: "System", value: "SYSTEM" },
+        { label: "Custom", value: "CUSTOM" },
+      ],
+      onChange: (v) => {
+        setSystemFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "createdFrom",
+      label: "Created Date Range",
+      from: createdFrom,
+      to: createdTo,
+      onFromChange: (value) => {
+        setCreatedFrom(value);
+        setCurrentPage(1);
+      },
+      onToChange: (value) => {
+        setCreatedTo(value);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "updatedFrom",
+      label: "Last Updated Range",
+      from: updatedFrom,
+      to: updatedTo,
+      onFromChange: (value) => {
+        setUpdatedFrom(value);
+        setCurrentPage(1);
+      },
+      onToChange: (value) => {
+        setUpdatedTo(value);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
             <div>
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
               <div className="relative">
@@ -421,7 +698,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
               placeholder="Select last updated range"
               autoApply
             />
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -431,8 +708,10 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
               >
                 Clear Filters
               </Button>
+              {policyControl}
             </div>
           </div>
+</ConfiguredDesktopFilters>
 
           {/* Table */}
           <div className="flex-1 flex flex-col relative">
@@ -442,111 +721,42 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
               </div>
             )}
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300 relative">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-[1900px]">
-                  <TableMarkup.Head className="sticky top-0 z-30">
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 w-10">
-                        No.
-                      </TableMarkup.HeaderCell>
-                      {(
-                        [
-                          { key: "workflowKey", label: "Workflow" },
-                          { key: "actionCode", label: "Action" },
-                          { key: "fromStatus", label: "From Status" },
-                          { key: "documentTypeName", label: "Document Type" },
-                          { key: "requiredPermissionCode", label: "Permission" },
-                          { key: "priority", label: "Priority" },
-                          { key: "active", label: "Active" },
-                          { key: "system", label: "Type" },
-                          { key: "createdAt", label: "Created Date" },
-                          { key: "updatedAt", label: "Last Updated" },
-                        ] as { key: SortKey; label: string }[]
-                      ).map((col) => (
-                        <TableMarkup.HeaderCell
-                          key={col.key}
-                          onClick={() => handleSort(col.key)}
-                          className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors group"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span>{col.label}</span>
-                            <div className="flex flex-col text-slate-400 group-hover:text-slate-500">
-                              <ChevronUp className={cn("h-3 w-3 -mb-1", sortKey === col.key && sortDir === "asc" ? "text-emerald-600" : "")} />
-                              <ChevronDown className={cn("h-3 w-3", sortKey === col.key && sortDir === "desc" ? "text-emerald-600" : "")} />
-                            </div>
-                          </div>
-                        </TableMarkup.HeaderCell>
-                      ))}
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>
-                        Actors
-                      </TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>
-                        Relations (New)
-                      </TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className="sticky top-0 right-0 z-30 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
-                        Action
-                      </TableMarkup.HeaderCell>
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {policies.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={14} className="p-0">
-                          <TableEmptyState
-                            title="No Workflow Authorization Policies Found"
-                            description={
-                              hasFilters
-                                ? "No policies match your filters. Try adjusting your search criteria."
-                                : "No policies found. Use 'New Policy' to create a custom policy, or check backend seed data."
-                            }
-                          />
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : (
-                      paginated.map((policy, index) => (
-                        <PolicyRow
-                          key={policy.id}
-                          policy={policy}
-                          index={(currentPage - 1) * itemsPerPage + index + 1}
-                          openId={openId}
-                          getRef={getRef}
-                          toggle={toggle}
-                          close={close}
-                          position={position}
-                          canManage={canManage}
-                          onEdit={() => navigate(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/edit`)}
-                          onCreateOverride={() => navigate(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/edit?mode=override`)}
-                          onDuplicate={() => navigate(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/duplicate`)}
-                          onActivate={() => setActivateTarget(policy)}
-                          onDeactivate={() => setDeactivateTarget(policy)}
-                          onReset={() => setResetTarget(policy)}
-                        />
-                      ))
-                    )}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={loading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                </div>
-              )}
-            </div>
+            <DataTable
+              rows={paginated}
+              getRowKey={(policy) => policy.id}
+              columns={policyLayout.columns}
+              columnLayout={policyLayout}
+              action={policyAction}
+              scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
+              scrollProps={dragEvents}
+              isDragging={isDragging}
+              emptyState={
+                <TableEmptyState
+                  title="No Workflow Authorization Policies Found"
+                  description={
+                    hasFilters
+                      ? "No policies match your filters. Try adjusting your search criteria."
+                      : "No policies found. Use 'New Policy' to create a custom policy, or check backend seed data."
+                  }
+                />
+              }
+              pagination={
+                totalItems > 0 ? (
+                  <div className="border-t border-slate-200">
+                    <TablePagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={totalItems}
+                      itemsPerPage={itemsPerPage}
+                      isLoading={loading}
+                      onPageChange={setCurrentPage}
+                      onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
+                      itemsPerPageOptions={[10, 20, 50]}
+                    />
+                  </div>
+                ) : undefined
+              }
+            />
           </div>
         </div>
       </div>
@@ -734,195 +944,3 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
 
 // ── Row component ──────────────────────────────────────────────────────────
 
-interface PolicyRowProps {
-  policy: WorkflowActionPolicy;
-  index: number;
-  openId: string | null;
-  getRef: (id: string) => React.RefObject<HTMLButtonElement | null>;
-  toggle: (id: string, e: React.MouseEvent<HTMLButtonElement>, opts?: { menuHeight?: number; menuWidth?: number }) => void;
-  close: () => void;
-  position: PortalDropdownPosition;
-  canManage: boolean;
-  onEdit: () => void;
-  onCreateOverride: () => void;
-  onDuplicate: () => void;
-  onActivate: () => void;
-  onDeactivate: () => void;
-  onReset: () => void;
-}
-
-const PolicyRow: React.FC<PolicyRowProps> = ({
-  policy, index, openId, getRef, toggle, close, position,
-  canManage, onEdit, onCreateOverride, onDuplicate, onActivate, onDeactivate, onReset,
-}) => {
-  const hasWarnings = (policy.warnings?.length ?? 0) > 0;
-
-  return (
-    <TableMarkup.Row className="hover:bg-slate-50/80 transition-colors group">
-      <TableMarkup.Cell className={TABLE_STYLES.cell31}>{index}</TableMarkup.Cell>
-
-      {/* Workflow */}
-      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
-        <Badge
-          color={policy.workflowKey === "CONTROLLED_COPY" ? "purple" : "blue"}
-          size="sm"
-        >
-          {policy.workflowLabel ?? policy.workflowKey}
-        </Badge>
-      </TableMarkup.Cell>
-
-      {/* Action */}
-      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
-        <div className="flex flex-col items-start gap-1">
-          <div>
-            <div className="font-semibold text-slate-900">{policy.actionLabel ?? policy.actionCode}</div>
-            <div className="text-[10px] text-slate-400">{policy.actionCode}</div>
-          </div>
-          {hasWarnings && <Badge color="amber" size="sm">Warning</Badge>}
-        </div>
-      </TableMarkup.Cell>
-
-      {/* From Status */}
-      <TableMarkup.Cell className={TABLE_STYLES.cell25}>
-        {policy.fromStatusLabel ?? policy.fromStatus}
-      </TableMarkup.Cell>
-
-      {/* Doc Type */}
-      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
-        {policy.documentTypeName ? (
-          <Badge color="purple" size="sm">{policy.documentTypeName}</Badge>
-        ) : (
-          <span className="text-slate-400 italic">Global</span>
-        )}
-      </TableMarkup.Cell>
-
-      {/* Permission */}
-      <TableMarkup.Cell className={TABLE_STYLES.cell25}>
-        {policy.requiredPermissionCode}
-      </TableMarkup.Cell>
-
-      {/* Priority */}
-      <TableMarkup.Cell className={TABLE_STYLES.cell31}>
-        {policy.priority}
-      </TableMarkup.Cell>
-
-      {/* Active */}
-      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
-        <Badge color={policy.active ? "emerald" : "slate"} size="sm">
-          {policy.active ? "Active" : "Inactive"}
-        </Badge>
-      </TableMarkup.Cell>
-
-      {/* System/Custom */}
-      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm whitespace-nowrap align-middle">
-        <Badge color={policy.system ? "blue" : "slate"} size="sm">
-          {policy.system ? "System" : "Custom"}
-        </Badge>
-      </TableMarkup.Cell>
-
-      <TableMarkup.Cell className={TABLE_STYLES.cell24}>
-        {policy.createdAt ? formatDateTime(policy.createdAt) : "—"}
-      </TableMarkup.Cell>
-
-      <TableMarkup.Cell className={TABLE_STYLES.cell24}>
-        {policy.updatedAt ? formatDateTime(policy.updatedAt) : "—"}
-      </TableMarkup.Cell>
-
-      {/* Actors: one per line and never split mid-word, so long permission codes stay readable */}
-      <TableMarkup.Cell className="py-3 px-4 text-left text-xs sm:text-sm min-w-[300px] align-middle">
-        {policy.actors.length === 0 ? (
-          <span className="text-slate-400 italic">none</span>
-        ) : (
-          <ul className="space-y-1 text-left">
-            {policy.actors.map((a, index) => (
-              <li key={`${a.actorType}-${a.actorCode ?? ""}-${index}`} className="text-slate-600 whitespace-nowrap">
-                {(a.actorTypeLabel ?? a.actorType) + (a.actorCode ? ` (${a.actorCode})` : "")}
-              </li>
-            ))}
-          </ul>
-        )}
-      </TableMarkup.Cell>
-
-      {/* Relations (new hybrid engine): one code per line, full width, no mid-word breaks */}
-      <TableMarkup.Cell className="py-3 px-4 text-left text-xs min-w-[360px] align-middle">
-        {(policy.relations ?? []).length === 0 ? (
-          <span className="text-amber-600 italic text-xs sm:text-sm">none</span>
-        ) : (
-          <ul className="space-y-1 text-left">
-            {(policy.relations ?? []).map((r) => (
-              <li key={r.relationCode} className="font-mono text-slate-600 whitespace-nowrap">
-                {r.relationCode}
-              </li>
-            ))}
-          </ul>
-        )}
-      </TableMarkup.Cell>
-
-      {/* Row actions */}
-      <TableMarkup.Cell
-        className="sticky right-0 bg-white py-3 px-4 text-left align-middle z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          ref={getRef(policy.id)}
-          onClick={(e) => toggle(policy.id, e)}
-          className="inline-flex items-center justify-start h-7 w-7 rounded-lg hover:bg-slate-100 transition-colors"
-          aria-label="More actions"
-        >
-          <MoreVertical className="h-3.5 w-3.5 text-slate-600" />
-        </button>
-        <PortalDropdownMenu isOpen={openId === policy.id} onClose={close} position={position}>
-          <div className="py-1">
-            <DropdownMenuItem
-              icon={<IconInfoCircle className="h-4 w-4" />}
-              onClick={() => { onEdit(); close(); }}
-            >
-              View / Edit Transition
-            </DropdownMenuItem>
-            {canManage && (
-              <>
-                <DropdownMenuItem
-                  icon={<IconPencilMinus className="h-4 w-4" />}
-                  onClick={() => { onCreateOverride(); close(); }}
-                >
-                  Create Override
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  icon={<Copy className="h-4 w-4" />}
-                  onClick={() => { onDuplicate(); close(); }}
-                >
-                  Duplicate
-                </DropdownMenuItem>
-                {!policy.active ? (
-                  <DropdownMenuItem
-                    icon={<IconToggleLeft className="h-4 w-4 text-slate-400" />}
-                    onClick={() => { onActivate(); close(); }}
-                  >
-                    Activate
-                  </DropdownMenuItem>
-                ) : (
-                  policy.deactivatable !== false && (
-                    <DropdownMenuItem
-                      icon={<IconToggleRight className="h-4 w-4 text-slate-400" />}
-                      onClick={() => { onDeactivate(); close(); }}
-                    >
-                      Deactivate
-                    </DropdownMenuItem>
-                  )
-                )}
-                {policy.system && policy.resettable && (
-                  <DropdownMenuItem
-                    icon={<RefreshCw className="h-4 w-4" />}
-                    onClick={() => { onReset(); close(); }}
-                  >
-                    Reset Default
-                  </DropdownMenuItem>
-                )}
-              </>
-            )}
-          </div>
-        </PortalDropdownMenu>
-      </TableMarkup.Cell>
-    </TableMarkup.Row>
-  );
-};

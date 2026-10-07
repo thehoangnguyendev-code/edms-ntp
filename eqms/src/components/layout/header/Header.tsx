@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROUTES } from '@/app/routes.constants';
 import logoNoBg from '@/assets/images/logo_nobg.png';
 import { useBranding } from '@/components/branding/BrandLogo';
+import { DEFAULT_SYSTEM_HEADER_TITLE } from '@/services/api/branding';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -26,11 +27,17 @@ interface HeaderProps {
   headerTitle?: string;
   showHeaderTitle?: boolean;
   scrollProgress?: number;
+  /**
+   * Desktop only: show the system header title (set in Settings > Configuration > Branding) instead of the breadcrumbs and the
+   * scrolled-page title, and keep it there while the page scrolls. Used by the Dashboard.
+   */
+  pinSystemTitle?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSidebarCollapsed, isMobileMenuOpen, onNavigateToProfile, onLogout, headerTitle, showHeaderTitle, scrollProgress = 0 }) => {
+export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSidebarCollapsed, isMobileMenuOpen, onNavigateToProfile, onLogout, headerTitle, showHeaderTitle, scrollProgress = 0, pinSystemTitle = false }) => {
   const { user, logout } = useAuth();
-  const { showSidebarUserProfile } = useBranding();
+  const { showSidebarUserProfile, systemHeaderTitle } = useBranding();
+  const pinnedTitle = pinSystemTitle ? (systemHeaderTitle?.trim() || DEFAULT_SYSTEM_HEADER_TITLE) : null;
   const { breadcrumbs } = useBreadcrumb();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -190,7 +197,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
             </div>
 
             {/* Breadcrumbs - Desktop/Tablet only, visible when NOT scrolled */}
-            {breadcrumbs && breadcrumbs.length > 0 && (
+            {!pinnedTitle && breadcrumbs && breadcrumbs.length > 0 && (
               <div className={cn(
                 "hidden md:flex absolute left-2 items-center min-w-0 transition-all duration-500 ease-out",
                 !showHeaderTitle
@@ -201,9 +208,23 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
               </div>
             )}
 
-            {/* Page Title - visible when scrolled past h1 */}
+            {/* System header title - desktop/tablet only, always visible (it does not give way to the page title on scroll) */}
+            {pinnedTitle && (
+              <div className="hidden md:flex flex-1 items-center min-w-0 md:pl-2">
+                <span
+                  data-testid="header-system-title"
+                  title={pinnedTitle}
+                  className="text-base md:text-lg font-bold text-slate-900 truncate max-w-[28rem] xl:max-w-2xl"
+                >
+                  {pinnedTitle}
+                </span>
+              </div>
+            )}
+
+            {/* Page Title - visible when scrolled past h1 (on desktop the pinned system title takes its place) */}
             <div className={cn(
               "flex-1 flex items-center min-w-0 transition-all duration-500 ease-out overflow-hidden md:pl-2",
+              pinnedTitle && "md:hidden",
               showHeaderTitle && headerTitle
                 ? "opacity-100 translate-y-0 blur-0"
                 : "opacity-0 -translate-y-4 blur-sm pointer-events-none"

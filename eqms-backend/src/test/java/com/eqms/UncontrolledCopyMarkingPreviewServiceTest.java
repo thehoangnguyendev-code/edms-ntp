@@ -70,15 +70,15 @@ class UncontrolledCopyMarkingPreviewServiceTest {
         byte[] basePdf = {1};
         byte[] markedPdf = {2};
         var base = new ControlledCopyMarkingPreviewService.CachedBase(basePdf, null, 0L);
-        when(basePreviewService.baseDocument("tpl", "landscape")).thenReturn(base);
+        when(basePreviewService.samplePaper()).thenReturn(base);
         when(markingService.applyStatusMarkingWithLayout(eq(basePdf), any(), anyList(), anyList(), anyList()))
                 .thenReturn(new ControlledCopyPdfMarkingService.Marked(markedPdf, List.of()));
         var expected = new ControlledCopyMarkingPreviewResponse("png", 1, 1, List.of(), List.of(), null);
-        when(basePreviewService.response(eq(markedPdf), eq(base), eq(1), eq(List.of()), anyList())).thenReturn(expected);
+        when(basePreviewService.response(eq(markedPdf), eq(base), eq(0), eq(List.of()), anyList())).thenReturn(expected);
 
         List<MarkingPlacementRule> placements = List.of(new MarkingPlacementRule("OTHERS", 0.1, 0.2, 20, null, null, null, null));
         ControlledCopyMarkingPreviewResponse response = service.preview(new UncontrolledCopyMarkingPreviewRequest(
-                "tpl", "landscape", "BODY", draft(false, placements)));
+                draft(false, placements)));
 
         assertSame(expected, response);
         @SuppressWarnings("unchecked")
@@ -95,11 +95,29 @@ class UncontrolledCopyMarkingPreviewServiceTest {
     }
 
     @Test
+    void the_watermark_goes_where_the_policy_says_every_page_by_default_or_the_first_page_only() {
+        byte[] basePdf = {1};
+        var base = new ControlledCopyMarkingPreviewService.CachedBase(basePdf, null, 0L);
+        when(basePreviewService.samplePaper()).thenReturn(base);
+        when(markingService.applyStatusMarkingWithLayout(eq(basePdf), any(), anyList(), anyList(), anyList()))
+                .thenReturn(new ControlledCopyPdfMarkingService.Marked(new byte[] {2}, List.of()));
+        ControlledCopyStatusMarking firstOnly = new ControlledCopyStatusMarking(null, null, null, null, null, null, null, null, "FIRST",
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+        service.preview(new UncontrolledCopyMarkingPreviewRequest(firstOnly));
+
+        ArgumentCaptor<ControlledCopyStatusMarking> config = ArgumentCaptor.forClass(ControlledCopyStatusMarking.class);
+        verify(markingService).applyStatusMarkingWithLayout(eq(basePdf), config.capture(), anyList(), anyList(), anyList());
+        assertTrue(config.getValue().watermarkEnabled(), "still printed: only where is chosen, not whether");
+        assertEquals("FIRST", config.getValue().watermarkPages());
+    }
+
+    @Test
     void preview_rejectsInvalidPlacement_beforeRendering() {
         List<MarkingPlacementRule> bad = List.of(new MarkingPlacementRule("OTHERS", 1.5, 0.2, 20, null, null, null, null));
 
         assertThrows(IllegalArgumentException.class, () -> service.preview(
-                new UncontrolledCopyMarkingPreviewRequest(null, "portrait", "COVER", draft(null, bad))));
+                new UncontrolledCopyMarkingPreviewRequest(draft(null, bad))));
         verifyNoInteractions(markingService, basePreviewService);
     }
 

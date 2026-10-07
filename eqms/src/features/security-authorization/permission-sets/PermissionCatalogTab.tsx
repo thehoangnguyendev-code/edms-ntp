@@ -6,6 +6,7 @@ import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { useTableDragScroll, useDebounce, usePortalDropdown } from "@/hooks";
 import { cn } from "@/components/ui/utils";
 import { settingsApi, type PermissionCatalogFlatItem, type PermissionLifecycleUsage } from "@/services/api/settings";
@@ -106,6 +107,48 @@ export const PermissionCatalogTab: React.FC = () => {
   const isInitialLoading = loading && items.length === 0;
   const isTableLoading = loading && items.length > 0;
 
+  type CatalogRow = (typeof items)[number];
+  const catalogColumns: DataTableColumn<CatalogRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14 text-center", cellClassName: "text-center text-slate-500", cell: (_p, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
+    { id: "code", header: "Code", label: "Code", sort: { direction: sortConfig.key === "code" ? sortConfig.direction : undefined, onSort: () => handleSort("code") }, cellClassName: "font-medium text-slate-800", cell: (p) => p.code },
+    { id: "name", header: "Name", label: "Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (p) => p.name },
+    { id: "module", header: "Module", label: "Module", sort: { direction: sortConfig.key === "module" ? sortConfig.direction : undefined, onSort: () => handleSort("module") }, cell: (p) => <Badge semantic="info" size="sm">{p.module}</Badge> },
+    { id: "groupName", header: "Group", label: "Group", sort: { direction: sortConfig.key === "groupName" ? sortConfig.direction : undefined, onSort: () => handleSort("groupName") }, cell: (p) => p.groupName },
+    {
+      id: "audit",
+      header: "Audit",
+      label: "Audit",
+      cell: (p) => (p.requiresAudit ? <Badge semantic="warning" size="sm">Audited</Badge> : <span className="text-sm text-slate-300">—</span>),
+    },
+    {
+      id: "lifecycle",
+      header: "Lifecycle",
+      label: "Lifecycle",
+      cell: (p) =>
+        p.lifecycleUsages && p.lifecycleUsages.length > 0 ? (
+          <span className="inline-flex items-center gap-1">
+            <Badge semantic="info" size="sm" title={formatLifecycleUsage(p.lifecycleUsages[0])}>
+              {formatLifecycleState(p.lifecycleUsages[0])}
+            </Badge>
+            {p.lifecycleUsages.length > 1 && (
+              <button
+                ref={getLifecycleRef(p.code)}
+                type="button"
+                onClick={(e) => toggleLifecycle(p.code, e, { menuHeight: Math.min(40 + p.lifecycleUsages!.length * 24, 280), menuWidth: 260 })}
+                className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline transition-colors"
+              >
+                +{p.lifecycleUsages.length - 1} more
+              </button>
+            )}
+          </span>
+        ) : (
+          <span className="text-sm text-slate-300">—</span>
+        ),
+    },
+    { id: "description", header: "Description", label: "Description", cell: (p) => p.description || "—" },
+  ];
+  const { layout: catalogLayout, control: catalogControl } = useCustomColumnLayout("permission-sets.catalog", catalogColumns);
+
   return (
     <div className="flex flex-col flex-1">
       <p className="text-xs sm:text-sm text-slate-500 max-w-3xl mb-4 md:mb-5">
@@ -159,115 +202,43 @@ export const PermissionCatalogTab: React.FC = () => {
                 <SectionLoading text="Searching..." minHeight="150px" />
               </div>
             )}
-            <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-[1000px]">
-                  <TableMarkup.Head className="sticky top-0 z-30">
-                    <TableMarkup.Row>
-                      {TABLE_COLS.map((col) => {
-                        const isSorted = col.sortable && sortConfig.key === col.id;
-                        return (
-                          <TableMarkup.HeaderCell
-                            key={col.id}
-                            onClick={col.sortable ? () => handleSort(col.id as SortKey) : undefined}
-                            className={cn(thBase, col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700", col.id === "no" && "w-14 text-center")}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span>{col.label}</span>
-                              {col.sortable && (
-                                <div className="flex flex-col text-slate-400 flex-shrink-0 group-hover:text-slate-500">
-                                  <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600" : "")} />
-                                  <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600" : "")} />
-                                </div>
-                              )}
-                            </div>
-                          </TableMarkup.HeaderCell>
-                        );
-                      })}
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {!loading && items.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={TABLE_COLS.length} className="p-0">
-                          {error ? (
-                            <TableEmptyState title="Failed to Load" description={error} />
-                          ) : (
-                            <TableEmptyState
-                             
-                              title="No Permissions Found"
-                              description={hasFilters ? "Try adjusting your search or filters." : "No permissions match this filter."}
-                            />
-                          )}
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : (
-                      items.map((p, idx) => (
-                        <TableMarkup.Row key={p.code} className="hover:bg-slate-50/80 transition-colors">
-                          <TableMarkup.Cell className="py-3 px-4 align-middle text-center text-xs text-slate-500 whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 align-middle whitespace-nowrap">
-                            <span className="text-xs sm:text-sm font-medium text-slate-800">{p.code}</span>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 align-middle text-xs sm:text-sm text-slate-700 whitespace-nowrap">{p.name}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 align-middle whitespace-nowrap">
-                            <Badge semantic="info" size="sm">{p.module}</Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className={TABLE_STYLES.cell23}>{p.groupName}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 align-middle whitespace-nowrap">
-                            {p.requiresAudit ? (
-                              <Badge semantic="warning" size="sm">Audited</Badge>
-                            ) : (
-                              <span className="text-sm text-slate-300">—</span>
-                            )}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 align-middle whitespace-nowrap">
-                            {p.lifecycleUsages && p.lifecycleUsages.length > 0 ? (
-                              <span className="inline-flex items-center gap-1">
-                                <Badge semantic="info" size="sm" title={formatLifecycleUsage(p.lifecycleUsages[0])}>
-                                  {formatLifecycleState(p.lifecycleUsages[0])}
-                                </Badge>
-                                {p.lifecycleUsages.length > 1 && (
-                                  <button
-                                    ref={getLifecycleRef(p.code)}
-                                    type="button"
-                                    onClick={(e) => toggleLifecycle(p.code, e, { menuHeight: Math.min(40 + p.lifecycleUsages!.length * 24, 280), menuWidth: 260 })}
-                                    className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline transition-colors"
-                                  >
-                                    +{p.lifecycleUsages.length - 1} more
-                                  </button>
-                                )}
-                              </span>
-                            ) : (
-                              <span className="text-sm text-slate-300">—</span>
-                            )}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className={TABLE_STYLES.cell23}>
-                            {p.description || "—"}
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      ))
-                    )}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={isTableLoading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                </div>
-              )}
+            <div className="flex flex-col flex-1">
+              <DataTable
+                rows={items}
+                getRowKey={(p) => p.code}
+                columns={catalogLayout.columns}
+                columnLayout={catalogLayout}
+                toolbar={catalogControl ? <div className="flex justify-end px-4 pt-3">{catalogControl}</div> : undefined}
+                scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
+                scrollProps={dragEvents}
+                isDragging={isDragging}
+                emptyState={
+                  error ? (
+                    <TableEmptyState title="Failed to Load" description={error} />
+                  ) : (
+                    <TableEmptyState
+                      title="No Permissions Found"
+                      description={hasFilters ? "Try adjusting your search or filters." : "No permissions match this filter."}
+                    />
+                  )
+                }
+                pagination={
+                  totalItems > 0 ? (
+                    <div className="border-t border-slate-200">
+                      <TablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        isLoading={isTableLoading}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
+                        itemsPerPageOptions={[10, 20, 50]}
+                      />
+                    </div>
+                  ) : undefined
+                }
+              />
             </div>
           </>
         )}

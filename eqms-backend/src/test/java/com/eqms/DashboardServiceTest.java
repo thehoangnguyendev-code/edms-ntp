@@ -48,6 +48,32 @@ class DashboardServiceTest {
         verify(documentRepository).countByStatus_Code("ACTIVE");
     }
 
+    @Test
+    void effectiveDocumentsByType_countsActiveDocumentMastersPerTypeInRepositoryOrder() {
+        UUID sop = UUID.fromString("00000000-0000-0000-0000-0000000000a1");
+        UUID wi = UUID.fromString("00000000-0000-0000-0000-0000000000a2");
+        when(documentRepository.countDocumentsGroupedByTypeForStatus("ACTIVE")).thenReturn(List.of(
+                new Object[]{sop, "SOP", "Standard Operating Procedure", 12L},
+                new Object[]{wi, "WI", "Work Instruction", 5L}
+        ));
+
+        var rows = service().getEffectiveDocumentsByType();
+
+        assertThat(rows).extracting("typeId", "shortCode", "name", "documents").containsExactly(
+                org.assertj.core.groups.Tuple.tuple(sop, "SOP", "Standard Operating Procedure", 12L),
+                org.assertj.core.groups.Tuple.tuple(wi, "WI", "Work Instruction", 5L)
+        );
+        assertThat(rows.stream().mapToLong(r -> r.documents()).sum()).isEqualTo(17L);
+        verify(documentRepository).countDocumentsGroupedByTypeForStatus("ACTIVE");
+    }
+
+    @Test
+    void effectiveDocumentsByType_isEmptyWhenNoDocumentIsEffective() {
+        when(documentRepository.countDocumentsGroupedByTypeForStatus("ACTIVE")).thenReturn(List.of());
+
+        assertThat(service().getEffectiveDocumentsByType()).isEmpty();
+    }
+
     private DashboardService service() {
         return new DashboardService(documentRepository, revisionRepository, auditLogRepository, userRepository);
     }

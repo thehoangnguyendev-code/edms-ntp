@@ -7,3 +7,4 @@
 export { DocumentFilters } from "./DocumentFilters";
 export { ExpandedDocumentRow } from "./ExpandedDocumentRow";
 export { RevisionTableView, type TableColumn } from "./RevisionTableView";
+export { useRevisionColumnLayout } from "./RevisionTableView";

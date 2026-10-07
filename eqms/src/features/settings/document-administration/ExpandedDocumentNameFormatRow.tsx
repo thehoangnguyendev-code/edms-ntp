@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
 import { documentNameFormatApi } from "@/services/api";
 import type { DocumentComponentItem, DocumentNameFormatItem } from "./documentNameFormatTypes";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
@@ -26,11 +27,7 @@ export const ExpandedDocumentNameFormatRow: React.FC<ExpandedDocumentNameFormatR
   componentCatalog,
   onComponentCatalogLoaded,
 }) => {
-  const shouldReduceMotion = useReducedMotion();
-  const transitionConfig = useMemo(
-    () => (shouldReduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 90, damping: 16 }),
-    [shouldReduceMotion],
-  );
+  const transitionConfig = useExpandTransition();
 
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
 
@@ -63,7 +60,7 @@ export const ExpandedDocumentNameFormatRow: React.FC<ExpandedDocumentNameFormatR
   const hasComponents = orderedComponents.length > 0;
 
   return (
-    <AnimatePresence initial={false}>
+    <>
       {isExpanded && (
         <motion.tr
           key={`expanded-name-format-${format.id}`}
@@ -75,9 +72,7 @@ export const ExpandedDocumentNameFormatRow: React.FC<ExpandedDocumentNameFormatR
         >
           <TableMarkup.Cell colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+              {...EXPAND_CONTENT_MOTION}
               transition={transitionConfig}
               className="overflow-hidden"
             >
@@ -149,6 +144,6 @@ export const ExpandedDocumentNameFormatRow: React.FC<ExpandedDocumentNameFormatR
           <TableMarkup.Cell className={TABLE_STYLES.emptyCell1}></TableMarkup.Cell>
         </motion.tr>
       )}
-    </AnimatePresence>
+    </>
   );
 };

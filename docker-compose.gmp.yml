@@ -50,7 +50,6 @@ services:
       SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "true"
       APP_SECURITY_LEGACY_ROLE_FALLBACK_ENABLED: "false"
       APP_SECURITY_COMPATIBILITY_ALIASES_ENABLED: "false"
-      APP_SECURITY_PARTICIPANT_VISIBILITY_STRICT: "true"
       APP_SECURITY_LIFECYCLE_POLICY_ENABLED: "true"
       # The nginx service below sets X-Forwarded-* -- trust it only because it's the actual proxy
       # in front of the backend in this deployment; never enable this without a real proxy present.

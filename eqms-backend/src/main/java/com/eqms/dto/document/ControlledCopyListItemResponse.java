@@ -65,7 +65,6 @@ public record ControlledCopyListItemResponse(
         String replacedControlledCopyNumber,
         String replacementControlledCopyId,
         String replacementControlledCopyNumber,
-        String lastUpdatedAt,
-        String deliveryMode
+        String lastUpdatedAt
 ) {
 }

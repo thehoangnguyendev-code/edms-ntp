@@ -102,11 +102,12 @@ export const MarkCard: React.FC<{
   const [expanded, setExpanded] = useState(defaultExpanded);
   return (
     <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/60 overflow-hidden">
+      <div className="flex items-center gap-3 pr-3 sm:pr-4">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="flex w-full items-center justify-between gap-3 p-3 sm:p-4 text-left hover:bg-slate-100/60 transition-colors"
+        className="flex min-w-0 flex-1 items-center gap-3 p-3 sm:p-4 text-left hover:bg-slate-100/60 transition-colors"
       >
         <div className="flex min-w-0 items-center gap-2">
           <ChevronDown
@@ -115,11 +116,9 @@ export const MarkCard: React.FC<{
           {icon && <span className="text-emerald-600">{icon}</span>}
           <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
         </div>
-        {/* Stops the switch's click from also toggling the accordion. */}
-        <span onClick={(e) => e.stopPropagation()}>
-          <Switch checked={enabled} onChange={onToggle} size="sm" disabled={disabled} />
-        </span>
       </button>
+      <Switch checked={enabled} onChange={onToggle} size="sm" disabled={disabled} />
+      </div>
       <div
         className="grid transition-[grid-template-rows] duration-300 ease-in-out"
         style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
@@ -240,6 +239,68 @@ export const StampFields: React.FC<{
         disabled={disabled}
       />
     )}
+  </div>
+);
+
+const QR_POSITION_OPTIONS = [
+  { label: "Top left", value: "TOP_LEFT" },
+  { label: "Top right", value: "TOP_RIGHT" },
+  { label: "Bottom left", value: "BOTTOM_LEFT" },
+  { label: "Bottom right", value: "BOTTOM_RIGHT" },
+];
+
+export interface QrCodeValue {
+  qrCodePosition: string;
+  qrCodeSizeMm: number;
+  qrCodePages: string;
+}
+
+/** Which pages of a paper copy carry the scan code, where it goes and how big it is. Drag or resize it on the preview, or pick a corner. */
+export const QrCodeFields: React.FC<{
+  value: QrCodeValue;
+  onChange: (key: keyof QrCodeValue, value: string | number) => void;
+  /** The code was dragged to a place of its own, which replaces the corner until it is reset. */
+  positioned?: boolean;
+  disabled?: boolean;
+}> = ({ value, onChange, positioned, disabled }) => (
+  <div className="space-y-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <Select
+        label="Corner"
+        value={value.qrCodePosition}
+        onChange={(v) => onChange("qrCodePosition", String(v))}
+        options={QR_POSITION_OPTIONS}
+        enableSearch={false}
+        disabled={disabled}
+      />
+      <NumberField
+        label="Size (mm)"
+        hint="15 to 40"
+        value={value.qrCodeSizeMm}
+        min={15}
+        max={40}
+        disabled={disabled}
+        onChange={(v) => onChange("qrCodeSizeMm", v)}
+      />
+      <Select
+        label="Pages"
+        value={value.qrCodePages}
+        onChange={(v) => onChange("qrCodePages", String(v))}
+        options={PAGE_OPTIONS}
+        enableSearch={false}
+        disabled={disabled}
+      />
+    </div>
+    <p className="text-2xs text-slate-500">
+      {positioned
+        ? "Placed by hand on the preview. Choosing a corner puts it back there."
+        : "Drag the code on the preview to place it anywhere on the page; drag a corner handle to resize it."}
+    </p>
+    <p className="text-2xs text-slate-500">
+      {value.qrCodePages === "FIRST"
+        ? "First page only: a whole copy can be matched from its first page, but loose pages scanned together cannot be sorted back into their copies."
+        : "Every page: each page carries its own code with its page number, so pages of many copies scanned as one file are sorted back into their copies and into order."}
+    </p>
   </div>
 );
 

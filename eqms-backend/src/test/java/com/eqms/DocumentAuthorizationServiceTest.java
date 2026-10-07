@@ -89,29 +89,29 @@ class DocumentAuthorizationServiceTest {
         return revision;
     }
 
-    // ── canViewAllDocuments: 3 independent OR paths ─────────────────────────
+    // ── canViewAllDocuments: only the dedicated view_all permission ─────────
 
     @Test
-    void canViewAllDocuments_true_viaAdminPermission() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(true);
+    void canViewAllDocuments_true_viaViewAllPermission() {
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(true);
         assertThat(service.canViewAllDocuments(user)).isTrue();
     }
 
     @Test
     void canViewAllDocuments_false_viaLegacyPoolOnly() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         assertThat(service.canViewAllDocuments(user)).isFalse();
     }
 
     @Test
     void canViewAllDocuments_false_viaWorkflowRoleOnly() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         assertThat(service.canViewAllDocuments(user)).isFalse();
     }
 
     @Test
     void canViewAllDocuments_false_whenNoneMatch() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         assertThat(service.canViewAllDocuments(user)).isFalse();
     }
 
@@ -130,7 +130,7 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void canViewDocument_true_forAuthor() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         document.setAuthor(user);
         assertThat(service.canViewDocument(user, document)).isTrue();
     }
@@ -139,7 +139,7 @@ class DocumentAuthorizationServiceTest {
     void canViewDocument_true_forAssignedAuthor_whenBroadObjectScopeDenies() {
         // Direct record assignment is intentionally evaluated before BU/department
         // scope. A DCO may assign an Author outside that Author's default scope.
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         document.setAuthor(user);
 
         assertThat(service.canViewDocument(user, document)).isTrue();
@@ -148,7 +148,7 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void canViewDocument_true_forParticipant() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         DocumentWorkflowParticipant participant = new DocumentWorkflowParticipant();
         participant.setUser(user);
         when(documentWorkflowParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(document.getId()))
@@ -158,13 +158,13 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void canViewDocument_false_forUnrelatedUser() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         assertThat(service.canViewDocument(user, document)).isFalse();
     }
 
     @Test
     void requireCanViewDocument_throwsWhenDenied() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         assertThatThrownBy(() -> service.requireCanViewDocument(user, document))
                 .isInstanceOf(AccessDeniedException.class);
     }
@@ -180,7 +180,7 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void canViewRevision_true_forAssignedAuthor_whenBroadObjectScopeDenies() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
         revision.setAuthor(user);
 
@@ -190,7 +190,7 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void canViewRevision_false_forUnrelatedUserOnDraft() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         when(revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(any(), anyString()))
                 .thenReturn(List.of());
         DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
@@ -199,7 +199,7 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void canViewRevision_true_forDco_regardlessOfStatus() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(true);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(true);
         DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
         assertThat(service.canViewRevision(user, revision)).isTrue();
     }
@@ -208,7 +208,7 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void isDirectStakeholder_true_forAdminDco() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(true);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(true);
         assertThat(service.isDirectStakeholder(user, document)).isTrue();
         DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
         assertThat(service.isDirectStakeholder(user, revision)).isTrue();
@@ -216,14 +216,14 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void isDirectStakeholder_true_forAuthor_document() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         document.setAuthor(user);
         assertThat(service.isDirectStakeholder(user, document)).isTrue();
     }
 
     @Test
     void isDirectStakeholder_true_forParticipant_document() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         DocumentWorkflowParticipant participant = new DocumentWorkflowParticipant();
         participant.setUser(user);
         when(documentWorkflowParticipantRepository.findAllByDocument_IdOrderBySequenceOrderAsc(document.getId()))
@@ -233,13 +233,13 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void isDirectStakeholder_false_forUnrelatedUser_document() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         assertThat(service.isDirectStakeholder(user, document)).isFalse();
     }
 
     @Test
     void isDirectStakeholder_true_forAuthor_revision() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         DocumentRevisionRecord revision = revisionWithStatus("DRAFT");
         revision.setAuthor(user);
         assertThat(service.isDirectStakeholder(user, revision)).isTrue();
@@ -247,7 +247,7 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void isDirectStakeholder_true_forReviewerParticipant_revision() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         DocumentRevisionRecord revision = revisionWithStatus("PENDING_REVIEW");
         RevisionWorkflowParticipant participant = new RevisionWorkflowParticipant();
         participant.setUser(user);
@@ -260,7 +260,7 @@ class DocumentAuthorizationServiceTest {
 
     @Test
     void isDirectStakeholder_false_forUnrelatedUser_revision() {
-        when(permissionEvaluationService.hasAnyPermission(eq(user), any(String[].class))).thenReturn(false);
+        when(permissionEvaluationService.hasPermission(user, "documents.document.view_all")).thenReturn(false);
         when(revisionWorkflowParticipantRepository.findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(any(), anyString()))
                 .thenReturn(List.of());
         DocumentRevisionRecord revision = revisionWithStatus("DRAFT");

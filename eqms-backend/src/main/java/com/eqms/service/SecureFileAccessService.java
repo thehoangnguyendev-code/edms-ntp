@@ -44,9 +44,6 @@ public class SecureFileAccessService {
     private final LifecycleStatePolicyEvaluator lifecycleStatePolicyEvaluator;
     private final DocumentAuthorizationService documentAuthorizationService;
 
-    @Value("${app.security.participant-visibility-strict:false}")
-    private boolean strictVisibility;
-
     @Value("${app.security.lifecycle-policy-enabled:false}")
     private boolean lifecyclePolicyEnabled;
 
@@ -68,11 +65,9 @@ public class SecureFileAccessService {
     }
 
     /**
-     * Canonical "is DCO or Document Admin" check — delegates to
-     * {@link DocumentAuthorizationService#canViewAllDocuments} so this matches the same
-     * Access Profile Workflow Role (DCO) / legacy pool resolution used everywhere else,
-     * instead of a hardcoded blanket-permission list that silently excludes DCO users who
-     * only hold the new-catalog DCO workflow role assignment.
+     * Canonical "may see every document" check — delegates to
+     * {@link DocumentAuthorizationService#canViewAllDocuments}, which is driven only by the
+     * dedicated {@code documents.document.view_all} permission (never by an Access Profile name).
      */
     private boolean canViewAllDocuments(UserAccount user) {
         return documentAuthorizationService.canViewAllDocuments(user);
@@ -166,8 +161,8 @@ public class SecureFileAccessService {
             case REVISION -> switch (action) {
                 case VIEW_PREVIEW -> "documents.revision.preview";
                 case UPLOAD, REPLACE -> "documents.revision.upload_source";
-                case EDIT_ONLINE, GENERATE_SHAREPOINT_LINK -> "documents.revision.edit_online";
-                case SYNC_TO_OFFICE, SYNC_FROM_OFFICE -> "documents.revision.upload_office_online";
+                case EDIT_ONLINE -> "documents.revision.edit_onlyoffice";
+                case SYNC_TO_OFFICE, SYNC_FROM_OFFICE -> "documents.revision.sync_onlyoffice";
                 default -> null;
             };
             case REVIEW_SNAPSHOT -> "documents.revision.preview";
@@ -182,8 +177,8 @@ public class SecureFileAccessService {
                 // DOWNLOAD unconditionally for this object type regardless of permission.
                 case VIEW_PREVIEW -> "documents.revision.preview";
                 case UPLOAD, REPLACE -> "documents.revision.upload_source";
-                case EDIT_ONLINE -> "documents.revision.edit_online";
-                case SYNC_TO_OFFICE, SYNC_FROM_OFFICE -> "documents.revision.upload_office_online";
+                case EDIT_ONLINE -> "documents.revision.edit_onlyoffice";
+                case SYNC_TO_OFFICE, SYNC_FROM_OFFICE -> "documents.revision.sync_onlyoffice";
                 default -> null;
             };
             case CONTROLLED_COPY -> switch (action) {
@@ -268,8 +263,7 @@ public class SecureFileAccessService {
         // All source mutations require a Draft revision that is not locked or completed.
         // The action-specific permission is evaluated before this method. Record-level workspace
         // access is enforced by RevisionService; do not encode an Author-only policy here.
-        boolean isEditOnlineAction = action == FileAccessAction.EDIT_ONLINE
-                || action == FileAccessAction.GENERATE_SHAREPOINT_LINK;
+        boolean isEditOnlineAction = action == FileAccessAction.EDIT_ONLINE;
         boolean isSyncAction = action == FileAccessAction.SYNC_TO_OFFICE
                 || action == FileAccessAction.SYNC_FROM_OFFICE;
         boolean isUploadAction = action == FileAccessAction.UPLOAD || action == FileAccessAction.REPLACE;
@@ -341,9 +335,11 @@ public class SecureFileAccessService {
                     "Review snapshot is only available during review stages or after a rejection.",
                     permissionCode, action, FileObjectType.REVIEW_SNAPSHOT, objectId);
         }
-        // Strict visibility: in-flight snapshot content is restricted to the revision's
-        // author, assigned participants, and DCO/document admins.
-        if (strictVisibility || lifecyclePolicyEnabled) {
+        // Record visibility "Participants only": in-flight snapshot content is restricted to the
+        // revision's author, assigned participants, and holders of the view-all permission.
+        // Record visibility "All" opens it to every holder of the permission checked above, unless
+        // the data-driven lifecycle policy is enabled.
+        if (!documentAuthorizationService.isOpenVisibilityMode() || lifecyclePolicyEnabled) {
             UUID revisionId = context.getUUID("revisionId");
             UUID authorId = context.getUUID("authorId");
             boolean hasCrossDocumentVisibility = canViewAllDocuments(user);
@@ -453,7 +449,7 @@ public class SecureFileAccessService {
     private boolean isHighRisk(FileAccessAction action) {
         return switch (action) {
             case DOWNLOAD, DOWNLOAD_EVIDENCE, EDIT_ONLINE, SYNC_TO_OFFICE, SYNC_FROM_OFFICE,
-                    GENERATE_SHAREPOINT_LINK, GENERATE_PUBLISHED_PDF,
+                    GENERATE_PUBLISHED_PDF,
                     GENERATE_PRESIGNED_URL, UPLOAD_EVIDENCE -> true;
             default -> false;
         };

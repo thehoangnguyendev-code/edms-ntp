@@ -13,6 +13,7 @@ import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { useTableDragScroll, usePortalDropdown, useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast/Toast";
@@ -321,6 +322,92 @@ export const PermissionSetsView: React.FC = () => {
   const isInitialLoading = loading && !initialLoaded;
   const isTableLoading = loading && initialLoaded;
 
+  type SetRow = (typeof sets)[number];
+  const setColumns: DataTableColumn<SetRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell33, cell: (_ps, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    {
+      id: "name",
+      header: "Name",
+      label: "Name",
+      sort: { direction: sortKey === "name" ? sortDir : undefined, onSort: () => handleSort("name") },
+      cell: (ps) => (
+        <>
+          <div className="font-semibold text-slate-900">{ps.name}</div>
+          <div className="mt-0.5 text-xs text-slate-400">{ps.code}</div>
+        </>
+      ),
+    },
+    { id: "description", header: "Description", label: "Description", cell: (ps) => <p className="line-clamp-2">{ps.description || "—"}</p> },
+    { id: "moduleCount", header: "Modules", label: "Modules", sort: { direction: sortKey === "moduleCount" ? sortDir : undefined, onSort: () => handleSort("moduleCount") }, cell: (ps) => ps.modules?.length ?? 0 },
+    { id: "permissionCount", header: "Permissions", label: "Permissions", sort: { direction: sortKey === "permissionCount" ? sortDir : undefined, onSort: () => handleSort("permissionCount") }, cell: (ps) => ps.permissionCount },
+    { id: "category", header: "Category", label: "Category", cell: (ps) => ps.category ?? "—" },
+    { id: "status", header: "Status", label: "Status", sort: { direction: sortKey === "status" ? sortDir : undefined, onSort: () => handleSort("status") }, cell: (ps) => <Badge color={ps.active ? "emerald" : "slate"} size="sm">{ps.active ? "Active" : "Inactive"}</Badge> },
+    { id: "type", header: "Type", label: "Type", sort: { direction: sortKey === "type" ? sortDir : undefined, onSort: () => handleSort("type") }, cell: (ps) => <Badge color={ps.system ? "blue" : "slate"} size="sm">{ps.system ? "System" : "Custom"}</Badge> },
+    { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (ps) => formatDateTime(ps.createdAt) },
+    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (ps) => formatDateTime(ps.updatedAt) },
+  ];
+  const setAction: DataTableAction<SetRow> = {
+    header: "Action",
+    cell: (ps) => {
+      const capabilities = capabilityBySetId[ps.id];
+      const can = (action: string) => Boolean(capabilities?.actions?.[action]?.allowed);
+      const reason = (action: string) => capabilities?.actions?.[action]?.reason || "Action is not currently allowed";
+      const loaded = Boolean(capabilities);
+      return (
+        <>
+          <button
+            ref={getRef(ps.id)}
+            onClick={(e) => handleActionMenuToggle(ps.id, e)}
+            className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
+            aria-label="More actions"
+          >
+            <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
+          </button>
+          <PortalDropdownMenu isOpen={openId === ps.id} onClose={close} position={position}>
+            <div className="py-1">
+              <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}`); close(); }}>
+                View Detail
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                icon={<IconPencilMinus className="h-4 w-4" />}
+                disabled={!loaded || !can("edit")}
+                title={loaded && !can("edit") ? reason("edit") : undefined}
+                onClick={() => { navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}/edit`); close(); }}
+              >
+                Edit Shared Permission
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                icon={<Copy className="h-4 w-4" />}
+                disabled={!loaded || !can("clone")}
+                title={loaded && !can("clone") ? reason("clone") : undefined}
+                onClick={() => { setCloneTarget(ps); close(); }}
+              >
+                Clone
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                icon={ps.active ? <IconToggleRight className="h-4 w-4" /> : <IconToggleLeft className="h-4 w-4" />}
+                disabled={!loaded || !can("toggleStatus")}
+                title={loaded && !can("toggleStatus") ? reason("toggleStatus") : undefined}
+                onClick={() => { void handleDeactivate(ps); close(); }}
+              >
+                {ps.active ? "Deactivate" : "Activate"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                icon={<Trash2 className="h-4 w-4" />}
+                disabled={!loaded || !can("delete")}
+                title={loaded && !can("delete") ? reason("delete") : undefined}
+                onClick={() => { setDeleteTarget(ps); close(); }}
+              >
+                Delete
+              </DropdownMenuItem>
+            </div>
+          </PortalDropdownMenu>
+        </>
+      );
+    },
+  };
+  const { layout: setLayout, control: setControl } = useCustomColumnLayout("permission-sets.list", setColumns, setAction);
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {isInitialLoading && <FullPageLoading text="Loading permission sets..." />}
@@ -467,7 +554,7 @@ export const PermissionSetsView: React.FC = () => {
                 autoApply
               />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -477,6 +564,7 @@ export const PermissionSetsView: React.FC = () => {
               >
                 Clear Filters
               </Button>
+              {setControl}
             </div>
           </div>
 
@@ -488,183 +576,39 @@ export const PermissionSetsView: React.FC = () => {
               </div>
             )}
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col bg-white transition-all duration-300 relative">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full text-sm min-w-[860px]">
-                  <TableMarkup.Head className="sticky top-0 z-30">
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell33}>No.</TableMarkup.HeaderCell>
-                      {([
-                        { key: "name",            label: "Name",        sortable: true  },
-                        { key: "description",     label: "Description", sortable: false },
-                        { key: "moduleCount",     label: "Modules",     sortable: true  },
-                        { key: "permissionCount", label: "Permissions", sortable: true  },
-                        { key: "category",        label: "Category",    sortable: false },
-                        { key: "status",          label: "Status",      sortable: true  },
-                        { key: "type",            label: "Type",        sortable: true  },
-                        { key: "createdAt",        label: "Created Date", sortable: true },
-                        { key: "updatedAt",        label: "Last Updated", sortable: true },
-                      ] as const).map((col) => (
-                        <TableMarkup.HeaderCell
-                          key={col.key}
-                          onClick={col.sortable ? () => handleSort(col.key) : undefined}
-                          className={cn(
-                            "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors group",
-                            col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700"
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2 w-full">
-                            <span>{col.label}</span>
-                            {col.sortable && (
-                              <div className="flex flex-col text-slate-400 flex-shrink-0 group-hover:text-slate-500">
-                                <ChevronUp className={cn("h-3 w-3 -mb-1", sortKey === col.key && sortDir === "asc" ? "text-emerald-600" : "")} />
-                                <ChevronDown className={cn("h-3 w-3", sortKey === col.key && sortDir === "desc" ? "text-emerald-600" : "")} />
-                              </div>
-                            )}
-                          </div>
-                        </TableMarkup.HeaderCell>
-                      ))}
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>Action</TableMarkup.HeaderCell>
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {!loading && sets.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={11} className="p-0">
-                          <TableEmptyState
-                            title="No Shared Permission Sets Found"
-                            description="We couldn't find any shared permission sets matching your filters. Try adjusting your search criteria."
-                          />
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : sets.map((ps, index) => {
-                      const capabilities = capabilityBySetId[ps.id];
-                      const can = (action: string) => Boolean(capabilities?.actions?.[action]?.allowed);
-                      const reason = (action: string) => capabilities?.actions?.[action]?.reason || "Action is not currently allowed";
-                      const loaded = Boolean(capabilities);
-                      return (
-                        <TableMarkup.Row
-                          key={ps.id}
-                          className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                          onClick={() => navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}`)}
-                        >
-                          <TableMarkup.Cell className={TABLE_STYLES.cell30}>
-                            {(currentPage - 1) * itemsPerPage + index + 1}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <div className="font-semibold text-slate-900">{ps.name}</div>
-                            <div className="mt-0.5 text-xs text-slate-400">{ps.code}</div>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-600">
-                            <p className="line-clamp-2">{ps.description || "—"}</p>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                            {ps.modules?.length ?? 0}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                            {ps.permissionCount}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                            {ps.category ?? "—"}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={ps.active ? "emerald" : "slate"} size="sm" >
-                              {ps.active ? "Active" : "Inactive"}
-                            </Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={ps.system ? "blue" : "slate"} size="sm">
-                              {ps.system ? "System" : "Custom"}
-                            </Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                            {formatDateTime(ps.createdAt)}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                            {formatDateTime(ps.updatedAt)}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell
-                            className="sticky right-0 bg-white py-3 px-4 text-center z-10 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50/80 transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              ref={getRef(ps.id)}
-                              onClick={(e) => handleActionMenuToggle(ps.id, e)}
-                              className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                              aria-label="More actions"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                            </button>
-                            <PortalDropdownMenu isOpen={openId === ps.id} onClose={close} position={position}>
-                              <div className="py-1">
-                                <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}`); close(); }}>
-                                  View Detail
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  icon={<IconPencilMinus className="h-4 w-4" />}
-                                  disabled={!loaded || !can("edit")}
-                                  title={loaded && !can("edit") ? reason("edit") : undefined}
-                                  onClick={() => { navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}/edit`); close(); }}
-                                >
-                                  Edit Shared Permission
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  icon={<Copy className="h-4 w-4" />}
-                                  disabled={!loaded || !can("clone")}
-                                  title={loaded && !can("clone") ? reason("clone") : undefined}
-                                  onClick={() => { setCloneTarget(ps); close(); }}
-                                >
-                                  Clone
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  icon={
-                                    ps.active
-                                      ? <IconToggleRight className="h-4 w-4" />
-                                      : <IconToggleLeft className="h-4 w-4" />
-                                  }
-                                  disabled={!loaded || !can("toggleStatus")}
-                                  title={loaded && !can("toggleStatus") ? reason("toggleStatus") : undefined}
-                                  onClick={() => { void handleDeactivate(ps); close(); }}
-                                >
-                                  {ps.active ? "Deactivate" : "Activate"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  icon={<Trash2 className="h-4 w-4" />}
-                                  disabled={!loaded || !can("delete")}
-                                  title={loaded && !can("delete") ? reason("delete") : undefined}
-                                  onClick={() => { setDeleteTarget(ps); close(); }}
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                              </div>
-                            </PortalDropdownMenu>
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      );
-                    })}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={isTableLoading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                </div>
-              )}
-            </div>
+            <DataTable
+              rows={sets}
+              getRowKey={(ps) => ps.id}
+              columns={setLayout.columns}
+              columnLayout={setLayout}
+              action={setAction}
+              scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
+              scrollProps={dragEvents}
+              isDragging={isDragging}
+              onRowClick={(ps) => navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}`)}
+              emptyState={
+                <TableEmptyState
+                  title="No Shared Permission Sets Found"
+                  description="We couldn't find any shared permission sets matching your filters. Try adjusting your search criteria."
+                />
+              }
+              pagination={
+                totalItems > 0 ? (
+                  <div className="border-t border-slate-200">
+                    <TablePagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={totalItems}
+                      itemsPerPage={itemsPerPage}
+                      isLoading={isTableLoading}
+                      onPageChange={setCurrentPage}
+                      onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
+                      itemsPerPageOptions={[10, 20, 50]}
+                    />
+                  </div>
+                ) : undefined
+              }
+            />
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import React from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Bell, BellOff, ExternalLink, Star, ThumbsUp, X } from "lucide-react";
+import { VisualBackdrop } from "@/components/ui/animated-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
@@ -32,10 +33,10 @@ const Prop: React.FC<{ label: string; children: React.ReactNode }> = ({ label, c
   </>
 );
 
-const Preview: React.FC<{ children: React.ReactNode; glow?: string }> = ({ children, glow }) => (
+const Preview: React.FC<{ children: React.ReactNode; glow?: string }> = ({ children, glow = "#10b981" }) => (
   <div className="relative grid place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white py-6">
-    {glow && <span className="pointer-events-none absolute -bottom-2/3 -inset-x-1/4 h-full rounded-full opacity-15 blur-2xl" style={{ backgroundColor: glow }} aria-hidden="true" />}
-    {children}
+    <VisualBackdrop color={glow} gridColor="#80808015" />
+    <div className="relative z-10">{children}</div>
   </div>
 );
 

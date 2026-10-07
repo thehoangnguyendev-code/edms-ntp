@@ -41,6 +41,18 @@ public class ReportPlatformService {
     private final DocumentAuthorizationService documentAuthorization;
     private final FileStorageService fileStorage;
     private final AuditTrailService auditTrail;
+    private com.eqms.service.report.ReportTemplateService templates;
+    private com.eqms.service.report.ReportArtifactPublisher publisher;
+    private com.eqms.service.report.ReportWordService words;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureWords(com.eqms.service.report.ReportWordService words) {this.words=words;}
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configurePublisher(com.eqms.service.report.ReportArtifactPublisher publisher) { this.publisher = publisher; }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureTemplates(com.eqms.service.report.ReportTemplateService templates) {
+        this.templates = templates;
+    }
 
     public ReportPlatformService(JdbcTemplate jdbc, ObjectMapper objectMapper, PermissionEvaluationService permissions, DocumentRecordRepository documents, UserAccountRepository users, DocumentAuthorizationService documentAuthorization, FileStorageService fileStorage, AuditTrailService auditTrail) {
         this.jdbc = jdbc; this.objectMapper = objectMapper; this.permissions = permissions; this.documents=documents; this.users=users; this.documentAuthorization=documentAuthorization; this.fileStorage=fileStorage; this.auditTrail=auditTrail;
@@ -48,16 +60,16 @@ public class ReportPlatformService {
 
     public List<Map<String, Object>> catalog(UserAccount actor) {
         require(actor, "reports.catalog.view", "report.module.view");
-        return jdbc.queryForList("""
-                select d.code, d.display_name as \"displayName\", d.description, d.category, d.classification,
-                       d.definition_version as \"definitionVersion\", d.allowed_formats as \"allowedFormats\", d.limits,
-                       d.access_policy as \"accessPolicy\", coalesce(json_agg(json_build_object('code', f.field_code,
-                         'name', f.display_name, 'type', f.field_type, 'allowed', f.allowed, 'defaultSelected',
-                         f.default_selected, 'required', f.required, 'order', f.display_order) order by f.display_order)
-                         filter (where f.id is not null), '[]') as fields
-                from report_definitions d left join report_definition_fields f on f.definition_code=d.code
-                where d.active=true group by d.code order by d.category, d.display_name
-                """);
+        List<Map<String,Object>> available = new ArrayList<>();
+        int page=1;
+        Map<String,Object> result;
+        do {
+            result=templates.catalog(actor,"",page++,"displayName","asc");
+            List<Map<String,Object>> batch=objectMapper.convertValue(result.get("data"),objectMapper.getTypeFactory().constructCollectionType(List.class,Map.class));
+            available.addAll(batch);
+            if (batch.size()<10) break;
+        } while (available.size()<((Number)((Map<?,?>)result.get("pagination")).get("total")).longValue());
+        return available;
     }
 
     public List<Map<String,Object>> configuration(UserAccount actor) {
@@ -71,6 +83,7 @@ public class ReportPlatformService {
         return result;
     }
     public void updateConfiguration(UserAccount actor, String code, Map<String,Object> update) {
+        requireVersionedTemplateEndpoint(code);
         require(actor,"reports.definition.manage","settings.configuration.manage");
         String reason=String.valueOf(update.getOrDefault("reason","")).trim(); if(reason.isEmpty()) throw new IllegalArgumentException("A reason is required for report configuration changes");
         Map<String,Object> before=configurationDetail(actor,code);
@@ -87,6 +100,7 @@ public class ReportPlatformService {
         auditTrail.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_CONFIGURATION_UPDATED", null, null, "Report definition configuration changed: " + reason);
     }
     public void updateFields(UserAccount actor, String code, Map<String,Object> request) {
+        requireVersionedTemplateEndpoint(code);
         require(actor,"reports.definition.manage","settings.configuration.manage");
         String reason=String.valueOf(request.getOrDefault("reason","")).trim(); if(reason.isEmpty()) throw new IllegalArgumentException("A reason is required for report field changes");
         Object raw=request.get("fields"); if (!(raw instanceof List<?> fields)) throw new IllegalArgumentException("fields is required");
@@ -97,6 +111,7 @@ public class ReportPlatformService {
         auditTrail.logAs(actor, "REPORT_DEFINITION", code, UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)), "REPORT_FIELDS_UPDATED", null, null, "Report field defaults changed: " + reason);
     }
     public List<Map<String,Object>> configurationHistory(UserAccount actor, String code) {
+        templates.require(actor,"reports.definition.view","settings.configuration.view");
         require(actor,"reports.definition.view","settings.configuration.view");
         return jdbc.queryForList("select version, reason, changed_by_user_id as \"changedByUserId\", created_at as \"createdAt\" from report_definition_versions where definition_code=? order by version desc", code);
     }
@@ -114,21 +129,27 @@ public class ReportPlatformService {
         return jdbc.queryForList("select id, full_name as \"fullName\", employee_code as \"employeeCode\", email, department, business_unit as \"businessUnit\" from app_users where status='Active' and (full_name ilike ? or employee_code ilike ? or email ilike ?) order by full_name limit 30", term, term, term).stream().filter(candidate -> users.findById(UUID.fromString(candidate.get("id").toString())).map(this::hasArtifactDownloadPermission).orElse(false)).toList();
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public UUID createSchedule(UserAccount actor, ScheduleRequest request) {
+        templates.require(actor,"reports.schedule.manage","report.module.export");
         require(actor, "reports.schedule.manage", "report.module.export");
         if (request == null || request.name() == null || request.name().isBlank() || request.definitionCode() == null || request.definitionCode().isBlank()) throw new IllegalArgumentException("Schedule name and definition are required");
         CronExpression cron = parseCron(request.cronExpression());
         Map<String,Object> definition = jdbc.queryForMap("select * from report_definitions where code=? and active=true", request.definitionCode());
         String format = request.format() == null ? "CSV" : request.format().toUpperCase(Locale.ROOT);
         validateFormat(definition, format); validateFields(request.definitionCode(), request.fields());
+        var filters=new LinkedHashMap<>(request.parameters()==null?Map.of():request.parameters());filters.remove("definitionVersion");
+        Object title=filters.remove("reportTitle");com.eqms.service.report.ReportTemplateService.validatedTitle(title,String.valueOf(definition.get("display_name")));
+        var accepted=templates.snapshot(actor,request.definitionCode(),new com.eqms.service.report.ReportTemplateService.Criteria(null,request.fields(),filters,null,"asc"));
         List<UUID> recipients = request.recipientUserIds() == null ? List.of() : request.recipientUserIds().stream().distinct().toList();
+        if(request.name().length()>255||recipients.size()>200||recipients.contains(null))throw new IllegalArgumentException("REPORT_SCHEDULE_INVALID");
         for (UUID recipientId : recipients) {
             UserAccount recipient = users.findById(recipientId).orElseThrow(() -> new IllegalArgumentException("Recipient does not exist"));
             if (recipient.getStatus() != UserStatus.Active || !hasArtifactDownloadPermission(recipient)) throw new IllegalArgumentException("Schedule recipients must be active users with report download permission");
         }
-        Instant next = cron.next(Instant.now()); if (next == null) throw new IllegalArgumentException("Cron expression has no future occurrence");
+        Instant next = nextOccurrence(cron); if (next == null) throw new IllegalArgumentException("Cron expression has no future occurrence");
         UUID id = UUID.randomUUID(); JsonNode snapshot = objectMapper.valueToTree(Map.of("creatorId", actor.getId().toString(), "definitionVersion", definition.get("definition_version"), "capturedAt", Instant.now().toString()));
-        jdbc.update("insert into report_schedules(id,definition_code,creator_user_id,name,cron_expression,requested_format,parameters,selected_fields,authorization_snapshot,next_run_at) values(?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),?)", id, request.definitionCode(), actor.getId(), request.name().trim(), request.cronExpression().trim(), format, safeJson(request.parameters()).toString(), safeJson(request.fields()).toString(), snapshot.toString(), java.sql.Timestamp.from(next));
+        jdbc.update("insert into report_schedules(id,definition_code,creator_user_id,name,cron_expression,requested_format,parameters,selected_fields,authorization_snapshot,next_run_at) values(?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),?)", id, request.definitionCode(), actor.getId(), request.name().trim(), request.cronExpression().trim(), format, safeJson(request.parameters()).toString(), accepted.path("fields").toString(), snapshot.toString(), java.sql.Timestamp.from(next));
         for (UUID recipient : recipients) jdbc.update("insert into report_schedule_recipients(schedule_id,user_id) values(?,?)", id, recipient);
         auditTrail.logAs(actor, "REPORT_SCHEDULE", request.name().trim(), id, "REPORT_SCHEDULE_CREATED", null, "ACTIVE", "Scheduled report created for " + request.definitionCode());
         return id;
@@ -138,7 +159,7 @@ public class ReportPlatformService {
     public void resumeSchedule(UserAccount actor, UUID id) {
         require(actor, "reports.schedule.manage", "report.module.export"); requireScheduleManagement(actor, id);
         Map<String,Object> row = jdbc.queryForMap("select cron_expression from report_schedules where id=?", id);
-        Instant next = parseCron(String.valueOf(row.get("cron_expression"))).next(Instant.now()); if (next == null) throw new IllegalArgumentException("Cron expression has no future occurrence");
+        Instant next = nextOccurrence(parseCron(String.valueOf(row.get("cron_expression")))); if (next == null) throw new IllegalArgumentException("Cron expression has no future occurrence");
         jdbc.update("update report_schedules set active=true,status='ACTIVE',next_run_at=?,updated_at=now() where id=?", java.sql.Timestamp.from(next), id);
         auditTrail.logAs(actor, "REPORT_SCHEDULE", id.toString(), id, "REPORT_SCHEDULE_RESUMED", null, "ACTIVE", "Scheduled report resumed");
     }
@@ -161,25 +182,53 @@ public class ReportPlatformService {
         }
     }
     private CronExpression parseCron(String value) { try { return CronExpression.parse(value == null ? "" : value.trim()); } catch (Exception invalid) { throw new IllegalArgumentException("Invalid cron expression"); } }
+    private Instant nextOccurrence(CronExpression cron) { var next=cron.next(java.time.ZonedDateTime.now(java.time.ZoneId.systemDefault())); return next==null?null:next.toInstant(); }
 
+    @org.springframework.transaction.annotation.Transactional
     public UUID queueRun(UserAccount actor, RunRequest request, String idempotencyKey) {
         require(actor, "reports.run.create", "report.module.export");
+        if (request == null) throw new IllegalArgumentException("REPORT_REQUEST_REQUIRED");
+        jdbc.queryForMap("select code from report_definitions where code=? for share",request.definitionCode());
+        Map<String,Object> filters = new LinkedHashMap<>(request.parameters() == null ? Map.of() : request.parameters());
+        Object version = filters.remove("definitionVersion");
+        Object requestedTitle=filters.remove("reportTitle");
+        List<Map<String,String>> sorting = request.sort() == null ? List.of() : request.sort();
+        if (sorting.size() > 1) throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");
+        String sortField = sorting.isEmpty() ? "documentNumber" : sorting.getFirst().get("field");
+        String sortDirection = sorting.isEmpty() ? "asc" : sorting.getFirst().get("direction");
+        JsonNode templateSnapshot = templates.snapshot(actor, request.definitionCode(), new com.eqms.service.report.ReportTemplateService.Criteria(
+                version == null ? null : Integer.valueOf(version.toString()), request.fields(), filters, sortField, sortDirection));
+        String reportTitle=com.eqms.service.report.ReportTemplateService.validatedTitle(requestedTitle,templateSnapshot.path("definition").path("displayName").asText());
+        ((com.fasterxml.jackson.databind.node.ObjectNode)templateSnapshot).put("reportTitle",reportTitle);
         Map<String, Object> definition = jdbc.queryForMap("select * from report_definitions where code=? and active=true", request.definitionCode());
         validateFormat(definition, request.format());
         validateFields(request.definitionCode(), request.fields());
         UUID id = UUID.randomUUID();
         JsonNode parameters = safeJson(request.parameters());
-        JsonNode fields = safeJson(request.fields());
-        JsonNode sort = safeJson(request.sort());
-        JsonNode authSnapshot = objectMapper.valueToTree(Map.of("requesterId", actor.getId().toString(), "capturedAt", Instant.now().toString()));
-        jdbc.update("""
+        JsonNode fields = templateSnapshot.path("fields");
+        JsonNode sort = safeJson(sorting);
+        JsonNode authSnapshot = templateSnapshot;
+        String normalizedKey = normalizeKey(idempotencyKey);
+        int inserted = jdbc.update("""
                 insert into report_runs(id,definition_code,definition_version,requester_user_id,request_type,requested_format,parameters,selected_fields,sort_spec,authorization_snapshot,status,idempotency_key)
                 values(?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),'QUEUED',?)
                 on conflict(requester_user_id,idempotency_key) do nothing
-                """, id, request.definitionCode(), definition.get("definition_version"), actor.getId(), "ON_DEMAND",
-                request.format().toUpperCase(Locale.ROOT), parameters.toString(), fields.toString(), sort.toString(), authSnapshot.toString(), normalizeKey(idempotencyKey));
+                """, id, request.definitionCode(), templateSnapshot.path("definition").path("definitionVersion").asInt(), actor.getId(), "ON_DEMAND",
+                request.format().toUpperCase(Locale.ROOT), parameters.toString(), fields.toString(), sort.toString(), authSnapshot.toString(), normalizedKey);
         UUID resolved = jdbc.query("select id from report_runs where requester_user_id=? and idempotency_key=?", rs -> rs.next() ? UUID.fromString(rs.getString(1)) : id,
-                actor.getId(), normalizeKey(idempotencyKey));
+                actor.getId(), normalizedKey);
+        if (inserted == 0) {
+            Map<String,Object> existing = jdbc.queryForMap("select definition_code,requested_format,parameters,selected_fields,sort_spec from report_runs where id=?", resolved);
+            try {
+                if (!request.definitionCode().equals(existing.get("definition_code")) || !request.format().toUpperCase(Locale.ROOT).equals(existing.get("requested_format"))
+                    || !parameters.equals(objectMapper.readTree(String.valueOf(existing.get("parameters"))))
+                    || !fields.equals(objectMapper.readTree(String.valueOf(existing.get("selected_fields"))))
+                    || !sort.equals(objectMapper.readTree(String.valueOf(existing.get("sort_spec")))))
+                    throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "REPORT_IDEMPOTENCY_CONFLICT");
+            } catch (java.io.IOException invalid) { throw new IllegalStateException("REPORT_SNAPSHOT_INVALID"); }
+            return resolved;
+        }
+        jdbc.update("update report_runs set report_title=? where id=?",reportTitle,resolved);
         jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?, 'QUEUED', cast(? as jsonb))", resolved,
                 objectMapper.valueToTree(Map.of("definition", request.definitionCode(), "format", request.format())).toString());
         auditTrail.logAs(actor, "REPORT_RUN", request.definitionCode(), resolved, "REPORT_RUN_QUEUED", null, "QUEUED", "Report run requested; definition version " + definition.get("definition_version"));
@@ -199,22 +248,26 @@ public class ReportPlatformService {
             default -> "r.queued_at";
         };
         String direction = "asc".equalsIgnoreCase(sortDirection) ? "asc" : "desc";
-        List<Object> dataArgs = new ArrayList<>(List.of(term, term));
+        List<Object> dataArgs = new ArrayList<>(List.of(term, term, term));
         if (!all) dataArgs.add(actor.getId());
         dataArgs.add(safeLimit); dataArgs.add(offset);
-        List<Map<String, Object>> data = jdbc.queryForList("select r.id, r.definition_code as \"definitionCode\", r.definition_version as \"definitionVersion\", r.status, r.progress, r.reason_code as \"reasonCode\", r.error_message as \"errorMessage\", r.queued_at as \"queuedAt\", r.completed_at as \"completedAt\", a.id as \"artifactId\" from report_runs r left join report_artifacts a on a.run_id=r.id where (r.definition_code ilike ? or cast(r.id as text) ilike ?) " + where + " order by " + orderColumn + " " + direction + " nulls last, r.id desc limit ? offset ?", dataArgs.toArray());
-        List<Object> countArgs = new ArrayList<>(List.of(term, term)); if (!all) countArgs.add(actor.getId());
-        Long total = jdbc.queryForObject("select count(*) from report_runs r where (r.definition_code ilike ? or cast(r.id as text) ilike ?) " + where, Long.class, countArgs.toArray());
+        List<Map<String, Object>> data = jdbc.queryForList("select r.report_title as \"reportTitle\", r.id, r.definition_code as \"definitionCode\", r.definition_version as \"definitionVersion\", r.status, r.progress, r.reason_code as \"reasonCode\", r.error_message as \"errorMessage\", r.queued_at as \"queuedAt\", r.completed_at as \"completedAt\", a.id as \"artifactId\" from report_runs r left join report_artifacts a on a.run_id=r.id where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where + " order by " + orderColumn + " " + direction + " nulls last, r.id desc limit ? offset ?", dataArgs.toArray());
+        List<Object> countArgs = new ArrayList<>(List.of(term, term, term)); if (!all) countArgs.add(actor.getId());
+        Long total = jdbc.queryForObject("select count(*) from report_runs r where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where, Long.class, countArgs.toArray());
         long resolvedTotal = total == null ? 0 : total;
         return Map.of("data", data, "pagination", Map.of("page", safePage, "limit", safeLimit, "total", resolvedTotal, "totalPages", (int) Math.ceil((double) resolvedTotal / safeLimit)));
     }
 
     /** Metadata-only run detail. Artifact bytes remain available only through the re-authorized download endpoint. */
     public Map<String,Object> runDetail(UserAccount actor, UUID runId) {
+        templates.require(actor, "reports.run.view_own", "report.module.view");
         require(actor, "reports.run.view_own", "report.module.view");
         Map<String,Object> run = new LinkedHashMap<>(jdbc.queryForMap("select id, definition_code as \"definitionCode\", definition_version as \"definitionVersion\", requester_user_id as \"requesterUserId\", request_type as \"requestType\", requested_format as \"requestedFormat\", parameters, selected_fields as \"selectedFields\", sort_spec as \"sortSpec\", authorization_snapshot as \"authorizationSnapshot\", status, progress, attempt_count as \"attemptCount\", reason_code as \"reasonCode\", error_message as \"errorMessage\", queued_at as \"queuedAt\", started_at as \"startedAt\", completed_at as \"completedAt\" from report_runs where id=?", runId));
         boolean all = permissions.hasPermission(actor, "reports.run.view_all");
         if (!all && !actor.getId().toString().equals(String.valueOf(run.get("requesterUserId")))) throw new SecurityException("REPORT_SCOPE_DENIED");
+        // Internal snapshots contain source identities, aggregate data and embedded assets.
+        // They are not part of the history metadata API. Bytes use the reauthorized endpoint.
+        run.remove("authorizationSnapshot");
         run.put("artifacts", jdbc.queryForList("select id, format, generated_filename as \"generatedFilename\", mime_type as \"mimeType\", byte_size as \"byteSize\", sha256, expires_at as \"expiresAt\", legal_hold as \"legalHold\", purged_at as \"purgedAt\", created_at as \"createdAt\" from report_artifacts where run_id=? order by created_at", runId));
         run.put("events", jdbc.queryForList("select event_type as \"eventType\", reason_code as \"reasonCode\", detail, created_at as \"createdAt\" from report_run_events where run_id=? order by created_at", runId));
         return run;
@@ -222,30 +275,34 @@ public class ReportPlatformService {
 
     /** Limited, non-official preview. It does not create an artifact or enter report history. */
     public Map<String,Object> preview(UserAccount actor, String definitionCode, List<String> fields) {
-        require(actor, "reports.run.create", "report.module.export");
-        jdbc.queryForMap("select code from report_definitions where code=? and active=true", definitionCode);
-        validateFields(definitionCode, fields);
-        RenderedReport preview = renderRows(definitionCode, actor, fields, 100);
-        return Map.of("definitionCode", definitionCode, "asOfAt", Instant.now().toString(), "rows", preview.rows(), "truncated", preview.sourceDocumentIds().size() >= 100);
+        return templates.preview(actor, definitionCode, new com.eqms.service.report.ReportTemplateService.Criteria(null, fields, Map.of(), "documentNumber", "asc"), 1);
     }
 
     public DownloadArtifact download(UserAccount actor, UUID runId, UUID artifactId) {
+        templates.require(actor,"reports.artifact.download","report.module.export");
         require(actor, "reports.artifact.download", "report.module.export");
         Map<String,Object> artifact=jdbc.queryForMap("""
-                select a.generated_filename, a.mime_type, a.object_key, a.provider, r.requester_user_id, r.definition_code, r.authorization_snapshot
+                select a.generated_filename, a.mime_type, a.object_key, a.provider, a.sha256, r.requester_user_id, r.definition_code, r.authorization_snapshot
                 from report_artifacts a join report_runs r on r.id=a.run_id
                 where a.id=? and a.run_id=? and a.purged_at is null and (a.expires_at is null or a.expires_at > now())
                 """,artifactId, runId);
         boolean canViewAll=permissions.hasPermission(actor,"reports.run.view_all");
         if (!canViewAll && !actor.getId().toString().equals(String.valueOf(artifact.get("requester_user_id")))) throw new SecurityException("REPORT_SCOPE_DENIED");
         reauthorizeArtifactScope(actor, String.valueOf(artifact.get("definition_code")), String.valueOf(artifact.get("authorization_snapshot")));
-        try { auditTrail.logAs(actor, "REPORT_ARTIFACT", String.valueOf(artifact.get("generated_filename")), artifactId, "REPORT_ARTIFACT_DOWNLOADED", null, null, "Artifact download authorized and source scope re-evaluated"); return new DownloadArtifact(String.valueOf(artifact.get("generated_filename")), String.valueOf(artifact.get("mime_type")), fileStorage.readReportArtifact(String.valueOf(artifact.get("provider")), String.valueOf(artifact.get("object_key")))); }
+        try {
+            byte[] bytes = fileStorage.readReportArtifact(String.valueOf(artifact.get("provider")), String.valueOf(artifact.get("object_key")));
+            if (!HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)).equalsIgnoreCase(String.valueOf(artifact.get("sha256")))) throw new IllegalStateException("REPORT_ARTIFACT_CHECKSUM_MISMATCH");
+            auditTrail.logAs(actor, "REPORT_ARTIFACT", String.valueOf(artifact.get("generated_filename")), artifactId, "REPORT_ARTIFACT_DOWNLOADED", null, null, "Artifact download authorized and checksum verified");
+            return new DownloadArtifact(String.valueOf(artifact.get("generated_filename")), String.valueOf(artifact.get("mime_type")), bytes);
+        }
         catch (Exception missing) { throw new IllegalStateException("REPORT_ARTIFACT_EXPIRED"); }
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void retryRun(UserAccount actor, UUID runId) {
+        templates.require(actor,"reports.run.create","report.module.export");
         require(actor, "reports.run.create", "report.module.export");
-        Map<String,Object> run = jdbc.queryForMap("select requester_user_id,status from report_runs where id=?", runId);
+        Map<String,Object> run = jdbc.queryForMap("select requester_user_id,status from report_runs where id=? for update", runId);
         boolean all = permissions.hasPermission(actor, "reports.run.view_all");
         if (!all && !actor.getId().toString().equals(String.valueOf(run.get("requester_user_id")))) throw new SecurityException("REPORT_SCOPE_DENIED");
         if (!Set.of("FAILED", "RETRY_SCHEDULED").contains(String.valueOf(run.get("status")))) throw new IllegalStateException("REPORT_GENERATION_FAILED");
@@ -255,9 +312,13 @@ public class ReportPlatformService {
     }
 
     private void reauthorizeArtifactScope(UserAccount actor, String definitionCode, String rawSnapshot) {
-        if (!"DOCUMENT_STATUS".equals(definitionCode)) return;
         try {
             JsonNode snapshot = objectMapper.readTree(rawSnapshot);
+            if ("METADATA_V1".equals(snapshot.path("protocol").asText())) {
+                templates.reauthorize(actor, definitionCode, snapshot);
+                return;
+            }
+            if (!"DOCUMENT_STATUS".equals(definitionCode)) throw new SecurityException("REPORT_SOURCE_NOT_SUPPORTED");
             JsonNode ids = snapshot.path("sourceDocumentIds");
             if (!ids.isArray()) throw new SecurityException("REPORT_AUTHORIZATION_CHANGED");
             for (JsonNode id : ids) {
@@ -269,11 +330,15 @@ public class ReportPlatformService {
     }
 
     private JsonNode safeJson(Object value) { return value == null ? objectMapper.createObjectNode() : objectMapper.valueToTree(value); }
+    private void requireVersionedTemplateEndpoint(String code) {
+        Integer count=jdbc.queryForObject("select count(*) from report_definitions where code=? and source_code is not null",Integer.class,code);
+        if (Integer.valueOf(1).equals(count)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,"REPORT_USE_VERSIONED_TEMPLATE_ENDPOINT");
+    }
     private Instant resolveRetentionExpiry(String definitionCode) {
-        Integer days = jdbc.queryForObject("select rp.retention_days from report_definitions d join retention_policies rp on rp.id=d.retention_policy_id where d.code=? and rp.is_active=true", Integer.class, definitionCode);
+        Integer days = jdbc.queryForObject("select rp.retention_days from report_definitions d left join retention_policies rp on rp.id=d.retention_policy_id and rp.is_active=true where d.code=?", Integer.class, definitionCode);
         return days == null ? null : Instant.now().plus(java.time.Duration.ofDays(days));
     }
-    private String normalizeKey(String key) { return key == null || key.isBlank() ? UUID.randomUUID().toString() : key.substring(0, Math.min(key.length(), 160)); }
+    private String normalizeKey(String key) { if (key!=null && key.length()>160) throw new IllegalArgumentException("REPORT_IDEMPOTENCY_KEY_INVALID"); return key==null||key.isBlank()?UUID.randomUUID().toString():key; }
     private void validateFormat(Map<String,Object> definition, String format) {
         String allowed=String.valueOf(definition.get("allowed_formats")); if (format == null || !allowed.contains("\"" + format.toUpperCase(Locale.ROOT) + "\"")) throw new IllegalArgumentException("REPORT_FORMAT_NOT_ALLOWED");
     }
@@ -293,7 +358,7 @@ public class ReportPlatformService {
                 update report_runs r set status='PROCESSING', started_at=now(), progress=10,
                   attempt_count=attempt_count+1, lease_until=now()+interval '10 minutes'
                 from candidate where r.id=candidate.id
-                returning r.id, r.definition_code, r.requester_user_id, r.requested_format, r.selected_fields, r.parameters
+                returning r.id, r.definition_code, r.requester_user_id, r.requested_format, r.selected_fields, r.parameters, r.authorization_snapshot, r.attempt_count
                 """);
         if (candidates.isEmpty()) return false;
         Map<String,Object> run=candidates.getFirst(); UUID runId=UUID.fromString(run.get("id").toString());
@@ -301,28 +366,46 @@ public class ReportPlatformService {
             UserAccount requester=users.findById(UUID.fromString(run.get("requester_user_id").toString())).orElseThrow();
             String format=run.get("requested_format").toString();
             List<String> selected=objectMapper.readValue(String.valueOf(run.get("selected_fields")), objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
-            RenderedReport report=renderRows(run.get("definition_code").toString(), requester, selected, 10_000);
-            byte[] bytes=render(format, report.rows());
+            JsonNode snapshot = objectMapper.readTree(String.valueOf(run.get("authorization_snapshot")));
+            RenderedReport report;
+            if ("METADATA_V1".equals(snapshot.path("protocol").asText())) {
+                validateFormat(jdbc.queryForMap("select allowed_formats from report_definitions where code=?",run.get("definition_code")),format);
+                var metadata = templates.render(requester, run.get("definition_code").toString(), snapshot, 1, 10_000, true);
+                ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).put("asOfAt",metadata.asOfAt());
+                report = new RenderedReport(metadata.rows(), metadata.sourceIds());
+            } else {
+                // Preserve authorization semantics of historic queued runs; new requests pin METADATA_V1.
+                report = renderRows(run.get("definition_code").toString(), requester, selected, 10_000);
+            }
+            byte[] bytes;
+            if(snapshot.path("definition").hasNonNull("layout")&&!"CSV".equals(format)) {
+                var layout=objectMapper.treeToValue(snapshot.path("definition").path("layout"),com.eqms.service.report.ReportLayout.class);
+                var presentation=Map.of("report.title",snapshot.path("reportTitle").asText(snapshot.path("definition").path("displayName").asText()),
+                        "report.code",run.get("definition_code").toString(),"template.version",snapshot.path("definition").path("definitionVersion").asText(),
+                        "report.executor",Objects.toString(requester.getFullName(),Objects.toString(requester.getUsername(),requester.getId().toString())),"report.generatedAt",Instant.now().toString(),
+                        "report.asOfAt",snapshot.path("asOfAt").asText());
+                ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).set("presentation",objectMapper.valueToTree(presentation));
+                var charts=com.eqms.service.report.ReportCharts.calculate(layout.effectiveCharts(),selected,report.rows());
+                ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).set("charts",objectMapper.valueToTree(charts));
+                bytes=words==null?com.eqms.service.report.ReportPresentationRenderer.render(format,report.rows(),layout,presentation,charts):words.render(format,report.rows(),layout,presentation,charts);
+            } else bytes=render(format, report.rows());
+            if (bytes.length > 52_428_800) throw new IllegalArgumentException("REPORT_ARTIFACT_LIMIT_EXCEEDED");
             String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
             UUID artifactId=UUID.randomUUID(); String code=run.get("definition_code").toString().toLowerCase(Locale.ROOT);
             String extension=format.toLowerCase(Locale.ROOT); String artifactKey="reports/"+code+"/"+java.time.Year.now().getValue()+"/"+String.format("%02d",java.time.LocalDate.now().getMonthValue())+"/"+runId+"/"+artifactId+"."+extension;
+            int attempt = ((Number)run.get("attempt_count")).intValue();
+            jdbc.update("insert into report_artifact_publication_journal(artifact_id,run_id,attempt_number,object_key,sha256) values(?,?,?,?,?)",artifactId,runId,attempt,artifactKey,hash);
             FileStorageService.StorageWriteResult stored = fileStorage.storeReportArtifact(artifactKey, new java.io.ByteArrayInputStream(bytes), mimeFor(format));
             if (!hash.equalsIgnoreCase(stored.checksum())) throw new IllegalStateException("REPORT_ARTIFACT_CHECKSUM_MISMATCH");
-            Instant expiresAt = resolveRetentionExpiry(String.valueOf(run.get("definition_code")));
-            jdbc.update("insert into report_artifacts(id,run_id,format,generated_filename,provider,bucket,object_key,object_version,mime_type,byte_size,sha256,expires_at) values(?,?,?,?,?,?,?,?,?,?,?,?)", artifactId,runId,format,code+"-"+runId+"."+extension,stored.provider(),stored.bucket(),stored.storedPath(),stored.versionId(),mimeFor(format),bytes.length,hash,expiresAt == null ? null : java.sql.Timestamp.from(expiresAt));
-            jdbc.update("update report_runs set authorization_snapshot=jsonb_set(authorization_snapshot, '{sourceDocumentIds}', cast(? as jsonb)), status='COMPLETED', progress=100, completed_at=now(), lease_until=null where id=?", objectMapper.valueToTree(report.sourceDocumentIds()).toString(), runId);
-            jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?, 'COMPLETED', cast(? as jsonb))",runId,objectMapper.valueToTree(Map.of("artifactId",artifactId,"sha256",hash)).toString());
-        } catch (Exception failure) {
-            Integer attempts = jdbc.queryForObject("select attempt_count from report_runs where id=?", Integer.class, runId);
-            int attempt = attempts == null ? 1 : attempts;
-            if (attempt < 3) {
-                long delaySeconds = Math.min(300L, 15L * (1L << Math.max(0, attempt - 1)));
-                jdbc.update("update report_runs set status='RETRY_SCHEDULED', reason_code='REPORT_GENERATION_FAILED', error_message=?, next_attempt_at=now()+(? * interval '1 second'), lease_until=null where id=?", safeFailureMessage(failure), delaySeconds, runId);
-                jdbc.update("insert into report_run_events(run_id,event_type,reason_code,detail) values(?,'RETRY_SCHEDULED','REPORT_GENERATION_FAILED',cast(? as jsonb))", runId, objectMapper.valueToTree(Map.of("attempt",attempt,"delaySeconds",delaySeconds)).toString());
-            } else {
-                jdbc.update("update report_runs set status='FAILED', reason_code='REPORT_GENERATION_FAILED', error_message=?, lease_until=null where id=?",safeFailureMessage(failure),runId);
-                jdbc.update("insert into report_run_events(run_id,event_type,reason_code,detail) values(?,'DEAD_LETTERED','REPORT_GENERATION_FAILED',cast(? as jsonb))", runId, objectMapper.valueToTree(Map.of("attempt",attempt)).toString());
+            if ("METADATA_V1".equals(snapshot.path("protocol").asText())) {
+                ((com.fasterxml.jackson.databind.node.ObjectNode) snapshot).set("sourceDocumentIds", objectMapper.valueToTree(report.sourceDocumentIds()));
+                templates.reauthorize(requester, run.get("definition_code").toString(), snapshot);
             }
+            Instant expiresAt = resolveRetentionExpiry(String.valueOf(run.get("definition_code")));
+            ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).set("sourceDocumentIds",objectMapper.valueToTree(report.sourceDocumentIds()));
+            publisher.publish(runId,attempt,artifactId,run.get("definition_code").toString(),snapshot,format,code+"-"+runId+"."+extension,stored,mimeFor(format),bytes.length,hash,expiresAt);
+        } catch (Exception failure) {
+            publisher.fail(runId,((Number)run.get("attempt_count")).intValue(),failure);
         }
         return true;
     }
@@ -380,10 +463,17 @@ public class ReportPlatformService {
             Map<String,Object> definition = jdbc.queryForMap("select * from report_definitions where code=? and active=true", schedule.get("definition_code"));
             String format = String.valueOf(schedule.get("requested_format")); validateFormat(definition, format);
             List<String> fields = objectMapper.readValue(String.valueOf(schedule.get("selected_fields")), objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)); validateFields(String.valueOf(schedule.get("definition_code")), fields);
-            Instant next = parseCron(String.valueOf(schedule.get("cron_expression"))).next(Instant.now()); if (next == null) { suspendSchedule(scheduleId, "SUSPENDED_INVALID_SCHEDULE"); return true; }
-            UUID runId = UUID.randomUUID(); JsonNode snapshot = objectMapper.valueToTree(Map.of("creatorId", creator.getId().toString(), "scheduleId", scheduleId.toString(), "capturedAt", Instant.now().toString()));
-            jdbc.update("insert into report_runs(id,definition_code,definition_version,requester_user_id,request_type,requested_format,parameters,selected_fields,authorization_snapshot,status,idempotency_key) values(?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),'QUEUED',?)", runId, schedule.get("definition_code"), definition.get("definition_version"), creator.getId(), "SCHEDULED", format, String.valueOf(schedule.get("parameters")), String.valueOf(schedule.get("selected_fields")), snapshot.toString(), "schedule:"+scheduleId+":"+Instant.now().toEpochMilli());
+            Instant next = nextOccurrence(parseCron(String.valueOf(schedule.get("cron_expression")))); if (next == null) { suspendSchedule(scheduleId, "SUSPENDED_INVALID_SCHEDULE"); return true; }
+            Map<String,Object> criteria = objectMapper.readValue(String.valueOf(schedule.get("parameters")), objectMapper.getTypeFactory().constructMapType(Map.class,String.class,Object.class));
+            criteria.remove("definitionVersion");
+            Object requestedTitle=criteria.remove("reportTitle");
+            UUID runId = UUID.randomUUID(); JsonNode snapshot = templates.snapshot(creator, String.valueOf(schedule.get("definition_code")),
+                    new com.eqms.service.report.ReportTemplateService.Criteria(null, fields, criteria, null, "asc"));
+            String reportTitle=com.eqms.service.report.ReportTemplateService.validatedTitle(requestedTitle,String.valueOf(definition.get("display_name")));
+            ((com.fasterxml.jackson.databind.node.ObjectNode)snapshot).put("reportTitle",reportTitle);
+            jdbc.update("insert into report_runs(id,definition_code,definition_version,requester_user_id,request_type,requested_format,parameters,selected_fields,authorization_snapshot,status,idempotency_key) values(?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),cast(? as jsonb),'QUEUED',?)", runId, schedule.get("definition_code"), definition.get("definition_version"), creator.getId(), "SCHEDULED", format, String.valueOf(schedule.get("parameters")), snapshot.path("fields").toString(), snapshot.toString(), "schedule:"+scheduleId+":"+Instant.now().toEpochMilli());
             jdbc.update("insert into report_run_events(run_id,event_type,detail) values(?,'SCHEDULED',cast(? as jsonb))", runId, objectMapper.valueToTree(Map.of("scheduleId",scheduleId.toString())).toString());
+            jdbc.update("update report_runs set report_title=? where id=?",reportTitle,runId);
             jdbc.update("update report_schedules set last_run_at=now(),next_run_at=?,updated_at=now() where id=?", java.sql.Timestamp.from(next), scheduleId);
         } catch (SecurityException | IllegalArgumentException configurationFailure) {
             suspendSchedule(scheduleId, "SUSPENDED_AUTHORIZATION_CHANGED");
@@ -426,10 +516,10 @@ public class ReportPlatformService {
     private byte[] render(String format, List<List<String>> rows) throws Exception { return switch(format) { case "CSV" -> renderCsv(rows).getBytes(StandardCharsets.UTF_8); case "XLSX" -> renderXlsx(rows); case "PDF" -> renderPdf(rows); default -> throw new IllegalArgumentException("REPORT_FORMAT_NOT_ALLOWED"); }; }
     private String renderCsv(List<List<String>> rows) { StringBuilder out=new StringBuilder(); rows.forEach(row -> out.append(row.stream().map(this::csv).collect(java.util.stream.Collectors.joining(","))).append('\n')); return out.toString(); }
     private byte[] renderXlsx(List<List<String>> rows) throws Exception { try (XSSFWorkbook book=new XSSFWorkbook(); ByteArrayOutputStream out=new ByteArrayOutputStream()) { var sheet=book.createSheet("Report"); for(int r=0;r<rows.size();r++){var excelRow=sheet.createRow(r); for(int c=0;c<rows.get(r).size();c++) excelRow.createCell(c).setCellValue(rows.get(r).get(c));} for(int c=0;c<rows.getFirst().size();c++) sheet.autoSizeColumn(c); book.write(out); return out.toByteArray(); } }
-    private byte[] renderPdf(List<List<String>> rows) throws Exception { try(PDDocument pdf=new PDDocument(); ByteArrayOutputStream out=new ByteArrayOutputStream()) { PDPage page=new PDPage(PDRectangle.A4); pdf.addPage(page); try(PDPageContentStream stream=new PDPageContentStream(pdf,page)){stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA),8); float y=800; for(List<String> row:rows){String line=String.join(" | ",row).replaceAll("[\\r\\n]"," ");stream.beginText();stream.newLineAtOffset(28,y);stream.showText(line.substring(0,Math.min(110,line.length())));stream.endText(); y-=14;if(y<25)break;}}pdf.save(out);return out.toByteArray();} }
+    private byte[] renderPdf(List<List<String>> rows) throws Exception { return com.eqms.service.report.ReportPdfRenderer.render(rows); }
     private String mimeFor(String format) { return switch(format) { case "PDF" -> "application/pdf"; case "XLSX" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; default -> "text/csv; charset=utf-8"; }; }
     private String value(Object value) { return value==null?"":String.valueOf(value); }
-    private String csv(String value) { String v=value==null?"":value.replace("\"","\"\""); if (v.startsWith("=")||v.startsWith("+")||v.startsWith("-")||v.startsWith("@")) v="'"+v; return "\""+v+"\""; }
+    private String csv(String value) { String v=value==null?"":value.replace("\"","\"\""); String probe=v.stripLeading(); if (probe.startsWith("=")||probe.startsWith("+")||probe.startsWith("-")||probe.startsWith("@")||v.startsWith("\t")||v.startsWith("\r")||v.startsWith("\n")) v="'"+v; return "\""+v+"\""; }
     private String safeFailureMessage(Exception exception) { return exception.getClass().getSimpleName()+": report generation failed"; }
 
     public record RunRequest(String definitionCode, String format, Map<String,Object> parameters, List<String> fields, List<Map<String,String>> sort) {}

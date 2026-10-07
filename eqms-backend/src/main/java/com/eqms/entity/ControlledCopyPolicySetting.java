@@ -96,6 +96,27 @@ public class ControlledCopyPolicySetting {
     @Column(name = "stamp_size", nullable = false)
     private String stampSize = "SMALL";
 
+    /** Print a QR code (opaque per-copy token) on the first page of every paper copy, so returned paper can be recalled by scan. */
+    @Column(name = "qr_code_enabled", nullable = false)
+    private boolean qrCodeEnabled = true;
+
+    @Column(name = "qr_code_position", nullable = false, length = 20)
+    private String qrCodePosition = "BOTTOM_RIGHT";
+
+    /** ALL = the code is printed on every page; FIRST = on the first page only. */
+    @Column(name = "qr_code_pages", nullable = false, length = 10)
+    private String qrCodePages = "ALL";
+
+    /** Free position of the QR code (fractions of the first page, top-left of its frame); null = use the corner. */
+    @Column(name = "qr_code_x")
+    private Double qrCodeX;
+
+    @Column(name = "qr_code_y")
+    private Double qrCodeY;
+
+    @Column(name = "qr_code_size_mm", nullable = false)
+    private int qrCodeSizeMm = 20;
+
     @Column(name = "stamp_opacity_percent", nullable = false)
     private int stampOpacityPercent = 90;
 
@@ -223,6 +244,18 @@ public class ControlledCopyPolicySetting {
     public void setWatermarkFontFamily(String watermarkFontFamily) { this.watermarkFontFamily = watermarkFontFamily; }
     public String getStampSize() { return stampSize; }
     public void setStampSize(String stampSize) { this.stampSize = stampSize; }
+    public boolean isQrCodeEnabled() { return qrCodeEnabled; }
+    public void setQrCodeEnabled(boolean qrCodeEnabled) { this.qrCodeEnabled = qrCodeEnabled; }
+    public String getQrCodePages() { return qrCodePages; }
+    public void setQrCodePages(String qrCodePages) { this.qrCodePages = qrCodePages; }
+    public String getQrCodePosition() { return qrCodePosition; }
+    public void setQrCodePosition(String qrCodePosition) { this.qrCodePosition = qrCodePosition; }
+    public Double getQrCodeX() { return qrCodeX; }
+    public void setQrCodeX(Double qrCodeX) { this.qrCodeX = qrCodeX; }
+    public Double getQrCodeY() { return qrCodeY; }
+    public void setQrCodeY(Double qrCodeY) { this.qrCodeY = qrCodeY; }
+    public int getQrCodeSizeMm() { return qrCodeSizeMm; }
+    public void setQrCodeSizeMm(int qrCodeSizeMm) { this.qrCodeSizeMm = qrCodeSizeMm; }
     public int getStampOpacityPercent() { return stampOpacityPercent; }
     public void setStampOpacityPercent(int stampOpacityPercent) { this.stampOpacityPercent = stampOpacityPercent; }
     public String getStampPages() { return stampPages; }

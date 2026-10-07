@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { Badge, type BadgeColor } from "@/components/ui/badge/Badge";
 import { useNavigateWithLoading, usePortalDropdown, type PortalDropdownPosition } from "@/hooks";
@@ -421,11 +422,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
   onReissue,
 }) => {
   const { navigateTo, navigateToPrepared } = useNavigateWithLoading();
-  const shouldReduceMotion = useReducedMotion();
-  const transitionConfig = useMemo(
-    () => (shouldReduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 90, damping: 16 }),
-    [shouldReduceMotion],
-  );
+  const transitionConfig = useExpandTransition();
   const [isLoading, setIsLoading] = useState(false);
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const batchKey = source.batchId || source.distributionBatchId || source.id;
@@ -561,8 +558,9 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
   };
 
   return (
-    <AnimatePresence initial={false}>
-      {isExpanded && hasChildren && (
+    // Mounted by the table only while expanded; the table owns the presence boundary, so the opening and closing motions run
+    // here (see DataTable).
+    isExpanded && hasChildren ? (
         <motion.tr
           key={`expanded-controlled-copies-${source.id}`}
           initial={{ opacity: 0 }}
@@ -573,9 +571,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
         >
           <TableMarkup.Cell colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+              {...EXPAND_CONTENT_MOTION}
               transition={transitionConfig}
               className="overflow-hidden"
             >
@@ -703,7 +699,6 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
             </motion.div>
           </TableMarkup.Cell>
         </motion.tr>
-      )}
-    </AnimatePresence>
+    ) : null
   );
 };

@@ -20,7 +20,7 @@ import { IconInfoCircle, IconChecks, IconCheck, IconHistory, IconPencilMinus } f
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { revisionsOwnedByMe } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
-import { RevisionTableView, TableColumn } from "@/features/documents/shared/components";
+import { RevisionTableView, TableColumn, useRevisionColumnLayout } from "@/features/documents/shared/components";
 import { documentApi } from "@/services/api/documents";
 import { buildRevisionDetailSnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import { formatRevisionDocumentDisplayLabel } from "@/features/documents/shared/documentDisplay";
@@ -339,6 +339,15 @@ export const RevisionsOwnedByMeView: React.FC = () => {
     }
   };
 
+  const { layout: revisionLayout, control: revisionControl } = useRevisionColumnLayout("documents.revisions.owned-by-me", {
+    columns,
+    sortConfig,
+    onSort: handleSort,
+    renderCell,
+    expandedRowId,
+    onExpandRow: setExpandedRowId,
+  });
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {isNavigating && <FullPageLoading text="Loading..." />}
@@ -449,6 +458,7 @@ export const RevisionsOwnedByMeView: React.FC = () => {
               setTemplateFilter(value);
               setCurrentPage(1);
             }}
+            filterTrailing={revisionControl}
             onClearFilters={handleClearFilters}
             statusOptions={statusOptions}
             typeOptions={typeOptions}
@@ -471,6 +481,7 @@ export const RevisionsOwnedByMeView: React.FC = () => {
           )}>
             <RevisionTableView
               revisions={revisions}
+              columnLayout={revisionLayout}
               columns={columns}
               expandedRowId={expandedRowId}
               sortConfig={sortConfig}

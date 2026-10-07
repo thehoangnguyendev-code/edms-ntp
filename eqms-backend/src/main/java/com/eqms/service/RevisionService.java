@@ -15,7 +15,6 @@ import com.eqms.dto.document.RevisionDetailResponse;
 import com.eqms.dto.document.TemplateLineageResponse;
 import com.eqms.dto.document.RevisionHistoryResponse;
 import com.eqms.dto.document.RevisionListItemResponse;
-import com.eqms.dto.document.RevisionOfficeOnlineLinkResponse;
 import com.eqms.dto.document.StatusResponse;
 import com.eqms.dto.document.SignatureResponse;
 import com.eqms.dto.document.RevisionWorkingNoteRequest;
@@ -1602,7 +1601,8 @@ public class RevisionService {
 
         ReviewRequirement reviewRequirement = revision.getReviewRequirement();
         validateReviewersForRequirement(revision, reviewRequirement);
-        boolean hasReviewers = reviewRequirement != ReviewRequirement.NONE;
+        boolean hasReviewers = reviewRequirement == ReviewRequirement.OPTIONAL
+                ? hasParticipants(revision, "REVIEWER") : reviewRequirement != ReviewRequirement.NONE;
         boolean hasApprovers = hasParticipants(revision, "APPROVER");
         String targetStatus = hasReviewers
                 ? "PENDING_REVIEW"
@@ -3446,7 +3446,7 @@ public class RevisionService {
             Join<DocumentRevisionRecord, Department> departmentJoin = root.join("department", JoinType.LEFT);
             Join<DocumentRevisionRecord, UserAccount> authorJoin = root.join("author", JoinType.LEFT);
             Join<DocumentRevisionRecord, UserAccount> openedByJoin = root.join("openedBy", JoinType.LEFT);
-            boolean canViewAll = documentAuthorizationService.canViewAllDocuments(currentUser);
+            boolean canViewAll = documentAuthorizationService.canListAllDocuments(currentUser);
 
             if (StringUtils.hasText(ids)) {
                 List<UUID> parsedIds = parseUuidList(ids);
@@ -3482,39 +3482,7 @@ public class RevisionService {
             }
 
             if (!pending && !canViewAll) {
-                UUID currentUserId = currentUser.getId();
-                Predicate authorPredicate = cb.equal(authorJoin.get("id"), currentUserId);
-                var coAuthorSubquery = query.subquery(UUID.class);
-                var coAuthorRoot = coAuthorSubquery.from(RevisionWorkflowParticipant.class);
-                coAuthorSubquery.select(coAuthorRoot.get("revision").get("id"));
-                coAuthorSubquery.where(
-                        cb.equal(coAuthorRoot.get("revision").get("id"), root.get("id")),
-                        cb.equal(coAuthorRoot.get("participantType"), "CO_AUTHOR"),
-                        cb.equal(coAuthorRoot.get("user").get("id"), currentUserId)
-                );
-
-                var reviewerSubquery = query.subquery(UUID.class);
-                var reviewerRoot = reviewerSubquery.from(RevisionWorkflowParticipant.class);
-                reviewerSubquery.select(reviewerRoot.get("revision").get("id"));
-                reviewerSubquery.where(
-                        cb.equal(reviewerRoot.get("revision").get("id"), root.get("id")),
-                        cb.equal(reviewerRoot.get("participantType"), "REVIEWER"),
-                        cb.equal(reviewerRoot.get("user").get("id"), currentUserId)
-                );
-
-                var approverSubquery = query.subquery(UUID.class);
-                var approverRoot = approverSubquery.from(RevisionWorkflowParticipant.class);
-                approverSubquery.select(approverRoot.get("revision").get("id"));
-                approverSubquery.where(
-                        cb.equal(approverRoot.get("revision").get("id"), root.get("id")),
-                        cb.equal(approverRoot.get("participantType"), "APPROVER"),
-                        cb.equal(approverRoot.get("user").get("id"), currentUserId)
-                );
-
-                Predicate coAuthorPredicate = cb.exists(coAuthorSubquery);
-                Predicate reviewerPredicate = cb.exists(reviewerSubquery);
-                Predicate approverPredicate = cb.exists(approverSubquery);
-                predicates.add(cb.or(authorPredicate, coAuthorPredicate, reviewerPredicate, approverPredicate));
+                predicates.add(documentAuthorizationService.revisionListVisibilityPredicate(currentUser, root, query, cb));
             }
 
             if (pending) {
@@ -4246,7 +4214,7 @@ public class RevisionService {
             return "APPROVER_REQUIRED: Assign and save an Approver before uploading a revision.";
         }
         ReviewRequirement requirement = resolveReviewRequirement(document);
-        if (requirement != ReviewRequirement.NONE) {
+        if (requirement == ReviewRequirement.REQUIRED) {
             long reviewerCount = documentWorkflowParticipantRepository
                     .findAllByDocument_IdAndParticipantTypeOrderBySequenceOrderAsc(document.getId(), "REVIEWER")
                     .size();
@@ -4264,9 +4232,10 @@ public class RevisionService {
     private void validateReviewersForRequirement(DocumentRevisionRecord revision, ReviewRequirement requirement) {
         long reviewerCount = countParticipants(revision, "REVIEWER");
         switch (requirement == null ? ReviewRequirement.REQUIRED : requirement) {
+            case OPTIONAL -> { /* Zero or more reviewers; SoD remains mandatory. */ }
             case NONE -> {
                 if (reviewerCount != 0) {
-                    throw new IllegalStateException("REVIEW_NOT_REQUIRED: this Sub-Type must not have Reviewers");
+                    throw new IllegalStateException("REVIEW_NOT_REQUIRED: this revision's saved workflow policy does not allow Reviewers");
                 }
             }
             case REQUIRED -> {
@@ -4515,9 +4484,10 @@ public class RevisionService {
 
     private void validateReviewerIdsForRequirement(ReviewRequirement requirement, int reviewerCount) {
         switch (requirement == null ? ReviewRequirement.REQUIRED : requirement) {
+            case OPTIONAL -> { /* Zero or more reviewers for new documents. */ }
             case NONE -> {
                 if (reviewerCount != 0) {
-                    throw new IllegalArgumentException("REVIEW_NOT_REQUIRED: this Sub-Type does not allow Reviewer assignments");
+                    throw new IllegalArgumentException("REVIEW_NOT_REQUIRED: this revision's saved workflow policy does not allow Reviewer assignments");
                 }
             }
             case REQUIRED -> {
@@ -4581,36 +4551,6 @@ public class RevisionService {
                 }
             }
         }
-    }
-
-    /**
-     * Writes the eForm fillable template (.docxf with OnlyOffice form fields) designed for this
-     * Revision -- see {@code EformEditSessionService#commitDesign}. Gated by the exact same
-     * Draft-only lock {@link #uploadRevisionFile} enforces for the Revision's own source file, so
-     * field design has the identical edit window as every other Document content change: open
-     * during Draft, permanently locked once Effective (redesign requires an upgrade Revision).
-     * Deliberately skips the rest of {@code uploadRevisionFile}'s pipeline (OOXML upload
-     * validation, snapshotting, file-access/role checks) -- those exist for a human uploading a
-     * replacement file; this is the system recording a design session's own already-converted
-     * output against a Revision the caller (EformEditSessionService) has already authorized.
-     */
-    @Transactional
-    public void setFillableTemplate(UUID revisionId, String fileName, String storageProvider, String storageBucket,
-                                     String storageObjectKey, String storageVersionId, String checksum) {
-        DocumentRevisionRecord revision = requireRevision(revisionId);
-        requireRevisionStatus(revision, "DRAFT");
-        requireRevisionNotCompletedEditing(revision);
-        revision.setFillableTemplateFileName(fileName);
-        revision.setFillableTemplateStorageProvider(storageProvider);
-        revision.setFillableTemplateStorageBucket(storageBucket);
-        revision.setFillableTemplateStorageObjectKey(storageObjectKey);
-        revision.setFillableTemplateStorageVersionId(storageVersionId);
-        revision.setFillableTemplateChecksum(checksum);
-        // Records what the content's OWN checksum was at this exact moment -- lets a later Design
-        // session detect "the static content changed (via Edit) since fields were last placed" and
-        // warn instead of silently resuming a layout that may no longer line up with the text.
-        revision.setFillableTemplateSourceChecksum(revision.getSourceFileChecksum());
-        revisionRepository.save(revision);
     }
 
     @Transactional
@@ -4916,7 +4856,7 @@ public class RevisionService {
             String previousSourceChecksum = revision.getSourceFileChecksum();
 
             String fileName = StringUtils.hasText(revision.getFileName()) ? revision.getFileName() : "revision.bin";
-            RevisionUploadFileValidator.ValidatedRevisionFile validatedFile = validateOfficeOnlineSyncedFile(
+            RevisionUploadFileValidator.ValidatedRevisionFile validatedFile = validateOnlyOfficeSyncedFile(
                     currentUser, revision, fileName, fileBytes
             );
             FileStorageService.StorageWriteResult stored;
@@ -5369,7 +5309,7 @@ public class RevisionService {
     }
 
     /** Office Online is an external storage boundary; downloaded bytes are never trusted implicitly. */
-    private RevisionUploadFileValidator.ValidatedRevisionFile validateOfficeOnlineSyncedFile(
+    private RevisionUploadFileValidator.ValidatedRevisionFile validateOnlyOfficeSyncedFile(
             UserAccount currentUser,
             DocumentRevisionRecord revision,
             String fileName,
@@ -5404,7 +5344,7 @@ public class RevisionService {
         }
     }
 
-    private void validateRevisionSourceForOfficeOnline(
+    private void validateRevisionSourceForOnlyOffice(
             DocumentRevisionRecord revision,
             UserAccount currentUser,
             Path sourcePath
@@ -5413,7 +5353,7 @@ public class RevisionService {
             String fileName = StringUtils.hasText(revision.getFileName())
                     ? revision.getFileName()
                     : sourcePath.getFileName().toString();
-            validateOfficeOnlineSyncedFile(currentUser, revision, fileName, Files.readAllBytes(sourcePath));
+            validateOnlyOfficeSyncedFile(currentUser, revision, fileName, Files.readAllBytes(sourcePath));
         } catch (IOException ex) {
             throw new IllegalStateException("Revision source file could not be validated for Office Online", ex);
         }

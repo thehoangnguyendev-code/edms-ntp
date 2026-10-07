@@ -14,5 +14,8 @@ public enum ReviewRequirement {
      *  the business only ever needed "is a review required at all", not a pinned headcount. A
      *  document with no Sub-Type selected ("None") also resolves to REQUIRED, not NONE --
      *  "unclassified" must not be read as "review waived". */
-    REQUIRED
+    REQUIRED,
+    /** New-document policy: review is performed only when reviewers are assigned.
+     * Never configured on Sub-Types; legacy document snapshots remain unchanged. */
+    OPTIONAL
 }

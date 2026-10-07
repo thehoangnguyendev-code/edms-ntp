@@ -2,11 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Konva from "konva";
 import { Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from "react-konva";
 import { ImageOff } from "lucide-react";
-import { Select } from "@/components/ui/select";
 import { controlledCopyPolicyApi } from "@/services/api";
 import { uncontrolledCopyPolicyApi } from "@/services/api/uncontrolledCopyPolicy";
-import { publishingTemplatesApi } from "@/services/api/publishingTemplates";
-import type { PublishingTemplateResponse } from "@/features/documents/publishing/types";
 import type {
   ControlledCopyMarkingPreview,
   ControlledCopyMarkingPreviewRequest,
@@ -33,29 +30,6 @@ interface WatermarkBoxState {
   /** PDF convention: 0 = horizontal, measured counter-clockwise (opposite of Konva's on-screen `rotation`). */
   angle: number;
 }
-
-type PreviewLayout = "portrait" | "landscape";
-interface PreviewTemplateOption {
-  label: string;
-  value: string;
-  availableLayouts: PreviewLayout[];
-}
-
-const getAvailableLayouts = (template: PublishingTemplateResponse): PreviewLayout[] => {
-  const layouts = (["portrait", "landscape"] as PreviewLayout[]).filter((layout) =>
-    (template.components ?? []).some(
-      (component) =>
-        component.componentType?.toLowerCase() === "cover" &&
-        component.layout?.toLowerCase() === layout &&
-        Boolean(component.objectKey),
-    ),
-  );
-  // Legacy component fields contain the Portrait file only; they must never imply Landscape.
-  if (!layouts.includes("portrait") && Boolean(template.coverTemplatePath || template.coverFileName)) {
-    layouts.unshift("portrait");
-  }
-  return layouts;
-};
 
 /** Which layer name (from the server's response) the administrator may drag in each scenario -- the other layer, when
  *  present, is shown for reference only (e.g. the issued stamp while editing the withdrawn stamp). */
@@ -87,9 +61,9 @@ function useNormalizedTransform<T extends Konva.Node>() {
 }
 
 interface CommonPaneProps {
-  pageKind: "COVER" | "BODY";
-  onPageKindChange: (kind: "COVER" | "BODY") => void;
   onPlacementChange: (kind: "stamp" | "watermark", pagesKey: PagesKey, patch: Partial<MarkingPlacementRule> | null) => void;
+  /** Controlled Copy policy, issued-copy scenario only: the QR code was dragged or resized (position as fractions of the first page, size in mm). */
+  onQrChange?: (patch: { qrCodeX: number; qrCodeY: number; qrCodeSizeMm: number }) => void;
 }
 
 /**
@@ -103,19 +77,14 @@ export type MarkingPreviewPaneProps = CommonPaneProps &
     | { copyType: "UNCONTROLLED"; marking: ControlledCopyStatusMarking }
   );
 
-type PreviewNav = Pick<ControlledCopyMarkingPreviewRequest, "templateId" | "layout" | "pageKind">;
-
-const requestPreview = (props: MarkingPreviewPaneProps, nav: PreviewNav): Promise<ControlledCopyMarkingPreview> =>
+const requestPreview = (props: MarkingPreviewPaneProps): Promise<ControlledCopyMarkingPreview> =>
   props.copyType === "UNCONTROLLED"
-    ? uncontrolledCopyPolicyApi.previewMarking({ ...nav, marking: props.marking })
-    : controlledCopyPolicyApi.previewMarking({ ...props.draft, ...nav, scenario: props.scenario });
+    ? uncontrolledCopyPolicyApi.previewMarking({ marking: props.marking })
+    : controlledCopyPolicyApi.previewMarking({ ...props.draft, scenario: props.scenario });
 
 export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => {
-  const { pageKind, onPageKindChange, onPlacementChange } = props;
+  const { onPlacementChange, onQrChange } = props;
   const scenario = props.copyType === "UNCONTROLLED" ? undefined : props.scenario;
-  const [templates, setTemplates] = useState<PreviewTemplateOption[]>([]);
-  const [templateId, setTemplateId] = useState("");
-  const [layout, setLayout] = useState<PreviewLayout>("portrait");
   const [preview, setPreview] = useState<ControlledCopyMarkingPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,45 +96,20 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
 
   const [stampBox, setStampBox] = useState<StampBoxState | null>(null);
   const [watermarkBox, setWatermarkBox] = useState<WatermarkBoxState | null>(null);
+  const [qrBox, setQrBox] = useState<StampBoxState | null>(null);
+  const qrNode = useNormalizedTransform<Konva.Group>();
+  const qrTransformer = useRef<Konva.Transformer>(null);
   const stampNode = useNormalizedTransform<Konva.Group>();
   const stampTransformer = useRef<Konva.Transformer>(null);
   const watermarkNode = useNormalizedTransform<Konva.Text>();
   const watermarkTransformer = useRef<Konva.Transformer>(null);
 
-  const pagesKey: PagesKey = pageKind === "COVER" ? "FIRST" : "OTHERS";
-
-  useEffect(() => {
-    let alive = true;
-    publishingTemplatesApi
-      .getTemplates({ status: "ACTIVE", limit: 50 })
-      .then((page) => {
-        if (!alive) return;
-        const options = (page.data ?? [])
-          .filter((t): t is typeof t & { id: string; templateName: string } => Boolean(t.id && t.templateName))
-          .map((t) => ({
-            label: t.templateName,
-            value: t.id,
-            availableLayouts: getAvailableLayouts(t),
-          }));
-        setTemplates(options);
-        setTemplateId((current) => current || options[0]?.value || "");
-      })
-      .catch(() => {
-        if (alive) setTemplates([]);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const selectedTemplate = useMemo(
-    () => templates.find((template) => template.value === templateId),
-    [templateId, templates],
-  );
-  const layoutAvailable = Boolean(selectedTemplate?.availableLayouts.includes(layout));
-  const layoutWarning = selectedTemplate && !layoutAvailable
-    ? `${selectedTemplate.label} does not have a ${layout === "portrait" ? "Portrait" : "Landscape"} layout. Upload and publish that layout before previewing it.`
-    : null;
+  // One sample paper: a position set here is the position on every page the mark appears on (the Pages choice decides which).
+  const pagesKey: PagesKey = "FIRST";
+  const place = (kind: "stamp" | "watermark", patch: Partial<MarkingPlacementRule>) => {
+    onPlacementChange(kind, "FIRST", patch);
+    onPlacementChange(kind, "OTHERS", patch);
+  };
 
   // Measures the available width so the Konva stage (which needs real pixel dimensions) fills its box responsively.
   useEffect(() => {
@@ -177,27 +121,19 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
   }, []);
 
   const draftKey = JSON.stringify(props.copyType === "UNCONTROLLED" ? props.marking : props.draft);
-  // Navigation (which page/template/layout/scenario to look at) fetches immediately -- debouncing it just
+  // Navigation (which scenario to look at) fetches immediately -- debouncing it just
   // makes switching "Position for" back and forth look like it forgot the position for half a second, which is easy
   // to mistake for the drag itself being lost. Only draftKey (a field edit or a drag commit, which can fire rapidly)
   // is debounced, to avoid flooding the server while the administrator is still typing/dragging.
-  const navKey = JSON.stringify({ copyType: props.copyType ?? "CONTROLLED", templateId, layout, pageKind, scenario });
+  const navKey = JSON.stringify({ copyType: props.copyType ?? "CONTROLLED", scenario });
   const previousNavKey = useRef(navKey);
   useEffect(() => {
-    if (!templateId) return;
-    if (!layoutAvailable) {
-      requestRef.current += 1;
-      setPreview(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
     const isNavigationOnly = previousNavKey.current !== navKey;
     previousNavKey.current = navKey;
     const requestId = ++requestRef.current;
     const fetchPreview = () => {
       setLoading(true);
-      requestPreview(props, { templateId, layout, pageKind })
+      requestPreview(props)
         .then((result) => {
           if (requestId !== requestRef.current) return;
           setPreview(result);
@@ -218,7 +154,7 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
     const timer = window.setTimeout(fetchPreview, 500);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey, navKey, layoutAvailable]);
+  }, [draftKey, navKey]);
 
   // The background is whatever page the server just rendered -- reloaded as a plain <img> would be, but Konva needs an
   // actual HTMLImageElement instance to draw from.
@@ -242,6 +178,8 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
   const marks = preview?.marks ?? [];
   const stampMark = marks.find((m) => m.kind === "STAMP" && m.layer.startsWith(editable));
   const watermarkMark = marks.find((m) => m.kind === "WATERMARK" && m.layer.startsWith(editable));
+  // The QR code is draggable only where the policy can store its position: the issued-copy marking of a Controlled Copy.
+  const qrMark = onQrChange && scenario === "ISSUED" ? marks.find((m) => m.kind === "QR" && m.layer.startsWith(editable)) : undefined;
   const referenceMarks = marks.filter((m) => !m.layer.startsWith(editable));
 
   // A fresh server render (a new template/page/scenario, or the round trip after the previous drag was saved) replaces
@@ -255,6 +193,20 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
         ? { left: stampMark.x / pw, top: (ph - stampMark.y - stampMark.height) / ph, width: stampMark.width / pw, height: stampMark.height / ph }
         : null,
     );
+    setQrBox(
+      qrMark
+        ? { left: qrMark.x / pw, top: (ph - qrMark.y - qrMark.height) / ph, width: qrMark.width / pw, height: qrMark.height / ph }
+        : null,
+    );
+    // A code dropped on the stamp or the watermark was moved by the server to the nearest free place. Keep that place as the
+    // position, so what is saved is what the server prints (it would pick the same place at issue time anyway).
+    if (qrMark?.adjusted && onQrChange && props.copyType !== "UNCONTROLLED" && props.draft.marking.qrCodeX != null) {
+      onQrChange({
+        qrCodeX: round(qrMark.x / pw),
+        qrCodeY: round((ph - qrMark.y - qrMark.height) / ph),
+        qrCodeSizeMm: props.draft.marking.qrCodeSizeMm,
+      });
+    }
     setWatermarkBox(
       watermarkMark
         ? {
@@ -284,23 +236,6 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
   const watermarkScalePercentRef = useRef(existingWatermarkScalePercent);
   watermarkScalePercentRef.current = existingWatermarkScalePercent;
 
-  // "Pages" (Every page / First page only, issued-copy marking only -- a status mark always applies to every page)
-  // decides whether a mark exists at all on page 2+; it is a different setting from the page picker above, which only
-  // chooses which page's position you are dragging right now. Warn here so setting a position on a page the mark
-  // will never actually appear on (because its own Pages scope excludes it) isn't mistaken for a bug.
-  // Uncontrolled copy: the watermark is forced onto every page by the server; only the stamp honours "First page only".
-  const hiddenOnThisPage =
-    pageKind !== "BODY"
-      ? []
-      : props.copyType === "UNCONTROLLED"
-        ? props.marking.stampEnabled && props.marking.stampPages === "FIRST" ? ["stamp"] : []
-        : props.scenario === "ISSUED"
-          ? [
-              props.draft.marking.watermarkPages === "FIRST" ? "watermark" : null,
-              props.draft.marking.stampPages === "FIRST" ? "stamp" : null,
-            ].filter((v): v is string => v !== null)
-          : [];
-
   const pageAspect = preview ? preview.pageHeightPt / preview.pageWidthPt : 1;
   const stageHeight = stageWidth * pageAspect;
   const scale = preview ? stageWidth / preview.pageWidthPt : 1;
@@ -310,16 +245,20 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
     stampTransformer.current?.getLayer()?.batchDraw();
   }, [stampBox, stampNode.ref]);
   useEffect(() => {
+    qrTransformer.current?.nodes(qrBox && qrNode.ref.current ? [qrNode.ref.current] : []);
+    qrTransformer.current?.getLayer()?.batchDraw();
+  }, [qrBox, qrNode.ref]);
+  useEffect(() => {
     watermarkTransformer.current?.nodes(watermarkBox && watermarkNode.ref.current ? [watermarkNode.ref.current] : []);
     watermarkTransformer.current?.getLayer()?.batchDraw();
   }, [watermarkBox, watermarkNode.ref]);
 
   const commitStamp = (box: StampBoxState) =>
-    onPlacementChange("stamp", pagesKey, { stampX: round(box.left), stampY: round(box.top), stampWidthPercent: Math.round(box.width * 100) });
+    place("stamp", { stampX: round(box.left), stampY: round(box.top), stampWidthPercent: Math.round(box.width * 100) });
 
   const commitWatermark = (box: WatermarkBoxState, scalePercent: number) => {
     watermarkScalePercentRef.current = scalePercent;
-    onPlacementChange("watermark", pagesKey, {
+    place("watermark", {
       watermarkX: round(box.centreX),
       watermarkY: round(box.centreY),
       watermarkScalePercent: Math.round(scalePercent),
@@ -351,6 +290,37 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
     commitStamp(next);
   };
 
+  // The QR code is dragged and resized exactly like the stamp (Konva Group + Transformer); the ratio is kept so it stays square.
+  // Its size is stored in millimetres (15-40), so a resize multiplies the stored size by the scale instead of guessing one.
+  const qrSizeMm = props.copyType === "UNCONTROLLED" ? 20 : props.draft.marking.qrCodeSizeMm;
+  const commitQr = (box: StampBoxState, sizeMm: number) =>
+    onQrChange?.({ qrCodeX: round(box.left), qrCodeY: round(box.top), qrCodeSizeMm: sizeMm });
+
+  const handleQrDragEnd = () => {
+    const node = qrNode.ref.current;
+    if (!node || !qrBox) return;
+    const next: StampBoxState = { ...qrBox, left: node.x() / stageWidth, top: node.y() / stageHeight };
+    setQrBox(next);
+    commitQr(next, qrSizeMm);
+  };
+
+  const handleQrTransformEnd = () => {
+    const node = qrNode.ref.current;
+    if (!node || !qrBox) return;
+    const scaleFactor = (node.scaleX() + node.scaleY()) / 2;
+    qrNode.resetScale();
+    const sizeMm = Math.min(40, Math.max(15, Math.round(qrSizeMm * scaleFactor)));
+    const ratio = sizeMm / qrSizeMm;
+    const next: StampBoxState = {
+      left: node.x() / stageWidth,
+      top: node.y() / stageHeight,
+      width: qrBox.width * ratio,
+      height: qrBox.height * ratio,
+    };
+    setQrBox(next);
+    commitQr(next, sizeMm);
+  };
+
   const handleWatermarkDragEnd = () => {
     const node = watermarkNode.ref.current;
     if (!node || !watermarkBox) return;
@@ -378,53 +348,6 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-        <Select
-          label="Preview on template"
-          value={templateId}
-          onChange={(v) => setTemplateId(String(v))}
-          options={templates.map(({ label, value }) => ({ label, value }))}
-          placeholder={templates.length === 0 ? "No active Publishing Template" : "Select a template"}
-          enableSearch={false}
-        />
-        <div className="min-w-0">
-          <Select
-            label="Position for"
-            value={pageKind}
-            onChange={(v) => onPageKindChange(v as "COVER" | "BODY")}
-            options={[
-              { label: "Cover page (page 1)", value: "COVER" },
-              { label: "Following pages (page 2+)", value: "BODY" },
-            ]}
-            enableSearch={false}
-          />
-          <p className="mt-1 text-2xs text-slate-400">Which page you're dragging on now -- not whether the mark shows there (see Pages below).</p>
-        </div>
-        <Select
-          label="Paper layout"
-          value={layout}
-          onChange={(v) => setLayout(v as PreviewLayout)}
-          options={[
-            { label: "Portrait", value: "portrait" },
-            { label: "Landscape", value: "landscape" },
-          ]}
-          enableSearch={false}
-        />
-      </div>
-
-      {layoutWarning && (
-        <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-2xs text-amber-800">
-          {layoutWarning}
-        </p>
-      )}
-
-      {hiddenOnThisPage.length > 0 && (
-        <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-2xs text-amber-800">
-          The {hiddenOnThisPage.join(" and ")} is set to "First page only" under Pages, so it won't actually appear on this
-          page -- any position set here has no effect until that is changed to "Every page".
-        </p>
-      )}
-
       <div ref={containerRef} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100" style={{ minHeight: 240 }}>
         {preview && bgImage && stageWidth > 0 ? (
           <Stage width={stageWidth} height={stageHeight} className={loading ? "opacity-60 transition-opacity" : "transition-opacity"}>
@@ -496,6 +419,45 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
                 />
               )}
 
+              {qrBox && (
+                <Group
+                  ref={qrNode.ref}
+                  x={qrBox.left * stageWidth}
+                  y={qrBox.top * stageHeight}
+                  draggable
+                  dragBoundFunc={(pos) => ({
+                    x: Math.max(0, Math.min(pos.x, stageWidth - qrBox.width * stageWidth)),
+                    y: Math.max(0, Math.min(pos.y, stageHeight - qrBox.height * stageHeight)),
+                  })}
+                  onDragEnd={handleQrDragEnd}
+                  onTransformEnd={handleQrTransformEnd}
+                >
+                  <Rect width={qrBox.width * stageWidth} height={qrBox.height * stageHeight} stroke="#7c3aed" strokeWidth={2} fill="#7c3aed1a" />
+                  <Text
+                    width={qrBox.width * stageWidth}
+                    height={qrBox.height * stageHeight}
+                    text="QR"
+                    align="center"
+                    verticalAlign="middle"
+                    fontStyle="bold"
+                    fontSize={12}
+                    fill="#7c3aed"
+                  />
+                </Group>
+              )}
+              {qrBox && (
+                <Transformer
+                  ref={qrTransformer}
+                  rotateEnabled={false}
+                  keepRatio
+                  enabledAnchors={["top-left", "top-right", "bottom-left", "bottom-right"]}
+                  borderStroke="#7c3aed"
+                  anchorStroke="#7c3aed"
+                  anchorFill="#ffffff"
+                  boundBoxFunc={(oldBox, newBox) => (newBox.width < 24 || newBox.height < 24 ? oldBox : newBox)}
+                />
+              )}
+
               {watermarkBox && (
                 <Text
                   ref={watermarkNode.ref}
@@ -535,7 +497,7 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
         ) : (
           <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-500">
             <IconImageGeneration className="h-6 w-6 text-slate-300" />
-            {templateId ? (loading ? "Drawing the preview..." : error ?? "No preview yet") : "Choose a Publishing Template to preview on."}
+            {loading ? "Drawing the preview..." : error ?? "No preview yet"}
           </div>
         )}
       </div>

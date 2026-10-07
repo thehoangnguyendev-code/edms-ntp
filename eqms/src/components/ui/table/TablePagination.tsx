@@ -125,7 +125,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
               onChange={handleItemsPerPageChange}
               options={perPageOptions}
               className="w-16 sm:w-20"
-              triggerClassName="h-6 sm:h-7 text-[10px] sm:text-xs md:text-sm"
+              triggerClassName="min-h-0 py-0 px-2 h-6 sm:h-7 md:h-8 text-[10px] sm:text-xs md:text-sm"
               enableSearch={false}
               disabled={isLoading}
             />

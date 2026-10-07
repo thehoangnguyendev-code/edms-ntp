@@ -21,7 +21,7 @@ import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading
 import { usePortalDropdown, useNavigateWithLoading, useTableDragScroll } from "@/hooks";
 import { useRevisionServerTable } from "@/features/documents/hooks";
 import { useAuth } from "@/contexts/AuthContext";
-import { RevisionTableView, TableColumn } from "@/features/documents/shared/components";
+import { RevisionTableView, TableColumn, useRevisionColumnLayout } from "@/features/documents/shared/components";
 import { documentApi } from "@/services/api/documents";
 import { buildRevisionDetailSnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
@@ -470,6 +470,15 @@ export const RevisionListView: React.FC = () => {
     }
   };
 
+  const { layout: revisionLayout, control: revisionControl } = useRevisionColumnLayout("documents.revisions.list", {
+    columns,
+    sortConfig,
+    onSort: handleSort,
+    renderCell,
+    expandedRowId,
+    onExpandRow: setExpandedRowId,
+  });
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {(isRouteNavigating || isNavigating) && <FullPageLoading text="Loading..." />}
@@ -583,6 +592,7 @@ export const RevisionListView: React.FC = () => {
               setTemplateFilter(value);
               setCurrentPage(1);
             }}
+            filterTrailing={revisionControl}
             onClearFilters={handleClearFilters}
             statusOptions={statusOptions}
             typeOptions={typeOptions}
@@ -606,6 +616,7 @@ export const RevisionListView: React.FC = () => {
             )}>
               <RevisionTableView
                 revisions={revisions}
+                columnLayout={revisionLayout}
                 columns={columns}
                 expandedRowId={expandedRowId}
                 sortConfig={sortConfig}

@@ -58,6 +58,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -216,7 +217,8 @@ public class UncontrolledCopyService {
         Specification<UncontrolledCopyRecord> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (!seesAll) {
-                predicates.add(cb.equal(root.get("requestedBy").get("id"), currentUser.getId()));
+                // Everyone else sees only the copies they hold as the named recipient (account id).
+                predicates.add(cb.equal(root.get("recipientUserId"), currentUser.getId()));
             }
             if (StringUtils.hasText(status) && !"all".equalsIgnoreCase(status.trim())) {
                 predicates.add(cb.equal(root.get("statusCode"), status.trim().toUpperCase(Locale.ROOT)));
@@ -307,7 +309,10 @@ public class UncontrolledCopyService {
         boolean hasPermission = permissionEvaluationService.hasPermission(currentUser, P_REQUEST);
         boolean revisionMatches = requestedRevision == null || (effective != null && Objects.equals(requestedRevision.getId(), effective.getId()));
         boolean documentActive = "ACTIVE".equalsIgnoreCase(documentStatus == null ? null : documentStatus.trim());
-        boolean canRequest = hasPermission && typeEligible && effective != null && revisionMatches && documentActive && !document.isTemplate();
+        UncontrolledCopyPolicySetting policy = policyService.loadOrDefault();
+        String validityProblem = effective == null ? null : validityProblem(policy, effective, document, Instant.now());
+        boolean canRequest = hasPermission && typeEligible && effective != null && revisionMatches && documentActive && !document.isTemplate()
+                && validityProblem == null;
 
         String message = null;
         if (!canRequest) {
@@ -319,12 +324,17 @@ public class UncontrolledCopyService {
                 message = eligibility.reason() != null ? eligibility.reason() : "Uncontrolled copies are not enabled for this document.";
             } else if (effective == null || !revisionMatches) {
                 message = "Uncontrolled copies can only be requested for the current Effective revision.";
+            } else if (validityProblem != null) {
+                message = validityProblem;
             } else {
                 message = "Uncontrolled copies are available only when the document is Active.";
             }
         }
-        UncontrolledCopyPolicySetting policy = policyService.loadOrDefault();
         DocumentRevisionRecord shown = effective != null ? effective : requestedRevision;
+        java.time.LocalDate documentValidUntil = validUntilDate(effective, document);
+        String computedValidUntil = effective == null || !BASIS_DOCUMENT.equals(policy.getValidityBasis())
+                ? null
+                : computeValidUntil(policy, effective, document, Instant.now()).map(DateTimeFormatUtils::formatDateTime).orElse(null);
         return new UncontrolledCopyRequestContextResponse(
                 idString(document.getId()),
                 document.getDocumentNumber(),
@@ -342,7 +352,10 @@ public class UncontrolledCopyService {
                 policy.getValidityHours(),
                 policy.isAllowRedownload(),
                 policyService.markingFor(policy),
-                normalize(policyService.markingFor(policy).watermarkText())
+                normalize(policyService.markingFor(policy).watermarkText()),
+                policy.getValidityBasis(),
+                documentValidUntil == null ? null : DateTimeFormatUtils.formatDate(documentValidUntil),
+                computedValidUntil
         );
     }
 
@@ -419,6 +432,10 @@ public class UncontrolledCopyService {
 
         UncontrolledCopyPolicySetting policy = policyService.loadOrDefault();
         Instant now = Instant.now();
+        String validityProblem = validityProblem(policy, revision, document, now);
+        if (validityProblem != null) {
+            throw new IllegalArgumentException(validityProblem);
+        }
         UncontrolledCopyRecord copy = new UncontrolledCopyRecord();
         copy.setId(UUID.randomUUID());
         copy.setDocument(document);
@@ -431,6 +448,7 @@ public class UncontrolledCopyService {
         copy.setRequestedBy(currentUser);
         copy.setRequestedAt(now);
         copy.setRecipientSnapshot(recipient);
+        copy.setRecipientUserId(parseUuidOrNull(textField(recipient, "userId")));
         setStatus(copy, policy.isApprovalRequired() ? STATUS_REQUESTED : STATUS_APPROVED);
         uncontrolledCopyRepository.saveAndFlush(copy);
 
@@ -584,7 +602,11 @@ public class UncontrolledCopyService {
         String from = copy.getStatus();
         copy.setDistributedBy(currentUser);
         copy.setDistributedAt(distributedAt);
-        copy.setValidUntil(distributedAt.plusSeconds(Math.max(policy.getValidityHours(), 1) * 3600L));
+        String validityProblem = validityProblem(policy, copy.getRevision(), copy.getDocument(), distributedAt);
+        if (validityProblem != null) {
+            throw new IllegalArgumentException(validityProblem);
+        }
+        copy.setValidUntil(computeValidUntil(policy, copy.getRevision(), copy.getDocument(), distributedAt).orElseThrow());
         JsonNode snapshot = copy.getRecipientSnapshot();
         if (snapshot instanceof ObjectNode objectNode) {
             objectNode.put("distributedAt", distributedAt.toString());
@@ -973,6 +995,46 @@ public class UncontrolledCopyService {
     // Helpers
     // ------------------------------------------------------------------------------------------------------------
 
+    public static final String BASIS_DISTRIBUTION = "DISTRIBUTION";
+    public static final String BASIS_DOCUMENT = "DOCUMENT_VALID_UNTIL";
+
+    private static java.time.LocalDate validUntilDate(DocumentRevisionRecord revision, DocumentRecord document) {
+        return revision != null && revision.getValidUntil() != null ? revision.getValidUntil() : (document == null ? null : document.getValidUntil());
+    }
+
+    /**
+     * Until when a copy distributed at {@code distributedAt} is valid. Counted from the distribution: that moment plus the policy's
+     * hours. Counted from the document: the END of its Valid Until day plus the policy's hours (0 hours = that day only), so
+     * "27/10/2027 + 72 hours" ends at 23:59:59 on 30/10/2027. Empty when the policy follows the document and it has no Valid Until date.
+     */
+    public static Optional<Instant> computeValidUntil(UncontrolledCopyPolicySetting policy, DocumentRevisionRecord revision, DocumentRecord document, Instant distributedAt) {
+        if (!BASIS_DOCUMENT.equals(policy.getValidityBasis())) {
+            return Optional.of(distributedAt.plusSeconds(Math.max(policy.getValidityHours(), 1) * 3600L));
+        }
+        java.time.LocalDate validUntil = validUntilDate(revision, document);
+        if (validUntil == null) {
+            return Optional.empty();
+        }
+        Instant endOfDay = validUntil.plusDays(1).atStartOfDay(SYSTEM_ZONE).toInstant().minusSeconds(1);
+        return Optional.of(endOfDay.plusSeconds(Math.max(policy.getValidityHours(), 0) * 3600L));
+    }
+
+    /** Why a copy cannot be issued under the current validity policy, or null. */
+    public static String validityProblem(UncontrolledCopyPolicySetting policy, DocumentRevisionRecord revision, DocumentRecord document, Instant at) {
+        if (!BASIS_DOCUMENT.equals(policy.getValidityBasis())) {
+            return null;
+        }
+        Optional<Instant> validUntil = computeValidUntil(policy, revision, document, at);
+        if (validUntil.isEmpty()) {
+            return "This document has no Valid Until date, and the Uncontrolled Copies Policy makes a copy valid until the document's Valid Until date, so a copy cannot be issued.";
+        }
+        if (!at.isBefore(validUntil.get())) {
+            return "The document's Valid Until date" + (policy.getValidityHours() > 0 ? " plus " + policy.getValidityHours() + " hours" : "")
+                    + " has already passed, so an uncontrolled copy of it would already be expired.";
+        }
+        return null;
+    }
+
     private ControlledCopyPdfMarkingService.Marked renderMarking(UncontrolledCopyRecord copy, byte[] pdf, Instant issuedAt) {
         ControlledCopyStatusMarking configured = policyService.markingFor(policyService.loadOrDefault());
         MarkingPlan plan = markingPlan(configured, copy.getUncontrolledCopyNumber(),
@@ -989,10 +1051,10 @@ public class UncontrolledCopyService {
      * server-rendered preview ({@link UncontrolledCopyMarkingPreviewService}), so the preview can never drift from the real file.
      */
     public static MarkingPlan markingPlan(ControlledCopyStatusMarking configured, String copyNumber, String viewer, String timestamp) {
-        // Watermark is mandatory and on every page: only its styling (and, per the policy screen,
-        // its title text) comes from the policy.
+        // The watermark is mandatory (always printed); the policy decides how it looks, what its title says and on which pages
+        // it goes (every page by default).
         ControlledCopyStatusMarking forced = new ControlledCopyStatusMarking(
-                Boolean.TRUE, null, null, null, null, null, null, null, "ALL",
+                Boolean.TRUE, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null
         ).mergedOver(configured);
         List<String> watermarkLines = new ArrayList<>();
@@ -1066,14 +1128,16 @@ public class UncontrolledCopyService {
                 || (STATUS_DISTRIBUTED.equals(copy.getStatusCode()) && copy.getValidUntil() != null && !Instant.now().isBefore(copy.getValidUntil()));
     }
 
+    /** Blanket view: the dedicated "view all uncontrolled copies" permission (or Record visibility =
+     *  "All"), on top of the base view permission. Operational permissions such as approve/reject/
+     *  distribute no longer imply it. */
     private boolean seesAllCopies(UserAccount user) {
         return permissionEvaluationService.hasPermission(user, P_VIEW)
-                && (permissionEvaluationService.hasAnyPermission(user, P_APPROVE, P_REJECT, P_DISTRIBUTE)
-                || documentAuthorizationService.canViewAllDocuments(user));
+                && documentAuthorizationService.canViewAllUncontrolledCopies(user);
     }
 
     private boolean canViewRecord(UserAccount user, UncontrolledCopyRecord copy) {
-        return seesAllCopies(user) || isOwnRequest(user, copy) || isRecipient(user, copy);
+        return seesAllCopies(user) || isRecipient(user, copy);
     }
 
     private boolean isOwnRequest(UserAccount user, UncontrolledCopyRecord copy) {
@@ -1081,17 +1145,16 @@ public class UncontrolledCopyService {
     }
 
     /**
-     * Recipient access is keyed strictly on the snapshot's system {@code userId}. There is deliberately NO fallback to
-     * matching the signed-in user's e-mail address: an account that merely shares an address with a recipient must
-     * never inherit the copy. (Legacy snapshots without a userId therefore have no recipient-based access; the
-     * requester and Document Control keep theirs.)
+     * Recipient access is keyed strictly on the system account id stored in {@code recipient_user_id} (mirrors the
+     * snapshot's {@code userId}). There is deliberately NO fallback to matching the signed-in user's e-mail address
+     * or name: an account that merely shares an address with a recipient must never inherit the copy. (Legacy rows
+     * without a recipient id therefore have no recipient-based access; holders of the blanket permission keep theirs.)
      */
     private boolean isRecipient(UserAccount user, UncontrolledCopyRecord copy) {
-        if (user == null || user.getId() == null) {
+        if (user == null || user.getId() == null || copy == null) {
             return false;
         }
-        String recipientUserId = textField(copy.getRecipientSnapshot(), "userId");
-        return StringUtils.hasText(recipientUserId) && recipientUserId.equals(user.getId().toString());
+        return user.getId().equals(copy.getRecipientUserId());
     }
 
     private boolean canPreview(UserAccount user, UncontrolledCopyRecord copy) {

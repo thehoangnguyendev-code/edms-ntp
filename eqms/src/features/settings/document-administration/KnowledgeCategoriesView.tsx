@@ -1,10 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Check,
-  ChevronDown,
   ChevronRight,
-  ChevronUp,
   Layers,
   MoreVertical,
   Pencil,
@@ -29,11 +27,12 @@ import {
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { knowledgeCategories } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { cn } from "@/components/ui/utils";
 import { useToast } from "@/components/ui/toast";
-import { useDebounce, usePortalDropdown, useTableDragScroll } from "@/hooks";
+import { useDebounce, usePortalDropdown } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import {
@@ -41,7 +40,7 @@ import {
   type KnowledgeHierarchy,
 } from "@/services/api/knowledge";
 import { formatDateTime } from "@/utils/format";
-import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const COLUMNS = [
   { key: "name", label: "Name", sortable: true },
@@ -85,15 +84,6 @@ export const KnowledgeCategoriesView: React.FC = () => {
     "documents.admin.knowledge_categories.manage",
   );
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
-  const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
-  const shouldReduceMotion = useReducedMotion();
-  const transitionConfig = useMemo(
-    () =>
-      shouldReduceMotion
-        ? { duration: 0 }
-        : { type: "spring" as const, stiffness: 90, damping: 16 },
-    [shouldReduceMotion],
-  );
 
   const [rows, setRows] = useState<KnowledgeHierarchy[]>([]);
   const [total, setTotal] = useState(0);
@@ -244,6 +234,86 @@ export const KnowledgeCategoriesView: React.FC = () => {
 
   const menuRow = rows.find((row) => row.id === openId);
 
+  type Row = (typeof rows)[number];
+  const knowledgeColumns: DataTableColumn<Row>[] = [
+    {
+      id: "expand",
+      header: "",
+      label: "Expand",
+      locked: true,
+      headerClassName: TABLE_STYLES.emptyCell4,
+      cell: (item) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => toggleExpanded(item.id)}
+            aria-label="Show levels"
+            className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors mx-auto"
+          >
+            <ChevronRight
+              className={cn("h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500 transition-transform", expanded.has(item.id) && "rotate-90")}
+            />
+          </button>
+        </div>
+      ),
+    },
+    { id: "no", header: "No.", label: "No.", headerClassName: TABLE_STYLES.headerCell29, cellClassName: "text-center text-slate-500 font-medium", cell: (_item, index) => (page - 1) * pageSize + index + 1 },
+    {
+      id: "name",
+      header: "Name",
+      label: "Name",
+      sort: { direction: sortKey === "name" ? sortDir : undefined, onSort: () => handleSort("name") },
+      cell: (item) => (
+        <>
+          <span
+            className="font-medium text-emerald-600 cursor-pointer hover:underline"
+            onClick={() => navigate(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES_EDIT(item.id))}
+          >
+            {item.name}
+          </span>
+          {item.isDefault && (
+            <Badge size="sm" color="blue" className="ml-2">
+              Default
+            </Badge>
+          )}
+          {item.description && (
+            <div className="text-xs text-slate-500 max-w-md truncate" title={item.description}>
+              {item.description}
+            </div>
+          )}
+        </>
+      ),
+    },
+    { id: "determinatorField", header: "Knowledge Base Field Determinator", label: "Knowledge Base Field Determinator", sort: { direction: sortKey === "determinatorField" ? sortDir : undefined, onSort: () => handleSort("determinatorField") }, cellClassName: "text-slate-700", cell: (item) => item.determinatorLabel },
+    { id: "levels", header: "Levels", label: "Levels", sort: { direction: sortKey === "levels" ? sortDir : undefined, onSort: () => handleSort("levels") }, cellClassName: "text-slate-700", cell: (item) => item.levels.length },
+    {
+      id: "active",
+      header: "Status",
+      label: "Status",
+      sort: { direction: sortKey === "active" ? sortDir : undefined, onSort: () => handleSort("active") },
+      cell: (item) => (
+        <Badge size="sm" color={item.active ? "emerald" : "slate"} pill>
+          {item.active ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (item) => (item.updatedAt ? formatDateTime(item.updatedAt) : "-") },
+    { id: "updatedBy", header: "Updated By", label: "Updated By", sort: { direction: sortKey === "updatedBy" ? sortDir : undefined, onSort: () => handleSort("updatedBy") }, cellClassName: "text-slate-700", cell: (item) => item.updatedByName || "-" },
+  ];
+  const knowledgeAction: DataTableAction<Row> = {
+    header: "Action",
+    cell: (item) => (
+      <button
+        ref={getRef(item.id)}
+        onClick={(e) => toggle(item.id, e, { menuWidth: 220, menuHeight: 160 })}
+        className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
+      >
+        <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
+      </button>
+    ),
+  };
+  const { layout: knowledgeLayout, control: knowledgeControl } = useCustomColumnLayout("settings.knowledge-categories", knowledgeColumns, knowledgeAction);
+
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
@@ -266,7 +336,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
       />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
-        <div className="px-4 pt-4 md:p-5 flex flex-col">
+        <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             {/* Mobile: search + filter drawer */}
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
@@ -312,7 +382,50 @@ export const KnowledgeCategoriesView: React.FC = () => {
             </div>
 
             {/* Desktop / tablet filters */}
-            <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{knowledgeControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={search}
+      onChange={(e) => {
+        setSearch(e.target.value);
+        setPage(1);
+      }}
+      placeholder={"Search by name or description..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "status",
+      label: "Status",
+      value: String(status),
+      options: STATUS_OPTIONS,
+      onChange: (value) => {
+        setStatus(String(value));
+        setPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "updatedFrom",
+      label: "Last Updated Range",
+      from: updatedFrom,
+      to: updatedTo,
+      onFromChange: (value) => {
+        setUpdatedFrom(value);
+        setPage(1);
+      },
+      onToChange: (value) => {
+        setUpdatedTo(value);
+        setPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors">
                   Search
@@ -368,7 +481,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 placeholder="Select date range"
                 autoApply
               />
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -378,8 +491,10 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 >
                   Clear Filters
                 </Button>
+                {knowledgeControl}
               </div>
             </div>
+</ConfiguredDesktopFilters>
           </div>
         </div>
 
@@ -396,240 +511,66 @@ export const KnowledgeCategoriesView: React.FC = () => {
               loading && "blur-[2px] opacity-80",
             )}
           >
-            {rows.length > 0 ? (
-              <>
-                <div
-                  ref={scrollerRef}
-                  className={cn(
-                    "flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400",
-                    isDragging ? "cursor-grabbing select-none" : "cursor-grab",
-                  )}
-                  {...dragEvents}
-                >
-                  <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
-                    <TableMarkup.Head className="sticky top-0 z-30">
-                      <TableMarkup.Row>
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.emptyCell4} />
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell29}>
-                          No.
-                        </TableMarkup.HeaderCell>
-                        {COLUMNS.map((col) => {
-                          const isSorted = sortKey === col.key;
-                          return (
-                            <TableMarkup.HeaderCell
-                              key={col.key}
-                              onClick={() => handleSort(col.key)}
-                              className={TABLE_STYLES.headerCell30}
-                            >
-                              <div className="flex items-center justify-between gap-2 w-full">
-                                <span className="truncate">{col.label}</span>
-                                <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                                  <ChevronUp
-                                    className={cn(
-                                      "h-3 w-3 -mb-1",
-                                      isSorted && sortDir === "asc"
-                                        ? "text-emerald-600"
-                                        : "",
-                                    )}
-                                  />
-                                  <ChevronDown
-                                    className={cn(
-                                      "h-3 w-3",
-                                      isSorted && sortDir === "desc"
-                                        ? "text-emerald-600"
-                                        : "",
-                                    )}
-                                  />
-                                </div>
-                              </div>
-                            </TableMarkup.HeaderCell>
-                          );
-                        })}
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell24}>
-                          Action
-                        </TableMarkup.HeaderCell>
-                      </TableMarkup.Row>
-                    </TableMarkup.Head>
-                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                      {rows.map((row, index) => {
-                        const tdClass =
-                          "py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap";
-                        return (
-                          <React.Fragment key={row.id}>
-                            <TableMarkup.Row className="hover:bg-slate-50/80 transition-colors group">
-                              <TableMarkup.Cell
-                                className="py-3 px-2 text-center whitespace-nowrap"
-                                onClick={() => toggleExpanded(row.id)}
-                              >
-                                <button
-                                  className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors mx-auto"
-                                  aria-label="Show levels"
-                                >
-                                  <motion.span
-                                    animate={{
-                                      rotate: expanded.has(row.id) ? 90 : 0,
-                                    }}
-                                    transition={transitionConfig}
-                                    className="inline-flex items-center justify-center"
-                                  >
-                                    <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500" />
-                                  </motion.span>
-                                </button>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={cn(tdClass, "text-center")}>
-                                <span className="text-slate-500 font-medium">
-                                  {(page - 1) * pageSize + index + 1}
-                                </span>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                <span
-                                  className="font-medium text-emerald-600 cursor-pointer hover:underline"
-                                  onClick={() =>
-                                    navigate(
-                                      ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES_EDIT(
-                                        row.id,
-                                      ),
-                                    )
-                                  }
-                                >
-                                  {row.name}
-                                </span>
-                                {row.isDefault && (
-                                  <Badge
-                                    size="sm"
-                                    color="blue"
-                                    className="ml-2"
-                                  >
-                                    Default
-                                  </Badge>
-                                )}
-                                {row.description && (
-                                  <div
-                                    className="text-xs text-slate-500 max-w-md truncate"
-                                    title={row.description}
-                                  >
-                                    {row.description}
-                                  </div>
-                                )}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {row.determinatorLabel}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>{row.levels.length}</TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                <Badge
-                                  size="sm"
-                                  color={row.active ? "emerald" : "slate"}
-                                  pill
-                                >
-                                  {row.active ? "Active" : "Inactive"}
-                                </Badge>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {row.updatedAt
-                                  ? formatDateTime(row.updatedAt)
-                                  : "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {row.updatedByName || "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell
-                                onClick={(e) => e.stopPropagation()}
-                                className={TABLE_STYLES.cell34}
-                              >
-                                <button
-                                  ref={getRef(row.id)}
-                                  onClick={(e) =>
-                                    toggle(row.id, e, {
-                                      menuWidth: 220,
-                                      menuHeight: 160,
-                                    })
-                                  }
-                                  className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-                                >
-                                  <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                </button>
-                              </TableMarkup.Cell>
-                            </TableMarkup.Row>
-                            <AnimatePresence initial={false}>
-                              {expanded.has(row.id) && (
-                                <motion.tr
-                                  key={`levels-${row.id}`}
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  exit={{ opacity: 0 }}
-                                  transition={transitionConfig}
-                                  className="bg-slate-50/50"
-                                >
-                                  <TableMarkup.Cell
-                                    colSpan={COLUMNS.length + 3}
-                                    className="p-0 border-b border-slate-200"
-                                  >
-                                    <motion.div
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: "auto", opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      transition={transitionConfig}
-                                      className="overflow-hidden"
-                                    >
-                                      <div className="p-4 md:p-5">
-                                        <div className="ml-9">
-                                          <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                                            Knowledge Category Levels ({row.levels.length})
-                                          </p>
-                                          {row.levels.length === 0 ? (
-                                            <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-xs text-slate-500">
-                                              No levels: documents are listed directly under each Knowledge Base.
-                                            </div>
-                                          ) : (
-                                            <ol className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-slate-700">
-                                              <li className="flex items-center gap-1.5">
-                                                <Layers className="h-3.5 w-3.5 text-slate-400" />
-                                                <b>{row.determinatorLabel}</b> (Knowledge Base)
-                                              </li>
-                                              {row.levels.map((level) => (
-                                                <li key={level.id} className="flex items-center gap-2">
-                                                  <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                                                  <span>
-                                                    {level.fieldLabel}{" "}
-                                                    <span className="text-xs text-slate-500">(order {level.displayOrder})</span>
-                                                  </span>
-                                                </li>
-                                              ))}
-                                            </ol>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </motion.div>
-                                  </TableMarkup.Cell>
-                                </motion.tr>
-                              )}
-                            </AnimatePresence>
-                          </React.Fragment>
-                        );
-                      })}
-                    </TableMarkup.Body>
-                  </TableMarkup.Root>
-                </div>
-                <TablePagination
-                  currentPage={page}
-                  totalPages={totalPages}
-                  totalItems={total}
-                  itemsPerPage={pageSize}
-                  onPageChange={setPage}
-                  onItemsPerPageChange={(value) => {
-                    setPageSize(value);
-                    setPage(1);
-                  }}
-                  showItemCount
+            <DataTable
+              rows={rows}
+              getRowKey={(item) => item.id}
+              columns={knowledgeLayout.columns}
+              columnLayout={knowledgeLayout}
+              action={knowledgeAction}
+              expandedRow={{
+                isExpanded: (item) => expanded.has(item.id),
+                render: (item) => (
+                  <div className="ml-9">
+                    <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Knowledge Category Levels ({item.levels.length})
+                    </p>
+                    {item.levels.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-xs text-slate-500">
+                        No levels: documents are listed directly under each Knowledge Base.
+                      </div>
+                    ) : (
+                      <ol className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-slate-700">
+                        <li className="flex items-center gap-1.5">
+                          <Layers className="h-3.5 w-3.5 text-slate-400" />
+                          <b>{item.determinatorLabel}</b> (Knowledge Base)
+                        </li>
+                        {item.levels.map((level) => (
+                          <li key={level.id} className="flex items-center gap-2">
+                            <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                            <span>
+                              {level.fieldLabel}{" "}
+                              <span className="text-xs text-slate-500">(order {level.displayOrder})</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                ),
+              }}
+              emptyState={
+                <TableEmptyState
+                  title="No Hierarchies Found"
+                  description="We couldn't find any hierarchies matching your filters. Try adjusting your search criteria."
                 />
-              </>
-            ) : (
-              <TableEmptyState
-                title="No Hierarchies Found"
-                description="We couldn't find any hierarchies matching your filters. Try adjusting your search criteria."
-              />
-            )}
+              }
+              pagination={
+                total > 0 ? (
+                  <TablePagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    totalItems={total}
+                    itemsPerPage={pageSize}
+                    onPageChange={setPage}
+                    onItemsPerPageChange={(value) => {
+                      setPageSize(value);
+                      setPage(1);
+                    }}
+                    showItemCount
+                  />
+                ) : undefined
+              }
+            />
           </div>
         </div>
       </div>

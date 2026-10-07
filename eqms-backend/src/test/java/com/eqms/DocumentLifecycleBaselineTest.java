@@ -349,9 +349,8 @@ class DocumentLifecycleBaselineTest {
 
     @Test
     void tcDoc006b_switchToNoReviewSubTypeWhileSavedReviewersExist_isRejected() {
-        // Decision D3 (change record review-requirement-snapshot-and-subtype-fk): the system must
-        // NOT silently drop saved reviewers. Switching a Draft to a Sub-Type that does not use
-        // review while it still has SAVED reviewers is rejected with a stable, actionable code.
+        // Historical testcase name retained. REVIEW-2026-10-02 supersedes the old D3 rejection:
+        // classification changes succeed without altering the saved policy or reviewers.
         UserAccount reviewer = userAccountRepository.findAll().stream()
                 .filter(u -> u.getUsername() == null || !u.getUsername().startsWith("baseline.noperm."))
                 .filter(u -> !u.getId().equals(actor.getId()))
@@ -383,18 +382,16 @@ class DocumentLifecycleBaselineTest {
         noReviewSubType.setActive(true);
         tx.executeWithoutResult(status -> documentSubTypeRepository.save(noReviewSubType));
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                documentService.updateDocumentDraft(documentId, new DocumentDraftCreateRequest(
+        documentService.updateDocumentDraft(documentId, new DocumentDraftCreateRequest(
                         null, null, null, null, null, null,
                         null, noReviewSubType.getName(), null, null, null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null, null, null, null, null
-                )));
-        assertTrue(ex.getMessage() != null && ex.getMessage().startsWith("REVIEWERS_MUST_BE_REMOVED_FIRST"),
-                "Expected REVIEWERS_MUST_BE_REMOVED_FIRST, got: " + ex.getMessage());
+                ));
 
-        // Neither the Sub-Type nor the reviewer roster may have changed.
+        // Only the classification changes; policy and reviewer roster remain intact.
         DocumentRecord after = fetchDocument(documentId);
-        assertNotEquals(noReviewSubType.getName(), after.getSubType());
+        assertEquals(noReviewSubType.getName(), after.getSubType());
+        assertEquals(ReviewRequirement.OPTIONAL, after.getReviewRequirement());
         List<DocumentWorkflowParticipant> reviewersAfter = documentWorkflowParticipantRepository
                 .findAllByDocument_IdAndParticipantTypeOrderBySequenceOrderAsc(documentId, "REVIEWER");
         assertEquals(1, reviewersAfter.size());
@@ -402,9 +399,7 @@ class DocumentLifecycleBaselineTest {
 
     @Test
     void tcDoc006c_reviewRequirementIsFrozenSnapshot_laterSubTypePolicyEditDoesNotAffectDraft() {
-        // Decision D1: documents.review_requirement is snapshotted when the Sub-Type is set and is
-        // never recomputed. An admin flipping the Sub-Type's policy afterwards must not change the
-        // rule for a Draft already in flight.
+        // New documents receive OPTIONAL independently of historical Sub-Type metadata.
         var created = documentService.createDocumentDraft(createRequest("Baseline D1 Snapshot Test " + UUID.randomUUID()));
         UUID documentId = UUID.fromString(created.id());
         fetchDocument(documentId);
@@ -429,10 +424,10 @@ class DocumentLifecycleBaselineTest {
         ));
 
         DocumentRecord afterSet = fetchDocument(documentId);
-        assertEquals(ReviewRequirement.REQUIRED, afterSet.getReviewRequirement());
+        assertEquals(ReviewRequirement.OPTIONAL, afterSet.getReviewRequirement());
         assertEquals(subType.getId(), afterSet.getSubTypeId(), "Sub-Type is referenced by id (rename-safe)");
 
-        // Admin flips the Sub-Type's policy after the Draft already snapshotted it.
+        // Simulate historical dictionary metadata changing outside the administration API.
         tx.executeWithoutResult(status -> {
             DocumentSubType st = documentSubTypeRepository.findById(subType.getId()).orElseThrow();
             st.setReviewRequirement(ReviewRequirement.NONE);
@@ -440,16 +435,13 @@ class DocumentLifecycleBaselineTest {
         });
 
         DocumentRecord afterPolicyEdit = documentRepository.findById(documentId).orElseThrow();
-        assertEquals(ReviewRequirement.REQUIRED, afterPolicyEdit.getReviewRequirement(),
+        assertEquals(ReviewRequirement.OPTIONAL, afterPolicyEdit.getReviewRequirement(),
                 "In-flight Draft keeps its frozen review requirement; not recomputed from the Sub-Type");
     }
 
     @Test
     void tcDoc006d_concurrentSwitchToNoReviewSubType_neverLeavesNoneWithSavedReviewer() throws Exception {
-        // Concurrency evidence for D1/D3: two parallel updateDocumentDraft calls both switching the
-        // Draft to a NONE-review Sub-Type while a saved reviewer exists. Whatever the interleaving
-        // (both rejected by the D3 guard, or one lost to optimistic locking on `documents`), the
-        // end state must never be review_requirement=NONE with a REVIEWER still persisted.
+        // Concurrent classification writes cannot alter policy or remove saved reviewers.
         UserAccount reviewer = userAccountRepository.findAll().stream()
                 .filter(u -> u.getUsername() == null || !u.getUsername().startsWith("baseline.noperm."))
                 .filter(u -> !u.getId().equals(actor.getId()))
@@ -504,14 +496,13 @@ class DocumentLifecycleBaselineTest {
         Throwable r2 = f2.get(30, java.util.concurrent.TimeUnit.SECONDS);
         pool.shutdown();
 
-        // At least one must have been rejected; neither may have succeeded in setting NONE.
-        assertTrue(r1 != null || r2 != null, "Concurrent NONE switch with a saved reviewer must not both succeed");
+        assertTrue(r1 == null || r2 == null, "At least one classification update must succeed");
 
         DocumentRecord after = documentRepository.findById(documentId).orElseThrow();
         long reviewerCount = documentWorkflowParticipantRepository
                 .findAllByDocument_IdAndParticipantTypeOrderBySequenceOrderAsc(documentId, "REVIEWER").size();
-        assertFalse(after.getReviewRequirement() == ReviewRequirement.NONE && reviewerCount > 0,
-                "Invariant violated: review_requirement=NONE while a saved reviewer remains");
+        assertEquals(ReviewRequirement.OPTIONAL, after.getReviewRequirement());
+        assertEquals(noReviewSubType.getName(), after.getSubType());
         assertEquals(1, reviewerCount, "Saved reviewer must not have been silently removed");
     }
 

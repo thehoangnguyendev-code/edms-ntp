@@ -1,14 +1,14 @@
 import React, { useMemo } from "react";
-import { ChevronRight, ChevronUp, ChevronDown, MoreVertical } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { ChevronRight, MoreVertical } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { EmptyState } from "@/components/ui/page/EmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
-import { ExpandedDocumentRow } from "./ExpandedDocumentRow";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn, type DataTableColumnLayout } from "@/components/ui/table/DataTable";
+import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { ExpandedDocumentRow, preloadExpandedDocumentDetails } from "./ExpandedDocumentRow";
 import { hasRevisionExpansion } from "../rowExpansion";
 import type { RelatedDocument, CorrelatedDocument } from "@/features/documents/document-revisions/views/types";
-import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 export interface TableColumn {
   id: string;
@@ -30,6 +30,95 @@ interface SortConfig {
   direction: "asc" | "desc";
 }
 
+type RevisionRow = {
+  id: string;
+  documentId?: string | null;
+  relatedDocuments?: RelatedDocument[];
+  correlatedDocuments?: CorrelatedDocument[];
+};
+
+export interface RevisionColumnOptions<T> {
+  columns: TableColumn[];
+  sortConfig: SortConfig;
+  onSort: (key: string) => void;
+  renderCell: (column: TableColumn, item: T, index: number) => React.ReactNode;
+  expandedRowId: string | null;
+  onExpandRow: (id: string | null) => void;
+  shouldShowExpandIcon?: (item: T) => boolean;
+  onViewItem?: (id: string) => void;
+}
+
+const NON_SORTABLE_COLUMNS = new Set(["action", "no", "relatedDocuments", "correlatedDocuments", "template"]);
+
+/** Data columns for a revision table: the locked expand chevron first, then the visible view columns in order. */
+const buildRevisionColumns = <T extends RevisionRow>(options: RevisionColumnOptions<T>): DataTableColumn<T>[] => {
+  const { columns, sortConfig, onSort, renderCell, expandedRowId, onExpandRow, shouldShowExpandIcon, onViewItem } = options;
+  const expandColumn: DataTableColumn<T> = {
+    id: "expand",
+    header: "",
+    label: "Expand",
+    locked: true,
+    headerClassName: TABLE_STYLES.headerCell32,
+    cell: (item) => {
+      const isExpanded = expandedRowId === item.id;
+      const showExpand = hasRevisionExpansion(item) && (shouldShowExpandIcon ? shouldShowExpandIcon(item) : true);
+      if (!showExpand) return null;
+      return (
+        <div onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => onExpandRow(isExpanded ? null : item.id)}
+            // Fetch what the row will show as soon as the pointer reaches the chevron, so the row opens with it.
+            onPointerEnter={() => !isExpanded && preloadExpandedDocumentDetails({ revisionId: item.id })}
+            onPointerDown={() => !isExpanded && preloadExpandedDocumentDetails({ revisionId: item.id })}
+            onFocus={() => !isExpanded && preloadExpandedDocumentDetails({ revisionId: item.id })}
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} revision ${item.id}`}
+            aria-expanded={isExpanded}
+            className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors mx-auto"
+          >
+            <ChevronRight className={cn("h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500 transition-transform", isExpanded ? "rotate-90" : "rotate-0")} />
+          </button>
+        </div>
+      );
+    },
+  };
+  const dataColumns = columns
+    .filter((column) => column.visible && column.id !== "action")
+    .sort((a, b) => a.order - b.order)
+    .map((column): DataTableColumn<T> => ({
+      id: column.id,
+      header: column.label,
+      label: column.label,
+      locked: column.id === "no",
+      headerClassName: column.id === "no" ? "text-center" : undefined,
+      cellClassName: column.id === "no" ? "text-center" : undefined,
+      sort: NON_SORTABLE_COLUMNS.has(column.id)
+        ? undefined
+        : { direction: sortConfig.key === column.id ? sortConfig.direction : undefined, onSort: () => onSort(column.id) },
+      cell: (item, index) =>
+        column.id === "documentNumber" && onViewItem ? (
+          <span className="cursor-pointer hover:underline" onClick={() => onViewItem(item.id)}>
+            {renderCell(column, item, index)}
+          </span>
+        ) : (
+          renderCell(column, item, index)
+        ),
+    }));
+  return [expandColumn, ...dataColumns];
+};
+
+/**
+ * Shared Custom Column layout for the revision list screens. Call it in the view body (before its return)
+ * and pass the returned layout to RevisionTableView; render the returned control on the filter row.
+ */
+export function useRevisionColumnLayout<T extends RevisionRow>(tableKey: string, options: RevisionColumnOptions<T>) {
+  // The Action column is rendered by RevisionTableView; this entry only gives the drawer its fixed "Action" row.
+  const hasAction = options.columns.some((column) => column.id === "action" && column.visible);
+  const fixedAction: DataTableAction<T> | undefined = hasAction ? { header: "Action", cell: () => null } : undefined;
+  const { layout, control } = useCustomColumnLayout(tableKey, buildRevisionColumns(options), fixedAction);
+  return { layout, control };
+}
+
 interface RevisionTableViewProps<
   T extends {
     id: string;
@@ -41,6 +130,8 @@ interface RevisionTableViewProps<
   // Data
   revisions: T[];
   columns: TableColumn[];
+  /** Layout from useRevisionColumnLayout; without it the columns are built from `columns` with no per-user layout. */
+  columnLayout?: DataTableColumnLayout<T>;
 
   // UI State
   expandedRowId: string | null;
@@ -95,6 +186,7 @@ const RevisionTableViewInner = <
   {
     revisions,
     columns,
+    columnLayout,
     expandedRowId,
     sortConfig,
     currentPage,
@@ -123,9 +215,6 @@ const RevisionTableViewInner = <
   }: RevisionTableViewProps<T>,
   ref: React.ForwardedRef<HTMLDivElement>
 ) => {
-  const shouldReduceMotion = useReducedMotion();
-  const transitionConfig = useMemo(() => shouldReduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 90, damping: 16 }, [shouldReduceMotion]);
-
   // Calculate pagination
   const isServerSide = totalItemsProp !== undefined;
   const totalRevisions = isServerSide ? totalItemsProp : (revisions?.length || 0);
@@ -137,10 +226,41 @@ const RevisionTableViewInner = <
     return revisions.slice(startIndex, startIndex + itemsPerPage);
   }, [revisions, startIndex, itemsPerPage, isServerSide]);
 
-  const visibleColumns = useMemo(() => {
-    if (!columns) return [];
-    return columns.filter((col) => col.visible).sort((a, b) => a.order - b.order);
-  }, [columns]);
+  const tableColumns = columnLayout?.columns ?? buildRevisionColumns({
+    columns,
+    sortConfig,
+    onSort,
+    renderCell,
+    expandedRowId,
+    onExpandRow,
+    shouldShowExpandIcon,
+    onViewItem,
+  });
+  const hasActionColumn = (columns ?? []).some((column) => column.id === "action" && column.visible);
+  const action: DataTableAction<T> | undefined = hasActionColumn
+    ? {
+        header: "Action",
+        cell: (item) => {
+          const menuActions = getMenuActions(item);
+          if (menuActions.length === 0) return null;
+          return (
+            <div onClick={(e) => e.stopPropagation()}>
+              <button
+                ref={dropdownRef ? dropdownRef(item.id) : null}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dropdownToggle?.(item.id, e);
+                }}
+                className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              </button>
+            </div>
+          );
+        },
+      }
+    : undefined;
+  const showExpandFor = (item: T) => hasRevisionExpansion(item) && (shouldShowExpandIcon ? shouldShowExpandIcon(item) : true);
 
   if (!revisions || paginatedRevisions.length === 0) {
     return (
@@ -164,177 +284,39 @@ const RevisionTableViewInner = <
           isTableLoading && "blur-[2px] opacity-80 pointer-events-none"
         )}
       >
-        {/* Horizontal scroll container */}
-        <div
-          ref={scrollerRef}
-          className={cn(
-            "flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400",
-            isDragging ? "cursor-grabbing select-none" : "cursor-grab"
-          )}
-          {...dragEvents}
-        >
-          <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
-            {/* Table Header */}
-            <TableMarkup.Head>
-              <TableMarkup.Row>
-                {/* Expand/collapse column */}
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell32} />
-
-                {/* Data columns */}
-                {visibleColumns.map((column) => {
-                  const isSorted = sortConfig.key === column.id;
-                  const canSort =
-                    column.id !== "action" &&
-                    column.id !== "no" &&
-                    column.id !== "relatedDocuments" &&
-                    column.id !== "correlatedDocuments" &&
-                    column.id !== "template";
-
-                  return (
-                    <TableMarkup.HeaderCell
-                      key={column.id}
-                      onClick={canSort ? () => onSort(column.id) : undefined}
-                      className={cn(
-                        "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors",
-                        canSort && "cursor-pointer hover:bg-slate-100 hover:text-slate-700",
-                        column.id === "action"
-                          ? "right-0 z-30 text-center before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]"
-                          : (column.id === "no" ? "text-center" : "text-left")
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="truncate">{column.label}</span>
-                        {canSort && (
-                          <div className="flex flex-col text-slate-400 flex-shrink-0">
-                            <ChevronUp
-                              className={cn(
-                                "h-3 w-3 -mb-1",
-                                isSorted && sortConfig.direction === "asc" ? "text-emerald-600 font-bold" : ""
-                              )}
-                            />
-                            <ChevronDown
-                              className={cn(
-                                "h-3 w-3",
-                                isSorted && sortConfig.direction === "desc" ? "text-emerald-600 font-bold" : ""
-                              )}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </TableMarkup.HeaderCell>
-                  );
-                })}
-              </TableMarkup.Row>
-            </TableMarkup.Head>
-
-            {/* Table Body */}
-            <TableMarkup.Body className="bg-white">
-              {paginatedRevisions.map((item, index) => {
-                const itemId = item.id;
-                const isExpanded = expandedRowId === itemId;
-                const showExpand = hasRevisionExpansion(item)
-                  && (shouldShowExpandIcon ? shouldShowExpandIcon(item) : true);
-                const hasDocs = showExpand;
-
-                const tdClass =
-                  "py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap";
-
-                return (
-                  <React.Fragment key={itemId}>
-                    {/* Main Row */}
-                    <TableMarkup.Row className="hover:bg-slate-50/80 transition-colors group">
-                      {/* Expand/collapse button */}
-                      <TableMarkup.Cell
-                        className="py-3 px-4 border-b border-slate-200 whitespace-nowrap"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (hasDocs) onExpandRow(isExpanded ? null : itemId);
-                        }}
-                      >
-                        {hasDocs ? (
-                          <button type="button" aria-label={`${isExpanded ? "Collapse" : "Expand"} revision ${itemId}`} aria-expanded={isExpanded} className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors">
-                            <motion.span
-                              animate={{ rotate: isExpanded ? 90 : 0 }}
-                              transition={transitionConfig}
-                              className="inline-flex items-center justify-center"
-                            >
-                              <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500" />
-                            </motion.span>
-                          </button>
-                        ) : null}
-                      </TableMarkup.Cell>
-
-                      {/* Data cells */}
-                      {visibleColumns.map((column) => {
-                        const menuActions = getMenuActions(item);
-
-                        if (column.id === "action") {
-                          return (
-                            <TableMarkup.Cell
-                              key={column.id}
-                              onClick={(e) => e.stopPropagation()}
-                              className={TABLE_STYLES.cell33}
-                            >
-                              {menuActions.length > 0 && (
-                                <button
-                                  ref={dropdownRef ? dropdownRef(itemId) : null}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    dropdownToggle?.(itemId, e);
-                                  }}
-                                  className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                                >
-                                  <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                </button>
-                              )}
-                            </TableMarkup.Cell>
-                          );
-                        }
-
-                        return (
-                          <TableMarkup.Cell
-                            key={column.id}
-                            className={cn(
-                              tdClass,
-                              column.id === "documentNumber" && onViewItem && "cursor-pointer hover:underline",
-                              column.id === "no" && "text-center"
-                            )}
-                            onClick={
-                              column.id === "documentNumber" && onViewItem
-                                ? () => onViewItem(itemId)
-                                : undefined
-                            }
-                          >
-                            {renderCell(column, item, index)}
-                          </TableMarkup.Cell>
-                        );
-                      })}
-                    </TableMarkup.Row>
-
-                    {/* Expanded Row */}
-                    <ExpandedDocumentRow
-                      revision={item}
-                      isExpanded={isExpanded}
-                      visibleColumnsLength={visibleColumns.length + 1} // +1 for expand column
-                      hasDocs={hasDocs}
-                      showCorrelationType={showCorrelationType}
-                      revisionId={itemId}
-                    />
-                  </React.Fragment>
-                );
-              })}
-            </TableMarkup.Body>
-          </TableMarkup.Root>
-        </div>
-
-        {/* Pagination */}
-        <TablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalRevisions}
-          itemsPerPage={itemsPerPage}
-          onItemsPerPageChange={onItemsPerPageChange}
-          onPageChange={onPageChange}
+        <DataTable
+          rows={paginatedRevisions}
+          getRowKey={(item) => item.id}
+          columns={tableColumns}
+          columnLayout={columnLayout}
+          action={action}
+          scrollerRef={scrollerRef}
+          scrollProps={dragEvents}
+          isDragging={isDragging}
+          expandedRow={{
+            isExpanded: (item) => expandedRowId === item.id && showExpandFor(item),
+            render: (item) => (
+              <ExpandedDocumentRow
+                revision={item}
+                isExpanded={true}
+                visibleColumnsLength={tableColumns.length + 1}
+                hasDocs={true}
+                showCorrelationType={showCorrelationType}
+                revisionId={item.id}
+              />
+            ),
+            asRow: false,
+          }}
+          pagination={
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalRevisions}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={onItemsPerPageChange}
+              onPageChange={onPageChange}
+            />
+          }
         />
       </div>
     </div>

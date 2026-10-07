@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Search, X, Check, ChevronUp, ChevronDown, MoreVertical } from "lucide-react";
@@ -9,6 +10,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -225,6 +227,115 @@ export const AccessReviewView: React.FC = () => {
     load();
   }, [load]);
 
+  const campaignColumns: DataTableColumn<AccessReviewCampaignSummary>[] = [
+                    {
+                      id: "no",
+                      header: "No.",
+                      label: "No.",
+                      locked: true,
+                      headerClassName: TABLE_STYLES.headerCell34,
+                      cellClassName: "text-center text-slate-500",
+                      cell: (_campaign, index) => (currentPage - 1) * itemsPerPage + index + 1,
+                    },
+                    {
+                      id: "name",
+                      header: "Campaign",
+                      label: "Campaign",
+                      sort: { direction: sortKey === "name" ? sortDir : undefined, onSort: () => handleSort("name") },
+                      cell: (campaign) => (
+                        <>
+                          {campaign.name}
+                          {campaign.description && <div className="max-w-[280px] truncate text-xs text-slate-400">{campaign.description}</div>}
+                        </>
+                      ),
+                    },
+                    {
+                      id: "period",
+                      header: "Period",
+                      label: "Period",
+                      cell: (campaign) => (
+                        <>
+                          {campaign.reviewPeriodStart ? formatDateUS(campaign.reviewPeriodStart) : "—"} → {campaign.reviewPeriodEnd ? formatDateUS(campaign.reviewPeriodEnd) : "—"}
+                        </>
+                      ),
+                    },
+                    {
+                      id: "status",
+                      header: "Status",
+                      label: "Status",
+                      sort: { direction: sortKey === "status" ? sortDir : undefined, onSort: () => handleSort("status") },
+                      cell: (campaign) => (
+                        <Badge color={statusBadge(campaign.status)} size="sm">
+                          {campaign.statusLabel}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      id: "totalItems",
+                      header: "Users",
+                      label: "Users",
+                      sort: { direction: sortKey === "totalItems" ? sortDir : undefined, onSort: () => handleSort("totalItems") },
+                      cell: (campaign) => campaign.totalItems,
+                    },
+                    {
+                      id: "pendingItems",
+                      header: "Pending",
+                      label: "Pending",
+                      sort: { direction: sortKey === "pendingItems" ? sortDir : undefined, onSort: () => handleSort("pendingItems") },
+                      cell: (campaign) => (
+                        <span className={campaign.pendingItems > 0 ? "text-amber-600 font-medium" : "text-emerald-600"}>{campaign.pendingItems}</span>
+                      ),
+                    },
+                    {
+                      id: "reviewer",
+                      header: "Reviewer",
+                      label: "Reviewer",
+                      cell: (campaign) => campaign.reviewerName ?? "—",
+                    },
+                    {
+                      id: "createdAt",
+                      header: "Created Date",
+                      label: "Created Date",
+                      sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") },
+                      cell: (campaign) => formatDateTime(campaign.createdAt),
+                    },
+                    {
+                      id: "updatedAt",
+                      header: "Last Updated",
+                      label: "Last Updated",
+                      sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") },
+                      cell: (campaign) => formatDateTime(campaign.updatedAt),
+                    },
+  ];
+  const campaignAction: DataTableAction<AccessReviewCampaignSummary> = {
+                    header: "Actions",
+                    cell: (campaign) => (
+                      <>
+                        <button
+                          ref={getRef(campaign.id)}
+                          onClick={(event) => toggle(campaign.id, event)}
+                          className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg hover:bg-slate-100 transition-colors"
+                          aria-label={`Actions for ${campaign.name}`}
+                        >
+                          <MoreVertical className="h-4 w-4 text-slate-600" />
+                        </button>
+                        <PortalDropdownMenu isOpen={openId === campaign.id} onClose={close} position={position}>
+                          <div className="py-1">
+                            <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { close(); navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${campaign.id}`); }}>
+                              View Details
+                            </DropdownMenuItem>
+                            {canManage && campaign.status === "IN_PROGRESS" && (
+                              <DropdownMenuItem icon={<IconX className="h-4 w-4" />} onClick={() => { close(); setCancelTarget(campaign); }}>
+                                Cancel Campaign
+                              </DropdownMenuItem>
+                            )}
+                          </div>
+                        </PortalDropdownMenu>
+                      </>
+                    ),
+  };
+  const { layout: campaignLayout, control: campaignControl } = useCustomColumnLayout("access-review.campaigns", campaignColumns, campaignAction);
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       <PageHeader
@@ -271,7 +382,64 @@ export const AccessReviewView: React.FC = () => {
             </div>
 
             {/* Desktop filters */}
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{campaignControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={search}
+      onChange={(e) => {
+        setSearch(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search campaigns…"}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: statusOptions,
+      onChange: (v) => {
+        setStatusFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "createdFrom",
+      label: "Created Date Range",
+      from: createdFrom,
+      to: createdTo,
+      onFromChange: (value) => {
+        setCreatedFrom(value);
+        setCurrentPage(1);
+      },
+      onToChange: (value) => {
+        setCreatedTo(value);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "updatedFrom",
+      label: "Last Updated Range",
+      from: updatedFrom,
+      to: updatedTo,
+      onFromChange: (value) => {
+        setUpdatedFrom(value);
+        setCurrentPage(1);
+      },
+      onToChange: (value) => {
+        setUpdatedTo(value);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
               <div className="w-full">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
                 <div className="relative">
@@ -287,7 +455,7 @@ export const AccessReviewView: React.FC = () => {
               <Select label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={statusOptions} />
               <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
               <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -297,8 +465,10 @@ export const AccessReviewView: React.FC = () => {
                 >
                   Clear Filters
                 </Button>
+                {campaignControl}
               </div>
             </div>
+</ConfiguredDesktopFilters>
 
             <div className="flex-1 flex flex-col relative">
               {loading && (
@@ -315,135 +485,30 @@ export const AccessReviewView: React.FC = () => {
                   />
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white">
-                <div className="overflow-x-auto">
-                  <TableMarkup.Root className="w-full min-w-[1050px]">
-                    <TableMarkup.Head className="sticky top-0 z-30">
-                      <TableMarkup.Row>
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell34}>
-                          No.
-                        </TableMarkup.HeaderCell>
-                        {([
-                          { key: "name", label: "Campaign", sortable: true },
-                          { key: "period", label: "Period", sortable: false },
-                          { key: "status", label: "Status", sortable: true },
-                          { key: "totalItems", label: "Users", sortable: true },
-                          { key: "pendingItems", label: "Pending", sortable: true },
-                          { key: "reviewer", label: "Reviewer", sortable: false },
-                          { key: "createdAt", label: "Created Date", sortable: true },
-                          { key: "updatedAt", label: "Last Updated", sortable: true },
-                        ] as const).map((col) => (
-                          <TableMarkup.HeaderCell
-                            key={col.key}
-                            onClick={col.sortable ? () => handleSort(col.key) : undefined}
-                            className={cn(
-                              "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors group",
-                              col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700",
-                            )}
-                          >
-                            <div className="flex w-full items-center justify-between gap-2">
-                              <span className="truncate">{col.label}</span>
-                              {col.sortable && (
-                                <div className="flex flex-col text-slate-400 flex-shrink-0 group-hover:text-slate-500">
-                                  <ChevronUp className={cn("h-3 w-3 -mb-1", sortKey === col.key && sortDir === "asc" ? "text-emerald-600" : "")} />
-                                  <ChevronDown className={cn("h-3 w-3", sortKey === col.key && sortDir === "desc" ? "text-emerald-600" : "")} />
-                                </div>
-                              )}
-                            </div>
-                          </TableMarkup.HeaderCell>
-                        ))}
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                          Actions
-                        </TableMarkup.HeaderCell>
-                      </TableMarkup.Row>
-                    </TableMarkup.Head>
-                    <TableMarkup.Body className="divide-y divide-slate-200">
-                      {campaigns.map((c, index) => (
-                        <TableMarkup.Row
-                          key={c.id}
-                          className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                          onClick={() => navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${c.id}`)}
-                        >
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-500">
-                            {(currentPage - 1) * itemsPerPage + index + 1}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell
-                            className={TABLE_STYLES.cell27}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${c.id}`);
-                            }}
-                          >
-                            {c.name}
-                            {c.description && <div className="max-w-[280px] truncate text-xs text-slate-400">{c.description}</div>}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                            {c.reviewPeriodStart ? formatDateUS(c.reviewPeriodStart) : "—"} → {c.reviewPeriodEnd ? formatDateUS(c.reviewPeriodEnd) : "—"}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={statusBadge(c.status)} size="sm">
-                              {c.statusLabel}
-                            </Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{c.totalItems}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <span className={c.pendingItems > 0 ? "text-amber-600 font-medium" : "text-emerald-600"}>{c.pendingItems}</span>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{c.reviewerName ?? "—"}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                            {formatDateTime(c.createdAt)}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                            {formatDateTime(c.updatedAt)}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell
-                            onClick={(event) => event.stopPropagation()}
-                            className="sticky right-0 z-10 bg-white py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
-                          >
-                            <button
-                              ref={getRef(c.id)}
-                              onClick={(event) => toggle(c.id, event)}
-                              className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg hover:bg-slate-100 transition-colors"
-                              aria-label={`Actions for ${c.name}`}
-                            >
-                              <MoreVertical className="h-4 w-4 text-slate-600" />
-                            </button>
-                            <PortalDropdownMenu isOpen={openId === c.id} onClose={close} position={position}>
-                              <div className="py-1">
-                                <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { close(); navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${c.id}`); }}>
-                                  View Details
-                                </DropdownMenuItem>
-                                {canManage && c.status === "IN_PROGRESS" && (
-                                  <DropdownMenuItem
-                                    icon={<IconX className="h-4 w-4" />}
-                                    onClick={() => { close(); setCancelTarget(c); }}
-                                  >
-                                    Cancel Campaign
-                                  </DropdownMenuItem>
-                                )}
-                              </div>
-                            </PortalDropdownMenu>
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      ))}
-                    </TableMarkup.Body>
-                  </TableMarkup.Root>
-                </div>
-                {totalItems > 0 && (
-                  <div className="border-t border-slate-200">
-                    <TablePagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      totalItems={totalItems}
-                      itemsPerPage={itemsPerPage}
-                      isLoading={loading}
-                      onPageChange={setCurrentPage}
-                      onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
-                      itemsPerPageOptions={[10, 20, 50]}
-                    />
-                  </div>
-                )}
-                </div>
+                <DataTable
+                  rows={campaigns}
+                  getRowKey={(campaign) => campaign.id}
+                  columns={campaignLayout.columns}
+                  columnLayout={campaignLayout}
+                  action={campaignAction}
+                  onRowClick={(campaign) => navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${campaign.id}`)}
+                  pagination={
+                    totalItems > 0 ? (
+                      <div className="border-t border-slate-200">
+                        <TablePagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          totalItems={totalItems}
+                          itemsPerPage={itemsPerPage}
+                          isLoading={loading}
+                          onPageChange={setCurrentPage}
+                          onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
+                          itemsPerPageOptions={[10, 20, 50]}
+                        />
+                      </div>
+                    ) : undefined
+                  }
+                />
               )}
             </div>
           </div>

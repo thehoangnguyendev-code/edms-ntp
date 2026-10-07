@@ -2,7 +2,7 @@
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, CheckCheck, FileText, AlertTriangle, MessageCircle, UserPlus, CheckCircle, ThumbsUp, Reply, Settings, ArrowLeft, Lock } from 'lucide-react';
+import { Bell, User, CheckCheck, FileText, AlertTriangle, MessageCircle, UserPlus, CheckCircle, ThumbsUp, Reply, Settings, ArrowLeft, Lock, Pin, PinOff } from 'lucide-react';
 import { TabNav, type TabItem } from '../../ui/tabs/TabNav';
 import { Button } from '../../ui/button/Button';
 import { cn } from '../../ui/utils';
@@ -18,6 +18,7 @@ import { emitNotificationsChanged, subscribeNotificationsChanged } from '@/featu
 import { useNotificationRealtime } from '@/features/notifications/notificationRealtime';
 import { getNotificationTypeIcon, getNotificationTypeIconStyles, getNotificationTypeLabel } from '@/features/notifications/notificationMeta';
 import { createEmptyNotificationSummaryCounts, type NotificationSummaryCounts } from '@/features/notifications/types';
+import { useNotificationDock } from './NotificationDockContext';
 
 interface NotificationsDropdownProps {
   isOpen: boolean;
@@ -39,7 +40,7 @@ const useIsMobile = () => {
   return isMobile;
 };
 
-type DropdownNotification = {
+export type DropdownNotification = {
   id: string;
   status: Notification['status'];
   type: NotificationType;
@@ -464,6 +465,200 @@ const MobileNotificationsScreen: React.FC<{
   );
 };
 
+/** The newest notifications and the tab counts, loaded while `enabled` and again whenever `refreshSignal` changes. */
+export const useNotificationFeed = (enabled: boolean, limit: number, refreshSignal?: number) => {
+  const [notifications, setNotifications] = useState<DropdownNotification[]>([]);
+  const [counts, setCounts] = useState<NotificationSummaryCounts>(createEmptyNotificationSummaryCounts());
+  const [loaded, setLoaded] = useState(false);
+
+  const fetchFeed = useCallback(async () => {
+    const [summary, list] = await Promise.all([
+      notificationApi.getSummary(),
+      notificationApi.getNotifications({ scope: 'all', page: 1, limit, sortBy: 'createdAt', sortDirection: 'desc' }),
+    ]);
+    return { summary, items: list.data.map((item) => toDropdownNotification(item)) };
+  }, [limit]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { summary, items } = await fetchFeed();
+        if (cancelled) return;
+        setCounts(summary);
+        setNotifications(items);
+        setLoaded(true);
+      } catch (error) {
+        console.error('Failed to load notifications', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, fetchFeed, refreshSignal]);
+
+  const markAllAsRead = useCallback(async () => {
+    await notificationApi.markAllAsRead();
+    emitNotificationsChanged();
+    const { summary, items } = await fetchFeed();
+    setCounts(summary);
+    setNotifications(items);
+  }, [fetchFeed]);
+
+  return { notifications, counts, loaded, markAllAsRead };
+};
+
+export interface NotificationPinControl {
+  /** True when the list is pinned to the side, so the button offers to unpin it. */
+  pinned: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+  /** Explains a disabled button. */
+  disabledReason?: string;
+}
+
+export interface NotificationPanelProps {
+  /** `popover` is the dropdown under the bell; `dock` fills the pinned side panel. */
+  variant: 'popover' | 'dock';
+  notifications: DropdownNotification[];
+  counts: NotificationSummaryCounts;
+  loaded: boolean;
+  /** Called after an item was opened (the dropdown closes itself, the dock stays). */
+  onItemOpened: () => void;
+  onViewAll: () => void;
+  onOpenSettings: () => void;
+  onRequestMarkAllRead: () => void;
+  pin: NotificationPinControl;
+  /** Receives keyboard focus when the bell is pressed while the list is already docked. */
+  headingRef?: React.Ref<HTMLHeadingElement>;
+  /** Shown under the list, e.g. a "Show more" button in the dock. */
+  listFooter?: React.ReactNode;
+}
+
+/** The list the dropdown and the pinned dock share: title with pin and settings, tabs, notifications, footer actions. */
+export const NotificationPanel: React.FC<NotificationPanelProps> = ({
+  variant, notifications, counts, loaded, onItemOpened, onViewAll, onOpenSettings, onRequestMarkAllRead, pin, headingRef, listFooter,
+}) => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('all');
+  const isDock = variant === 'dock';
+
+  const tabs: TabItem[] = [
+    { id: 'all', label: 'All', count: counts.all },
+    { id: 'me', label: 'For Me', count: counts.personal },
+    { id: 'system', label: 'System', count: counts.system },
+  ];
+
+  const visible = notifications.filter((n) => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'me') return (n.type as any) !== 'system';
+    if (activeTab === 'system') return (n.type as any) === 'system';
+    return true;
+  });
+
+  const pinLabel = pin.disabled ? (pin.disabledReason ?? 'Pin to the side') : pin.pinned ? 'Unpin notifications' : 'Pin notifications to the side';
+  const PinIcon = pin.pinned ? PinOff : Pin;
+
+  return (
+    <div className={cn('flex flex-col', isDock ? 'h-full min-h-0' : '')}>
+      <div className="flex items-center justify-between px-5 py-2 shrink-0">
+        <h3 ref={headingRef} tabIndex={-1} className="text-base font-bold text-slate-900 tracking-tight outline-none">Notifications</h3>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            className={cn(
+              'p-1.5 rounded-lg transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40',
+              pin.pinned ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-600',
+            )}
+            onClick={pin.onToggle}
+            disabled={pin.disabled}
+            aria-pressed={pin.pinned}
+            aria-label={pinLabel}
+            title={pinLabel}
+          >
+            <PinIcon className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors"
+            onClick={onOpenSettings}
+            title="Notification settings"
+            aria-label="Notification settings"
+          >
+            <IconSettings2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="px-4 pb-2 shrink-0">
+        <TabNav tabs={tabs} activeTab={activeTab} onChange={setActiveTab} variant="pill" layoutId="notificationTabIndicator" className="w-full bg-slate-100/80" />
+      </div>
+
+      <div
+        className={cn(
+          'overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300 bg-white',
+          isDock ? 'flex-1 min-h-0 custom-scrollbar' : 'max-h-[420px] min-h-[300px]',
+        )}
+      >
+        {!loaded ? (
+          Array.from({ length: isDock ? 6 : 4 }).map((_, index) => <NotificationSkeleton key={index} isLast={index === (isDock ? 5 : 3)} />)
+        ) : visible.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="text-sm text-slate-400">No notifications here</p>
+          </div>
+        ) : (
+          visible.map((notification, index) => (
+            <NotificationItem
+              key={notification.id}
+              notification={notification}
+              isLast={index === visible.length - 1}
+              onClose={onItemOpened}
+              onClick={() => {
+                if (notification.actionUrl) {
+                  openNotificationActionUrl(notification.actionUrl, navigate);
+                }
+              }}
+            />
+          ))
+        )}
+        {loaded && listFooter}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 px-5 py-3.5 border-t border-slate-100 bg-white shrink-0">
+        <button
+          type="button"
+          className="text-[13px] font-semibold text-slate-900 hover:text-emerald-600 underline underline-offset-4 decoration-slate-300 hover:decoration-emerald-500 transition-colors"
+          onClick={onRequestMarkAllRead}
+        >
+          Mark All as Read
+        </button>
+        <Button
+          variant="outline"
+          size="xs"
+          onClick={onViewAll}
+          className="h-9 px-4 rounded-lg text-xs font-medium border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all font-semibold"
+        >
+          {isDock ? 'Open Center' : 'Open Notification Center'}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+/** The confirmation both places ask for before marking everything read. */
+export const MarkAllReadConfirm: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: () => void }> = ({ isOpen, onClose, onConfirm }) => (
+  <AlertModal
+    isOpen={isOpen}
+    onClose={onClose}
+    onConfirm={onConfirm}
+    title="Mark All as Read"
+    description="Are you sure you want to mark all notifications as read? This cannot be undone."
+    type="confirm"
+    confirmText="Yes, Mark All"
+  />
+);
+
 // Desktop Dropdown Component
 const DesktopDropdown: React.FC<{
   isOpen: boolean;
@@ -474,78 +669,13 @@ const DesktopDropdown: React.FC<{
   refreshSignal?: number;
 }> = ({ isOpen, onClose, buttonRef, onViewAll, onOpenSettings, refreshSignal }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('all');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [notifications, setNotifications] = useState<DropdownNotification[]>([]);
-  const [counts, setCounts] = useState<NotificationSummaryCounts>(createEmptyNotificationSummaryCounts());
-
-  const handleMarkAllRead = () => {
-    setIsConfirmOpen(true);
-  };
+  const { canDock, pin } = useNotificationDock();
+  const { notifications, counts, loaded, markAllAsRead } = useNotificationFeed(isOpen, 8, refreshSignal);
 
   const onConfirmMarkRead = () => {
-    void notificationApi.markAllAsRead().then(async () => {
-      emitNotificationsChanged();
-      const [summary, list] = await Promise.all([
-        notificationApi.getSummary(),
-        notificationApi.getNotifications({
-          scope: 'all',
-          page: 1,
-          limit: 8,
-          sortBy: 'createdAt',
-          sortDirection: 'desc',
-        }),
-      ]);
-      setCounts(summary);
-      setNotifications(list.data.map((item) => toDropdownNotification(item)));
-      setIsConfirmOpen(false);
-    });
+    void markAllAsRead().then(() => setIsConfirmOpen(false));
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const [summary, list] = await Promise.all([
-          notificationApi.getSummary(),
-          notificationApi.getNotifications({
-            scope: 'all',
-            page: 1,
-            limit: 8,
-            sortBy: 'createdAt',
-            sortDirection: 'desc',
-          }),
-        ]);
-        if (cancelled) {
-          return;
-        }
-        setCounts(summary);
-        setNotifications(list.data.map((item) => toDropdownNotification(item)));
-      } catch (error) {
-        console.error('Failed to load desktop notifications', error);
-      }
-    };
-    if (isOpen) {
-      void load();
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, refreshSignal]);
-
-  const DROPDOWN_TABS: TabItem[] = [
-    { id: 'all', label: 'All', count: counts.all },
-    { id: 'me', label: 'For Me', count: counts.personal },
-    { id: 'system', label: 'System', count: counts.system },
-  ];
-
-  const filteredNotifications = notifications.filter(n => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'me') return (n.type as any) !== 'system';
-    if (activeTab === 'system') return (n.type as any) === 'system';
-    return true;
-  });
 
   useEffect(() => {
     if (!isOpen || isConfirmOpen) return;
@@ -587,96 +717,36 @@ const DesktopDropdown: React.FC<{
           right: `${window.innerWidth - buttonRef.current?.getBoundingClientRect().right! - window.scrollX}px`
         }}
       >
-        {/* Header */}
-          <div className="flex items-center justify-between px-5 py-2">
-          <h3 className="text-base font-bold text-slate-900 tracking-tight">Notifications</h3>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors"
-              onClick={onOpenSettings}
-              title="Notification settings"
-            >
-              <IconSettings2 className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-
-        {/* Tabs */}
-        <div className="px-4 pb-2">
-          <TabNav
-            tabs={DROPDOWN_TABS}
-            activeTab={activeTab}
-            onChange={setActiveTab}
-            variant="pill"
-            layoutId="notificationTabIndicator"
-            className="w-full bg-slate-100/80"
-          />
-        </div>
-
-        {/* Notifications List */}
-        <div className="max-h-[420px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300 bg-white min-h-[300px]">
-          {filteredNotifications.length === 0 ? (
-            <div className="py-20 text-center">
-              <p className="text-sm text-slate-400">No notifications here</p>
-            </div>
-          ) : (
-            filteredNotifications.map((notification, index) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                isLast={index === filteredNotifications.length - 1}
-                onClose={onClose}
-                onClick={() => {
-                  if (notification.actionUrl) {
-                    openNotificationActionUrl(notification.actionUrl, navigate);
-                  }
-                }}
-              />
-            ))
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100 bg-white shrink-0">
-          <button
-            type="button"
-            className="text-[13px] font-semibold text-slate-900 hover:text-emerald-600 underline underline-offset-4 decoration-slate-300 hover:decoration-emerald-500 transition-colors"
-            onClick={handleMarkAllRead}
-          >
-            Mark All as Read
-          </button>
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => {
-              onViewAll();
+        <NotificationPanel
+          variant="popover"
+          notifications={notifications}
+          counts={counts}
+          loaded={loaded}
+          onItemOpened={onClose}
+          onViewAll={() => {
+            onViewAll();
+            onClose();
+          }}
+          onOpenSettings={onOpenSettings}
+          onRequestMarkAllRead={() => setIsConfirmOpen(true)}
+          pin={{
+            pinned: false,
+            // Pinning moves the list to the side at once; the dropdown has nothing left to show.
+            onToggle: () => {
+              pin();
               onClose();
-            }}
-            className="h-9 px-4 rounded-lg text-xs font-medium border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all font-semibold"
-          >
-            Open Notification Center
-          </Button>
-        </div>
+            },
+            disabled: !canDock,
+            disabledReason: 'Pinning needs a wider window',
+          }}
+        />
       </motion.div>
 
-      {/* Confirmation Modal */}
-      <AlertModal
-        isOpen={isConfirmOpen}
-        onClose={() => setIsConfirmOpen(false)}
-        onConfirm={onConfirmMarkRead}
-        title="Mark All as Read"
-        description="Are you sure you want to mark all notifications as read? This cannot be undone."
-        type="confirm"
-        confirmText="Yes, Mark All"
-      />
+      <MarkAllReadConfirm isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={onConfirmMarkRead} />
     </div>,
     document.body
   );
 };
-
-// Removing Pinned panel related components as per request
 
 
 export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ isOpen, onClose, onToggle }) => {
@@ -689,6 +759,8 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
   const [refreshSignal, setRefreshSignal] = useState(0);
   const [isBellShaking, setIsBellShaking] = useState(false);
   const prevUnreadCountRef = useRef(0);
+  const dock = useNotificationDock();
+  const isDocked = dock.docked && !isMobile;
   const shakeTimerRef = useRef<number | null>(null);
 
   const loadUnreadCount = useCallback(async () => {
@@ -755,7 +827,9 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
         <Button
           variant="ghost"
           size="icon"
-          onClick={onToggle}
+          onClick={isDocked ? dock.requestFocus : onToggle}
+          aria-label={isDocked ? 'Notifications (pinned to the side)' : 'Notifications'}
+          aria-pressed={isDocked ? true : undefined}
           className="relative text-slate-600 hover:bg-slate-100 hover:text-emerald-600 transition-colors"
         >
           <span className="relative inline-flex items-center justify-center">
@@ -798,7 +872,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
       )}
 
       {/* Desktop: Dropdown */}
-      {!isMobile && (
+      {!isMobile && !isDocked && (
         <AnimatePresence>
           {isOpen && (
             <DesktopDropdown

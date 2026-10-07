@@ -9,7 +9,7 @@ interface Reviewer {
 
 interface ReviewersTabProps {
   reviewers: Reviewer[];
-  reviewRequirement?: "NONE" | "REQUIRED" | null;
+  reviewRequirement?: "NONE" | "REQUIRED" | "OPTIONAL" | null;
   /** Legacy Import reference-only reviewer(s) -- recorded from the paper original, never a real
    *  electronic signature. Comma-separated names as entered at import time. */
   legacyHistoricalReviewers?: string | null;

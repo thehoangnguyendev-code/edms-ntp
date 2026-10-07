@@ -226,7 +226,7 @@ export function useUserList() {
   const fetchUsers = useCallback(async (silent = false) => {
     const requestSeq = ++requestSeqRef.current;
     try {
-      // Background Entra reconciliation must not replace the table with a
+      // Background status refresh must not replace the table with a
       // loading state every few seconds. Keep the current rows visible while
       // the server refreshes status badges.
       if (!silent) setIsLoading(true);
@@ -356,17 +356,6 @@ export function useUserList() {
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
-
-  useEffect(() => {
-    // Entra reconciliation is server-driven. Refresh silently only when the
-    // backend tells us that a linked account changed; the interval below is
-    // retained only as a bounded fallback for webhook/SSE interruptions.
-    return subscribeNotificationRealtime((event) => {
-      if (event.type === "external-identity-status-changed") {
-        void fetchUsers(true);
-      }
-    });
   }, [fetchUsers]);
 
   useEffect(() => {

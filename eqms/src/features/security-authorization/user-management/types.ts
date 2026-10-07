@@ -31,6 +31,8 @@ export interface TableColumn {
   visible: boolean;
   order: number;
   locked?: boolean;
+  /** Fixed to the left while the table scrolls horizontally. Saved per user. */
+  pinned?: boolean;
 }
 
 // --- API Payload Types ---

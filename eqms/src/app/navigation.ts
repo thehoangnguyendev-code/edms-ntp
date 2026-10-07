@@ -68,6 +68,7 @@ import {
   IconReport,
   IconServerCog,
   IconViewfinder,
+  IconTableOptions,
 } from "@tabler/icons-react";
 import { NavItem } from "@/types";
 import { ROUTES } from "./routes.constants";
@@ -553,7 +554,7 @@ const SYSTEM_MODULES: NavItem[] = [
       {
         id: "report-configuration",
         label: "Report Configuration",
-        icon: IconReport,
+        icon: IconTableOptions,
         path: ROUTES.SETTINGS.REPORT_CONFIGURATION,
         allowedPermissions: ["reports.definition.view", "settings.configuration.view"],
       },

@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useState } from "react";
 import {
   ChevronUp,
@@ -231,7 +232,7 @@ export const EmailTemplatesView: React.FC = () => {
       {/* Unified Content Card */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         {/* Filter Section */}
-        <div className="px-4 pt-4 md:p-5 flex flex-col">
+        <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
               <label className="text-xs sm:text-sm font-medium text-slate-700 block">
@@ -275,7 +276,66 @@ export const EmailTemplatesView: React.FC = () => {
               </div>
             </div>
 
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+<ConfiguredDesktopFilters
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search by name, subject, description..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "typeFilter",
+      label: "Template Type",
+      value: String(typeFilter),
+      options: [
+        { label: "All Types", value: "All" },
+        ...Object.keys(EMAIL_TEMPLATE_TYPES).map((key) => ({
+          label: getEmailTemplateTypeConfig(key).label,
+          value: key,
+        })),
+      ],
+      onChange: (value) => setTypeFilter(value as any),
+    },
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: [
+        { label: "All Status", value: "All" },
+        { label: "Active", value: "Active" },
+        { label: "Inactive", value: "Inactive" },
+        { label: "Draft", value: "Draft" },
+      ],
+      onChange: (value) => setStatusFilter(value as any),
+    },
+  ]}
+  dates={[
+    {
+      id: "dateFrom",
+      label: "Created Date Range",
+      from: dateFrom,
+      to: dateTo,
+      onFromChange: setDateFrom,
+      onToChange: setDateTo,
+    },
+    {
+      id: "updatedFrom",
+      label: "Updated Date Range",
+      from: updatedFrom,
+      to: updatedTo,
+      onFromChange: setUpdatedFrom,
+      onToChange: setUpdatedTo,
+    },
+  ]}
+>
+<div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors">
                   Search
@@ -363,6 +423,7 @@ export const EmailTemplatesView: React.FC = () => {
                 </Button>
               </div>
             </div>
+</ConfiguredDesktopFilters>
           </div>
         </div>
 

@@ -27,5 +27,17 @@ public record ControlledCopyPolicyMarkingSection(
         String watermarkLayer,
         String watermarkFontFamily,
         /** Per-page placement rules; null keeps the stored ones, an empty list clears them. */
-        java.util.List<MarkingPlacementRule> placements
+        java.util.List<MarkingPlacementRule> placements,
+        /** Print a per-copy QR code on the first page of paper copies (used to recall returned paper by scan). */
+        Boolean qrCodeEnabled,
+        /** TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT or BOTTOM_RIGHT. */
+        String qrCodePosition,
+        @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using = StrictIntegerDeserializer.class) Integer qrCodeSizeMm,
+        /** Free position of the QR code: fractions of the first page (0 = left / top), top-left of its frame. Both or neither. */
+        Double qrCodeX,
+        Double qrCodeY,
+        /** True puts the QR code back in the corner named by {@code qrCodePosition}. */
+        Boolean qrCodeResetPosition,
+        /** ALL (every page, the default) or FIRST (first page only). */
+        String qrCodePages
 ) {}

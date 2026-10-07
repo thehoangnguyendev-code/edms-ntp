@@ -63,7 +63,7 @@ public class UncontrolledCopyPolicyController {
     }
 
     /**
-     * A picture of a Publishing Template page with the DRAFT uncontrolled-copy watermark/stamp on it (nothing is saved), drawn
+     * A picture of a sample paper page with the DRAFT uncontrolled-copy watermark/stamp on it (nothing is saved), drawn
      * by the server with the same engine and lines as real generation. Same response shape as the Controlled Copy preview.
      * Gated like saving the policy (policy administrators only), mirroring the Controlled Copies Policy preview.
      */

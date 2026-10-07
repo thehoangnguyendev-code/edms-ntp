@@ -322,6 +322,7 @@ export const documentProperties = (navigate?: NavigateFn): BreadcrumbItem[] => [
   { label: "Document Properties", isActive: true },
 ];
 
+
 export const documentNameFormats = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...documentControlBase(navigate),
   { label: "Document Name Formats", isActive: true },

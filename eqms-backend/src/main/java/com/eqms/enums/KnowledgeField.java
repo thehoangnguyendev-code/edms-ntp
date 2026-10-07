@@ -27,7 +27,11 @@ public enum KnowledgeField {
     LAST_MODIFIED_BY("Last Modified By", false, d -> user(d.getLastModifiedBy())),
     REVIEW_REQUIREMENT("Review Requirement", false, d -> d.getReviewRequirement() == null ? null
             : new Value(d.getReviewRequirement().name(),
-                    d.getReviewRequirement() == com.eqms.entity.ReviewRequirement.NONE ? "Review not required" : "Review required")),
+                    switch (d.getReviewRequirement()) {
+                        case NONE -> "Review not required";
+                        case REQUIRED -> "Review required";
+                        case OPTIONAL -> "Review optional";
+                    })),
     REQUIRES_TRAINING("Requires Training", false, d -> yesNo(d.isRequiresTraining())),
     HAS_RELATED_DOCUMENTS("Has Related Documents", false, d -> yesNo(d.isHasRelatedDocuments())),
     HAS_CORRELATED_DOCUMENTS("Has Correlated Documents", false, d -> yesNo(d.isHasCorrelatedDocuments()));

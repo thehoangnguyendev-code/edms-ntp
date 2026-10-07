@@ -30,18 +30,23 @@ export interface ExecutedRecord {
   rejectedAt?: string | null;
   rejectedReason?: string | null;
   createdAt?: string | null;
+  /** The scan's original file name, and what the browser can render (application/pdf, image/png, image/jpeg). */
+  fileName?: string | null;
+  contentType?: string | null;
+  fileSize?: number | null;
+  /** The recall-by-scan batch that produced the record; absent for older records. */
+  recallBatchId?: string | null;
 }
 
 export interface ExecutedRecordListParams {
   page?: number;
   limit?: number;
   search?: string;
-  status?: string;
-  captureMethod?: string;
   formDocumentId?: string;
+  controlledCopyId?: string;
   filledFrom?: string;
   filledTo?: string;
-  sortBy?: 'created' | 'number' | 'status' | 'method' | 'filled';
+  sortBy?: 'created' | 'number' | 'document' | 'copy' | 'recipient' | 'filled' | 'scan';
   sortDirection?: 'asc' | 'desc';
 }
 
@@ -52,12 +57,6 @@ export interface RecordExecutionInput {
   reason: string;
   signatureToken: string;
   file: File;
-}
-
-export interface ExecutedRecordActionInput {
-  comment?: string;
-  reason?: string;
-  signatureToken: string;
 }
 
 const fileNameFrom = (disposition: string | undefined, fallback: string) =>
@@ -81,20 +80,6 @@ export const executedRecordApi = {
     return response.data;
   },
 
-  /** POST /forms/:formDocumentId/executed-records/record-physical-copy (multipart, e-signature required) */
-  recordPhysicalCopy: async (formDocumentId: string, input: RecordExecutionInput): Promise<ExecutedRecord> => {
-    const { file, ...request } = input;
-    const formData = new FormData();
-    formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }));
-    formData.append('file', file);
-    const response = await api.post<ExecutedRecord>(
-      `/forms/${formDocumentId}/executed-records/record-physical-copy`,
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    );
-    return response.data;
-  },
-
   /** POST /controlled-copies/:controlledCopyId/recall-with-executed-record (multipart, e-signature
    *  required) -- launched from the Controlled Copy's own Recall action: "this copy came back
    *  filled in" and "this copy is now closed" as one operator action, one signature. */
@@ -111,29 +96,9 @@ export const executedRecordApi = {
     return response.data;
   },
 
-  /** POST /forms/:formDocumentId/executed-records/submit-eform (multipart, e-signature required) */
-  submitEform: async (formDocumentId: string, input: RecordExecutionInput): Promise<ExecutedRecord> => {
-    const { file, ...request } = input;
-    const formData = new FormData();
-    formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }));
-    formData.append('file', file);
-    const response = await api.post<ExecutedRecord>(
-      `/forms/${formDocumentId}/executed-records/submit-eform`,
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    );
-    return response.data;
-  },
-
-  /** POST /executed-records/:id/approve (e-signature required) */
-  approveExecutedRecord: async (id: string, payload: ExecutedRecordActionInput): Promise<ExecutedRecord> => {
-    const response = await api.post<ExecutedRecord>(`${EXECUTED_RECORDS_ENDPOINT}/${id}/approve`, payload);
-    return response.data;
-  },
-
-  /** POST /executed-records/:id/reject (e-signature + reason required) */
-  rejectExecutedRecord: async (id: string, payload: ExecutedRecordActionInput): Promise<ExecutedRecord> => {
-    const response = await api.post<ExecutedRecord>(`${EXECUTED_RECORDS_ENDPOINT}/${id}/reject`, payload);
+  /** GET /executed-records/:id/preview -- the scan, inline, for the preview modal (view permission only). */
+  fetchExecutedRecordPreview: async (id: string): Promise<Blob> => {
+    const response = await api.get<Blob>(`${EXECUTED_RECORDS_ENDPOINT}/${id}/preview`, { responseType: 'blob' });
     return response.data;
   },
 

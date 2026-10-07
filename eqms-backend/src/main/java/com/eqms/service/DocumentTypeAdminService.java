@@ -430,23 +430,11 @@ public class DocumentTypeAdminService {
         subType.setName(request.name().trim());
         subType.setDocumentType(documentType);
         subType.setDescription(DictionaryQuerySupport.trimToNull(request.description()));
-        // PATCH-style updates omit untouched fields; keep the immutable
-        // configuration value rather than silently resetting it to REQUIRED.
-        if (StringUtils.hasText(request.reviewRequirement()) || subType.getReviewRequirement() == null) {
-            subType.setReviewRequirement(parseReviewRequirement(request.reviewRequirement()));
+        // Retain legacy data, but Sub-Type administration no longer configures Review.
+        if (StringUtils.hasText(request.reviewRequirement())) {
+            throw new IllegalArgumentException("Sub-Type is classification only; reviewRequirement cannot be configured here");
         }
         subType.setActive(requestedActive);
-    }
-
-    private ReviewRequirement parseReviewRequirement(String value) {
-        if (!StringUtils.hasText(value)) {
-            return ReviewRequirement.REQUIRED;
-        }
-        try {
-            return ReviewRequirement.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Review requirement must be NONE or REQUIRED");
-        }
     }
 
     /** Parses a review-requirement filter value; returns null for blank / "ALL" / anything unrecognised. */

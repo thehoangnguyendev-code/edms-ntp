@@ -171,6 +171,8 @@ public class SystemConfigurationService {
                 ? config.getGeneralConfig()
                 : onlyOfficeConfigurationService.mergeGeneralConfigForStorage(request.general(), config.getGeneralConfig());
         validateDesktopFilterConfig(nextGeneral);
+        validateToastPosition(nextGeneral);
+        validateSystemHeaderTitle(nextGeneral);
         config.setGeneralConfig(nextGeneral);
         config.setSecurityConfig(defaultIfNull(request.security(), config.getSecurityConfig()));
         if (request.documents() != null) {
@@ -330,10 +332,55 @@ public class SystemConfigurationService {
                 appearance != null && appearance.path("showSidebarUserProfile").asBoolean(false),
                 appearance != null && appearance.path("knowledgeExplorerEnabled").asBoolean(false),
                 appearance != null && appearance.path("compactDesktopFilters").asBoolean(false),
+                toastPosition(appearance),
                 textValue(general, "systemFavicon"),
                 appearance == null ? null : textValue(appearance, "systemFooter"),
+                systemHeaderTitle(general),
                 readStringMap(general == null ? null : general.get("navigationLabelOverrides"))
         );
+    }
+
+    static final int SYSTEM_HEADER_TITLE_MAX_LENGTH = 120;
+
+    /** Blank counts as "not set": the screen owns the default text, so none is invented here. */
+    private String systemHeaderTitle(JsonNode general) {
+        String value = textValue(general, "systemHeaderTitle");
+        return value == null || value.isBlank() ? null : value.strip();
+    }
+
+    /** One line of plain text. It is shown as text by the screen, never as markup, but line breaks and control characters make no sense in a title bar. */
+    static void validateSystemHeaderTitle(JsonNode general) {
+        JsonNode title = general == null ? null : general.get("systemHeaderTitle");
+        if (title == null || title.isNull()) {
+            return;
+        }
+        if (!title.isTextual()) {
+            throw new IllegalArgumentException("systemHeaderTitle must be text");
+        }
+        String text = title.asText();
+        if (text.strip().length() > SYSTEM_HEADER_TITLE_MAX_LENGTH) {
+            throw new IllegalArgumentException("systemHeaderTitle must be at most " + SYSTEM_HEADER_TITLE_MAX_LENGTH + " characters");
+        }
+        if (text.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("systemHeaderTitle must not contain line breaks or control characters");
+        }
+    }
+
+    /** Machine values only; the admin UI owns the labels. Missing or unknown values fall back to the top-right default. */
+    static final java.util.Set<String> TOAST_POSITIONS = java.util.Set.of("center", "top-right", "top-left", "bottom-right", "bottom-left");
+    static final String DEFAULT_TOAST_POSITION = "top-right";
+
+    String toastPosition(JsonNode appearance) {
+        String value = appearance == null ? null : textValue(appearance, "toastPosition");
+        return value != null && TOAST_POSITIONS.contains(value) ? value : DEFAULT_TOAST_POSITION;
+    }
+
+    static void validateToastPosition(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        JsonNode position = appearance == null ? null : appearance.get("toastPosition");
+        if (position != null && (!position.isTextual() || !TOAST_POSITIONS.contains(position.asText()))) {
+            throw new IllegalArgumentException("toastPosition must be one of " + TOAST_POSITIONS);
+        }
     }
 
     static void validateDesktopFilterConfig(JsonNode general) {
@@ -509,6 +556,28 @@ public class SystemConfigurationService {
     public int getKnowledgePortalViewsWindowDays() {
         int value = getDaysDocumentsConfig("knowledgePortalViewsWindowDays", 30);
         return value >= 1 ? value : 30;
+    }
+
+    /** Document Properties > Record visibility: only people in a record's flow (Author/Co-Author/
+     *  Reviewer/Approver, or a copy's recipient) see it. Holders of the dedicated view-all
+     *  permissions always see everything regardless of this setting. */
+    public static final String DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY = "PARTICIPANTS_ONLY";
+    /** Every holder of the base view permission sees every record. */
+    public static final String DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION = "ALL_WITH_VIEW_PERMISSION";
+
+    /**
+     * Record visibility mode for Document Control. Missing, blank or unrecognised values resolve to
+     * PARTICIPANTS_ONLY, the restrictive default, so a corrupt value can never widen access.
+     */
+    @Transactional(readOnly = true)
+    public String getDocumentVisibilityMode() {
+        JsonNode documents = requireConfiguration().getDocumentsConfig();
+        JsonNode value = documents == null ? null : documents.get("documentVisibilityMode");
+        if (value != null && value.isTextual()
+                && DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION.equals(value.asText())) {
+            return DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION;
+        }
+        return DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY;
     }
 
     public static final String EFFECTIVE_DATE_AFTER_APPROVAL = "AFTER_APPROVAL";
@@ -1101,18 +1170,7 @@ public class SystemConfigurationService {
                 "backupTime": "02:00",
                 "retentionDays": 30,
                 "backupLocation": "cloud",
-                "notifyOnBackupFailure": true,
-                "officeOnline": {
-                  "enabled": false,
-                  "graphBaseUrl": "https://graph.microsoft.com/v1.0",
-                  "tenantId": "",
-                  "clientId": "",
-                  "clientSecret": "",
-                  "siteId": "",
-                  "driveId": "",
-                  "libraryFolder": "EQMS",
-                  "shareLinkScope": "anonymous"
-                }
+                "notifyOnBackupFailure": true
               },
               "locale": {
                 "language": "en",
@@ -1422,6 +1480,13 @@ public class SystemConfigurationService {
         if (seed != null && !seed.isNull() && !java.util.Set.of("0.0.1", "0.1").contains(seed.asText())) {
             throw new IllegalArgumentException("Revision number seed must be 0.0.1 or 0.1");
         }
+        JsonNode visibilityMode = documents.get("documentVisibilityMode");
+        if (visibilityMode != null && !visibilityMode.isNull()
+                && (!visibilityMode.isTextual() || !java.util.Set.of(
+                        DOCUMENT_VISIBILITY_PARTICIPANTS_ONLY, DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION)
+                        .contains(visibilityMode.asText()))) {
+            throw new IllegalArgumentException("Record visibility must be PARTICIPANTS_ONLY or ALL_WITH_VIEW_PERMISSION");
+        }
         for (String flag : java.util.List.of("enableWatermark", "allowDownload", "parallelReviewEnabled", "parallelApprovalEnabled",
                 "retainVisibilityForRemovedAuthor", "retainVisibilityForRemovedCoAuthor",
                 "retainVisibilityForRemovedReviewer", "retainVisibilityForRemovedApprover")) {
@@ -1589,15 +1654,6 @@ public class SystemConfigurationService {
         }
         JsonNode sanitized = generalConfig.deepCopy();
         if (sanitized != null && sanitized.isObject()) {
-            JsonNode backupSettings = sanitized.get("backupSettings");
-            if (backupSettings != null && backupSettings.isObject()) {
-                JsonNode officeOnline = backupSettings.get("officeOnline");
-                if (officeOnline != null && officeOnline.isObject()) {
-                    ObjectNode officeOnlineCopy = (ObjectNode) officeOnline.deepCopy();
-                    redactSensitiveFields(officeOnlineCopy);
-                    ((ObjectNode) backupSettings).set("officeOnline", officeOnlineCopy);
-                }
-            }
         }
         return sanitized;
     }

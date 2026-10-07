@@ -1,6 +1,9 @@
 package com.eqms.service;
 
+import com.eqms.entity.ControlledCopyRecord;
 import com.eqms.entity.DocumentRecord;
+import com.eqms.entity.DocumentStakeholderHistory;
+import com.eqms.entity.DocumentWorkflowParticipant;
 import com.eqms.entity.DocumentRevisionRecord;
 import com.eqms.dto.security.RevisionWorkflowAuthorizationContext;
 import com.eqms.entity.RevisionWorkflowParticipant;
@@ -11,20 +14,32 @@ import com.eqms.repository.DocumentRevisionRepository;
 import com.eqms.repository.DocumentStakeholderHistoryRepository;
 import com.eqms.repository.DocumentWorkflowParticipantRepository;
 import com.eqms.repository.RevisionWorkflowParticipantRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class DocumentAuthorizationService {
 
-    @Value("${app.security.participant-visibility-strict:false}")
-    private boolean strictVisibility;
+    /** The one dedicated blanket-view permission for Documents/Revisions. */
+    public static final String PERMISSION_DOCUMENT_VIEW_ALL = "documents.document.view_all";
+    public static final String PERMISSION_DOCUMENT_VIEW = "documents.document.view";
+    /** Dedicated blanket-view permissions for copies -- independent of the document one. */
+    public static final String PERMISSION_CONTROLLED_COPY_VIEW_ALL = "documents.controlled_copy.view_all";
+    public static final String PERMISSION_CONTROLLED_COPY_VIEW = "documents.controlled_copy.view";
+    public static final String PERMISSION_UNCONTROLLED_COPY_VIEW_ALL = "documents.uncontrolled_copy.view_all";
+    public static final String PERMISSION_UNCONTROLLED_COPY_VIEW = "documents.uncontrolled_copy.view";
 
     private final DocumentWorkflowParticipantRepository documentWorkflowParticipantRepository;
     private final RevisionWorkflowParticipantRepository revisionWorkflowParticipantRepository;
@@ -64,13 +79,79 @@ public class DocumentAuthorizationService {
         this.revisionWorkflowAuthorizationService = revisionWorkflowAuthorizationService;
     }
 
-    /** The sole blanket-view grant is the explicit permission; legacy DCO pool membership and
-     *  workflow-role assignment are descriptive/assignable metadata only (see V172 parity notes). */
+    /** The sole blanket-view grant is the dedicated {@value #PERMISSION_DOCUMENT_VIEW_ALL}
+     *  permission, independent of the Record visibility mode and of any Access Profile name.
+     *  Administration/operational permissions never imply it (V540 granted it to every set that
+     *  previously relied on them), and legacy DCO pool membership / workflow-role assignment are
+     *  descriptive metadata only (see V172 parity notes). */
     public boolean canViewAllDocuments(UserAccount user) {
         if (user == null || user.getId() == null) {
             return false;
         }
-        return hasDocumentAdministrationPermission(user);
+        return permissionEvaluationService.hasPermission(user, PERMISSION_DOCUMENT_VIEW_ALL);
+    }
+
+    /** True when Document Properties > Record visibility is "All" (ALL_WITH_VIEW_PERMISSION). */
+    public boolean isOpenVisibilityMode() {
+        return SystemConfigurationService.DOCUMENT_VISIBILITY_ALL_WITH_VIEW_PERMISSION
+                .equals(systemConfigurationService.getDocumentVisibilityMode());
+    }
+
+    /** Open mode: every holder of the base permission sees every record. */
+    private boolean hasOpenVisibility(UserAccount user, String baseViewPermission) {
+        return user != null && user.getId() != null
+                && isOpenVisibilityMode()
+                && permissionEvaluationService.hasPermission(user, baseViewPermission);
+    }
+
+    /** Whether the Document/Revision list may skip the participant row filter: blanket grant, or
+     *  open mode with the base view permission. */
+    public boolean canListAllDocuments(UserAccount user) {
+        return canViewAllDocuments(user) || hasOpenVisibility(user, PERMISSION_DOCUMENT_VIEW);
+    }
+
+    /** Controlled Copy blanket view: dedicated permission, or open mode with the base permission. */
+    public boolean canViewAllControlledCopies(UserAccount user) {
+        return user != null && user.getId() != null
+                && (permissionEvaluationService.hasPermission(user, PERMISSION_CONTROLLED_COPY_VIEW_ALL)
+                || hasOpenVisibility(user, PERMISSION_CONTROLLED_COPY_VIEW));
+    }
+
+    /** Uncontrolled Copy blanket view: dedicated permission, or open mode with the base permission. */
+    public boolean canViewAllUncontrolledCopies(UserAccount user) {
+        return user != null && user.getId() != null
+                && (permissionEvaluationService.hasPermission(user, PERMISSION_UNCONTROLLED_COPY_VIEW_ALL)
+                || hasOpenVisibility(user, PERMISSION_UNCONTROLLED_COPY_VIEW));
+    }
+
+    /** A Controlled Copy is visible to blanket viewers and to the user named as its recipient
+     *  (matched by account id, never by display text). Document-flow participants and the people
+     *  who acted on the copy do not see it merely for that reason. */
+    public boolean canViewControlledCopy(UserAccount user, ControlledCopyRecord copy) {
+        if (user == null || user.getId() == null || copy == null) {
+            return false;
+        }
+        if (canViewAllControlledCopies(user)) {
+            return true;
+        }
+        return copy.getRecipientUser() != null && user.getId().equals(copy.getRecipientUser().getId());
+    }
+
+    /** A distribution batch lists every recipient, so only blanket viewers may open it. */
+    public boolean canViewControlledCopyBatch(UserAccount user) {
+        return canViewAllControlledCopies(user);
+    }
+
+    public void requireCanViewControlledCopy(UserAccount user, ControlledCopyRecord copy) {
+        if (!canViewControlledCopy(user, copy)) {
+            throw new AccessDeniedException("Controlled copy access denied");
+        }
+    }
+
+    public void requireCanViewControlledCopyBatch(UserAccount user) {
+        if (!canViewControlledCopyBatch(user)) {
+            throw new AccessDeniedException("Controlled copy access denied");
+        }
     }
 
     public boolean canManageDocumentWorkspace(UserAccount user) {
@@ -124,18 +205,6 @@ public class DocumentAuthorizationService {
         }
     }
 
-    /** Checks for a genuine blanket "view all documents" grant only — operational permissions
-     *  like document.create/edit_metadata do NOT imply this and must not be listed here. */
-    private boolean hasDocumentAdministrationPermission(UserAccount user) {
-        return permissionEvaluationService.hasAnyPermission(
-                user,
-                "documents.admin.view",
-                "documents.admin.manage_workflow_roles",
-                "security.sod.manage",
-                "documents.document.view_all"
-        );
-    }
-
     public void requireCanManageRevisionWorkspace(UserAccount user) {
         if (!canManageRevisionWorkspace(user)) {
             throw new AccessDeniedException("Current user is not allowed to perform this action");
@@ -146,8 +215,8 @@ public class DocumentAuthorizationService {
      * True when the user has a direct, record-scoped relationship to this Document -- Admin/DCO
      * (via the blanket {@link #canViewAllDocuments}), the Author, or any workflow participant
      * (Co-author/Reviewer/Approver on the document or any of its revisions). Deliberately EXCLUDES
-     * the strict-visibility broad-viewer grant (base {@code documents.document.view} permission +
-     * terminal-status filter) below -- that grant is for indirect/broad viewers only.
+     * the open-visibility grant (Record visibility = "All" plus the base
+     * {@code documents.document.view} permission) -- that grant is for indirect/broad viewers only.
      *
      * GMP decision (HDR-AUTH-001): direct stakeholders automatically see a record's Preview file
      * and Audit Trail tab without needing the separate preview/view_audit permission codes;
@@ -192,15 +261,9 @@ public class DocumentAuthorizationService {
         if (isDirectStakeholder(user, document)) {
             return true;
         }
-        // Strict-visibility is an ADDITIONAL grant (broadens access to terminal-status documents
-        // for holders of the base view permission) -- it must never short-circuit ahead of the
-        // author/participant checks above, or an assigned participant on a non-terminal document
-        // gets wrongly denied just because they also happen to hold documents.document.view.
-        if (strictVisibility && permissionEvaluationService.hasPermission(user, "documents.document.view")) {
-            return documentRevisionRepository.existsByDocument_IdAndStatus_CodeIn(
-                    document.getId(), java.util.List.of("EFFECTIVE", "OBSOLETED", "CLOSED_CANCELLED"));
-        }
-        return false;
+        // Open mode (Record visibility = "All") is an ADDITIONAL grant -- it never short-circuits
+        // ahead of the author/participant checks above.
+        return hasOpenVisibility(user, PERMISSION_DOCUMENT_VIEW);
     }
 
     public void requireCanViewDocument(UserAccount user, DocumentRecord document) {
@@ -220,23 +283,10 @@ public class DocumentAuthorizationService {
     }
 
     /**
-     * True when the "strict view" rule (system-wide config flag + documents.document.view
-     * permission) grants visibility of any revision whose status is EFFECTIVE, OBSOLETED, or
-     * CLOSED_CANCELLED, independent of author/participant role. This is the same condition used
-     * inline by {@link #canViewRevision}/{@link #canViewDocument} — exposed here so a caller that
-     * needs to push authorization into a database query (rather than evaluate it per loaded row)
-     * can query-time-check user + permission once and combine with a status filter, instead of
-     * duplicating the strictVisibility flag or permission code.
-     */
-    public boolean isStrictViewEligible(UserAccount user) {
-        return strictVisibility && permissionEvaluationService.hasPermission(user, "documents.document.view");
-    }
-
-    /**
      * True when the user has a direct, record-scoped relationship to this Revision -- Admin/DCO
      * (via the blanket {@link #canViewAllDocuments}), the Author, or an assigned Co-author/
-     * Reviewer/Approver participant. Deliberately EXCLUDES the strict-visibility broad-viewer
-     * grant below -- see {@link #isDirectStakeholder(UserAccount, DocumentRecord)} for rationale.
+     * Reviewer/Approver participant. Deliberately EXCLUDES the open-visibility grant below --
+     * see {@link #isDirectStakeholder(UserAccount, DocumentRecord)} for rationale.
      */
     public boolean isDirectStakeholder(UserAccount user, DocumentRevisionRecord revision) {
         if (user == null || user.getId() == null || revision == null) {
@@ -278,6 +328,75 @@ public class DocumentAuthorizationService {
                         documentId, currentUserId, retainedTypes);
     }
 
+    /**
+     * Row filter for the Document list when the user has no blanket view grant. Mirrors
+     * {@link #isDirectStakeholder(UserAccount, DocumentRecord)}: Author, any Document-level workflow
+     * participant, any revision-level participant, and -- when enabled for a role -- the removed
+     * participant history. Callers skip this filter when {@link #canListAllDocuments} is true
+     * (blanket permission, or Record visibility = "All").
+     */
+    public Predicate documentListVisibilityPredicate(UserAccount user, Root<DocumentRecord> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+        UUID userId = user.getId();
+        List<Predicate> visible = new ArrayList<>();
+        visible.add(cb.equal(root.get("author").get("id"), userId));
+
+        Subquery<UUID> documentParticipant = query.subquery(UUID.class);
+        var documentParticipantRoot = documentParticipant.from(DocumentWorkflowParticipant.class);
+        documentParticipant.select(documentParticipantRoot.get("document").get("id")).where(
+                cb.equal(documentParticipantRoot.get("document").get("id"), root.get("id")),
+                cb.equal(documentParticipantRoot.get("user").get("id"), userId));
+        visible.add(cb.exists(documentParticipant));
+
+        Subquery<UUID> revisionParticipant = query.subquery(UUID.class);
+        var revisionParticipantRoot = revisionParticipant.from(RevisionWorkflowParticipant.class);
+        revisionParticipant.select(revisionParticipantRoot.get("revision").get("document").get("id")).where(
+                cb.equal(revisionParticipantRoot.get("revision").get("document").get("id"), root.get("id")),
+                cb.equal(revisionParticipantRoot.get("user").get("id"), userId));
+        visible.add(cb.exists(revisionParticipant));
+
+        Set<String> retainedTypes = systemConfigurationService.getRetainVisibilityForRemovedParticipantTypes();
+        if (!retainedTypes.isEmpty()) {
+            Subquery<UUID> history = query.subquery(UUID.class);
+            var historyRoot = history.from(DocumentStakeholderHistory.class);
+            history.select(historyRoot.get("document").get("id")).where(
+                    cb.equal(historyRoot.get("document").get("id"), root.get("id")),
+                    cb.equal(historyRoot.get("user").get("id"), userId),
+                    historyRoot.get("participantType").in(retainedTypes));
+            visible.add(cb.exists(history));
+        }
+        return cb.or(visible.toArray(Predicate[]::new));
+    }
+
+    /**
+     * Row filter for the Revision list when the user has no blanket view grant. Mirrors
+     * {@link #isDirectStakeholder(UserAccount, DocumentRevisionRecord)}: Author, any revision-level
+     * participant, and -- when enabled for a role -- the removed participant history of the Document.
+     */
+    public Predicate revisionListVisibilityPredicate(UserAccount user, Root<DocumentRevisionRecord> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+        UUID userId = user.getId();
+        List<Predicate> visible = new ArrayList<>();
+        visible.add(cb.equal(root.get("author").get("id"), userId));
+
+        Subquery<UUID> revisionParticipant = query.subquery(UUID.class);
+        var revisionParticipantRoot = revisionParticipant.from(RevisionWorkflowParticipant.class);
+        revisionParticipant.select(revisionParticipantRoot.get("revision").get("id")).where(
+                cb.equal(revisionParticipantRoot.get("revision").get("id"), root.get("id")),
+                cb.equal(revisionParticipantRoot.get("user").get("id"), userId));
+        visible.add(cb.exists(revisionParticipant));
+
+        Set<String> retainedTypes = systemConfigurationService.getRetainVisibilityForRemovedParticipantTypes();
+        if (!retainedTypes.isEmpty()) {
+            Subquery<UUID> history = query.subquery(UUID.class);
+            var historyRoot = history.from(DocumentStakeholderHistory.class);
+            history.select(historyRoot.get("document").get("id")).where(
+                    cb.equal(historyRoot.get("document").get("id"), root.get("document").get("id")),
+                    cb.equal(historyRoot.get("user").get("id"), userId),
+                    historyRoot.get("participantType").in(retainedTypes));
+            visible.add(cb.exists(history));
+        }
+        return cb.or(visible.toArray(Predicate[]::new));
+    }
+
     public boolean canViewRevision(UserAccount user, DocumentRevisionRecord revision) {
         if (user == null || user.getId() == null || revision == null) {
             return false;
@@ -286,18 +405,9 @@ public class DocumentAuthorizationService {
             return true;
         }
 
-        // Strict-visibility is an ADDITIONAL grant (broadens access to terminal-status revisions
-        // for holders of the base view permission) -- it must never short-circuit ahead of the
-        // author/participant checks above, or an assigned reviewer/approver on a non-terminal
-        // revision gets wrongly denied just because they also happen to hold documents.document.view.
-        if (strictVisibility && permissionEvaluationService.hasPermission(user, "documents.document.view")) {
-            String status = revision.getStatus() == null ? null : revision.getStatus().getCode();
-            return "EFFECTIVE".equalsIgnoreCase(status)
-                    || "OBSOLETED".equalsIgnoreCase(status)
-                    || "CLOSED_CANCELLED".equalsIgnoreCase(status);
-        }
-
-        return false;
+        // Open mode (Record visibility = "All") is an ADDITIONAL grant -- it never short-circuits
+        // ahead of the author/participant checks above.
+        return hasOpenVisibility(user, PERMISSION_DOCUMENT_VIEW);
     }
 
     public void requireCanViewRevision(UserAccount user, DocumentRevisionRecord revision) {
@@ -528,26 +638,6 @@ public class DocumentAuthorizationService {
     public void requireCanEditRevisionFileOnline(UserAccount user, DocumentRevisionRecord revision) {
         if (!canEditRevisionFileOnline(user, revision)) {
             throw new AccessDeniedException("Only the assigned Author or Co-Author can edit the revision file online.");
-        }
-    }
-
-    public boolean canAccessControlledCopy(UserAccount user, DocumentRevisionRecord revision) {
-        return canViewRevision(user, revision);
-    }
-
-    public boolean canAccessControlledCopy(UserAccount user, DocumentRecord document) {
-        return canViewDocument(user, document);
-    }
-
-    public void requireCanAccessControlledCopy(UserAccount user, DocumentRevisionRecord revision) {
-        if (!canAccessControlledCopy(user, revision)) {
-            throw new AccessDeniedException("Controlled copy access denied");
-        }
-    }
-
-    public void requireCanAccessControlledCopy(UserAccount user, DocumentRecord document) {
-        if (!canAccessControlledCopy(user, document)) {
-            throw new AccessDeniedException("Controlled copy access denied");
         }
     }
 

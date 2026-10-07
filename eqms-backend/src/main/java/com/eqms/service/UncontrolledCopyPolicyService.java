@@ -148,7 +148,7 @@ public class UncontrolledCopyPolicyService {
         return toResponse(s);
     }
 
-    private record Snapshot(boolean approvalRequired, int validityHours, boolean allowRedownload, java.util.Map<String, String> marking) {}
+    private record Snapshot(boolean approvalRequired, int validityHours, String validityBasis, boolean allowRedownload, java.util.Map<String, String> marking) {}
 
     private Snapshot snapshot(UncontrolledCopyPolicySetting s) {
         var m = markingFor(s);
@@ -160,7 +160,7 @@ public class UncontrolledCopyPolicyService {
         flat.put("stampPosition", m.stampPosition());
         // Drag-and-drop placement rules (edited on the PDF Markings preview) are part of the audited change set.
         flat.put("placements", m.placements() == null || m.placements().isEmpty() ? null : objectMapper.valueToTree(m.placements()).toString());
-        return new Snapshot(s.isApprovalRequired(), s.getValidityHours(), s.isAllowRedownload(), flat);
+        return new Snapshot(s.isApprovalRequired(), s.getValidityHours(), s.getValidityBasis(), s.isAllowRedownload(), flat);
     }
 
     private List<AuditTrailChangeResponse> diff(Snapshot before, Snapshot after) {
@@ -171,6 +171,9 @@ public class UncontrolledCopyPolicyService {
         }
         if (before.validityHours() != after.validityHours()) {
             changes.add(new AuditTrailChangeResponse("validityHours", String.valueOf(before.validityHours()), String.valueOf(after.validityHours())));
+        }
+        if (!Objects.equals(before.validityBasis(), after.validityBasis())) {
+            changes.add(new AuditTrailChangeResponse("validityBasis", before.validityBasis(), after.validityBasis()));
         }
         if (before.allowRedownload() != after.allowRedownload()) {
             changes.add(new AuditTrailChangeResponse("allowRedownload",
@@ -190,11 +193,20 @@ public class UncontrolledCopyPolicyService {
             return;
         }
         if (req.approvalRequired() != null) s.setApprovalRequired(req.approvalRequired());
-        if (req.validityHours() != null) {
-            if (req.validityHours() < 1 || req.validityHours() > 8760) {
-                throw new IllegalArgumentException("Validity hours must be between 1 and 8760");
+        if (req.validityBasis() != null) {
+            if (!"DISTRIBUTION".equals(req.validityBasis()) && !"DOCUMENT_VALID_UNTIL".equals(req.validityBasis())) {
+                throw new IllegalArgumentException("Validity basis must be DISTRIBUTION or DOCUMENT_VALID_UNTIL");
             }
+            s.setValidityBasis(req.validityBasis());
+        }
+        if (req.validityHours() != null) {
             s.setValidityHours(req.validityHours());
+        }
+        // Counted from the distribution the window must be at least an hour; counted from the document's Valid Until it may be 0
+        // (the copy then lasts until the end of that day). Checked on the resulting pair, so changing only the basis is checked too.
+        int minimumHours = "DOCUMENT_VALID_UNTIL".equals(s.getValidityBasis()) ? 0 : 1;
+        if (s.getValidityHours() < minimumHours || s.getValidityHours() > 8760) {
+            throw new IllegalArgumentException("Validity hours must be between " + minimumHours + " and 8760");
         }
         if (req.allowRedownload() != null) s.setAllowRedownload(req.allowRedownload());
         if (req.marking() != null) {
@@ -204,6 +216,6 @@ public class UncontrolledCopyPolicyService {
     }
 
     private UncontrolledCopyPolicyResponse toResponse(UncontrolledCopyPolicySetting s) {
-        return new UncontrolledCopyPolicyResponse(s.isApprovalRequired(), s.getValidityHours(), s.isAllowRedownload(), markingFor(s));
+        return new UncontrolledCopyPolicyResponse(s.isApprovalRequired(), s.getValidityHours(), s.getValidityBasis(), s.isAllowRedownload(), markingFor(s));
     }
 }

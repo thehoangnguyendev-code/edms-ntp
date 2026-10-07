@@ -197,8 +197,6 @@ services:
       # Canonical permission codes only. Legacy aliases can be enabled temporarily
       # during a documented migration window, never as the production default.
       APP_SECURITY_COMPATIBILITY_ALIASES_ENABLED: "false"
-      # Strict participant visibility: non-effective revisions are participant-only
-      APP_SECURITY_PARTICIPANT_VISIBILITY_STRICT: "true"
       # Lifecycle state policy engine (V169 seeds = parity with strict rule)
       APP_SECURITY_LIFECYCLE_POLICY_ENABLED: "true"
       # Phase 1-2.5 / Phase 3 hybrid authorization engine cutover

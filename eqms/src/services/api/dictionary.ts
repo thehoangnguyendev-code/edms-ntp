@@ -173,7 +173,6 @@ export type DictionaryDocumentSubTypePayload = {
   name: string;
   documentTypeId: string;
   description?: string;
-  reviewRequirement?: "NONE" | "REQUIRED";
   isActive: boolean;
 };
 

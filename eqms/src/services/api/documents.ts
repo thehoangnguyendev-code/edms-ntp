@@ -403,6 +403,9 @@ const buildDocumentListQueryParams = (params?: DocumentListQuery, includePaginat
     effectiveTo: params?.effectiveTo,
     validFrom: params?.validFrom,
     validTo: params?.validTo,
+    reviewerId: params?.reviewerId,
+    approverId: params?.approverId,
+    requiresTraining: params?.requiresTraining,
     sortBy: params?.sortBy,
     sortDirection: params?.sortDirection,
     ...(includePagination
@@ -759,6 +762,12 @@ export const documentApi = {
   /** POST /documents/:id/publish  Approved â†’ Effective */
   publishDocument: async (id: string, data: { effectiveDate: string }) => {
     const response = await api.post<Document>(`${DOCUMENTS_ENDPOINT}/${id}/publish`, data);
+    return response.data;
+  },
+
+  /** POST /documents/:id/reopen -- an Administrator reopens a Closed - Cancelled or Obsoleted document (e-signature, audited). */
+  reopenDocument: async (id: string, data: { reason: string; signatureToken?: string }) => {
+    const response = await api.post<DocumentDetailResponse>(`${DOCUMENTS_ENDPOINT}/${id}/reopen`, data);
     return response.data;
   },
 
@@ -1879,7 +1888,12 @@ export const documentApi = {
 
   /** GET /controlled-copies/batch-status-discrepancies  paginated list of batches whose stored
    *  status disagrees with the status derived from their member copies (item 6 review screen) */
-  getControlledCopyBatchStatusDiscrepancies: async (params?: { page?: number; limit?: number }) => {
+  getControlledCopyBatchStatusDiscrepancies: async (params?: {
+    page?: number;
+    limit?: number;
+    sortBy?: "batchNumber" | "document" | "storedStatus" | "expectedStatus" | "detectedAt" | "lastCheckedAt";
+    sortDirection?: "asc" | "desc";
+  }) => {
     const query = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
@@ -2055,9 +2069,6 @@ export const documentApi = {
     purpose: string;
     copies: number;
     quantity?: number;
-    /** "PAPER" (default) or "ELECTRONIC" -- only accepted when the target Document's
-     *  FormSettings.allowEform is true, and only valid with exactly one internal recipient. */
-    deliveryMode?: "PAPER" | "ELECTRONIC";
     distributionMode?: "internal" | "external";
     distributionScope?: "business-unit" | "department" | "individual";
     hasExpiryDate?: boolean;

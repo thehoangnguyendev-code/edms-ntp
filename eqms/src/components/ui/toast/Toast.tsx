@@ -10,6 +10,7 @@ import { X, Info, XCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../utils";
 import { IconAlertTriangle, IconCheck, IconX } from "@tabler/icons-react";
+import { useBranding } from "@/components/branding/BrandLogo";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -75,10 +76,27 @@ const resolveToastTitle = (toast: Pick<Toast, "type" | "title">) =>
 
 const MAX_TOASTS = 3;
 
+type ToastPlacement = 'center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+
+const SAFE_TOP = "max(1rem, env(safe-area-inset-top, 1rem))";
+const SAFE_BOTTOM = "max(1rem, env(safe-area-inset-bottom, 1rem))";
+
+/** Container placement per admin-configured position. Top-right is the historical default. */
+const TOAST_CONTAINER: Record<ToastPlacement, { align: string; style: React.CSSProperties }> = {
+  'top-right': { align: "items-center md:items-end", style: { top: SAFE_TOP, right: 0 } },
+  'top-left': { align: "items-center md:items-start", style: { top: SAFE_TOP, left: 0 } },
+  center: { align: "items-center", style: { top: "50%", left: 0, transform: "translateY(-50%)" } },
+  'bottom-right': { align: "items-center md:items-end", style: { bottom: SAFE_BOTTOM, right: 0 } },
+  'bottom-left': { align: "items-center md:items-start", style: { bottom: SAFE_BOTTOM, left: 0 } },
+};
+
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const { toastPosition: configuredPosition } = useBranding();
+  const toastPosition: ToastPlacement =
+    configuredPosition && configuredPosition in TOAST_CONTAINER ? configuredPosition : 'top-right';
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -108,12 +126,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
 
       <div
         className={cn(
-          "fixed z-[9999] pointer-events-none flex flex-col items-center md:items-end w-full px-4 md:px-6",
+          "fixed z-[9999] pointer-events-none flex flex-col w-full px-4 md:px-6",
+          TOAST_CONTAINER[toastPosition].align,
         )}
-        style={{
-          top: "max(1rem, env(safe-area-inset-top, 1rem))",
-          right: 0,
-        }}
+        style={TOAST_CONTAINER[toastPosition].style}
       >
         <div className="flex flex-col gap-3 w-full max-w-[400px] pointer-events-auto">
           <AnimatePresence mode="popLayout">

@@ -9,18 +9,19 @@ import type { PageResponse } from './notificationPolicy';
  */
 export type UncontrolledCopyPolicyMarking = ControlledCopyStatusMarking;
 
+/** What the validity of a copy is counted from: hours after distribution, or the document's Valid Until date plus hours. */
+export type UncontrolledCopyValidityBasis = 'DISTRIBUTION' | 'DOCUMENT_VALID_UNTIL';
+
 export interface UncontrolledCopyPolicy {
   approvalRequired: boolean;
   validityHours: number;
+  validityBasis: UncontrolledCopyValidityBasis;
   allowRedownload: boolean;
   marking: UncontrolledCopyPolicyMarking;
 }
 
-/** Draft marking drawn by the server on a Publishing Template page (nothing is saved). Response shape = Controlled Copy's. */
+/** Draft marking drawn by the server on a sample paper page (nothing is saved). Response shape = Controlled Copy's. */
 export interface UncontrolledCopyMarkingPreviewRequest {
-  templateId?: string;
-  layout: 'portrait' | 'landscape';
-  pageKind: 'COVER' | 'BODY';
   marking: UncontrolledCopyPolicyMarking;
 }
 

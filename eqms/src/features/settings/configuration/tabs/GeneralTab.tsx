@@ -8,6 +8,16 @@ import { IconAddressBook } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { settingsApi } from '@/services/api/settings';
+import type { ToastPosition } from '../types';
+import { DEFAULT_SYSTEM_HEADER_TITLE } from '@/services/api/branding';
+
+const TOAST_POSITION_OPTIONS: Array<{ label: string; value: ToastPosition }> = [
+  { label: 'Top Right', value: 'top-right' },
+  { label: 'Top Left', value: 'top-left' },
+  { label: 'Center', value: 'center' },
+  { label: 'Bottom Right', value: 'bottom-right' },
+  { label: 'Bottom Left', value: 'bottom-left' },
+];
 
 interface GeneralTabProps {
   config: GeneralConfig;
@@ -118,6 +128,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           showSidebarUserProfile: config.appearance?.showSidebarUserProfile ?? false,
           knowledgeExplorerEnabled: config.appearance?.knowledgeExplorerEnabled ?? false,
           compactDesktopFilters: config.appearance?.compactDesktopFilters ?? false,
+          toastPosition: config.appearance?.toastPosition ?? 'top-right',
           systemSidebarCollapsedLogo: value,
         },
       });
@@ -126,7 +137,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
     onChange({ ...config, [key]: value });
   };
 
-  const handleAppearanceChange = (key: keyof GeneralConfig['appearance'], value: boolean) => {
+  const handleAppearanceChange = (key: keyof GeneralConfig['appearance'], value: boolean | ToastPosition) => {
     onChange({
       ...config,
       appearance: {
@@ -140,6 +151,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
         showSidebarUserProfile: config.appearance?.showSidebarUserProfile ?? false,
           knowledgeExplorerEnabled: config.appearance?.knowledgeExplorerEnabled ?? false,
         compactDesktopFilters: config.appearance?.compactDesktopFilters ?? false,
+        toastPosition: config.appearance?.toastPosition ?? 'top-right',
         [key]: value,
       },
     });
@@ -219,6 +231,22 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
             </div>
           </div>
           <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Header</p>
+            <label htmlFor="system-header-title" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Header Title (Dashboard)</label>
+            <input
+              id="system-header-title"
+              type="text"
+              value={config.systemHeaderTitle ?? ''}
+              onChange={(e) => handleChange('systemHeaderTitle', e.target.value.replace(/[\r\n\t]+/g, ' ').slice(0, 120))}
+              maxLength={120}
+              className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder={DEFAULT_SYSTEM_HEADER_TITLE}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Shown in the top bar of the Dashboard on desktop, and stays there while the page is scrolled. Leave empty to use “{DEFAULT_SYSTEM_HEADER_TITLE}”.
+            </p>
+          </div>
+          <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Footer</p>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">System Footer</label>
             <input
@@ -295,6 +323,18 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               checked={config.appearance?.compactDesktopFilters??false}
               onChange={(checked) => handleAppearanceChange('compactDesktopFilters',checked)} />
             <p className="ml-7 mt-1 text-xs text-slate-500">Show Search and a Filter button. Select a field on the left, edit values on the right, then click Apply. Mobile filters are unchanged. Applies after Save Changes.</p>
+          </div>
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Notifications</p>
+            <div className="max-w-xs">
+              <Select
+                label="Toast Position"
+                value={config.appearance?.toastPosition ?? 'top-right'}
+                onChange={(value) => handleAppearanceChange('toastPosition', value as ToastPosition)}
+                options={TOAST_POSITION_OPTIONS}
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-500">Where system messages pop up on screen. Applies to every signed-in user after Save Changes.</p>
           </div>
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Knowledge Base</p>

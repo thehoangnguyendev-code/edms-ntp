@@ -95,6 +95,11 @@ class PermissionDependencySeedDataIntegrationTest {
         // +2 rows (V435__add_reports_permission_dependencies_and_schedule_scope_fix.sql, RPT-01/02):
         // reports.definition.manage and reports.schedule.manage were seeded (V359) without a REQUIRES
         // row for their .view counterpart -- found during the system-wide authorization audit.
-        assertEquals(42, permissionDependencyRepository.findAll().size());
+        // +4 rows (V540__record_visibility_view_all_permissions.sql, DOC-13/DOC-14): the dedicated
+        // documents.controlled_copy.view_all and documents.uncontrolled_copy.view_all permissions each REQUIRE
+        // documents.module.view and IMPLY their own base *.view permission.
+        // NOTE: before V540 the table held 40 rows, not the 42 this assertion used to expect -- an earlier migration
+        // removed two rows without this count being updated. 44 is the verified current total (40 + 4).
+        assertEquals(44, permissionDependencyRepository.findAll().size());
     }
 }

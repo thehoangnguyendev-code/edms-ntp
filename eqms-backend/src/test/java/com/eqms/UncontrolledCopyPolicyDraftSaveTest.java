@@ -36,7 +36,7 @@ class UncontrolledCopyPolicyDraftSaveTest {
     private final UserAccount actor = new UserAccount();
     private final List<UncontrolledCopyRuleChange> rules = List.of(new UncontrolledCopyRuleChange(null, null, false, null, true, true));
     private UncontrolledCopyPolicyRequest request() {
-        return new UncontrolledCopyPolicyRequest(true, 48, true, null, "token", "reason", rules);
+        return new UncontrolledCopyPolicyRequest(true, 48, null, true, null, "token", "reason", rules);
     }
     private void allow() {
         when(currentUserService.requireCurrentUser()).thenReturn(actor);

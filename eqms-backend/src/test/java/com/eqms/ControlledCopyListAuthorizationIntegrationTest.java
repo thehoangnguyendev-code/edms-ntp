@@ -154,6 +154,62 @@ public class ControlledCopyListAuthorizationIntegrationTest {
                 "User '" + unrelatedUser.getUsername() + "' has no relationship to this controlled copy or its revision and must not see it");
     }
 
+    private java.util.Set<String> allVisibleCopyIds() {
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        int pageNumber = 1;
+        while (true) {
+            PageResponse<ControlledCopyListItemResponse> page = controlledCopyService.list(
+                    pageNumber, 50, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
+            page.data().forEach(item -> ids.add(item.id()));
+            if (page.data().isEmpty() || pageNumber >= page.pagination().totalPages()) {
+                return ids;
+            }
+            pageNumber++;
+        }
+    }
+
+    /** Decision DOC-VISIBILITY-2026-10-06: without the blanket copy permission a user sees exactly the copies they are the named recipient of. */
+    @Test
+    void list_showsAUserWithoutTheBlanketPermissionOnlyTheCopiesTheyAreTheRecipientOf() {
+        List<ControlledCopyRecord> all = controlledCopyRepository.findAll();
+        UserAccount recipient = all.stream()
+                .map(ControlledCopyRecord::getRecipientUser)
+                .filter(java.util.Objects::nonNull)
+                .filter(user -> !documentAuthorizationService.canViewAllControlledCopies(user))
+                .findFirst()
+                .orElse(null);
+        org.junit.jupiter.api.Assumptions.assumeTrue(recipient != null,
+                "No seeded recipient lacks the blanket copy permission; cannot exercise the recipient-only rule with current seed data");
+        java.util.Set<String> expected = all.stream()
+                .filter(copy -> copy.getRecipientUser() != null && recipient.getId().equals(copy.getRecipientUser().getId()))
+                .map(copy -> copy.getId().toString())
+                .collect(java.util.stream.Collectors.toSet());
+
+        authenticateAs(recipient);
+
+        assertEquals(expected, allVisibleCopyIds(),
+                "User '" + recipient.getUsername() + "' must see exactly the copies they are the recipient of");
+    }
+
+    /** A copy someone else holds is not visible to the person who merely requested it, nor to document participants. */
+    @Test
+    void list_hidesACopyFromItsRequesterWhenTheyAreNotTheRecipient() {
+        List<ControlledCopyRecord> all = controlledCopyRepository.findAll();
+        ControlledCopyRecord target = all.stream()
+                .filter(copy -> copy.getRequestedBy() != null && copy.getRecipientUser() != null)
+                .filter(copy -> !copy.getRequestedBy().getId().equals(copy.getRecipientUser().getId()))
+                .filter(copy -> !documentAuthorizationService.canViewAllControlledCopies(copy.getRequestedBy()))
+                .findFirst()
+                .orElse(null);
+        org.junit.jupiter.api.Assumptions.assumeTrue(target != null,
+                "No seeded copy was requested by a non-privileged user for someone else; cannot exercise this case with current seed data");
+
+        authenticateAs(target.getRequestedBy());
+
+        assertFalse(allVisibleCopyIds().contains(target.getId().toString()),
+                "The requester is not the recipient and holds no blanket permission, so must not see this copy");
+    }
+
     private boolean isAnyActorOnCopy(ControlledCopyRecord copy, UserAccount user) {
         UUID userId = user.getId();
         return matchesActor(copy.getRecipientUser(), userId)

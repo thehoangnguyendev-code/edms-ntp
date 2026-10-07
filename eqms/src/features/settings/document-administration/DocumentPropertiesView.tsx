@@ -7,6 +7,7 @@ import { FormSection } from "@/components/ui/form/FormSection";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { Switch } from "@/components/ui/switch/Switch";
 import { Select } from "@/components/ui/select/Select";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { useToast } from "@/components/ui/toast/Toast";
@@ -16,9 +17,11 @@ import { documentNameFormatApi } from "@/services/api";
 import { documentProperties } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { ROUTES } from "@/app/routes.constants";
 import type { DocumentNameFormatItem } from "./documentNameFormatTypes";
-import { IconApiBook, IconFileTextShield } from "@tabler/icons-react";
+import { IconApiBook, IconFileTextShield, IconTableSpark } from "@tabler/icons-react";
 
 type RevisionSeed = "0.0.1" | "0.1";
+/** Stable machine values stored by the server -- never the translated labels below. */
+type DocumentVisibilityMode = "PARTICIPANTS_ONLY" | "ALL_WITH_VIEW_PERMISSION";
 type EffectiveDateBasis = "AFTER_APPROVAL" | "AFTER_TRAINING" | "AFTER_PUBLISH";
 type EffectiveDateBasisNoTraining = "AFTER_APPROVAL" | "AFTER_PUBLISH";
 
@@ -78,8 +81,12 @@ interface DocumentPolicy {
   retainVisibilityForRemovedCoAuthor?: boolean;
   retainVisibilityForRemovedReviewer?: boolean;
   retainVisibilityForRemovedApprover?: boolean;
+  /** Who may see Document Control records. Missing/unknown values behave as PARTICIPANTS_ONLY. */
+  documentVisibilityMode?: DocumentVisibilityMode;
   [key: string]: unknown;
 }
+
+const DEFAULT_DOCUMENT_VISIBILITY_MODE: DocumentVisibilityMode = "PARTICIPANTS_ONLY";
 
 const RETAIN_VISIBILITY_ROLE_FIELDS = [
   "retainVisibilityForRemovedAuthor",
@@ -188,9 +195,9 @@ export const DocumentPropertiesView: React.FC = () => {
       setOriginal(JSON.parse(JSON.stringify(doc)));
       setShowSaveModal(false);
       showToast({ type: "success", title: "Changes saved", message: "Document properties have been updated." });
-    } catch {
+    } catch (saveError) {
       setShowSaveModal(false);
-      showToast({ type: "error", title: "Save failed", message: getApiErrorMessage(error, "Unable to save document properties.") });
+      showToast({ type: "error", title: "Save failed", message: getApiErrorMessage(saveError, "Unable to save document properties.") });
     } finally {
       setSaving(false);
     }
@@ -227,6 +234,62 @@ export const DocumentPropertiesView: React.FC = () => {
 
       {!loading && !error && documents && (
         <div className="space-y-4">
+          {/* 0. Who can see which records -- first, because it changes what every user sees in Document Control */}
+          <FormSection title="Record Visibility" icon={<IconTableSpark className="h-4 w-4" />}>
+            {(() => {
+              const participantsOnly =
+                (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "PARTICIPANTS_ONLY";
+              return (
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-3.5">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">Restrict records to the people involved</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {participantsOnly ? (
+                          <>
+                            <strong>On.</strong> A user sees a Document or Revision only when they are its Author, a Co-Author, a
+                            Reviewer or an Approver, on the document or on any of its revisions (one person may hold several
+                            roles, on the same or on different documents). A Controlled or Uncontrolled Copy is visible only to
+                            the user named as its recipient. Everyone else sees none of them, in lists or by opening a link.
+                          </>
+                        ) : (
+                          <>
+                            <strong>Off.</strong> Every user who holds the base View permission (View Documents, View Controlled
+                            Copy Records, View Uncontrolled Copies) sees every document, revision and copy, in lists and in
+                            detail, including drafts and documents still in review. People outside the flow still need their own
+                            permission to preview files or open the Audit Trail.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={participantsOnly}
+                      disabled={!canManage}
+                      aria-label="Restrict records to the people involved"
+                      onChange={(checked) =>
+                        patch({ documentVisibilityMode: checked ? "PARTICIPANTS_ONLY" : "ALL_WITH_VIEW_PERMISSION" })
+                      }
+                    />
+                  </div>
+                  <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
+                    Regardless of this switch, users who hold <strong>View All Document Records</strong>,{" "}
+                    <strong>View All Controlled Copies</strong> or <strong>View All Uncontrolled Copies</strong> always see
+                    every record of that kind. These are separate permissions: assign each one to the Access Profiles that need
+                    it at{" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)}
+                      className="font-medium underline underline-offset-2 hover:text-sky-900"
+                    >
+                      Security & Authorization &gt; Access Profiles
+                    </button>
+                    . They do not depend on a profile's name, and administration permissions no longer grant them implicitly.
+                  </div>
+                </div>
+              );
+            })()}
+          </FormSection>
+
           {/* 1. How documents are identified and dated */}
           <FormSection
             title="Numbering & Effective Date"
@@ -450,16 +513,22 @@ export const DocumentPropertiesView: React.FC = () => {
             </div>
           </FormSection>
 
-          {/* 4. Access after removal */}
+          {/* 4. Who can see records, and access after removal */}
           <FormSection title="Protection & Distribution" icon={<IconFileTextShield className="h-4 w-4" />}>
+            <div className="space-y-4">
             <Group title="Retain visibility for removed participants">
               <p className="text-xs text-slate-500">
                 When a user is removed from one of these roles on a Document (e.g. via "Edit Revision for Upgrade"), they keep
                 read-only visibility of it based on having held that role before. Pick which roles this applies to; each is
                 independent. If none are checked, a removed participant with no other role on the Document loses visibility
                 immediately (default).
+                {(documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION"
+                  ? " Not applicable while the Record Visibility switch is off."
+                  : ""}
               </p>
               {(() => {
+                const retainDisabled = !canManage
+                  || (documents.documentVisibilityMode ?? DEFAULT_DOCUMENT_VISIBILITY_MODE) === "ALL_WITH_VIEW_PERMISSION";
                 const checkedCount = RETAIN_VISIBILITY_ROLE_FIELDS.filter((field) => !!documents[field]).length;
                 const allChecked = checkedCount === RETAIN_VISIBILITY_ROLE_FIELDS.length;
                 return (
@@ -467,7 +536,7 @@ export const DocumentPropertiesView: React.FC = () => {
                     <Checkbox
                       id="retainVisibilityForRemovedParticipants-all"
                       label="All roles"
-                      disabled={!canManage}
+                      disabled={retainDisabled}
                       checked={allChecked}
                       indeterminate={checkedCount > 0 && !allChecked}
                       onChange={(checked) =>
@@ -480,7 +549,7 @@ export const DocumentPropertiesView: React.FC = () => {
                           key={field}
                           id={field}
                           label={label}
-                          disabled={!canManage}
+                          disabled={retainDisabled}
                           checked={!!documents[field]}
                           onChange={(checked) => patch({ [field]: checked })}
                         />
@@ -490,6 +559,7 @@ export const DocumentPropertiesView: React.FC = () => {
                 );
               })()}
             </Group>
+            </div>
           </FormSection>
         </div>
       )}

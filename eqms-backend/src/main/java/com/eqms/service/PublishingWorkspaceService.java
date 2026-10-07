@@ -190,7 +190,7 @@ public class PublishingWorkspaceService {
             );
             byte[] previewBytes = composition.pdfBytes();
             if (previewBytes == null || previewBytes.length == 0) {
-                throw new IllegalStateException("Microsoft Graph returned an empty PDF preview");
+                throw new IllegalStateException("The publishing composer returned an empty PDF preview");
             }
             try (ByteArrayInputStream input = new ByteArrayInputStream(previewBytes)) {
                 FileStorageService.StorageWriteResult stored = fileStorageService.storeRevisionPublishingPreviewFile(
@@ -203,7 +203,7 @@ public class PublishingWorkspaceService {
                 metadata.setPublishingPreviewPdfPath(stored.storedPath());
                 metadata.setPublishingPreviewChecksum(stored.checksum());
                 metadata.setPublishingPreviewVersionId(stored.versionId());
-                metadata.setConversionEngine("MICROSOFT_GRAPH");
+                metadata.setConversionEngine("ONLYOFFICE");
                 metadata.setPreviewGeneratedAt(Instant.now());
                 metadata.setPreviewGeneratedBy(currentUser);
                 metadataRepository.save(metadata);

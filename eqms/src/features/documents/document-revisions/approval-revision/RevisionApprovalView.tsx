@@ -34,7 +34,7 @@ import { resolveTerminalProgressStep } from "@/features/documents/shared/statusM
 import type { RevisionWorkspaceState } from "@/features/documents/shared/navigationContext";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { useOfficeOnlineReviewLink } from "@/features/documents/hooks/useOfficeOnlineReviewLink";
+import { useOnlyOfficeReviewLink } from "@/features/documents/hooks/useOnlyOfficeReviewLink";
 import {
   buildRevisionPreviewFileName,
   buildPreviewVersionCacheBuster,
@@ -93,7 +93,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
             setSignatureRows(buildRevisionSignatureRecords(live));
         }).catch(() => undefined);
     }, { ids: [revisionId] });
-    const { isOpeningWordReview, handleOpenWordReview } = useOfficeOnlineReviewLink(revisionId);
+    const { isOpeningWordReview, handleOpenWordReview } = useOnlyOfficeReviewLink(revisionId);
     const canEditWorkingNotes = React.useMemo(
         () =>
             hasWorkingNotesEditAccess(

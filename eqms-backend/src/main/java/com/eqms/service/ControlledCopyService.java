@@ -25,7 +25,6 @@ import com.eqms.dto.user.PaginationResponse;
 import com.eqms.entity.ControlledCopyEvidenceFile;
 import com.eqms.entity.ControlledCopyDistributionBatch;
 import com.eqms.entity.ControlledCopyDistributionJob;
-import com.eqms.entity.RevisionWorkflowParticipant;
 import com.eqms.entity.RevisionPublishingMetadata;
 import com.eqms.entity.BusinessUnit;
 import com.eqms.entity.Department;
@@ -56,8 +55,6 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -207,11 +204,7 @@ public class ControlledCopyService {
     @org.springframework.beans.factory.annotation.Autowired
     private SystemActorProvider systemActorProvider;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private EformSignerAssignmentService eformSignerAssignmentService;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private FormSettingsService formSettingsService;
 
     public ControlledCopyService(
             ControlledCopyRepository controlledCopyRepository,
@@ -477,7 +470,7 @@ public class ControlledCopyService {
             document = resolveDocument(documentId);
         }
 
-        documentAuthorizationService.requireCanAccessControlledCopy(currentUser, document);
+        documentAuthorizationService.requireCanViewDocument(currentUser, document);
 
         if (document.isTemplate()) {
             throw new IllegalArgumentException("Controlled copies cannot be requested for controlled document templates");
@@ -506,10 +499,8 @@ public class ControlledCopyService {
         String message = canRequest
                 ? null
                 : "Request Controlled Copy requires permission and is available only when the document is Active and the latest revision is Effective.";
-        // Every Controlled Copy always has a real, resolved expiry (the mandatory Global Default
-        // row guarantees a match) -- there is no "never expires" state. Resolve the same rule the
-        // actual request submission will use (resolveMaximumExpiry), so this preview can never
-        // drift from what gets applied at submit time.
+        // The copy itself expires with the document (its Valid Until date, returned above). The rule resolved here is how long the
+        // link in the distribution e-mail stays valid; the same resolution is applied when the link is opened.
         var matchedExpiryLimit = controlledCopyExpiryLimitService.resolveMatchingLimit(document.getDocumentType(), document.getDepartment());
         Integer expiryDurationValue = matchedExpiryLimit.map(com.eqms.entity.ControlledCopyExpiryLimit::getDurationValue).orElse(null);
         String expiryDurationUnit = matchedExpiryLimit.map(com.eqms.entity.ControlledCopyExpiryLimit::getDurationUnit).orElse(null);
@@ -690,9 +681,7 @@ public class ControlledCopyService {
         }
 
         ControlledCopyDistributionBatch batch = requireDistributionBatch(id);
-        if (!documentAuthorizationService.canAccessControlledCopy(currentUser, batch.getRevision())) {
-            throw new AccessDeniedException("Controlled copy access denied");
-        }
+        documentAuthorizationService.requireCanViewControlledCopyBatch(currentUser);
         return toBatchSummaryResponse(batch);
     }
 
@@ -708,9 +697,7 @@ public class ControlledCopyService {
         }
 
         ControlledCopyDistributionBatch batch = requireDistributionBatch(id);
-        if (!documentAuthorizationService.canAccessControlledCopy(currentUser, batch.getRevision())) {
-            throw new AccessDeniedException("Controlled copy access denied");
-        }
+        documentAuthorizationService.requireCanViewControlledCopyBatch(currentUser);
         return toBatchSummaryResponse(batch);
     }
 
@@ -719,6 +706,9 @@ public class ControlledCopyService {
         ControlledCopyRecord copy = requireControlledCopy(id);
         controlledCopyAuthorizationService.requireTokenPreviewAccess(copy, token, password);
         UserAccount currentUser = findAuthenticatedPreviewUser();
+        if (currentUser == null) {
+            requireEmailLinkNotExpired(copy);
+        }
         auditPreviewAccess(currentUser, copy, "OPEN_PREVIEW", "Opened controlled copy preview");
         // The grant doubles as the viewing session: it lasts as long as the policy lets an external recipient keep the copy open.
         long sessionSeconds = controlledCopyPolicyService.loadOrDefault().getPreviewSessionMinutes() * 60L;
@@ -741,6 +731,7 @@ public class ControlledCopyService {
             if (controlledCopyRepository.consumeDownload(copy.getId(), Instant.now(), policy.isDownloadOnce()) == 0) {
                 throw new AccessDeniedException("Download limit reached for this controlled copy.");
             }
+            copy = requireControlledCopy(id); // the update query cleared the persistence context: re-read before auditing
             auditPreviewAccess(currentUser, copy, "DOWNLOAD", "Downloaded controlled copy preview");
             return new FileDownload(
                     pdfBytes,
@@ -801,6 +792,7 @@ public class ControlledCopyService {
         if (controlledCopyRepository.consumePrint(copy.getId(), policy.isPrintOnce()) == 0) {
             throw new AccessDeniedException("Print limit reached for this controlled copy.");
         }
+        copy = requireControlledCopy(id); // the update query cleared the persistence context: re-read before auditing
         auditPreviewAccess(currentUser, copy, "PRINT", "Printed controlled copy preview");
     }
 
@@ -878,16 +870,6 @@ public class ControlledCopyService {
             }
         }
 
-        String deliveryMode = normalize(firstNonBlank(request == null ? null : request.deliveryMode(), "PAPER")).toUpperCase(Locale.ROOT);
-        if ("ELECTRONIC".equals(deliveryMode)) {
-            var formSettings = formSettingsService.requireSettingsOrNull(document.getId());
-            if (formSettings == null || !formSettings.isAllowEform()) {
-                throw new IllegalArgumentException("This Document does not accept electronic eForm distribution.");
-            }
-        } else {
-            deliveryMode = "PAPER";
-        }
-
         String distributionMode = normalize(firstNonBlank(
                 request == null ? null : request.distributionMode(),
                 request == null || request.externalRecipients() == null || request.externalRecipients().isEmpty() ? "INTERNAL" : "EXTERNAL"
@@ -909,22 +891,18 @@ public class ControlledCopyService {
         List<String> externalRecipients = request == null || request.externalRecipients() == null ? List.of() : request.externalRecipients().stream().filter(StringUtils::hasText).map(String::trim).toList();
         boolean requestedHasExpiryDate = request != null && Boolean.TRUE.equals(request.hasExpiryDate());
         Instant expiryDate = parseInstant(request == null ? null : request.expiryDate(), null);
-        Instant maximumExpiryDate = controlledCopyExpiryLimitService.resolveMaximumExpiry(document.getDocumentType(), document.getDepartment());
-        if (maximumExpiryDate == null) {
-            throw new IllegalStateException("No active Controlled Copy expiry policy is configured.");
+        // A controlled copy is valid as long as its document is: it expires on the document's Valid Until date (owner decision
+        // CC-EXPIRY-2026-10-07). The Expiry Duration policy no longer sets it; it only limits how long the e-mail link stays valid.
+        // A document with no Valid Until date gives a copy with no expiry date: it ends when the document does.
+        Instant maximumExpiryDate = documentExpiry(revision, document);
+        if (expiryDate != null && maximumExpiryDate != null && expiryDate.isAfter(maximumExpiryDate)) {
+            throw new IllegalArgumentException("Expiry date cannot be later than the document's Valid Until date.");
         }
         if (expiryDate == null) {
             expiryDate = maximumExpiryDate;
-        } else if (expiryDate.isAfter(maximumExpiryDate)) {
-            throw new IllegalArgumentException("Expiry date cannot exceed the configured Controlled Copy expiry limit.");
         }
-        boolean hasExpiryDate = requestedHasExpiryDate || expiryDate != null;
-        // No explicit date was requested: the expiry above is only a projection (now + policy
-        // duration) shown while the copy waits in Ready for Distribution. It is recomputed as
-        // distributedAt + duration at Distribute time so the copy can never expire before it is
-        // actually distributed. An explicit requester-chosen date is a fixed deadline and is left
-        // exactly as requested at Distribute time.
-        boolean expiryAnchoredToDistribution = !requestedHasExpiryDate;
+        boolean hasExpiryDate = expiryDate != null;
+        boolean expiryAnchoredToDistribution = false;
 
         List<RecipientAllocation> recipients = resolveRequestRecipients(
                 request,
@@ -937,12 +915,6 @@ public class ControlledCopyService {
             throw new IllegalArgumentException(externalMode
                     ? "At least one valid external recipient email is required"
                     : "At least one internal recipient is required");
-        }
-        if ("ELECTRONIC".equals(deliveryMode) && (externalMode || recipients.stream().anyMatch(r -> r.user() == null))) {
-            // One request may still target several people -- the per-recipient loop below already
-            // creates one ControlledCopyRecord per recipient, each individually scoped to exactly
-            // one filler; only external/email-only recipients (no internal account) are rejected.
-            throw new IllegalArgumentException("An electronic eForm distribution requires internal recipients only.");
         }
 
         int totalCopies = recipients.stream().mapToInt(recipient -> Math.max(recipient.quantity(), 1)).sum();
@@ -1050,7 +1022,6 @@ public class ControlledCopyService {
             // retains only its own recipient. This prevents one external
             // email list from appearing on every controlled-copy record.
             copy.setDistributionList(externalMode ? "External" : recipient.displayName());
-            copy.setDeliveryMode(deliveryMode);
             copy.setDistributionMode(distributionMode == null ? null : distributionMode.toUpperCase(Locale.ROOT));
             copy.setDistributionScope(externalMode ? "external" : resolveDistributionScope(request, distributionMode));
             copy.setLocation(externalMode ? "External Recipients" : resolvedLocation);
@@ -1156,32 +1127,13 @@ public class ControlledCopyService {
         );
     }
 
-    /** SQL mirror of {@link DocumentAuthorizationService#canAccessControlledCopy(UserAccount, DocumentRevisionRecord)}
-     * for the batch register. Keep this in lockstep with the record-list authorization specification. */
+    /** SQL mirror of {@link DocumentAuthorizationService#canViewControlledCopyBatch(UserAccount)} for
+     * the batch register: a batch lists every recipient, so only blanket viewers see any batch. */
     private Specification<ControlledCopyDistributionBatch> buildBatchAuthorizationSpecification(UserAccount currentUser) {
-        if (documentAuthorizationService.canViewAllDocuments(currentUser)) {
+        if (documentAuthorizationService.canViewControlledCopyBatch(currentUser)) {
             return (root, query, cb) -> cb.conjunction();
         }
-        UUID userId = currentUser.getId();
-        boolean strictEligible = documentAuthorizationService.isStrictViewEligible(currentUser);
-        return (root, query, cb) -> {
-            Join<ControlledCopyDistributionBatch, DocumentRevisionRecord> revision = root.join("revision", JoinType.LEFT);
-            List<Predicate> allowed = new ArrayList<>();
-            allowed.add(cb.equal(revision.get("author").get("id"), userId));
-
-            Subquery<Long> participantSubquery = query.subquery(Long.class);
-            Root<RevisionWorkflowParticipant> participant = participantSubquery.from(RevisionWorkflowParticipant.class);
-            participantSubquery.select(cb.literal(1L)).where(
-                    cb.equal(participant.get("revision").get("id"), revision.get("id")),
-                    participant.get("participantType").in("CO_AUTHOR", "REVIEWER", "APPROVER"),
-                    cb.equal(participant.get("user").get("id"), userId)
-            );
-            allowed.add(cb.exists(participantSubquery));
-            if (strictEligible) {
-                allowed.add(revision.get("status").get("code").in("EFFECTIVE", "OBSOLETED", "CLOSED_CANCELLED"));
-            }
-            return cb.or(allowed.toArray(Predicate[]::new));
-        };
+        return (root, query, cb) -> cb.disjunction();
     }
 
     private Sort resolveBatchSort(String sortBy, String sortDirection) {
@@ -1259,16 +1211,40 @@ public class ControlledCopyService {
         if (to != null) predicates.add(cb.lessThan(field, to.plusDays(1).atStartOfDay(SYSTEM_ZONE).toInstant()));
     }
 
+    /** Sort of the discrepancy review list, decided here on the server. Default: the newest detection first. */
+    private static org.springframework.data.domain.Sort discrepancySort(String sortBy, String sortDirection) {
+        org.springframework.data.domain.Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection)
+                ? org.springframework.data.domain.Sort.Direction.ASC : org.springframework.data.domain.Sort.Direction.DESC;
+        boolean known = true;
+        String property = switch (sortBy == null ? "" : sortBy.trim().toLowerCase(Locale.ROOT)) {
+            case "batchnumber" -> "batchNumber";
+            case "document" -> "batch.documentNumber";
+            case "storedstatus" -> "actualStatusCode";
+            case "expectedstatus" -> "expectedStatusCode";
+            case "lastcheckedat" -> "lastCheckedAt";
+            case "detectedat" -> "detectedAt";
+            default -> {
+                known = false;
+                yield "detectedAt";
+            }
+        };
+        // An unknown key keeps the original order (newest first) whatever direction was asked for. The id breaks ties so that
+        // paging through equal values never repeats or skips a row.
+        return org.springframework.data.domain.Sort.by(known ? direction : org.springframework.data.domain.Sort.Direction.DESC, property)
+                .and(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "id"));
+    }
+
     @Transactional
-    public com.eqms.dto.user.PageResponse<com.eqms.dto.document.ControlledCopyBatchStatusDiscrepancyResponse> listBatchStatusDiscrepancies(Integer page, Integer limit) {
+    public com.eqms.dto.user.PageResponse<com.eqms.dto.document.ControlledCopyBatchStatusDiscrepancyResponse> listBatchStatusDiscrepancies(
+            Integer page, Integer limit, String sortBy, String sortDirection) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         requirePermission(currentUser, "documents.admin.view", "Current user cannot review controlled copy status discrepancies.");
         int safePage = page == null || page < 1 ? 1 : page;
         int safeLimit = limit == null || limit < 1 ? 20 : Math.min(limit, 100);
         org.springframework.data.domain.Page<com.eqms.entity.ControlledCopyBatchStatusDiscrepancy> pageResult =
-                controlledCopyBatchStatusDiscrepancyRepository.findAllByStatusOrderByDetectedAtDesc(
+                controlledCopyBatchStatusDiscrepancyRepository.findAllByStatus(
                         com.eqms.entity.ControlledCopyBatchStatusDiscrepancy.STATUS_OPEN,
-                        org.springframework.data.domain.PageRequest.of(safePage - 1, safeLimit)
+                        org.springframework.data.domain.PageRequest.of(safePage - 1, safeLimit, discrepancySort(sortBy, sortDirection))
                 );
         List<com.eqms.dto.document.ControlledCopyBatchStatusDiscrepancyResponse> data = pageResult.getContent().stream()
                 .map(discrepancy -> new com.eqms.dto.document.ControlledCopyBatchStatusDiscrepancyResponse(
@@ -1298,9 +1274,7 @@ public class ControlledCopyService {
     public ControlledCopyDistributionBatchSummaryResponse getControlledCopyDistributionBatchDetail(UUID batchId) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         ControlledCopyDistributionBatch batch = requireDistributionBatch(batchId);
-        if (!documentAuthorizationService.canAccessControlledCopy(currentUser, batch.getRevision())) {
-            throw new AccessDeniedException("Controlled copy access denied");
-        }
+        documentAuthorizationService.requireCanViewControlledCopyBatch(currentUser);
         controlledCopyBatchStatusService.synchronize(batch);
         return toBatchSummaryResponse(batch, true);
     }
@@ -1318,10 +1292,8 @@ public class ControlledCopyService {
             Integer limit
     ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
-        ControlledCopyDistributionBatch batch = requireDistributionBatch(batchId);
-        if (!documentAuthorizationService.canAccessControlledCopy(currentUser, batch.getRevision())) {
-            throw new AccessDeniedException("Controlled copy access denied");
-        }
+        requireDistributionBatch(batchId);
+        documentAuthorizationService.requireCanViewControlledCopyBatch(currentUser);
         int safePage = Math.max(page == null ? 1 : page, 1);
         int safeLimit = Math.min(Math.max(limit == null ? 25 : limit, 1), 100);
         Page<ControlledCopyRecord> result = controlledCopyRepository.findAllByDistributionBatch_Id(
@@ -1655,6 +1627,7 @@ public class ControlledCopyService {
         if (controlledCopyRepository.consumePrint(copy.getId(), policy.isPrintOnce()) == 0) {
             throw new AccessDeniedException("Print limit reached for this controlled copy.");
         }
+        copy = requireControlledCopy(id); // the update query cleared the persistence context: re-read so the stale count is not written back
         copy.setPrintedBy(currentUser);
         copy.setPrintedAt(parseInstant(request == null ? null : request.printedAt(), Instant.now()));
         copy.setCurrentStage("Ready for Distribution");
@@ -1679,12 +1652,6 @@ public class ControlledCopyService {
         Instant distributedAt = parseInstant(request == null ? null : request.distributedAt(), Instant.now());
         anchorExpiryToDistributionIfNeeded(copy, distributedAt);
         ensureControlledCopyNotExpired(copy, distributedAt);
-        if ("ELECTRONIC".equals(copy.getDeliveryMode())) {
-            // Every scanned OnlyOffice Role on the Form's fillable template must have a signer
-            // assigned before this copy can go out -- otherwise the Fill/Sign chain has no one to
-            // hand off to partway through.
-            eformSignerAssignmentService.requireFullyAssignedOrThrow(copy.getId());
-        }
         setControlledCopyStatus(copy, STATUS_DISTRIBUTED);
         copy.setCurrentStage("Distributed");
         copy.setDistributedBy(currentUser);
@@ -1991,6 +1958,44 @@ public class ControlledCopyService {
         String auditComment = buildControlledCopyRecordActionComment(copy, "RECALL", reason);
         auditTrailService.logAs(actor, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(),
                 "RECALL", fromStatus, "Obsoleted", auditComment, List.of(), null);
+        eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), actor.getId(), "RECALL", auditComment, null));
+        controlledCopyBatchStatusService.synchronize(copy);
+    }
+
+    /**
+     * Recalls ONE paper copy as part of a committed recall-by-scan batch. The batch's single electronic signature (created by
+     * the caller, over the list the DCO reviewed) covers every copy in it, so no per-copy signature is created here: each
+     * copy's audit entry carries the batch signature instead. Same status machinery, guards and notification as {@link #recall}.
+     * A copy that has already been recalled cannot be recalled a second time.
+     */
+    @Transactional
+    public void recallFromScanBatch(UUID controlledCopyId, UserAccount actor, String reason, Instant recalledAt,
+                                    String recallBatchNumber, UUID signatureId) {
+        ControlledCopyRecord copy = requireControlledCopy(controlledCopyId);
+        controlledCopyAuthorizationService.requireRecallControlledCopy(actor, copy);
+        ensureCanRecall(copy.getCurrentStage(), copy.getStatusCode(), "controlled copy");
+        if (copy.getRecalledAt() != null) {
+            throw new IllegalStateException("Controlled copy " + copy.getControlledCopyNumber() + " has already been recalled.");
+        }
+        if (!StringUtils.hasText(reason)) {
+            throw new IllegalArgumentException("Reason for recall is required.");
+        }
+        String fromStatus = copy.getCurrentStage();
+        setControlledCopyStatus(copy, STATUS_OBSOLETED);
+        copy.setCurrentStage("Obsoleted");
+        copy.setObsoleteReason(OBSOLETE_REASON_RECALLED);
+        copy.setRecalledBy(actor);
+        copy.setRecalledAt(recalledAt);
+        copy.setObsoletedBy(actor);
+        copy.setObsoletedAt(recalledAt);
+        copy.setRecallReason(normalize(reason));
+        // Flush now so an optimistic-lock conflict surfaces here, before the notification below.
+        controlledCopyRepository.saveAndFlush(copy);
+        String auditComment = buildControlledCopyRecordActionComment(copy, "RECALL", copy.getRecallReason())
+                + "; Recalled by scan, batch " + recallBatchNumber;
+        auditTrailService.logAs(actor, "Controlled Copy", copy.getControlledCopyNumber(), copy.getId(), "RECALL",
+                fromStatus, "Obsoleted", auditComment, List.of(), signatureId);
+        // Notified only after this transaction commits -- see ControlledCopyActionNotificationEvent.
         eventPublisher.publishEvent(new ControlledCopyActionNotificationEvent(copy.getId(), actor.getId(), "RECALL", auditComment, null));
         controlledCopyBatchStatusService.synchronize(copy);
     }
@@ -2676,43 +2681,7 @@ public class ControlledCopyService {
     }
 
     private boolean canViewControlledCopy(UserAccount currentUser, ControlledCopyRecord copy) {
-        if (copy == null) {
-            return false;
-        }
-        if (documentAuthorizationService.canAccessControlledCopy(currentUser, copy.getRevision())) {
-            return true;
-        }
-        if (currentUser == null || currentUser.getId() == null) {
-            return false;
-        }
-        if (copy.getRecipientUser() != null && currentUser.getId().equals(copy.getRecipientUser().getId())) {
-            return true;
-        }
-        if (matchesUserReference(currentUser, copy.getRecipientName())) {
-            return true;
-        }
-        return currentUser.getId().equals(optionalUserId(copy.getRequestedBy()))
-                || currentUser.getId().equals(optionalUserId(copy.getApprovedBy()))
-                || currentUser.getId().equals(optionalUserId(copy.getPrintedBy()))
-                || currentUser.getId().equals(optionalUserId(copy.getDistributedBy()))
-                || currentUser.getId().equals(optionalUserId(copy.getRecalledBy()))
-                || currentUser.getId().equals(optionalUserId(copy.getDestroyedBy()))
-                || currentUser.getId().equals(optionalUserId(copy.getCancelledBy()))
-                || currentUser.getId().equals(optionalUserId(copy.getObsoletedBy()));
-    }
-
-    private boolean matchesUserReference(UserAccount user, String reference) {
-        if (user == null || user.getId() == null || !StringUtils.hasText(reference)) {
-            return false;
-        }
-        String normalizedReference = reference.trim();
-        return (user.getFullName() != null && normalizedReference.equalsIgnoreCase(user.getFullName()))
-                || (user.getUsername() != null && normalizedReference.equalsIgnoreCase(user.getUsername()))
-                || (user.getEmail() != null && normalizedReference.equalsIgnoreCase(user.getEmail()));
-    }
-
-    private UUID optionalUserId(UserAccount user) {
-        return user == null ? null : user.getId();
+        return documentAuthorizationService.canViewControlledCopy(currentUser, copy);
     }
 
     private void requirePermission(UserAccount currentUser, String permissionCode, String message) {
@@ -2969,63 +2938,19 @@ public class ControlledCopyService {
     /**
      * Database-level mirror of {@link #canViewControlledCopy(UserAccount, ControlledCopyRecord)},
      * used so the list endpoint can filter+paginate in SQL instead of loading every filter-matched
-     * row into memory to authorize row-by-row. This is a literal translation of that method's
-     * conditions — not a redesign — to minimize the risk of the two diverging. If
-     * {@link DocumentAuthorizationService#canViewAllDocuments} is true, no restriction is added
-     * (matches the "return true immediately" branch in the Java version). Keep both in sync by
-     * hand; there is deliberately no shared implementation because one is a Java predicate over a
-     * loaded entity and the other is a JPA Criteria predicate translated to SQL.
+     * row into memory to authorize row-by-row. If
+     * {@link DocumentAuthorizationService#canViewAllControlledCopies} is true, no restriction is
+     * added; otherwise only copies whose recipient is the current user. Keep both in sync by hand;
+     * there is deliberately no shared implementation because one is a Java predicate over a loaded
+     * entity and the other is a JPA Criteria predicate translated to SQL.
      */
     private Specification<ControlledCopyRecord> buildAuthorizationSpecification(UserAccount currentUser) {
-        if (documentAuthorizationService.canViewAllDocuments(currentUser)) {
+        if (documentAuthorizationService.canViewAllControlledCopies(currentUser)) {
             return (root, query, cb) -> cb.conjunction();
         }
+        // Everyone else sees only the copies on which they are the named recipient (account id).
         UUID userId = currentUser.getId();
-        boolean strictEligible = documentAuthorizationService.isStrictViewEligible(currentUser);
-        String fullName = currentUser.getFullName();
-        String username = currentUser.getUsername();
-        String email = currentUser.getEmail();
-
-        return (root, query, cb) -> {
-            Join<ControlledCopyRecord, DocumentRevisionRecord> revisionJoin = root.join("revision", JoinType.LEFT);
-            List<Predicate> allowed = new ArrayList<>();
-
-            // Author of the revision.
-            allowed.add(cb.equal(revisionJoin.get("author").get("id"), userId));
-
-            // Co-author / reviewer / approver participant on the revision.
-            Subquery<Long> participantSubquery = query.subquery(Long.class);
-            Root<RevisionWorkflowParticipant> participantRoot = participantSubquery.from(RevisionWorkflowParticipant.class);
-            participantSubquery.select(cb.literal(1L)).where(
-                    cb.equal(participantRoot.get("revision").get("id"), revisionJoin.get("id")),
-                    participantRoot.get("participantType").in("CO_AUTHOR", "REVIEWER", "APPROVER"),
-                    cb.equal(participantRoot.get("user").get("id"), userId)
-            );
-            allowed.add(cb.exists(participantSubquery));
-
-            // Strict-view rule: broad view permission grants visibility of terminal-status revisions.
-            if (strictEligible) {
-                allowed.add(revisionJoin.get("status").get("code").in("EFFECTIVE", "OBSOLETED", "CLOSED_CANCELLED"));
-            }
-
-            // Controlled-copy-specific actor references (recipient, requester, or anyone who
-            // performed a lifecycle action on this exact copy).
-            allowed.add(cb.equal(root.get("recipientUser").get("id"), userId));
-            if (StringUtils.hasText(fullName)) {
-                allowed.add(cb.equal(cb.lower(root.get("recipientName")), fullName.trim().toLowerCase(Locale.ROOT)));
-            }
-            if (StringUtils.hasText(username)) {
-                allowed.add(cb.equal(cb.lower(root.get("recipientName")), username.trim().toLowerCase(Locale.ROOT)));
-            }
-            if (StringUtils.hasText(email)) {
-                allowed.add(cb.equal(cb.lower(root.get("recipientName")), email.trim().toLowerCase(Locale.ROOT)));
-            }
-            for (String actorField : List.of("requestedBy", "approvedBy", "printedBy", "distributedBy", "recalledBy", "destroyedBy", "cancelledBy", "obsoletedBy")) {
-                allowed.add(cb.equal(root.get(actorField).get("id"), userId));
-            }
-
-            return cb.or(allowed.toArray(Predicate[]::new));
-        };
+        return (root, query, cb) -> cb.equal(root.get("recipientUser").get("id"), userId);
     }
 
     private Comparator<ControlledCopyRecord> resolveComparator(String sortBy, String sortDirection) {
@@ -3197,11 +3122,11 @@ public class ControlledCopyService {
         if (copy == null || !Boolean.TRUE.equals(copy.getExpiryAnchoredToDistribution()) || copy.getDocument() == null) {
             return;
         }
-        Instant recomputed = controlledCopyExpiryLimitService.resolveExpiryFrom(
-                copy.getDocument().getDocumentType(), copy.getDocument().getDepartment(), distributedAt);
-        if (recomputed != null) {
-            copy.setExpiryDate(recomputed);
-        }
+        // Rows created before CC-EXPIRY-2026-10-07 carry a policy-derived projection; the copy now expires with its document.
+        Instant documentExpiry = documentExpiry(copy.getRevision(), copy.getDocument());
+        copy.setExpiryDate(documentExpiry);
+        copy.setHasExpiryDate(documentExpiry != null);
+        copy.setExpiryAnchoredToDistribution(false);
     }
 
     /** Batch-record counterpart of {@link #anchorExpiryToDistributionIfNeeded(ControlledCopyRecord, Instant)}. */
@@ -3209,11 +3134,22 @@ public class ControlledCopyService {
         if (batch == null || !Boolean.TRUE.equals(batch.getExpiryAnchoredToDistribution()) || batch.getDocument() == null) {
             return;
         }
-        Instant recomputed = controlledCopyExpiryLimitService.resolveExpiryFrom(
-                batch.getDocument().getDocumentType(), batch.getDocument().getDepartment(), distributedAt);
-        if (recomputed != null) {
-            batch.setExpiryDate(recomputed);
-        }
+        Instant documentExpiry = documentExpiry(null, batch.getDocument());
+        batch.setExpiryDate(documentExpiry);
+        batch.setHasExpiryDate(documentExpiry != null);
+        batch.setExpiryAnchoredToDistribution(false);
+    }
+
+    /**
+     * The expiry of a controlled copy of this document: its Valid Until date (the revision's, else the document's), as the start of
+     * that calendar day in the system zone, which the authorization layer reads as "valid through the end of that day".
+     * Null when the document has no Valid Until date.
+     */
+    private static Instant documentExpiry(DocumentRevisionRecord revision, DocumentRecord document) {
+        java.time.LocalDate validUntil = revision != null && revision.getValidUntil() != null
+                ? revision.getValidUntil()
+                : (document == null ? null : document.getValidUntil());
+        return validUntil == null ? null : validUntil.atStartOfDay(SYSTEM_ZONE).toInstant();
     }
 
     private void ensureControlledCopyNotExpired(ControlledCopyRecord copy, Instant executionTime) {
@@ -3379,7 +3315,12 @@ public class ControlledCopyService {
         }
         ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
         byte[] toStore = composedPdf;
-        if (pdfMarkingService.isMarkingEnabled(policy)) {
+        // A paper copy carries a QR code (an opaque per-copy token) so it can later be recalled by scanning. A copy that
+        // already has a token already printed its code; never print a second, different one.
+        boolean printScanCode = policy.isQrCodeEnabled()
+                && !StringUtils.hasText(copy.getScanToken());
+        boolean applyMarks = pdfMarkingService.isMarkingEnabled(policy);
+        if (applyMarks || printScanCode) {
             byte[] base = composedPdf;
             if (base == null) {
                 try {
@@ -3388,13 +3329,50 @@ public class ControlledCopyService {
                     throw new IllegalStateException("Failed to read the controlled copy PDF to mark it: " + copy.getId(), ex);
                 }
             }
-            ControlledCopyPdfMarkingService.Marked marked = pdfMarkingService.applyWithLayout(base, copy, recipientSnapshot, policy);
-            toStore = marked.pdf();
+            List<ControlledCopyPdfMarkingService.Placement> placements = new java.util.ArrayList<>();
+            if (applyMarks) {
+                ControlledCopyPdfMarkingService.Marked marked = pdfMarkingService.applyWithLayout(base, copy, recipientSnapshot, policy);
+                base = marked.pdf();
+                placements.addAll(marked.placements());
+            }
+            if (printScanCode) {
+                String token = newUniqueScanToken();
+                // Every page carries the code, with its own page number inside, so loose pages of many copies can be
+                // sorted back into their copies and into order when they are scanned together.
+                final String scanToken = token;
+                final int totalPages = pdfMarkingService.pageCount(base);
+                ControlledCopyPdfMarkingService.Marked withCode = pdfMarkingService.applyScanCodes(
+                        base,
+                        pageIndex -> ControlledCopyScanCodeService.encode(
+                                ControlledCopyScanCodeService.pagePayload(scanToken, pageIndex + 1, totalPages)),
+                        !"FIRST".equals(policy.getQrCodePages()),
+                        copy.getControlledCopyNumber(),
+                        policy.getQrCodePosition(),
+                        policy.getQrCodeX(),
+                        policy.getQrCodeY(),
+                        policy.getQrCodeSizeMm(),
+                        policy.getStampMarginMm(),
+                        placements);
+                base = withCode.pdf();
+                placements.addAll(withCode.placements());
+                copy.setScanToken(token);
+            }
+            toStore = base;
             copy.setMarkingApplied(true);
             // Remember where the marks went, so a later status stamp can be placed without covering them.
-            copy.setMarkingLayout(pdfMarkingService.toJson(marked.placements()));
+            copy.setMarkingLayout(pdfMarkingService.toJson(placements));
         }
         storeControlledCopyPublishedPdf(copy, toStore);
+    }
+
+    private String newUniqueScanToken() {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            String token = ControlledCopyScanCodeService.newToken();
+            if (!controlledCopyRepository.existsByScanToken(token)) {
+                return token;
+            }
+        }
+        throw new IllegalStateException("Unable to allocate a unique scan code for the controlled copy");
     }
 
     /**
@@ -3543,8 +3521,7 @@ public class ControlledCopyService {
                 replacedControlledCopy == null ? null : displayControlledCopyNumber(replacedControlledCopy.getControlledCopyNumber()),
                 replacementControlledCopy == null ? null : replacementControlledCopy.getId().toString(),
                 replacementControlledCopy == null ? null : displayControlledCopyNumber(replacementControlledCopy.getControlledCopyNumber()),
-                copy.getUpdatedAt() == null ? null : DateTimeFormatUtils.formatDateTime(copy.getUpdatedAt()),
-                copy.getDeliveryMode()
+                copy.getUpdatedAt() == null ? null : DateTimeFormatUtils.formatDateTime(copy.getUpdatedAt())
         );
     }
 
@@ -4460,6 +4437,29 @@ public class ControlledCopyService {
     private boolean isPrintAllowed(ControlledCopyRecord copy) {
         ControlledCopyPolicySetting policy = controlledCopyPolicyService.loadOrDefault();
         return policy.isAllowPrint() && (!policy.isPrintOnce() || copy.getPrintCount() < 1);
+    }
+
+    /**
+     * The link in the distribution e-mail works for the time the Expiry Duration policy gives (the most specific rule for the
+     * document's type and department), counted from the moment it was sent. After that the recipient must ask the Document Control
+     * Officer for a new link. Someone signed in to eQMS as the recipient does not need the link and is not held to it.
+     */
+    private void requireEmailLinkNotExpired(ControlledCopyRecord copy) {
+        Instant sent = copy.getDistributedAt() != null ? copy.getDistributedAt() : copy.getAccessTokenIssuedAt();
+        if (sent == null || copy.getDocument() == null) {
+            return;
+        }
+        var limit = controlledCopyExpiryLimitService.resolveMatchingLimit(copy.getDocument().getDocumentType(), copy.getDocument().getDepartment());
+        if (limit.isEmpty()) {
+            return;
+        }
+        Instant linkExpiresAt = controlledCopyExpiryLimitService.resolveExpiryFrom(
+                copy.getDocument().getDocumentType(), copy.getDocument().getDepartment(), sent);
+        if (linkExpiresAt != null && !Instant.now().isBefore(linkExpiresAt)) {
+            throw new AccessDeniedException("The link in the distribution e-mail has expired (it was valid for "
+                    + limit.get().getDurationValue() + " " + limit.get().getDurationUnit().toLowerCase(Locale.ROOT)
+                    + " after it was sent). Ask the Document Control Officer for a new link.");
+        }
     }
 
     private UserAccount requirePreviewAccess(ControlledCopyRecord copy, String token) {

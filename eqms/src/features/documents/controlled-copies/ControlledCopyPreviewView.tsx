@@ -81,6 +81,27 @@ const describeUnavailableCopy = (
   }
 };
 
+/** Prints the PDF itself (not the page around it) through a hidden frame that is removed afterwards. */
+const printPdfDirectly = (url: string) =>
+  new Promise<void>((resolve, reject) => {
+    const frame = document.createElement("iframe");
+    frame.style.cssText = "position:fixed;width:0;height:0;border:0;visibility:hidden";
+    const cleanup = () => window.setTimeout(() => frame.remove(), 60_000);
+    frame.onload = () => {
+      try {
+        frame.contentWindow?.focus();
+        frame.contentWindow?.print();
+        cleanup();
+        resolve();
+      } catch (err) {
+        frame.remove();
+        reject(err);
+      }
+    };
+    frame.src = url;
+    document.body.appendChild(frame);
+  });
+
 export const ControlledCopyPreviewView: React.FC = () => {
   const location = useLocation();
   const { id = "" } = useParams();
@@ -166,10 +187,14 @@ export const ControlledCopyPreviewView: React.FC = () => {
   const downloadOnce = manifest?.downloadOnce ?? false;
   const printOnce = manifest?.printOnce ?? false;
   const [isActionRunning, setIsActionRunning] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const describeActionError = (err: any, fallback: string) =>
+    err?.response?.data?.message || fallback;
 
   const downloadOnceFromServer = async () => {
     if (!id || !previewGrant || isActionRunning) return;
     setIsActionRunning(true);
+    setActionError(null);
     try {
       const blob = await documentApi.downloadControlledCopy(id, previewGrant);
       const url = URL.createObjectURL(blob);
@@ -181,6 +206,8 @@ export const ControlledCopyPreviewView: React.FC = () => {
       setManifest((current) =>
         current ? { ...current, allowDownload: false } : current,
       );
+    } catch (err: any) {
+      setActionError(describeActionError(err, "The download could not be completed. Please try again."));
     } finally {
       setIsActionRunning(false);
     }
@@ -189,12 +216,16 @@ export const ControlledCopyPreviewView: React.FC = () => {
   const printOnceFromServer = async () => {
     if (!id || !previewGrant || isActionRunning) return;
     setIsActionRunning(true);
+    setActionError(null);
     try {
       await documentApi.consumeControlledCopyPreviewPrint(id, previewGrant);
-      window.print();
+      if (!blobUrl) throw new Error("The document is not loaded.");
+      await printPdfDirectly(blobUrl);
       setManifest((current) =>
         current ? { ...current, allowPrint: false } : current,
       );
+    } catch (err: any) {
+      setActionError(describeActionError(err, "Printing could not be started. Please try again."));
     } finally {
       setIsActionRunning(false);
     }
@@ -558,6 +589,11 @@ export const ControlledCopyPreviewView: React.FC = () => {
             >
               <Printer className="h-4 w-4 mr-1.5" /> Print
             </Button>
+          )}
+          {actionError && (
+            <span role="alert" className="text-xs font-medium text-red-500">
+              {actionError}
+            </span>
           )}
         </div>
       </div>

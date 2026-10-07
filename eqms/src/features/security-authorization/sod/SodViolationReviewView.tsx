@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { cn } from "@/components/ui/utils";
@@ -171,6 +172,33 @@ export const SodViolationReviewView: React.FC = () => {
       </div>
     );
 
+  type HistoryRow = (typeof history)[number];
+  const historyColumns: DataTableColumn<HistoryRow>[] = [
+    { id: "scannedAt", header: "Scanned At", label: "Scanned At", cellClassName: "text-slate-600", cell: (run) => formatDateTime(run.scannedAt) },
+    { id: "scannedBy", header: "Scanned By", label: "Scanned By", cell: (run) => run.scannedByName ?? "-" },
+    {
+      id: "result",
+      header: "Result",
+      label: "Result",
+      cell: (run) =>
+        run.violationCount === 0 ? (
+          <Badge semantic="success" size="sm">No violations</Badge>
+        ) : (
+          <Badge semantic="danger" size="sm">{run.violationCount} violation{run.violationCount === 1 ? "" : "s"}</Badge>
+        ),
+    },
+  ];
+  const historyAction: DataTableAction<HistoryRow> = {
+    header: "Action",
+    cellClassName: "text-center",
+    cell: (run) => (
+      <Button variant="outline" size="sm" onClick={() => viewRun(run.id)}>
+        {selectedRunId === run.id ? "Hide" : "View"}
+      </Button>
+    ),
+  };
+  const { layout: historyLayout, control: historyControl } = useCustomColumnLayout("sod.scan-history", historyColumns, historyAction);
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       <PageHeader
@@ -205,8 +233,9 @@ export const SodViolationReviewView: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex-1 flex flex-col">
-            <div className="px-4 md:px-5 py-3 border-b border-slate-200">
+            <div className="flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-slate-200">
               <h3 className="text-sm font-semibold text-slate-900">Scan History</h3>
+              {historyControl}
             </div>
             {historyLoading ? (
               <SectionLoading minHeight="150px" />
@@ -214,59 +243,33 @@ export const SodViolationReviewView: React.FC = () => {
               <TableEmptyState title="No scans yet" description="Run a scan to start building review history." />
             ) : (
               <div className="flex flex-col flex-1">
-                <TableMarkup.Root className="w-full">
-                  <TableMarkup.Head>
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell1}>Scanned At</TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell1}>Scanned By</TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell1}>Result</TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className="bg-slate-50 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">Action</TableMarkup.HeaderCell>
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {history.map((run) => (
-                      <React.Fragment key={run.id}>
-                        <TableMarkup.Row className="hover:bg-slate-50/80 transition-colors">
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(run.scannedAt)}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">{run.scannedByName ?? "-"}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            {run.violationCount === 0 ? (
-                              <Badge semantic="success" size="sm">No violations</Badge>
-                            ) : (
-                              <Badge semantic="danger" size="sm">{run.violationCount} violation{run.violationCount === 1 ? "" : "s"}</Badge>
-                            )}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-center whitespace-nowrap">
-                            <Button variant="outline" size="sm" onClick={() => viewRun(run.id)}>
-                              {selectedRunId === run.id ? "Hide" : "View"}
-                            </Button>
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                        {selectedRunId === run.id && (
-                          <TableMarkup.Row>
-                            <TableMarkup.Cell colSpan={4} className="bg-slate-50 p-4">
-                              {loadingRun ? <SectionLoading minHeight="80px" /> : renderViolationList(selectedRunViolations ?? [])}
-                            </TableMarkup.Cell>
-                          </TableMarkup.Row>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-                {historyTotal > 0 && (
-                  <div className="border-t border-slate-200">
-                    <TablePagination
-                      currentPage={historyPage}
-                      totalPages={historyTotalPages}
-                      totalItems={historyTotal}
-                      itemsPerPage={historyLimit}
-                      isLoading={historyLoading}
-                      onPageChange={setHistoryPage}
-                      onItemsPerPageChange={(v) => { setHistoryLimit(v); setHistoryPage(1); }}
-                      itemsPerPageOptions={[10, 20, 50]}
-                    />
-                  </div>
-                )}
+                <DataTable
+                  rows={history}
+                  getRowKey={(run) => run.id}
+                  columns={historyLayout.columns}
+                  columnLayout={historyLayout}
+                  action={historyAction}
+                  expandedRow={{
+                    isExpanded: (run) => selectedRunId === run.id,
+                    render: () => (loadingRun ? <SectionLoading minHeight="80px" /> : renderViolationList(selectedRunViolations ?? [])),
+                  }}
+                  pagination={
+                    historyTotal > 0 ? (
+                      <div className="border-t border-slate-200">
+                        <TablePagination
+                          currentPage={historyPage}
+                          totalPages={historyTotalPages}
+                          totalItems={historyTotal}
+                          itemsPerPage={historyLimit}
+                          isLoading={historyLoading}
+                          onPageChange={setHistoryPage}
+                          onItemsPerPageChange={(v) => { setHistoryLimit(v); setHistoryPage(1); }}
+                          itemsPerPageOptions={[10, 20, 50]}
+                        />
+                      </div>
+                    ) : undefined
+                  }
+                />
               </div>
             )}
           </div>

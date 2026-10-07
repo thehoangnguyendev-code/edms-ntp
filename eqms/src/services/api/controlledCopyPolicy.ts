@@ -1,7 +1,8 @@
 import { api } from './client';
 
 /**
- * A row in the unified Expiry Duration Policy. Every Controlled Copy always has an expiry —
+ * A row of the Download Link Expiry policy: how long the link in a distribution e-mail stays valid (a copy itself expires with its
+ * document's Valid Until date). Every link always has a limit —
  * resolved from the most specific active row matching its document type/department, falling back
  * to the mandatory "Global Default" row (documentTypeId = departmentId = null, isSystem = true,
  * always present, cannot be deleted, scope cannot be changed).
@@ -31,7 +32,7 @@ export interface ControlledCopyExpiryLimitInput {
 }
 
 /**
- * One row of the desired end-state of the Expiry Duration Policy, saved as part of the whole
+ * One row of the desired end-state of the Download Link Expiry policy, saved as part of the whole
  * Controlled Copies Policy (one "Save Changes", one e-signature, one consolidated Audit Trail
  * entry) -- not the standalone, per-row instant-save-with-its-own-signature endpoints above, which
  * this screen no longer calls. `id` absent/empty means a new rule; the mandatory "Global Default"
@@ -85,9 +86,6 @@ export interface ControlledCopyPolicyDistributionSecurity {
 }
 
 export interface ControlledCopyMarkingPreviewRequest {
-  templateId?: string;
-  layout: 'portrait' | 'landscape';
-  pageKind: 'COVER' | 'BODY';
   scenario: 'ISSUED' | 'OBSOLETED' | 'CLOSED_CANCELLED';
   reason?: string;
   distributionSecurity: ControlledCopyPolicyDistributionSecurity;
@@ -100,7 +98,7 @@ export interface ControlledCopyMarkingPreview {
   pageWidthPt: number;
   pageHeightPt: number;
   /** Where each mark was drawn (points, origin bottom-left). Watermark boxes are unrotated, rotated by `angle` about their centre. */
-  marks: { layer: string; kind: 'STAMP' | 'WATERMARK'; x: number; y: number; width: number; height: number; angle: number; adjusted: boolean }[];
+  marks: { layer: string; kind: 'STAMP' | 'WATERMARK' | 'QR'; x: number; y: number; width: number; height: number; angle: number; adjusted: boolean }[];
   warnings: { code: string; message: string }[];
   note?: string | null;
 }
@@ -179,6 +177,18 @@ export interface ControlledCopyPolicyMarking {
   watermarkFontFamily: MarkingFontFamily;
   /** Per-page drag-and-drop placement; overrides the corner/centre fields above for pages it covers. */
   placements?: MarkingPlacementRule[];
+  /** Print a per-copy QR code on the pages of paper copies, so returned paper can be recalled in bulk by scanning. */
+  qrCodeEnabled: boolean;
+  /** Every page (default; lets loose pages of many copies be sorted back when scanned together) or the first page only. */
+  qrCodePages: 'ALL' | 'FIRST';
+  qrCodePosition: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT';
+  /** Side of the code, in millimetres (15 to 40). */
+  qrCodeSizeMm: number;
+  /** Where the code was dragged to: fractions of the first page (0 = left / top), top-left of its frame. null = use the corner. */
+  qrCodeX?: number | null;
+  qrCodeY?: number | null;
+  /** Request only: true puts the code back in its corner (sent whenever no position is held). */
+  qrCodeResetPosition?: boolean;
 }
 
 /** Stamp and watermark shown on the Document tab of a copy that is Obsoleted or Closed - Cancelled (one object per status). */
@@ -226,19 +236,29 @@ export interface ControlledCopyPolicy {
   expiryLimits?: ControlledCopyExpiryLimit[] | ControlledCopyExpiryLimitDraft[];
 }
 
+/** The server keeps a stored position when a field is omitted, so "no position" must be said explicitly to put the code back in its corner. */
+const withQrPosition = (marking: ControlledCopyPolicyMarking) => {
+  const { qrCodeX, qrCodeY, ...rest } = marking;
+  return qrCodeX == null || qrCodeY == null
+    ? { ...rest, qrCodeResetPosition: true }
+    : { ...rest, qrCodeX, qrCodeY };
+};
+
 export const controlledCopyPolicyApi = {
   getPolicy: async (): Promise<ControlledCopyPolicy> => {
     const response = await api.get<ControlledCopyPolicy>('/documents/administration/controlled-copies-policy');
     return response.data;
   },
 
-  /** The server draws the DRAFT marks on a page of a Publishing Template; nothing is saved. */
+  /** The server draws the DRAFT marks on a sample paper page; nothing is saved. */
   previewMarking: async (payload: ControlledCopyMarkingPreviewRequest): Promise<ControlledCopyMarkingPreview> => {
+    payload = { ...payload, marking: withQrPosition(payload.marking) };
     const response = await api.post<ControlledCopyMarkingPreview>('/documents/administration/controlled-copies-policy/marking-preview', payload);
     return response.data;
   },
 
   savePolicy: async (payload: ControlledCopyPolicy, sig?: { signatureToken: string; reason?: string }): Promise<ControlledCopyPolicy> => {
+    payload = { ...payload, marking: payload.marking ? withQrPosition(payload.marking) : payload.marking };
     const response = await api.put<ControlledCopyPolicy>('/documents/administration/controlled-copies-policy', { ...payload, ...sig });
     return response.data;
   },

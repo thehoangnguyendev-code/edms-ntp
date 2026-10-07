@@ -3,7 +3,6 @@ import type { UserRoleLabel } from './roles';
 export type UserStatus = "Active" | "Inactive" | "Pending" | "Suspended" | "Terminated";
 export type UserGender = "Male" | "Female" | "Other";
 export type EmploymentType = "Full-time" | "Part-time" | "Contract" | "Intern";
-export type ExternalProvisioningStatus = "NOT_INVITED" | "INVITED" | "REDEEMED" | "FAILED" | "DISABLED";
 /** Where this user lands immediately after login. Set by Admin on create/edit. */
 export type HomePage = "DASHBOARD" | "NOTIFICATIONS" | "KNOWLEDGE";
 
@@ -106,11 +105,6 @@ export interface User {
   suspendedUntil?: string;
   terminationReason?: string;
   terminationDate?: string;
-  /** Server-backed Microsoft Entra guest provisioning state. */
-  externalProvisioningStatus?: ExternalProvisioningStatus | string | null;
-  externalProvisioningEmail?: string | null;
-  externalProvisioningStatusLabel?: string | null;
-  externalProvisioningStatusColor?: string | null;
   /** Where this user lands immediately after login. Defaults to DASHBOARD server-side. */
   homePage?: HomePage;
 }
@@ -121,7 +115,6 @@ export interface User {
  *  alone) -- see UserManagementService.createUser. */
 export type CreateUserPayload = Omit<User, "id" | "lastLogin" | "createdDate" | "lastUpdated" | "role" | "accessProfileNames"> & {
   accessProfileIds: string[];
-  inviteExternal?: boolean;
 };
 
 /** Local form model. Authorization uses profile IDs, never a mutable profile name. */

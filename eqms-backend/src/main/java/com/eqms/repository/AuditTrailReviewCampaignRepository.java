@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AuditTrailReviewCampaignRepository extends JpaRepository<AuditTrailReviewCampaign, UUID> {
+    long countByStatus(String status);
+
     List<AuditTrailReviewCampaign> findAllByOrderByCreatedAtDesc();
 
     @Query("""

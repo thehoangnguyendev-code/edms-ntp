@@ -19,7 +19,7 @@ import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading
 import { usePortalDropdown, useNavigateWithLoading, useTableDragScroll } from "@/hooks";
 import { useRevisionServerTable } from "@/features/documents/hooks";
 import { useAuth } from "@/contexts/AuthContext";
-import { RevisionTableView, TableColumn } from "@/features/documents/shared/components";
+import { RevisionTableView, TableColumn, useRevisionColumnLayout } from "@/features/documents/shared/components";
 import { buildRevisionDetailSnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import type { Revision } from "./types";
 import { documentApi } from "@/services/api/documents";
@@ -313,6 +313,15 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
     }
   };
 
+  const { layout: revisionLayout, control: revisionControl } = useRevisionColumnLayout("documents.revisions.pending", {
+    columns,
+    sortConfig,
+    onSort: handleSort,
+    renderCell,
+    expandedRowId,
+    onExpandRow: setExpandedRowId,
+  });
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {isNavigating && <FullPageLoading text="Loading..." />}
@@ -425,6 +434,7 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
             }}
             showTypeFilter={true}
             showDepartmentFilter={true}
+            filterTrailing={revisionControl}
             onClearFilters={handleClearFilters}
             statusOptions={fixedStatusOptions}
             typeOptions={typeOptions}
@@ -447,6 +457,7 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
             )}>
               <RevisionTableView
                 revisions={revisions}
+                columnLayout={revisionLayout}
                 columns={columns}
                 expandedRowId={expandedRowId}
                 sortConfig={sortConfig}

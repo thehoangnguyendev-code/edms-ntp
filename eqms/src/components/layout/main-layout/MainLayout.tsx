@@ -1,9 +1,11 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { ROUTES } from '@/app/routes.constants';
+import { ROUTES, isDashboardPath } from '@/app/routes.constants';
 import { Sidebar } from '@/components/layout/sidebar/Sidebar';
 import { Header } from '@/components/layout/header/Header';
 import { Footer } from '@/components/layout/footer/Footer';
+import { NotificationDockProvider } from '@/components/layout/header/NotificationDockContext';
+import { NotificationDock } from '@/components/layout/header/NotificationDock';
 import { NetworkStatusMonitor } from '@/components/layout/NetworkStatusMonitor';
 import { ScrollToTop } from '@/components/ui/scroll-to-top/ScrollToTop';
 import { useResponsiveSidebar } from './useResponsiveSidebar';
@@ -15,13 +17,16 @@ import { authApi } from '@/services/api/auth';
 import { settingsApi } from '@/services/api/settings';
 import { SECURITY_CONFIG_STORAGE_KEY } from '@/config/security';
 
-export const MainLayout: React.FC = () => {
+const MainLayoutContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isSidebarCollapsed, isMobileMenuOpen, toggleSidebar, closeMobileMenu } = useResponsiveSidebar();
   const { user, logout, isAuthenticated } = useAuth();
   const { activeId, handleNavigate } = useNavigation();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pageColumnRef = useRef<HTMLDivElement>(null);
+  /** Distance (px) between the right edge of the page column and the right edge of the window: whatever sits beside the page. */
+  const [pageColumnGap, setPageColumnGap] = useState(0);
   const heartbeatInFlightRef = useRef<Promise<void> | null>(null);
   const lastHeartbeatAtRef = useRef(0);
   const sessionLockedRef = useRef(false);
@@ -31,6 +36,25 @@ export const MainLayout: React.FC = () => {
   const [headerTitle, setHeaderTitle] = useState('');
   const [showHeaderTitle, setShowHeaderTitle] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+
+  // The "scroll to top" button floats over the page, not over a panel beside it (such as the pinned notification list). The layout
+  // measures its own page column, so the button follows whatever width that panel has, including while it slides in or out.
+  useLayoutEffect(() => {
+    const column = pageColumnRef.current;
+    if (!column) return undefined;
+    const measure = () => setPageColumnGap(Math.max(0, Math.round(window.innerWidth - column.getBoundingClientRect().right)));
+    measure();
+    window.addEventListener('resize', measure);
+    if (typeof ResizeObserver === 'undefined') {
+      return () => window.removeEventListener('resize', measure);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(column);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
 
   // Scroll to top on route change
   useEffect(() => {
@@ -322,31 +346,55 @@ export const MainLayout: React.FC = () => {
           headerTitle={headerTitle}
           showHeaderTitle={showHeaderTitle}
           scrollProgress={scrollProgress}
+          pinSystemTitle={isDashboardPath(location.pathname)}
         />
 
-        <div
-          id="main-scroll-container"
-          tabIndex={-1}
-          ref={scrollContainerRef}
-          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-gray-100/50"
-          style={{
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          <main className="w-full px-4 pt-2 pb-6 md:px-6 md:pt-3 lg:px-8 lg:pt-4">
-            <div className="w-full max-w-[1920px] mx-auto space-y-4 md:space-y-6">
-              <Outlet />
+        {/* The page and, when the user has pinned it, the notification list beside it (both under the top bar). */}
+        <div className="flex-1 min-h-0 flex">
+          <div ref={pageColumnRef} data-testid="page-column" className="flex-1 min-w-0 min-h-0 flex flex-col">
+            <div
+              id="main-scroll-container"
+              tabIndex={-1}
+              ref={scrollContainerRef}
+              className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-gray-100/50"
+              style={{
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              <main className="w-full px-4 pt-2 pb-6 md:px-6 md:pt-3 lg:px-8 lg:pt-4">
+                <div className="w-full max-w-[1920px] mx-auto space-y-4 md:space-y-6">
+                  <Outlet />
+                </div>
+              </main>
             </div>
-          </main>
-        </div>
 
-        <Footer />
+            <Footer />
+          </div>
+
+          <NotificationDock />
+        </div>
       </div>
 
-      <ScrollToTop
-        scrollContainerRef={scrollContainerRef}
-        isMobileMenuOpen={isMobileMenuOpen}
-      />
+      {/*
+        The button positions itself against the window. This holder is a window-sized box that stops at the page column, and a
+        transform makes it the box the button is positioned against, so the button sits at the page's right edge instead.
+      */}
+      <div className="pointer-events-none fixed inset-y-0 left-0 z-50" style={{ right: pageColumnGap, transform: 'translateZ(0)' }}>
+        <ScrollToTop
+          scrollContainerRef={scrollContainerRef}
+          isMobileMenuOpen={isMobileMenuOpen}
+        />
+      </div>
     </div>
+  );
+};
+
+/** Provides the pinned-notifications preference (kept per user) to the top bar, the bell and the dock. */
+export const MainLayout: React.FC = () => {
+  const { user } = useAuth();
+  return (
+    <NotificationDockProvider userId={user?.id}>
+      <MainLayoutContent />
+    </NotificationDockProvider>
   );
 };

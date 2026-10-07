@@ -1,3 +1,6 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
+import { FilterSearchInput } from '@/components/ui/filter/FilterSearchInput';
+import { dictionaryApi } from '@/services/api';
 import React, { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -15,6 +18,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
+import { SkeletonTable } from "@/components/ui/loading/Skeleton";
 import { cn } from "@/components/ui/utils";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { UnlockAccountModal } from "../components/UnlockAccountModal";
@@ -44,6 +48,9 @@ import { settingsApi } from "@/services/api/settings";
 import type { UserActionCapabilitiesResponse } from "@/services/api/settings";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { CustomColumnDrawer, useStickyPinnedColumns, useTableColumnPreferences } from "@/components/ui/table";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useBranding } from "@/components/branding/BrandLogo";
 
 // --- Main Component ---
 
@@ -119,7 +126,12 @@ export const UserManagementView: React.FC = () => {
     refreshUsers,
   } = useUserList();
 
-  const [columns, setColumns] = useState<TableColumn[]>([...DEFAULT_COLUMNS]);
+  const { columns, saveColumns, resetColumns } = useTableColumnPreferences("users.list", DEFAULT_COLUMNS);
+  // Pinning applies only to the desktop table; on mobile the table keeps its native touch scrolling.
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const compactFilters = useBranding().compactDesktopFilters ?? false;
+  // Custom Column is a desktop feature. On mobile the table always shows its default layout.
+  const tableColumns = isDesktop ? columns : DEFAULT_COLUMNS;
   const {
     openId: openDropdownId,
     position: dropdownPosition,
@@ -128,6 +140,12 @@ export const UserManagementView: React.FC = () => {
     close: closeDropdown,
   } = usePortalDropdown();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
+  // The scroller mounts only once rows exist, so its element is kept as state to re-run pinning then.
+  const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null);
+  const attachScroller = (node: HTMLDivElement | null) => {
+    scrollerRef.current = node;
+    setScrollerEl(node);
+  };
   const { navigateTo, isNavigating } = useNavigateWithLoading();
   const [resetPasswordModal, setResetPasswordModal] = useState({
     isOpen: false,
@@ -163,12 +181,6 @@ export const UserManagementView: React.FC = () => {
   const [capabilityByUserId, setCapabilityByUserId] = useState<
     Record<string, UserActionCapabilitiesResponse>
   >({});
-  const [externalReasonModal, setExternalReasonModal] = useState<{
-    action: "invite" | "disable" | "resend" | "retry" | "remove";
-    user: User;
-  } | null>(null);
-  const [externalReason, setExternalReason] = useState("");
-  const [isExternalActionLoading, setIsExternalActionLoading] = useState(false);
   const [expandedAccessProfileRowIds, setExpandedAccessProfileRowIds] = useState<Set<string>>(new Set());
   const shouldReduceMotion = useReducedMotion();
   const chevronTransitionConfig = useMemo(
@@ -185,9 +197,27 @@ export const UserManagementView: React.FC = () => {
   };
 
   // Visible columns
-  const visibleColumns = columns
+  const visibleColumns = tableColumns
     .filter((col) => col.visible)
     .sort((a, b) => a.order - b.order);
+
+  // Expand and No. are always fixed on the left; user-pinned columns follow them in table order.
+  useStickyPinnedColumns(isDesktop ? scrollerEl : null, ["expand", ...visibleColumns.filter((col) => col.pinned).map((col) => col.id)]);
+
+  // One control, placed by breakpoint and filter mode (see the filter section and the table section below).
+  const customizeDrawer = (
+    <CustomColumnDrawer
+      columns={columns}
+      fixedColumns={[{ id: "action", label: "Action" }]}
+      onApply={async (next) => {
+        if (!(await saveColumns(next))) showToast({ type: "error", title: "Column layout not saved", message: "The server did not accept the change. Please try again." });
+      }}
+      onReset={async () => {
+        if (!(await resetColumns())) showToast({ type: "error", title: "Column layout not reset", message: "The server did not accept the change. Please try again." });
+      }}
+      allowPin={isDesktop}
+    />
+  );
 
   const handleResetPassword = (user: User) => {
     setResetPasswordModal({
@@ -253,103 +283,6 @@ export const UserManagementView: React.FC = () => {
     closeDropdown();
   };
 
-  const openExternalReasonModal = (
-    action: "invite" | "disable" | "resend" | "retry" | "remove",
-    user: User,
-  ) => {
-    closeDropdown();
-    setExternalReason(
-      action === "invite"
-        ? "External user onboarding"
-        : action === "disable"
-          ? "Access disabled by administrator"
-          : action === "remove"
-            ? "External access no longer required"
-            : "External access provisioning",
-    );
-    setExternalReasonModal({ action, user });
-  };
-
-  const submitExternalReason = async () => {
-    if (!externalReasonModal || !externalReason.trim()) return;
-    const { action, user } = externalReasonModal;
-    setIsExternalActionLoading(true);
-    try {
-      if (action === "invite") {
-        await settingsApi.inviteExternalUser(user.id, externalReason.trim());
-        showToast({
-          type: "success",
-          title: "Invitation queued",
-          message: `Microsoft Entra invitation for ${user.email} is being processed.`,
-        });
-      } else if (action === "disable") {
-        await settingsApi.disableMicrosoftAccess(
-          user.id,
-          externalReason.trim(),
-        );
-        showToast({
-          type: "success",
-          title: "Microsoft access disable queued",
-          message: `Microsoft Entra request for ${user.fullName} is being processed.`,
-        });
-      } else if (action === "resend") {
-        await settingsApi.resendExternalInvitation(
-          user.id,
-          externalReason.trim(),
-        );
-        showToast({
-          type: "success",
-          title: "Invitation resend queued",
-          message: `Microsoft Entra request for ${user.email} is being processed.`,
-        });
-      } else if (action === "retry") {
-        await settingsApi.retryExternalProvisioning(
-          user.id,
-          externalReason.trim(),
-        );
-        showToast({
-          type: "success",
-          title: "Provisioning retry queued",
-          message: `Microsoft Entra request for ${user.email} is being processed.`,
-        });
-      } else {
-        await settingsApi.removeExternalUser(user.id, externalReason.trim());
-        showToast({
-          type: "success",
-          title: "External user removal queued",
-          message: `Microsoft Entra request for ${user.email} is being processed.`,
-        });
-      }
-      setExternalReasonModal(null);
-      // Refresh the server-backed state immediately after the mutation. The table badge comes
-      // from refreshUsers(), but which menu buttons are valid next comes from capabilityByUserId
-      // — that cache must be dropped too, or the menu shows stale (pre-mutation) options until
-      // the dropdown happens to be reopened after a full page reload.
-      await refreshUsers();
-      setCapabilityByUserId((prev) => {
-        const next = { ...prev };
-        delete next[user.id];
-        return next;
-      });
-    } catch (error: any) {
-      showToast({
-        type: "error",
-        title: "External provisioning failed",
-        message:
-          error?.response?.data?.message || "Unable to complete the operation.",
-      });
-    } finally {
-      setIsExternalActionLoading(false);
-    }
-  };
-
-  const handleInviteExternal = (user: User) =>
-    openExternalReasonModal("invite", user);
-  const handleDisableMicrosoftAccess = (user: User) =>
-    openExternalReasonModal("disable", user);
-  const handleRemoveExternal = (user: User) =>
-    openExternalReasonModal("remove", user);
-
   const loadUserCapabilities = async (userId: string) => {
     try {
       const capabilities = await settingsApi.getUserCapabilities(userId);
@@ -410,18 +343,6 @@ export const UserManagementView: React.FC = () => {
     }
   }, [isDateFilterApplying, isLoading]);
 
-  React.useEffect(() => {
-    // useUserList already refetches the table (badge) on this event; the per-user capability
-    // cache used to gate the "..." menu buttons is separate and must be dropped too, or a status
-    // change from another admin / the background reconciliation job leaves stale menu options
-    // cached until this admin happens to reopen that row's dropdown after a reload.
-    return subscribeNotificationRealtime((event) => {
-      if (event.type === "external-identity-status-changed") {
-        setCapabilityByUserId({});
-      }
-    });
-  }, []);
-
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       {/* Header */}
@@ -454,7 +375,7 @@ export const UserManagementView: React.FC = () => {
       {/* Unified Content Card */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         {/* Filter Section */}
-        <div className="px-4 pt-4 md:p-5 flex flex-col">
+        <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
               <label className="text-xs sm:text-sm font-medium text-slate-700 block">
@@ -498,7 +419,117 @@ export const UserManagementView: React.FC = () => {
               </div>
             </div>
 
-            <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{customizeDrawer}</div>}
+  search={
+    <FilterSearchInput
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(value) => {
+        setSearchQuery(value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search by name, username, email..."}
+    />
+  }
+  filters={[
+    {
+      id: "roleFilter",
+      label: "Access Profile",
+      value: String(roleFilter),
+      options: [{ label: "All Profiles", value: "All" }, ...lookupAccessProfiles],
+      onChange: (value) => setRoleFilter(value as UserRoleLabel | "All"),
+    },
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: [{ label: "All Status", value: "All" }, ...lookupStatuses],
+      onChange: (value) => setStatusFilter(value as UserStatus | "All"),
+    },
+    {
+      id: "businessUnitFilter",
+      label: "Business Unit",
+      value: String(businessUnitFilter),
+      resetOnChange: { departmentFilter: "All" },
+      options: [{ label: "All Units", value: "All" }, ...lookupBusinessUnits],
+      onChange: (value) => {
+        setBusinessUnitFilter(value);
+        setDepartmentFilter("All");
+      },
+    },
+    {
+      id: "departmentFilter",
+      label: "Department",
+      value: String(departmentFilter),
+      dependsOn: ["businessUnitFilter"],
+      searchOptions: async (draft, query) => {
+        const departments = await dictionaryApi.getDepartments();
+        return departments
+          .filter(
+            (dept) =>
+              (draft.businessUnitFilter === "All" ||
+                dept.businessUnit === draft.businessUnitFilter) &&
+              dept.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+          )
+          .map((dept) => ({ label: dept.name, value: dept.name }));
+      },
+      options: [{ label: "All Departments", value: "All" }],
+      getOptions: () => [{ label: "All Departments", value: "All" }],
+      onChange: setDepartmentFilter,
+    },
+    {
+      id: "positionFilter",
+      label: "Position",
+      value: String(positionFilter),
+      options: [{ label: "All Positions", value: "" }, ...lookupPositions],
+      onChange: (value) => setPositionFilter(value),
+    },
+  ]}
+  dates={[
+    {
+      id: "dateFrom",
+      label: "Created Date Range",
+      from: dateFrom,
+      to: dateTo,
+      onFromChange: (value) => setDateFrom(toApiDate(value)),
+      onToChange: (value) => setDateTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) =>
+        applyDateRange(setDateRange, toApiDate(startDate), toApiDate(endDate)),
+    },
+    {
+      id: "lastUpdatedFrom",
+      label: "Last Updated Range",
+      from: lastUpdatedFrom,
+      to: lastUpdatedTo,
+      onFromChange: (value) => setLastUpdatedFrom(toApiDate(value)),
+      onToChange: (value) => setLastUpdatedTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) =>
+        applyDateRange(setLastUpdatedRange, toApiDate(startDate), toApiDate(endDate)),
+    },
+    {
+      id: "suspendFrom",
+      label: "Suspended Until Range",
+      from: suspendFrom,
+      to: suspendTo,
+      onFromChange: (value) => setSuspendFrom(toApiDate(value)),
+      onToChange: (value) => setSuspendTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) =>
+        applyDateRange(setSuspendRange, toApiDate(startDate), toApiDate(endDate)),
+    },
+    {
+      id: "terminateFrom",
+      label: "Termination Date Range",
+      from: terminateFrom,
+      to: terminateTo,
+      onFromChange: (value) => setTerminateFrom(toApiDate(value)),
+      onToChange: (value) => setTerminateTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) =>
+        applyDateRange(setTerminateRange, toApiDate(startDate), toApiDate(endDate)),
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors">
                   Search
@@ -663,7 +694,7 @@ export const UserManagementView: React.FC = () => {
                 placeholder="Select date range"
               />
 
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -672,8 +703,10 @@ export const UserManagementView: React.FC = () => {
                 >
                   Clear Filters
                 </Button>
+                {customizeDrawer}
               </div>
             </div>
+</ConfiguredDesktopFilters>
           </div>
         </div>
 
@@ -694,23 +727,27 @@ export const UserManagementView: React.FC = () => {
             {currentUsers.length > 0 ? (
               <>
                 <div
-                  ref={scrollerRef}
+                  ref={attachScroller}
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Users table scroll area"
                   className={cn(
                     "flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400",
                     isDragging ? "cursor-grabbing select-none" : "cursor-grab",
                   )}
                   {...dragEvents}
                 >
-                  <TableMarkup.Root className="w-full min-w-max  border-spacing-0 text-left">
+                  <TableMarkup.Root className="user-management-table w-full min-w-max border-spacing-0 text-left">
                     <TableMarkup.Head className="sticky top-0 z-30">
                       <TableMarkup.Row>
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.emptyCell4} />
+                        <TableMarkup.HeaderCell data-user-column="expand" className={TABLE_STYLES.emptyCell4} />
                         {visibleColumns.map((col) => {
                           const isSorted = sortConfig.key === col.id;
                           const canSort = col.id !== "no";
                           return (
                             <TableMarkup.HeaderCell
                               key={col.id}
+                              data-user-column={col.id}
                               onClick={
                                 canSort ? () => handleSort(col.id) : undefined
                               }
@@ -772,6 +809,7 @@ export const UserManagementView: React.FC = () => {
                             className="hover:bg-slate-50/80 transition-colors group"
                           >
                             <TableMarkup.Cell
+                              data-user-column="expand"
                               className="py-3 px-2 text-center whitespace-nowrap"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -791,6 +829,7 @@ export const UserManagementView: React.FC = () => {
                             {visibleColumns.map((col) => (
                               <TableMarkup.Cell
                                 key={col.id}
+                                data-user-column={col.id}
                                 className={cn(
                                   tdClass,
                                   col.id === "no" && "text-center",
@@ -854,24 +893,6 @@ export const UserManagementView: React.FC = () => {
                                     {user.email}
                                   </span>
                                 )}
-                                {col.id === "externalProvisioning" &&
-                                  (() => {
-                                    if (!user.externalProvisioningStatusLabel) {
-                                      return <span className="text-slate-400">—</span>;
-                                    }
-                                    return (
-                                      <Badge
-                                        size="sm"
-                                        color={
-                                          user.externalProvisioningStatusColor as any
-                                        }
-                                        className="gap-1"
-                                        title="Microsoft Entra external-user status"
-                                      >
-                                        {user.externalProvisioningStatusLabel}
-                                      </Badge>
-                                    );
-                                  })()}
                                 {col.id === "phone" && (
                                   <div className="flex items-center gap-2 text-slate-700">
                                     {user.phone}
@@ -978,6 +999,8 @@ export const UserManagementView: React.FC = () => {
                   showItemCount={true}
                 />
               </>
+            ) : isLoading ? (
+              <SkeletonTable rows={10} columns={8} />
             ) : (
               <TableEmptyState
                 title="No Users Found"
@@ -1031,15 +1054,6 @@ export const UserManagementView: React.FC = () => {
         onTerminate={handleTerminate}
         onReinstate={handleReinstate}
         onUnlock={handleUnlock}
-        onInviteExternal={handleInviteExternal}
-        onDisableMicrosoftAccess={handleDisableMicrosoftAccess}
-        onResendExternalInvitation={(user) =>
-          openExternalReasonModal("resend", user)
-        }
-        onRetryExternalProvisioning={(user) =>
-          openExternalReasonModal("retry", user)
-        }
-        onRemoveExternalUser={handleRemoveExternal}
       />
 
       {/* Reset Password Modal */}
@@ -1096,54 +1110,6 @@ export const UserManagementView: React.FC = () => {
         userEmail={unlockModal.userEmail}
         onSuccess={() => refreshUsers()}
       />
-
-      <FormModal
-        isOpen={Boolean(externalReasonModal)}
-        onClose={() => setExternalReasonModal(null)}
-        onConfirm={() => void submitExternalReason()}
-        title={
-          externalReasonModal?.action === "invite"
-            ? "Invite External User"
-            : externalReasonModal?.action === "disable"
-              ? "Disable Microsoft Access"
-              : externalReasonModal?.action === "resend"
-                ? "Resend Invitation"
-                : externalReasonModal?.action === "remove"
-                  ? "Remove External User"
-                  : "Retry Provisioning"
-        }
-        description={
-          externalReasonModal
-            ? `Enter the reason for ${externalReasonModal.action === "invite" ? "inviting" : externalReasonModal.action === "disable" ? "disabling Microsoft access for" : externalReasonModal.action === "resend" ? "resending the invitation to" : externalReasonModal.action === "remove" ? "permanently removing" : "retrying provisioning for"} ${externalReasonModal.user.email}.`
-            : undefined
-        }
-        confirmText={externalReasonModal?.action === "remove" ? "Remove Permanently" : "Confirm"}
-        isLoading={isExternalActionLoading}
-        confirmDisabled={!externalReason.trim()}
-        size="md"
-      >
-        {externalReasonModal?.action === "remove" && (
-          <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-700">
-            This permanently deletes the guest account from Microsoft Entra. The user will lose all Word Online / SharePoint access immediately and must be invited again from scratch to regain it. This action cannot be undone.
-          </div>
-        )}
-        <label
-          htmlFor="external-action-reason"
-          className="block text-sm font-medium text-slate-700"
-        >
-          Reason
-        </label>
-        <textarea
-          id="external-action-reason"
-          value={externalReason}
-          onChange={(event) => setExternalReason(event.target.value)}
-          rows={4}
-          maxLength={500}
-          autoFocus
-          placeholder="Describe the reason..."
-          className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-        />
-      </FormModal>
 
       {isNavigating && <FullPageLoading text="Loading..." />}
 
@@ -1426,11 +1392,6 @@ interface UserActionMenuProps {
   onTerminate: (user: User) => void;
   onReinstate: (user: User) => void;
   onUnlock: (user: User) => void;
-  onInviteExternal: (user: User) => void;
-  onDisableMicrosoftAccess: (user: User) => void;
-  onResendExternalInvitation: (user: User) => void;
-  onRetryExternalProvisioning: (user: User) => void;
-  onRemoveExternalUser: (user: User) => void;
 }
 
 const UserActionMenu: React.FC<UserActionMenuProps> = ({
@@ -1445,11 +1406,6 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
   onTerminate,
   onReinstate,
   onUnlock,
-  onInviteExternal,
-  onDisableMicrosoftAccess,
-  onResendExternalInvitation,
-  onRetryExternalProvisioning,
-  onRemoveExternalUser,
 }) => {
   if (!user) return null;
 
@@ -1461,10 +1417,6 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
     capabilities?.actions?.[action]?.reason ||
     "Action is not currently allowed";
   const mutationCapabilityLoaded = Boolean(capabilities);
-  // Whether each Microsoft-identity action is currently valid (not just permitted) is decided by
-  // the server — `can(...)` already reflects both permission AND the user's current provisioning
-  // status (see UserManagementService.getUserCapabilities). The FE only renders what it's told;
-  // it does not re-derive eligibility from the raw status string.
 
   return (
     <PortalDropdownMenu
@@ -1586,58 +1538,6 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
           >
             <LockOpen className="h-4 w-4 flex-shrink-0" />
             <span className="font-medium text-slate-500">Unlock Account</span>
-          </button>
-        )}
-        {can("inviteExternal") && (
-          <button
-            onClick={() => {
-              onClose();
-              onInviteExternal(user);
-            }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-          >
-            <IconBrandTelegram className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium text-slate-500">Invite External User</span>
-          </button>
-        )}
-        {can("resendExternalInvitation") && (
-          <button
-            onClick={() => {
-              onClose();
-              onResendExternalInvitation(user);
-            }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-          >
-            <IconMailUp className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium text-slate-500">Resend Invitation</span>
-          </button>
-        )}
-        {can("disableMicrosoftAccess") && (
-          <button
-            onClick={() => onDisableMicrosoftAccess(user)}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-          >
-            <IconBan className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium text-slate-500">Disable Microsoft Access</span>
-          </button>
-        )}
-        {can("retryExternalProvisioning") && (
-          <button
-            onClick={() => onRetryExternalProvisioning(user)}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-          >
-            <IconRestore  className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium text-slate-500">Retry Provisioning</span>
-          </button>
-        )}
-        {can("removeExternalUser") && (
-          <button
-            onClick={() => onRemoveExternalUser(user)}
-            title="Permanently deletes the guest account from Microsoft Entra. This cannot be undone."
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors"
-          >
-            <SquareX className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">Remove External User</span>
           </button>
         )}
       </div>

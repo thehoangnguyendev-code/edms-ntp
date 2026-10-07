@@ -90,6 +90,48 @@ public class ControlledCopyBatchDiscrepancyScannerIntegrationTest {
         assertTrue(stillOpen.isEmpty(), "Discrepancy must clear once the batch and its copies agree again");
     }
 
+    @Autowired
+    private com.eqms.service.ControlledCopyBatchStatusService batchStatusService;
+
+    /**
+     * Found on the review screen: two discrepancies stayed OPEN for weeks although their batches had since been corrected (the
+     * normal flow moved them to a terminal status). The scan only visits active batches, so it never saw them again and never
+     * cleared the alert. A flagged batch must be re-checked even after it became terminal.
+     */
+    @Test
+    void scan_clearsAnOpenDiscrepancyOfABatchThatBecameTerminalAndNowAgreesWithItsCopies() {
+        ControlledCopyDistributionBatch batch = batchRepository.findAll().stream()
+                .filter(candidate -> List.of("OBSOLETED", "CLOSED_CANCELLED").contains(normalize(candidate.getStatusCode())))
+                .filter(candidate -> {
+                    var copies = controlledCopyRepository.findAllByDistributionBatch_IdOrderByCopyNumberAsc(candidate.getId());
+                    return !copies.isEmpty() && normalize(candidate.getStatusCode()).equals(batchStatusService.peekExpectedStatus(candidate, copies));
+                })
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Seed data must contain a terminal batch that agrees with its copies"));
+        discrepancyRepository.findByBatch_IdAndStatus(batch.getId(), ControlledCopyBatchStatusDiscrepancy.STATUS_OPEN)
+                .ifPresent(existing -> {
+                    existing.setStatus(ControlledCopyBatchStatusDiscrepancy.STATUS_RESOLVED);
+                    discrepancyRepository.saveAndFlush(existing);
+                });
+        // The alert as it was raised back then, while the batch was still wrong.
+        ControlledCopyBatchStatusDiscrepancy stale = new ControlledCopyBatchStatusDiscrepancy();
+        stale.setBatch(batch);
+        stale.setBatchNumber(batch.getBatchNumber());
+        stale.setExpectedStatusCode(normalize(batch.getStatusCode()));
+        stale.setActualStatusCode("DISTRIBUTED");
+        stale.setStatus(ControlledCopyBatchStatusDiscrepancy.STATUS_OPEN);
+        stale.setDetectedAt(java.time.Instant.now().minusSeconds(86400));
+        stale.setLastCheckedAt(java.time.Instant.now().minusSeconds(86400));
+        discrepancyRepository.saveAndFlush(stale);
+
+        scanner.scanForDiscrepancies();
+
+        assertTrue(discrepancyRepository.findByBatch_IdAndStatus(batch.getId(), ControlledCopyBatchStatusDiscrepancy.STATUS_OPEN).isEmpty(),
+                "An alert for a batch that is terminal and consistent again must be cleared");
+        assertEquals(ControlledCopyBatchStatusDiscrepancy.STATUS_RESOLVED,
+                discrepancyRepository.findById(stale.getId()).orElseThrow().getStatus());
+    }
+
     private String normalize(String value) {
         return value == null ? null : value.trim().toUpperCase().replaceAll("[^A-Z0-9]+", "_").replaceAll("^_|_$", "");
     }

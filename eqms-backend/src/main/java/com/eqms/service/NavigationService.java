@@ -99,6 +99,11 @@ public class NavigationService {
                 }
             }
 
+            // Records: the scan of every returned paper copy. The server shows each user only the records of copies they may see.
+            if (hasPermission(normalizedPermissions, "documents.form.view_executed_records")) {
+                docChildren.add(new NavigationItemResponse("records", "Records", null, "/documents/records", false, null));
+            }
+
             if (!docChildren.isEmpty()) {
                 menu.add(new NavigationItemResponse("doc-control", "Document Control", "IconFileDescription", null, false, docChildren));
             }

@@ -24,6 +24,7 @@ const RevisionTrainingView = lazy(() => import('@/features/documents/document-re
 const PublishingWorkspaceView = lazy(() => import('@/features/documents/publishing/PublishingWorkspaceView').then(m => ({ default: m.PublishingWorkspaceView })));
 const ControlledCopiesView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.ControlledCopiesView })));
 const ControlledCopyBatchStatusDiscrepanciesView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.ControlledCopyBatchStatusDiscrepanciesView })));
+const ControlledCopyRecallScanView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.ControlledCopyRecallScanView })));
 const ControlledCopyDetailView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.ControlledCopyDetailView })));
 const DestroyControlledCopyView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.DestroyControlledCopyView })));
 const DcoBatchZipDownloadView = lazy(() => import('@/features/documents/controlled-copies').then(m => ({ default: m.DcoBatchZipDownloadView })));
@@ -211,6 +212,7 @@ export function documentRoutes(navigate: NavigateFunction) {
         <Route path="ready" element={<Suspense fallback={<LoadingFallback />}><ControlledCopiesView viewType="ready" /></Suspense>} />
         <Route path="distributed" element={<Suspense fallback={<LoadingFallback />}><ControlledCopiesView viewType="distributed" /></Suspense>} />
         <Route path="discrepancies" element={<Suspense fallback={<LoadingFallback />}><ControlledCopyBatchStatusDiscrepanciesView /></Suspense>} />
+        <Route path="recall-scan" element={<Suspense fallback={<LoadingFallback />}><ControlledCopyRecallScanView /></Suspense>} />
         {/* Must come before ":id" -- otherwise "batches" is captured there instead. */}
         <Route path="batches/:batchId/dco-zip" element={<Suspense fallback={<LoadingFallback />}><DcoBatchZipDownloadView /></Suspense>} />
         <Route path=":id" element={<ControlledCopyDetailViewWrapper />} />
@@ -229,7 +231,7 @@ export function documentRoutes(navigate: NavigateFunction) {
         <Route path=":id" element={<Suspense fallback={<LoadingFallback />}><UncontrolledCopyDetailView /></Suspense>} />
       </Route>
 
-      {/* Records -- global list of Executed Records (eForm submissions + scanned paper copies) across every Form */}
+      {/* Records -- the scan of every returned paper copy (and older executed forms), each user seeing only the copies they may see */}
       <Route path="records" element={<Suspense fallback={<LoadingFallback />}><ExecutedRecordsView /></Suspense>} />
     </Route>
   );

@@ -51,7 +51,7 @@ public class ControlledCopyPolicyController {
     }
 
     /**
-     * A picture of a Publishing Template page with the DRAFT stamp/watermark on it (nothing is saved), drawn by the server, so the
+     * A picture of a sample paper page with the DRAFT stamp/watermark on it (nothing is saved), drawn by the server, so the
      * administrator sees how issued / withdrawn / cancelled copies will look before saving. Also reports overlapping stamps.
      */
     @org.springframework.web.bind.annotation.PostMapping("/marking-preview")

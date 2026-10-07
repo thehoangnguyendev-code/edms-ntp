@@ -20,6 +20,7 @@ import { FilterAccordionItem, FilterDrawer } from "@/components/ui/filter/Filter
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
 import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
@@ -110,6 +111,22 @@ export const DocumentComponentsTab: React.FC = () => {
       isActive ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
     );
 
+  type Row = (typeof items)[number];
+  const docComponentsColumns: DataTableColumn<Row>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    { id: "name", header: "Name", label: "Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => (<div className="flex items-center gap-1.5"><span className="font-medium text-slate-900">{item.name}</span>{item.systemDefined && (<span title="System-defined — Table/Field mapping is fixed by the backend, cannot be edited"><Lock className="h-3 w-3 text-slate-400" /></span>)}</div>) },
+    { id: "value", header: "Value (Token)", label: "Value (Token)", cell: (item) => <code className="text-2xs sm:text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{"{{" + item.value + "}}"}</code> },
+    { id: "shortDescription", header: "Short Description", label: "Short Description", cellClassName: "text-slate-600 max-w-xs truncate", cell: (item) => item.shortDescription || "-" },
+    { id: "sourceTable", header: "Source", label: "Source", cell: (item) => (<Badge color={item.sourceTable === "FREE_TEXT" ? "sky" : "emerald"} size="sm">{item.sourceTable === "FREE_TEXT" ? "Free Text" : item.sourceTable}</Badge>) },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
+    { id: "displayOrder", header: "Order", label: "Order", cellClassName: "text-slate-600", cell: (item) => item.displayOrder },
+  ];
+  const docComponentsAction: DataTableAction<Row> = {
+    header: "Action",
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+  };
+  const { layout: docComponentsLayout, control: docComponentsControl } = useCustomColumnLayout("docComponents", docComponentsColumns, docComponentsAction);
+
   return (
     <div className="flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       <div className="bg-white w-full">
@@ -163,123 +180,32 @@ export const DocumentComponentsTab: React.FC = () => {
           </div>
         </div>
 
-        <div className="hidden md:flex justify-start mt-3">
+        <div className="hidden md:flex justify-start mt-3 gap-2">
           <Button size="sm" variant="outline" onClick={clearFilters} disabled={!hasActiveFilters} className="gap-2">
             Clear Filters
           </Button>
+            {docComponentsControl}
         </div>
       </div>
 
       <div className="flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col">
-        <div className="flex-1 overflow-x-auto">
-          <TableMarkup.Root className="w-full">
-            <TableMarkup.Head className="sticky top-0 z-30">
-              <TableMarkup.Row>
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>No.</TableMarkup.HeaderCell>
-                {[
-                  { label: "Name", id: "name" },
-                  { label: "Value (Token)", id: "value" },
-                  { label: "Short Description", id: "shortDescription" },
-                  { label: "Source", id: "sourceTable" },
-                  { label: "Status", id: "isActive" },
-                  { label: "Order", id: "displayOrder" },
-                ].map((col) => {
-                  const isSorted = sortConfig.key === col.id;
-                  return (
-                    <TableMarkup.HeaderCell
-                      key={col.id}
-                      onClick={() => handleSort(col.id)}
-                      className={TABLE_STYLES.headerCell38}
-                    >
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="truncate">{col.label}</span>
-                        <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                          <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600 font-bold" : "")} />
-                          <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600 font-bold" : "")} />
-                        </div>
-                      </div>
-                    </TableMarkup.HeaderCell>
-                  );
-                })}
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                  Action
-                </TableMarkup.HeaderCell>
-              </TableMarkup.Row>
-            </TableMarkup.Head>
-            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-              {isLoading ? (
-                <TableMarkup.Row><TableMarkup.Cell colSpan={8} className="py-14 text-center text-slate-500">Loading document components...</TableMarkup.Cell></TableMarkup.Row>
-              ) : items.length > 0 ? (
-                items.map((item, index) => (
-                  <TableMarkup.Row
-                    key={item.id}
-                    onClick={() => goToEdit(item.id)}
-                    className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                  >
-                    <TableMarkup.Cell className={TABLE_STYLES.cell30}>
-                      {(currentPage - 1) * itemsPerPage + index + 1}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-slate-900">{item.name}</span>
-                        {item.systemDefined && (
-                          <span title="System-defined — Table/Field mapping is fixed by the backend, cannot be edited">
-                            <Lock className="h-3 w-3 text-slate-400" />
-                          </span>
-                        )}
-                      </div>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <code className="text-2xs sm:text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{"{{" + item.value + "}}"}</code>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-xs truncate">{item.shortDescription || "-"}</TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge color={item.sourceTable === "FREE_TEXT" ? "sky" : "emerald"} size="sm">
-                        {item.sourceTable === "FREE_TEXT" ? "Free Text" : item.sourceTable}
-                      </Badge>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      {item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{item.displayOrder}</TableMarkup.Cell>
-                    <TableMarkup.Cell
-                      onClick={(e) => e.stopPropagation()}
-                      className={TABLE_STYLES.emptyCell3}
-                    >
-                      {canManage && (
-                        <button
-                          ref={getButtonRef(item.id)}
-                          onClick={(e) => handleDropdownToggle(item.id, e)}
-                          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                          aria-label="More actions"
-                        >
-                          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                        </button>
-                      )}
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                ))
-              ) : (
-                <TableMarkup.Row>
-                  <TableMarkup.Cell colSpan={8} className="p-0">
-                    <TableEmptyState title="No items found" description="Try adjusting your search" />
-                  </TableMarkup.Cell>
-                </TableMarkup.Row>
-              )}
-            </TableMarkup.Body>
-          </TableMarkup.Root>
-        </div>
-
-        {!isLoading && totalItems > 0 && (
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={setItemsPerPage}
-          />
-        )}
+        <DataTable
+          rows={items}
+          getRowKey={(item) => item.id}
+          columns={docComponentsLayout.columns}
+          columnLayout={docComponentsLayout}
+          action={docComponentsAction}
+          onRowClick={(item) => goToEdit(item.id)}
+          emptyState={
+            <TableEmptyState
+  title="No items found" description="Try adjusting your search" />
+          }
+          pagination={
+            totalItems > 0 ? (
+              <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+            ) : undefined
+          }
+        />
       </div>
 
       <PortalDropdownMenu isOpen={!!openDropdownId} onClose={closeDropdown} position={dropdownPosition}>

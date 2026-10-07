@@ -8,7 +8,6 @@ import com.eqms.service.TimeLimitedUserGrantService;
 import com.eqms.service.SystemConfigurationService;
 import com.eqms.service.FileStorageService;
 import com.eqms.service.EmailService;
-import com.eqms.service.ExternalIdentityProvisioningService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -39,7 +38,6 @@ public class SettingsUserController {
     private final PermissionEvaluationService permissionEvaluationService;
     private final FileStorageService fileStorageService;
     private final EmailService emailService;
-    private final ExternalIdentityProvisioningService externalIdentityProvisioningService;
 
     public SettingsUserController(
             UserManagementService service,
@@ -48,8 +46,7 @@ public class SettingsUserController {
             CurrentUserService currentUserService,
             PermissionEvaluationService permissionEvaluationService,
             FileStorageService fileStorageService,
-            EmailService emailService,
-            ExternalIdentityProvisioningService externalIdentityProvisioningService
+            EmailService emailService
     ) {
         this.service = service;
         this.timeLimitedUserGrantService = timeLimitedUserGrantService;
@@ -58,7 +55,6 @@ public class SettingsUserController {
         this.permissionEvaluationService = permissionEvaluationService;
         this.fileStorageService = fileStorageService;
         this.emailService = emailService;
-        this.externalIdentityProvisioningService = externalIdentityProvisioningService;
     }
 
     @GetMapping("/users")
@@ -348,36 +344,6 @@ public class SettingsUserController {
     @GetMapping("/system/documents")
     public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getDocumentsOperationalConfig() {
         return ResponseEntity.ok(systemConfigurationService.requireConfiguration().getDocumentsConfig());
-    }
-
-    @PostMapping("/users/{id}/external-invitation")
-    public ResponseEntity<ExternalIdentityProvisioningResponse> inviteExternalUser(@PathVariable UUID id, @Valid @RequestBody ExternalIdentityActionRequest request) {
-        return ResponseEntity.accepted().body(externalIdentityProvisioningService.invite(id, request.reason(), false));
-    }
-
-    @PostMapping("/users/{id}/external-invitation/resend")
-    public ResponseEntity<ExternalIdentityProvisioningResponse> resendExternalInvitation(@PathVariable UUID id, @Valid @RequestBody ExternalIdentityActionRequest request) {
-        return ResponseEntity.accepted().body(externalIdentityProvisioningService.invite(id, request.reason(), true));
-    }
-
-    @PostMapping("/users/{id}/external-invitation/retry")
-    public ResponseEntity<ExternalIdentityProvisioningResponse> retryExternalInvitation(@PathVariable UUID id, @Valid @RequestBody ExternalIdentityActionRequest request) {
-        return ResponseEntity.accepted().body(externalIdentityProvisioningService.retry(id, request.reason()));
-    }
-
-    @GetMapping("/users/{id}/external-provisioning")
-    public ResponseEntity<ExternalIdentityProvisioningResponse> externalProvisioning(@PathVariable UUID id) {
-        return ResponseEntity.ok(externalIdentityProvisioningService.get(id));
-    }
-
-    @PostMapping("/users/{id}/microsoft-access/disable")
-    public ResponseEntity<ExternalIdentityProvisioningResponse> disableMicrosoftAccess(@PathVariable UUID id, @Valid @RequestBody ExternalIdentityActionRequest request) {
-        return ResponseEntity.accepted().body(externalIdentityProvisioningService.disable(id, request));
-    }
-
-    @PostMapping("/users/{id}/external-identity/remove")
-    public ResponseEntity<ExternalIdentityProvisioningResponse> removeExternalIdentity(@PathVariable UUID id, @Valid @RequestBody ExternalIdentityActionRequest request) {
-        return ResponseEntity.accepted().body(externalIdentityProvisioningService.remove(id, request));
     }
 
     @GetMapping("/system/storage-path-preview")

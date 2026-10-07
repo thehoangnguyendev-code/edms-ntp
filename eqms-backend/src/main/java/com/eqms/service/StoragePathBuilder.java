@@ -54,18 +54,6 @@ public class StoragePathBuilder {
         return buildPath(revisionV2Root(storageConfig, documentNumber, revisionId), "published", "official.pdf");
     }
 
-    public String sharePointRecordSourceV2(String libraryFolder, String documentNumber, UUID revisionId, String fileName) {
-        return buildPath(
-                sanitizeSegment(libraryFolder),
-                "records",
-                "documents",
-                sanitizeSegment(documentNumber),
-                "revisions",
-                safeIdentifier(revisionId),
-                "source",
-                "source" + extensionOf(fileName)
-        );
-    }
 
     public String revisionReviewPdf(String documentNumber, String revisionNumber) {
         return revisionReviewPdf(null, documentNumber, revisionNumber);

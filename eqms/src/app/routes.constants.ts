@@ -41,8 +41,6 @@ export const ROUTES = {
     // not the Self-Service Knowledge page.
     KNOWLEDGE_EXPLORER: '/documents/knowledge/explorer',
     KNOWLEDGE_PREVIEW: (id: string) => `/documents/knowledge/preview/${id}`,
-    // New-tab live OnlyOffice Form Creator session -- mirrors the onlyoffice-editor route below.
-    DESIGN_EFORM: (formDocumentId: string) => `/documents/forms/${formDocumentId}/design-eform-fields`,
     SNAPSHOT_HISTORY_PREVIEW: (revisionId: string, historyId: string) =>
       `/documents/revisions/${revisionId}/snapshot-history/${historyId}/preview`,
 
@@ -75,6 +73,7 @@ export const ROUTES = {
       DISTRIBUTED: '/documents/controlled-copies/distributed',
       DETAIL: (id: string) => `/documents/controlled-copies/${id}`,
       DISCREPANCIES: '/documents/controlled-copies/discrepancies',
+      RECALL_SCAN: '/documents/controlled-copies/recall-scan',
       DESTROY: (id: string) => `/documents/controlled-copies/${id}/destroy`,
       REQUEST: '/documents/controlled-copy/request',
       /** The "download" link inside the DCO's batch-ZIP email; requires login (the "Receive Controlled
@@ -367,4 +366,9 @@ export function isTransactionalRoute(pathname: string): boolean {
   }
 
   return false;
+}
+
+/** The Dashboard itself (a trailing slash is the same page). Its top bar shows the system header title instead of breadcrumbs. */
+export function isDashboardPath(pathname: string): boolean {
+  return pathname.replace(/\/+$/, '') === ROUTES.DASHBOARD;
 }

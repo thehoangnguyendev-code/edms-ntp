@@ -11,6 +11,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/reports")
 public class ReportPlatformController {
+    @org.springframework.beans.factory.annotation.Autowired private com.eqms.service.report.ReportScheduleAdministrationService scheduleAdministration;
     private final ReportPlatformService reports; private final CurrentUserService currentUser;
     public ReportPlatformController(ReportPlatformService reports, CurrentUserService currentUser) { this.reports=reports; this.currentUser=currentUser; }
     @GetMapping("/catalog") public ResponseEntity<?> catalog() { return ResponseEntity.ok(reports.catalog(currentUser.requireCurrentUser())); }
@@ -28,6 +29,9 @@ public class ReportPlatformController {
         return ResponseEntity.noContent().build();
     }
     @GetMapping("/schedules") public ResponseEntity<?> schedules() { return ResponseEntity.ok(reports.schedules(currentUser.requireCurrentUser())); }
+    @GetMapping("/schedules/search") public ResponseEntity<?> scheduleSearch(@RequestParam(defaultValue="") String search,@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="name") String sortBy,@RequestParam(defaultValue="asc") String direction){return ResponseEntity.ok(scheduleAdministration.list(currentUser.requireCurrentUser(),search,status,page,sortBy,direction));}
+    @GetMapping("/schedules/{id}") public ResponseEntity<?> scheduleDetail(@PathVariable UUID id) throws Exception {return ResponseEntity.ok(scheduleAdministration.detail(currentUser.requireCurrentUser(),id));}
+    @PutMapping("/schedules/{id}") public ResponseEntity<?> scheduleUpdate(@PathVariable UUID id,@RequestBody com.eqms.service.report.ReportScheduleAdministrationService.Update request) throws Exception {scheduleAdministration.update(currentUser.requireCurrentUser(),id,request);return ResponseEntity.noContent().build();}
     @GetMapping("/schedules/recipients") public ResponseEntity<?> recipientCandidates(@RequestParam(required=false) String search) { return ResponseEntity.ok(reports.recipientCandidates(currentUser.requireCurrentUser(), search)); }
     @PostMapping("/schedules") public ResponseEntity<?> createSchedule(@RequestBody ReportPlatformService.ScheduleRequest request) { return ResponseEntity.status(201).body(Map.of("id", reports.createSchedule(currentUser.requireCurrentUser(), request))); }
     @PostMapping("/schedules/{id}/pause") public ResponseEntity<Void> pauseSchedule(@PathVariable UUID id) { reports.pauseSchedule(currentUser.requireCurrentUser(), id); return ResponseEntity.noContent().build(); }

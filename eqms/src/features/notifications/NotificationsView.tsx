@@ -901,7 +901,7 @@ export const NotificationsView: React.FC = () => {
           variant="underline"
         />
         {/* Filter Section */}
-        <div className="px-4 pt-4 md:p-5 flex flex-col">
+        <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
               <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>

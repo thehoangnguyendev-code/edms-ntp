@@ -63,10 +63,6 @@ public record UserManagementResponse(
         String suspendedUntil,
         String terminationReason,
         String terminationDate,
-        String externalProvisioningStatus,
-        String externalProvisioningEmail,
-        String externalProvisioningStatusLabel,
-        String externalProvisioningStatusColor,
         /** DASHBOARD / NOTIFICATIONS / KNOWLEDGE -- landing page immediately after login. */
         String homePage,
         /** Admin-mandated per-user MFA requirement (see UserAccount#mfaRequiredByAdmin). */

@@ -30,9 +30,9 @@ import java.util.UUID;
  *       (permission-only, no relation requirement) so the shadow evaluator can compare against it
  *       faithfully -- this is NOT a new authorization rule, it is the existing one made visible to
  *       the engine.</li>
- *   <li>{@code REOPEN} -- no implementation exists anywhere in the codebase (no controller
- *       endpoint). {@link #resolvePolicy} returns empty for it, which is the correct "not
- *       configured" answer, not a bug in this adapter.</li>
+ *   <li>{@code REOPEN} -- reopens a Closed - Cancelled or Obsoleted Document ({@code POST
+ *       /documents/{id}/reopen}); read from the same {@code lifecycle_state_policies} rows as
+ *       CANCEL and OBSOLETE (one row per closed state, seeded by V547).</li>
  * </ul>
  */
 @Component
@@ -76,8 +76,8 @@ public class DocumentResourceAdapter implements ResourceAuthorizationAdapter {
         if ("UPDATE_METADATA".equals(actionCode)) {
             return Optional.of(new ResolvedPolicy(UPDATE_METADATA_PERMISSION, null, List.of(), "ANY"));
         }
-        if (!"CANCEL".equals(actionCode) && !"OBSOLETE".equals(actionCode)) {
-            // Includes REOPEN: no real implementation exists, so "not configured" is correct.
+        if (!"CANCEL".equals(actionCode) && !"OBSOLETE".equals(actionCode) && !"REOPEN".equals(actionCode)) {
+            // Any other action is not a Document Master lifecycle action: "not configured" is the correct answer.
             return Optional.empty();
         }
         return lifecycleStatePolicyRepository

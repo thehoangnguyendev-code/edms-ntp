@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
 import { Badge, type BadgeColor } from "@/components/ui/badge";
 import { useNavigateWithLoading } from "@/hooks";
 import { ROUTES } from "@/app/routes.constants";
@@ -11,6 +12,56 @@ import {
 } from "@/features/documents/shared/detailSnapshotHelpers";
 import { getStatusBadgeColor } from "@/utils/status";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+
+// What the expanded row shows is fetched on demand. To make the row open with its content already in it, the chevron asks for it
+// as soon as the pointer reaches it (see preloadExpandedDocumentDetails), and what was fetched is remembered for a short while.
+const DETAIL_TTL_MS = 10_000;
+const DETAIL_CACHE_MAX_ENTRIES = 48;
+type Remembered<T> = { value: T; at: number };
+const versionsCache = new Map<string, Remembered<any[]>>();
+const parentCache = new Map<string, Remembered<any | null>>();
+const inFlight = new Map<string, Promise<any>>();
+
+const remember = <T,>(cache: Map<string, Remembered<T>>, key: string, value: T) => {
+  cache.delete(key);
+  cache.set(key, { value, at: Date.now() });
+  while (cache.size > DETAIL_CACHE_MAX_ENTRIES) {
+    const oldest = cache.keys().next().value;
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
+};
+
+const dedupe = <T,>(key: string, start: () => Promise<T>): Promise<T> => {
+  const existing = inFlight.get(key);
+  if (existing) return existing as Promise<T>;
+  const promise = start().finally(() => inFlight.delete(key));
+  inFlight.set(key, promise);
+  return promise;
+};
+
+const loadVersions = (documentId: string): Promise<any[]> =>
+  dedupe(`versions:${documentId}`, async () => {
+    const versions = ((await documentApi.getDocumentVersions(documentId)) as any[]) || [];
+    remember(versionsCache, documentId, versions);
+    return versions;
+  });
+
+const loadParentDocument = (revisionId: string): Promise<any | null> =>
+  dedupe(`parent:${revisionId}`, async () => {
+    const detail = await documentApi.getRevisionById(revisionId);
+    const parent = detail.originalDocument || null;
+    remember(parentCache, revisionId, parent);
+    return parent;
+  });
+
+/** Starts fetching what a row's expansion will show, so that it is there when the row opens. Safe to call repeatedly and on hover. */
+export const preloadExpandedDocumentDetails = ({ documentId, revisionId }: { documentId?: string; revisionId?: string }) => {
+  const cached = documentId ? versionsCache.get(documentId) : revisionId ? parentCache.get(revisionId) : undefined;
+  if (cached && Date.now() - cached.at < DETAIL_TTL_MS) return;
+  const request = documentId ? loadVersions(documentId) : revisionId ? loadParentDocument(revisionId) : null;
+  request?.catch(() => undefined); // the row itself reports a failure when it opens
+};
 
 const getBadgeColor = (statusCode?: string, statusLabel?: string): BadgeColor =>
   getStatusBadgeColor(statusLabel, statusCode) ?? "slate";
@@ -82,51 +133,53 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
   revisionId,
 }) => {
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
-  const shouldReduceMotion = useReducedMotion();
-  const transitionConfig = useMemo(() => shouldReduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 90, damping: 16 }, [shouldReduceMotion]);
+  const transitionConfig = useExpandTransition();
 
-  const [fetchedRevisions, setFetchedRevisions] = useState<any[] | null>(null);
-  const [fetchedParentDocument, setFetchedParentDocument] = useState<any | null>(null);
+  const [fetchedRevisions, setFetchedRevisions] = useState<any[] | null>(() =>
+    documentId ? (versionsCache.get(documentId)?.value ?? null) : null,
+  );
+  const [fetchedParentDocument, setFetchedParentDocument] = useState<any | null>(() =>
+    !documentId && revisionId ? (parentCache.get(revisionId)?.value ?? null) : null,
+  );
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
+  // Shown at once from what the chevron's hover/press already fetched (or the last visit), then replaced by a fresh copy when the
+  // remembered one is older than DETAIL_TTL_MS. The spinner appears only when there is nothing at all to show.
   useEffect(() => {
     if (!isExpanded || !hasDocs) return;
-
     let isMounted = true;
-    const loadDetails = async () => {
-      if (documentId && fetchedRevisions === null) {
-        setIsLoadingDetails(true);
-        try {
-          const res = await documentApi.getDocumentVersions(documentId);
-          if (isMounted) {
-            setFetchedRevisions((res as any[]) || []);
-          }
-        } catch (error) {
-          console.error("Failed to load revisions for document", error);
-        } finally {
-          if (isMounted) setIsLoadingDetails(false);
-        }
-      } else if (revisionId && fetchedParentDocument === null) {
-        setIsLoadingDetails(true);
-        try {
-          const detail = await documentApi.getRevisionById(revisionId);
-          if (isMounted) {
-            setFetchedParentDocument(detail.originalDocument || null);
-          }
-        } catch (error) {
-          console.error("Failed to load parent document for revision", error);
-        } finally {
-          if (isMounted) setIsLoadingDetails(false);
-        }
-      }
+    const finish = () => {
+      if (isMounted) setIsLoadingDetails(false);
     };
 
-    void loadDetails();
+    if (documentId) {
+      const cached = versionsCache.get(documentId);
+      if (cached) setFetchedRevisions(cached.value);
+      if (cached && Date.now() - cached.at < DETAIL_TTL_MS) return;
+      if (!cached) setIsLoadingDetails(true);
+      loadVersions(documentId)
+        .then((versions) => {
+          if (isMounted) setFetchedRevisions(versions);
+        })
+        .catch((error) => console.error("Failed to load revisions for document", error))
+        .finally(finish);
+    } else if (revisionId) {
+      const cached = parentCache.get(revisionId);
+      if (cached) setFetchedParentDocument(cached.value);
+      if (cached && Date.now() - cached.at < DETAIL_TTL_MS) return;
+      if (!cached) setIsLoadingDetails(true);
+      loadParentDocument(revisionId)
+        .then((parent) => {
+          if (isMounted) setFetchedParentDocument(parent);
+        })
+        .catch((error) => console.error("Failed to load parent document for revision", error))
+        .finally(finish);
+    }
 
     return () => {
       isMounted = false;
     };
-  }, [isExpanded, hasDocs, documentId, revisionId, fetchedRevisions, fetchedParentDocument]);
+  }, [isExpanded, hasDocs, documentId, revisionId]);
 
   const normalizedRevision = useMemo(() => {
     const mapRelation = (r: ExpandedDocumentRelation) => ({
@@ -171,7 +224,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
   };
 
   return (
-    <AnimatePresence initial={false}>
+    <>
       {isExpanded && hasDocs && (
         <motion.tr
           key={`expanded-${revision?.id || documentId || revisionId}`}
@@ -183,9 +236,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
         >
           <TableMarkup.Cell colSpan={visibleColumnsLength - 1} className="p-0 border-b border-slate-200">
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+              {...EXPAND_CONTENT_MOTION}
               transition={transitionConfig}
               className="overflow-hidden"
             >
@@ -461,6 +512,6 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
         </motion.tr>
       )}
       {isNavigating && <FullPageLoading text="Loading document details..." />}
-    </AnimatePresence>
+    </>
   );
 };

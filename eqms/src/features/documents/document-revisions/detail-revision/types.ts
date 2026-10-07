@@ -134,7 +134,7 @@ export interface RevisionDetailResponse {
   description?: string | null;
   knowledgeBase?: string | null;
   subType?: string | null;
-  reviewRequirement?: "NONE" | "REQUIRED" | null;
+  reviewRequirement?: "NONE" | "REQUIRED" | "OPTIONAL" | null;
   periodicReviewCycle?: number | null;
   periodicReviewNotification?: number | null;
   language?: string | null;

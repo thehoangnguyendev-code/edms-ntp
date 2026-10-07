@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, MoreVertical, Shield, X, Check, ChevronUp, ChevronDown } from "lucide-react";
@@ -12,6 +13,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown, useTableDragScroll, useDebounce } from "@/hooks";
@@ -200,6 +202,97 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
     </Button>
   ) : undefined;
 
+  type StateRow = (typeof policies)[number];
+  const stateColumns: DataTableColumn<StateRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-10", cell: (_p, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
+    {
+      id: "capability",
+      header: "Capability",
+      label: "Capability",
+      sort: { direction: sortKey === "capability" ? sortDir : undefined, onSort: () => handleSort("capability") },
+      cell: (p) => (
+        <>
+          <span className="font-medium text-slate-800">{p.capabilityCode.replace(/_/g, " ")}</span>
+          {!p.active && <Badge color="slate" size="xs" className="ml-2">Inactive</Badge>}
+        </>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      label: "Status",
+      sort: { direction: sortKey === "status" ? sortDir : undefined, onSort: () => handleSort("status") },
+      cell: (p) => (p.statusCode ? (p.statusLabel ?? p.statusCode) : <span className="text-slate-400 italic">Any status</span>),
+    },
+    {
+      id: "documentType",
+      header: "Document Type",
+      label: "Document Type",
+      cell: (p) => p.documentTypeName ?? <span className="text-slate-400 italic">All types</span>,
+    },
+    {
+      id: "actorScope",
+      header: "Actor Scope",
+      label: "Actor Scope",
+      sort: { direction: sortKey === "actorScope" ? sortDir : undefined, onSort: () => handleSort("actorScope") },
+      cell: (p) => <Badge color={p.actorScope === "ANY" ? "blue" : "emerald"} size="sm">{p.actorScope}</Badge>,
+    },
+    {
+      id: "requiredPermission",
+      header: "Required Permission",
+      label: "Required Permission",
+      cell: (p) =>
+        p.requiredPermissionCode ? <span className="text-slate-600">{p.requiredPermissionCode}</span> : <span className="text-slate-400 italic">None</span>,
+    },
+    { id: "priority", header: "Priority", label: "Priority", sort: { direction: sortKey === "priority" ? sortDir : undefined, onSort: () => handleSort("priority") }, cell: (p) => p.priority },
+    {
+      id: "type",
+      header: "Type",
+      label: "Type",
+      sort: { direction: sortKey === "type" ? sortDir : undefined, onSort: () => handleSort("type") },
+      cell: (p) => <Badge color={p.system ? "blue" : "slate"} size="sm">{p.system ? "System" : "Custom"}</Badge>,
+    },
+    { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (p) => formatDateTime(p.createdAt) },
+    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (p) => formatDateTime(p.updatedAt) },
+  ];
+  const stateAction: DataTableAction<StateRow> = {
+    header: "Action",
+    cell: (p) => (
+      <>
+        <button
+          ref={getRef(p.id)}
+          onClick={(e) => toggle(p.id, e)}
+          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
+          aria-label="More actions"
+        >
+          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
+        </button>
+        <PortalDropdownMenu isOpen={openId === p.id} onClose={close} position={position}>
+          <div className="py-1">
+            {canManage && (
+              <>
+                <DropdownMenuItem
+                  icon={<IconPencilMinus className="h-4 w-4" />}
+                  onClick={() => { navigate(`${BASE_PATH}/${p.id}/edit`); close(); }}
+                >
+                  Edit Capability
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  icon={<IconTrash className="h-4 w-4" />}
+                  onClick={() => { setDeleteTarget(p); close(); }}
+                  disabled={p.system}
+                >
+                  Delete Capability
+                </DropdownMenuItem>
+              </>
+            )}
+          </div>
+        </PortalDropdownMenu>
+      </>
+    ),
+  };
+  const { layout: stateLayout, control: stateControl } = useCustomColumnLayout("workflow-authorization.state-capabilities", stateColumns, stateAction);
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {!embedded && (
@@ -242,7 +335,94 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
           </div>
 
           {/* Desktop filters */}
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{stateControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={search}
+      onChange={(e) => {
+        setSearch(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search state policies…"}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "capabilityFilter",
+      label: "Capability",
+      value: String(capabilityFilter),
+      options: capabilityOptions,
+      onChange: (v) => {
+        setCapabilityFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "scopeFilter",
+      label: "Actor Scope",
+      value: String(scopeFilter),
+      options: scopeOptions,
+      onChange: (v) => {
+        setScopeFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "typeFilter",
+      label: "Type",
+      value: String(typeFilter),
+      options: TYPE_OPTIONS,
+      onChange: (v) => {
+        setTypeFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "activeFilter",
+      label: "Status",
+      value: String(activeFilter),
+      options: ACTIVE_OPTIONS,
+      onChange: (v) => {
+        setActiveFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "createdFrom",
+      label: "Created Date Range",
+      from: createdFrom,
+      to: createdTo,
+      onFromChange: (v) => {
+        setCreatedFrom(v);
+        setCurrentPage(1);
+      },
+      onToChange: (v) => {
+        setCreatedTo(v);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "updatedFrom",
+      label: "Last Updated Range",
+      from: updatedFrom,
+      to: updatedTo,
+      onFromChange: (v) => {
+        setUpdatedFrom(v);
+        setCurrentPage(1);
+      },
+      onToChange: (v) => {
+        setUpdatedTo(v);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
             <div className="w-full">
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
               <div className="relative">
@@ -261,7 +441,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
             <Select label="Status" value={activeFilter} onChange={(v) => { setActiveFilter(String(v)); setCurrentPage(1); }} options={ACTIVE_OPTIONS} />
             <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setCreatedTo(v); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
             <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(v) => { setUpdatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setUpdatedTo(v); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -271,8 +451,10 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
               >
                 Clear Filters
               </Button>
+              {stateControl}
             </div>
           </div>
+</ConfiguredDesktopFilters>
 
           <div className="flex-1 flex flex-col relative">
             {loading && (
@@ -280,143 +462,39 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
                 <SectionLoading minHeight="150px" />
               </div>
             )}
-            <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300 relative">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-[1120px]">
-                  <TableMarkup.Head className="sticky top-0 z-30">
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell33}>No.</TableMarkup.HeaderCell>
-                      {sortableTh("capability", "Capability")}
-                      {sortableTh("status", "Status")}
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>Document Type</TableMarkup.HeaderCell>
-                      {sortableTh("actorScope", "Actor Scope")}
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell37}>Required Permission</TableMarkup.HeaderCell>
-                      {sortableTh("priority", "Priority")}
-                      {sortableTh("type", "Type")}
-                      {sortableTh("createdAt", "Created Date")}
-                      {sortableTh("updatedAt", "Last Updated")}
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                        Action
-                      </TableMarkup.HeaderCell>
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {!loading && policies.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={11} className="p-0">
-                          <TableEmptyState
-                           
-                            title="No State Policies"
-                            description={hasFilters ? "Try adjusting your search or filters." : "No lifecycle state policies have been defined yet."}
-                          />
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : (
-                      policies.map((p, idx) => (
-                        <TableMarkup.Row key={p.id} className={cn("hover:bg-slate-50/80 transition-colors group", !p.active && "opacity-50")}>
-                          <TableMarkup.Cell className={TABLE_STYLES.cell29}>
-                            {(currentPage - 1) * itemsPerPage + idx + 1}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <span className="font-medium text-slate-800">{p.capabilityCode.replace(/_/g, " ")}</span>
-                            {!p.active && (
-                              <Badge color="slate" size="xs" className="ml-2">
-                                Inactive
-                              </Badge>
-                            )}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                            {p.statusCode ? (p.statusLabel ?? p.statusCode) : <span className="text-slate-400 italic">Any status</span>}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                            {p.documentTypeName ?? <span className="text-slate-400 italic">All types</span>}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={p.actorScope === "ANY" ? "blue" : "emerald"} size="sm">
-                              {p.actorScope}
-                            </Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            {p.requiredPermissionCode ? (
-                              <span className=" text-slate-600">{p.requiredPermissionCode}</span>
-                            ) : (
-                              <span className="text-slate-400 italic">None</span>
-                            )}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{p.priority}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={p.system ? "blue" : "slate"} size="sm">
-                              {p.system ? "System" : "Custom"}
-                            </Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(p.createdAt)}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(p.updatedAt)}</TableMarkup.Cell>
-                          <TableMarkup.Cell
-                            onClick={(e) => e.stopPropagation()}
-                            className="sticky right-0 bg-white py-3 px-4 text-center z-30 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50"
-                          >
-                            <button
-                              ref={getRef(p.id)}
-                              onClick={(e) => toggle(p.id, e)}
-                              className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                              aria-label="More actions"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                            </button>
-                            <PortalDropdownMenu isOpen={openId === p.id} onClose={close} position={position}>
-                              <div className="py-1">
-                                {canManage && (
-                                  <>
-                                    <DropdownMenuItem
-                                      icon={<IconPencilMinus className="h-4 w-4" />}
-                                      onClick={() => {
-                                        navigate(`${BASE_PATH}/${p.id}/edit`);
-                                        close();
-                                      }}
-                                    >
-                                      Edit Capability
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      icon={<IconTrash className="h-4 w-4" />}
-                                      onClick={() => {
-                                        setDeleteTarget(p);
-                                        close();
-                                      }}
-                                      disabled={p.system}
-                                    >
-                                      Delete Capability
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </div>
-                            </PortalDropdownMenu>
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      ))
-                    )}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={loading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                </div>
-              )}
-            </div>
+            <DataTable
+              rows={policies}
+              getRowKey={(p) => p.id}
+              columns={stateLayout.columns}
+              columnLayout={stateLayout}
+              action={stateAction}
+              scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
+              scrollProps={dragEvents}
+              isDragging={isDragging}
+              rowClassName={(p) => (p.active ? "" : "opacity-50")}
+              emptyState={
+                <TableEmptyState
+                  title="No State Policies"
+                  description={hasFilters ? "Try adjusting your search or filters." : "No lifecycle state policies have been defined yet."}
+                />
+              }
+              pagination={
+                totalItems > 0 ? (
+                  <div className="border-t border-slate-200">
+                    <TablePagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={totalItems}
+                      itemsPerPage={itemsPerPage}
+                      isLoading={loading}
+                      onPageChange={setCurrentPage}
+                      onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
+                      itemsPerPageOptions={[10, 20, 50]}
+                    />
+                  </div>
+                ) : undefined
+              }
+            />
           </div>
         </div>
       </div>

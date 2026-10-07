@@ -41,6 +41,12 @@ export interface DocumentListItem {
   hasRelatedDocuments: boolean;
   hasCorrelatedDocuments: boolean;
   isTemplate: boolean;
+  /** Full names in workflow order. */
+  reviewerNames?: string[];
+  approverNames?: string[];
+  requiresTraining?: boolean;
+  /** Days allowed for training; null when no training is required. */
+  trainingPeriodDays?: number | null;
   lastModifiedDate: string;
   lastModifiedBy: string;
   relatedDocuments?: RelatedDocument[];
@@ -56,7 +62,7 @@ export interface DocumentListItem {
   /** Resolved server-side from the Sub-Type Dictionary (never re-derive this from a client-side
    * Sub-Type lookup snapshot -- it goes stale the moment the user re-selects a different
    * Sub-Type and saves). */
-  reviewRequirement?: "NONE" | "REQUIRED" | null;
+  reviewRequirement?: "NONE" | "REQUIRED" | "OPTIONAL" | null;
 }
 
 export interface DocumentListQuery {
@@ -78,6 +84,9 @@ export interface DocumentListQuery {
   effectiveTo?: string;
   validFrom?: string;
   validTo?: string;
+  reviewerId?: string;
+  approverId?: string;
+  requiresTraining?: string;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
   page?: number;
@@ -250,7 +259,7 @@ export interface DocumentDetailResponse extends DocumentListItem {
   subType?: string | null;
   /** Resolved from the Sub-Type's configured requirement -- "NONE" means Reviewer assignment is
    * intentionally not applicable, not missing data. */
-  reviewRequirement?: "NONE" | "REQUIRED" | null;
+  reviewRequirement?: "NONE" | "REQUIRED" | "OPTIONAL" | null;
   periodicReviewCycle?: number | null;
   periodicReviewNotification?: number | null;
   language?: string | null;

@@ -131,8 +131,20 @@ class WorkflowRolesCatalogParityTest {
 
     @Test
     void explicit_permission_grants_blanket_document_access() {
-        when(permissionEvaluationService.hasAnyPermission(eq(bothPathsUser), any(String[].class))).thenReturn(true);
+        when(permissionEvaluationService.hasPermission(bothPathsUser, "documents.document.view_all")).thenReturn(true);
         org.junit.jupiter.api.Assertions.assertTrue(service.canViewAllDocuments(bothPathsUser));
+    }
+
+    @Test
+    void administration_permissions_alone_do_not_grant_blanket_document_access() {
+        // documents.admin.view / manage_workflow_roles / security.sod.manage used to imply "view every
+        // document"; V540 granted documents.document.view_all to every set holding them, so the
+        // dedicated permission is now the only grant.
+        lenient().when(permissionEvaluationService.hasPermission(bothPathsUser, "documents.admin.view")).thenReturn(true);
+        lenient().when(permissionEvaluationService.hasPermission(bothPathsUser, "documents.admin.manage_workflow_roles")).thenReturn(true);
+        lenient().when(permissionEvaluationService.hasPermission(bothPathsUser, "security.sod.manage")).thenReturn(true);
+        lenient().when(permissionEvaluationService.hasAnyPermission(eq(bothPathsUser), any(String[].class))).thenReturn(true);
+        org.junit.jupiter.api.Assertions.assertFalse(service.canViewAllDocuments(bothPathsUser));
     }
 
     @Test

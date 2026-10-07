@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Power, PowerOff, Search, X } from "lucide-react";
@@ -10,6 +11,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
 import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
@@ -199,8 +201,24 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
         : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
     );
 
+  type Row = (typeof items)[number];
+  const docTypesColumns: DataTableColumn<Row>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    { id: "name", header: "Document Type Name", label: "Document Type Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
+    { id: "shortCode", header: "Short Code", label: "Short Code", cell: (item) => <Badge color="emerald" size="sm">{item.shortCode}</Badge> },
+    { id: "currentSequence", header: "Document Number Sequence", label: "Document Number Sequence", cell: (item) => (<div className="flex flex-col gap-0.5 sm:gap-1"><span className="font-medium text-slate-900">{item.lastIssuedDocumentNumber ?? "No number issued"}</span><span className="text-2xs sm:text-xs text-slate-500">Next: {item.nextDocumentNumber ?? "-"}</span></div>) },
+    { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
+    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+  ];
+  const docTypesAction: DataTableAction<Row> = {
+    header: "Action",
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+  };
+  const { layout: docTypesLayout, control: docTypesControl } = useCustomColumnLayout("docTypes", docTypesColumns, docTypesAction);
+
   return (
-    <div className="flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
+    <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
           <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
@@ -236,7 +254,54 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
           </div>
         </div>
 
-        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{docTypesControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search document types..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: [
+        { label: "All Status", value: "All" },
+        { label: "Active", value: "Active" },
+        { label: "Inactive", value: "Inactive" },
+      ],
+      onChange: (value) => {
+        setStatusFilter(value as "All" | "Active" | "Inactive");
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "modifiedFromDate",
+      label: "Modified Date Range",
+      from: modifiedFromDate,
+      to: modifiedToDate,
+      onFromChange: (v) => {
+        setModifiedFromDate(v);
+        setCurrentPage(1);
+      },
+      onToChange: (v) => {
+        setModifiedToDate(v);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
           <div className="sm:col-span-1 lg:col-span-4">
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
             <div className="relative">
@@ -289,7 +354,7 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
           </div>
         </div>
 
-        <div className="hidden md:flex justify-start mt-3">
+        <div className="hidden md:flex justify-start gap-2 mt-3">
           <Button
            size="sm"
             variant="outline"
@@ -299,119 +364,28 @@ export const DocumentTypesTab = React.forwardRef<{ openAddModal: () => void }, {
           >
             Clear Filters
           </Button>
+            {docTypesControl}
         </div>
+</ConfiguredDesktopFilters>
       </div>
 
       <div className="flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col">
-        <div className="flex-1 overflow-x-auto">
-          <TableMarkup.Root className="w-full">
-            <TableMarkup.Head className="sticky top-0 z-30">
-              <TableMarkup.Row>
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>No.</TableMarkup.HeaderCell>
-                {[
-                  { label: "Document Type Name", id: "name" },
-                  { label: "Short Code", id: "shortCode" },
-                  { label: "Document Number Sequence", id: "currentSequence" },
-                  { label: "Description", id: "description" },
-                  { label: "Status", id: "isActive" },
-                  { label: "Modified Date", id: "modifiedDate" },
-                ].map((col) => {
-                  const isSorted = sortConfig.key === col.id;
-                  return (
-                    <TableMarkup.HeaderCell
-                      key={col.id}
-                      onClick={() => handleSort(col.id)}
-                      className={TABLE_STYLES.headerCell38}
-                    >
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="truncate">{col.label}</span>
-                        <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                          <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600 font-bold" : "")} />
-                          <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600 font-bold" : "")} />
-                        </div>
-                      </div>
-                    </TableMarkup.HeaderCell>
-                  );
-                })}
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                  Action
-                </TableMarkup.HeaderCell>
-              </TableMarkup.Row>
-            </TableMarkup.Head>
-            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-              {isLoading ? (
-                <TableMarkup.Row>
-                  <TableMarkup.Cell colSpan={8} className="py-14 text-center text-slate-500">Loading document types...</TableMarkup.Cell>
-                </TableMarkup.Row>
-              ) : items.length > 0 ? (
-                items.map((item, index) => (
-                  <TableMarkup.Row key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <TableMarkup.Cell className={TABLE_STYLES.cell30}>
-                      {(currentPage - 1) * itemsPerPage + index + 1}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <span className="font-medium text-slate-900">{item.name}</span>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge color="emerald" size="sm">{item.shortCode}</Badge>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <div className="flex flex-col gap-0.5 sm:gap-1">
-                        <span className="font-medium text-slate-900">
-                          {item.lastIssuedDocumentNumber ?? "No number issued"}
-                        </span>
-                        <span className="text-2xs sm:text-xs text-slate-500">
-                          Next: {item.nextDocumentNumber ?? "-"}
-                        </span>
-                      </div>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-md truncate">{item.description || "-"}</TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      {item.isActive ? (
-                        <Badge color="emerald" size="sm" >Active</Badge>
-                      ) : (
-                        <Badge color="slate" size="sm" >Inactive</Badge>
-                      )}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{item.modifiedDate}</TableMarkup.Cell>
-                    <TableMarkup.Cell
-                      onClick={(e) => e.stopPropagation()}
-                      className={TABLE_STYLES.emptyCell3}
-                    >
-                      {canManage && (
-                        <button
-                          ref={getButtonRef(item.id)}
-                          onClick={(e) => handleDropdownToggle(item.id, e)}
-                          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                          aria-label="More actions"
-                        >
-                          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                        </button>
-                      )}
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                ))
-              ) : (
-                <TableMarkup.Row>
-                  <TableMarkup.Cell colSpan={8} className="p-0">
-                    <TableEmptyState title="No items found" description="Try adjusting your search" />
-                  </TableMarkup.Cell>
-                </TableMarkup.Row>
-              )}
-            </TableMarkup.Body>
-          </TableMarkup.Root>
-        </div>
-
-        {!isLoading && totalItems > 0 && (
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={setItemsPerPage}
-          />
-        )}
+        <DataTable
+          rows={items}
+          getRowKey={(item) => item.id}
+          columns={docTypesLayout.columns}
+          columnLayout={docTypesLayout}
+          action={docTypesAction}
+          emptyState={
+            <TableEmptyState
+  title="No items found" description="Try adjusting your search" />
+          }
+          pagination={
+            totalItems > 0 ? (
+              <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+            ) : undefined
+          }
+        />
       </div>
 
       <PortalDropdownMenu isOpen={!!openDropdownId} onClose={closeDropdown} position={dropdownPosition}>
@@ -638,7 +612,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={handleSubmit}
-      title={`${isEdit ? "Edit" : "Add New"} Document Type`}
+      title={`${isEdit ? "Edit" : "New"} Document Type`}
       isLoading={isSaving}
       size="lg"
     >

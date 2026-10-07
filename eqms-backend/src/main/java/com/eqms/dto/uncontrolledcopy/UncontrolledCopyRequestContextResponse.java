@@ -23,6 +23,12 @@ public record UncontrolledCopyRequestContextResponse(
         ControlledCopyStatusMarking marking,
         /** The watermark title line every Uncontrolled Copy carries -- the policy's configured
          *  watermarkText, or the built-in default when left blank. Editable on the policy screen. */
-        String mandatoryWatermarkText
+        String mandatoryWatermarkText,
+        /** DISTRIBUTION or DOCUMENT_VALID_UNTIL: what {@code validityHours} is counted from. */
+        String validityBasis,
+        /** The document's Valid Until date (dd/MM/yyyy), when it has one. */
+        String documentValidUntil,
+        /** The exact date and time the copy would be valid until, worked out now (only when the policy follows the document's Valid Until). */
+        String computedValidUntil
 ) {
 }

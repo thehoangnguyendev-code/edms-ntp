@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical, Search, X, ChevronUp, ChevronDown } from "lucide-react";
@@ -7,6 +8,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { AlertModal } from "@/components/ui/modal";
@@ -23,18 +25,6 @@ import { loggedInUsers } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { useDictionaryServerTable } from "@/features/settings/dictionaries/hooks/useDictionaryServerTable";
 import type { LoggedInSession } from "../../types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
-
-const COLUMNS: { id: string; label: string; sortable: boolean }[] = [
-  { id: "fullName", label: "Full Name", sortable: true },
-  { id: "username", label: "Username", sortable: true },
-  { id: "email", label: "Email", sortable: true },
-  { id: "online", label: "Online", sortable: false },
-  { id: "lastLogin", label: "Last Login", sortable: true },
-  { id: "deviceName", label: "Device", sortable: true },
-  { id: "ipAddress", label: "IP Address", sortable: true },
-  { id: "createdAt", label: "Session Started", sortable: true },
-  { id: "lastActivityAt", label: "Last Activity", sortable: true },
-];
 
 /**
  * "Logged in Users" -- mirrors User Management's search/table/pagination UI exactly. All
@@ -159,13 +149,40 @@ export const LoggedInUsersView: React.FC = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const activeSession = items.find((s) => s.sessionId === openDropdownId);
 
+  type SessionRow = (typeof items)[number];
+  const sessionColumns: DataTableColumn<SessionRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, cell: (_session, index) => startIndex + index + 1 },
+    { id: "fullName", header: "Full Name", label: "Full Name", sort: { direction: sortConfig.key === "fullName" ? sortConfig.direction : undefined, onSort: () => handleSort("fullName") }, cell: (s) => <span className="font-medium text-slate-900">{s.fullName}</span> },
+    { id: "username", header: "Username", label: "Username", sort: { direction: sortConfig.key === "username" ? sortConfig.direction : undefined, onSort: () => handleSort("username") }, cell: (s) => s.username },
+    { id: "email", header: "Email", label: "Email", sort: { direction: sortConfig.key === "email" ? sortConfig.direction : undefined, onSort: () => handleSort("email") }, cell: (s) => s.email },
+    { id: "online", header: "Online", label: "Online", cell: (s) => <Badge size="sm" color={s.online ? "emerald" : "slate"}>{s.online ? "Online" : "Offline"}</Badge> },
+    { id: "lastLogin", header: "Last Login", label: "Last Login", sort: { direction: sortConfig.key === "lastLogin" ? sortConfig.direction : undefined, onSort: () => handleSort("lastLogin") }, cell: (s) => (s.lastLoginAt ? formatDateTime(s.lastLoginAt) : "-") },
+    { id: "deviceName", header: "Device", label: "Device", sort: { direction: sortConfig.key === "deviceName" ? sortConfig.direction : undefined, onSort: () => handleSort("deviceName") }, cellClassName: "max-w-xs truncate", cell: (s) => <span title={s.userAgent ?? undefined}>{s.deviceName || s.userAgent || "-"}</span> },
+    { id: "ipAddress", header: "IP Address", label: "IP Address", sort: { direction: sortConfig.key === "ipAddress" ? sortConfig.direction : undefined, onSort: () => handleSort("ipAddress") }, cell: (s) => s.ipAddress || "-" },
+    { id: "createdAt", header: "Session Started", label: "Session Started", sort: { direction: sortConfig.key === "createdAt" ? sortConfig.direction : undefined, onSort: () => handleSort("createdAt") }, cell: (s) => formatDateTime(s.createdAt) },
+    { id: "lastActivityAt", header: "Last Activity", label: "Last Activity", sort: { direction: sortConfig.key === "lastActivityAt" ? sortConfig.direction : undefined, onSort: () => handleSort("lastActivityAt") }, cell: (s) => formatDateTime(s.lastActivityAt) },
+  ];
+  const sessionAction: DataTableAction<SessionRow> = {
+    header: "Action",
+    cell: (s) => (
+      <button
+        ref={getRef(s.sessionId)}
+        onClick={(e) => handleDropdownToggle(s.sessionId, e)}
+        className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
+      >
+        <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
+      </button>
+    ),
+  };
+  const { layout: sessionLayout, control: sessionControl } = useCustomColumnLayout("time-limited-users.logged-in", sessionColumns, sessionAction);
+
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       <PageHeader title="Logged in Users" breadcrumbItems={loggedInUsers(navigate)} />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         {/* Filter Section */}
-        <div className="px-4 pt-4 md:p-5 flex flex-col">
+        <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
               <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
@@ -198,7 +215,64 @@ export const LoggedInUsersView: React.FC = () => {
               </div>
             </div>
 
-            <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{sessionControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search name, username, email, IP..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[]}
+  dates={[
+    {
+      id: "lastLoginFrom",
+      label: "Last Login Range",
+      from: lastLoginFrom,
+      to: lastLoginTo,
+      onFromChange: (value) => setLastLoginFrom(toApiDate(value)),
+      onToChange: (value) => setLastLoginTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) => {
+        setLastLoginFrom(toApiDate(startDate));
+        setLastLoginTo(toApiDate(endDate));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "sessionStartedFrom",
+      label: "Session Started Range",
+      from: sessionStartedFrom,
+      to: sessionStartedTo,
+      onFromChange: (value) => setSessionStartedFrom(toApiDate(value)),
+      onToChange: (value) => setSessionStartedTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) => {
+        setSessionStartedFrom(toApiDate(startDate));
+        setSessionStartedTo(toApiDate(endDate));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "lastActivityFrom",
+      label: "Last Activity Range",
+      from: lastActivityFrom,
+      to: lastActivityTo,
+      onFromChange: (value) => setLastActivityFrom(toApiDate(value)),
+      onToChange: (value) => setLastActivityTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) => {
+        setLastActivityFrom(toApiDate(startDate));
+        setLastActivityTo(toApiDate(endDate));
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full lg:col-span-1">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors">Search</label>
                 <div className="relative">
@@ -265,7 +339,7 @@ export const LoggedInUsersView: React.FC = () => {
                 placeholder="Select date range"
               />
 
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -274,8 +348,10 @@ export const LoggedInUsersView: React.FC = () => {
                 >
                   Clear Filters
                 </Button>
+                {sessionControl}
               </div>
             </div>
+</ConfiguredDesktopFilters>
           </div>
         </div>
 
@@ -287,83 +363,20 @@ export const LoggedInUsersView: React.FC = () => {
             </div>
           )}
 
-          <div className={cn("border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300", isLoading && "blur-[2px] opacity-80")}>
-            {items.length > 0 ? (
-              <>
-                <div className="flex-1 overflow-x-auto overflow-y-hidden">
-                  <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
-                    <TableMarkup.Head className="sticky top-0 z-30">
-                      <TableMarkup.Row>
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell29}>
-                          No.
-                        </TableMarkup.HeaderCell>
-                        {COLUMNS.map((col) => {
-                          const isSorted = sortConfig.key === col.id;
-                          return (
-                            <TableMarkup.HeaderCell
-                              key={col.id}
-                              onClick={col.sortable ? () => handleSort(col.id) : undefined}
-                              className={cn(
-                                "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors",
-                                col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700 group",
-                              )}
-                            >
-                              <div className="flex items-center justify-between gap-2 w-full">
-                                <span className="truncate">{col.label}</span>
-                                {col.sortable && (
-                                  <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                                    <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600" : "")} />
-                                    <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600" : "")} />
-                                  </div>
-                                )}
-                              </div>
-                            </TableMarkup.HeaderCell>
-                          );
-                        })}
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell24}>
-                          Action
-                        </TableMarkup.HeaderCell>
-                      </TableMarkup.Row>
-                    </TableMarkup.Head>
-                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                      {items.map((s, index) => (
-                        <TableMarkup.Row key={s.sessionId} className="hover:bg-slate-50/80 transition-colors group">
-                          <TableMarkup.Cell className={TABLE_STYLES.cell26}>
-                            {startIndex + index + 1}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <span className="font-medium text-slate-900">{s.fullName}</span>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{s.username}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{s.email}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge size="sm" color={s.online ? "emerald" : "slate"}>{s.online ? "Online" : "Offline"}</Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{s.lastLoginAt ? formatDateTime(s.lastLoginAt) : "-"}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 max-w-xs truncate" title={s.userAgent ?? undefined}>
-                            {s.deviceName || s.userAgent || "-"}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{s.ipAddress || "-"}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{formatDateTime(s.createdAt)}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{formatDateTime(s.lastActivityAt)}</TableMarkup.Cell>
-                          <TableMarkup.Cell
-                            onClick={(e) => e.stopPropagation()}
-                            className={TABLE_STYLES.cell34}
-                          >
-                            <button
-                              ref={getRef(s.sessionId)}
-                              onClick={(e) => handleDropdownToggle(s.sessionId, e)}
-                              className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                            </button>
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      ))}
-                    </TableMarkup.Body>
-                  </TableMarkup.Root>
-                </div>
-
+          <div className={cn("flex-1 flex flex-col transition-all duration-300", isLoading && "blur-[2px] opacity-80")}>
+            <DataTable
+              rows={items}
+              getRowKey={(session) => session.sessionId}
+              columns={sessionLayout.columns}
+              columnLayout={sessionLayout}
+              action={sessionAction}
+              emptyState={
+                <TableEmptyState
+                  title="No Logged in Users"
+                  description="We couldn't find any live sessions matching your search."
+                />
+                }
+              pagination={
                 <TablePagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -373,13 +386,8 @@ export const LoggedInUsersView: React.FC = () => {
                   onItemsPerPageChange={setItemsPerPage}
                   showItemCount={true}
                 />
-              </>
-            ) : (
-              <TableEmptyState
-                title="No Logged in Users"
-                description="We couldn't find any live sessions matching your search."
-              />
-            )}
+              }
+            />
           </div>
         </div>
       </div>

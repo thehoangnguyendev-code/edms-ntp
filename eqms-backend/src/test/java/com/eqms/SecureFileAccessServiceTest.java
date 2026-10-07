@@ -155,7 +155,7 @@ class SecureFileAccessServiceTest {
     @Test
     void draftRevision_editOnline_notLocked_notCompleted_allowed() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.edit_online");
+        grantPermission("documents.revision.edit_onlyoffice");
         FileAccessDecision decision = service.check(user, FileAccessAction.EDIT_ONLINE,
                 FileObjectType.SOURCE_DOCX, objectId, draftRevisionCtx());
         assertThat(decision.allowed()).isTrue();
@@ -165,7 +165,7 @@ class SecureFileAccessServiceTest {
     @Test
     void draftRevision_sourceLocked_denied() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.edit_online");
+        grantPermission("documents.revision.edit_onlyoffice");
         FileAccessDecision decision = service.check(user, FileAccessAction.EDIT_ONLINE,
                 FileObjectType.SOURCE_DOCX, objectId, draftRevisionCtxLocked());
         assertThat(decision.allowed()).isFalse();
@@ -176,7 +176,7 @@ class SecureFileAccessServiceTest {
     @Test
     void draftRevision_editingCompleted_denied() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.edit_online");
+        grantPermission("documents.revision.edit_onlyoffice");
         FileAccessDecision decision = service.check(user, FileAccessAction.EDIT_ONLINE,
                 FileObjectType.SOURCE_DOCX, objectId, draftRevisionCtxEditingCompleted());
         assertThat(decision.allowed()).isFalse();
@@ -187,7 +187,7 @@ class SecureFileAccessServiceTest {
     @Test
     void nonDraftRevision_editOnline_denied() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.edit_online");
+        grantPermission("documents.revision.edit_onlyoffice");
         FileAccessDecision decision = service.check(user, FileAccessAction.EDIT_ONLINE,
                 FileObjectType.SOURCE_DOCX, objectId, nonDraftRevisionCtx());
         assertThat(decision.allowed()).isFalse();
@@ -199,6 +199,9 @@ class SecureFileAccessServiceTest {
     void pendingReview_reviewSnapshot_preview_allowed() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
         grantPermission("documents.revision.preview");
+        // Status/permission rule under Record visibility = "All"; the participants-only restriction
+        // is covered by RecordVisibilityModeTest.
+        when(documentAuthorizationService.isOpenVisibilityMode()).thenReturn(true);
         FileAccessDecision decision = service.check(user, FileAccessAction.VIEW_PREVIEW,
                 FileObjectType.REVIEW_SNAPSHOT, objectId, pendingReviewCtx());
         assertThat(decision.allowed()).isTrue();
@@ -345,12 +348,12 @@ class SecureFileAccessServiceTest {
     @Test
     void missingPermission_denied() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        denyPermission("documents.revision.edit_online");
+        denyPermission("documents.revision.edit_onlyoffice");
         FileAccessDecision decision = service.check(user, FileAccessAction.EDIT_ONLINE,
                 FileObjectType.SOURCE_DOCX, objectId, draftRevisionCtx());
         assertThat(decision.allowed()).isFalse();
         assertThat(decision.reasonCode()).isEqualTo("MISSING_PERMISSION");
-        assertThat(decision.permissionCode()).isEqualTo("documents.revision.edit_online");
+        assertThat(decision.permissionCode()).isEqualTo("documents.revision.edit_onlyoffice");
     }
 
     // TC-12
@@ -371,7 +374,7 @@ class SecureFileAccessServiceTest {
     @Test
     void superAdmin_withExplicitPermissionAndValidState_isAllowed() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(superAdmin());
-        grantPermission("documents.revision.edit_online");
+        grantPermission("documents.revision.edit_onlyoffice");
         FileAccessDecision decision = service.check(user, FileAccessAction.EDIT_ONLINE,
                 FileObjectType.SOURCE_DOCX, objectId, draftRevisionCtx());
         assertThat(decision.allowed()).isTrue();
@@ -381,7 +384,7 @@ class SecureFileAccessServiceTest {
     @Test
     void require_throwsOnDeny() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        denyPermission("documents.revision.edit_online");
+        denyPermission("documents.revision.edit_onlyoffice");
         assertThatThrownBy(() ->
                 service.require(user, FileAccessAction.EDIT_ONLINE, FileObjectType.SOURCE_DOCX, objectId, draftRevisionCtx())
         ).isInstanceOf(FileAccessDeniedException.class)
@@ -392,7 +395,7 @@ class SecureFileAccessServiceTest {
     @Test
     void require_noThrowOnAllow() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.edit_online");
+        grantPermission("documents.revision.edit_onlyoffice");
         service.require(user, FileAccessAction.EDIT_ONLINE, FileObjectType.SOURCE_DOCX, objectId, draftRevisionCtx());
     }
 
@@ -400,7 +403,7 @@ class SecureFileAccessServiceTest {
     @Test
     void coAuthor_editOnline_draftUnlocked_allowed() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.edit_online");
+        grantPermission("documents.revision.edit_onlyoffice");
         RevisionWorkflowParticipant p = new RevisionWorkflowParticipant();
         when(revisionWorkflowParticipantRepository
                 .findByRevision_IdAndParticipantTypeAndUser_Id(revisionId, "CO_AUTHOR", userId))
@@ -420,7 +423,7 @@ class SecureFileAccessServiceTest {
                 FileObjectType.SOURCE_DOCX, objectId, draftCtxOtherAuthor());
         assertThat(decision.allowed()).isFalse();
         assertThat(decision.reasonCode()).isEqualTo("MISSING_PERMISSION");
-        assertThat(decision.permissionCode()).isEqualTo("documents.revision.upload_office_online");
+        assertThat(decision.permissionCode()).isEqualTo("documents.revision.sync_onlyoffice");
     }
 
     // TC-17: Non-author + SYNC_FROM_OFFICE + no upload_office_online permission -> DENIED MISSING_PERMISSION
@@ -431,7 +434,7 @@ class SecureFileAccessServiceTest {
                 FileObjectType.SOURCE_DOCX, objectId, draftCtxOtherAuthor());
         assertThat(decision.allowed()).isFalse();
         assertThat(decision.reasonCode()).isEqualTo("MISSING_PERMISSION");
-        assertThat(decision.permissionCode()).isEqualTo("documents.revision.upload_office_online");
+        assertThat(decision.permissionCode()).isEqualTo("documents.revision.sync_onlyoffice");
     }
 
     // TC-18: Co-Author + VIEW_PREVIEW on REVIEW_SNAPSHOT -> ALLOWED
@@ -439,8 +442,12 @@ class SecureFileAccessServiceTest {
     void coAuthor_viewPreview_reviewSnapshot_allowed() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
         grantPermission("documents.revision.preview");
+        // Participants-only (the default): the Co-Author is an assigned participant of this revision.
+        when(revisionWorkflowParticipantRepository.countByRevision_IdAndUser_Id(objectId, user.getId())).thenReturn(1L);
+        FileAccessContext participantCtx = new FileAccessContext("DOCUMENTS", "PENDING_REVIEW", null, null,
+                Map.of("revisionId", objectId.toString()));
         FileAccessDecision decision = service.check(user, FileAccessAction.VIEW_PREVIEW,
-                FileObjectType.REVIEW_SNAPSHOT, objectId, pendingReviewCtx());
+                FileObjectType.REVIEW_SNAPSHOT, objectId, participantCtx);
         assertThat(decision.allowed()).isTrue();
     }
 
@@ -448,7 +455,7 @@ class SecureFileAccessServiceTest {
     @Test
     void nonAssignedUser_editOnline_withAuthorContext_denied() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.edit_online");
+        grantPermission("documents.revision.edit_onlyoffice");
         lenient().when(permissionEvaluationService.hasAnyPermission(eq(user), any()))
                 .thenReturn(false);
         FileAccessDecision decision = service.check(user, FileAccessAction.EDIT_ONLINE,
@@ -461,7 +468,7 @@ class SecureFileAccessServiceTest {
     @Test
     void author_syncToOffice_withPermission_allowed() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.upload_office_online");
+        grantPermission("documents.revision.sync_onlyoffice");
         FileAccessDecision decision = service.check(user, FileAccessAction.SYNC_TO_OFFICE,
                 FileObjectType.SOURCE_DOCX, objectId, draftCtxAsAuthor());
         assertThat(decision.allowed()).isTrue();
@@ -475,7 +482,7 @@ class SecureFileAccessServiceTest {
                 FileObjectType.SOURCE_DOCX, objectId, draftCtxAsAuthor());
         assertThat(decision.allowed()).isFalse();
         assertThat(decision.reasonCode()).isEqualTo("MISSING_PERMISSION");
-        assertThat(decision.permissionCode()).isEqualTo("documents.revision.upload_office_online");
+        assertThat(decision.permissionCode()).isEqualTo("documents.revision.sync_onlyoffice");
     }
 
     // TC-22: Any user (co-author or not) with no upload_office_online permission -> DENIED MISSING_PERMISSION (permission gated before identity)
@@ -486,14 +493,14 @@ class SecureFileAccessServiceTest {
                 FileObjectType.SOURCE_DOCX, objectId, draftCtxOtherAuthor());
         assertThat(decision.allowed()).isFalse();
         assertThat(decision.reasonCode()).isEqualTo("MISSING_PERMISSION");
-        assertThat(decision.permissionCode()).isEqualTo("documents.revision.upload_office_online");
+        assertThat(decision.permissionCode()).isEqualTo("documents.revision.sync_onlyoffice");
     }
 
     // TC-23: Assigned Co-Author accidentally granted upload_office_online -> DENIED NOT_ALLOWED_FOR_COAUTHOR
     @Test
     void coAuthor_syncToOffice_accidentalSyncPerm_identityDenied() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.upload_office_online");
+        grantPermission("documents.revision.sync_onlyoffice");
         lenient().when(permissionEvaluationService.hasAnyPermission(eq(user), any()))
                 .thenReturn(false);
         FileAccessDecision decision = service.check(user, FileAccessAction.SYNC_TO_OFFICE,
@@ -506,7 +513,7 @@ class SecureFileAccessServiceTest {
     @Test
     void dcoAdmin_syncToOffice_withoutAuthorAssignment_denied() {
         when(effectivePermissionService.getEffectivePermissionResult(user)).thenReturn(notSuperAdmin());
-        grantPermission("documents.revision.upload_office_online");
+        grantPermission("documents.revision.sync_onlyoffice");
         when(documentAuthorizationService.canViewAllDocuments(user)).thenReturn(true);
         FileAccessDecision decision = service.check(user, FileAccessAction.SYNC_TO_OFFICE,
                 FileObjectType.SOURCE_DOCX, objectId, draftCtxOtherAuthor());

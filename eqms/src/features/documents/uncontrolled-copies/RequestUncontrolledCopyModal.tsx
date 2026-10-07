@@ -209,8 +209,21 @@ export const RequestUncontrolledCopyModal: React.FC<{
                     {context.documentTypeName || "No document type"} · Revision {context.revisionNumber || "—"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {context.approvalRequired ? "Approval is required before generation." : "No approval step (policy)."} Valid for{" "}
-                    <span className="font-bold text-emerald-600">{context.validityHours} hours</span> after distribution.
+                    {context.approvalRequired ? "Approval is required before generation." : "No approval step (policy)."}{" "}
+                    {context.validityBasis === "DOCUMENT_VALID_UNTIL" ? (
+                      context.computedValidUntil ? (
+                        <>
+                          Valid until <span className="font-bold text-emerald-600">{context.computedValidUntil}</span> (the document's Valid Until date{" "}
+                          {context.documentValidUntil} + {context.validityHours} hours).
+                        </>
+                      ) : (
+                        "Its validity follows the document's Valid Until date."
+                      )
+                    ) : (
+                      <>
+                        Valid for <span className="font-bold text-emerald-600">{context.validityHours} hours</span> after distribution.
+                      </>
+                    )}
                   </p>
                 </div>
 

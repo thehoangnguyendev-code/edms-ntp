@@ -6,6 +6,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { cn } from "@/components/ui/utils";
 import { useDebounce, useTableDragScroll } from "@/hooks";
 import {
@@ -148,6 +149,50 @@ export const EngineHealthTab: React.FC = () => {
   const isInitialLoading = loading && items.length === 0;
   const isTableLoading = loading && items.length > 0;
 
+  type EngineRow = (typeof items)[number];
+  const engineColumns: DataTableColumn<EngineRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14 text-center", cellClassName: "text-center text-slate-500", cell: (_e, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    {
+      id: "resource",
+      header: "Resource",
+      label: "Resource",
+      sort: { direction: sortConfig.key === "resource" ? sortConfig.direction : undefined, onSort: () => handleSort("resource") },
+      cell: (entry) => (
+        <>
+          <div className="font-medium text-slate-800">{entry.resourceType}</div>
+          <div className="max-w-[160px] truncate text-2xs text-slate-400">{entry.resourceId}</div>
+        </>
+      ),
+    },
+    { id: "action", header: "Action", label: "Action", sort: { direction: sortConfig.key === "action" ? sortConfig.direction : undefined, onSort: () => handleSort("action") }, cellClassName: "text-xs text-slate-700 sm:text-sm", cell: (entry) => entry.actionCode },
+    {
+      id: "policyAllowed",
+      header: "New Engine",
+      label: "New Engine",
+      sort: { direction: sortConfig.key === "policyAllowed" ? sortConfig.direction : undefined, onSort: () => handleSort("policyAllowed") },
+      cell: (entry) => (
+        <>
+          <Badge semantic={entry.policyAllowed ? "success" : "neutral"} size="xs">{entry.policyAllowed ? "Allow" : "Deny"}</Badge>
+          {entry.policyReasonCode && <div className="mt-1 text-2xs text-slate-400">{entry.policyReasonCode}</div>}
+        </>
+      ),
+    },
+    {
+      id: "legacyAllowed",
+      header: "Legacy",
+      label: "Legacy",
+      sort: { direction: sortConfig.key === "legacyAllowed" ? sortConfig.direction : undefined, onSort: () => handleSort("legacyAllowed") },
+      cell: (entry) => (
+        <>
+          <Badge semantic={entry.legacyAllowed ? "success" : "neutral"} size="xs">{entry.legacyAllowed ? "Allow" : "Deny"}</Badge>
+          {entry.legacyReasonCode && <div className="mt-1 text-2xs text-slate-400">{entry.legacyReasonCode}</div>}
+        </>
+      ),
+    },
+    { id: "createdAt", header: "When", label: "When", sort: { direction: sortConfig.key === "createdAt" ? sortConfig.direction : undefined, onSort: () => handleSort("createdAt") }, cellClassName: "text-xs text-slate-600 sm:text-sm", cell: (entry) => formatDateTime(entry.createdAt) },
+  ];
+  const { layout: engineLayout, control: engineControl } = useCustomColumnLayout("lifecycle.engine-health", engineColumns);
+
   return (
     <div className="flex flex-1 flex-col">
       <p className="mb-4 max-w-3xl text-xs text-slate-500 sm:text-sm md:mb-5">
@@ -262,163 +307,51 @@ export const EngineHealthTab: React.FC = () => {
                 <SectionLoading text="Searching..." minHeight="150px" />
               </div>
             )}
-            <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn(
-                  "flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-track-slate-50 scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400",
-                  isDragging ? "cursor-grabbing select-none" : "cursor-grab",
-                )}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-[900px] border-spacing-0 text-left">
-                  <TableMarkup.Head className="sticky top-0 z-30">
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className="sticky top-0 z-20 w-14 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
-                        No.
-                      </TableMarkup.HeaderCell>
-                      <SortHeader
-                        label="Resource"
-                        column="resource"
-                        current={sortConfig.key}
-                        direction={sortConfig.direction}
-                        onSort={handleSort}
+            <div className="flex flex-1 flex-col">
+              <DataTable
+                rows={items}
+                getRowKey={(entry) => entry.id}
+                columns={engineLayout.columns}
+                columnLayout={engineLayout}
+                scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
+                scrollProps={dragEvents}
+                isDragging={isDragging}
+                toolbar={engineControl ? <div className="flex justify-end px-4 pt-3">{engineControl}</div> : undefined}
+                rowClassName={(entry) => (entry.policyAllowed !== entry.legacyAllowed ? "bg-red-50/40" : "")}
+                emptyState={
+                  error ? (
+                    <TableEmptyState title="Failed to Load" description={error} />
+                  ) : (
+                    <TableEmptyState
+                      title="No Events"
+                      description={
+                        mismatchesOnly
+                          ? "No mismatches match this filter — the new engine agrees with the legacy evaluator on every check."
+                          : "No shadow-evaluation events match this filter."
+                      }
+                    />
+                  )
+                }
+                pagination={
+                  totalItems > 0 ? (
+                    <div className="border-t border-slate-200">
+                      <TablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        isLoading={isTableLoading}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(limit) => {
+                          setItemsPerPage(limit);
+                          setCurrentPage(1);
+                        }}
+                        itemsPerPageOptions={[10, 20, 50]}
                       />
-                      <SortHeader
-                        label="Action"
-                        column="action"
-                        current={sortConfig.key}
-                        direction={sortConfig.direction}
-                        onSort={handleSort}
-                      />
-                      <SortHeader
-                        label="New Engine"
-                        column="policyAllowed"
-                        current={sortConfig.key}
-                        direction={sortConfig.direction}
-                        onSort={handleSort}
-                      />
-                      <SortHeader
-                        label="Legacy"
-                        column="legacyAllowed"
-                        current={sortConfig.key}
-                        direction={sortConfig.direction}
-                        onSort={handleSort}
-                      />
-                      <SortHeader
-                        label="When"
-                        column="createdAt"
-                        current={sortConfig.key}
-                        direction={sortConfig.direction}
-                        onSort={handleSort}
-                      />
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {!loading && items.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={6} className="p-0">
-                          {error ? (
-                            <TableEmptyState
-                              title="Failed to Load"
-                              description={error}
-                            />
-                          ) : (
-                            <TableEmptyState
-                             
-                              title="No Events"
-                              description={
-                                mismatchesOnly
-                                  ? "No mismatches match this filter — the new engine agrees with the legacy evaluator on every check."
-                                  : "No shadow-evaluation events match this filter."
-                              }
-                            />
-                          )}
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : (
-                      items.map((entry, index) => {
-                        const isMismatch =
-                          entry.policyAllowed !== entry.legacyAllowed;
-                        return (
-                          <TableMarkup.Row
-                            key={entry.id}
-                            className={cn(
-                              "transition-colors hover:bg-slate-50/80",
-                              isMismatch && "bg-red-50/40",
-                            )}
-                          >
-                            <TableMarkup.Cell className={TABLE_STYLES.cell36}>
-                              {(currentPage - 1) * itemsPerPage + index + 1}
-                            </TableMarkup.Cell>
-                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs sm:text-sm">
-                              <div className="font-medium text-slate-800">
-                                {entry.resourceType}
-                              </div>
-                              <div className="max-w-[160px] truncate  text-2xs text-slate-400">
-                                {entry.resourceId}
-                              </div>
-                            </TableMarkup.Cell>
-                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3  text-xs text-slate-700 sm:text-sm">
-                              {entry.actionCode}
-                            </TableMarkup.Cell>
-                            <TableMarkup.Cell className="px-4 py-3">
-                              <Badge
-                                semantic={
-                                  entry.policyAllowed ? "success" : "neutral"
-                                }
-                                size="xs"
-                              >
-                                {entry.policyAllowed ? "Allow" : "Deny"}
-                              </Badge>
-                              {entry.policyReasonCode && (
-                                <div className="mt-1 text-2xs text-slate-400">
-                                  {entry.policyReasonCode}
-                                </div>
-                              )}
-                            </TableMarkup.Cell>
-                            <TableMarkup.Cell className="px-4 py-3">
-                              <Badge
-                                semantic={
-                                  entry.legacyAllowed ? "success" : "neutral"
-                                }
-                                size="xs"
-                              >
-                                {entry.legacyAllowed ? "Allow" : "Deny"}
-                              </Badge>
-                              {entry.legacyReasonCode && (
-                                <div className="mt-1 text-2xs text-slate-400">
-                                  {entry.legacyReasonCode}
-                                </div>
-                              )}
-                            </TableMarkup.Cell>
-                            <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
-                              {formatDateTime(entry.createdAt)}
-                            </TableMarkup.Cell>
-                          </TableMarkup.Row>
-                        );
-                      })
-                    )}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={isTableLoading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={(limit) => {
-                      setItemsPerPage(limit);
-                      setCurrentPage(1);
-                    }}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                </div>
-              )}
+                    </div>
+                  ) : undefined
+                }
+              />
             </div>
           </>
         )}

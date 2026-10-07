@@ -5,6 +5,7 @@ import com.eqms.dto.document.DocumentDraftCreateRequest;
 import com.eqms.dto.document.DocumentActiveWorkflowConfigurationRequest;
 import com.eqms.dto.document.DocumentCancelRequest;
 import com.eqms.dto.document.DocumentObsoleteRequest;
+import com.eqms.dto.document.DocumentReopenRequest;
 import com.eqms.dto.document.DocumentDetailResponse;
 import com.eqms.dto.document.DocumentListItemResponse;
 import com.eqms.dto.audittrail.AuditTrailRecordResponse;
@@ -79,6 +80,9 @@ public class DocumentController {
             @RequestParam(required = false) String effectiveTo,
             @RequestParam(required = false) String validFrom,
             @RequestParam(required = false) String validTo,
+            @RequestParam(required = false) String reviewerId,
+            @RequestParam(required = false) String approverId,
+            @RequestParam(required = false) String requiresTraining,
             @RequestParam(defaultValue = "created") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection,
             @RequestParam(defaultValue = "1") int page,
@@ -88,6 +92,7 @@ public class DocumentController {
                 scope, search, ids, status, documentType, businessUnit, department, authorId, author,
                 relatedDocument, correlatedDocument, isTemplate,
                 createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
+                reviewerId, approverId, requiresTraining,
                 sortBy, sortDirection, page, limit
         ));
     }
@@ -326,6 +331,15 @@ public class DocumentController {
         return ResponseEntity.ok(documentService.obsoleteDocument(id, request));
     }
 
+    /** Reopens a Closed - Cancelled or Obsoleted document (Administrator, e-signature). Its revisions and copies stay closed. */
+    @PostMapping("/{id}/reopen")
+    public ResponseEntity<DocumentDetailResponse> reopenDocument(
+            @PathVariable UUID id,
+            @Valid @RequestBody DocumentReopenRequest request
+    ) {
+        return ResponseEntity.ok(documentService.reopenDocument(id, request));
+    }
+
     @GetMapping("/export")
     public ResponseEntity<StreamingResponseBody> exportDocuments(
             @RequestParam(required = false, defaultValue = "all") String scope,
@@ -346,6 +360,9 @@ public class DocumentController {
             @RequestParam(required = false) String effectiveTo,
             @RequestParam(required = false) String validFrom,
             @RequestParam(required = false) String validTo,
+            @RequestParam(required = false) String reviewerId,
+            @RequestParam(required = false) String approverId,
+            @RequestParam(required = false) String requiresTraining,
             @RequestParam(defaultValue = "created") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection
     ) {
@@ -353,6 +370,7 @@ public class DocumentController {
                 scope, search, ids, status, documentType, businessUnit, department, authorId, author,
                 relatedDocument, correlatedDocument, isTemplate,
                 createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
+                reviewerId, approverId, requiresTraining,
                 sortBy, sortDirection, outputStream
         );
 

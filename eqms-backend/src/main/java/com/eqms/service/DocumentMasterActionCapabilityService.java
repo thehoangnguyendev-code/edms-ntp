@@ -101,6 +101,7 @@ public class DocumentMasterActionCapabilityService {
                 "You cannot configure Author, Co-Author, Training, Periodic Review Cycle/Notification, Review Date or Description for the next revision."));
         actions.put("cancel", lifecycle(user, document, "CANCEL", false));
         actions.put("obsolete", obsolete(user, document));
+        actions.put("reopen", reopen(user, document));
 
         return new ResourceCapabilitiesResponse(
                 "DOCUMENT_MASTER",
@@ -127,9 +128,9 @@ public class DocumentMasterActionCapabilityService {
                     "Only the assigned Author with the upload permission can upload a revision.",
                     "documents.revision.upload_source", false);
         }
-        if (!isActiveWithEffectiveRevision(document)) {
+        if (!isActiveReadyForNextRevision(document)) {
             return simple(false, "DOCUMENT_NOT_READY_FOR_UPGRADE",
-                    "Upload Revision is available only when the document is Active and has an Effective revision.",
+                    "Upload Revision is available only when the document is Active and has a revision to build on.",
                     "documents.revision.upload_source", false);
         }
         if (hasOpenRevision(document)) {
@@ -179,7 +180,10 @@ public class DocumentMasterActionCapabilityService {
     private ResourceActionCapabilityResponse nextRevisionConfigurablePermission(
             UserAccount user, DocumentRecord document, String permissionCode, String reasonCode, String reasonMessage
     ) {
-        ResourceActionCapabilityResponse base = activeEffectivePermission(user, document, permissionCode, reasonCode, reasonMessage);
+        // Active and ready for a next revision: with an Effective revision, or Obsoleted and reopened (see isActiveReadyForNextRevision).
+        ResourceActionCapabilityResponse base = simple(
+                isActiveReadyForNextRevision(document) && permissionEvaluationService.hasPermission(user, permissionCode),
+                reasonCode, reasonMessage, permissionCode, false);
         if (!base.allowed()) {
             return base;
         }
@@ -189,6 +193,32 @@ public class DocumentMasterActionCapabilityService {
                     permissionCode, false);
         }
         return base;
+    }
+
+    /** Reopen: a closed (Closed - Cancelled or Obsoleted) document, for a user holding the reopen permission (Administrators). */
+    private ResourceActionCapabilityResponse reopen(UserAccount user, DocumentRecord document) {
+        ResourceActionCapabilityResponse lifecycle = lifecycle(user, document, "REOPEN", true);
+        if (!lifecycle.allowed()) {
+            return lifecycle;
+        }
+        String status = document == null || document.getStatus() == null ? null : document.getStatus().getCode();
+        if (!"OBSOLETED".equalsIgnoreCase(status) && !"CLOSED_CANCELLED".equalsIgnoreCase(status)) {
+            return simple(false, "DOCUMENT_NOT_CLOSED", "Only a Closed - Cancelled or Obsoleted document can be reopened.",
+                    lifecycle.requiredPermissionCode(), true);
+        }
+        return lifecycle;
+    }
+
+    /**
+     * Active and able to receive a next revision: it has an Effective revision (the normal case), or it was Obsoleted and reopened
+     * (Active, its revisions all closed). Nothing else makes an Active document without an Effective revision.
+     */
+    private boolean isActiveReadyForNextRevision(DocumentRecord document) {
+        return isActiveWithEffectiveRevision(document)
+                || (document != null
+                && document.getStatus() != null
+                && "ACTIVE".equalsIgnoreCase(document.getStatus().getCode())
+                && documentRevisionRepository.existsByDocument_Id(document.getId()));
     }
 
     private ResourceActionCapabilityResponse obsolete(UserAccount user, DocumentRecord document) {

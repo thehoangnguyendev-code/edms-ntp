@@ -1,25 +1,19 @@
 package com.eqms.service;
 
 import com.eqms.auth.CurrentUserService;
-import com.eqms.dto.executedrecord.ApproveExecutedRecordRequest;
 import com.eqms.dto.executedrecord.ExecutedRecordResponse;
 import com.eqms.dto.executedrecord.RecordExecutionRequest;
-import com.eqms.dto.executedrecord.RejectExecutedRecordRequest;
 import com.eqms.dto.user.PageResponse;
 import com.eqms.dto.user.PaginationResponse;
+import com.eqms.entity.ControlledCopyRecallItem;
 import com.eqms.entity.ControlledCopyRecord;
 import com.eqms.entity.DocumentRecord;
 import com.eqms.entity.DocumentRevisionRecord;
-import com.eqms.entity.EformEditSession;
-import com.eqms.entity.EformFillRun;
 import com.eqms.entity.ExecutedRecord;
-import com.eqms.entity.FormSettings;
 import com.eqms.entity.UserAccount;
 import com.eqms.repository.ControlledCopyRepository;
 import com.eqms.repository.DocumentRecordRepository;
 import com.eqms.repository.DocumentRevisionRepository;
-import com.eqms.repository.EformEditSessionRepository;
-import com.eqms.repository.EformFillRunRepository;
 import com.eqms.repository.ExecutedRecordRepository;
 import com.eqms.repository.UserAccountRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -41,17 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-/**
- * A single execution of a Form -- either a filled eForm submission or a scanned paper Controlled
- * Copy -- tracked against its source Form {@link DocumentRecord}. Replaces the prior workaround of
- * uploading a scanned form back in as a brand-new Document with type RECORD. See the approved plan
- * "Form / eForm Executed Records" for the full design rationale.
- *
- * <p>Both capture methods converge on the same lifecycle: DRAFT is never created by this service
- * (a draft eForm in progress is purely a client-side/OnlyOffice-session concept until submitted) --
- * a record is born at SUBMITTED, optionally moves through PENDING_APPROVAL, and ends at EXECUTED or
- * the terminal REJECTED (a rejected record is never reopened; a correction is a fresh execution).
- */
+/** Scanned paper Form records. Historical electronic records remain readable. */
 @Service
 public class ExecutedRecordService {
 
@@ -59,17 +43,13 @@ public class ExecutedRecordService {
     private static final String ENTITY_TYPE = "EXECUTED_RECORD";
     private static final int MAX_LIST_PAGE_SIZE = 200;
 
-    public static final String CAPTURE_EFORM = "EFORM";
     public static final String CAPTURE_PAPER = "PAPER_SCAN";
 
-    private static final String STATUS_PENDING_APPROVAL = "PENDING_APPROVAL";
     private static final String STATUS_EXECUTED = "EXECUTED";
     private static final String STATUS_REJECTED = "REJECTED";
 
-    public static final String P_FILL_EFORM = "documents.form.fill_eform";
+    // Historical SoD code retained for legacy pending-record approval/rejection. No fill API exists.
     public static final String P_RECORD_PAPER = "documents.form.record_physical_copy";
-    public static final String P_APPROVE = "documents.form.approve_executed_record";
-    public static final String P_REJECT = "documents.form.reject_executed_record";
     public static final String P_VIEW = "documents.form.view_executed_records";
     public static final String P_DOWNLOAD = "documents.form.download_executed_record";
 
@@ -77,7 +57,6 @@ public class ExecutedRecordService {
     private static final String CC_STATUS_DISTRIBUTED = "DISTRIBUTED";
 
     private final ExecutedRecordRepository executedRecordRepository;
-    private final FormSettingsService formSettingsService;
     private final DocumentRecordRepository documentRecordRepository;
     private final DocumentRevisionRepository documentRevisionRepository;
     private final ControlledCopyRepository controlledCopyRepository;
@@ -88,16 +67,18 @@ public class ExecutedRecordService {
     private final AuditTrailService auditTrailService;
     private final ElectronicSignatureService electronicSignatureService;
     private final FileStorageService fileStorageService;
-    private final SodConstraintService sodConstraintService;
-    private final EformEditSessionRepository eformEditSessionRepository;
-    private final EformFillRunRepository eformFillRunRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     private ControlledCopyService controlledCopyService;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private ControlledCopyPolicyService controlledCopyPolicyService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private ControlledCopyPdfMarkingService pdfMarkingService;
+
     public ExecutedRecordService(
             ExecutedRecordRepository executedRecordRepository,
-            FormSettingsService formSettingsService,
             DocumentRecordRepository documentRecordRepository,
             DocumentRevisionRepository documentRevisionRepository,
             ControlledCopyRepository controlledCopyRepository,
@@ -107,13 +88,9 @@ public class ExecutedRecordService {
             DocumentAuthorizationService documentAuthorizationService,
             AuditTrailService auditTrailService,
             ElectronicSignatureService electronicSignatureService,
-            FileStorageService fileStorageService,
-            SodConstraintService sodConstraintService,
-            EformEditSessionRepository eformEditSessionRepository,
-            EformFillRunRepository eformFillRunRepository
+            FileStorageService fileStorageService
     ) {
         this.executedRecordRepository = executedRecordRepository;
-        this.formSettingsService = formSettingsService;
         this.documentRecordRepository = documentRecordRepository;
         this.documentRevisionRepository = documentRevisionRepository;
         this.controlledCopyRepository = controlledCopyRepository;
@@ -124,21 +101,21 @@ public class ExecutedRecordService {
         this.auditTrailService = auditTrailService;
         this.electronicSignatureService = electronicSignatureService;
         this.fileStorageService = fileStorageService;
-        this.sodConstraintService = sodConstraintService;
-        this.eformEditSessionRepository = eformEditSessionRepository;
-        this.eformFillRunRepository = eformFillRunRepository;
     }
 
     // ---- Paper path -------------------------------------------------------------------------
 
-    @Transactional
-    public ExecutedRecordResponse recordPhysicalCopy(UUID formDocumentId, RecordExecutionRequest request,
+    /** Creates the Executed Record for one returned paper copy. Only reachable through
+     *  {@link #recordPhysicalCopyAndClose}, whose transaction covers it. */
+    private ExecutedRecordResponse recordPhysicalCopy(UUID formDocumentId, RecordExecutionRequest request,
                                                        String originalFileName, InputStream fileStream) throws IOException {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         requirePermission(currentUser, P_RECORD_PAPER, "Not permitted to record a physical copy");
         DocumentRecord document = requireDocument(formDocumentId);
         documentAuthorizationService.requireCanViewDocument(currentUser, document);
-        FormSettings settings = requireAllowed(formDocumentId, true);
+        if (document.getDocumentType() == null || !"FORM".equalsIgnoreCase(document.getDocumentType().getShortCode())) {
+            throw new IllegalArgumentException("Only Form documents accept scanned physical copies");
+        }
         DocumentRevisionRecord effective = requireEffectiveRevision(document);
 
         UUID controlledCopyId = parseUuid(request.sourceControlledCopyId(), "A Controlled Copy must be selected");
@@ -174,7 +151,7 @@ public class ExecutedRecordService {
 
         store(record, document.getId(), originalFileName, fileStream);
 
-        return finalizeSubmission(record, settings, currentUser, request.signatureToken(), request.reason(), "RECORD_LOGGED");
+        return finalizeSubmission(record, currentUser, request.signatureToken(), request.reason(), "RECORD_LOGGED");
     }
 
     /**
@@ -208,140 +185,10 @@ public class ExecutedRecordService {
         return response;
     }
 
-    // ---- eForm path (interim: direct upload of an already-filled file) -----------------------
-
-    /**
-     * Interim implementation: the user fills the eForm outside the system (or via a manual
-     * OnlyOffice session today) and uploads the resulting filled file directly. Live OnlyOffice
-     * Form Creator design + in-browser fill-session embedding is the next increment (see plan
-     * Phase 0/3) -- this upload path is the fully working, tested lifecycle in the meantime and
-     * the wiring point {@link #finalizeSubmission} does not change once that lands.
-     */
-    @Transactional
-    public ExecutedRecordResponse submitEform(UUID formDocumentId, RecordExecutionRequest request,
-                                               String originalFileName, InputStream fileStream) throws IOException {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        requirePermission(currentUser, P_FILL_EFORM, "Not permitted to fill this eForm");
-        DocumentRecord document = requireDocument(formDocumentId);
-        documentAuthorizationService.requireCanViewDocument(currentUser, document);
-        FormSettings settings = requireAllowed(formDocumentId, false);
-        DocumentRevisionRecord effective = requireEffectiveRevision(document);
-
-        ExecutedRecord record = new ExecutedRecord();
-        record.setId(UUID.randomUUID());
-        record.setRecordNumber(nextRecordNumber(document));
-        record.setFormDocument(document);
-        record.setFormRevision(effective);
-        record.setCaptureMethod(CAPTURE_EFORM);
-        record.setFilledBy(currentUser);
-        record.setFilledAt(Instant.now());
-
-        store(record, document.getId(), originalFileName, fileStream);
-
-        return finalizeSubmission(record, settings, currentUser, request.signatureToken(), request.reason(), "EFORM_SUBMITTED");
-    }
-
-    /**
-     * Live path (Phase 2a): the user filled the Form's designed fields directly in OnlyOffice
-     * instead of uploading a file. {@code eformSessionId} must be a FILL session this same user
-     * started, already saved at least once by an OnlyOffice callback. Reuses
-     * {@link #finalizeSubmission} unchanged -- only how the file is acquired differs from
-     * {@link #submitEform}.
-     */
-    @Transactional
-    public ExecutedRecordResponse submitEformFromSession(UUID formDocumentId, UUID eformSessionId, String reason, String signatureToken) throws IOException {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        requirePermission(currentUser, P_FILL_EFORM, "Not permitted to fill this eForm");
-        DocumentRecord document = requireDocument(formDocumentId);
-        documentAuthorizationService.requireCanViewDocument(currentUser, document);
-        FormSettings settings = requireAllowed(formDocumentId, false);
-        DocumentRevisionRecord effective = requireEffectiveRevision(document);
-
-        EformEditSession session = eformEditSessionRepository.findById(eformSessionId)
-                .orElseThrow(() -> new IllegalArgumentException("eForm session not found"));
-        if (!"FILL".equals(session.getKind()) || !document.getId().equals(session.getFormDocument().getId())) {
-            throw new IllegalArgumentException("This session does not belong to this Form");
-        }
-        if (session.getStartedBy() == null || !session.getStartedBy().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("You did not start this eForm session");
-        }
-        if (!"SAVED".equals(session.getStatus())) {
-            throw new IllegalStateException("Fill in at least one field (and let it auto-save) before submitting.");
-        }
-
-        ExecutedRecord record = new ExecutedRecord();
-        record.setId(UUID.randomUUID());
-        record.setRecordNumber(nextRecordNumber(document));
-        record.setFormDocument(document);
-        record.setFormRevision(effective);
-        record.setCaptureMethod(CAPTURE_EFORM);
-        record.setFilledBy(currentUser);
-        record.setFilledAt(Instant.now());
-
-        // A fresh copy under the ExecutedRecord's own storage key -- its file must remain
-        // immutable and independent of the session's lifecycle (which may be cleaned up later).
-        try (InputStream sessionFile = fileStorageService.openStoredFile(session.getStorageObjectKey())) {
-            store(record, document.getId(), document.getDocumentNumber() + "_" + record.getRecordNumber() + ".pdf", sessionFile);
-        }
-
-        session.setStatus("SUBMITTED");
-        eformEditSessionRepository.save(session);
-
-        return finalizeSubmission(record, settings, currentUser, signatureToken, reason, "EFORM_SUBMITTED");
-    }
-
-    /**
-     * Sequential path (Phase 2a multi-signer): the last Role in a Form's configured signing order
-     * just signed off its {@link EformFillRun}, which has now accumulated every prior role's work
-     * into one file. Called only by {@code EformEditSessionService#completeFillStep} once it has
-     * confirmed the run is COMPLETED -- never exposed as a standalone permission check beyond the
-     * caller already being that last signer. Reuses {@link #finalizeSubmission} unchanged, exactly
-     * like {@link #submitEformFromSession} does for the single-signer case.
-     */
-    @Transactional
-    public ExecutedRecordResponse submitEformFromFillRun(UUID formDocumentId, UUID fillRunId, String reason, String signatureToken) throws IOException {
-        // Called only internally by EformEditSessionService#completeFillStep once it has confirmed
-        // the caller is the last signer in this run's sequence -- authorization already happened
-        // there via EformSignerAssignment, not a generic documents.form.fill_eform permission check
-        // (the final signer may hold only a sign role, not the broader fill permission).
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        DocumentRecord document = requireDocument(formDocumentId);
-        documentAuthorizationService.requireCanViewDocument(currentUser, document);
-        FormSettings settings = requireAllowed(formDocumentId, false);
-        DocumentRevisionRecord effective = requireEffectiveRevision(document);
-
-        EformFillRun run = eformFillRunRepository.findById(fillRunId)
-                .orElseThrow(() -> new IllegalArgumentException("Fill run not found"));
-        if (!document.getId().equals(run.getFormDocument().getId())) {
-            throw new IllegalArgumentException("This fill run does not belong to this Form");
-        }
-        if (!"COMPLETED".equals(run.getStatus())) {
-            throw new IllegalStateException("Not all signer roles have completed yet.");
-        }
-
-        ExecutedRecord record = new ExecutedRecord();
-        record.setId(UUID.randomUUID());
-        record.setRecordNumber(nextRecordNumber(document));
-        record.setFormDocument(document);
-        record.setFormRevision(effective);
-        record.setCaptureMethod(CAPTURE_EFORM);
-        // The person who actually did the data-entry FILL phase, not the last signer calling this
-        // method (they may be a different person entirely).
-        record.setFilledBy(run.getStartedBy());
-        record.setFilledAt(run.getCreatedAt());
-        record.setSourceControlledCopy(run.getControlledCopy());
-
-        try (InputStream runFile = fileStorageService.openStoredFile(run.getStorageObjectKey())) {
-            store(record, document.getId(), document.getDocumentNumber() + "_" + record.getRecordNumber() + ".pdf", runFile);
-        }
-
-        return finalizeSubmission(record, settings, currentUser, signatureToken, reason, "EFORM_SUBMITTED");
-    }
-
-    private ExecutedRecordResponse finalizeSubmission(ExecutedRecord record, FormSettings settings,
+    private ExecutedRecordResponse finalizeSubmission(ExecutedRecord record,
                                                         UserAccount currentUser, String signatureToken, String reason, String meaning) {
-        boolean needsApproval = settings.isRequireApproval();
-        record.setStatus(needsApproval ? STATUS_PENDING_APPROVAL : STATUS_EXECUTED);
+        // New records complete at submission; legacy PENDING_APPROVAL records keep their existing workflow.
+        record.setStatus(STATUS_EXECUTED);
 
         var signature = electronicSignatureService.createEntitySignature(
                 ENTITY_TYPE, record.getId(), record.getRecordNumber(), currentUser,
@@ -354,61 +201,43 @@ public class ExecutedRecordService {
         return toResponse(saved, currentUser);
     }
 
-    // ---- Approval -----------------------------------------------------------------------------
+    // ---- Recall by scan -----------------------------------------------------------------------
 
+    /**
+     * Registers the scan of one returned paper copy as a record, for ANY document type. Called inside the recall-by-scan
+     * commit transaction: the batch's one electronic signature ({@code signatureId}) is this record's submit signature,
+     * so no second signature token is consumed. The scan file was already stored (and virus scanned) when it was
+     * uploaded; the record points at that stored file rather than copying it.
+     */
     @Transactional
-    public ExecutedRecordResponse approve(UUID id, ApproveExecutedRecordRequest request) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        requirePermission(currentUser, P_APPROVE, "Not permitted to approve Executed Records");
-        ExecutedRecord record = requireRecord(id);
-        requireStatus(record, "approved", STATUS_PENDING_APPROVAL);
-        // Self-approval guard: the filler cannot also approve their own record, when an admin has
-        // configured fill/approve as a conflicting permission pair (same SoD mechanism the rest of
-        // the app uses -- off by default, opt-in via Settings > Security > Segregation of Duties).
-        boolean ownRecord = record.getFilledBy() != null && record.getFilledBy().getId().equals(currentUser.getId());
-        if (ownRecord && sodConstraintService.isActiveConstraint(P_FILL_EFORM, P_APPROVE)) {
-            throw new AccessDeniedException("You filled this record and cannot also approve it (Segregation of Duties).");
-        }
-
-        var signature = electronicSignatureService.createEntitySignature(
-                ENTITY_TYPE, record.getId(), record.getRecordNumber(), currentUser,
-                request.signatureToken(), "EFORM_APPROVED", request.comment(), null, STATUS_PENDING_APPROVAL, STATUS_EXECUTED);
-        record.setApproveSignatureId(signature.getId());
-        record.setApprovedBy(currentUser);
+    public ExecutedRecord recordRecalledCopyScan(ControlledCopyRecord copy, ControlledCopyRecallItem item, UserAccount actor,
+                                                 Instant receivedAt, UUID recallBatchId, String recallBatchNumber, UUID signatureId) {
+        DocumentRecord document = copy.getDocument();
+        ExecutedRecord record = new ExecutedRecord();
+        record.setId(UUID.randomUUID());
+        record.setRecordNumber(nextRecordNumber(document));
+        record.setFormDocument(document);
+        record.setFormRevision(copy.getRevision());
+        record.setCaptureMethod(CAPTURE_PAPER);
         record.setStatus(STATUS_EXECUTED);
-
+        record.setFilledBy(copy.getRecipientUser() != null ? copy.getRecipientUser() : actor);
+        record.setFilledAt(receivedAt);
+        record.setSourceControlledCopy(copy);
+        record.setStorageProvider(item.getStorageProvider());
+        record.setStorageBucket(item.getStorageBucket());
+        record.setStorageObjectKey(item.getStoredPath());
+        record.setStorageVersionId(item.getStorageVersionId());
+        record.setChecksum(item.getSha256());
+        record.setFileName(item.getFileName());
+        record.setContentType(item.getContentType());
+        record.setFileSize(item.getFileSize());
+        record.setRecallBatchId(recallBatchId);
+        record.setSubmitSignatureId(signatureId);
         ExecutedRecord saved = executedRecordRepository.save(record);
-        auditTrailService.logAs(currentUser, ENTITY_TYPE, saved.getRecordNumber(), saved.getId(),
-                "APPROVE", STATUS_PENDING_APPROVAL, STATUS_EXECUTED, request.comment(), List.of(), signature.getId());
-        return toResponse(saved, currentUser);
-    }
-
-    @Transactional
-    public ExecutedRecordResponse reject(UUID id, RejectExecutedRecordRequest request) {
-        UserAccount currentUser = currentUserService.requireCurrentUser();
-        requirePermission(currentUser, P_REJECT, "Not permitted to reject Executed Records");
-        if (!StringUtils.hasText(request.reason())) {
-            throw new IllegalArgumentException("A rejection reason is required");
-        }
-        ExecutedRecord record = requireRecord(id);
-        requireStatus(record, "rejected", STATUS_PENDING_APPROVAL);
-        boolean ownRecord = record.getFilledBy() != null && record.getFilledBy().getId().equals(currentUser.getId());
-        if (ownRecord && sodConstraintService.isActiveConstraint(P_FILL_EFORM, P_REJECT)) {
-            throw new AccessDeniedException("You filled this record and cannot also reject it (Segregation of Duties).");
-        }
-
-        var signature = electronicSignatureService.createEntitySignature(
-                ENTITY_TYPE, record.getId(), record.getRecordNumber(), currentUser,
-                request.signatureToken(), "EFORM_REJECTED", request.reason(), null, STATUS_PENDING_APPROVAL, STATUS_REJECTED);
-        record.setRejectedBy(currentUser);
-        record.setRejectedAt(Instant.now());
-        record.setRejectedReason(request.reason());
-        record.setStatus(STATUS_REJECTED);
-
-        ExecutedRecord saved = executedRecordRepository.save(record);
-        auditTrailService.logAs(currentUser, ENTITY_TYPE, saved.getRecordNumber(), saved.getId(),
-                "REJECT", STATUS_PENDING_APPROVAL, STATUS_REJECTED, request.reason(), List.of(), signature.getId());
-        return toResponse(saved, currentUser);
+        auditTrailService.logAs(actor, ENTITY_TYPE, saved.getRecordNumber(), saved.getId(), "SUBMIT", null, saved.getStatus(),
+                "Scan of returned controlled copy " + copy.getControlledCopyNumber() + " (recall batch " + recallBatchNumber + ")",
+                List.of(), signatureId);
+        return saved;
     }
 
     // ---- Read / list --------------------------------------------------------------------------
@@ -417,36 +246,113 @@ public class ExecutedRecordService {
     public ExecutedRecordResponse getDetail(UUID id) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         requirePermission(currentUser, P_VIEW, "Not permitted to view Executed Records");
-        return toResponse(requireRecord(id), currentUser);
+        ExecutedRecord record = requireRecord(id);
+        requireCanViewRecord(currentUser, record);
+        return toResponse(record, currentUser);
+    }
+
+    /** A scan record follows the visibility of the controlled copy it came from: blanket copy viewers see every record,
+     *  everyone else only the records of copies on which they are the named recipient. */
+    private boolean canViewRecord(UserAccount user, ExecutedRecord record) {
+        if (documentAuthorizationService.canViewAllControlledCopies(user)) {
+            return true;
+        }
+        ControlledCopyRecord source = record.getSourceControlledCopy();
+        return source != null && source.getRecipientUser() != null && user.getId().equals(source.getRecipientUser().getId());
+    }
+
+    private void requireCanViewRecord(UserAccount user, ExecutedRecord record) {
+        if (!canViewRecord(user, record)) {
+            throw new AccessDeniedException("Executed Record access denied");
+        }
+    }
+
+    /** The stored scan, for in-browser preview. */
+    public record RecordFile(byte[] bytes, String contentType, String fileName) {
+    }
+
+    /**
+     * The scan of a returned paper copy as it is VIEWED or downloaded: the administrator's "Obsoleted" stamp and watermark (a
+     * recalled copy is an Obsoleted copy) are drawn on a copy of the bytes, so a recalled paper cannot be mistaken for a valid
+     * one. The stored file and its SHA-256 never change. Fails closed: if the marking cannot be drawn, the scan is not served
+     * unmarked. Other records (older executed forms) are served as stored.
+     */
+    private RecordFile markedScan(ExecutedRecord record, byte[] bytes, String contentType, String fileName) {
+        ControlledCopyRecord copy = record.getSourceControlledCopy();
+        if (copy == null || !CAPTURE_PAPER.equals(record.getCaptureMethod())) {
+            return new RecordFile(bytes, contentType, fileName);
+        }
+        try {
+            if (!"application/pdf".equals(contentType)) {
+                throw new IllegalStateException("A recalled scan is filed as a PDF; this file is not one.");
+            }
+            var config = controlledCopyPolicyService.statusMarkingFor(controlledCopyPolicyService.loadOrDefault(),
+                    com.eqms.dto.controlledcopypolicy.ControlledCopyStatusMarking.OBSOLETED);
+            // The same lines the obsoleted copy itself shows: its title and the date it was withdrawn (the date the paper came back).
+            java.time.Instant ended = copy.getRecalledAt() != null ? copy.getRecalledAt()
+                    : copy.getObsoletedAt() != null ? copy.getObsoletedAt() : record.getFilledAt();
+            String date = ended == null ? null
+                    : "Withdrawn " + com.eqms.util.DateTimeFormatUtils.formatDate(ended.atZone(SYSTEM_ZONE).toLocalDate());
+            var lines = pdfMarkingService.statusLines(config,
+                    ControlledCopyWithdrawalNoticeService.reasonLabel(copy.getObsoleteReason()), date);
+            byte[] marked = pdfMarkingService.applyStatusMarking(bytes, config, lines.watermark(), lines.stamp(), List.of());
+            String base = StringUtils.hasText(fileName) ? fileName.replaceFirst("(?i)\\.pdf$", "") : record.getRecordNumber();
+            return new RecordFile(marked, "application/pdf", base + ".pdf");
+        } catch (RuntimeException ex) {
+            throw new IllegalStateException("The scan could not be prepared for viewing", ex);
+        }
+    }
+
+    /** Streams the scan for the preview modal: needs only the view permission (not download) and the record's visibility. */
+    @Transactional(readOnly = true)
+    public RecordFile previewFile(UUID id) throws IOException {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        requirePermission(currentUser, P_VIEW, "Not permitted to view Executed Records");
+        ExecutedRecord record = requireRecord(id);
+        requireCanViewRecord(currentUser, record);
+        if (!StringUtils.hasText(record.getStorageObjectKey())) {
+            throw new IllegalStateException("No file stored for this Executed Record");
+        }
+        byte[] bytes = fileStorageService.readFile(record.getStorageObjectKey());
+        // Never trust the stored/claimed type for what the browser will render: sniff the bytes.
+        String sniffed = ControlledCopyScanCodeService.sniffContentType(bytes);
+        String contentType = sniffed != null ? sniffed : "application/octet-stream";
+        return markedScan(record, bytes, contentType, StringUtils.hasText(record.getFileName()) ? record.getFileName() : record.getRecordNumber());
     }
 
     @Transactional(readOnly = true)
     public PageResponse<ExecutedRecordResponse> list(
-            Integer page, Integer limit, String search, String status, String captureMethod,
-            String formDocumentId, String filledFrom, String filledTo, String sortBy, String sortDirection
+            Integer page, Integer limit, String search,
+            String formDocumentId, String controlledCopyId, String filledFrom, String filledTo, String sortBy, String sortDirection
     ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         requirePermission(currentUser, P_VIEW, "Not permitted to view Executed Records");
         int safePage = page == null || page < 1 ? 1 : page;
         int safeLimit = limit == null || limit < 1 ? 20 : Math.min(limit, MAX_LIST_PAGE_SIZE);
 
+        boolean seesAll = documentAuthorizationService.canViewAllControlledCopies(currentUser);
         Specification<ExecutedRecord> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            if (StringUtils.hasText(status) && !"all".equalsIgnoreCase(status.trim())) {
-                predicates.add(cb.equal(root.get("status"), status.trim().toUpperCase(Locale.ROOT)));
-            }
-            if (StringUtils.hasText(captureMethod) && !"all".equalsIgnoreCase(captureMethod.trim())) {
-                predicates.add(cb.equal(root.get("captureMethod"), captureMethod.trim().toUpperCase(Locale.ROOT)));
+            if (!seesAll) {
+                // Everyone else sees only the records of copies they hold as the named recipient (account id).
+                predicates.add(cb.equal(root.get("sourceControlledCopy").get("recipientUser").get("id"), currentUser.getId()));
             }
             UUID formDocumentUuid = parseUuidOrNull(formDocumentId);
             if (formDocumentUuid != null) {
                 predicates.add(cb.equal(root.get("formDocument").get("id"), formDocumentUuid));
             }
+            UUID controlledCopyUuid = parseUuidOrNull(controlledCopyId);
+            if (controlledCopyUuid != null) {
+                predicates.add(cb.equal(root.get("sourceControlledCopy").get("id"), controlledCopyUuid));
+            }
             if (StringUtils.hasText(search)) {
                 String pattern = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
+                // LEFT join: a record without a source copy must still be found by its own or its document's number.
+                var copyJoin = root.join("sourceControlledCopy", jakarta.persistence.criteria.JoinType.LEFT);
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.<String>get("recordNumber")), pattern),
-                        cb.like(cb.lower(root.get("formDocument").<String>get("documentNumber")), pattern)
+                        cb.like(cb.lower(root.get("formDocument").<String>get("documentNumber")), pattern),
+                        cb.like(cb.lower(copyJoin.<String>get("controlledCopyNumber")), pattern)
                 ));
             }
             java.time.LocalDate from = parseDate(filledFrom);
@@ -471,23 +377,16 @@ public class ExecutedRecordService {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         requirePermission(currentUser, P_DOWNLOAD, "Not permitted to download Executed Record files");
         ExecutedRecord record = requireRecord(id);
+        requireCanViewRecord(currentUser, record);
         if (!StringUtils.hasText(record.getStorageObjectKey()) && !StringUtils.hasText(record.getStorageProvider())) {
             throw new IllegalStateException("No file stored for this Executed Record");
         }
-        return fileStorageService.readFile(record.getStorageObjectKey());
+        byte[] bytes = fileStorageService.readFile(record.getStorageObjectKey());
+        String sniffed = ControlledCopyScanCodeService.sniffContentType(bytes);
+        return markedScan(record, bytes, sniffed != null ? sniffed : "application/octet-stream", record.getFileName()).bytes();
     }
 
     // ---- Helpers ------------------------------------------------------------------------------
-
-    private FormSettings requireAllowed(UUID formDocumentId, boolean paper) {
-        FormSettings settings = formSettingsService.requireSettingsOrNull(formDocumentId);
-        if (settings == null || (paper ? !settings.isAllowPaper() : !settings.isAllowEform())) {
-            throw new IllegalStateException(paper
-                    ? "This Form does not accept physical-copy Executed Records."
-                    : "This Form does not accept eForm submissions.");
-        }
-        return settings;
-    }
 
     private DocumentRevisionRecord requireEffectiveRevision(DocumentRecord document) {
         return documentRevisionRepository.findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(document.getId(), "EFFECTIVE")
@@ -520,15 +419,6 @@ public class ExecutedRecordService {
         return candidate;
     }
 
-    private void requireStatus(ExecutedRecord record, String action, String... allowed) {
-        for (String s : allowed) {
-            if (s.equals(record.getStatus())) {
-                return;
-            }
-        }
-        throw new IllegalStateException("Executed Record " + record.getRecordNumber() + " is " + record.getStatus()
-                + " and cannot be " + action + ".");
-    }
 
     private void requirePermission(UserAccount user, String permission, String message) {
         if (!permissionEvaluationService.hasPermission(user, permission)) {
@@ -602,16 +492,26 @@ public class ExecutedRecordService {
         return "";
     }
 
+    /** One key per column of the Records tables; an unknown key keeps the default (newest record first). Empty values go last. */
     private Sort resolveSort(String sortBy, String sortDirection) {
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        boolean known = true;
         String property = switch (sortBy == null ? "" : sortBy.trim().toLowerCase(Locale.ROOT)) {
             case "number" -> "recordNumber";
-            case "status" -> "status";
-            case "method" -> "captureMethod";
+            case "document" -> "formDocument.documentNumber";
+            case "copy" -> "sourceControlledCopy.controlledCopyNumber";
+            case "recipient" -> "filledBy.fullName";
             case "filled" -> "filledAt";
-            default -> "createdAt";
+            case "scan" -> "fileName";
+            case "created" -> "createdAt";
+            default -> {
+                known = false;
+                yield "createdAt";
+            }
         };
-        return Sort.by(direction, property);
+        Sort.Order order = new Sort.Order(known ? direction : Sort.Direction.DESC, property);
+        // The id breaks ties so that paging through equal values never repeats or skips a row.
+        return Sort.by(order, Sort.Order.asc("id"));
     }
 
     private ExecutedRecordResponse toResponse(ExecutedRecord record, UserAccount currentUser) {
@@ -641,7 +541,11 @@ public class ExecutedRecordService {
                 record.getRejectedBy() == null ? null : record.getRejectedBy().getFullName(),
                 record.getRejectedAt(),
                 record.getRejectedReason(),
-                record.getCreatedAt()
+                record.getCreatedAt(),
+                record.getFileName(),
+                record.getContentType(),
+                record.getFileSize(),
+                record.getRecallBatchId() == null ? null : record.getRecallBatchId().toString()
         );
     }
 }

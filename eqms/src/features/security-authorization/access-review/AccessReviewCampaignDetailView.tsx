@@ -16,6 +16,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { settingsApi } from "@/services/api";
 import type {
   AccessReviewCampaignDetail,
@@ -328,6 +329,168 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
     }
   };
 
+  type ItemRow = (typeof items)[number];
+  const itemColumns: DataTableColumn<ItemRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell34, cellClassName: "text-center text-slate-500 font-medium", cell: (_item, idx) => (itemPage - 1) * itemPageSize + idx + 1 },
+    {
+      id: "employeeCode",
+      header: "Employee ID",
+      label: "Employee ID",
+      sort: { direction: sortKey === "employeeCode" ? sortDir : undefined, onSort: () => handleSort("employeeCode") },
+      cellClassName: (item) => cn("font-medium", item.userId ? "text-emerald-600" : "text-slate-400"),
+      cell: (item) => (
+        <span
+          className={item.userId ? "cursor-pointer hover:underline" : undefined}
+          onClick={(event) => {
+            if (!item.userId) return;
+            event.stopPropagation();
+            navigate(ROUTES.SETTINGS.USERS_PROFILE(item.userId), { state: { returnTo: location.pathname } });
+          }}
+        >
+          {item.employeeCode ?? "—"}
+        </span>
+      ),
+    },
+    {
+      id: "fullName",
+      header: "User",
+      label: "User",
+      sort: { direction: sortKey === "fullName" ? sortDir : undefined, onSort: () => handleSort("fullName") },
+      cell: (item) => (
+        <div className="flex items-center gap-2.5">
+          <Avatar name={item.fullName || item.username || "User"} tone="brand" className="h-8 w-8" />
+          <span className="font-medium text-slate-900">{item.fullName ?? item.username}</span>
+        </div>
+      ),
+    },
+    { id: "username", header: "User Name", label: "User Name", sort: { direction: sortKey === "username" ? sortDir : undefined, onSort: () => handleSort("username") }, cell: (item) => item.username },
+    {
+      id: "userStatus",
+      header: "Status",
+      label: "Status",
+      sort: { direction: sortKey === "userStatus" ? sortDir : undefined, onSort: () => handleSort("userStatus") },
+      cell: (item) => <Badge color={userStatusBadge(item.userStatus)} size="sm">{item.userStatusLabel ?? "—"}</Badge>,
+    },
+    {
+      id: "accessProfiles",
+      header: "Access Profiles",
+      label: "Access Profiles",
+      sort: { direction: sortKey === "accessProfiles" ? sortDir : undefined, onSort: () => handleSort("accessProfiles") },
+      cellClassName: "text-slate-700",
+      cell: (item) => (
+        <span title={item.accessProfiles ?? undefined}>
+          {item.accessProfiles || <span className="italic text-slate-400">None</span>}
+        </span>
+      ),
+    },
+    {
+      id: "permissionCount",
+      header: "Permissions",
+      label: "Permissions",
+      sort: { direction: sortKey === "permissionCount" ? sortDir : undefined, onSort: () => handleSort("permissionCount") },
+      cellClassName: "text-slate-700",
+      cell: (item) => (item.superAdmin ? "All (super admin)" : item.permissionCount),
+    },
+    {
+      id: "flags",
+      header: "Flags",
+      label: "Flags",
+      cell: (item) => (
+        <div className="flex gap-1">
+          {item.superAdmin && <Badge color="purple" size="sm">Super Admin</Badge>}
+          {!item.superAdmin && item.permissionCount === 0 && <Badge color="slate" size="sm">No Permissions</Badge>}
+          {!item.superAdmin && item.permissionCount !== 0 && <span className="text-slate-400">—</span>}
+        </div>
+      ),
+    },
+    {
+      id: "decision",
+      header: "Decision",
+      label: "Decision",
+      sort: { direction: sortKey === "decision" ? sortDir : undefined, onSort: () => handleSort("decision") },
+      cell: (item) => (
+        <>
+          <Badge
+            size="sm"
+            color={
+              item.decision === "CONFIRMED"
+                ? "emerald"
+                : item.decision === "PENDING"
+                  ? "slate"
+                  : item.decision === "REVOKE_REQUESTED"
+                    ? "red"
+                    : "amber"
+            }
+          >
+            {item.decisionLabel}
+          </Badge>
+          {item.decisionNote && (
+            <div className="mt-0.5 max-w-[200px] truncate text-xs text-slate-500" title={item.decisionNote}>
+              {item.decisionNote}
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      id: "decidedAt",
+      header: "Decided",
+      label: "Decided",
+      sort: { direction: sortKey === "decidedAt" ? sortDir : undefined, onSort: () => handleSort("decidedAt") },
+      cellClassName: "text-slate-700",
+      cell: (item) =>
+        item.decidedAt ? (
+          <>
+            <div>{formatDateTime(item.decidedAt)}</div>
+            {item.decidedByName && <div className="text-xs text-slate-500">{item.decidedByName}</div>}
+          </>
+        ) : (
+          "—"
+        ),
+    },
+  ];
+  const itemAction: DataTableAction<ItemRow> = {
+    header: "Actions",
+    cell: (item) => (
+      <>
+        <button
+          ref={getRef(item.id)}
+          onClick={(e) => toggle(item.id, e)}
+          className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 transition-colors"
+          aria-label="More actions"
+        >
+          <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-600" />
+        </button>
+        <PortalDropdownMenu isOpen={openId === item.id} onClose={close} position={position}>
+          <div className="py-1">
+            {DECISIONS.map((d) => (
+              <DropdownMenuItem
+                key={d.value}
+                icon={
+                  d.value === "CONFIRMED" ? (
+                    <IconCheck className="h-4 w-4" />
+                  ) : d.value === "MODIFY_REQUESTED" ? (
+                    <IconPencilMinus className="h-4 w-4" />
+                  ) : (
+                    <IconCircleMinus className="h-4 w-4" />
+                  )
+                }
+                disabled={item.decision === d.value}
+                onClick={() => {
+                  close();
+                  openDecision(item, d.value);
+                }}
+              >
+                {d.label}
+              </DropdownMenuItem>
+            ))}
+          </div>
+        </PortalDropdownMenu>
+      </>
+    ),
+  };
+  const { layout: itemLayout, control: itemControl } = useCustomColumnLayout("access-review.campaign-items", itemColumns);
+
   if (loading && !detail) {
     return <FullPageLoading text="Loading access review campaign..." />;
   }
@@ -363,6 +526,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
 
   const { campaign } = detail;
   const inProgress = campaign.status === "IN_PROGRESS";
+
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
@@ -518,6 +682,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
             >
               Clear Filters
             </Button>
+          {itemControl}
           </div>
           </div>
 
@@ -536,183 +701,34 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
                 />
               </div>
             ) : (
-              <div className={cn("border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300", loading && "blur-[2px] opacity-80")}>
-                <div
-                  ref={scrollerRef}
-                  className={cn(
-                    "overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400",
-                    isDragging ? "cursor-grabbing select-none" : "cursor-grab",
-                  )}
-                  {...dragEvents}
-                >
-                  <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
-                    <TableMarkup.Head className="sticky top-0 z-30">
-                      <TableMarkup.Row>
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell34}>
-                          No.
-                        </TableMarkup.HeaderCell>
-                        {ITEM_COLUMNS.map((col) => (
-                          <TableMarkup.HeaderCell
-                            key={col.key}
-                            onClick={col.sortable ? () => handleSort(col.key) : undefined}
-                            className={cn(
-                              "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors group",
-                              col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700",
-                            )}
-                          >
-                            <div className="flex w-full items-center justify-between gap-2">
-                              <span className="truncate">{col.label}</span>
-                              {col.sortable && (
-                                <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                                  <ChevronUp className={cn("h-3 w-3 -mb-1", sortKey === col.key && sortDir === "asc" ? "text-emerald-600" : "")} />
-                                  <ChevronDown className={cn("h-3 w-3", sortKey === col.key && sortDir === "desc" ? "text-emerald-600" : "")} />
-                                </div>
-                              )}
-                            </div>
-                          </TableMarkup.HeaderCell>
-                        ))}
-                        {inProgress && canManage && (
-                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                            Actions
-                          </TableMarkup.HeaderCell>
-                        )}
-                      </TableMarkup.Row>
-                    </TableMarkup.Head>
-                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                      {items.map((item, idx) => (
-                        <TableMarkup.Row key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center text-slate-500 font-medium">
-                            {(itemPage - 1) * itemPageSize + idx + 1}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell
-                            className={cn(
-                              "py-3 px-4 text-xs sm:text-sm whitespace-nowrap font-medium",
-                              item.userId ? "text-emerald-600 cursor-pointer hover:underline" : "text-slate-400",
-                            )}
-                            onClick={(event) => {
-                              if (!item.userId) return;
-                              event.stopPropagation();
-                              navigate(ROUTES.SETTINGS.USERS_PROFILE(item.userId), {
-                                state: { returnTo: location.pathname },
-                              });
-                            }}
-                          >
-                            {item.employeeCode ?? "—"}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <div className="flex items-center gap-2.5">
-                              <Avatar name={item.fullName || item.username || "User"} tone="brand" className="h-8 w-8" />
-                              <span className="font-medium text-slate-900">{item.fullName ?? item.username}</span>
-                            </div>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{item.username}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={userStatusBadge(item.userStatus)} size="sm">{item.userStatusLabel ?? "—"}</Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap" title={item.accessProfiles ?? undefined}>
-                            {item.accessProfiles || <span className="italic text-slate-400">None</span>}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                            {item.superAdmin ? "All (super admin)" : item.permissionCount}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <div className="flex gap-1">
-                              {item.superAdmin && <Badge color="purple" size="sm">Super Admin</Badge>}
-                              {!item.superAdmin && item.permissionCount === 0 && <Badge color="slate" size="sm">No Permissions</Badge>}
-                              {!item.superAdmin && item.permissionCount !== 0 && <span className="text-slate-400">—</span>}
-                            </div>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge
-                              size="sm"
-                              color={
-                                item.decision === "CONFIRMED"
-                                  ? "emerald"
-                                  : item.decision === "PENDING"
-                                    ? "slate"
-                                    : item.decision === "REVOKE_REQUESTED"
-                                      ? "red"
-                                      : "amber"
-                              }
-                            >
-                              {item.decisionLabel}
-                            </Badge>
-                            {item.decisionNote && (
-                              <div className="mt-0.5 max-w-[200px] truncate text-xs text-slate-500" title={item.decisionNote}>
-                                {item.decisionNote}
-                              </div>
-                            )}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                            {item.decidedAt ? (
-                              <>
-                                <div>{formatDateTime(item.decidedAt)}</div>
-                                {item.decidedByName && <div className="text-xs text-slate-500">{item.decidedByName}</div>}
-                              </>
-                            ) : (
-                              "—"
-                            )}
-                          </TableMarkup.Cell>
-                          {inProgress && canManage && (
-                            <TableMarkup.Cell
-                              onClick={(e) => e.stopPropagation()}
-                              className="sticky right-0 bg-white py-3 px-4 text-center z-10 whitespace-nowrap before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors"
-                            >
-                              <button
-                                ref={getRef(item.id)}
-                                onClick={(e) => toggle(item.id, e)}
-                                className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 transition-colors"
-                                aria-label="More actions"
-                              >
-                                <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-600" />
-                              </button>
-                              <PortalDropdownMenu isOpen={openId === item.id} onClose={close} position={position}>
-                                <div className="py-1">
-                                  {DECISIONS.map((d) => (
-                                    <DropdownMenuItem
-                                      key={d.value}
-                                      icon={
-                                        d.value === "CONFIRMED" ? (
-                                          <IconCheck className="h-4 w-4" />
-                                        ) : d.value === "MODIFY_REQUESTED" ? (
-                                          <IconPencilMinus className="h-4 w-4" />
-                                        ) : (
-                                          <IconCircleMinus className="h-4 w-4" />
-                                        )
-                                      }
-                                      disabled={item.decision === d.value}
-                                      onClick={() => {
-                                        close();
-                                        openDecision(item, d.value);
-                                      }}
-                                    >
-                                      {d.label}
-                                    </DropdownMenuItem>
-                                  ))}
-                                </div>
-                              </PortalDropdownMenu>
-                            </TableMarkup.Cell>
-                          )}
-                        </TableMarkup.Row>
-                      ))}
-                    </TableMarkup.Body>
-                  </TableMarkup.Root>
-                </div>
-                {itemTotal > 0 && (
-                  <TablePagination
-                    currentPage={itemPage}
-                    totalPages={itemTotalPages}
-                    totalItems={itemTotal}
-                    itemsPerPage={itemPageSize}
-                    isLoading={loading}
-                    onPageChange={setItemPage}
-                    onItemsPerPageChange={(value) => {
-                      setItemPageSize(value);
-                      setItemPage(1);
-                    }}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                )}
+              <div className={cn("flex flex-1 flex-col transition-all duration-300", loading && "blur-[2px] opacity-80")}>
+                <DataTable
+                  rows={items}
+                  getRowKey={(item) => item.id}
+                  columns={itemLayout.columns}
+                  columnLayout={itemLayout}
+                  action={inProgress && canManage ? itemAction : undefined}
+                  scrollerRef={scrollerRef}
+                  scrollProps={dragEvents}
+                  isDragging={isDragging}
+                  pagination={
+                    itemTotal > 0 ? (
+                      <TablePagination
+                        currentPage={itemPage}
+                        totalPages={itemTotalPages}
+                        totalItems={itemTotal}
+                        itemsPerPage={itemPageSize}
+                        isLoading={loading}
+                        onPageChange={setItemPage}
+                        onItemsPerPageChange={(value) => {
+                          setItemPageSize(value);
+                          setItemPage(1);
+                        }}
+                        itemsPerPageOptions={[10, 20, 50]}
+                      />
+                    ) : undefined
+                  }
+                />
               </div>
             )}
           </div>

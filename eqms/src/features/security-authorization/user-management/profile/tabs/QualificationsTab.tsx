@@ -11,7 +11,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { formatDate } from "@/utils/format";
 import { cn } from "@/components/ui/utils";
 import type { User, Certification, EducationItem } from "../../types";
-import { IconCertificate, IconSchool, IconEdit } from "@tabler/icons-react";
+import { IconCertificate, IconSchool, IconEdit, IconPencilMinus } from "@tabler/icons-react";
 import { usePortalDropdown } from "@/hooks";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
@@ -435,13 +435,12 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
                 onClick={(e) => { e.stopPropagation(); handleEduOpenEdit(edu); closeEduMenu(); }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
               >
-                <IconEdit className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
+                <IconPencilMinus className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
                 Edit Education
               </button>
-              <div className="my-1 h-px bg-slate-100" />
               <button
                 onClick={(e) => { e.stopPropagation(); setEduDeleteId(edu.id); closeEduMenu(); }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5 flex-shrink-0" />
                 Delete

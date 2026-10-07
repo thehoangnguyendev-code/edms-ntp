@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -577,7 +578,63 @@ export const AuditTrailView: React.FC = () => {
             </div>
           </div>
 
-          <div className="hidden md:grid grid-cols-1 items-end gap-4 pb-4 md:grid-cols-3 md:pb-5">
+<ConfiguredDesktopFilters
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      placeholder={"Search audit trail..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "actionFilter",
+      label: "Action Type",
+      value: String(actionFilter),
+      options: actionOptions,
+      onChange: (value) => setActionFilter(String(value)),
+    },
+    {
+      id: "userFilter",
+      label: "User",
+      value: String(userFilter),
+      options: userOptions,
+      onChange: (value) => setUserFilter(String(value)),
+      loading: isUserOptionsLoading,
+    },
+    {
+      id: "eSignatureFilter",
+      label: "E-Signature",
+      value: String(eSignatureFilter),
+      options: [
+        { label: "All", value: "All" },
+        { label: "Yes", value: "Yes" },
+        { label: "No", value: "No" },
+      ],
+      onChange: (value) => setESignatureFilter(value as "All" | "Yes" | "No"),
+    },
+  ]}
+  dates={[
+    {
+      id: "dateFrom",
+      label: "Date Range",
+      from: dateFrom,
+      to: dateTo,
+      onFromChange: (value) => {
+        setDateFrom(value);
+        setCurrentPage(1);
+      },
+      onToChange: (value) => {
+        setDateTo(value);
+        setCurrentPage(1);
+      },
+      includeTime: true,
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-1 items-end gap-4 pb-4 md:grid-cols-3 md:pb-5">
             <div className="w-full">
               <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
                 Search
@@ -673,6 +730,7 @@ export const AuditTrailView: React.FC = () => {
               </Button>
             </div>
           </div>
+</ConfiguredDesktopFilters>
 
           <div className="relative flex flex-1 flex-col">
             {isTableLoading && (

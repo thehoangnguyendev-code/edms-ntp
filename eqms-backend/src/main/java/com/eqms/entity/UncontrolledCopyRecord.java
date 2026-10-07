@@ -118,6 +118,11 @@ public class UncontrolledCopyRecord {
     @Column(name = "recipient_snapshot", columnDefinition = "jsonb")
     private JsonNode recipientSnapshot;
 
+    /** Account id of the user who holds the copy (the only identity recipient visibility matches on);
+     *  mirrors {@code recipient_snapshot.userId} so list queries can filter in SQL. */
+    @Column(name = "recipient_user_id")
+    private UUID recipientUserId;
+
     @Column(name = "uncontrolled_copy_file_path", length = 1024)
     private String uncontrolledCopyFilePath;
 
@@ -226,6 +231,8 @@ public class UncontrolledCopyRecord {
     public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
     public JsonNode getRecipientSnapshot() { return recipientSnapshot; }
     public void setRecipientSnapshot(JsonNode recipientSnapshot) { this.recipientSnapshot = recipientSnapshot; }
+    public UUID getRecipientUserId() { return recipientUserId; }
+    public void setRecipientUserId(UUID recipientUserId) { this.recipientUserId = recipientUserId; }
     public String getUncontrolledCopyFilePath() { return uncontrolledCopyFilePath; }
     public void setUncontrolledCopyFilePath(String uncontrolledCopyFilePath) { this.uncontrolledCopyFilePath = uncontrolledCopyFilePath; }
     public String getUncontrolledCopyStorageProvider() { return uncontrolledCopyStorageProvider; }

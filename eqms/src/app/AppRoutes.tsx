@@ -38,7 +38,6 @@ const ControlledCopyPreviewView = lazy(() => import('@/features/documents/contro
 const KnowledgeExplorerPage = lazy(() => import('@/features/self-service/knowledge/explorer/KnowledgeExplorerPage').then(m => ({ default: m.KnowledgeExplorerPage })));
 const KnowledgeDocumentPreviewPage = lazy(() => import('@/features/self-service/knowledge/KnowledgeDocumentPreviewPage').then(m => ({ default: m.KnowledgeDocumentPreviewPage })));
 const OnlyOfficeEditorPage = lazy(() => import('@/features/documents/shared/pages/OnlyOfficeEditorPage').then(m => ({ default: m.OnlyOfficeEditorPage })));
-const DesignEformFieldsPage = lazy(() => import('@/features/documents/document-detail/pages/DesignEformFieldsPage').then(m => ({ default: m.DesignEformFieldsPage })));
 const KnowledgeView = lazy(() => import('@/features/self-service/knowledge').then(m => ({ default: m.KnowledgeView })));
 const NotificationsView = lazy(() => import('@/features/notifications').then(m => ({ default: m.NotificationsView })));
 const CalendarView = lazy(() => import('@/features/calendar/CalendarView').then(m => ({ default: m.CalendarView })));
@@ -310,20 +309,6 @@ export const AppRoutes: React.FC = () => {
             <SessionTimeoutGuard />
             <Suspense fallback={<LoadingFallback />}>
               <OnlyOfficeEditorPage />
-            </Suspense>
-          </ProtectedRoute>
-        }
-      />
-      {/* Authenticated but layout-less standalone page hosting the live OnlyOffice Form Creator
-          session, opened in a new browser tab by "Design eForm Fields" -- same "new tab, not an
-          in-page overlay" treatment as the onlyoffice-editor route above. */}
-      <Route
-        path="/documents/forms/:formDocumentId/design-eform-fields"
-        element={
-          <ProtectedRoute>
-            <SessionTimeoutGuard />
-            <Suspense fallback={<LoadingFallback />}>
-              <DesignEformFieldsPage />
             </Suspense>
           </ProtectedRoute>
         }

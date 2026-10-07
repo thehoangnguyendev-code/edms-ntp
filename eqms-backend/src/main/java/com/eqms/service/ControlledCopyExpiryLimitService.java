@@ -28,10 +28,10 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * QA/Document Control policy: how many days into the future a Controlled Copy expiry date is set,
- * scoped to document type and/or department. Every Controlled Copy always has an expiry — there is
- * a mandatory, non-deletable "Global Default" row (documentType = department = null, is_system =
- * true) guaranteeing a resolution always exists. Resolution picks the most specific active rule:
+ * QA/Document Control policy: how long the link in a Controlled Copy's distribution e-mail stays valid (counted from when the
+ * e-mail is sent), scoped to document type and/or department (owner decision CC-EXPIRY-2026-10-07). It does NOT set when the copy
+ * expires: a copy expires with its document's Valid Until date. There is a mandatory, non-deletable "Global Default" row
+ * (documentType = department = null, is_system = true) guaranteeing a resolution always exists. Resolution picks the most specific active rule:
  * (documentType+department) > documentType-only > department-only > the Global Default row.
  */
 @Service

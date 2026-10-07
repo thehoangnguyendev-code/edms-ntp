@@ -32,12 +32,11 @@ import { formatDate } from "@/utils/format";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { navigateBack } from "@/app/navigation/backNavigation";
 import { settingsApi } from "@/services/api/settings";
-import type { UserActionCapabilitiesResponse, ExternalIdentityProvisioningResponse } from "@/services/api/settings";
+import type { UserActionCapabilitiesResponse } from "@/services/api/settings";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import { AvatarCropModal } from "@/features/settings/user-profile/AvatarCropModal";
 import { isAvatarFileWithinLimit, isSupportedAvatarFile } from "@/utils/avatar";
 
-type ExternalAction = "invite" | "disable" | "resend" | "retry" | "remove";
 type MainTab = "personal" | "employment" | "qualifications" | "account" | "security";
 
 export const UserProfileView: React.FC = () => {
@@ -87,15 +86,10 @@ export const UserProfileView: React.FC = () => {
   const [isNavigating, setIsNavigating] = useState(false);
   const [activeTab, setActiveTab] = useState<MainTab>("personal");
   const [capabilities, setCapabilities] = useState<UserActionCapabilitiesResponse | null>(null);
-  const [externalProvisioning, setExternalProvisioning] = useState<ExternalIdentityProvisioningResponse | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isAvatarCropOpen, setIsAvatarCropOpen] = useState(false);
   const [avatarImageToCrop, setAvatarImageToCrop] = useState("");
   const { showToast } = useToast();
-  const { openId: externalMenuOpenId, position: externalMenuPosition, getRef: getExternalMenuRef, toggle: toggleExternalMenu, close: closeExternalMenu } = usePortalDropdown();
-  const [externalReasonModal, setExternalReasonModal] = useState<ExternalAction | null>(null);
-  const [externalReason, setExternalReason] = useState("");
-  const [isExternalActionLoading, setIsExternalActionLoading] = useState(false);
 
   const loadCapabilities = React.useCallback(async () => {
     if (!userId) return;
@@ -111,98 +105,7 @@ export const UserProfileView: React.FC = () => {
     void loadCapabilities();
   }, [loadCapabilities]);
 
-  const refreshExternalProvisioning = React.useCallback(() => {
-    if (!userId) return;
-    void settingsApi.getExternalProvisioning(userId)
-      .then(setExternalProvisioning)
-      .catch(() => setExternalProvisioning(null));
-  }, [userId]);
-
-  React.useEffect(() => {
-    if (!capabilities?.actions?.viewExternalProvisioning?.allowed) return;
-    refreshExternalProvisioning();
-  }, [capabilities?.actions?.viewExternalProvisioning?.allowed, refreshExternalProvisioning]);
-
-  React.useEffect(() => {
-    if (!capabilities?.actions?.viewExternalProvisioning?.allowed) return;
-    return subscribeNotificationRealtime((event) => {
-      if (event.type === "external-identity-status-changed") {
-        // The badge (externalProvisioning) AND the Microsoft Access menu's button
-        // visibility (capabilities) are both derived from this status — both must be
-        // refreshed together, or the menu goes stale until a manual page reload.
-        refreshExternalProvisioning();
-        void loadCapabilities();
-      }
-    });
-  }, [capabilities?.actions?.viewExternalProvisioning?.allowed, refreshExternalProvisioning, loadCapabilities]);
-
-  const openExternalReasonModal = (action: ExternalAction) => {
-    closeExternalMenu();
-    setExternalReason(
-      action === "invite" ? "External user onboarding"
-        : action === "disable" ? "Access disabled by administrator"
-          : action === "remove" ? "External access no longer required"
-            : "External access provisioning",
-    );
-    setExternalReasonModal(action);
-  };
-
-  const submitExternalReason = async () => {
-    if (!externalReasonModal || !externalReason.trim() || !userId) return;
-    const reasonText = externalReason.trim();
-    setIsExternalActionLoading(true);
-    try {
-      switch (externalReasonModal) {
-        case "invite":
-          await settingsApi.inviteExternalUser(userId, reasonText);
-          showToast({ type: "success", title: "Invitation queued", message: `Microsoft Entra invitation for ${user.email} is being processed.` });
-          break;
-        case "resend":
-          await settingsApi.resendExternalInvitation(userId, reasonText);
-          showToast({ type: "success", title: "Invitation resend queued", message: `Microsoft Entra request for ${user.email} is being processed.` });
-          break;
-        case "disable":
-          await settingsApi.disableMicrosoftAccess(userId, reasonText);
-          showToast({ type: "success", title: "Microsoft access disable queued", message: `Microsoft Entra request for ${user.fullName} is being processed.` });
-          break;
-        case "retry":
-          await settingsApi.retryExternalProvisioning(userId, reasonText);
-          showToast({ type: "success", title: "Provisioning retry queued", message: `Microsoft Entra request for ${user.email} is being processed.` });
-          break;
-        case "remove":
-          await settingsApi.removeExternalUser(userId, reasonText);
-          showToast({ type: "success", title: "External user removal queued", message: `Microsoft Entra request for ${user.email} is being processed.` });
-          break;
-      }
-      setExternalReasonModal(null);
-      refreshExternalProvisioning();
-      void loadCapabilities();
-    } catch (error: any) {
-      showToast({
-        type: "error",
-        title: "External provisioning failed",
-        message: error?.response?.data?.message || "Unable to complete the operation.",
-      });
-    } finally {
-      setIsExternalActionLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return <FullPageLoading text="Loading..." />;
-  }
-
   const canPerform = (action: string) => Boolean(capabilities?.actions?.[action]?.allowed);
-  // Whether each Microsoft-identity action is currently valid (not just permitted) is decided by
-  // the server — canPerform(...) already reflects both permission AND the user's current
-  // provisioning status (see UserManagementService.getUserCapabilities). This view only renders
-  // what it's told; it does not re-derive eligibility from externalProvisioning.status itself.
-  const hasAnyExternalAction =
-    canPerform("inviteExternal") ||
-    canPerform("resendExternalInvitation") ||
-    canPerform("disableMicrosoftAccess") ||
-    canPerform("retryExternalProvisioning") ||
-    canPerform("removeExternalUser");
 
   const handleBack = () => {
     setIsNavigating(true);
@@ -308,23 +211,6 @@ export const UserProfileView: React.FC = () => {
                 <Button variant="outline-emerald" size="sm" onClick={startEdit} className="whitespace-nowrap">Edit</Button>
               )
             )}
-            {hasAnyExternalAction && (
-              <Button
-                ref={getExternalMenuRef("actions")}
-                size="sm"
-                variant="outline-emerald"
-                onClick={(event) => toggleExternalMenu("actions", event, { menuWidth: 220, menuHeight: 320 })}
-                className="gap-2 whitespace-nowrap"
-              >
-                Microsoft Access
-                <ChevronDown
-                  className={cn(
-                    "h-3.5 w-3.5 transition-transform duration-200",
-                    externalMenuOpenId === "actions" && "rotate-180",
-                  )}
-                />
-              </Button>
-            )}
           </>
         }
       />
@@ -425,12 +311,6 @@ export const UserProfileView: React.FC = () => {
               </Badge>
               {user.employmentType && (
                 <Badge color="slate" size="sm">{user.employmentType}</Badge>
-              )}
-              {canPerform("viewExternalProvisioning") && (
-                <Badge color={(externalProvisioning?.statusColor || "slate") as any} size="sm" className="gap-1" title="Microsoft Entra external-user status">
-                  <IconLayoutGrid className="h-3 w-3" />
-                  {externalProvisioning?.statusLabel}
-                </Badge>
               )}
             </div>
           </div>
@@ -552,108 +432,6 @@ export const UserProfileView: React.FC = () => {
         userEmail={user.email}
         onSuccess={handleUnlockSuccess}
       />
-
-      <PortalDropdownMenu
-        isOpen={externalMenuOpenId === "actions"}
-        onClose={closeExternalMenu}
-        position={externalMenuPosition}
-        minWidth={220}
-      >
-        <div className="py-1 whitespace-nowrap">
-          {hasAnyExternalAction && (
-            <>
-              <p className="px-3 pt-1.5 pb-1 text-2xs font-bold uppercase tracking-wider text-slate-400">Microsoft Access</p>
-              {canPerform("inviteExternal") && (
-                <button
-                  onClick={() => openExternalReasonModal("invite")}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <IconBrandTelegram className="h-4 w-4 flex-shrink-0" />
-                  <span className="font-medium text-slate-500">Invite External User</span>
-                </button>
-              )}
-              {canPerform("resendExternalInvitation") && (
-                <button
-                  onClick={() => openExternalReasonModal("resend")}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <IconMailUp className="h-4 w-4 flex-shrink-0" />
-                  <span className="font-medium text-slate-500">Resend Invitation</span>
-                </button>
-              )}
-              {canPerform("disableMicrosoftAccess") && (
-                <button
-                  onClick={() => openExternalReasonModal("disable")}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <IconBan className="h-4 w-4 flex-shrink-0" />
-                  <span className="font-medium text-slate-500">Disable Microsoft Access</span>
-                </button>
-              )}
-              {canPerform("retryExternalProvisioning") && (
-                <button
-                  onClick={() => openExternalReasonModal("retry")}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  <IconRestore className="h-4 w-4 flex-shrink-0" />
-                  <span className="font-medium text-slate-500">Retry Provisioning</span>
-                </button>
-              )}
-              {canPerform("removeExternalUser") && (
-                <button
-                  onClick={() => openExternalReasonModal("remove")}
-                  title="Permanently deletes the guest account from Microsoft Entra. This cannot be undone."
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors"
-                >
-                  <SquareX className="h-4 w-4 flex-shrink-0" />
-                  <span className="font-medium">Remove External User</span>
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </PortalDropdownMenu>
-
-      <FormModal
-        isOpen={Boolean(externalReasonModal)}
-        onClose={() => setExternalReasonModal(null)}
-        onConfirm={() => void submitExternalReason()}
-        title={
-          externalReasonModal === "invite" ? "Invite External User"
-            : externalReasonModal === "disable" ? "Disable Microsoft Access"
-              : externalReasonModal === "resend" ? "Resend Invitation"
-                : externalReasonModal === "remove" ? "Remove External User"
-                  : "Retry Provisioning"
-        }
-        description={
-          externalReasonModal
-            ? `Enter the reason for ${externalReasonModal === "invite" ? "inviting" : externalReasonModal === "disable" ? "disabling Microsoft access for" : externalReasonModal === "resend" ? "resending the invitation to" : externalReasonModal === "remove" ? "permanently removing" : "retrying provisioning for"} ${user.email}.`
-            : undefined
-        }
-        confirmText={externalReasonModal === "remove" ? "Remove Permanently" : "Confirm"}
-        isLoading={isExternalActionLoading}
-        confirmDisabled={!externalReason.trim()}
-        size="md"
-      >
-        {externalReasonModal === "remove" && (
-          <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-700">
-            This permanently deletes the guest account from Microsoft Entra. The user will lose all Word Online / SharePoint access immediately and must be invited again from scratch to regain it. This action cannot be undone.
-          </div>
-        )}
-        <label htmlFor="external-action-reason-profile" className="block text-sm font-medium text-slate-700">
-          Reason
-        </label>
-        <textarea
-          id="external-action-reason-profile"
-          value={externalReason}
-          onChange={(event) => setExternalReason(event.target.value)}
-          rows={4}
-          maxLength={500}
-          autoFocus
-          placeholder="Describe the reason..."
-          className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-        />
-      </FormModal>
 
       <AvatarCropModal
         imageSrc={avatarImageToCrop}

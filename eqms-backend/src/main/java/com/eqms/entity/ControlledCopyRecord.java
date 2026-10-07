@@ -58,12 +58,12 @@ public class ControlledCopyRecord {
     @Column(name = "document_number", nullable = false, length = 100)
     private String documentNumber;
 
-    /** PAPER (default, zero behavior change for every non-Form document) or ELECTRONIC -- only
-     *  selectable when the target Document's FormSettings.allowEform is true. ELECTRONIC drives
-     *  the eForm Fill/Sign flow (see EformEditSessionService / EformSignerAssignment) instead of
-     *  the print-and-scan-back paper path. */
-    @Column(name = "delivery_mode", nullable = false, length = 20)
-    private String deliveryMode = "PAPER";
+
+    @Column(name = "eform_signing_protocol", length = 20, insertable = false, updatable = false)
+    private String eformSigningProtocol;
+
+    public String getEformSigningProtocol() { return eformSigningProtocol; }
+    public void setEformSigningProtocol(String value) { eformSigningProtocol = value; }
 
     @Column(name = "document_title", length = 500)
     private String documentTitle;
@@ -126,6 +126,10 @@ public class ControlledCopyRecord {
     /** True once the stamp/watermark was burned into the stored PDF (the on-screen overlay is then skipped). */
     @Column(name = "marking_applied", nullable = false)
     private boolean markingApplied;
+
+    /** Opaque random key printed as a QR code on a paper copy (see ControlledCopyScanCodeService); null when no code was printed. */
+    @Column(name = "scan_token", length = 64)
+    private String scanToken;
 
     /** Where the issue-time stamp/watermark were drawn (see ControlledCopyPdfMarkingService.Placement); null for older copies. */
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
@@ -326,8 +330,6 @@ public class ControlledCopyRecord {
     public void setTotalCopies(int totalCopies) { this.totalCopies = totalCopies; }
     public String getDocumentNumber() { return documentNumber; }
     public void setDocumentNumber(String documentNumber) { this.documentNumber = documentNumber; }
-    public String getDeliveryMode() { return deliveryMode; }
-    public void setDeliveryMode(String deliveryMode) { this.deliveryMode = deliveryMode; }
     public String getDocumentTitle() { return documentTitle; }
     public void setDocumentTitle(String documentTitle) { this.documentTitle = documentTitle; }
     public String getRevisionNumber() { return revisionNumber; }
@@ -368,6 +370,8 @@ public class ControlledCopyRecord {
     public void setMarkingLayout(JsonNode markingLayout) { this.markingLayout = markingLayout; }
     public boolean isMarkingApplied() { return markingApplied; }
     public void setMarkingApplied(boolean markingApplied) { this.markingApplied = markingApplied; }
+    public String getScanToken() { return scanToken; }
+    public void setScanToken(String scanToken) { this.scanToken = scanToken; }
     public JsonNode getRecipientSnapshot() { return recipientSnapshot; }
     public void setRecipientSnapshot(JsonNode recipientSnapshot) { this.recipientSnapshot = recipientSnapshot; }
     public JsonNode getCustomPlaceholderValues() { return customPlaceholderValues; }

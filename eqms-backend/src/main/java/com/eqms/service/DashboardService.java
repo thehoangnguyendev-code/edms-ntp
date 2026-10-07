@@ -3,6 +3,7 @@ package com.eqms.service;
 import com.eqms.auth.AuthenticatedUser;
 import com.eqms.dto.dashboard.DashboardActivityPointResponse;
 import com.eqms.dto.dashboard.DashboardAdminStatsResponse;
+import com.eqms.dto.dashboard.DashboardDocumentTypeCountResponse;
 import com.eqms.dto.dashboard.DashboardMyTaskResponse;
 import com.eqms.dto.dashboard.DashboardRecentActivityResponse;
 import com.eqms.dto.dashboard.DashboardSummaryResponse;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -68,6 +70,21 @@ public class DashboardService {
                 .map(r -> new DashboardActivityPointResponse(
                         String.valueOf(r[0]),
                         ((Number) r[1]).longValue()
+                ))
+                .toList();
+    }
+
+    /**
+     * Effective Documents per Document Type. "Effective" is the Document Master status ACTIVE, exactly as
+     * getSummary() counts it, so the rows add up to summary.totalEffectiveDocuments.
+     */
+    public List<DashboardDocumentTypeCountResponse> getEffectiveDocumentsByType() {
+        return documentRepo.countDocumentsGroupedByTypeForStatus("ACTIVE").stream()
+                .map(r -> new DashboardDocumentTypeCountResponse(
+                        (UUID) r[0],
+                        String.valueOf(r[1]),
+                        String.valueOf(r[2]),
+                        ((Number) r[3]).longValue()
                 ))
                 .toList();
     }

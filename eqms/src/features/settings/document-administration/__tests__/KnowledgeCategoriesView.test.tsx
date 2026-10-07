@@ -35,6 +35,15 @@ const row = {
 describe("KnowledgeCategoriesView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.matchMedia = ((query: string) => ({
+      matches: true, media: query, addEventListener: () => undefined, removeEventListener: () => undefined,
+      addListener: () => undefined, removeListener: () => undefined, onchange: null, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    window.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
     knowledgeApiMock.listHierarchies.mockResolvedValue({ data: [row], pagination: { page: 1, limit: 10, total: 1, totalPages: 1 } });
   });
 

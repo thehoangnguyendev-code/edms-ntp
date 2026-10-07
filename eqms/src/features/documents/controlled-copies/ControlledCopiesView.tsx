@@ -5,7 +5,7 @@ import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { motion, useReducedMotion } from "framer-motion";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ROUTES } from '@/app/routes.constants';
-import { Download, ChevronUp, ChevronDown, Search, Check, X, MoreVertical, FileX, History, RefreshCw } from "lucide-react";
+import { Download, Search, Check, X, MoreVertical, FileX, History, RefreshCw, ScanLine } from "lucide-react";
 import { IconHandClick, IconX } from '@tabler/icons-react';
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
@@ -16,9 +16,10 @@ import { CopyDesktopFilters } from '@/components/ui/filter/CopyDesktopFilters';
 import { useBranding } from '@/components/branding/BrandLogo';
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { formatDateUS, formatDateTimeParts, formatDateTime } from "@/utils/format";
 import { useToast } from "@/components/ui/toast/Toast";
-import type { ControlledCopy, TableColumn } from "./types";
+import type { ControlledCopy } from "./types";
 import {IconArrowBackUp, IconFilter2, IconInfoCircle, IconShare3, IconShredder} from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { controlledCopies } from "@/components/ui/breadcrumb/breadcrumbs.config";
@@ -52,6 +53,7 @@ import {
   ExpandControlledCopiesRow,
   getCachedControlledCopyChildren,
   invalidateControlledCopyChildren,
+  preloadControlledCopyChildren,
 } from "./components/ExpandControlledCopiesRow";
 import { DistributeBatchProgressModal } from "./components/DistributeBatchProgressModal";
 import { DistributeBatchResultModal, type DistributeBatchFailedItem } from "./components/DistributeBatchResultModal";
@@ -67,28 +69,9 @@ import {
   useControlledCopyBatchActionCapabilities,
 } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
-import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 // Default Columns Configuration
-const DEFAULT_COLUMNS: TableColumn[] = [
-  { id: "controlledCopyNumber", label: "Document Number", visible: true, order: 1, locked: true },
-  { id: "created", label: "Created", visible: true, order: 2 },
-  { id: "openedBy", label: "Opened by", visible: true, order: 3 },
-  { id: "name", label: "Controlled Copy Name", visible: true, order: 4 },
-  { id: "quantity", label: "Quantity", visible: true, order: 5 },
-  { id: "status", label: "Status", visible: true, order: 6 },
-  { id: "validUntil", label: "Valid Until", visible: true, order: 7 },
-  { id: "expiryDate", label: "Expiry Date", visible: true, order: 8 },
-  { id: "document", label: "Document", visible: true, order: 9 },
-  { id: "distributionList", label: "Distribution List", visible: true, order: 10 },
-  { id: "recallDate", label: "Recall Date", visible: true, order: 11 },
-  { id: "recallReason", label: "Reason for Recall", visible: true, order: 12 },
-  { id: "documentRevision", label: "Document Revision", visible: true, order: 13 },
-  // Click to sort by most-recent workflow action (Distribute/Recall/Cancel etc.) instead of the
-  // default "Created" sort -- so a long-standing batch that just changed status today can be
-  // surfaced rather than staying buried by its old creation date.
-  { id: "lastUpdated", label: "Last Updated", visible: true, order: 14 },
-];
 
 // View types
 type ViewType = "all" | "ready" | "distributed";
@@ -294,6 +277,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   const { showToast } = useToast();
   const { hasPermissionAlias } = usePermissions();
   const canReviewBatchDiscrepancies = hasPermissionAlias('documents.admin.view');
+  const canRecallByScan = hasPermissionAlias('documents.controlled_copy.recall');
 
   // Use prop viewType instead of URL params
   const viewType = propViewType;
@@ -1527,6 +1511,120 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
 
   // While a Distribute is in flight, batchDistributeProgress drives its own progress-bar modal
   // (rendered further below) -- don't let the generic section spinner cover it up.
+  type Row = (typeof controlledCopiesData)[number];
+  const copyBatchId = (copy: Row) => copy.batchId || copy.distributionBatchId || copy.id;
+  const copyMeta = (copy: Row) => ({
+    isExpandable: hasControlledCopyExpansion(copy),
+    displayFields: resolveBatchDisplayFields(copy),
+  });
+  const controlledColumns: DataTableColumn<Row>[] = [
+    {
+      id: "expand",
+      header: "",
+      label: "Expand",
+      locked: true,
+      headerClassName: TABLE_STYLES.headerCell32,
+      cell: (copy) => {
+        const batchId = copyBatchId(copy);
+        const isExpanded = expandedBatchId === batchId;
+        const prefetchChildren = () => {
+          if (!isExpanded && batchId) void preloadControlledCopyChildren(batchId).catch(() => undefined);
+        };
+        return copyMeta(copy).isExpandable ? (
+          <button
+            type="button"
+            onClick={() => toggleBatchExpansion(batchId)}
+            // The batch's copies are fetched as soon as the pointer reaches (or presses, or focuses) the chevron, so that the row
+            // opens with them instead of waiting for a request that starts only on the click.
+            onPointerEnter={prefetchChildren}
+            onPointerDown={prefetchChildren}
+            onFocus={prefetchChildren}
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} controlled copy batch ${batchId}`}
+            aria-expanded={isExpanded}
+            className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors mx-auto"
+          >
+            <motion.span animate={{ rotate: isExpanded ? 90 : 0 }} transition={transitionConfig} className="inline-flex items-center justify-center">
+              <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500" />
+            </motion.span>
+          </button>
+        ) : null;
+      },
+    },
+    { id: "no", header: "No.", label: "No.", locked: true, cell: (_copy, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    {
+      id: "controlledCopyNumber",
+      header: "Document Number",
+      label: "Document Number",
+      sort: { direction: sortConfig.key === "controlledCopyNumber" ? sortConfig.direction : undefined, onSort: () => handleSort("controlledCopyNumber") },
+      cell: (copy) => (
+        <button
+          type="button"
+          onClick={() => handleViewDetails(copy)}
+          className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left"
+          title={copyMeta(copy).isExpandable ? "Open controlled copy batch details" : "Open controlled copy details"}
+        >
+          {controlledCopyDisplayNumber(copy, copyMeta(copy).isExpandable)}
+        </button>
+      ),
+    },
+    { id: "created", header: "Created", label: "Created", sort: { direction: sortConfig.key === "created" ? sortConfig.direction : undefined, onSort: () => handleSort("created") }, cell: (copy) => formatDateTimeParts(copyMeta(copy).displayFields.createdDate, copyMeta(copy).displayFields.createdTime) },
+    { id: "openedBy", header: "Opened by", label: "Opened by", sort: { direction: sortConfig.key === "openedBy" ? sortConfig.direction : undefined, onSort: () => handleSort("openedBy") }, cell: (copy) => copy.openedBy },
+    { id: "name", header: "Controlled Copy Name", label: "Controlled Copy Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: "font-medium text-slate-900", cell: (copy) => copy.name },
+    {
+      id: "quantity",
+      header: "Quantity",
+      label: "Quantity",
+      sort: { direction: sortConfig.key === "quantity" ? sortConfig.direction : undefined, onSort: () => handleSort("quantity") },
+      cell: (copy) => (copyMeta(copy).isExpandable ? (copy.batchQuantity ?? copy.totalCopies ?? "-") : (copy.totalCopies ?? "-")),
+    },
+    {
+      id: "status",
+      header: "Status",
+      label: "Status",
+      sort: { direction: sortConfig.key === "status" ? sortConfig.direction : undefined, onSort: () => handleSort("status") },
+      cell: (copy) => {
+        const statusLabel = normalizeControlledCopyStatusLabel(copy.status, copy.statusInfo as any);
+        return <Badge color={getBadgeColor(copy.statusCode || copy.statusInfo?.id, statusLabel)}>{statusLabel}</Badge>;
+      },
+    },
+    { id: "validUntil", header: "Valid Until", label: "Valid Until", sort: { direction: sortConfig.key === "validUntil" ? sortConfig.direction : undefined, onSort: () => handleSort("validUntil") }, cell: (copy) => formatDateUS(copyMeta(copy).displayFields.validUntil) },
+    {
+      id: "expiryDate",
+      header: "Expiry Date",
+      label: "Expiry Date",
+      sort: { direction: sortConfig.key === "expiryDate" ? sortConfig.direction : undefined, onSort: () => handleSort("expiryDate") },
+      cell: (copy) => {
+        const expiryDate = copyMeta(copy).displayFields.expiryDate;
+        return expiryDate ? formatDateUS(expiryDate) : "-";
+      },
+    },
+    { id: "document", header: "Document", label: "Document", sort: { direction: sortConfig.key === "document" ? sortConfig.direction : undefined, onSort: () => handleSort("document") }, cell: (copy) => <span className="font-medium text-slate-900">{formatDocumentLabel(copy)}</span> },
+    { id: "distributionList", header: "Distribution List", label: "Distribution List", sort: { direction: sortConfig.key === "distributionList" ? sortConfig.direction : undefined, onSort: () => handleSort("distributionList") }, cell: (copy) => getControlledCopyDistributionListText(copy) || "-" },
+    { id: "recallDate", header: "Recall Date", label: "Recall Date", sort: { direction: sortConfig.key === "recallDate" ? sortConfig.direction : undefined, onSort: () => handleSort("recallDate") }, cell: (copy) => (copy.recallDate ? formatDateUS(copy.recallDate) : "-") },
+    { id: "recallReason", header: "Reason for Recall", label: "Reason for Recall", sort: { direction: sortConfig.key === "recallReason" ? sortConfig.direction : undefined, onSort: () => handleSort("recallReason") }, cell: (copy) => copy.recallReason || "-" },
+    { id: "documentRevision", header: "Document Revision", label: "Document Revision", sort: { direction: sortConfig.key === "documentRevision" ? sortConfig.direction : undefined, onSort: () => handleSort("documentRevision") }, cell: (copy) => <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span> },
+    { id: "lastUpdated", header: "Last Updated", label: "Last Updated", sort: { direction: sortConfig.key === "lastUpdated" ? sortConfig.direction : undefined, onSort: () => handleSort("lastUpdated") }, cell: (copy) => (copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-") },
+  ];
+  const controlledAction: DataTableAction<Row> = {
+    header: "Action",
+    cell: (copy) => (
+      <div onClick={(e) => e.stopPropagation()}>
+        <button
+          ref={getRef(copy.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggle(copy.id, e);
+          }}
+          className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
+          aria-label="More actions"
+        >
+          <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
+        </button>
+      </div>
+    ),
+  };
+  const { layout: controlledLayout, control: controlledControl } = useCustomColumnLayout("documents.controlled-copies", controlledColumns, controlledAction);
+
   if (isLoading || isNavigating || (isActionLoading && !batchDistributeProgress)) return <SectionLoading minHeight="60vh" />;
 
   return (
@@ -1536,6 +1634,17 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         breadcrumbItems={controlledCopies(navigateTo, viewType)}
         actions={
           <div className="flex items-center gap-2">
+            {canRecallByScan && (
+              <Button
+                onClick={() => navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.RECALL_SCAN)}
+                variant="outline-emerald"
+                size="sm"
+                className="whitespace-nowrap gap-2"
+              >
+                <ScanLine className="h-4 w-4" />
+                Recall by Scan
+              </Button>
+            )}
             {canReviewBatchDiscrepancies && (
               <Button
                 onClick={() => navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.DISCREPANCIES)}
@@ -1726,7 +1835,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                 />
               </div>
 
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -1735,6 +1844,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                 >
                   Clear Filters
                 </Button>
+                {controlledControl}
               </div>
             </div>
 
@@ -1866,212 +1976,63 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
             <div className={cn(
               "border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300 relative"
             )}>
-              <div
-                ref={scrollerRef}
-                className={cn(
-                  "flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400",
-                  isDragging ? "cursor-grabbing select-none" : "cursor-grab"
-                )}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
-                  <TableMarkup.Head>
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell32} />
-                      <TableMarkup.HeaderCell className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap w-16">
-                        No.
-                      </TableMarkup.HeaderCell>
-                      {DEFAULT_COLUMNS.filter((c) => c.visible).map((col) => {
-                        const isSorted = sortConfig.key === col.id;
-                        return (
-                          <TableMarkup.HeaderCell
-                            key={col.id}
-                            onClick={() => handleSort(col.id)}
-                            className="sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors group"
-                          >
-                            <div className="flex items-center justify-between gap-2 w-full">
-                              <span className="truncate">{col.label}</span>
-                              <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                                <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === 'asc' ? "text-emerald-600" : "")} />
-                                <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === 'desc' ? "text-emerald-600" : "")} />
-                              </div>
-                            </div>
-                          </TableMarkup.HeaderCell>
-                        );
-                      })}
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell25}>
-                        Action
-                      </TableMarkup.HeaderCell>
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="bg-white">
-                    {controlledCopiesData.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell
-                          colSpan={DEFAULT_COLUMNS.filter((c) => c.visible).length + 3}
-                          className="py-12 text-center border-b border-slate-200"
-                        >
-                          <TableEmptyState
-                            title={
-                              error
-                                ? "Unable to load controlled copies"
-                                : viewType === "ready"
-                                  ? "No Distribution Batches Found"
-                                  : "No Controlled Copies Found"
-                            }
-                            description={
-                              error ||
-                              (viewType === "ready"
-                                ? "We couldn't find any distribution batches matching your filters. Try adjusting your search criteria."
-                                : "We couldn't find any controlled copies matching your filters. Try adjusting your search criteria.")
-                            }
-                          />
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : (
-                    controlledCopiesData.map((copy, index) => {
-                        const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
-                        const tdClass = "py-3 px-4 text-xs md:text-sm text-slate-700 border-b border-slate-200 whitespace-nowrap";
-                        const expandableBatchId = copy.batchId || copy.distributionBatchId || copy.id;
-                        // A single-copy request is still stored as a batch for
-                        // audit/distribution consistency, but it should render as
-                        // one normal record instead of a redundant expandable row.
-                        const isExpandable = hasControlledCopyExpansion(copy);
-                        const isExpanded = expandedBatchId === expandableBatchId;
-                        const displayFields = resolveBatchDisplayFields(copy);
-
-                        return (
-                          <React.Fragment key={copy.id}>
-                            <TableMarkup.Row
-                              className={cn("transition-colors group hover:bg-slate-50/80")}
-                            >
-                              <TableMarkup.Cell
-                                className="py-3 px-4 border-b border-slate-200 whitespace-nowrap"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (isExpandable) toggleBatchExpansion(expandableBatchId);
-                                }}
-                              >
-                                {isExpandable ? (
-                                  <button type="button" aria-label={`${isExpanded ? "Collapse" : "Expand"} controlled copy batch ${expandableBatchId}`} aria-expanded={isExpanded} className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors">
-                                    <motion.span
-                                      animate={{ rotate: isExpanded ? 90 : 0 }}
-                                      transition={transitionConfig}
-                                      className="inline-flex items-center justify-center"
-                                    >
-                                      <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-500" />
-                                    </motion.span>
-                                  </button>
-                                ) : null}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {rowNumber}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleViewDetails(copy)}
-                                  className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left"
-                                  title={isExpandable ? "Open controlled copy batch details" : "Open controlled copy details"}
-                                >
-                                  {controlledCopyDisplayNumber(copy, isExpandable)}
-                                </button>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {formatDateTimeParts(displayFields.createdDate, displayFields.createdTime)}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {copy.openedBy}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={cn(tdClass, "font-medium text-slate-900")}>
-                                {copy.name}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {isExpandable ? (copy.batchQuantity ?? copy.totalCopies ?? "-") : (copy.totalCopies ?? "-")}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                <Badge
-                                  color={getBadgeColor(
-                                    copy.statusCode || copy.statusInfo?.id,
-                                    normalizeControlledCopyStatusLabel(copy.status, copy.statusInfo as any)
-                                  )}
-                                >
-                                  {normalizeControlledCopyStatusLabel(copy.status, copy.statusInfo as any)}
-                                </Badge>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {formatDateUS(displayFields.validUntil)}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {displayFields.expiryDate ? formatDateUS(displayFields.expiryDate) : "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                <span className="font-medium text-slate-900">{formatDocumentLabel(copy)}</span>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {getControlledCopyDistributionListText(copy) || "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {copy.recallDate ? formatDateUS(copy.recallDate) : "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {copy.recallReason || "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell
-                                onClick={(e) => e.stopPropagation()}
-                                className={TABLE_STYLES.cell33}
-                              >
-                                <button
-                                  ref={getRef(copy.id)}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggle(copy.id, e);
-                                  }}
-                                  className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-                                  aria-label="More actions"
-                                >
-                                  <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                </button>
-                              </TableMarkup.Cell>
-                            </TableMarkup.Row>
-                            {isExpandable && (
-                              <ExpandControlledCopiesRow
-                                source={copy}
-                                isExpanded={isExpanded}
-                                visibleColumnsLength={DEFAULT_COLUMNS.filter((c) => c.visible).length + 3}
-                                onViewDetails={handleViewDetails}
-                                onViewAuditTrail={handleViewAuditTrail}
-                                onDistribute={handleDistribute}
-                                onRecall={handleRecall}
-                                onCancel={handleCancel}
-                                onReportLostDamaged={handleReportLostDamaged}
-                                onReissue={handleReissue}
-                            />
-                          )}
-                          </React.Fragment>
-                        );
-                      })
-                    )}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-
-              {controlledCopiesData.length > 0 && (
-                <TablePagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalItems={totalItems}
-                  itemsPerPage={itemsPerPage}
-                  onPageChange={setCurrentPage}
-                  onItemsPerPageChange={setItemsPerPage}
-                />
-              )}
+              <DataTable
+                rows={controlledCopiesData}
+                getRowKey={(copy) => copy.id}
+                columns={controlledLayout.columns}
+                columnLayout={controlledLayout}
+                action={controlledAction}
+                scrollerRef={scrollerRef}
+                scrollProps={dragEvents}
+                isDragging={isDragging}
+                expandedRow={{
+                  isExpanded: (copy) => hasControlledCopyExpansion(copy) && expandedBatchId === copyBatchId(copy),
+                  render: (copy) => (
+                    <ExpandControlledCopiesRow
+                      source={copy}
+                      isExpanded={true}
+                      visibleColumnsLength={controlledLayout.columns.length + 1}
+                      onViewDetails={handleViewDetails}
+                      onViewAuditTrail={handleViewAuditTrail}
+                      onDistribute={handleDistribute}
+                      onRecall={handleRecall}
+                      onCancel={handleCancel}
+                      onReportLostDamaged={handleReportLostDamaged}
+                      onReissue={handleReissue}
+                    />
+                  ),
+                  asRow: false,
+                }}
+                emptyState={
+                  <TableEmptyState
+                    title={
+                      error
+                        ? "Unable to load controlled copies"
+                        : viewType === "ready"
+                          ? "No Distribution Batches Found"
+                          : "No Controlled Copies Found"
+                    }
+                    description={
+                      error ||
+                      (viewType === "ready"
+                        ? "We couldn't find any distribution batches matching your filters. Try adjusting your search criteria."
+                        : "We couldn't find any controlled copies matching your filters. Try adjusting your search criteria.")
+                    }
+                  />
+                }
+                pagination={
+                  controlledCopiesData.length > 0 ? (
+                    <TablePagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={totalItems}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={setCurrentPage}
+                      onItemsPerPageChange={setItemsPerPage}
+                    />
+                  ) : undefined
+                }
+              />
             </div>
           </div>
         </div>

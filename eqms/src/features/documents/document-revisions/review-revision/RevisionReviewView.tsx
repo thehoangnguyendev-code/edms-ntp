@@ -32,7 +32,7 @@ import { useToast } from "@/components/ui/toast";
 import { hasWorkingNotesEditAccess } from "@/features/documents/document-revisions/shared/workingNotesPermissions";
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { useOfficeOnlineReviewLink } from "@/features/documents/hooks/useOfficeOnlineReviewLink";
+import { useOnlyOfficeReviewLink } from "@/features/documents/hooks/useOnlyOfficeReviewLink";
 import { buildRevisionDetailSnapshotState, isRevisionDetailSnapshotPreload, refreshDetailAfterSnapshot, isSnapshotGenerating, pollSnapshotInBackground } from "@/features/documents/shared/detailSnapshotHelpers";
 import { buildRevisionDetailNavigationState } from "@/features/documents/shared/navigationContext";
 import { ROUTES } from "@/app/routes.constants";
@@ -106,7 +106,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       setDocument({ ...live, reviewers: live.reviewers || [], approvers: live.approvers || [], reviewFlowType: "parallel", currentReviewerIndex: 0 });
     }).catch(() => undefined);
   }, { ids: [revisionId] });
-  const { isOpeningWordReview, handleOpenWordReview } = useOfficeOnlineReviewLink(revisionId);
+  const { isOpeningWordReview, handleOpenWordReview } = useOnlyOfficeReviewLink(revisionId);
   const canEditWorkingNotes = useMemo(
     () =>
       hasWorkingNotesEditAccess(

@@ -211,35 +211,30 @@ public class DocumentRevisionRecord {
     @Column(name = "source_uploaded_at")
     private Instant sourceUploadedAt;
 
-    /** The eForm fillable template (.docxf, with OnlyOffice form fields -- see
-     *  EformEditSessionService#startDesignSession/commitDesign) designed for THIS Revision.
-     *  Separate from {@link #filePath} (the plain .docx every Document type uploads) because
-     *  OnlyOffice's Forms ribbon only appears for a docxf, and the generic upload validator only
-     *  accepts .docx -- write-gated to while this Revision is Draft and not yet locked, exactly
-     *  like {@link #filePath} itself (see RevisionService#setFillableTemplate). */
-    @Column(name = "fillable_template_file_name", length = 255)
+    /** Archive-only reference. Retired Form artefacts stay in DB/storage for historical evidence. */
+    @Column(name = "fillable_template_file_name", length = 255, insertable = false, updatable = false)
     private String fillableTemplateFileName;
 
-    @Column(name = "fillable_template_storage_provider", length = 60)
+    @Column(name = "fillable_template_storage_provider", length = 60, insertable = false, updatable = false)
     private String fillableTemplateStorageProvider;
 
-    @Column(name = "fillable_template_storage_bucket", length = 255)
+    @Column(name = "fillable_template_storage_bucket", length = 255, insertable = false, updatable = false)
     private String fillableTemplateStorageBucket;
 
-    @Column(name = "fillable_template_storage_object_key", length = 1024)
+    @Column(name = "fillable_template_storage_object_key", length = 1024, insertable = false, updatable = false)
     private String fillableTemplateStorageObjectKey;
 
-    @Column(name = "fillable_template_storage_version_id", length = 255)
+    @Column(name = "fillable_template_storage_version_id", length = 255, insertable = false, updatable = false)
     private String fillableTemplateStorageVersionId;
 
-    @Column(name = "fillable_template_checksum", length = 128)
+    @Column(name = "fillable_template_checksum", length = 128, insertable = false, updatable = false)
     private String fillableTemplateChecksum;
 
     /** The checksum {@link #sourceFileChecksum} held at the moment the fillable template was last
      *  designed/committed -- if the two now differ, the static content was edited (via the normal
      *  Edit button) after fields were last placed, so a Design session should warn before silently
      *  resuming a layout that may no longer line up with the text. */
-    @Column(name = "fillable_template_source_checksum", length = 128)
+    @Column(name = "fillable_template_source_checksum", length = 128, insertable = false, updatable = false)
     private String fillableTemplateSourceChecksum;
 
     @Column(name = "editing_status", nullable = false, length = 30)

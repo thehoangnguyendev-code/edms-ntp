@@ -27,7 +27,7 @@ interface ExplorerItemsProps {
 }
 
 const GRID = "grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-[repeat(auto-fill,minmax(148px,1fr))]";
-const TILE = "group relative flex cursor-default select-none flex-col items-center gap-1.5 rounded-lg border px-2 pb-2.5 pt-3 text-center transition-colors";
+const TILE = "group relative flex cursor-default select-none flex-col items-center gap-1.5 rounded-lg border px-2 pb-2.5 pt-3 text-center transition-[background-color,border-color,box-shadow] duration-200";
 // Reserve two title lines in every grid tile so its metadata shares one baseline
 // with neighbouring tiles, regardless of whether the title wraps.
 const TILE_NAME = "line-clamp-2 min-h-10 w-full break-words text-xs font-medium leading-tight text-slate-900 md:text-sm";
@@ -71,7 +71,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
   const reduceMotion = useReducedMotion();
   const isFolderSelected = (key: string) => selection?.type === "folder" && selection.key === key;
   const isDocSelected = (id: string) => selection?.type === "doc" && selection.id === id;
-  const tone = (selected: boolean) => (selected ? "border-emerald-200 bg-emerald-50" : "border-transparent hover:bg-slate-50");
+  const tone = (selected: boolean) => (selected ? "border-emerald-200 bg-emerald-50" : "border-transparent hover:border-emerald-100 hover:bg-white hover:shadow-md");
   let order = 0;
 
   return (

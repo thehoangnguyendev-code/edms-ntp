@@ -1,8 +1,17 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Bell, BellOff, Eye, Star, ThumbsUp, Library } from "lucide-react";
-import { Card, CardTitle } from "@/components/ui/card";
-import { IconTile } from "@/components/ui/icon-tile";
+import { Bell, BellOff, Eye, Star, ThumbsUp } from "lucide-react";
+import {
+  ANIMATED_CARD_TONES,
+  AnimatedCard,
+  AnimatedPanel,
+  BarsVisual,
+  CardBody,
+  CardDescription,
+  CardTitle,
+  CardVisual,
+  type AnimatedCardToneName,
+} from "@/components/ui/animated-card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/components/ui/utils";
 import type { KnowledgePortalDocument, KnowledgePortalOverview } from "@/services/api/knowledge";
@@ -17,8 +26,8 @@ interface ExplorerWidgetsProps {
   onToggleSubscribe: (key: string) => void;
 }
 
-const WidgetShell: React.FC<{ title: string; icon: React.ReactNode; hint?: string; className?: string; index: number; children: React.ReactNode }> = ({
-  title, icon, hint, className, index, children,
+const WidgetShell: React.FC<{ title: string; icon: React.ReactNode; tone: AnimatedCardToneName; hint?: string; className?: string; index: number; children: React.ReactNode }> = ({
+  title, icon, tone, hint, className, index, children,
 }) => {
   const reduceMotion = useReducedMotion();
   return (
@@ -29,23 +38,70 @@ const WidgetShell: React.FC<{ title: string; icon: React.ReactNode; hint?: strin
       className={cn("min-w-0", className)}
       aria-label={title}
     >
-      <Card padding="none" className="h-full p-3 md:p-4">
-        <div className="mb-2.5 flex items-center justify-between gap-2">
-          <CardTitle size="sm" className="flex min-w-0 items-center gap-2">
-            <IconTile size="sm" color="emerald" icon={icon} />
-            <span className="truncate">{title}</span>
-          </CardTitle>
-          {hint && <span className="shrink-0 text-2xs text-slate-500 md:text-xs">{hint}</span>}
-        </div>
+      <AnimatedPanel
+        compact
+        tone={tone}
+        icon={icon}
+        title={title}
+        actions={hint ? <span className="text-2xs text-slate-500 md:text-xs">{hint}</span> : undefined}
+        className="h-full"
+      >
         {children}
-      </Card>
+      </AnimatedPanel>
+    </motion.section>
+  );
+};
+
+const GLANCE_BARS = 8;
+
+const GlanceCard: React.FC<{ overview: KnowledgePortalOverview; index: number; className?: string }> = ({ overview, index, className }) => {
+  const reduceMotion = useReducedMotion();
+  const kbLabel = pluralize(overview.totalKnowledgeBases, "Knowledge Base");
+  const docLabel = pluralize(overview.totalDocuments, "document");
+  const bars = [...overview.knowledgeBases]
+    .sort((a, b) => b.documentCount - a.documentCount)
+    .slice(0, GLANCE_BARS)
+    .map((kb) => ({ label: kb.label, value: kb.documentCount, accent: kb.subscribed }));
+  const hasSubscribed = bars.some((bar) => bar.accent);
+  return (
+    <motion.section
+      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduceMotion ? 0 : 0.35, delay: reduceMotion ? 0 : index * 0.06, ease: [0.2, 0.8, 0.3, 1] }}
+      className={cn("min-w-0", className)}
+      aria-label="At a glance"
+    >
+      <AnimatedCard tone="emerald" className="flex h-full flex-col">
+        <CardVisual className="h-[140px] shrink-0">
+          <BarsVisual
+            mainColor={ANIMATED_CARD_TONES.emerald.main}
+            secondaryColor={ANIMATED_CARD_TONES.emerald.secondary}
+            bars={bars}
+            chips={[{ label: kbLabel }, { label: docLabel, tone: "secondary" }]}
+            info={{ title: "Documents per Knowledge Base", text: `${kbLabel} · ${docLabel}` }}
+            emptyLabel="No Knowledge Bases"
+          />
+        </CardVisual>
+        <CardBody className="flex-1">
+          <CardTitle>At a glance</CardTitle>
+          <CardDescription>
+            <span className="font-semibold tabular-nums text-slate-900">{overview.totalKnowledgeBases}</span> {overview.totalKnowledgeBases === 1 ? "Knowledge Base" : "Knowledge Bases"}
+            {" · "}
+            <span className="font-semibold tabular-nums text-slate-900">{overview.totalDocuments}</span> {overview.totalDocuments === 1 ? "Document" : "Documents"}
+          </CardDescription>
+          {bars.length > 0 && <p className="text-xs text-slate-500">Bars show documents per Knowledge Base{hasSubscribed ? "; highlighted ones are subscribed" : ""}.</p>}
+          {overview.selectedHierarchyName && (
+            <p className="truncate text-xs text-slate-500">Hierarchy: <span className="font-medium text-slate-700">{overview.selectedHierarchyName}</span></p>
+          )}
+        </CardBody>
+      </AnimatedCard>
     </motion.section>
   );
 };
 
 const Empty: React.FC<{ text: string }> = ({ text }) => <p className="py-3 text-xs text-slate-500 md:text-sm">{text}</p>;
 
-const rowButton = cn("group w-full rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-slate-50", FOCUS_RING);
+const rowButton = cn("group w-full rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-emerald-50/50", FOCUS_RING);
 
 const BarList: React.FC<{ items: KnowledgePortalDocument[]; value: (d: KnowledgePortalDocument) => number; onSelect: (d: KnowledgePortalDocument) => void }> = ({ items, value, onSelect }) => {
   const max = Math.max(1, ...items.map(value));
@@ -55,10 +111,10 @@ const BarList: React.FC<{ items: KnowledgePortalDocument[]; value: (d: Knowledge
         <li key={item.document.id}>
           <button type="button" onClick={() => onSelect(item)} className={cn(rowButton, "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2")}>
             <span className="min-w-0">
-              <span className="block truncate text-xs font-medium text-slate-900 group-hover:text-emerald-700 md:text-sm">{item.document.documentName}</span>
+              <span className="block truncate text-xs font-medium text-slate-900 transition-transform duration-500 ease-[cubic-bezier(0.6,0.6,0,1)] group-hover:translate-x-1 group-hover:text-emerald-700 md:text-sm">{item.document.documentName}</span>
               <Progress value={value(item)} max={max} size="sm" className="mt-1" />
             </span>
-            <span className="text-xs font-semibold tabular-nums text-slate-700 md:text-sm">{value(item)}</span>
+            <span className="text-xs font-semibold tabular-nums text-slate-700 transition-transform duration-500 ease-[cubic-bezier(0.6,0.6,0,1)] group-hover:scale-110 md:text-sm">{value(item)}</span>
           </button>
         </li>
       ))}
@@ -70,31 +126,17 @@ export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSe
   const subscribed = overview.knowledgeBases.filter((kb) => kb.subscribed);
   return (
     <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-12">
-      <WidgetShell index={0} title="Most viewed" icon={<Eye className="h-full w-full" />} hint="recent views" className="2xl:col-span-5">
+      <WidgetShell index={0} tone="blue" title="Most viewed" icon={<Eye className="h-full w-full" />} hint="recent views" className="2xl:col-span-5">
         {overview.mostViewed.length === 0 ? <Empty text="No content to display" /> : <BarList items={overview.mostViewed} value={(d) => d.views} onSelect={onSelectDocument} />}
       </WidgetShell>
 
-      <WidgetShell index={1} title="Most helpful" icon={<ThumbsUp className="h-full w-full" />} hint="reader votes" className="2xl:col-span-4">
+      <WidgetShell index={1} tone="emerald" title="Most helpful" icon={<ThumbsUp className="h-full w-full" />} hint="reader votes" className="2xl:col-span-4">
         {overview.mostUseful.length === 0 ? <Empty text="No content to display" /> : <BarList items={overview.mostUseful} value={(d) => d.helpfulVotes} onSelect={onSelectDocument} />}
       </WidgetShell>
 
-      <WidgetShell index={2} title="At a glance" icon={<Library className="h-full w-full" />} className="2xl:col-span-3">
-        <dl className="grid grid-cols-2 gap-3">
-          <div>
-            <dd className="text-xl font-bold tabular-nums text-slate-900 md:text-2xl">{overview.totalKnowledgeBases}</dd>
-            <dt className="text-xs text-slate-500">{overview.totalKnowledgeBases === 1 ? "Knowledge Base" : "Knowledge Bases"}</dt>
-          </div>
-          <div>
-            <dd className="text-xl font-bold tabular-nums text-slate-900 md:text-2xl">{overview.totalDocuments}</dd>
-            <dt className="text-xs text-slate-500">{overview.totalDocuments === 1 ? "Document" : "Documents"}</dt>
-          </div>
-        </dl>
-        {overview.selectedHierarchyName && (
-          <p className="mt-3 truncate text-xs text-slate-500">Hierarchy: <span className="font-medium text-slate-700">{overview.selectedHierarchyName}</span></p>
-        )}
-      </WidgetShell>
+      <GlanceCard index={2} overview={overview} className="2xl:col-span-3" />
 
-      <WidgetShell index={3} title="Featured" icon={<Star className="h-full w-full" />} hint="by Document Control" className="2xl:col-span-6">
+      <WidgetShell index={3} tone="amber" title="Featured" icon={<Star className="h-full w-full" />} hint="by Document Control" className="2xl:col-span-6">
         {overview.featured.length === 0 ? (
           <Empty text="No content to display" />
         ) : (
@@ -114,7 +156,7 @@ export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSe
         )}
       </WidgetShell>
 
-      <WidgetShell index={4} title="Subscriptions" icon={<Bell className="h-full w-full" />} hint={subscribed.length ? pluralize(subscribed.length, "item") : undefined} className="md:col-span-2 2xl:col-span-6">
+      <WidgetShell index={4} tone="violet" title="Subscriptions" icon={<Bell className="h-full w-full" />} hint={subscribed.length ? pluralize(subscribed.length, "item") : undefined} className="md:col-span-2 2xl:col-span-6">
         {subscribed.length === 0 ? (
           <Empty text="You are not subscribed to any Knowledge Base. Use the bell on a folder to get an email when a new document is published." />
         ) : (

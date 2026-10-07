@@ -87,7 +87,6 @@ export const AddUserView: React.FC = () => {
  const { showToast } = useToast();
  const { requestSignature, signatureModal } = useSecurityESign();
  const { hasPermission } = usePermissions();
- const canInviteExternal = hasPermission("users.invite_external");
 
  const [isLoading, setIsLoading] = useState(true);
  const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,7 +103,6 @@ export const AddUserView: React.FC = () => {
     status: "" as any,
     position: "",
     permissions: [],
-    inviteExternal: false,
     homePage: "DASHBOARD",
     mfaRequiredByAdmin: false,
   });
@@ -145,7 +143,7 @@ export const AddUserView: React.FC = () => {
  // Direct Manager's default option list -- fetched via the dedicated lightweight
  // /settings/users/manager-options endpoint (same one the Edit flow already uses), not derived
  // from the full existingUsers list, so it's ready well before that much heavier 1000-row fetch
- // finishes (that heavier fetch enriches every row with sessions/access-profiles/Entra status,
+ // finishes (that heavier fetch enriches every row with sessions/access-profiles,
  // none of which this dropdown needs).
  const [managerLookupOptions, setManagerLookupOptions] = useState<LookupOption[]>([]);
  const [businessUnits, setBusinessUnits] = useState<DictionaryBusinessUnit[]>([]);
@@ -754,9 +752,6 @@ export const AddUserView: React.FC = () => {
     statusError={formErrors.status}
     homePage={newUser.homePage || "DASHBOARD"}
     onHomePageChange={(value) => setNewUser({ ...newUser, homePage: value as any })}
-    canInviteExternal={canInviteExternal}
-    inviteExternal={Boolean(newUser.inviteExternal)}
-    onInviteExternalChange={(checked) => setNewUser({ ...newUser, inviteExternal: checked })}
    />
    )}
    {activeTab === "security" && (

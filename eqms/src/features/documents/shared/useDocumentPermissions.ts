@@ -9,8 +9,8 @@ export const DOCUMENT_PERMISSION_CODES = {
   editMetadata: 'documents.document.edit_metadata',
   manageReviewCycle: 'documents.document.edit_metadata',
   uploadRevisionFile: 'documents.revision.upload_source',
-  uploadToOfficeOnline: 'documents.revision.upload_office_online',
-  editFileOnline: 'documents.revision.edit_online',
+  syncOnlyOffice: 'documents.revision.sync_onlyoffice',
+  editFileOnline: 'documents.revision.edit_onlyoffice',
   submitRevision: 'documents.revision.submit_review',
   // The REVISION/CANCEL row in workflow_action_policies requires documents.workspace.manage, not
   // documents.revision.cancel (which exists in the permission catalog but nothing actually
@@ -72,7 +72,7 @@ export function useDocumentPermissions() {
     canEditDocumentMetadata: hasPermission(DOCUMENT_PERMISSION_CODES.editMetadata),
     canManageReviewCycle: hasPermission(DOCUMENT_PERMISSION_CODES.manageReviewCycle),
     canUploadRevisionFile: hasPermission(DOCUMENT_PERMISSION_CODES.uploadRevisionFile),
-    canUploadToOfficeOnline: hasPermission(DOCUMENT_PERMISSION_CODES.uploadToOfficeOnline),
+    canSyncOnlyOffice: hasPermission(DOCUMENT_PERMISSION_CODES.syncOnlyOffice),
     canEditFileOnline: hasPermission(DOCUMENT_PERMISSION_CODES.editFileOnline),
     canSubmitRevision: hasPermission(DOCUMENT_PERMISSION_CODES.submitRevision),
     canCancelRevision: hasPermission(DOCUMENT_PERMISSION_CODES.cancelRevision),

@@ -45,6 +45,11 @@ public class NotificationRealtimeService {
         return emitter;
     }
 
+    /** The users that have at least one open stream right now. */
+    public Set<UUID> connectedUserIds() {
+        return Set.copyOf(emittersByUser.keySet());
+    }
+
     public void publishUserEvent(UUID userId, String eventName) {
         publishUserEvent(userId, eventName, new NotificationStreamEventResponse(eventName, Instant.now().toString()));
     }

@@ -24,8 +24,11 @@ import { controlledCopyBatchStatusDiscrepancies } from "@/components/ui/breadcru
 import { normalizeControlledCopyStatusLabel } from "./status";
 import { ROUTES } from "@/app/routes.constants";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
+import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const PAGE_SIZE = 20;
+
+type SortKey = "batchNumber" | "document" | "storedStatus" | "expectedStatus" | "detectedAt" | "lastCheckedAt";
 
 export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
   const navigate = useNavigate();
@@ -40,6 +43,8 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
+  // The server sorts (the newest detection first until a header is clicked).
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "detectedAt", direction: "desc" });
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
@@ -53,6 +58,8 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
       .getControlledCopyBatchStatusDiscrepancies({
         page: currentPage,
         limit: PAGE_SIZE,
+        sortBy: sortConfig.key,
+        sortDirection: sortConfig.direction,
       })
       .then((response) => {
         if (cancelled) return;
@@ -74,7 +81,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [currentPage, reloadToken, showToast]);
+  }, [currentPage, reloadToken, showToast, sortConfig]);
 
   const formatDateTime = (value: string) => {
     try {
@@ -84,20 +91,37 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
     }
   };
 
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => ({ key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc" }));
+    setCurrentPage(1);
+  };
+  const sort = (key: SortKey) => ({
+    direction: sortConfig.key === key ? sortConfig.direction : undefined,
+    onSort: () => handleSort(key),
+  });
+
   const columns: DataTableColumn<ControlledCopyBatchStatusDiscrepancy>[] = [
     {
+      id: "no",
+      header: "No.",
+      headerClassName: TABLE_STYLES.headerCell35,
+      cellClassName: TABLE_STYLES.cell30,
+      cell: (_row, index) => (currentPage - 1) * PAGE_SIZE + index + 1,
+    },
+    {
       id: "batchNumber",
+      sort: sort("batchNumber"),
       header: "Batch number",
       cellClassName: "font-medium text-slate-800",
       cell: (row) => (
         <span className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
           {row.batchNumber}
         </span>
       ),
     },
     {
       id: "document",
+      sort: sort("document"),
       header: "Document",
       headerClassName: "min-w-[16rem]",
       cell: (row) => (
@@ -115,6 +139,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
     },
     {
       id: "storedStatus",
+      sort: sort("storedStatus"),
       header: "Stored status",
       cell: (row) => (
         <Badge color="amber" size="sm">
@@ -124,6 +149,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
     },
     {
       id: "expectedStatus",
+      sort: sort("expectedStatus"),
       header: "Expected status",
       cell: (row) => (
         <Badge color="emerald" size="sm">
@@ -133,11 +159,13 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
     },
     {
       id: "detectedAt",
+      sort: sort("detectedAt"),
       header: "Detected at",
       cell: (row) => formatDateTime(row.detectedAt),
     },
     {
       id: "lastCheckedAt",
+      sort: sort("lastCheckedAt"),
       header: "Last checked",
       cell: (row) => formatDateTime(row.lastCheckedAt),
     },
@@ -195,7 +223,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
         </div>
 
         <div className="flex flex-1 flex-col p-4 md:p-5">
-          {isLoading ? (
+          {isLoading && rows.length === 0 ? (
             <SectionLoading minHeight="40vh" />
           ) : loadError ? (
             <EmptyState
@@ -285,7 +313,6 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <span className="flex min-w-0 items-center gap-2 font-semibold text-slate-900">
-                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
                         {row.batchNumber}
                       </span>
                       <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />

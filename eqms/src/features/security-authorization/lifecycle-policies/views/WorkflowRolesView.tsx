@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Check, ChevronDown, ChevronUp, LockKeyhole, MoreVertical, Plus, Search, Shield, X } from "lucide-react";
@@ -11,6 +12,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import {
   FilterAccordionItem,
@@ -365,6 +367,50 @@ export const WorkflowRolesView: React.FC = () => {
   const tdClass =
     "border-b border-slate-200 px-4 py-3 text-xs text-slate-700 md:text-sm whitespace-nowrap";
 
+  type RoleRow = (typeof roles)[number];
+  const roleColumns: DataTableColumn<RoleRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-16", cell: (_role, index) => (pagination.page - 1) * pagination.limit + index + 1 },
+    { id: "code", header: "Role Code", label: "Role Code", sort: { direction: sort.field === "code" ? sort.direction : undefined, onSort: () => toggleSort("code") }, cellClassName: "font-medium", cell: (role) => role.code },
+    { id: "label", header: "Workflow Role", label: "Workflow Role", sort: { direction: sort.field === "label" ? sort.direction : undefined, onSort: () => toggleSort("label") }, cellClassName: "font-medium text-slate-900", cell: (role) => role.label },
+    { id: "moduleKey", header: "Module", label: "Module", sort: { direction: sort.field === "moduleKey" ? sort.direction : undefined, onSort: () => toggleSort("moduleKey") }, cell: (role) => role.moduleKey },
+    {
+      id: "description",
+      header: "Description",
+      label: "Description",
+      headerClassName: "w-[28rem] min-w-[18rem]",
+      cellClassName: "w-[28rem] min-w-[18rem] whitespace-normal break-words align-top leading-5",
+      cell: (role) => role.description || "-",
+    },
+    {
+      id: "type",
+      header: "Type",
+      label: "Type",
+      cell: (role) => <Badge color={role.system ? "blue" : "slate"} size="sm">{role.system ? "System" : "Custom"}</Badge>,
+    },
+    {
+      id: "status",
+      header: "Status",
+      label: "Status",
+      cell: (role) => <Badge color={role.active ? "emerald" : "slate"} size="sm">{role.active ? "Active" : "Inactive"}</Badge>,
+    },
+    { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sort.field === "createdAt" ? sort.direction : undefined, onSort: () => toggleSort("createdAt") }, cell: (role) => (role.createdAt ? formatDateTime(role.createdAt) : "-") },
+    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sort.field === "updatedAt" ? sort.direction : undefined, onSort: () => toggleSort("updatedAt") }, cell: (role) => (role.updatedAt ? formatDateTime(role.updatedAt) : "-") },
+  ];
+  const roleAction: DataTableAction<RoleRow> = {
+    header: "Action",
+    cell: (role) => (
+      <button
+        ref={getRef(role.id)}
+        onClick={(event) => toggle(role.id, event)}
+        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
+        aria-label="More actions"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+    ),
+  };
+  const { layout: roleLayout, control: roleControl } = useCustomColumnLayout("workflow-authorization.workflow-roles", roleColumns, roleAction);
+
   return (
     <div className="flex w-full flex-1 flex-col space-y-6">
       <PageHeader
@@ -427,7 +473,75 @@ export const WorkflowRolesView: React.FC = () => {
               </div>
             </div>
 
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{roleControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={search}
+      onChange={(event) => {
+        setSearch(event.target.value);
+        resetPage();
+      }}
+      placeholder={"Role code, label, module..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "moduleFilter",
+      label: "Module",
+      value: String(moduleFilter),
+      options: moduleOptions,
+      onChange: (value) => setFilter(setModuleFilter, String(value)),
+    },
+    {
+      id: "typeFilter",
+      label: "Type",
+      value: String(typeFilter),
+      options: typeOptions,
+      onChange: (value) => setFilter(setTypeFilter, String(value)),
+    },
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: statusOptions,
+      onChange: (value) => setFilter(setStatusFilter, String(value)),
+    },
+  ]}
+  dates={[
+    {
+      id: "createdFrom",
+      label: "Created Date Range",
+      from: createdFrom,
+      to: createdTo,
+      onFromChange: (value) => {
+        setCreatedFrom(value);
+        resetPage();
+      },
+      onToChange: (value) => {
+        setCreatedTo(value);
+        resetPage();
+      },
+    },
+    {
+      id: "updatedFrom",
+      label: "Last Updated Range",
+      from: updatedFrom,
+      to: updatedTo,
+      onFromChange: (value) => {
+        setUpdatedFrom(value);
+        resetPage();
+      },
+      onToChange: (value) => {
+        setUpdatedTo(value);
+        resetPage();
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
                   Search
@@ -494,7 +608,7 @@ export const WorkflowRolesView: React.FC = () => {
                 placeholder="Select last updated range"
                 autoApply
               />
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -503,8 +617,10 @@ export const WorkflowRolesView: React.FC = () => {
                 >
                   Clear Filters
                 </Button>
+                {roleControl}
               </div>
             </div>
+</ConfiguredDesktopFilters>
 
             <FilterDrawer
               isOpen={isFilterDrawerOpen}
@@ -582,165 +698,41 @@ export const WorkflowRolesView: React.FC = () => {
               {loading ? (
                 <SectionLoading />
               ) : (
-                <>
-                  <div
-                    ref={scrollerRef}
-                    className={cn(
-                      "flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400",
-                      isDragging
-                        ? "cursor-grabbing select-none"
-                        : "cursor-grab",
-                    )}
-                    {...dragEvents}
-                  >
-                    <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
-                      <TableMarkup.Head>
-                        <TableMarkup.Row>
-                          <TableMarkup.HeaderCell className="sticky top-0 z-20 w-16 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
-                            No.
-                          </TableMarkup.HeaderCell>
-                          <SortHeader
-                            label="Role Code"
-                            field="code"
-                            sort={sort}
-                            onSort={toggleSort}
-                          />
-                          <SortHeader
-                            label="Workflow Role"
-                            field="label"
-                            sort={sort}
-                            onSort={toggleSort}
-                          />
-                          <SortHeader
-                            label="Module"
-                            field="moduleKey"
-                            sort={sort}
-                            onSort={toggleSort}
-                          />
-                          <TableMarkup.HeaderCell className="sticky top-0 z-20 w-[28rem] min-w-[18rem] border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
-                            Description
-                          </TableMarkup.HeaderCell>
-                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell41}>
-                            Type
-                          </TableMarkup.HeaderCell>
-                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell41}>
-                            Status
-                          </TableMarkup.HeaderCell>
-                          <SortHeader
-                            label="Created Date"
-                            field="createdAt"
-                            sort={sort}
-                            onSort={toggleSort}
-                          />
-                          <SortHeader
-                            label="Last Updated"
-                            field="updatedAt"
-                            sort={sort}
-                            onSort={toggleSort}
-                          />
-                          <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell21}>
-                            Action
-                          </TableMarkup.HeaderCell>
-                        </TableMarkup.Row>
-                      </TableMarkup.Head>
-                      <TableMarkup.Body className="bg-white">
-                        {roles.length === 0 ? (
-                          <TableMarkup.Row>
-                            <TableMarkup.Cell
-                              colSpan={10}
-                              className="border-b border-slate-200 py-12 text-center"
-                            >
-                              <TableEmptyState
-                                title="No Workflow Roles Found"
-                                description="We couldn't find workflow roles matching your filters. Try adjusting your search criteria."
-                              />
-                            </TableMarkup.Cell>
-                          </TableMarkup.Row>
-                        ) : (
-                          roles.map((role, index) => (
-                            <TableMarkup.Row
-                              key={role.id}
-                              className="group transition-colors hover:bg-slate-50/80"
-                            >
-                              <TableMarkup.Cell className={tdClass}>
-                                {(pagination.page - 1) * pagination.limit +
-                                  index +
-                                  1}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell
-                                className={`${tdClass} font-medium`}
-                              >
-                                {role.code}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell
-                                className={`${tdClass} font-medium text-slate-900`}
-                              >
-                                {role.label}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>{role.moduleKey}</TableMarkup.Cell>
-                              <TableMarkup.Cell className={`${tdClass} w-[28rem] min-w-[18rem] whitespace-normal break-words align-top leading-5`}>
-                                {role.description || "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                <Badge
-                                  color={role.system ? "blue" : "slate"}
-                                  size="sm"
-                                >
-                                  {role.system ? "System" : "Custom"}
-                                </Badge>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                <Badge
-                                  color={role.active ? "emerald" : "slate"}
-                                  size="sm"
-                                >
-                                  {role.active ? "Active" : "Inactive"}
-                                </Badge>
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {role.createdAt
-                                  ? formatDateTime(role.createdAt)
-                                  : "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className={tdClass}>
-                                {role.updatedAt
-                                  ? formatDateTime(role.updatedAt)
-                                  : "-"}
-                              </TableMarkup.Cell>
-                              <TableMarkup.Cell className="sticky right-0 z-10 whitespace-nowrap border-b border-slate-200 bg-white px-4 py-3 text-center shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 transition-colors group-hover:bg-slate-50">
-                                <button
-                                  ref={getRef(role.id)}
-                                  onClick={(event) => toggle(role.id, event)}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
-                                  aria-label="More actions"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </button>
-                              </TableMarkup.Cell>
-                            </TableMarkup.Row>
-                          ))
-                        )}
-                      </TableMarkup.Body>
-                    </TableMarkup.Root>
-                  </div>
-                  {roles.length > 0 && (
-                    <TablePagination
-                      currentPage={pagination.page}
-                      totalPages={pagination.totalPages}
-                      totalItems={pagination.total}
-                      itemsPerPage={pagination.limit}
-                      isLoading={loading}
-                      onPageChange={loadRoles}
-                      onItemsPerPageChange={(limit) =>
-                        setPagination((current) => ({
-                          ...current,
-                          page: 1,
-                          limit,
-                        }))
-                      }
+                <DataTable
+                  rows={roles}
+                  getRowKey={(role) => role.id}
+                  columns={roleLayout.columns}
+                  columnLayout={roleLayout}
+                  action={roleAction}
+                  scrollerRef={scrollerRef}
+                  scrollProps={dragEvents}
+                  isDragging={isDragging}
+                  emptyState={
+                    <TableEmptyState
+                      title="No Workflow Roles Found"
+                      description="We couldn't find workflow roles matching your filters. Try adjusting your search criteria."
                     />
-                  )}
-                </>
+                  }
+                  pagination={
+                    roles.length > 0 ? (
+                      <TablePagination
+                        currentPage={pagination.page}
+                        totalPages={pagination.totalPages}
+                        totalItems={pagination.total}
+                        itemsPerPage={pagination.limit}
+                        isLoading={loading}
+                        onPageChange={loadRoles}
+                        onItemsPerPageChange={(limit) =>
+                          setPagination((current) => ({
+                            ...current,
+                            page: 1,
+                            limit,
+                          }))
+                        }
+                      />
+                    ) : undefined
+                  }
+                />
               )}
             </div>
           </div>

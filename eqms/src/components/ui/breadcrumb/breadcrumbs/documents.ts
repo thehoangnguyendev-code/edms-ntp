@@ -249,11 +249,18 @@ export const controlledCopyBatchStatusDiscrepancies = (
   navigate?: NavigateFn,
 ): BreadcrumbItem[] => [
   ...docControlBase(navigate),
-  {
-    label: "Controlled Copies",
-    onClick: () => navigate?.(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL),
-  },
+  controlledCopiesLabel,
+  getControlledCopyParent(undefined, navigate),
   { label: "Batch Status Discrepancies", isActive: true },
+];
+
+export const controlledCopyRecallScan = (
+  navigate?: NavigateFn,
+): BreadcrumbItem[] => [
+  ...docControlBase(navigate),
+  controlledCopiesLabel,
+  getControlledCopyParent(undefined, navigate),
+  { label: "Recall by Scan", isActive: true },
 ];
 
 export const controlledCopyDetail = (

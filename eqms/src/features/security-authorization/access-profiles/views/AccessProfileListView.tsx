@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
@@ -10,6 +11,7 @@ import { Select } from "@/components/ui/select/Select";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -362,6 +364,126 @@ export const AccessProfileListView: React.FC = () => {
   const thBase =
     "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors group";
 
+  type ProfileRow = (typeof sortedProfiles)[number];
+  const profileColumns: DataTableColumn<ProfileRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14 text-center", cellClassName: "text-center", cell: (_profile, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
+    {
+      id: "name",
+      header: "Access Profile",
+      label: "Access Profile",
+      sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") },
+      cell: (profile) => (
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-800 truncate">{profile.name}</p>
+          {profile.description && <p className="text-xs text-slate-400 truncate max-w-[220px]">{profile.description}</p>}
+        </div>
+      ),
+    },
+    {
+      id: "type",
+      header: "Type",
+      label: "Type",
+      sort: { direction: sortConfig.key === "type" ? sortConfig.direction : undefined, onSort: () => handleSort("type") },
+      cell: (profile) => (
+        <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="sm">
+          {profile.type === "SYSTEM" ? "System" : "Custom"}
+        </Badge>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      label: "Status",
+      cell: (profile) => (
+        <Badge color={profile.active ? "emerald" : "slate"} size="sm" showDot>
+          {profile.active ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      id: "permissionSetCount",
+      header: "Permission Sets",
+      label: "Permission Sets",
+      sort: { direction: sortConfig.key === "permissionSetCount" ? sortConfig.direction : undefined, onSort: () => handleSort("permissionSetCount") },
+      cell: (profile) => (
+        <div className="flex items-center gap-1.5 text-slate-700">
+          <span className="font-medium">{profile.permissionSetCount}</span>
+          <span className="text-slate-400 text-xs">sets</span>
+        </div>
+      ),
+    },
+    {
+      id: "workflowRoles",
+      header: "Workflow Eligibility",
+      label: "Workflow Eligibility",
+      cell: (profile) => (
+        <div className="flex flex-wrap gap-1 max-w-[200px]">
+          {profile.workflowRoles.slice(0, 2).map((r) => (
+            <Badge key={r} color="blue" size="sm">{workflowRoleLabels[r] ?? r}</Badge>
+          ))}
+          {profile.workflowRoles.length > 2 && <Badge color="slate" size="sm">+{profile.workflowRoles.length - 2}</Badge>}
+          {profile.workflowRoles.length === 0 && <span className="text-slate-400">—</span>}
+        </div>
+      ),
+    },
+    {
+      id: "assignedUserCount",
+      header: "Assigned Users",
+      label: "Assigned Users",
+      sort: { direction: sortConfig.key === "assignedUserCount" ? sortConfig.direction : undefined, onSort: () => handleSort("assignedUserCount") },
+      cell: (profile) => (
+        <div className="flex items-center gap-1.5 text-slate-700">
+          <Users className="h-3.5 w-3.5 text-slate-400" />
+          <span className="font-medium">{profile.assignedUserCount}</span>
+        </div>
+      ),
+    },
+    {
+      id: "createdAt",
+      header: "Created Date",
+      label: "Created Date",
+      sort: { direction: sortConfig.key === "createdAt" ? sortConfig.direction : undefined, onSort: () => handleSort("createdAt") },
+      cellClassName: "text-slate-600",
+      cell: (profile) => (profile.createdAt ? formatDateTime(profile.createdAt) : "—"),
+    },
+    {
+      id: "updatedAt",
+      header: "Last Updated",
+      label: "Last Updated",
+      sort: { direction: sortConfig.key === "updatedAt" ? sortConfig.direction : undefined, onSort: () => handleSort("updatedAt") },
+      cellClassName: "text-slate-600",
+      cell: (profile) => (profile.updatedAt ? formatDateTime(profile.updatedAt) : "—"),
+    },
+  ];
+  const profileAction: DataTableAction<ProfileRow> = {
+    header: "Action",
+    cell: (profile) => (
+      <>
+        <button
+          ref={getRef(profile.id)}
+          onClick={(e) => handleActionMenuToggle(profile.id, e)}
+          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
+          aria-label="More actions"
+        >
+          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
+        </button>
+        <ActionDropdown
+          isOpen={openId === profile.id}
+          onClose={close}
+          position={position}
+          profile={profile}
+          capabilities={capabilityByProfileId[profile.id]}
+          onView={() => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
+          onEdit={() => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}/edit`)}
+          onDuplicate={() => setDuplicateModal({ open: true, profile })}
+          onToggle={() => handleToggle(profile)}
+          onDelete={() => setDeleteModal({ open: true, profile })}
+        />
+      </>
+    ),
+  };
+  const { layout: profileLayout, control: profileControl } = useCustomColumnLayout("access-profiles.list", profileColumns, profileAction);
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {(isNavigating || isInitialLoading) && <FullPageLoading text="Loading…" />}
@@ -492,7 +614,82 @@ export const AccessProfileListView: React.FC = () => {
           </div>
 
           {/* Filters — desktop: 3 columns per row */}
-          <div className="hidden md:grid md:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{profileControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search access profiles…"}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "typeFilter",
+      label: "Type",
+      value: String(typeFilter),
+      options: [
+        { label: "All Types", value: "ALL" },
+        { label: "System", value: "SYSTEM" },
+        { label: "Custom", value: "CUSTOM" },
+      ],
+      onChange: (v) => {
+        setTypeFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: [
+        { label: "All Status", value: "all" },
+        { label: "Active", value: "active" },
+        { label: "Inactive", value: "inactive" },
+      ],
+      onChange: (v) => {
+        setStatusFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "createdFromDate",
+      label: "Created Date Range",
+      from: createdFromDate,
+      to: createdToDate,
+      onFromChange: (v) => {
+        setCreatedFromDate(v);
+        setCurrentPage(1);
+      },
+      onToChange: (v) => {
+        setCreatedToDate(v);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "updatedFromDate",
+      label: "Last Updated Range",
+      from: updatedFromDate,
+      to: updatedToDate,
+      onFromChange: (v) => {
+        setUpdatedFromDate(v);
+        setCurrentPage(1);
+      },
+      onToChange: (v) => {
+        setUpdatedToDate(v);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid md:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
             <div className="w-full">
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
               <div className="relative">
@@ -549,14 +746,16 @@ export const AccessProfileListView: React.FC = () => {
                 placeholder="Select last updated range"
               />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button variant="outline" size="sm"
                 onClick={clearFilters}
                 className="h-9 px-4 gap-2 font-medium hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 whitespace-nowrap">
                 Clear Filters
               </Button>
+              {profileControl}
             </div>
           </div>
+</ConfiguredDesktopFilters>
 
           {/* Mobile FilterDrawer */}
           <FilterDrawer
@@ -635,178 +834,39 @@ export const AccessProfileListView: React.FC = () => {
               </div>
             )}
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300 relative">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-[1120px]">
-                  <TableMarkup.Head className="sticky top-0 z-30">
-                    <TableMarkup.Row>
-                      {TABLE_COLS.map(col => {
-                        const isSorted = sortConfig.key === col.id;
-                        const isAction = col.id === "action";
-                        return (
-                          <TableMarkup.HeaderCell
-                            key={col.id}
-                            onClick={col.sortable ? () => handleSort(col.id as SortKey) : undefined}
-                            className={cn(
-                              thBase,
-                              col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700",
-                              isAction && "right-0 z-30 text-center before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]",
-                              col.id === "no" && "w-14 text-center",
-                            )}
-                          >
-                            <div className={cn("flex items-center gap-2", isAction && "justify-center")}>
-                              <span>{col.label}</span>
-                              {col.sortable && (
-                                <div className="flex flex-col text-slate-400 flex-shrink-0 group-hover:text-slate-500">
-                                  <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600" : "")} />
-                                  <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600" : "")} />
-                                </div>
-                              )}
-                            </div>
-                          </TableMarkup.HeaderCell>
-                        );
-                      })}
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {!isLoading && sortedProfiles.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={TABLE_COLS.length} className="p-0">
-                          <TableEmptyState
-
-                            title="No access profiles found"
-                            description={hasFilters ? "Try adjusting your search or filters." : "Create your first access profile to get started."}
-                          />
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : sortedProfiles.map((profile, idx) => (
-                      <TableMarkup.Row
-                        key={profile.id}
-                        className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                        onClick={() => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
-                      >
-                        {/* No. */}
-                        <TableMarkup.Cell className={TABLE_STYLES.cell29}>
-                          {(currentPage - 1) * itemsPerPage + idx + 1}
-                        </TableMarkup.Cell>
-
-                        {/* Access Profile name */}
-                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-slate-800 truncate">{profile.name}</p>
-                              {profile.description && (
-                                <p className="text-xs text-slate-400 truncate max-w-[220px]">{profile.description}</p>
-                              )}
-                            </div>
-                          </div>
-                        </TableMarkup.Cell>
-
-                        {/* Type */}
-                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                          <Badge color={profile.type === "SYSTEM" ? "purple" : "slate"} size="sm">
-                            {profile.type === "SYSTEM" ? "System" : "Custom"}
-                          </Badge>
-                        </TableMarkup.Cell>
-
-                        {/* Status */}
-                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                          <Badge color={profile.active ? "emerald" : "slate"} size="sm" showDot>
-                            {profile.active ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableMarkup.Cell>
-
-                        {/* Permission Sets */}
-                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium">{profile.permissionSetCount}</span>
-                            <span className="text-slate-400 text-xs">sets</span>
-                          </div>
-                        </TableMarkup.Cell>
-
-                        {/* Workflow Roles */}
-                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                          <div className="flex flex-wrap gap-1 max-w-[200px]">
-                            {profile.workflowRoles.slice(0, 2).map(r => (
-                              <Badge key={r} color="blue" size="sm">{workflowRoleLabels[r] ?? r}</Badge>
-                            ))}
-                            {profile.workflowRoles.length > 2 && (
-                              <Badge color="slate" size="sm">+{profile.workflowRoles.length - 2}</Badge>
-                            )}
-                            {profile.workflowRoles.length === 0 && (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </div>
-                        </TableMarkup.Cell>
-
-                        {/* Assigned Users */}
-                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                          <div className="flex items-center gap-1.5">
-                            <Users className="h-3.5 w-3.5 text-slate-400" />
-                            <span className="font-medium">{profile.assignedUserCount}</span>
-                          </div>
-                        </TableMarkup.Cell>
-
-                        {/* Created */}
-                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                          {profile.createdAt ? formatDateTime(profile.createdAt) : "—"}
-                        </TableMarkup.Cell>
-
-                        <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                          {profile.updatedAt ? formatDateTime(profile.updatedAt) : "—"}
-                        </TableMarkup.Cell>
-
-                        {/* Action — sticky right */}
-                        <TableMarkup.Cell
-                          onClick={e => e.stopPropagation()}
-                          className={TABLE_STYLES.emptyCell3}
-                        >
-                          <button
-                            ref={getRef(profile.id)}
-                            onClick={e => handleActionMenuToggle(profile.id, e)}
-                            className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                            aria-label="More actions"
-                          >
-                            <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                          </button>
-                          <ActionDropdown
-                            isOpen={openId === profile.id}
-                            onClose={close}
-                            position={position}
-                            profile={profile}
-                            capabilities={capabilityByProfileId[profile.id]}
-                            onView={()      => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
-                            onEdit={()      => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}/edit`)}
-                            onDuplicate={()  => setDuplicateModal({ open: true, profile })}
-                            onToggle={()     => handleToggle(profile)}
-                            onDelete={()     => setDeleteModal({ open: true, profile })}
-                          />
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ))}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={isTableLoading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={n => { setItemsPerPage(n); setCurrentPage(1); }}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                </div>
-              )}
-            </div>
+            <DataTable
+              rows={sortedProfiles}
+              getRowKey={(profile) => profile.id}
+              columns={profileLayout.columns}
+              columnLayout={profileLayout}
+              action={profileAction}
+              scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
+              scrollProps={dragEvents}
+              isDragging={isDragging}
+              onRowClick={(profile) => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
+              emptyState={
+                <TableEmptyState
+                  title="No access profiles found"
+                  description={hasFilters ? "Try adjusting your search or filters." : "Create your first access profile to get started."}
+                />
+              }
+              pagination={
+                totalItems > 0 ? (
+                  <div className="border-t border-slate-200">
+                    <TablePagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={totalItems}
+                      itemsPerPage={itemsPerPage}
+                      isLoading={isTableLoading}
+                      onPageChange={setCurrentPage}
+                      onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
+                      itemsPerPageOptions={[10, 20, 50]}
+                    />
+                  </div>
+                ) : undefined
+              }
+            />
           </div>
 
         </div>

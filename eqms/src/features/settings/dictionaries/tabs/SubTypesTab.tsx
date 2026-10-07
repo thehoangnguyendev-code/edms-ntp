@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useMemo, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Power, PowerOff, Search, X } from "lucide-react";
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select/Select";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
 import { IconFilter2, IconPencilMinus } from "@tabler/icons-react";
@@ -37,7 +39,6 @@ type SubTypeFormData = {
   name: string;
   documentTypeId: string;
   description: string;
-  reviewRequirement: "NONE" | "REQUIRED";
   isActive: boolean;
 };
 
@@ -66,13 +67,10 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       "All" | "Active" | "Inactive"
     >("All");
     const [documentTypeFilter, setDocumentTypeFilter] = useState("");
-    const [reviewFilter, setReviewFilter] = useState<"All" | "REQUIRED" | "NONE">(
-      "All",
-    );
     const [modifiedFromDate, setModifiedFromDate] = useState("");
     const [modifiedToDate, setModifiedToDate] = useState("");
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
-      new Set(["status", "documentType", "review", "date"]),
+      new Set(["status", "documentType", "date"]),
     );
     const [resultModal, setResultModal] = useState<ResultModalState>({
       isOpen: false,
@@ -103,7 +101,6 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       extraParams: {
         status: statusFilter,
         documentType: documentTypeFilter || undefined,
-        reviewRequirement: reviewFilter === "All" ? undefined : reviewFilter,
         modifiedFrom: modifiedFromDate || undefined,
         modifiedTo: modifiedToDate || undefined,
       },
@@ -134,7 +131,6 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
     }, [
       statusFilter,
       documentTypeFilter,
-      reviewFilter,
       modifiedFromDate,
       modifiedToDate,
       setCurrentPage,
@@ -262,7 +258,6 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       setSearchQuery("");
       setStatusFilter("All");
       setDocumentTypeFilter("");
-      setReviewFilter("All");
       setModifiedFromDate("");
       setModifiedToDate("");
       setCurrentPage(1);
@@ -272,7 +267,6 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
       searchQuery.length > 0 ||
       statusFilter !== "All" ||
       documentTypeFilter.length > 0 ||
-      reviewFilter !== "All" ||
       modifiedFromDate.length > 0 ||
       modifiedToDate.length > 0;
 
@@ -293,8 +287,23 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
           : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50",
       );
 
+  type Row = (typeof items)[number];
+  const subTypesColumns: DataTableColumn<Row>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    { id: "name", header: "Sub-Type Name", label: "Sub-Type Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
+    { id: "documentType", header: "Document Type", label: "Document Type", cell: (item) => <span className="text-slate-700">{item.documentType || "-"}</span> },
+    { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
+    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+  ];
+  const subTypesAction: DataTableAction<Row> = {
+    header: "Action",
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+  };
+  const { layout: subTypesLayout, control: subTypesControl } = useCustomColumnLayout("subTypes", subTypesColumns, subTypesAction);
+
     return (
-      <div className="flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
+      <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
         <div className="bg-white w-full">
           <div className="flex md:hidden flex-col gap-1.5 w-full">
             <label className="text-xs sm:text-sm font-medium text-slate-700 block">
@@ -336,7 +345,64 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
             </div>
           </div>
 
-          <div className="hidden md:grid grid-cols-3 gap-4 items-end">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{subTypesControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search sub-types..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: [
+        { label: "All Status", value: "All" },
+        { label: "Active", value: "Active" },
+        { label: "Inactive", value: "Inactive" },
+      ],
+      onChange: (value) => {
+        setStatusFilter(value as "All" | "Active" | "Inactive");
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: 'documentTypeFilter || "All"',
+      label: "Document Type",
+      value: String(documentTypeFilter || "All"),
+      options: filterDocumentTypeOptions,
+      onChange: (value) => {
+        setDocumentTypeFilter(value === "All" ? "" : String(value));
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "modifiedFromDate",
+      label: "Modified Date Range",
+      from: modifiedFromDate,
+      to: modifiedToDate,
+      onFromChange: (v) => {
+        setModifiedFromDate(v);
+        setCurrentPage(1);
+      },
+      onToChange: (v) => {
+        setModifiedToDate(v);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-3 gap-4 items-end">
             <div className="w-full">
               <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
                 Search
@@ -388,23 +454,6 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
             </div>
 
             <div className="w-full">
-              <Select
-                label="Review"
-                value={reviewFilter}
-                onChange={(value) => {
-                  setReviewFilter(value as "All" | "REQUIRED" | "NONE");
-                  setCurrentPage(1);
-                }}
-                options={[
-                  { label: "All", value: "All" },
-                  { label: "Required", value: "REQUIRED" },
-                  { label: "Not required", value: "NONE" },
-                ]}
-                placeholder="All"
-              />
-            </div>
-
-            <div className="w-full">
               <DateRangePicker
                 label="Modified Date Range"
                 startDate={modifiedFromDate}
@@ -421,7 +470,7 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
               />
             </div>
 
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -431,149 +480,29 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
               >
                 Clear Filters
               </Button>
+            {subTypesControl}
             </div>
           </div>
+</ConfiguredDesktopFilters>
         </div>
 
         <div className="flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col">
-          <div className="flex-1 overflow-x-auto">
-            <TableMarkup.Root className="w-full">
-              <TableMarkup.Head className="sticky top-0 z-30">
-                <TableMarkup.Row>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
-                    No.
-                  </TableMarkup.HeaderCell>
-                  {[
-                    { label: "Sub-Type Name", id: "name" },
-                    { label: "Document Type", id: "documentType" },
-                    { label: "Review", id: "reviewRequirement" },
-                    { label: "Description", id: "description" },
-                    { label: "Status", id: "isActive" },
-                    { label: "Modified Date", id: "modifiedDate" },
-                  ].map((col) => {
-                    const isSorted = sortConfig.key === col.id;
-                    return (
-                      <TableMarkup.HeaderCell
-                        key={col.id}
-                        onClick={() => handleSort(col.id)}
-                        className={TABLE_STYLES.headerCell38}
-                      >
-                        <div className="flex items-center justify-between gap-2 w-full">
-                          <span className="truncate">{col.label}</span>
-                          <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                            <ChevronUp
-                              className={cn(
-                                "h-3 w-3 -mb-1",
-                                isSorted && sortConfig.direction === "asc"
-                                  ? "text-emerald-600 font-bold"
-                                  : "",
-                              )}
-                            />
-                            <ChevronDown
-                              className={cn(
-                                "h-3 w-3",
-                                isSorted && sortConfig.direction === "desc"
-                                  ? "text-emerald-600 font-bold"
-                                  : "",
-                              )}
-                            />
-                          </div>
-                        </div>
-                      </TableMarkup.HeaderCell>
-                    );
-                  })}
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                    Action
-                  </TableMarkup.HeaderCell>
-                </TableMarkup.Row>
-              </TableMarkup.Head>
-              <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                {isLoading ? (
-                  <TableMarkup.Row>
-                    <TableMarkup.Cell
-                      colSpan={8}
-                      className="py-14 text-center text-slate-500"
-                    >
-                      Loading sub-types...
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                ) : items.length > 0 ? (
-                  items.map((item, index) => (
-                    <TableMarkup.Row
-                      key={item.id}
-                      className="hover:bg-slate-50/80 transition-colors group"
-                    >
-                      <TableMarkup.Cell className={TABLE_STYLES.cell30}>
-                        {(currentPage - 1) * itemsPerPage + index + 1}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                        <span className="font-medium text-slate-900">
-                          {item.name}
-                        </span>
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                        <span className="text-slate-700">
-                          {item.documentType || "-"}
-                        </span>
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                        {item.reviewRequirement === "NONE" ? "Not required" : "Required"}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-md truncate">
-                        {item.description || "-"}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                        {item.isActive ? (
-                          <Badge color="emerald" size="sm" >
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge color="slate" size="sm" >
-                            Inactive
-                          </Badge>
-                        )}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                        {item.modifiedDate}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell
-                        onClick={(e) => e.stopPropagation()}
-                        className={TABLE_STYLES.emptyCell3}
-                      >
-                        {canManage && (
-                          <button
-                            ref={getButtonRef(item.id)}
-                            onClick={(e) => handleDropdownToggle(item.id, e)}
-                            className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                            aria-label="More actions"
-                          >
-                            <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                          </button>
-                        )}
-                      </TableMarkup.Cell>
-                    </TableMarkup.Row>
-                  ))
-                ) : (
-                  <TableMarkup.Row>
-                    <TableMarkup.Cell colSpan={8} className="p-0">
-                      <TableEmptyState title="No items found" description="Try adjusting your search" />
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                )}
-              </TableMarkup.Body>
-            </TableMarkup.Root>
-          </div>
-
-          {!isLoading && totalItems > 0 && (
-            <TablePagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-              onItemsPerPageChange={setItemsPerPage}
-            />
-          )}
+          <DataTable
+            rows={items}
+            getRowKey={(item) => item.id}
+            columns={subTypesLayout.columns}
+            columnLayout={subTypesLayout}
+            action={subTypesAction}
+            emptyState={
+              <TableEmptyState
+  title="No items found" description="Try adjusting your search" />
+            }
+            pagination={
+              totalItems > 0 ? (
+                <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+              ) : undefined
+            }
+          />
         </div>
 
         <PortalDropdownMenu
@@ -742,34 +671,6 @@ export const SubTypesTab = React.forwardRef<{ openAddModal: () => void }, {}>(
           </FilterAccordionItem>
 
           <FilterAccordionItem
-            label="Review"
-            isExpanded={expandedSections.has("review")}
-            onToggle={() => toggleSection("review")}
-          >
-            <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-              {[
-                { label: "All", value: "All" },
-                { label: "Required", value: "REQUIRED" },
-                { label: "Not required", value: "NONE" },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => {
-                    setReviewFilter(opt.value as "All" | "REQUIRED" | "NONE");
-                    setCurrentPage(1);
-                  }}
-                  className={getOptionClassName(reviewFilter === opt.value)}
-                >
-                  <span className="text-xs">{opt.label}</span>
-                  {reviewFilter === opt.value && (
-                    <Check size={16} className="text-emerald-500" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </FilterAccordionItem>
-
-          <FilterAccordionItem
             label="Modified Date Range"
             isExpanded={expandedSections.has("date")}
             onToggle={() => toggleSection("date")}
@@ -834,7 +735,6 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
     name: item?.name || "",
     documentTypeId: item?.documentTypeId || "",
     description: item?.description || "",
-    reviewRequirement: item?.reviewRequirement || "REQUIRED",
     isActive: item?.isActive ?? true,
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -845,7 +745,6 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
         name: item.name,
         documentTypeId: item.documentTypeId,
         description: item.description || "",
-        reviewRequirement: item.reviewRequirement || "REQUIRED",
         isActive: item.isActive,
       });
     } else {
@@ -853,7 +752,6 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
         name: "",
         documentTypeId: "",
         description: "",
-        reviewRequirement: "REQUIRED",
         isActive: true,
       });
     }
@@ -904,19 +802,6 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
             options={documentTypeSelectOptions}
             placeholder="Select document type..."
             enableSearch={true}
-            disabled={isSaving}
-          />
-        </div>
-
-        <div>
-          <Select
-            label="Review Requirement"
-            value={formData.reviewRequirement}
-            onChange={(value) => setFormData({ ...formData, reviewRequirement: value as SubTypeFormData["reviewRequirement"] })}
-            options={[
-              { value: "NONE", label: "Review not required" },
-              { value: "REQUIRED", label: "Review required" },
-            ]}
             disabled={isSaving}
           />
         </div>

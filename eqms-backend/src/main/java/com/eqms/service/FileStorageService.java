@@ -53,7 +53,7 @@ public class FileStorageService {
     private static final Path CONTROLLED_COPY_EVIDENCE_STAGE_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "nas-stage", "controlled-copies", "evidence");
     private static final Path PERSONNEL_CERTIFICATION_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "personnel", "certifications");
     private static final Path EXECUTED_RECORD_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "forms", "executed-records");
-    private static final Path EFORM_SESSION_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "forms", "eform-sessions");
+    private static final Path CONTROLLED_COPY_RECALL_SCAN_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "controlled-copies", "recall-scans");
 
     private final SystemConfigurationService systemConfigurationService;
     private final MinioObjectStorageService minioObjectStorageService;
@@ -353,23 +353,25 @@ public class FileStorageService {
         return localResult(targetFile, provider);
     }
 
-    /** A live OnlyOffice Design or Fill session's current saved bytes (see EformEditSessionService).
-     *  Same simple MinIO-or-local store as {@link #storeExecutedRecordFile} -- transient working state,
-     *  not a GMP document revision. */
-    public StorageWriteResult storeEformSessionFile(UUID sessionId, String originalName, InputStream contentStream) throws IOException {
+    /**
+     * One scan uploaded into a Controlled Copy recall batch. Keyed by batch and item (the copy it matches can still change
+     * while the batch is a draft); once the batch is committed the Executed Record simply points at this stored file, so the
+     * scan is stored exactly once and never copied.
+     */
+    public StorageWriteResult storeControlledCopyRecallScan(UUID batchId, UUID itemId, String originalName, InputStream contentStream) throws IOException {
         JsonNode storageConfig = getStorageConfig();
         String provider = storageConfig.path("provider").asText("local");
         String storedFileName = UUID.randomUUID() + "_" + storagePathBuilder.sanitizeFileName(originalName);
 
         if (isMinioProvider(provider)) {
-            String relativeKey = "forms/eform-sessions/" + sessionId + "/" + storedFileName;
+            String relativeKey = "controlled-copies/recall-scans/" + batchId + "/" + itemId + "/" + storedFileName;
             MinioObjectStorageService.StoredObject stored = minioObjectStorageService.store(
                     storageConfig, relativeKey, contentStream, "application/octet-stream");
             return new StorageWriteResult(
                     stored.localPath(), stored.uri(), "minio", stored.bucket(), stored.objectKey(), stored.versionId(), stored.sha256());
         }
 
-        Path targetDir = EFORM_SESSION_ROOT.resolve(sessionId.toString());
+        Path targetDir = CONTROLLED_COPY_RECALL_SCAN_ROOT.resolve(batchId.toString()).resolve(itemId.toString());
         Files.createDirectories(targetDir);
         Path targetFile = targetDir.resolve(storedFileName);
         Files.copy(contentStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
@@ -502,15 +504,6 @@ public class FileStorageService {
         } else if ("google-drive".equalsIgnoreCase(provider)) {
             String folderId = storageConfig.path("googleDriveFolderId").asText("default-folder");
             return Paths.get(System.getProperty("user.dir"), "storage", "google-drive", folderId, revisionId.toString()).resolve(storedFileName);
-        } else if ("onedrive".equalsIgnoreCase(provider)) {
-            String driveId = storageConfig.path("msDriveId").asText("default-drive");
-            String libraryFolder = storageConfig.path("msLibraryFolder").asText("documents");
-            return Paths.get(System.getProperty("user.dir"), "storage", "onedrive", driveId, libraryFolder, revisionId.toString()).resolve(storedFileName);
-        } else if ("sharepoint".equalsIgnoreCase(provider)) {
-            String siteId = storageConfig.path("msSiteId").asText("default-site");
-            String driveId = storageConfig.path("msDriveId").asText("default-drive");
-            String libraryFolder = storageConfig.path("msLibraryFolder").asText("documents");
-            return Paths.get(System.getProperty("user.dir"), "storage", "sharepoint", siteId, driveId, libraryFolder, revisionId.toString()).resolve(storedFileName);
         } else if ("dropbox".equalsIgnoreCase(provider)) {
             String folderPath = storageConfig.path("dropboxFolderPath").asText("documents");
             String cleanFolder = sanitizeFolderPath(folderPath);
@@ -807,50 +800,6 @@ public class FileStorageService {
             log.info("Testing connection to Google Drive: folderId={}", folderId);
             Path simulatedDir = Paths.get(System.getProperty("user.dir"), "storage", "google-drive", folderId);
             Files.createDirectories(simulatedDir);
-        } else if ("onedrive".equalsIgnoreCase(provider)) {
-            String tenantId = storageConfig.path("msTenantId").asText("");
-            String clientId = storageConfig.path("msClientId").asText("");
-            String clientSecret = storageConfig.path("msClientSecret").asText("");
-            String driveId = storageConfig.path("msDriveId").asText("");
-            if (!StringUtils.hasText(tenantId)) {
-                throw new IllegalArgumentException("Tenant ID is required");
-            }
-            if (!StringUtils.hasText(clientId)) {
-                throw new IllegalArgumentException("Client ID is required");
-            }
-            if (!StringUtils.hasText(clientSecret)) {
-                throw new IllegalArgumentException("Client Secret is required");
-            }
-            if (!StringUtils.hasText(driveId)) {
-                throw new IllegalArgumentException("Drive ID is required");
-            }
-            log.info("Testing connection to Microsoft OneDrive: driveId={}", driveId);
-            Path simulatedDir = Paths.get(System.getProperty("user.dir"), "storage", "onedrive", driveId);
-            Files.createDirectories(simulatedDir);
-        } else if ("sharepoint".equalsIgnoreCase(provider)) {
-            String tenantId = storageConfig.path("msTenantId").asText("");
-            String clientId = storageConfig.path("msClientId").asText("");
-            String clientSecret = storageConfig.path("msClientSecret").asText("");
-            String siteId = storageConfig.path("msSiteId").asText("");
-            String driveId = storageConfig.path("msDriveId").asText("");
-            if (!StringUtils.hasText(tenantId)) {
-                throw new IllegalArgumentException("Tenant ID is required");
-            }
-            if (!StringUtils.hasText(clientId)) {
-                throw new IllegalArgumentException("Client ID is required");
-            }
-            if (!StringUtils.hasText(clientSecret)) {
-                throw new IllegalArgumentException("Client Secret is required");
-            }
-            if (!StringUtils.hasText(siteId)) {
-                throw new IllegalArgumentException("SharePoint Site ID is required");
-            }
-            if (!StringUtils.hasText(driveId)) {
-                throw new IllegalArgumentException("Drive ID is required");
-            }
-            log.info("Testing connection to Microsoft SharePoint: siteId={}, driveId={}", siteId, driveId);
-            Path simulatedDir = Paths.get(System.getProperty("user.dir"), "storage", "sharepoint", siteId, driveId);
-            Files.createDirectories(simulatedDir);
         } else if ("dropbox".equalsIgnoreCase(provider)) {
             String appKey = storageConfig.path("dropboxAppKey").asText("");
             String appSecret = storageConfig.path("dropboxAppSecret").asText("");
@@ -1004,19 +953,6 @@ public class FileStorageService {
             String folderId = storageConfig.path("googleDriveFolderId").asText("default-folder");
             log.info("Simulating Google Drive Upload to folder: {}", folderId);
             return Paths.get(System.getProperty("user.dir"), "storage", "google-drive", folderId, revisionId.toString());
-        }
-        if ("onedrive".equalsIgnoreCase(provider)) {
-            String driveId = storageConfig.path("msDriveId").asText("default-drive");
-            String libraryFolder = storageConfig.path("msLibraryFolder").asText("documents");
-            log.info("Simulating Microsoft OneDrive Upload to drive: {}, library folder: {}", driveId, libraryFolder);
-            return Paths.get(System.getProperty("user.dir"), "storage", "onedrive", driveId, libraryFolder, revisionId.toString());
-        }
-        if ("sharepoint".equalsIgnoreCase(provider)) {
-            String siteId = storageConfig.path("msSiteId").asText("default-site");
-            String driveId = storageConfig.path("msDriveId").asText("default-drive");
-            String libraryFolder = storageConfig.path("msLibraryFolder").asText("documents");
-            log.info("Simulating Microsoft SharePoint Upload to site: {}, drive: {}, library folder: {}", siteId, driveId, libraryFolder);
-            return Paths.get(System.getProperty("user.dir"), "storage", "sharepoint", siteId, driveId, libraryFolder, revisionId.toString());
         }
         if ("dropbox".equalsIgnoreCase(provider)) {
             String folderPath = storageConfig.path("dropboxFolderPath").asText("documents");

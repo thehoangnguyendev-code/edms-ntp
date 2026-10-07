@@ -68,8 +68,6 @@ import {
 // get an actionable instruction instead of a raw code. Unknown codes fall through to the
 // server's own sentence.
 const REVIEW_ERROR_CODE_MESSAGES: Record<string, string> = {
-  REVIEWERS_MUST_BE_REMOVED_FIRST:
-    "This Sub-Type does not use review. Remove the saved reviewers first (that removal needs an e-signature), then switch the Sub-Type.",
   REVIEW_REQUIREMENT_CHANGED:
     "The review requirement changed after this revision was created. Re-open the revision to re-sync, then submit again.",
   REVIEWER_REQUIRED: "Assign and save at least one Reviewer before continuing.",
@@ -162,7 +160,6 @@ type DocumentTypeLookupOption = LookupOption & {
 type SubTypeLookupOption = LookupOption & {
   documentTypeId: string;
   documentType: string;
-  reviewRequirement: "NONE" | "REQUIRED";
 };
 
 type DepartmentLookupOption = LookupOption & {
@@ -1058,7 +1055,7 @@ export const NewDocumentView: React.FC = () => {
     setServerReviewRequirement(detail.reviewRequirement ?? null);
     setIsSaved(true);
     setIsWorkflowSaved(
-      (reviewRequirement === "NONE" || Boolean(detail.reviewers?.length)) && Boolean(detail.approvers?.length),
+      (detail.reviewRequirement === "NONE" || detail.reviewRequirement === "OPTIONAL" || Boolean(detail.reviewers?.length)) && Boolean(detail.approvers?.length),
     );
     setFormData((prev) => ({
       ...prev,
@@ -1243,7 +1240,6 @@ export const NewDocumentView: React.FC = () => {
               value: item.name,
               documentTypeId: item.documentTypeId,
               documentType: item.documentType,
-              reviewRequirement: item.reviewRequirement,
             }))
         );
 
@@ -1330,44 +1326,19 @@ export const NewDocumentView: React.FC = () => {
     const mapped = allowedOptions.map((item) => ({ label: item.label, value: item.value }));
     const currentValue = String(formData.subType || "").trim();
     if (!currentValue || mapped.some((option) => option.value === currentValue || option.label === currentValue)) {
-      return [{ label: "— No Sub-Type (review required) —", value: "" }, ...mapped];
+      return [{ label: "— No Sub-Type —", value: "" }, ...mapped];
     }
-    return [{ label: "— No Sub-Type (review required) —", value: "" }, ...mapped, { label: currentValue, value: currentValue }];
+    return [{ label: "— No Sub-Type —", value: "" }, ...mapped, { label: currentValue, value: currentValue }];
   }, [documentTypeLookupOptions, formData.subType, formData.type, subTypeLookupOptions]);
 
-  // Instant, pre-Save feedback only: mirrors DocumentService#resolveDocumentReviewRequirement as
-  // closely as a client-side snapshot of the Sub-Type Dictionary can, so the Reviewer picker's
-  // cap/floor react the moment the user changes the Sub-Type dropdown, without waiting on a round
-  // trip. This is a prediction, not the source of truth -- see serverReviewRequirement below.
-  const clientPredictedReviewRequirement = useMemo<"NONE" | "REQUIRED">(() => {
-    // No Sub-Type selected ("None") still requires a review -- "unclassified" is not "waived".
-    if (!String(formData.subType || "").trim()) return "REQUIRED";
-    const selected = subTypeLookupOptions.find((item) => item.value === formData.subType || item.label === formData.subType);
-    return selected?.reviewRequirement ?? "REQUIRED";
-  }, [formData.subType, subTypeLookupOptions]);
-
-  // Authoritative once a save has happened: DocumentService#resolveDocumentReviewRequirement
-  // itself, read straight from the server's response (hydrateDocumentFromBackend below), not
-  // re-derived on the client. Reset to null the moment the Sub-Type dropdown changes so the
-  // client prediction above takes back over immediately -- it would otherwise keep showing the
-  // PRE-change requirement (from the last save) until the next save completes.
+  // Document policy comes from the server, never from its classification Sub-Type.
   const [serverReviewRequirement, setServerReviewRequirement] = useState<
-    "NONE" | "REQUIRED" | null
+    "NONE" | "REQUIRED" | "OPTIONAL" | null
   >(null);
-  useEffect(() => {
-    setServerReviewRequirement(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.subType]);
-
-  const reviewRequirement = serverReviewRequirement ?? clientPredictedReviewRequirement;
+  const reviewRequirement = serverReviewRequirement ?? (documentId ? "REQUIRED" : "OPTIONAL");
 
   useEffect(() => {
-    // Keep the locally-picked (not yet saved) Reviewer roster in sync whenever the Sub-Type
-    // changes what's actually allowed, so the user never has to notice a stale selection and hit
-    // the backend's own re-validation error (DocumentService#updateDocumentDraft) at Save time.
-    // NONE drops the roster entirely; REQUIRED only has a floor (>=1), never a cap, so an
-    // under-selection is left alone -- the picker modal already surfaces "select 1 more" and
-    // Save's own validation still catches it if the user tries to submit zero.
+    // Only the persisted legacy document policy can forbid reviewer assignments.
     if (reviewRequirement === "NONE" && reviewers.length > 0) {
       setReviewers([]);
     }
@@ -1640,7 +1611,7 @@ export const NewDocumentView: React.FC = () => {
         if (action === "next-step") {
           setIsWorkflowSaved(false);
         } else {
-          setIsWorkflowSaved((reviewRequirement === "NONE" || reviewers.length > 0) && approvers.length > 0);
+          setIsWorkflowSaved((reviewRequirement !== "REQUIRED" || reviewers.length > 0) && approvers.length > 0);
         }
         return true;
       }
@@ -1692,6 +1663,7 @@ export const NewDocumentView: React.FC = () => {
         navigate(ROUTES.DOCUMENTS.EDIT(response.id), { replace: true });
       }
       setDocumentId(response.id);
+      setServerReviewRequirement(response.reviewRequirement ?? (isInitialCreate ? "OPTIONAL" : serverReviewRequirement));
       setDocumentNumber(response.documentNumber || documentNumber);
       setCreatedDateTime(response.created || response.createdDate || createdDateTime);
       setDocumentOwner(response.owner || documentOwner);
@@ -1707,7 +1679,7 @@ export const NewDocumentView: React.FC = () => {
         await hydrateDocumentFromBackend(response.id, false);
       } catch (hydrateError) {
         console.error("Document saved, but its detail could not be refreshed", hydrateError);
-        setIsWorkflowSaved(action !== "next-step" && (reviewRequirement === "NONE" || reviewers.length > 0) && approvers.length > 0);
+        setIsWorkflowSaved(action !== "next-step" && (reviewRequirement !== "REQUIRED" || reviewers.length > 0) && approvers.length > 0);
       }
       setLastSavedPayload(requestPayload);
       setFormData((prev) => ({
@@ -2150,12 +2122,8 @@ export const NewDocumentView: React.FC = () => {
               }}
               documentType={formData.type}
               onSuggestedCodeChange={setSuggestedDocumentCode}
-              // Upload must wait until Reviewer/Approver assignment is saved (isWorkflowSaved),
-              // not just the initial draft save (isSaved) -- otherwise Author/DCO could attach a
-              // source file before the workflow participants who are meant to review/approve it
-              // even exist. isWorkflowSaved already accounts for the selected Sub-Type's Review
-              // Requirement (NONE/SINGLE/MULTIPLE) from Dictionaries, e.g. reviewers aren't
-              // required when reviewRequirement === "NONE".
+              // Upload waits for saved participants under the document policy, not its Sub-Type.
+              // New documents require an Approver; their Reviewer roster is optional.
               hideUpload={!isSaved || !isWorkflowSaved || !canCurrentUserUploadRevision || hasUploadedRevision}
             />
           )}
@@ -2269,11 +2237,8 @@ export const NewDocumentView: React.FC = () => {
               documentStatus !== "Obsoleted" &&
               documentStatus !== "Closed - Cancelled" && (
                 <>
-                  {/* Upload is based on the persisted author assignment, never a role/display name.
-                      Also requires isWorkflowSaved: Reviewer/Approver must be assigned and saved
-                      first (Sub-Type Review Requirement from Dictionaries decides whether a
-                      Reviewer is even required) -- otherwise Upload Revision would let a source
-                      file attach before there's anyone to review/approve it. */}
+                  {/* Upload uses the persisted author assignment and saved document workflow.
+                      Sub-Type has no effect on Review. */}
                   {isWorkflowSaved && !hasUploadedRevision && canCurrentUserUploadRevision && (
                     <Button
                       onClick={() => setIsUploadRevisionModalOpen(true)}
@@ -2376,7 +2341,7 @@ export const NewDocumentView: React.FC = () => {
             {activeSubtab === "reviewers" && (
               reviewRequirement === "NONE" ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-                  <p>Review is not required for this Document Type and Sub-Type.</p>
+                  <p>Review is not required under this document's saved workflow policy.</p>
                   {documentId && (
                     <button
                       type="button"

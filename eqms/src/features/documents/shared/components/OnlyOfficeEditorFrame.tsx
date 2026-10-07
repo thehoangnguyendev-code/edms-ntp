@@ -24,7 +24,7 @@ const EDITOR_CONTAINER_ID = "onlyoffice-editor-container";
 /**
  * Full-screen overlay embedding OnlyOffice Document Server's editor via its DocsAPI script --
  * the OnlyOffice counterpart to the "open Word Online in a new tab" flow used for Microsoft
- * Graph (see useOfficeOnlineReviewLink.ts). Unlike Graph, OnlyOffice's editor is meant to be
+ * Graph (see useOnlyOfficeReviewLink.ts). Unlike Graph, OnlyOffice's editor is meant to be
  * embedded in-page, not opened in a separate tab, so this renders as a modal overlay instead.
  *
  * The editor config (including its own signed JWT) comes fully-formed from the backend --

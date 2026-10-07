@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../utils';
 import { useDropdownPosition } from '@/hooks';
@@ -53,11 +53,35 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
   role = 'menu',
 }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [left, setLeft] = useState<number>();
   const { position } = useDropdownPosition({
     triggerRef,
     isOpen,
     estimatedHeight,
   });
+
+  // The trigger can be much narrower than the portaled menu (e.g. a table's ⋮).
+  // Measure the menu itself before paint and keep it inside the viewport.
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setLeft(undefined);
+      return;
+    }
+    const menu = dropdownRef.current;
+    if (!menu) return;
+    const updateLeft = () => {
+      const width = menu.getBoundingClientRect().width;
+      setLeft(Math.max(8, Math.min(position.left, window.innerWidth - width - 8)));
+    };
+    updateLeft();
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(updateLeft);
+    observer?.observe(menu);
+    window.addEventListener('resize', updateLeft);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateLeft);
+    };
+  }, [isOpen, position.left, minWidth]);
 
   // Handle click outside
   useEffect(() => {
@@ -114,9 +138,10 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
           position: 'fixed',
           top: position.top,
           bottom: position.bottom,
-          left: position.left,
+          left: left ?? position.left,
           maxHeight: position.maxHeight,
-          minWidth,
+          minWidth: `min(${minWidth}px, calc(100vw - 16px))`,
+          maxWidth: 'calc(100vw - 16px)',
           zIndex: 50,
         }}
       className={cn(

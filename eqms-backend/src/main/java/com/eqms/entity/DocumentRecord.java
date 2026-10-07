@@ -14,6 +14,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.Formula;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -133,6 +134,16 @@ public class DocumentRecord {
     @Column(length = 100)
     private String language;
 
+    /**
+     * Read-only sort keys of the Documents list: the reviewers' / approvers' names in workflow order, computed by the database from
+     * document_workflow_participants, so sorting is done on the server and is never stale. Never written.
+     */
+    @Formula("(select string_agg(u.full_name, ', ' order by p.sequence_order) from document_workflow_participants p join app_users u on u.id = p.user_id where p.document_id = id and p.participant_type = 'REVIEWER')")
+    private String reviewerNamesSortKey;
+
+    @Formula("(select string_agg(u.full_name, ', ' order by p.sequence_order) from document_workflow_participants p join app_users u on u.id = p.user_id where p.document_id = id and p.participant_type = 'APPROVER')")
+    private String approverNamesSortKey;
+
     @Column(name = "requires_training", nullable = false)
     private boolean requiresTraining;
 
@@ -161,6 +172,13 @@ public class DocumentRecord {
 
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
+
+    /**
+     * The status code the Document had when it was closed (Obsoleted or Closed - Cancelled), so that Reopen can return it there.
+     * Empty for a Document closed before V547; the service then derives it from the only state each closure is possible from.
+     */
+    @Column(name = "status_before_closure", length = 50)
+    private String statusBeforeClosure;
 
     /**
      * Groundwork for the Legacy Import feature (Phase 1 of 2, see V453). Not yet set by any
@@ -494,6 +512,14 @@ public class DocumentRecord {
 
     public Instant getCancelledAt() {
         return cancelledAt;
+    }
+
+    public String getStatusBeforeClosure() {
+        return statusBeforeClosure;
+    }
+
+    public void setStatusBeforeClosure(String statusBeforeClosure) {
+        this.statusBeforeClosure = statusBeforeClosure;
     }
 
     public void setCancelledAt(Instant cancelledAt) {

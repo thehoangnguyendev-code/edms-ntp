@@ -5,7 +5,7 @@ export interface DashboardSummary {
   pendingReview: number;
   pendingApproval: number;
   pendingTraining: number;
-  myPendingWorkflowActions: number;
+  myPendingTasks: number;
   totalDocuments: number;
 }
 
@@ -38,6 +38,47 @@ export interface DashboardRecentActivity {
   eventTime: string;
 }
 
+/** Documents of one Document Type in a lifecycle status (see GET /dashboard/effective-documents-by-type). */
+export interface DashboardDocumentTypeCount {
+  typeId: string;
+  shortCode: string;
+  name: string;
+  documents: number;
+}
+
+/** GET /dashboard/system-monitoring: read when requested, administrative dashboard permission only. */
+export interface DashboardSystemMonitoring {
+  generatedAt: string;
+  runtime: {
+    applicationVersion: string;
+    startedAt: string;
+    uptimeMillis: number;
+    heapUsedBytes: number;
+    heapMaxBytes: number;
+    availableProcessors: number;
+  };
+  database: {
+    schemaMigrationVersion: string;
+    appliedMigrations: number;
+    poolActive: number | null;
+    poolIdle: number | null;
+    poolMax: number | null;
+  };
+  security: {
+    /** Every user status, including those no user has. */
+    usersByStatus: Record<string, number>;
+    lockedAccounts: number;
+    activeSessions: number;
+    failedLogins24h: number;
+    electronicSignatures30d: number;
+  };
+  compliance: {
+    openAccessReviews: number;
+    openAuditTrailReviews: number;
+    openControlledCopyDiscrepancies: number;
+  };
+}
+
 export interface DashboardAdminStats {
   totalUsers: number;
   activeUsers: number;
@@ -57,6 +98,14 @@ export const dashboardApi = {
     api
       .get<DashboardActivityPoint[]>("/dashboard/document-activity", { params: { period } })
       .then((r) => r.data),
+
+  getEffectiveDocumentsByType: () =>
+    api
+      .get<DashboardDocumentTypeCount[]>("/dashboard/effective-documents-by-type")
+      .then((r) => r.data),
+
+  getSystemMonitoring: () =>
+    api.get<DashboardSystemMonitoring>("/dashboard/system-monitoring").then((r) => r.data),
 
   getPendingWorkflowActions: () =>
     api.get<DashboardPendingWorkflowAction[]>("/dashboard/my-tasks").then((r) => r.data),

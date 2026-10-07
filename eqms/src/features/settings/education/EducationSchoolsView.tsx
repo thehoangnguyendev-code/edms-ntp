@@ -1,4 +1,6 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useState } from "react";
+import { useUrlParam } from "@/hooks/useUrlParam";
 import { useNavigate } from "react-router-dom";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import {
@@ -11,6 +13,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -41,16 +44,16 @@ export const EducationSchoolsView: React.FC = () => {
   const [resultModal, setResultModal] = useState<{ isOpen: boolean; type: "success" | "error"; title: string; description: string }>({
     isOpen: false, type: "success", title: "", description: "",
   });
-  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
-  const [typeFilter, setTypeFilter] = useState<"All" | SchoolType>("All");
-  const [ownershipFilter, setOwnershipFilter] = useState<"All" | SchoolOwnership>("All");
-  const [governanceFilter, setGovernanceFilter] = useState("All");
-  const [originFilter, setOriginFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useUrlParam<"All" | "Active" | "Inactive">("status", "All");
+  const [typeFilter, setTypeFilter] = useUrlParam<"All" | SchoolType>("type", "All");
+  const [ownershipFilter, setOwnershipFilter] = useUrlParam<"All" | SchoolOwnership>("ownership", "All");
+  const [governanceFilter, setGovernanceFilter] = useUrlParam<string>("governance", "All");
+  const [originFilter, setOriginFilter] = useUrlParam<string>("origin", "All");
   const [governingBodies, setGoverningBodies] = useState<string[]>([]);
   const [origins, setOrigins] = useState<string[]>([]);
   const { scrollerRef, dragEvents } = useTableDragScroll();
-  const [modifiedFrom, setModifiedFrom] = useState("");
-  const [modifiedTo, setModifiedTo] = useState("");
+  const [modifiedFrom, setModifiedFrom] = useUrlParam<string>("modifiedFrom", "");
+  const [modifiedTo, setModifiedTo] = useUrlParam<string>("modifiedTo", "");
   const { openId: openDropdownId, position: dropdownPosition, getRef: getButtonRef, toggle: handleDropdownToggle, close: closeDropdown } = usePortalDropdown();
   const { hasPermissionAlias } = usePermissions();
   const canManage = hasPermissionAlias("settings.education.school.manage");
@@ -134,6 +137,39 @@ export const EducationSchoolsView: React.FC = () => {
     cn("w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-all",
       isActive ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50");
 
+  type SchoolRow = (typeof items)[number];
+  const schoolColumns: DataTableColumn<SchoolRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    { id: "name", header: "School Name", label: "School Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: TABLE_STYLES.cell28, cell: (item) => item.name },
+    { id: "abbreviation", header: "Abbreviation", label: "Abbreviation", sort: { direction: sortConfig.key === "abbreviation" ? sortConfig.direction : undefined, onSort: () => handleSort("abbreviation") }, cell: (item) => item.abbreviation || "-" },
+    { id: "type", header: "Type", label: "Type", cell: (item) => <Badge color="blue" size="sm">{typeLabel(item.type)}</Badge> },
+    { id: "ownership", header: "Ownership", label: "Ownership", cell: (item) => ownershipLabel(item.ownership) },
+    { id: "governingBody", header: "Governing Body", label: "Governing Body", sort: { direction: sortConfig.key === "governingBody" ? sortConfig.direction : undefined, onSort: () => handleSort("governingBody") }, cell: (item) => item.governingBody || item.directGoverningMinistry || "-" },
+    { id: "countryOfOriginName", header: "Origin", label: "Origin", sort: { direction: sortConfig.key === "countryOfOriginName" ? sortConfig.direction : undefined, onSort: () => handleSort("countryOfOriginName") }, cell: (item) => item.countryOfOriginName || "-" },
+    {
+      id: "isActive",
+      header: "Status",
+      label: "Status",
+      sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") },
+      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>),
+    },
+    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", sort: { direction: sortConfig.key === "modifiedDate" ? sortConfig.direction : undefined, onSort: () => handleSort("modifiedDate") }, cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+  ];
+  const schoolAction: DataTableAction<SchoolRow> = {
+    header: "Action",
+    cell: (item) =>
+      canManage ? (
+        <button
+          ref={getButtonRef(item.id)}
+          onClick={(e) => handleDropdownToggle(item.id, e)}
+          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
+        >
+          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
+        </button>
+      ) : null,
+  };
+  const { layout: schoolLayout, control: schoolControl } = useCustomColumnLayout("education.schools", schoolColumns, schoolAction);
+
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
@@ -143,14 +179,14 @@ export const EducationSchoolsView: React.FC = () => {
           canManage ? (
             <Button size="sm" onClick={() => navigate("/settings/education/schools/new")} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700">
               <Plus className="h-4 w-4" />
-              Add New School
+              New School
             </Button>
           ) : undefined
         }
       />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col flex-1">
-        <div className="px-4 pt-4 md:p-5 flex flex-col">
+        <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
             <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
@@ -172,7 +208,97 @@ export const EducationSchoolsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+<ConfiguredDesktopFilters
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search schools..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "typeFilter",
+      label: "Type",
+      value: String(typeFilter),
+      options: [{ label: "All Types", value: "All" }, ...SCHOOL_TYPE_OPTIONS],
+      onChange: (value) => {
+        setTypeFilter(value as "All" | SchoolType);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: [
+        { label: "All Status", value: "All" },
+        { label: "Active", value: "Active" },
+        { label: "Inactive", value: "Inactive" },
+      ],
+      onChange: (value) => {
+        setStatusFilter(value as "All" | "Active" | "Inactive");
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "ownershipFilter",
+      label: "Ownership",
+      value: String(ownershipFilter),
+      options: [{ label: "All Ownership", value: "All" }, ...SCHOOL_OWNERSHIP_OPTIONS],
+      onChange: (value) => {
+        setOwnershipFilter(value as "All" | SchoolOwnership);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "governanceFilter",
+      label: "Governing Body",
+      value: String(governanceFilter),
+      options: [
+        { label: "All Governing Bodies", value: "All" },
+        ...governingBodies.map((value) => ({ label: value, value })),
+      ],
+      onChange: (value) => {
+        setGovernanceFilter(value);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "originFilter",
+      label: "Origin",
+      value: String(originFilter),
+      options: [
+        { label: "All Origins", value: "All" },
+        ...origins.map((value) => ({ label: value, value })),
+      ],
+      onChange: (value) => {
+        setOriginFilter(value);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "modifiedFrom",
+      label: "Modified Date Range",
+      from: modifiedFrom,
+      to: modifiedTo,
+      onFromChange: (value) => setModifiedFrom(toApiDate(value)),
+      onToChange: (value) => setModifiedTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) => {
+        setModifiedFrom(toApiDate(startDate));
+        setModifiedTo(toApiDate(endDate));
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
                 <div className="relative">
@@ -217,10 +343,12 @@ export const EducationSchoolsView: React.FC = () => {
                 onEndDateChange={(value) => setModifiedTo(toApiDate(value))}
                 onApply={({ startDate, endDate }) => { setModifiedFrom(toApiDate(startDate)); setModifiedTo(toApiDate(endDate)); }}
                 placeholder="Select date range" />
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button variant="outline" size="sm" onClick={clearFilters} className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap">Clear Filters</Button>
+              {schoolControl}
             </div>
           </div>
+</ConfiguredDesktopFilters>
         </div>
         </div>
 
@@ -231,88 +359,22 @@ export const EducationSchoolsView: React.FC = () => {
             </div>
           )}
         <div className={cn("flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white flex flex-col transition-all duration-300", isLoading && "blur-[2px] opacity-80")}>
-          <div ref={scrollerRef} {...dragEvents} className="flex-1 overflow-x-auto">
-            <TableMarkup.Root className="w-full">
-              <TableMarkup.Head className="sticky top-0 z-30">
-                <TableMarkup.Row>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>No.</TableMarkup.HeaderCell>
-                  {[
-                    { label: "School Name", id: "name" },
-                    { label: "Abbreviation", id: "abbreviation" },
-                    { label: "Type", id: "type", sortable: false },
-                    { label: "Ownership", id: "ownership", sortable: false },
-                    { label: "Governing Body", id: "governingBody" },
-                    { label: "Origin", id: "countryOfOriginName" },
-                    { label: "Status", id: "isActive" },
-                    { label: "Modified Date", id: "modifiedDate" },
-                  ].map((col) => {
-                    const isSorted = sortConfig.key === col.id;
-                    const isSortable = col.sortable !== false;
-                    return (
-                      <TableMarkup.HeaderCell key={col.id} onClick={() => isSortable && handleSort(col.id)}
-                        className={cn(
-                          "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors group",
-                          isSortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700",
-                        )}>
-                        <div className="flex items-center justify-between gap-2 w-full">
-                          <span className="truncate">{col.label}</span>
-                          {isSortable && (
-                            <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                              <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600 font-bold" : "")} />
-                              <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600 font-bold" : "")} />
-                            </div>
-                          )}
-                        </div>
-                      </TableMarkup.HeaderCell>
-                    );
-                  })}
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>Action</TableMarkup.HeaderCell>
-                </TableMarkup.Row>
-              </TableMarkup.Head>
-              <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                {isLoading ? (
-                  <TableMarkup.Row><TableMarkup.Cell colSpan={10} className="py-14 text-center text-slate-500">Loading schools...</TableMarkup.Cell></TableMarkup.Row>
-                ) : items.length > 0 ? (
-                  items.map((item, index) => (
-                    <TableMarkup.Row key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                      <TableMarkup.Cell className={TABLE_STYLES.cell30}>{(currentPage - 1) * itemsPerPage + index + 1}</TableMarkup.Cell>
-                      <TableMarkup.Cell className={TABLE_STYLES.cell28}>{item.name}</TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{item.abbreviation || "-"}</TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap"><Badge color="blue" size="sm">{typeLabel(item.type)}</Badge></TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{ownershipLabel(item.ownership)}</TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{item.governingBody || item.directGoverningMinistry || "-"}</TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">{item.countryOfOriginName || "-"}</TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                        {item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>}
-                      </TableMarkup.Cell>
-                      <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{item.modifiedDate}</TableMarkup.Cell>
-                      <TableMarkup.Cell onClick={(e) => e.stopPropagation()} className={TABLE_STYLES.emptyCell3}>
-                        {canManage && (
-                          <button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions">
-                            <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                          </button>
-                        )}
-                      </TableMarkup.Cell>
-                    </TableMarkup.Row>
-                  ))
-                ) : (
-                  <TableMarkup.Row>
-                    <TableMarkup.Cell colSpan={10} className="p-0">
-                      <TableEmptyState
-                       
-                        title="No schools found"
-                        description="Try adjusting your search"
-                      />
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                )}
-              </TableMarkup.Body>
-            </TableMarkup.Root>
-          </div>
-          {!isLoading && totalItems > 0 && (
-            <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
-          )}
+          <DataTable
+            rows={items}
+            getRowKey={(item) => item.id}
+            columns={schoolLayout.columns}
+            columnLayout={schoolLayout}
+            action={schoolAction}
+            scrollerRef={scrollerRef}
+            scrollProps={dragEvents}
+            emptyState={<TableEmptyState title="No schools found" description="Try adjusting your search" />}
+            pagination={
+              !isLoading && totalItems > 0 ? (
+                <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+              ) : undefined
+            }
+          />
         </div>
       </div>
       </div>
@@ -547,7 +609,7 @@ const SchoolModal: React.FC<SchoolModalProps> = ({ isOpen, onClose, item, isEdit
   const sectionTitleClass = "text-xs font-semibold text-slate-500 uppercase tracking-wider pt-2 first:pt-0";
 
   return (
-    <FormModal isOpen={isOpen} onClose={onClose} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "Add New"} School`} isLoading={isSaving} size="lg">
+    <FormModal isOpen={isOpen} onClose={onClose} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} School`} isLoading={isSaving} size="lg">
       <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
         <p className={sectionTitleClass}>Basic Information</p>
         <div>

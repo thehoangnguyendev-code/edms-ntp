@@ -198,6 +198,12 @@ public class ControlledCopyPolicyService {
         m.put("watermarkPages", s.getWatermarkPages());
         m.put("watermarkLayer", s.getWatermarkLayer());
         m.put("watermarkFontFamily", s.getWatermarkFontFamily());
+        m.put("qrCodeEnabled", String.valueOf(s.isQrCodeEnabled()));
+        m.put("qrCodePosition", s.getQrCodePosition());
+        m.put("qrCodePages", s.getQrCodePages());
+        m.put("qrCodeX", String.valueOf(s.getQrCodeX()));
+        m.put("qrCodeY", String.valueOf(s.getQrCodeY()));
+        m.put("qrCodeSizeMm", String.valueOf(s.getQrCodeSizeMm()));
         STATUS_MARKING_KEYS.forEach(status -> {
             var cfg = statusMarkingFor(s, status);
             m.put(status + ".watermarkEnabled", String.valueOf(cfg.watermarkEnabled()));
@@ -469,6 +475,25 @@ public class ControlledCopyPolicyService {
         if (m.placements() != null) {
             s.setMarkingPlacements(objectMapper.valueToTree(validatedPlacements(m.placements())));
         }
+        if (m.qrCodeEnabled() != null) s.setQrCodeEnabled(m.qrCodeEnabled());
+        if (m.qrCodePosition() != null) s.setQrCodePosition(requireOneOf(m.qrCodePosition(), "QR code position", "TOP_LEFT", "TOP_RIGHT", "BOTTOM_LEFT", "BOTTOM_RIGHT"));
+        if (m.qrCodePages() != null) s.setQrCodePages(requireOneOf(m.qrCodePages(), "QR code pages", "ALL", "FIRST"));
+        // 15-40 mm: below ~15 mm a photocopied/scanned code stops being reliably readable; above 40 mm it crowds the page.
+        if (m.qrCodeSizeMm() != null) s.setQrCodeSizeMm(requireRange(m.qrCodeSizeMm(), "QR code size (mm)", 15, 40));
+        // A dragged position (fractions of the page) replaces the corner until it is reset; both coordinates travel together.
+        if (Boolean.TRUE.equals(m.qrCodeResetPosition())) {
+            s.setQrCodeX(null);
+            s.setQrCodeY(null);
+        } else if (m.qrCodeX() != null || m.qrCodeY() != null) {
+            if (m.qrCodeX() == null || m.qrCodeY() == null) {
+                throw new IllegalArgumentException("The QR code position needs both a horizontal and a vertical value");
+            }
+            // Both are checked before either is stored, so a bad value never leaves half a position behind.
+            double x = requireFraction(m.qrCodeX(), "QR code horizontal position");
+            double y = requireFraction(m.qrCodeY(), "QR code vertical position");
+            s.setQrCodeX(x);
+            s.setQrCodeY(y);
+        }
     }
 
     private java.util.List<com.eqms.dto.controlledcopypolicy.MarkingPlacementRule> placementsOf(com.fasterxml.jackson.databind.JsonNode node) {
@@ -555,6 +580,13 @@ public class ControlledCopyPolicyService {
         return value;
     }
 
+    private static double requireFraction(double value, String label) {
+        if (Double.isNaN(value) || value < 0 || value > 1) {
+            throw new IllegalArgumentException(label + " must be between 0 and 1");
+        }
+        return value;
+    }
+
     private ControlledCopyPolicyResponse toResponse(ControlledCopyPolicySetting s) {
         UserAccount dco = s.getDcoRecipientUserId() == null ? null : userAccountRepository.findById(s.getDcoRecipientUserId()).orElse(null);
         return new ControlledCopyPolicyResponse(
@@ -581,7 +613,9 @@ public class ControlledCopyPolicyService {
                         s.isStampShowDistributedDate(), s.isStampShowExpiryDate(), s.getStampFontFamily(),
                         s.getWatermarkText(), s.getWatermarkColor(), s.getWatermarkOpacityPercent(),
                         s.getWatermarkAngleDegrees(), s.getWatermarkPages(), s.getWatermarkLayer(), s.getWatermarkFontFamily(),
-                        placementsOf(s.getMarkingPlacements())
+                        placementsOf(s.getMarkingPlacements()),
+                        s.isQrCodeEnabled(), s.getQrCodePosition(), s.getQrCodeSizeMm(),
+                        s.getQrCodeX(), s.getQrCodeY(), null, s.getQrCodePages()
                 ),
                 statusMarkingMap(s),
                 listExpiryLimitResponses()

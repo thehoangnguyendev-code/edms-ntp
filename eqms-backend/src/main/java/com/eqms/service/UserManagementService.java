@@ -96,7 +96,6 @@ public class UserManagementService {
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final AuditTrailService auditTrailService;
     private final SystemConfigurationService systemConfigurationService;
-    private final ExternalIdentityProvisioningService externalIdentityProvisioningService;
     private final com.eqms.service.authorization.AuthorizationEngineService authorizationEngineService;
     private final FileStorageService fileStorageService;
     private final NotificationDispatcher notificationDispatcher;
@@ -186,7 +185,6 @@ public class UserManagementService {
             org.springframework.security.crypto.password.PasswordEncoder passwordEncoder,
             AuditTrailService auditTrailService,
             SystemConfigurationService systemConfigurationService,
-            ExternalIdentityProvisioningService externalIdentityProvisioningService,
             FileStorageService fileStorageService,
             @org.springframework.context.annotation.Lazy com.eqms.service.authorization.AuthorizationEngineService authorizationEngineService,
             NotificationDispatcher notificationDispatcher,
@@ -214,7 +212,6 @@ public class UserManagementService {
         this.passwordEncoder = passwordEncoder;
         this.auditTrailService = auditTrailService;
         this.systemConfigurationService = systemConfigurationService;
-        this.externalIdentityProvisioningService = externalIdentityProvisioningService;
         this.fileStorageService = fileStorageService;
         this.authorizationEngineService = authorizationEngineService;
         this.notificationDispatcher = notificationDispatcher;
@@ -259,19 +256,12 @@ public class UserManagementService {
                 .toList();
         Set<UUID> activeSessionUserIds = activeSessionUserIds(pageUserIds);
         Set<UUID> onlineUserIds = onlineSessionUserIds(pageUserIds);
-        boolean canViewExternalProvisioning = permissionEvaluationService.hasPermission(
-                currentUserService.requireCurrentUser(), "users.view_external_provisioning");
-        Map<UUID, ExternalIdentityProvisioningResponse> externalStatuses = canViewExternalProvisioning
-                ? externalIdentityProvisioningService.statuses(pageUserIds) : Map.of();
         Map<UUID, List<String>> accessProfileNamesByUser = batchAccessProfileNames(pageUserIds);
 
         List<UserManagementResponse> users = result.getContent()
                 .stream()
-                .map(user -> {
-                    ExternalIdentityProvisioningResponse external = externalStatuses.get(user.getId());
-                    return toResponse(user, false, activeSessionUserIds.contains(user.getId()), onlineUserIds.contains(user.getId()), external,
-                            accessProfileNamesByUser.getOrDefault(user.getId(), List.of()));
-                })
+                .map(user -> toResponse(user, false, activeSessionUserIds.contains(user.getId()), onlineUserIds.contains(user.getId()),
+                        accessProfileNamesByUser.getOrDefault(user.getId(), List.of())))
                 .toList();
 
         return new PageResponse<>(
@@ -297,17 +287,13 @@ public class UserManagementService {
      */
     public UserManagementResponse getUser(UUID id, boolean includeDetails) {
         UserAccount user = requireUser(id);
-        boolean canViewExternalProvisioning = permissionEvaluationService.hasPermission(
-                currentUserService.requireCurrentUser(), "users.view_external_provisioning");
-        ExternalIdentityProvisioningResponse external = canViewExternalProvisioning
-                ? externalIdentityProvisioningService.statuses(List.of(id)).get(id) : null;
-        return toResponse(user, includeDetails, hasActiveSession(user.getId()), hasOnlineSession(user.getId()), external);
+        return toResponse(user, includeDetails, hasActiveSession(user.getId()), hasOnlineSession(user.getId()));
     }
 
     /**
      * Minimal Direct Manager picker data for the User Profile editor.  This deliberately avoids
      * {@link #getUsers} because that paginated admin-list projection enriches every row with
-     * sessions, access profiles and external-provisioning status that the picker never displays.
+     * sessions and access profiles that the picker never displays.
      * Its candidate scope remains aligned with the default User Management list: non-terminated
      * human users only.  Authorization is enforced by the controller's user-view gate.
      */
@@ -346,10 +332,6 @@ public class UserManagementService {
     @Transactional
     public UserCreationResponse createUser(CreateUserRequest request, HttpServletRequest httpRequest) {
         validateCreateRequest(request);
-        if (Boolean.TRUE.equals(request.inviteExternal())
-                && !permissionEvaluationService.hasPermission(currentUserService.requireCurrentUser(), "users.invite_external")) {
-            throw new org.springframework.security.access.AccessDeniedException("Permission required: users.invite_external");
-        }
         validateUniqueOnCreate(
                 normalizeRequired(request.employeeCode(), "Employee ID"),
                 normalizeRequired(request.username(), "Username"),
@@ -411,14 +393,6 @@ public class UserManagementService {
                 "Created user account: " + user.getUsername() + " (" + user.getEmployeeCode() + ")"
         );
 
-        if (Boolean.TRUE.equals(request.inviteExternal())) {
-            try {
-                externalIdentityProvisioningService.invite(user.getId(), "External user onboarding", false);
-            } catch (RuntimeException ignored) {
-                // The provisioning record and failure audit are retained so an administrator can retry.
-            }
-        }
-
         return new UserCreationResponse(toResponse(user, true), rawPassword);
     }
 
@@ -440,10 +414,6 @@ public class UserManagementService {
 
         applyUpdate(user, request);
         syncPrimaryEducation(user, request.degree(), request.fieldOfStudy(), request.institution(), request.graduationYear(), request.gpa());
-
-        if (request.email() != null && !user.getEmail().equalsIgnoreCase(previousEmail)) {
-            externalIdentityProvisioningService.invalidateOnEmailChange(user.getId(), user.getEmail());
-        }
 
         // Admin turned the per-user MFA requirement OFF for someone who had already enrolled --
         // let them know they are no longer required to use MFA, so they don't assume it's still
@@ -485,11 +455,6 @@ public class UserManagementService {
         user.setStatus(newStatus);
         if (oldStatus == UserStatus.Active && newStatus != UserStatus.Active) {
             revokeAllSessions(user.getId());
-            try {
-                externalIdentityProvisioningService.disableForStatusChange(user.getId());
-            } catch (Exception e) {
-                log.warn("Failed to disable Microsoft access for user {} on status change: {}", user.getId(), e.getMessage());
-            }
         }
         permissionEvaluationService.evictUserPermissionCache(user.getId());
     }
@@ -1041,35 +1006,6 @@ public class UserManagementService {
         boolean isLockedOut = targetUser.getLockedUntil() != null && targetUser.getLockedUntil().isAfter(Instant.now());
         actions.put("unlock", userCapability(currentUser, "settings.user.edit", isLockedOut, "Account is not currently locked."));
 
-        // Whether each Microsoft-identity action makes sense right now depends on the user's
-        // current provisioning status (e.g. you can't "invite" someone who already joined, or
-        // "disable" a link that doesn't exist). This eligibility is computed here — server-side —
-        // rather than in the UI, so the menu can never drift out of sync with what the backend
-        // will actually accept (the FE only renders whatever `allowed` says).
-        var externalRecord = externalIdentityProvisioningService.statuses(List.of(id)).get(id);
-        String externalStatus = externalRecord == null ? "NOT_LINKED" : externalRecord.status();
-        boolean pendingExternalOperation = externalIdentityProvisioningService.hasPendingOperation(id);
-        boolean managedGuest = externalIdentityProvisioningService.isEqmsManagedGuest(id);
-        boolean activeUser = requireUser(id).getStatus() == UserStatus.Active;
-        boolean canInvite = activeUser && ("NOT_LINKED".equals(externalStatus) || "NOT_INVITED".equals(externalStatus) || "REMOVED".equals(externalStatus));
-        boolean canResend = "INVITED".equals(externalStatus);
-        boolean canRetry = activeUser && "FAILED".equals(externalStatus);
-        boolean canDisable = managedGuest && ("INVITED".equals(externalStatus) || "REDEEMED".equals(externalStatus));
-        boolean canRemove = managedGuest && ("DISABLED".equals(externalStatus) || "FAILED".equals(externalStatus));
-        if (pendingExternalOperation) { canInvite = false; canResend = false; canRetry = false; canDisable = false; canRemove = false; }
-
-        actions.put("inviteExternal", userCapability(currentUser, "users.invite_external", canInvite,
-                "This user already has an active or pending Microsoft link."));
-        actions.put("resendExternalInvitation", userCapability(currentUser, "users.resend_external_invitation", canResend,
-                "An invitation can only be resent while one is still pending."));
-        actions.put("retryExternalProvisioning", userCapability(currentUser, "users.retry_external_provisioning", canRetry,
-                "Retry is only available after a failed provisioning attempt."));
-        actions.put("disableMicrosoftAccess", userCapability(currentUser, "users.disable_microsoft_access", canDisable,
-                "There is no active Microsoft link to disable."));
-        actions.put("removeExternalUser", userCapability(currentUser, "users.remove_external_identity", canRemove,
-                "There is no Microsoft link to remove."));
-        actions.put("viewExternalProvisioning", userCapability(currentUser, "users.view_external_provisioning"));
-
         return new com.eqms.dto.user.UserActionCapabilitiesResponse(id.toString(), actions);
     }
 
@@ -1517,7 +1453,7 @@ public class UserManagementService {
                 List<UUID> pageIds = result.getContent().stream().map(UserAccount::getId).toList();
                 Map<UUID, List<String>> accessProfileNamesByUser = batchAccessProfileNames(pageIds);
                 for (UserAccount account : result.getContent()) {
-                    UserManagementResponse user = toResponse(account, false, false, false, null,
+                    UserManagementResponse user = toResponse(account, false, false, false,
                             accessProfileNamesByUser.getOrDefault(account.getId(), List.of()));
                     String accessProfiles = user.accessProfileNames().isEmpty()
                             ? "Unassigned"
@@ -1770,11 +1706,12 @@ public class UserManagementService {
     }
 
     public UserManagementResponse toResponse(UserAccount user, boolean includeDetails, boolean inSession, boolean online) {
-        return toResponse(user, includeDetails, inSession, online, null);
+        return toResponse(user, includeDetails, inSession, online,
+                batchAccessProfileNames(List.of(user.getId())).getOrDefault(user.getId(), List.of()));
     }
 
     /** Batches the Access Profile summary for a page of users in one query, matching the
-     *  activeSessionUserIds/onlineUserIds/externalStatuses pattern already used in getUsers() --
+     *  activeSessionUserIds/onlineUserIds pattern already used in getUsers() --
      *  avoids N+1 queries in the paginated list (single-item callers use the 5-arg overload below,
      *  which fetches per-user; acceptable there, they're not iterating a page). */
     private Map<UUID, List<String>> batchAccessProfileNames(List<UUID> userIds) {
@@ -1791,13 +1728,7 @@ public class UserManagementService {
     }
 
     private UserManagementResponse toResponse(UserAccount user, boolean includeDetails, boolean inSession, boolean online,
-            ExternalIdentityProvisioningResponse external) {
-        return toResponse(user, includeDetails, inSession, online, external,
-                batchAccessProfileNames(List.of(user.getId())).getOrDefault(user.getId(), List.of()));
-    }
-
-    private UserManagementResponse toResponse(UserAccount user, boolean includeDetails, boolean inSession, boolean online,
-            ExternalIdentityProvisioningResponse external, List<String> accessProfileNames) {
+            List<String> accessProfileNames) {
         List<String> permissions = permissionCodesForUser(user);
         List<EducationResponse> educations = includeDetails ? getEducations(user.getId()) : List.of();
         List<CertificationResponse> certifications = includeDetails ? getCertifications(user.getId()) : List.of();
@@ -1859,10 +1790,6 @@ public class UserManagementService {
                 DateTimeFormatUtils.formatDate(user.getSuspendedUntil()),
                 user.getTerminationReason(),
                 DateTimeFormatUtils.formatDate(user.getTerminationDate()),
-                external == null ? null : external.status(),
-                external == null ? null : external.email(),
-                external == null ? null : external.statusLabel(),
-                external == null ? null : external.statusColor(),
                 user.getHomePage(),
                 user.isMfaRequiredByAdmin()
         );

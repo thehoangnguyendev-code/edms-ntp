@@ -64,7 +64,7 @@ export const Select: React.FC<SelectProps> = ({
   const selectId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [position, setPosition] = useState({ top: 0, left: 0, width: 0, showAbove: false });
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0, showAbove: false, zIndex: 50 });
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [asyncOptions, setAsyncOptions] = useState<SelectOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -166,12 +166,17 @@ export const Select: React.FC<SelectProps> = ({
 
       // Determine if dropdown should open above or below
       const shouldShowAbove = spaceBelow < estimatedDropdownHeight && spaceAbove > spaceBelow;
+      // The portal lives under body, outside the drawer's stacking context.
+      // Only raise selects owned by a drawer; ordinary selects retain their layer.
+      const drawer = triggerRef.current.closest<HTMLElement>('[data-drawer-overlay]');
+      const drawerLayer = drawer ? Number.parseInt(window.getComputedStyle(drawer).zIndex, 10) : 0;
 
       setPosition({
         top: shouldShowAbove ? rect.top - 4 : rect.bottom + 4,
         left: rect.left,
         width: rect.width,
         showAbove: shouldShowAbove,
+        zIndex: Number.isFinite(drawerLayer) ? Math.max(50, drawerLayer + 1) : 50,
       });
     }
   };
@@ -392,7 +397,7 @@ export const Select: React.FC<SelectProps> = ({
                 bottom: position.showAbove ? `${window.innerHeight - position.top}px` : 'auto',
                 left: position.left,
                 width: position.width,
-                zIndex: 50,
+                zIndex: position.zIndex,
                 maxHeight: dropdownMaxHeight,
                 transformOrigin: position.showAbove ? 'bottom center' : 'top center',
               }}

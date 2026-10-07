@@ -3,11 +3,14 @@ package com.eqms.controller;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.dashboard.DashboardActivityPointResponse;
 import com.eqms.dto.dashboard.DashboardAdminStatsResponse;
+import com.eqms.dto.dashboard.DashboardDocumentTypeCountResponse;
 import com.eqms.dto.dashboard.DashboardMyTaskResponse;
 import com.eqms.dto.dashboard.DashboardRecentActivityResponse;
 import com.eqms.dto.dashboard.DashboardSummaryResponse;
+import com.eqms.dto.dashboard.DashboardSystemMonitoringResponse;
 import com.eqms.service.DashboardService;
 import com.eqms.service.PermissionEvaluationService;
+import com.eqms.service.SystemMonitoringService;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,15 +27,18 @@ public class DashboardController {
     private final DashboardService dashboardService;
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
+    private final SystemMonitoringService systemMonitoringService;
 
     public DashboardController(
             DashboardService dashboardService,
             CurrentUserService currentUserService,
-            PermissionEvaluationService permissionEvaluationService
+            PermissionEvaluationService permissionEvaluationService,
+            SystemMonitoringService systemMonitoringService
     ) {
         this.dashboardService = dashboardService;
         this.currentUserService = currentUserService;
         this.permissionEvaluationService = permissionEvaluationService;
+        this.systemMonitoringService = systemMonitoringService;
     }
 
     @GetMapping("/summary")
@@ -50,6 +56,12 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.getDocumentActivity(period));
     }
 
+    @GetMapping("/effective-documents-by-type")
+    public ResponseEntity<List<DashboardDocumentTypeCountResponse>> getEffectiveDocumentsByType() {
+        requireDashboardView();
+        return ResponseEntity.ok(dashboardService.getEffectiveDocumentsByType());
+    }
+
     @GetMapping("/my-tasks")
     public ResponseEntity<List<DashboardMyTaskResponse>> getMyTasks() {
         requireDashboardView();
@@ -61,6 +73,12 @@ public class DashboardController {
     public ResponseEntity<List<DashboardRecentActivityResponse>> getRecentActivity() {
         requireAdminDashboardView();
         return ResponseEntity.ok(dashboardService.getRecentActivity());
+    }
+
+    @GetMapping("/system-monitoring")
+    public ResponseEntity<DashboardSystemMonitoringResponse> getSystemMonitoring() {
+        requireAdminDashboardView();
+        return ResponseEntity.ok(systemMonitoringService.getSystemMonitoring());
     }
 
     @GetMapping("/admin-stats")

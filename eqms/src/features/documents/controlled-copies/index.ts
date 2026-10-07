@@ -11,6 +11,7 @@ export { DestroyControlledCopyView } from './DestroyControlledCopyView';
 export { DcoBatchZipDownloadView } from './DcoBatchZipDownloadView';
 export { ControlledCopyPreviewView } from './ControlledCopyPreviewView';
 export { ControlledCopyBatchStatusDiscrepanciesView } from './ControlledCopyBatchStatusDiscrepanciesView';
+export { ControlledCopyRecallScanView } from './recall-scan/ControlledCopyRecallScanView';
 
 // Components
 export { DestructionTypeSelectionModal } from './components/DestructionTypeSelectionModal';

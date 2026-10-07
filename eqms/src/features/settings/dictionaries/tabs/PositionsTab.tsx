@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useState, useMemo } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { Trash2, MoreVertical, Power, PowerOff, Search, AlertTriangle, ChevronUp, ChevronDown, Check, X } from "lucide-react";
@@ -8,6 +9,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import type { PositionItem, BusinessUnit, DepartmentItem } from "../types";
 import { usePortalDropdown } from "@/hooks";
@@ -126,8 +128,8 @@ export const PositionsTab = React.forwardRef<
 
   // Reset department filter when BU changes
   React.useEffect(() => {
-    setDepartmentFilter("All");
-  }, [businessUnitFilter]);
+    if (departmentFilter !== "All" && !departments.some(dept => dept.name === departmentFilter && dept.businessUnit === businessUnitFilter)) setDepartmentFilter("All");
+  }, [businessUnitFilter, departmentFilter, departments]);
 
   const handleEdit = (item: PositionItem) => {
     setSelectedItem(item);
@@ -231,8 +233,24 @@ export const PositionsTab = React.forwardRef<
         : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
     );
 
+  type Row = (typeof items)[number];
+  const positionsColumns: DataTableColumn<Row>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    { id: "name", header: "Position Name", label: "Position Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
+    { id: "businessUnit", header: "Business Unit", label: "Business Unit", cell: (item) => item.businessUnit },
+    { id: "department", header: "Department", label: "Department", cell: (item) => item.department },
+    { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
+    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+  ];
+  const positionsAction: DataTableAction<Row> = {
+    header: "Action",
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+  };
+  const { layout: positionsLayout, control: positionsControl } = useCustomColumnLayout("positions", positionsColumns, positionsAction);
+
   return (
-    <div className="flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
+    <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       {/* Filter Section */}
       <div className="bg-white w-full">
         {/* Mobile */}
@@ -265,7 +283,85 @@ export const PositionsTab = React.forwardRef<
         </div>
 
         {/* Desktop */}
-        <div className="hidden md:grid grid-cols-3 gap-4 items-end">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{positionsControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search positions..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "businessUnitFilter",
+      label: "Business Unit",
+      value: String(businessUnitFilter),
+      resetOnChange: { departmentFilter: "All" },
+      options: [{ label: "All Units", value: "All" }, ...businessUnits],
+      onChange: (value) => {
+        setBusinessUnitFilter(value as "All" | BusinessUnit);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "departmentFilter",
+      label: "Department",
+      value: String(departmentFilter),
+      options: availableDepartments.map((d) => ({
+        label: d === "All" ? "All Departments" : d,
+        value: d,
+      })),
+      getOptions: (draft) => [
+        { label: "All Departments", value: "All" },
+        ...departments
+          .filter((dept) => dept.businessUnit === draft.businessUnitFilter)
+          .map((dept) => ({ label: dept.name, value: dept.name })),
+      ],
+      onChange: (value) => {
+        setDepartmentFilter(value);
+        setCurrentPage(1);
+      },
+      isDisabled: (draft) => draft.businessUnitFilter === "All",
+    },
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: [
+        { label: "All Status", value: "All" },
+        { label: "Active", value: "Active" },
+        { label: "Inactive", value: "Inactive" },
+      ],
+      onChange: (value) => {
+        setStatusFilter(value as "All" | "Active" | "Inactive");
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "modifiedFromDate",
+      label: "Modified Date Range",
+      from: modifiedFromDate,
+      to: modifiedToDate,
+      onFromChange: (v) => {
+        setModifiedFromDate(v);
+        setCurrentPage(1);
+      },
+      onToChange: (v) => {
+        setModifiedToDate(v);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-3 gap-4 items-end">
           <div className="w-full">
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
             <div className="relative">
@@ -284,7 +380,7 @@ export const PositionsTab = React.forwardRef<
             <Select
               label="Business Unit"
               value={businessUnitFilter}
-              onChange={(value) => { setBusinessUnitFilter(value as "All" | BusinessUnit); setCurrentPage(1); }}
+              onChange={(value) => { setBusinessUnitFilter(value as "All" | BusinessUnit); setDepartmentFilter("All"); setCurrentPage(1); }}
               options={[
                 { label: "All Units", value: "All" },
                 ...businessUnits,
@@ -329,7 +425,7 @@ export const PositionsTab = React.forwardRef<
             />
           </div>
 
-          <div className="flex items-end">
+          <div className="flex items-end gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -338,120 +434,30 @@ export const PositionsTab = React.forwardRef<
             >
               Clear Filters
             </Button>
+            {positionsControl}
           </div>
         </div>
+</ConfiguredDesktopFilters>
       </div>
 
       {/* Table */}
       <div className="flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col">
-        <div className="flex-1 overflow-x-auto">
-          <TableMarkup.Root className="w-full">
-            <TableMarkup.Head className="sticky top-0 z-30">
-              <TableMarkup.Row>
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
-                  No.
-                </TableMarkup.HeaderCell>
-                {[
-                  { label: "Position Name", id: "name" },
-                  { label: "Business Unit", id: "businessUnit" },
-                  { label: "Department", id: "department" },
-                  { label: "Description", id: "description" },
-                  { label: "Status", id: "isActive" },
-                  { label: "Modified Date", id: "modifiedDate" },
-                ].map((col) => {
-                  const isSorted = sortConfig.key === col.id;
-                  return (
-                    <TableMarkup.HeaderCell
-                      key={col.id}
-                      onClick={() => handleSort(col.id)}
-                      className={TABLE_STYLES.headerCell38}
-                    >
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="truncate">{col.label}</span>
-                        <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                          <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600" : "")} />
-                          <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600" : "")} />
-                        </div>
-                      </div>
-                    </TableMarkup.HeaderCell>
-                  );
-                })}
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                  Action
-                </TableMarkup.HeaderCell>
-              </TableMarkup.Row>
-            </TableMarkup.Head>
-            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-              {isLoading ? (
-                <TableMarkup.Row>
-                  <TableMarkup.Cell colSpan={8} className="py-14 text-center text-slate-500">Loading positions...</TableMarkup.Cell>
-                </TableMarkup.Row>
-              ) : items.length > 0 ? (
-                items.map((item, index) => (
-                  <TableMarkup.Row key={item.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <TableMarkup.Cell className={TABLE_STYLES.cell30}>
-                      {(currentPage - 1) * itemsPerPage + index + 1}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <span className="font-medium text-slate-900">{item.name}</span>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                     {item.businessUnit}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                     {item.department}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-600 max-w-md truncate">
-                      {item.description || "-"}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      {item.isActive ? (
-                        <Badge color="emerald" size="sm" >Active</Badge>
-                      ) : (
-                        <Badge color="slate" size="sm" >Inactive</Badge>
-                      )}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                      {item.modifiedDate}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell
-                      onClick={(e) => e.stopPropagation()}
-                      className={TABLE_STYLES.emptyCell3}
-                    >
-                      {canManage && (
-                        <button
-                          ref={getButtonRef(item.id)}
-                          onClick={(e) => handleDropdownToggle(item.id, e)}
-                          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                          aria-label="More actions"
-                        >
-                          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                        </button>
-                      )}
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                ))
-              ) : (
-                <TableMarkup.Row>
-                  <TableMarkup.Cell colSpan={8} className="p-0">
-                    <TableEmptyState title="No positions found" description="Try adjusting your search or filters" />
-                  </TableMarkup.Cell>
-                </TableMarkup.Row>
-              )}
-            </TableMarkup.Body>
-          </TableMarkup.Root>
-        </div>
-
-        {!isLoading && totalItems > 0 && (
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={setItemsPerPage}
-          />
-        )}
+        <DataTable
+          rows={items}
+          getRowKey={(item) => item.id}
+          columns={positionsLayout.columns}
+          columnLayout={positionsLayout}
+          action={positionsAction}
+          emptyState={
+            <TableEmptyState
+  title="No positions found" description="Try adjusting your search or filters" />
+          }
+          pagination={
+            totalItems > 0 ? (
+              <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+            ) : undefined
+          }
+        />
       </div>
 
       {/* Portal Dropdown */}
@@ -603,7 +609,7 @@ export const PositionsTab = React.forwardRef<
             ].map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => { setBusinessUnitFilter(opt.value as "All" | BusinessUnit); setCurrentPage(1); }}
+                onClick={() => { setBusinessUnitFilter(opt.value as "All" | BusinessUnit); setDepartmentFilter("All"); setCurrentPage(1); }}
                 className={getOptionClassName(businessUnitFilter === opt.value)}
               >
                 <span className="text-xs">{opt.label}</span>
@@ -733,7 +739,7 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={handleSubmit}
-      title={`${isEdit ? "Edit" : "Add New"} Position`}
+      title={`${isEdit ? "Edit" : "New"} Position`}
       isLoading={isSaving}
       size="lg"
     >

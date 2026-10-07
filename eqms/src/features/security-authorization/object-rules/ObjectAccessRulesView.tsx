@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Search, ShieldCheck, ShieldX, MoreVertical, X, Check, ChevronUp, ChevronDown } from "lucide-react";
@@ -13,6 +14,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown, useTableDragScroll, useDebounce } from "@/hooks";
 import { cn } from "@/components/ui/utils";
@@ -212,6 +214,105 @@ export const ObjectAccessRulesView: React.FC = () => {
     { key: "updatedAt", label: "Last Updated" },
   ] as const;
 
+  type RuleRow = (typeof rules)[number];
+  const ruleColumns: DataTableColumn<RuleRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell33, cell: (_r, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
+    {
+      id: "name",
+      header: "Rule",
+      label: "Rule",
+      sort: { direction: sortKey === "name" ? sortDir : undefined, onSort: () => handleSort("name") },
+      cell: (r) => (
+        <>
+          <div className="font-medium text-slate-800">{r.name}</div>
+          {!r.active && <Badge color="slate" size="xs" className="mt-0.5">Inactive</Badge>}
+        </>
+      ),
+    },
+    {
+      id: "resourceType",
+      header: "Resource",
+      label: "Resource",
+      sort: { direction: sortKey === "resourceType" ? sortDir : undefined, onSort: () => handleSort("resourceType") },
+      cell: (r) => (
+        <>
+          <span className="text-slate-500">{r.resourceType.replace(/_/g, " ")}</span>
+          {r.resourceName && <div className="text-xs text-slate-600 mt-0.5">{r.resourceName}</div>}
+        </>
+      ),
+    },
+    { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cellClassName: "text-slate-600", cell: (r) => formatDateTime(r.createdAt) },
+    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (r) => formatDateTime(r.updatedAt) },
+    {
+      id: "accessProfile",
+      header: "Access Profile Scope",
+      label: "Access Profile Scope",
+      cellClassName: "text-slate-600",
+      cell: (r) => r.accessProfileName ?? <span className="text-slate-400 italic">All Access Profiles</span>,
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      label: "Actions",
+      cell: (r) => (
+        <div className="flex flex-wrap gap-1">
+          {r.actions.map((a) => (
+            <Badge key={a} color="slate" size="xs">{a}</Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: "effect",
+      header: "Effect",
+      label: "Effect",
+      sort: { direction: sortKey === "effect" ? sortDir : undefined, onSort: () => handleSort("effect") },
+      cell: (r) => (
+        <Badge color={r.effect === "ALLOW" ? "emerald" : "red"} size="sm" pill className="gap-1">
+          {r.effect === "ALLOW" ? <ShieldCheck className="h-3 w-3" /> : <ShieldX className="h-3 w-3" />}
+          {r.effect}
+        </Badge>
+      ),
+    },
+    { id: "priority", header: "Priority", label: "Priority", sort: { direction: sortKey === "priority" ? sortDir : undefined, onSort: () => handleSort("priority") }, cellClassName: "text-slate-600", cell: (r) => r.priority },
+  ];
+  const ruleAction: DataTableAction<RuleRow> = {
+    header: "Action",
+    cell: (r) => (
+      <>
+        <button
+          ref={getRef(r.id)}
+          onClick={(e) => toggle(r.id, e)}
+          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
+          aria-label="More actions"
+        >
+          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
+        </button>
+        <PortalDropdownMenu isOpen={openId === r.id} onClose={close} position={position}>
+          <div className="py-1">
+            {canManageRules && (
+              <>
+                <DropdownMenuItem
+                  icon={<IconPencilMinus className="h-4 w-4" />}
+                  onClick={() => { navigate(`${ROUTES.SECURITY.OBJECT_RULES}/${r.id}/edit`); close(); }}
+                >
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  icon={<IconTrash className="h-4 w-4" />}
+                  onClick={() => { setDeleteTarget(r); close(); }}
+                >
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
+          </div>
+        </PortalDropdownMenu>
+      </>
+    ),
+  };
+  const { layout: ruleLayout, control: ruleControl } = useCustomColumnLayout("object-rules.list", ruleColumns, ruleAction);
+
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       <PageHeader
@@ -258,7 +359,84 @@ export const ObjectAccessRulesView: React.FC = () => {
             </div>
 
             {/* Desktop filters */}
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{ruleControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={search}
+      onChange={(e) => {
+        setSearch(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search rules…"}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "resourceTypeFilter",
+      label: "Resource Type",
+      value: String(resourceTypeFilter),
+      options: resourceTypeOptions,
+      onChange: (v) => {
+        setResourceTypeFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "effectFilter",
+      label: "Effect",
+      value: String(effectFilter),
+      options: EFFECT_OPTIONS,
+      onChange: (v) => {
+        setEffectFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: STATUS_OPTIONS,
+      onChange: (v) => {
+        setStatusFilter(String(v));
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "createdFrom",
+      label: "Created Date Range",
+      from: createdFrom,
+      to: createdTo,
+      onFromChange: (value) => {
+        setCreatedFrom(value);
+        setCurrentPage(1);
+      },
+      onToChange: (value) => {
+        setCreatedTo(value);
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "updatedFrom",
+      label: "Last Updated Range",
+      from: updatedFrom,
+      to: updatedTo,
+      onFromChange: (value) => {
+        setUpdatedFrom(value);
+        setCurrentPage(1);
+      },
+      onToChange: (value) => {
+        setUpdatedTo(value);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
               <div className="w-full">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
                 <div className="relative">
@@ -276,7 +454,7 @@ export const ObjectAccessRulesView: React.FC = () => {
               <Select label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={STATUS_OPTIONS} />
               <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
               <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -286,8 +464,10 @@ export const ObjectAccessRulesView: React.FC = () => {
                 >
                   Clear Filters
                 </Button>
+                {ruleControl}
               </div>
             </div>
+</ConfiguredDesktopFilters>
 
             <div className="flex-1 flex flex-col relative">
               {loading && (
@@ -295,164 +475,40 @@ export const ObjectAccessRulesView: React.FC = () => {
                   <SectionLoading minHeight="150px" />
                 </div>
               )}
-              <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-[1100px]">
-                  <TableMarkup.Head className="sticky top-0 z-30">
-                    <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell33}>No.</TableMarkup.HeaderCell>
-                      {SORTABLE_COLS.map((col) => (
-                        <TableMarkup.HeaderCell
-                          key={col.key}
-                          onClick={() => handleSort(col.key)}
-                          className={TABLE_STYLES.headerCell38}
-                        >
-                          <div className="flex w-full items-center justify-between gap-2">
-                            <span className="truncate">{col.label}</span>
-                            <div className="flex flex-col text-slate-400 flex-shrink-0 group-hover:text-slate-500">
-                              <ChevronUp className={cn("h-3 w-3 -mb-1", sortKey === col.key && sortDir === "asc" ? "text-emerald-600" : "")} />
-                              <ChevronDown className={cn("h-3 w-3", sortKey === col.key && sortDir === "desc" ? "text-emerald-600" : "")} />
-                            </div>
-                          </div>
-                        </TableMarkup.HeaderCell>
-                      ))}
-                      {["Access Profile Scope", "Actions"].map((label) => (
-                        <TableMarkup.HeaderCell key={label} className={TABLE_STYLES.headerCell37}>
-                          {label}
-                        </TableMarkup.HeaderCell>
-                      ))}
-                      {([{ key: "effect", label: "Effect" }, { key: "priority", label: "Priority" }] as const).map((col) => (
-                        <TableMarkup.HeaderCell
-                          key={col.key}
-                          onClick={() => handleSort(col.key)}
-                          className={TABLE_STYLES.headerCell38}
-                        >
-                          <div className="flex w-full items-center justify-between gap-2">
-                            <span className="truncate">{col.label}</span>
-                            <div className="flex flex-col text-slate-400 flex-shrink-0 group-hover:text-slate-500">
-                              <ChevronUp className={cn("h-3 w-3 -mb-1", sortKey === col.key && sortDir === "asc" ? "text-emerald-600" : "")} />
-                              <ChevronDown className={cn("h-3 w-3", sortKey === col.key && sortDir === "desc" ? "text-emerald-600" : "")} />
-                            </div>
-                          </div>
-                        </TableMarkup.HeaderCell>
-                      ))}
-                      <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell26}>
-                        Action
-                      </TableMarkup.HeaderCell>
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {!loading && rules.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={10} className="p-0">
-                          <TableEmptyState
-
-                            title="No Object Access Rules"
-                            description={hasFilters ? "Try adjusting your search or filters." : "No object access rules have been defined yet."}
-                          />
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : (
-                      rules.map((r, idx) => (
-                        <TableMarkup.Row key={r.id} className={cn("hover:bg-slate-50/80 transition-colors group", !r.active && "opacity-50")}>
-                          <TableMarkup.Cell className={TABLE_STYLES.cell29}>
-                            {(currentPage - 1) * itemsPerPage + idx + 1}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <div className="font-medium text-slate-800">{r.name}</div>
-                            {!r.active && (
-                              <Badge color="slate" size="xs" className="mt-0.5">
-                                Inactive
-                              </Badge>
-                            )}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <span className="text-slate-500">{r.resourceType.replace(/_/g, " ")}</span>
-                            {r.resourceName && <div className="text-xs text-slate-600 mt-0.5">{r.resourceName}</div>}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(r.createdAt)}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{formatDateTime(r.updatedAt)}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                            {r.accessProfileName ?? <span className="text-slate-400 italic">All Access Profiles</span>}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <div className="flex flex-wrap gap-1">
-                              {r.actions.map((a) => (
-                                <Badge key={a} color="slate" size="xs">{a}</Badge>
-                              ))}
-                            </div>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                            <Badge color={r.effect === "ALLOW" ? "emerald" : "red"} size="sm" pill className="gap-1">
-                              {r.effect === "ALLOW" ? <ShieldCheck className="h-3 w-3" /> : <ShieldX className="h-3 w-3" />}
-                              {r.effect}
-                            </Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">{r.priority}</TableMarkup.Cell>
-                          <TableMarkup.Cell
-                            onClick={(e) => e.stopPropagation()}
-                            className={TABLE_STYLES.emptyCell2}
-                          >
-                            <button
-                              ref={getRef(r.id)}
-                              onClick={(e) => toggle(r.id, e)}
-                              className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                              aria-label="More actions"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                            </button>
-                            <PortalDropdownMenu isOpen={openId === r.id} onClose={close} position={position}>
-                              <div className="py-1">
-                                {canManageRules && (
-                                  <>
-                                    <DropdownMenuItem
-                                      icon={<IconPencilMinus className="h-4 w-4" />}
-                                      onClick={() => {
-                                        navigate(`${ROUTES.SECURITY.OBJECT_RULES}/${r.id}/edit`);
-                                        close();
-                                      }}
-                                    >
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      icon={<IconTrash className="h-4 w-4" />}
-                                      onClick={() => {
-                                        setDeleteTarget(r);
-                                        close();
-                                      }}
-                                    >
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </div>
-                            </PortalDropdownMenu>
-                          </TableMarkup.Cell>
-                        </TableMarkup.Row>
-                      ))
-                    )}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={loading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
-                    itemsPerPageOptions={[10, 20, 50]}
+              <div className="flex flex-col flex-1">
+              <DataTable
+                rows={rules}
+                getRowKey={(r) => r.id}
+                columns={ruleLayout.columns}
+                columnLayout={ruleLayout}
+                action={ruleAction}
+                scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
+                scrollProps={dragEvents}
+                isDragging={isDragging}
+                rowClassName={(r) => (r.active ? "" : "opacity-50")}
+                emptyState={
+                  <TableEmptyState
+                    title="No Object Access Rules"
+                    description={hasFilters ? "Try adjusting your search or filters." : "No object access rules have been defined yet."}
                   />
-                </div>
-              )}
+                }
+                pagination={
+                  totalItems > 0 ? (
+                    <div className="border-t border-slate-200">
+                      <TablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        isLoading={loading}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
+                        itemsPerPageOptions={[10, 20, 50]}
+                      />
+                    </div>
+                  ) : undefined
+                }
+              />
               </div>
             </div>
           </div>

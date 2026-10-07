@@ -41,6 +41,12 @@ public record DocumentListItemResponse(
         String reviewRequirement,
         /** True for the Author of an Active document whose upgrade the DCO has already configured
          *  ("Edit Revision for Upgrade" saved), so "Edit Document" (-> Upload Revision) may be offered. */
-        boolean canEditForUpgrade
+        boolean canEditForUpgrade,
+        /** Reviewers / approvers of the document (full names, in workflow order). */
+        List<String> reviewerNames,
+        List<String> approverNames,
+        boolean requiresTraining,
+        /** Days allowed for training; null when no training is required. */
+        Integer trainingPeriodDays
 ) {
 }

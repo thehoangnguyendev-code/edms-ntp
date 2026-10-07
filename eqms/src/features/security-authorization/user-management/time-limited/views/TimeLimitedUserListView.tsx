@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical, Search, X, ChevronUp, ChevronDown, Plus } from "lucide-react";
@@ -11,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
@@ -26,17 +28,6 @@ import { timeLimitedUsers } from "@/components/ui/breadcrumb/breadcrumbs.config"
 import { useDictionaryServerTable } from "@/features/settings/dictionaries/hooks/useDictionaryServerTable";
 import type { TimeLimitedUserGrant } from "../../types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
-
-const COLUMNS: { id: string; label: string; sortable: boolean }[] = [
-  { id: "fullName", label: "Full Name", sortable: true },
-  { id: "username", label: "Username", sortable: true },
-  { id: "email", label: "Email", sortable: true },
-  { id: "startDate", label: "Start Date", sortable: true },
-  { id: "endDate", label: "End Date", sortable: true },
-  { id: "windowState", label: "Status", sortable: false },
-  { id: "notifyEmailOnExpiry", label: "Notify on Expiry", sortable: false },
-  { id: "createdAt", label: "Created", sortable: true },
-];
 
 const WINDOW_STATE_LABEL: Record<string, { label: string; color: "emerald" | "amber" | "slate" | "rose" }> = {
   PENDING: { label: "Pending", color: "amber" },
@@ -159,6 +150,40 @@ export const TimeLimitedUserListView: React.FC = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const activeGrant = items.find((g) => g.id === openDropdownId);
 
+  type GrantRow = (typeof items)[number];
+  const grantColumns: DataTableColumn<GrantRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, cell: (_grant, index) => startIndex + index + 1 },
+    { id: "fullName", header: "Full Name", label: "Full Name", sort: { direction: sortConfig.key === "fullName" ? sortConfig.direction : undefined, onSort: () => handleSort("fullName") }, cellClassName: "font-medium text-slate-900", cell: (g) => g.fullName },
+    { id: "username", header: "Username", label: "Username", sort: { direction: sortConfig.key === "username" ? sortConfig.direction : undefined, onSort: () => handleSort("username") }, cell: (g) => g.username },
+    { id: "email", header: "Email", label: "Email", sort: { direction: sortConfig.key === "email" ? sortConfig.direction : undefined, onSort: () => handleSort("email") }, cell: (g) => g.email },
+    { id: "startDate", header: "Start Date", label: "Start Date", sort: { direction: sortConfig.key === "startDate" ? sortConfig.direction : undefined, onSort: () => handleSort("startDate") }, cell: (g) => formatDateTime(g.startAt) },
+    { id: "endDate", header: "End Date", label: "End Date", sort: { direction: sortConfig.key === "endDate" ? sortConfig.direction : undefined, onSort: () => handleSort("endDate") }, cell: (g) => formatDateTime(g.endAt) },
+    {
+      id: "windowState",
+      header: "Status",
+      label: "Status",
+      cell: (g) => {
+        const windowState = WINDOW_STATE_LABEL[g.windowState] ?? { label: g.windowState, color: "slate" as const };
+        return <Badge size="sm" color={windowState.color}>{windowState.label}</Badge>;
+      },
+    },
+    { id: "notifyEmailOnExpiry", header: "Notify on Expiry", label: "Notify on Expiry", cell: (g) => (g.notifyEmailOnExpiry ? "Yes" : "No") },
+    { id: "createdAt", header: "Created", label: "Created", sort: { direction: sortConfig.key === "createdAt" ? sortConfig.direction : undefined, onSort: () => handleSort("createdAt") }, cell: (g) => formatDateTime(g.createdAt) },
+  ];
+  const grantAction: DataTableAction<GrantRow> = {
+    header: "Action",
+    cell: (g) => (
+      <button
+        ref={getRef(g.id)}
+        onClick={(e) => handleDropdownToggle(g.id, e, { menuWidth: 200, menuHeight: 180 })}
+        className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
+      >
+        <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
+      </button>
+    ),
+  };
+  const { layout: grantLayout, control: grantControl } = useCustomColumnLayout("time-limited-users.grants", grantColumns, grantAction);
+
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
@@ -180,7 +205,7 @@ export const TimeLimitedUserListView: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         {/* Filter Section */}
-        <div className="px-4 pt-4 md:p-5 flex flex-col">
+        <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
               <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
@@ -213,7 +238,80 @@ export const TimeLimitedUserListView: React.FC = () => {
               </div>
             </div>
 
-            <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{grantControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+      }}
+      placeholder={"Search name, username, email..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: [
+        { label: "All Status", value: "All" },
+        { label: "Active", value: "ACTIVE" },
+        { label: "Cancelled", value: "CANCELLED" },
+        { label: "Expired", value: "EXPIRED" },
+      ],
+      onChange: (value) => {
+        setStatusFilter(value);
+        setCurrentPage(1);
+      },
+    },
+  ]}
+  dates={[
+    {
+      id: "startDateFrom",
+      label: "Start Date Range",
+      from: startDateFrom,
+      to: startDateTo,
+      onFromChange: (value) => setStartDateFrom(toApiDate(value)),
+      onToChange: (value) => setStartDateTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) => {
+        setStartDateFrom(toApiDate(startDate));
+        setStartDateTo(toApiDate(endDate));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "endDateFrom",
+      label: "End Date Range",
+      from: endDateFrom,
+      to: endDateTo,
+      onFromChange: (value) => setEndDateFrom(toApiDate(value)),
+      onToChange: (value) => setEndDateTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) => {
+        setEndDateFrom(toApiDate(startDate));
+        setEndDateTo(toApiDate(endDate));
+        setCurrentPage(1);
+      },
+    },
+    {
+      id: "createdFrom",
+      label: "Created Range",
+      from: createdFrom,
+      to: createdTo,
+      onFromChange: (value) => setCreatedFrom(toApiDate(value)),
+      onToChange: (value) => setCreatedTo(toApiDate(value)),
+      onApply: ({ startDate, endDate }) => {
+        setCreatedFrom(toApiDate(startDate));
+        setCreatedTo(toApiDate(endDate));
+        setCurrentPage(1);
+      },
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full lg:col-span-1">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors">Search</label>
                 <div className="relative">
@@ -292,7 +390,7 @@ export const TimeLimitedUserListView: React.FC = () => {
                 placeholder="Select date range"
               />
 
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -301,8 +399,10 @@ export const TimeLimitedUserListView: React.FC = () => {
                 >
                   Clear Filters
                 </Button>
+                {grantControl}
               </div>
             </div>
+</ConfiguredDesktopFilters>
           </div>
         </div>
 
@@ -314,81 +414,20 @@ export const TimeLimitedUserListView: React.FC = () => {
             </div>
           )}
 
-          <div className={cn("border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300", isLoading && "blur-[2px] opacity-80")}>
-            {items.length > 0 ? (
-              <>
-                <div className="flex-1 overflow-x-auto overflow-y-hidden">
-                  <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
-                    <TableMarkup.Head className="sticky top-0 z-30">
-                      <TableMarkup.Row>
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell29}>
-                          No.
-                        </TableMarkup.HeaderCell>
-                        {COLUMNS.map((col) => {
-                          const isSorted = sortConfig.key === col.id;
-                          return (
-                            <TableMarkup.HeaderCell
-                              key={col.id}
-                              onClick={col.sortable ? () => handleSort(col.id) : undefined}
-                              className={cn(
-                                "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors",
-                                col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700 group",
-                              )}
-                            >
-                              <div className="flex items-center justify-between gap-2 w-full">
-                                <span className="truncate">{col.label}</span>
-                                {col.sortable && (
-                                  <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
-                                    <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600" : "")} />
-                                    <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600" : "")} />
-                                  </div>
-                                )}
-                              </div>
-                            </TableMarkup.HeaderCell>
-                          );
-                        })}
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell24}>
-                          Action
-                        </TableMarkup.HeaderCell>
-                      </TableMarkup.Row>
-                    </TableMarkup.Head>
-                    <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                      {items.map((g, index) => {
-                        const windowState = WINDOW_STATE_LABEL[g.windowState] ?? { label: g.windowState, color: "slate" as const };
-                        return (
-                          <TableMarkup.Row key={g.id} className="hover:bg-slate-50/80 transition-colors group">
-                            <TableMarkup.Cell className={TABLE_STYLES.cell26}>
-                              {startIndex + index + 1}
-                            </TableMarkup.Cell>
-                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm font-medium text-slate-900 whitespace-nowrap">{g.fullName}</TableMarkup.Cell>
-                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{g.username}</TableMarkup.Cell>
-                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{g.email}</TableMarkup.Cell>
-                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{formatDateTime(g.startAt)}</TableMarkup.Cell>
-                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{formatDateTime(g.endAt)}</TableMarkup.Cell>
-                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                              <Badge size="sm" color={windowState.color}>{windowState.label}</Badge>
-                            </TableMarkup.Cell>
-                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{g.notifyEmailOnExpiry ? "Yes" : "No"}</TableMarkup.Cell>
-                            <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm text-slate-700 whitespace-nowrap">{formatDateTime(g.createdAt)}</TableMarkup.Cell>
-                            <TableMarkup.Cell
-                              onClick={(e) => e.stopPropagation()}
-                              className={TABLE_STYLES.cell34}
-                            >
-                              <button
-                                ref={getRef(g.id)}
-                                onClick={(e) => handleDropdownToggle(g.id, e, { menuWidth: 200, menuHeight: 180 })}
-                                className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-                              >
-                                <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                              </button>
-                            </TableMarkup.Cell>
-                          </TableMarkup.Row>
-                        );
-                      })}
-                    </TableMarkup.Body>
-                  </TableMarkup.Root>
-                </div>
-
+          <div className={cn("flex-1 flex flex-col transition-all duration-300", isLoading && "blur-[2px] opacity-80")}>
+            <DataTable
+              rows={items}
+              getRowKey={(grant) => grant.id}
+              columns={grantLayout.columns}
+              columnLayout={grantLayout}
+              action={grantAction}
+              emptyState={
+                <TableEmptyState
+                  title="No Time-Limited User Grants"
+                  description="We couldn't find any time-limited access grants matching your search."
+                />
+              }
+              pagination={
                 <TablePagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -398,13 +437,8 @@ export const TimeLimitedUserListView: React.FC = () => {
                   onItemsPerPageChange={setItemsPerPage}
                   showItemCount={true}
                 />
-              </>
-            ) : (
-              <TableEmptyState
-                title="No Time-Limited User Grants"
-                description="We couldn't find any time-limited access grants matching your search."
-              />
-            )}
+              }
+            />
           </div>
         </div>
       </div>

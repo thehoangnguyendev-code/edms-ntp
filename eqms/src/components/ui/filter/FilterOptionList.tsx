@@ -1,6 +1,7 @@
 import React from 'react';
-import { Check, Search } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { SelectOption } from '@/components/ui/select/Select';
+import { FilterSearchInput } from './FilterSearchInput';
 
 /** Single-value filter list. Values and server search remain identical to the existing Select contract. */
 export function FilterOptionList({ label, value, options, onChange, onSearch, disabled = false, active = true }: {
@@ -46,18 +47,17 @@ export function FilterOptionList({ label, value, options, onChange, onSearch, di
     seen.add(key);
     return hasSearch || option.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
   });
-  return <div className="space-y-3">
-    <label className="relative block">
-      <span className="sr-only">Search {label}</span>
-      <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-      <input aria-label={`Search ${label}`} value={query} disabled={disabled}
-        onChange={event => setQuery(event.target.value)} placeholder={`Search ${label.toLocaleLowerCase()}...`}
-        className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-emerald-500 disabled:bg-slate-50" />
-    </label>
-    {disabled && <p className="text-xs text-slate-500">This filter is fixed for the current view.</p>}
-    {loading && <p role="status" className="text-sm text-slate-500">Loading options...</p>}
-    {failed && <div role="alert" className="text-sm text-red-600">Unable to load options. <button type="button" className="underline" onClick={() => setRetry(previous => previous + 1)}>Retry</button></div>}
-    <div role="radiogroup" aria-label={label} aria-disabled={disabled} aria-busy={loading} className="divide-y divide-slate-100">
+  // Search stays pinned at the top; only the option values scroll underneath it.
+  // p-1: the scrolling pane clips box-shadow/focus rings at its edge; the padding keeps the search border whole.
+  return <div className="flex flex-col gap-3 p-1">
+    <div className="shrink-0">
+      <FilterSearchInput aria-label={`Search ${label}`} value={query} disabled={disabled} debounceMs={0}
+        onChange={setQuery} placeholder={`Search ${label.toLocaleLowerCase()}...`} />
+    </div>
+    {disabled && <p className="shrink-0 text-xs text-slate-500">This filter is fixed for the current view.</p>}
+    {loading && <p role="status" className="shrink-0 text-sm text-slate-500">Loading options...</p>}
+    {failed && <div role="alert" className="shrink-0 text-sm text-red-600">Unable to load options. <button type="button" className="underline" onClick={() => setRetry(previous => previous + 1)}>Retry</button></div>}
+    <div role="radiogroup" aria-label={label} aria-disabled={disabled} aria-busy={loading} className="max-h-72 overflow-y-auto divide-y divide-slate-100">
       {visible.map(option => <button key={String(option.value)} type="button" role="radio"
         aria-checked={String(option.value) === value} disabled={disabled || loading}
         onClick={() => onChange(String(option.value))}

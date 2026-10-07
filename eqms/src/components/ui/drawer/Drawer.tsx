@@ -11,6 +11,8 @@ export interface DrawerProps {
   open?: boolean;
   title: string;
   subtitle?: React.ReactNode;
+  /** 'above' (default) puts the subtitle over the title; 'below' puts it under the title. */
+  subtitlePlacement?: 'above' | 'below';
   icon?: React.ReactNode;
   headerActions?: React.ReactNode;
   description?: React.ReactNode;
@@ -25,7 +27,7 @@ export interface DrawerProps {
 }
 const overlays: HTMLElement[] = [];
 let originalOverflow = '';
-const DrawerContent: React.FC<Omit<DrawerProps, 'open' | 'onExited'>> = ({ title, subtitle, icon, headerActions, description, footer, bodyClassName, footerClassName, onClose, children }) => {
+const DrawerContent: React.FC<Omit<DrawerProps, 'open' | 'onExited'>> = ({ title, subtitle, subtitlePlacement = 'above', icon, headerActions, description, footer, bodyClassName, footerClassName, onClose, children }) => {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const close = useRef(onClose); close.current = onClose;
@@ -95,8 +97,9 @@ const DrawerContent: React.FC<Omit<DrawerProps, 'open' | 'onExited'>> = ({ title
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           {icon}
           <div className="min-w-0 space-y-1">
-            {subtitle && <p className="text-xs font-medium text-slate-500">{subtitle}</p>}
+            {subtitle && subtitlePlacement === 'above' && <p className="text-xs font-medium text-slate-500">{subtitle}</p>}
             <h2 id={titleId} title={title} className="break-words text-sm font-semibold leading-snug text-slate-900">{title}</h2>
+            {subtitle && subtitlePlacement === 'below' && <p className="mt-0.5 text-xs font-medium text-slate-500">{subtitle}</p>}
             {headerActions && <div className="flex flex-wrap items-center gap-2">{headerActions}</div>}
           </div>
         </div>

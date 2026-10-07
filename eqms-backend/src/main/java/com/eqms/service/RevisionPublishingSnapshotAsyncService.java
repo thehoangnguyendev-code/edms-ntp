@@ -124,7 +124,7 @@ public class RevisionPublishingSnapshotAsyncService {
             latest.setPublishingPreviewPdfPath(stored.storedPath());
             latest.setPublishingPreviewChecksum(stored.checksum());
             latest.setPublishingPreviewVersionId(stored.versionId());
-            latest.setConversionEngine("MICROSOFT_GRAPH");
+            latest.setConversionEngine("ONLYOFFICE");
             latest.setPreviewGeneratedAt(Instant.now());
             UserAccount actor = event.userId() == null ? null : userAccountRepository.findById(event.userId()).orElse(null);
             latest.setPreviewGeneratedBy(actor);

@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import React from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
 import { Badge } from "@/components/ui/badge/Badge";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
@@ -22,11 +23,7 @@ export const ExpandUserAccessProfilesRow: React.FC<ExpandUserAccessProfilesRowPr
   isExpanded,
   totalColumnsCount,
 }) => {
-  const shouldReduceMotion = useReducedMotion();
-  const transitionConfig = useMemo(
-    () => (shouldReduceMotion ? { duration: 0 } : { type: "spring" as const, stiffness: 90, damping: 16 }),
-    [shouldReduceMotion],
-  );
+  const transitionConfig = useExpandTransition();
 
   return (
     <AnimatePresence initial={false}>
@@ -41,9 +38,7 @@ export const ExpandUserAccessProfilesRow: React.FC<ExpandUserAccessProfilesRowPr
         >
           <TableMarkup.Cell colSpan={totalColumnsCount} className="p-0 border-b border-slate-200">
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+              {...EXPAND_CONTENT_MOTION}
               transition={transitionConfig}
               className="overflow-hidden"
             >

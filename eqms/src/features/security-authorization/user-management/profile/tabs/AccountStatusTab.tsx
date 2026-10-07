@@ -52,16 +52,13 @@ interface CreateModeProps {
   statusError?: string;
   homePage: string;
   onHomePageChange: (value: string) => void;
-  canInviteExternal?: boolean;
-  inviteExternal?: boolean;
-  onInviteExternalChange?: (checked: boolean) => void;
 }
 
 type Props = ExistingModeProps | CreateModeProps;
 
 export const AccountStatusTab: React.FC<Props> = (props) => {
   if (props.mode === "create") {
-    const { status, statusOptions, onStatusChange, statusError, homePage, onHomePageChange, canInviteExternal, inviteExternal, onInviteExternalChange } = props;
+    const { status, statusOptions, onStatusChange, statusError, homePage, onHomePageChange } = props;
     return (
       <div>
         <div className="grid grid-cols-1 gap-y-5">
@@ -90,19 +87,6 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
             />
           </div>
         </div>
-        {canInviteExternal && (
-          <div className="mt-4 flex items-start gap-3">
-            <Checkbox
-              checked={Boolean(inviteExternal)}
-              onChange={(checked) => onInviteExternalChange?.(checked)}
-              className="mt-0.5 shrink-0"
-            />
-            <span>
-              <span className="block text-sm font-medium text-slate-700">Invite as Microsoft Entra guest</span>
-              <span className="mt-1 block text-xs text-slate-500">Sends a guest invitation only; no Microsoft 365 license, group, or SharePoint site access is granted automatically.</span>
-            </span>
-          </div>
-        )}
       </div>
     );
   }

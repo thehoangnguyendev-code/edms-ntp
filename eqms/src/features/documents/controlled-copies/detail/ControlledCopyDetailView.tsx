@@ -10,6 +10,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { CopyDocumentTab } from "./tabs/CopyDocumentTab";
+import { ExecutedRecordsTab } from "@/features/documents/document-detail/components/ExecutedRecordsTab";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import { documentApi } from "@/services/api/documents";
@@ -21,9 +22,6 @@ import { DestructionTypeSelectionModal } from "../components/DestructionTypeSele
 import { RecallControlledCopyModal } from "../components/RecallControlledCopyModal";
 import { DistributeBatchProgressModal } from "../components/DistributeBatchProgressModal";
 import { DistributeBatchResultModal, type DistributeBatchFailedItem } from "../components/DistributeBatchResultModal";
-import { AssignEformSignersModal } from "../components/AssignEformSignersModal";
-import { eformSessionApi } from "@/services/api/eformSessions";
-import { FillEformFrame } from "@/features/documents/document-detail/components/FillEformFrame";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { controlledCopyDetail } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import {
@@ -62,7 +60,7 @@ import { buildControlledCopyRouteState } from "../controlledCopyNavigation";
 import type { ControlledCopyRouteState } from "../controlledCopyNavigation";
 
 // Tab Type
-type TabType = "document" | "file" | "distribution" | "signatures" | "audit" | "evidence";
+type TabType = "document" | "file" | "distribution" | "signatures" | "audit" | "evidence" | "records";
 
 // Main Component
 interface ControlledCopyDetailViewProps {
@@ -85,11 +83,6 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isDestructionModalOpen, setIsDestructionModalOpen] = useState(false);
   const [isDistributeModalOpen, setIsDistributeModalOpen] = useState(false);
-  const [isAssignSignersModalOpen, setIsAssignSignersModalOpen] = useState(false);
-  const [showFillStepPicker, setShowFillStepPicker] = useState(false);
-  const [fillStepRoles, setFillStepRoles] = useState<{ roleName: string; assignedUserName: string }[]>([]);
-  const [showFillFrame, setShowFillFrame] = useState(false);
-  const [fillFrameRole, setFillFrameRole] = useState<string | undefined>(undefined);
   const [activePlaceholderFields, setActivePlaceholderFields] = useState<ControlledCopyPlaceholderField[]>([]);
   const [isPlaceholderFieldsModalOpen, setIsPlaceholderFieldsModalOpen] = useState(false);
   const [placeholderFieldValues, setPlaceholderFieldValues] = useState<Record<string, string>>({});
@@ -109,6 +102,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   const [signatureRows, setSignatureRows] = useState<SignatureRecord[]>([]);
   const [evidenceRows, setEvidenceRows] = useState<ControlledCopyEvidenceFile[]>([]);
   const [isBatchParent, setIsBatchParent] = useState(false);
+  // A paper copy that has been recalled by scan has one Record (the scan); the tab appears only then.
+  const [hasScanRecord, setHasScanRecord] = useState(false);
   const [distributeProgress, setDistributeProgress] = useState<{
     batchId: string;
     scope: "batch" | "copy";
@@ -788,6 +783,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     ...(evidenceRows.length > 0 || Boolean(controlledCopy.destructionType)
       ? [{ id: "evidence" as TabType, label: "Evidence" }]
       : []),
+    ...(hasScanRecord ? [{ id: "records" as TabType, label: "Records" }] : []),
     { id: "signatures" as TabType, label: "Signatures" },
     { id: "audit" as TabType, label: "Audit Trail" },
   ];
@@ -800,6 +796,21 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     void formData;
     void reason;
   };
+
+  // Whether this copy has a scan record. The server decides what the user may see: without permission the call fails
+  // or returns nothing, and the tab simply does not appear.
+  useEffect(() => {
+    let active = true;
+    setHasScanRecord(false);
+    if (!controlledCopy.id || isBatchParent) return undefined;
+    executedRecordApi
+      .getExecutedRecords({ controlledCopyId: controlledCopy.id, limit: 1 })
+      .then((page) => active && setHasScanRecord(page.pagination.total > 0))
+      .catch(() => active && setHasScanRecord(false));
+    return () => {
+      active = false;
+    };
+  }, [controlledCopy.id, controlledCopy.status, isBatchParent]);
 
   useEffect(() => {
     controlledCopyPolicyApi.listPlaceholderFields()
@@ -817,10 +828,6 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
   };
 
   const handleDistribute = () => {
-    if (!isBatchParent && controlledCopy.deliveryMode === "ELECTRONIC") {
-      setIsAssignSignersModalOpen(true);
-      return;
-    }
     proceedToDistribute();
   };
 
@@ -1195,30 +1202,6 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   {isBatchParent ? "Distribute Batch" : "Distribute"}
                 </Button>
               )}
-              {!isBatchParent && controlledCopy.deliveryMode === "ELECTRONIC" && controlledCopy.statusCode === "DISTRIBUTED" && (
-                <Button
-                  onClick={async () => {
-                    try {
-                      const roles = await eformSessionApi.listSignerAssignments(controlledCopy.id);
-                      if (roles.length === 0) {
-                        setFillFrameRole(undefined);
-                        setShowFillFrame(true);
-                      } else {
-                        setFillStepRoles(roles);
-                        setShowFillStepPicker(true);
-                      }
-                    } catch {
-                      setFillFrameRole(undefined);
-                      setShowFillFrame(true);
-                    }
-                  }}
-                  variant="outline-emerald"
-                  size="sm"
-                  className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
-                >
-                  Fill / Sign eForm
-                </Button>
-              )}
               {!isCapabilityLoading && recallDecision?.allowed && (
                 <Button
                   onClick={handleRecallDistribution}
@@ -1328,6 +1311,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
               />
             )}
           </div>
+          {hasScanRecord && activeTab === "records" && <ExecutedRecordsTab controlledCopyId={controlledCopy.id} />}
           {(evidenceRows.length > 0 || Boolean(controlledCopy.destructionType)) && (
             <div className={cn(activeTab !== "evidence" && "hidden")}>
               <EvidenceTab
@@ -1454,66 +1438,6 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
           ))}
         </div>
       </FormModal>
-
-      {showFillStepPicker && (
-        <FormModal isOpen title="Fill / Sign eForm as..." onClose={() => setShowFillStepPicker(false)}>
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => {
-                setFillFrameRole(undefined);
-                setShowFillStepPicker(false);
-                setShowFillFrame(true);
-              }}
-              className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:border-emerald-400 hover:bg-emerald-50"
-            >
-              <span className="font-medium text-slate-800">Fill (data entry)</span>
-              <span className="text-xs text-slate-500">Recipient only</span>
-            </button>
-            {fillStepRoles.map((r) => (
-              <button
-                key={r.roleName}
-                type="button"
-                onClick={() => {
-                  setFillFrameRole(r.roleName);
-                  setShowFillStepPicker(false);
-                  setShowFillFrame(true);
-                }}
-                className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm hover:border-emerald-400 hover:bg-emerald-50"
-              >
-                <span className="font-medium text-slate-800">{r.roleName}</span>
-                <span className="text-xs text-slate-500">{r.assignedUserName}</span>
-              </button>
-            ))}
-          </div>
-        </FormModal>
-      )}
-
-      {showFillFrame && (
-        <FillEformFrame
-          controlledCopyId={controlledCopy.id}
-          roleName={fillFrameRole}
-          onClose={(submitted) => {
-            setShowFillFrame(false);
-            if (submitted) {
-              refreshDetailCapabilities();
-              refreshDetailRelatedData("Controlled Copy", controlledCopy.id, []);
-            }
-          }}
-        />
-      )}
-
-      {isAssignSignersModalOpen && (
-        <AssignEformSignersModal
-          isOpen
-          controlledCopyId={controlledCopy.id}
-          onClose={() => setIsAssignSignersModalOpen(false)}
-          onContinue={() => {
-            setIsAssignSignersModalOpen(false);
-            proceedToDistribute();
-          }}
-        />
-      )}
 
       {/* E-Signature Modal for Distribute */}
       <ESignatureModal

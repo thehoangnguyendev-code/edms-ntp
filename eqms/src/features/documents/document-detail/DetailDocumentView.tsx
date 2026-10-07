@@ -25,7 +25,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, RotateCcw } from "lucide-react";
 import { settingsApi } from "@/services/api/settings";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -211,6 +211,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   >([]);
   const [showObsoleteModal, setShowObsoleteModal] = useState(false);
   const [isObsoleteSubmitting, setIsObsoleteSubmitting] = useState(false);
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [isReopenSubmitting, setIsReopenSubmitting] = useState(false);
   const [isBackLoading, setIsBackLoading] = useState(false);
   const { showToast } = useToast();
   const [document, setDocument] = useState<DetailDocumentModel>(() => ({
@@ -921,6 +923,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     canConfigureNextRevisionCorrelatedDocuments ||
     canConfigureNextRevisionMetadata;
   const canObsoleteCurrentDocument = Boolean(documentMasterCapabilities?.actions.obsolete?.allowed);
+  // Reopen (Administrators): a Closed - Cancelled or Obsoleted document returns to the state it had before it was closed.
+  const canReopenCurrentDocument = Boolean(documentMasterCapabilities?.actions.reopen?.allowed);
 
   // "Now" = permission granted AND the DCO explicitly unlocked edit mode via "Edit Revision for
   // Upgrade". Having the underlying permission alone must never make a field live -- that was the
@@ -1297,6 +1301,56 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     }
   };
 
+  const handleReopenConfirm = async (signature: {
+    username: string;
+    password: string;
+    reason: string;
+    signatureToken?: string;
+  }) => {
+    if (!document.id) return;
+
+    setIsReopenSubmitting(true);
+    try {
+      const response = await documentApi.reopenDocument(document.id, {
+        reason: signature.reason,
+        signatureToken: signature.signatureToken as string,
+      });
+      const refreshed = await documentApi.getDocumentDetailSnapshot(
+        response.id || document.id,
+        { force: true },
+      );
+      const refreshedAuditTrail = await documentApi
+        .getDocumentAuditTrail(document.id)
+        .catch(() => []);
+      applyDocumentDetail(
+        refreshed,
+        refreshedAuditTrail as unknown as AuditEntry[],
+      );
+      setShowReopenModal(false);
+      showToast({
+        type: "success",
+        title: "Document reopened",
+        message:
+          "The document is back to the state it had before it was closed. Its revisions and controlled copies stay closed.",
+        duration: 4000,
+      });
+    } catch (error) {
+      if ([403, 409, 410].includes(getHttpStatus(error) as number)) {
+        await refreshLifecycleState();
+      }
+      showToast({
+        type: "error",
+        title: "Unable to reopen document",
+        message:
+          (error as any)?.response?.data?.error?.message ||
+          "The document could not be reopened.",
+        duration: 3000,
+      });
+    } finally {
+      setIsReopenSubmitting(false);
+    }
+  };
+
   const handlePublish = () => {
     setShowESignModal(true);
   };
@@ -1479,7 +1533,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     { id: "training" as TabType, label: "Training Information" },
     { id: "document" as TabType, label: "Document" },
     { id: "signatures" as TabType, label: "Signatures" },
-    ...(document.isTemplate ? [] : [{ id: "records" as TabType, label: "Executed Records" }]),
+    ...(document.isTemplate ? [] : [{ id: "records" as TabType, label: "Records" }]),
     { id: "audit" as TabType, label: "Audit Trail" },
   ];
 
@@ -1723,6 +1777,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         isSubmitting ||
         isBackLoading ||
         isObsoleteSubmitting ||
+        isReopenSubmitting ||
         isRevisionUploadLoading) && <FullPageLoading text="Loading..." />}
       {/* Header: Title + Breadcrumb + Actions */}
       <div className="flex flex-col gap-4">
@@ -1911,6 +1966,16 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
               Save
             </Button>
           )}
+        {canReopenCurrentDocument && (
+          <Button
+            size="sm"
+            variant="default"
+            className="whitespace-nowrap gap-2"
+            onClick={() => setShowReopenModal(true)}
+          >
+            Reopen
+          </Button>
+        )}
         {canObsoleteCurrentDocument && (
           <Button
             size="sm"
@@ -2270,6 +2335,31 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             action: "Update Status",
             oldValue: "Active",
             newValue: "Obsoleted",
+            category: "status",
+          },
+        ]}
+      />
+
+      <ESignatureModal
+        isOpen={showReopenModal}
+        onClose={() => {
+          setShowReopenModal(false);
+          setIsReopenSubmitting(false);
+        }}
+        onConfirm={handleReopenConfirm}
+        actionTitle="Reopen Document"
+        meaningDisplayName="Reopened"
+        meaningCode="DOCUMENT_REOPENED"
+        targetDetails={{
+          code: document.documentNumber,
+          title: document.documentName,
+          revision: document.revisionNumber,
+        }}
+        changes={[
+          {
+            action: "Update Status",
+            oldValue: localStatus ?? document.status ?? "Closed",
+            newValue: "Status before it was closed",
             category: "status",
           },
         ]}

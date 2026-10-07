@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useNavigate } from "react-router-dom";
@@ -157,7 +158,7 @@ export const ActionStatusMatrix: React.FC = () => {
   if (loading) return <SectionLoading />;
 
   return (
-    <div className="space-y-4">
+    <div className="compact-filter-stack space-y-4">
       <WarningBanner
         variant="info"
         description={
@@ -200,6 +201,9 @@ export const ActionStatusMatrix: React.FC = () => {
         </WarningBanner>
       )}
 
+      <ConfiguredDesktopFilters preserveMobile
+        search={<input aria-label="Search actions" value={actionSearch} onChange={event => setActionSearch(event.target.value)} placeholder="Search actions..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+        filters={[{ id: 'objectType', label: 'Object Type', value: objectType, options: objectTypeOptions, onChange: setObjectType }]}>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
         <div className="w-full">
           <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Search</label>
@@ -235,6 +239,7 @@ export const ActionStatusMatrix: React.FC = () => {
         </div>
       </div>
 
+      </ConfiguredDesktopFilters>
       <div className="overflow-x-auto rounded-xl border border-slate-200">
         <TableMarkup.Root className="w-full text-xs sm:text-sm">
           <TableMarkup.Head className="bg-slate-50">

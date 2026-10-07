@@ -6,8 +6,6 @@ import com.eqms.dto.controlledcopypolicy.ControlledCopyPolicyRequest;
 import com.eqms.dto.controlledcopypolicy.ControlledCopyStatusMarking;
 import com.eqms.entity.ControlledCopyPolicySetting;
 import com.eqms.entity.ControlledCopyRecord;
-import com.eqms.entity.PublishingTemplate;
-import com.eqms.repository.PublishingTemplateRepository;
 import com.eqms.util.DateTimeFormatUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +32,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Draws the administrator's DRAFT stamp/watermark on a page of a Publishing Template so they can see, before saving, how issued,
+ * Draws the administrator's DRAFT stamp/watermark on one sample paper page (the same page for every document: the marks do not depend
+ * on which document is copied) so they can see, before saving, how issued,
  * withdrawn and cancelled copies will look. Everything is done by the server with the same drawing code used for real copies, on
  * sample data (no real recipient or copy), and nothing is stored.
  */
@@ -46,37 +45,21 @@ public class ControlledCopyMarkingPreviewService {
     // displays even when stretched to fill a wide column; PNG compresses the mostly-white page well
     // enough that the extra pixels cost little on the wire.
     private static final int PREVIEW_DPI = 192;
-    private static final long CACHE_TTL_MS = 10 * 60 * 1000L;
-    private static final int CACHE_MAX_ENTRIES = 12;
 
     private final ControlledCopyPolicyService policyService;
     private final ControlledCopyPdfMarkingService markingService;
-    private final PublishingTemplatePreviewService templatePreviewService;
-    private final PublishingTemplateRepository templateRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /** Two-page base documents (cover page, then a body page), kept briefly: producing one asks OnlyOffice to convert the template. */
-    private final Map<String, CachedBase> cache = new LinkedHashMap<>(16, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, CachedBase> eldest) {
-            return size() > CACHE_MAX_ENTRIES;
-        }
-    };
-
-    /** Two-page base PDF (cover, body) of a Publishing Template, shared with {@link UncontrolledCopyMarkingPreviewService}. */
+    /** The one-page sample paper the marks are drawn on, shared with {@link UncontrolledCopyMarkingPreviewService}. */
     public record CachedBase(byte[] pdf, String note, long storedAt) {
     }
 
     public ControlledCopyMarkingPreviewService(
             ControlledCopyPolicyService policyService,
-            ControlledCopyPdfMarkingService markingService,
-            PublishingTemplatePreviewService templatePreviewService,
-            PublishingTemplateRepository templateRepository
+            ControlledCopyPdfMarkingService markingService
     ) {
         this.policyService = policyService;
         this.markingService = markingService;
-        this.templatePreviewService = templatePreviewService;
-        this.templateRepository = templateRepository;
     }
 
     public ControlledCopyMarkingPreviewResponse preview(ControlledCopyMarkingPreviewRequest request) {
@@ -84,12 +67,10 @@ public class ControlledCopyMarkingPreviewService {
         if (!List.of("ISSUED", "OBSOLETED", "CLOSED_CANCELLED").contains(scenario)) {
             throw new IllegalArgumentException("Unknown preview scenario");
         }
-        boolean bodyPage = "BODY".equalsIgnoreCase(request.pageKind());
-        String layout = "landscape".equalsIgnoreCase(request.layout()) ? "landscape" : "portrait";
 
         ControlledCopyPolicySetting draft = policyService.draftFrom(new ControlledCopyPolicyRequest(
                 request.distributionSecurity(), null, null, request.marking(), request.statusMarking(), null, null, null));
-        CachedBase base = baseDocument(request.templateId(), layout);
+        CachedBase base = samplePaper();
 
         ControlledCopyRecord sample = sampleCopy();
         JsonNode recipient = objectMapper.createObjectNode().put("name", "Nguyen Van A");
@@ -109,6 +90,18 @@ public class ControlledCopyMarkingPreviewService {
             ControlledCopyPdfMarkingService.Marked issued = markingService.isMarkingEnabled(draft)
                     ? markingService.applyWithLayout(base.pdf(), sample, recipient, draft)
                     : new ControlledCopyPdfMarkingService.Marked(base.pdf(), List.of());
+            if (draft.isQrCodeEnabled()) {
+                // A paper copy carries a scan code; show where it will land, with a throwaway token.
+                ControlledCopyPdfMarkingService.Marked withCode = markingService.applyScanCode(
+                        issued.pdf(),
+                        ControlledCopyScanCodeService.encode(ControlledCopyScanCodeService.payload(ControlledCopyScanCodeService.newToken())),
+                        sample.getControlledCopyNumber(),
+                        draft.getQrCodePosition(), draft.getQrCodeX(), draft.getQrCodeY(), draft.getQrCodeSizeMm(), draft.getStampMarginMm(),
+                        issued.placements());
+                List<ControlledCopyPdfMarkingService.Placement> all = new ArrayList<>(issued.placements());
+                all.addAll(withCode.placements());
+                issued = new ControlledCopyPdfMarkingService.Marked(withCode.pdf(), all);
+            }
             finalPdf = issued.pdf();
             issuedMarks.addAll(issued.placements());
             if ("OBSOLETED".equals(scenario)) {
@@ -123,8 +116,7 @@ public class ControlledCopyMarkingPreviewService {
             }
         }
 
-        int pageIndex = bodyPage ? 1 : 0;
-        return response(finalPdf, base, pageIndex, issuedMarks, statusMarks);
+        return response(finalPdf, base, 0, issuedMarks, statusMarks);
     }
 
     /** Renders {@code pageIndex} of the marked PDF to PNG plus the mark boxes/warnings. Shared with the Uncontrolled Copy preview. */
@@ -163,6 +155,15 @@ public class ControlledCopyMarkingPreviewService {
             }
             pageSize[0] = placement.pageWidth();
             pageSize[1] = placement.pageHeight();
+            if (ControlledCopyPdfMarkingService.KIND_QR.equals(placement.kind())) {
+                boxes.add(new ControlledCopyMarkingPreviewResponse.MarkBox(origin + " QR code", placement.kind(), placement.x(), placement.y(),
+                        placement.width(), placement.height(), placement.angle(), placement.adjusted()));
+                if (placement.adjusted()) {
+                    warnings.add(new ControlledCopyMarkingPreviewResponse.Warning("QR_MOVED",
+                            "The QR code would overlap the stamp or the watermark where you put it, so it was moved to the nearest free place."));
+                }
+                continue;
+            }
             boolean stamp = "STAMP".equals(placement.kind());
             String layer = origin + (stamp ? " stamp" : " watermark");
             boxes.add(new ControlledCopyMarkingPreviewResponse.MarkBox(layer, placement.kind(), placement.x(), placement.y(),
@@ -178,58 +179,67 @@ public class ControlledCopyMarkingPreviewService {
         }
     }
 
-    /** Cached two-page base document of the chosen (or first active) Publishing Template. Shared with the Uncontrolled Copy preview. */
-    public CachedBase baseDocument(String templateId, String layout) {
-        PublishingTemplate template = resolveTemplate(templateId);
-        String key = template.getId() + "|" + layout + "|" + template.getUpdatedAt();
-        synchronized (cache) {
-            CachedBase cached = cache.get(key);
-            if (cached != null && System.currentTimeMillis() - cached.storedAt() < CACHE_TTL_MS) {
-                return cached;
-            }
+    private static volatile CachedBase sample;
+
+    /**
+     * One A4 sample page: a title, a document-number line and grey bars standing in for text, so the administrator can judge where
+     * a stamp, watermark or QR code lands relative to content. It is the same for every document.
+     */
+    public CachedBase samplePaper() {
+        CachedBase current = sample;
+        if (current == null) {
+            current = new CachedBase(buildSamplePage(), null, System.currentTimeMillis());
+            sample = current;
         }
-        CachedBase created = buildBase(template.getId(), layout);
-        synchronized (cache) {
-            cache.put(key, created);
-        }
-        return created;
+        return current;
     }
 
-    private PublishingTemplate resolveTemplate(String templateId) {
-        if (StringUtils.hasText(templateId)) {
-            try {
-                return templateRepository.findById(UUID.fromString(templateId.trim()))
-                        .orElseThrow(() -> new IllegalArgumentException("Publishing template not found"));
-            } catch (IllegalArgumentException ex) {
-                throw new IllegalArgumentException("Publishing template not found");
+    private static byte[] buildSamplePage() {
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            org.apache.pdfbox.pdmodel.PDPage page = new org.apache.pdfbox.pdmodel.PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+            document.addPage(page);
+            float width = page.getMediaBox().getWidth();
+            float height = page.getMediaBox().getHeight();
+            float left = 56f;
+            org.apache.pdfbox.pdmodel.font.PDType1Font bold = new org.apache.pdfbox.pdmodel.font.PDType1Font(
+                    org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA_BOLD);
+            org.apache.pdfbox.pdmodel.font.PDType1Font regular = new org.apache.pdfbox.pdmodel.font.PDType1Font(
+                    org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA);
+            try (org.apache.pdfbox.pdmodel.PDPageContentStream content = new org.apache.pdfbox.pdmodel.PDPageContentStream(document, page)) {
+                content.setNonStrokingColor(0.15f, 0.15f, 0.15f);
+                content.beginText();
+                content.setFont(bold, 18);
+                content.newLineAtOffset(left, height - 80);
+                content.showText("SAMPLE DOCUMENT");
+                content.endText();
+                content.beginText();
+                content.setFont(regular, 10);
+                content.newLineAtOffset(left, height - 98);
+                content.showText("Document No.: SOP.0000    Revision: 1.0    Page 1");
+                content.endText();
+                content.setStrokingColor(0.6f, 0.6f, 0.6f);
+                content.moveTo(left, height - 108);
+                content.lineTo(width - left, height - 108);
+                content.stroke();
+                content.setNonStrokingColor(0.86f, 0.86f, 0.86f);
+                float y = height - 140;
+                int row = 0;
+                while (y > 80) {
+                    // A paragraph of bars of slightly different lengths, then a gap, like running text.
+                    float barWidth = (width - 2 * left) * (row % 6 == 5 ? 0.45f : 0.82f + 0.18f * ((row * 7) % 5) / 4f);
+                    content.addRect(left, y, barWidth, 5f);
+                    content.fill();
+                    y -= 15f;
+                    row++;
+                    if (row % 6 == 0) {
+                        y -= 12f;
+                    }
+                }
             }
-        }
-        return templateRepository.findByStatusOrderByTemplateNameAsc("ACTIVE").stream().findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Choose a Publishing Template to preview on"));
-    }
-
-    /** Page 1 from the template's cover, page 2 from its body (the cover again when the template has no body). */
-    private CachedBase buildBase(UUID templateId, String layout) {
-        try {
-            byte[] cover = templatePreviewService.getComponentPreviewPdf(templateId, "cover", layout, null);
-            byte[] body = null;
-            String note = null;
-            try {
-                body = templatePreviewService.getComponentPreviewPdf(templateId, "body", layout, null);
-            } catch (RuntimeException | IOException ex) {
-                note = "This template has no body page; page 2 onwards is shown with the cover page.";
-            }
-            try (PDDocument out = new PDDocument();
-                 PDDocument coverDoc = Loader.loadPDF(cover);
-                 PDDocument bodyDoc = body == null ? null : Loader.loadPDF(body);
-                 ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
-                out.importPage(coverDoc.getPage(0));
-                out.importPage(bodyDoc != null && bodyDoc.getNumberOfPages() > 0 ? bodyDoc.getPage(0) : coverDoc.getPage(0));
-                out.save(bytes);
-                return new CachedBase(bytes.toByteArray(), note, System.currentTimeMillis());
-            }
+            document.save(out);
+            return out.toByteArray();
         } catch (IOException ex) {
-            throw new IllegalStateException("Unable to prepare the template page for the preview", ex);
+            throw new IllegalStateException("Unable to prepare the sample page for the preview", ex);
         }
     }
 

@@ -42,17 +42,15 @@ public class UncontrolledCopyMarkingPreviewService {
         if (request == null) {
             throw new IllegalArgumentException("Preview request is required");
         }
-        boolean bodyPage = "BODY".equalsIgnoreCase(request.pageKind());
-        String layout = "landscape".equalsIgnoreCase(request.layout()) ? "landscape" : "portrait";
 
         ControlledCopyStatusMarking draft = policyService.draftMarking(request.marking());
-        ControlledCopyMarkingPreviewService.CachedBase base = basePreviewService.baseDocument(request.templateId(), layout);
+        ControlledCopyMarkingPreviewService.CachedBase base = basePreviewService.samplePaper();
 
         UncontrolledCopyService.MarkingPlan plan = UncontrolledCopyService.markingPlan(
                 draft, SAMPLE_COPY_NUMBER, SAMPLE_RECIPIENT, DateTimeFormatUtils.formatDateTime(Instant.now()));
         ControlledCopyPdfMarkingService.Marked marked = markingService.applyStatusMarkingWithLayout(
                 base.pdf(), plan.config(), plan.watermarkLines(), plan.stampLines(), List.of());
 
-        return basePreviewService.response(marked.pdf(), base, bodyPage ? 1 : 0, List.of(), marked.placements());
+        return basePreviewService.response(marked.pdf(), base, 0, List.of(), marked.placements());
     }
 }

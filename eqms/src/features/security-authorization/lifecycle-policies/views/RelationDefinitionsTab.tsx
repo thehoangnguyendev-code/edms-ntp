@@ -1,3 +1,4 @@
+import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
 import { Check, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
@@ -9,6 +10,7 @@ import { FilterAccordionItem, FilterDrawer } from "@/components/ui/filter/Filter
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { useTableDragScroll, useDebounce } from "@/hooks";
 import { cn } from "@/components/ui/utils";
 import { securityApi, type AuthorizationRelationDefinition } from "@/services/api/security";
@@ -140,6 +142,79 @@ export const RelationDefinitionsTab: React.FC = () => {
   const isInitialLoading = loading && items.length === 0;
   const isTableLoading = loading && items.length > 0;
 
+  type RelationRow = (typeof items)[number];
+  const relationColumns: DataTableColumn<RelationRow>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-[4%] text-center", cellClassName: "text-center text-slate-500", cell: (_d, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
+    {
+      id: "code",
+      header: "Code",
+      label: "Code",
+      headerClassName: "w-[26%]",
+      sort: { direction: sortConfig.key === "code" ? sortConfig.direction : undefined, onSort: () => handleSort("code") },
+      cell: (d) => (
+        <>
+          <div className="break-all text-xs sm:text-sm font-medium text-slate-800">{d.code}</div>
+          <div className="break-words text-2xs text-slate-400">{d.displayName}</div>
+        </>
+      ),
+    },
+    {
+      id: "resourceType",
+      header: "Resource Type",
+      label: "Resource Type",
+      headerClassName: "w-[13%]",
+      sort: { direction: sortConfig.key === "resourceType" ? sortConfig.direction : undefined, onSort: () => handleSort("resourceType") },
+      cell: (d) => <Badge color="purple" size="xs">{d.resourceType}</Badge>,
+    },
+    {
+      id: "resolverCode",
+      header: "Resolver",
+      label: "Resolver",
+      headerClassName: "w-[15%]",
+      sort: { direction: sortConfig.key === "resolverCode" ? sortConfig.direction : undefined, onSort: () => handleSort("resolverCode") },
+      cellClassName: "text-xs sm:text-sm text-slate-600 break-all",
+      cell: (d) => d.resolverCode,
+    },
+    {
+      id: "resolverConfig",
+      header: "Resolver Config",
+      label: "Resolver Config",
+      headerClassName: "w-[25%]",
+      cell: (d) => {
+        const configEntries = d.resolverConfig ? Object.entries(d.resolverConfig) : [];
+        return configEntries.length > 0 ? (
+          <div className="flex w-full flex-wrap items-center gap-1">
+            {configEntries.map(([key, value]) => (
+              <span key={key} className="rounded-md bg-slate-100 px-1.5 py-0.5 text-2xs text-slate-600 break-all">
+                {key}={String(value)}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-2xs text-slate-300">—</span>
+        );
+      },
+    },
+    {
+      id: "active",
+      header: "Status",
+      label: "Status",
+      headerClassName: "w-[7%]",
+      sort: { direction: sortConfig.key === "active" ? sortConfig.direction : undefined, onSort: () => handleSort("active") },
+      cell: (d) => <Badge color={d.active ? "emerald" : "slate"} size="sm">{d.active ? "Active" : "Inactive"}</Badge>,
+    },
+    {
+      id: "updatedAt",
+      header: "Updated",
+      label: "Updated",
+      headerClassName: "w-[10%]",
+      sort: { direction: sortConfig.key === "updatedAt" ? sortConfig.direction : undefined, onSort: () => handleSort("updatedAt") },
+      cellClassName: "text-xs sm:text-sm text-slate-600",
+      cell: (d) => formatDateTime(d.updatedAt),
+    },
+  ];
+  const { layout: relationLayout, control: relationControl } = useCustomColumnLayout("lifecycle.relation-definitions", relationColumns);
+
   return (
     <div className="flex flex-col flex-1">
       <p className="w-full text-xs sm:text-sm text-slate-500 mb-4 md:mb-5">
@@ -149,7 +224,7 @@ export const RelationDefinitionsTab: React.FC = () => {
 
       {/* Matches the common User Management filter layout: compact drawer on mobile,
           labelled three-column grid on desktop. */}
-      <div className="md:pb-5 flex flex-col">
+      <div className="compact-filter-section md:pb-5 flex flex-col">
         <div>
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
             <label className="text-xs sm:text-sm font-medium text-slate-700 block">Search</label>
@@ -187,7 +262,45 @@ export const RelationDefinitionsTab: React.FC = () => {
             </div>
           </div>
 
-          <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+<ConfiguredDesktopFilters
+  trailing={<div className="hidden md:block">{relationControl}</div>}
+  search={
+    <input
+      aria-label="Search"
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      placeholder={"Search code, display name, resolver..."}
+      className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
+    />
+  }
+  filters={[
+    {
+      id: "resourceTypeFilter",
+      label: "Resource Type",
+      value: String(resourceTypeFilter),
+      options: RESOURCE_TYPE_OPTIONS,
+      onChange: setResourceTypeFilter,
+    },
+    {
+      id: "statusFilter",
+      label: "Status",
+      value: String(statusFilter),
+      options: STATUS_OPTIONS,
+      onChange: setStatusFilter,
+    },
+  ]}
+  dates={[
+    {
+      id: "updatedFrom",
+      label: "Updated Date Range",
+      from: updatedFrom,
+      to: updatedTo,
+      onFromChange: setUpdatedFrom,
+      onToChange: setUpdatedTo,
+    },
+  ]}
+>
+<div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <div className="w-full">
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors">Search</label>
               <div className="relative">
@@ -237,7 +350,7 @@ export const RelationDefinitionsTab: React.FC = () => {
               autoApply
             />
 
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -248,8 +361,10 @@ export const RelationDefinitionsTab: React.FC = () => {
               >
                 Clear Filters
               </Button>
+              {relationControl}
             </div>
           </div>
+</ConfiguredDesktopFilters>
         </div>
       </div>
 
@@ -263,107 +378,42 @@ export const RelationDefinitionsTab: React.FC = () => {
                 <SectionLoading text="Searching..." minHeight="150px" />
               </div>
             )}
-            <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-[72rem] table-fixed">
-                  <TableMarkup.ColumnGroup>
-                    {TABLE_COLUMN_WIDTHS.map((width, index) => <TableMarkup.Column key={index} style={{ width }} />)}
-                  </TableMarkup.ColumnGroup>
-                  <TableMarkup.Head className="sticky top-0 z-30">
-                    <TableMarkup.Row>
-                      {TABLE_COLS.map((col) => {
-                        const isSorted = col.sortable && sortConfig.key === col.id;
-                        return (
-                          <TableMarkup.HeaderCell
-                            key={col.id}
-                            onClick={col.sortable ? () => handleSort(col.id as SortKey) : undefined}
-                            className={cn(thBase, col.sortable && "cursor-pointer hover:bg-slate-100 hover:text-slate-700", col.id === "no" && "w-14 text-center")}
-                          >
-                            <div className="flex w-full items-center justify-between gap-2">
-                              <span className="truncate">{col.label}</span>
-                              {col.sortable && (
-                                <div className="flex flex-col text-slate-400 flex-shrink-0 group-hover:text-slate-500">
-                                  <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600" : "")} />
-                                  <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600" : "")} />
-                                </div>
-                              )}
-                            </div>
-                          </TableMarkup.HeaderCell>
-                        );
-                      })}
-                    </TableMarkup.Row>
-                  </TableMarkup.Head>
-                  <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-                    {!loading && items.length === 0 ? (
-                      <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={TABLE_COLS.length} className="p-0">
-                          {error ? (
-                            <TableEmptyState title="Failed to Load" description={error} />
-                          ) : (
-                            <TableEmptyState
-                             
-                              title="No Relation Definitions"
-                              description={hasFilters ? "Try adjusting your search or filters." : "No relation definitions match this filter."}
-                            />
-                          )}
-                        </TableMarkup.Cell>
-                      </TableMarkup.Row>
-                    ) : (
-                      items.map((d, idx) => {
-                        const configEntries = d.resolverConfig ? Object.entries(d.resolverConfig) : [];
-                        return (
-                        <TableMarkup.Row key={d.id} className="hover:bg-slate-50/80 transition-colors">
-                          <TableMarkup.Cell className="px-4 py-3 align-middle text-center text-xs sm:text-sm text-slate-500 whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="px-4 py-3 align-middle">
-                            <div className="break-all  text-xs sm:text-sm font-medium text-slate-800">{d.code}</div>
-                            <div className="break-words text-2xs text-slate-400">{d.displayName}</div>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="px-4 py-3 align-middle whitespace-nowrap">
-                            <Badge color="purple" size="xs">{d.resourceType}</Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="px-4 py-3 align-middle  text-xs sm:text-sm text-slate-600 break-all">{d.resolverCode}</TableMarkup.Cell>
-                          <TableMarkup.Cell className="px-4 py-3 align-middle">
-                            {configEntries.length > 0 ? (
-                              <div className="flex w-full flex-wrap items-center gap-1">
-                                {configEntries.map(([key, value]) => (
-                                  <span key={key} className="rounded-md bg-slate-100 px-1.5 py-0.5  text-2xs text-slate-600 break-all">
-                                    {key}={String(value)}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-2xs text-slate-300">—</span>
-                            )}
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="px-4 py-3 align-middle whitespace-nowrap">
-                            <Badge color={d.active ? "emerald" : "slate"} size="sm">{d.active ? "Active" : "Inactive"}</Badge>
-                          </TableMarkup.Cell>
-                          <TableMarkup.Cell className="px-4 py-3 align-middle text-xs sm:text-sm text-slate-600 whitespace-nowrap">{formatDateTime(d.updatedAt)}</TableMarkup.Cell>
-                        </TableMarkup.Row>
-                        );
-                      })
-                    )}
-                  </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={isTableLoading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                </div>
-              )}
+            <div className="flex flex-col flex-1">
+              <DataTable
+                rows={items}
+                getRowKey={(d) => d.id}
+                columns={relationLayout.columns}
+                columnLayout={relationLayout}
+                scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
+                scrollProps={dragEvents}
+                isDragging={isDragging}
+                emptyState={
+                  error ? (
+                    <TableEmptyState title="Failed to Load" description={error} />
+                  ) : (
+                    <TableEmptyState
+                      title="No Relation Definitions"
+                      description={hasFilters ? "Try adjusting your search or filters." : "No relation definitions match this filter."}
+                    />
+                  )
+                }
+                pagination={
+                  totalItems > 0 ? (
+                    <div className="border-t border-slate-200">
+                      <TablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        isLoading={isTableLoading}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
+                        itemsPerPageOptions={[10, 20, 50]}
+                      />
+                    </div>
+                  ) : undefined
+                }
+              />
             </div>
           </>
         )}

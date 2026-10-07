@@ -62,7 +62,6 @@ class UserManagementServiceSelfEscalationGuardTest {
     @Mock private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     @Mock private AuditTrailService auditTrailService;
     @Mock private SystemConfigurationService systemConfigurationService;
-    @Mock private ExternalIdentityProvisioningService externalIdentityProvisioningService;
     @Mock private FileStorageService fileStorageService;
     @Mock private AuthorizationEngineService authorizationEngineService;
     @Mock private NotificationDispatcher notificationDispatcher;

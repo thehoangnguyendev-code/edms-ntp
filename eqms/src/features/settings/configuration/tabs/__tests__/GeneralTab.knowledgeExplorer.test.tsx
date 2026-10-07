@@ -38,7 +38,7 @@ describe("GeneralTab Knowledge Base setting", () => {
     expect(section).toContainElement(screen.getByLabelText(/Show signed-in user profile/));
     expect(section).toContainElement(screen.getByLabelText('Use compact desktop filters'));
     expect(section).toContainElement(screen.getByLabelText(/Knowledge Base in the new Explorer/));
-    for (const title of ['System Identity', 'Footer', 'Logos & Browser Icon', 'Sidebar',
+    for (const title of ['System Identity', 'Header', 'Footer', 'Logos & Browser Icon', 'Sidebar',
       'Desktop Filters', 'Knowledge Base', 'Date & Time', 'Language & Numbers']) {
       expect(screen.getByText(title)).toHaveClass('uppercase', 'tracking-wide');
     }

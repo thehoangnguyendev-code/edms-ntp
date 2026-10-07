@@ -1063,16 +1063,16 @@ public class ControlledCopyAuthorizationService {
         if (copy == null || copy.getRevision() == null || copy.getDocument() == null) {
             throw new IllegalArgumentException("Controlled copy not found");
         }
-        documentAuthorizationService.requireCanAccessControlledCopy(user, copy.getDocument());
-        documentAuthorizationService.requireCanAccessControlledCopy(user, copy.getRevision());
+        // Copy visibility is its own rule (blanket copy permission, or the named recipient) -- not
+        // the parent document's participant list.
+        documentAuthorizationService.requireCanViewControlledCopy(user, copy);
     }
 
     private void requireBaseAccess(UserAccount user, ControlledCopyDistributionBatch batch) {
         if (batch == null || batch.getRevision() == null || batch.getDocument() == null) {
             throw new IllegalArgumentException("Controlled copy distribution batch not found");
         }
-        documentAuthorizationService.requireCanAccessControlledCopy(user, batch.getDocument());
-        documentAuthorizationService.requireCanAccessControlledCopy(user, batch.getRevision());
+        documentAuthorizationService.requireCanViewControlledCopyBatch(user);
     }
 
     // Public (not private): also called per-request from ControlledCopyService's

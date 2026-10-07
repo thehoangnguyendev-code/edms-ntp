@@ -85,9 +85,11 @@ public class ControlledCopyController {
     @GetMapping("/batch-status-discrepancies")
     public ResponseEntity<PageResponse<com.eqms.dto.document.ControlledCopyBatchStatusDiscrepancyResponse>> listBatchStatusDiscrepancies(
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer limit
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false, defaultValue = "detectedAt") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
-        return ResponseEntity.ok(controlledCopyService.listBatchStatusDiscrepancies(page, limit));
+        return ResponseEntity.ok(controlledCopyService.listBatchStatusDiscrepancies(page, limit, sortBy, sortDirection));
     }
 
     @GetMapping
@@ -180,7 +182,9 @@ public class ControlledCopyController {
     public ResponseEntity<PageResponse<ControlledCopyListItemResponse>> listBatchCopies(
             @PathVariable UUID batchId,
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer limit
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false, defaultValue = "detectedAt") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
         return ResponseEntity.ok(controlledCopyService.listDistributionBatchCopies(batchId, page, limit));
     }

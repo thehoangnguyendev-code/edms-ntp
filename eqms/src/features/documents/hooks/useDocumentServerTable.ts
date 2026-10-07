@@ -62,6 +62,9 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   const relatedDocumentFilter = readString(searchParams, "relatedDocument", "All");
   const correlatedDocumentFilter = readString(searchParams, "correlatedDocument", "All");
   const templateFilter = readString(searchParams, "isTemplate", "All");
+  const reviewerFilter = readString(searchParams, "reviewerId", "All");
+  const approverFilter = readString(searchParams, "approverId", "All");
+  const requiresTrainingFilter = readString(searchParams, "requiresTraining", "All");
   const authorFilter = viewType === "owned-by-me"
     ? currentUser?.id ?? "All"
     : readString(searchParams, "authorId", "All");
@@ -96,7 +99,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   const setStatusFilter = useCallback((value: string) => updateFilter("status", value), [updateFilter]);
   const applyFilters = useCallback((values: Record<string, string>) => {
     const allowed = new Set(['status', 'documentType', 'businessUnit', 'department', 'authorId',
-      'relatedDocument', 'correlatedDocument', 'isTemplate', 'createdFrom', 'createdTo',
+      'relatedDocument', 'correlatedDocument', 'isTemplate', 'reviewerId', 'approverId', 'requiresTraining', 'createdFrom', 'createdTo',
       'effectiveFrom', 'effectiveTo', 'validFrom', 'validTo']);
     if (viewType === 'owned-by-me') allowed.delete('authorId');
     const updates = Object.fromEntries(Object.entries(values).filter(([key]) => allowed.has(key))
@@ -110,6 +113,9 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
   const setCorrelatedDocumentFilter = useCallback((value: string) => updateFilter("correlatedDocument", value), [updateFilter]);
   const setTemplateFilter = useCallback((value: string) => updateFilter("isTemplate", value), [updateFilter]);
   const setAuthorFilter = useCallback((value: string) => updateFilter("authorId", value), [updateFilter]);
+  const setReviewerFilter = useCallback((value: string) => updateFilter("reviewerId", value), [updateFilter]);
+  const setApproverFilter = useCallback((value: string) => updateFilter("approverId", value), [updateFilter]);
+  const setRequiresTrainingFilter = useCallback((value: string) => updateFilter("requiresTraining", value), [updateFilter]);
   const setCreatedFromDate = useCallback((value: string) => updateFilter("createdFrom", value), [updateFilter]);
   const setCreatedToDate = useCallback((value: string) => updateFilter("createdTo", value), [updateFilter]);
   const setEffectiveFromDate = useCallback((value: string) => updateFilter("effectiveFrom", value), [updateFilter]);
@@ -198,6 +204,9 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
     relatedDocumentFilter,
     correlatedDocumentFilter,
     templateFilter,
+    reviewerFilter,
+    approverFilter,
+    requiresTrainingFilter,
     authorFilter: viewType === "owned-by-me" ? currentUser?.id ?? authorFilter : authorFilter,
     createdFromDate,
     createdToDate,
@@ -220,6 +229,9 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
     relatedDocumentFilter,
     correlatedDocumentFilter,
     templateFilter,
+    reviewerFilter,
+    approverFilter,
+    requiresTrainingFilter,
     authorFilter,
     createdFromDate,
     createdToDate,
@@ -261,6 +273,9 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
           relatedDocument: relatedDocumentFilter === "All" ? undefined : relatedDocumentFilter,
           correlatedDocument: correlatedDocumentFilter === "All" ? undefined : correlatedDocumentFilter,
           isTemplate: templateFilter === "All" ? undefined : templateFilter,
+          reviewerId: reviewerFilter === "All" ? undefined : reviewerFilter,
+          approverId: approverFilter === "All" ? undefined : approverFilter,
+          requiresTraining: requiresTrainingFilter === "All" ? undefined : requiresTrainingFilter,
           authorId: viewType === "owned-by-me" ? (currentUser?.id || undefined) : (authorFilter === "All" ? undefined : authorFilter),
           createdFrom: createdFromDate || undefined,
           createdTo: createdToDate || undefined,
@@ -311,6 +326,9 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
     relatedDocumentFilter,
     correlatedDocumentFilter,
     templateFilter,
+    reviewerFilter,
+    approverFilter,
+    requiresTrainingFilter,
     authorFilter,
     createdFromDate,
     createdToDate,
@@ -358,6 +376,9 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
         relatedDocument: relatedDocumentFilter === "All" ? undefined : relatedDocumentFilter,
         correlatedDocument: correlatedDocumentFilter === "All" ? undefined : correlatedDocumentFilter,
         isTemplate: templateFilter === "All" ? undefined : templateFilter,
+          reviewerId: reviewerFilter === "All" ? undefined : reviewerFilter,
+          approverId: approverFilter === "All" ? undefined : approverFilter,
+          requiresTraining: requiresTrainingFilter === "All" ? undefined : requiresTrainingFilter,
         authorId: viewType === "owned-by-me" ? (currentUser?.id || undefined) : (authorFilter === "All" ? undefined : authorFilter),
         createdFrom: createdFromDate || undefined,
         createdTo: createdToDate || undefined,
@@ -444,6 +465,12 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
     return options;
   }, [viewType, filtersLookup.authors, currentUser, authorFilter]);
 
+  // Any active user can be named as a reviewer or an approver, so both filters offer the same people as the Author filter.
+  const participantOptions = useMemo<SelectOption[]>(() => [
+    ALL_OPTION,
+    ...filtersLookup.authors.map((item) => ({ label: item.label, value: item.value })),
+  ], [filtersLookup.authors]);
+
   const searchAuthors = useCallback(async (query: string): Promise<SelectOption[]> => {
     const response = await documentApi.getDocumentFilters(query);
     return response.authors.map((item) => ({ label: item.label, value: item.value }));
@@ -469,6 +496,12 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
     setTemplateFilter,
     authorFilter,
     setAuthorFilter,
+    reviewerFilter,
+    setReviewerFilter,
+    approverFilter,
+    setApproverFilter,
+    requiresTrainingFilter,
+    setRequiresTrainingFilter,
     createdFromDate,
     setCreatedFromDate,
     createdToDate,
@@ -502,6 +535,7 @@ export function useDocumentServerTable({ viewType, currentUser }: UseDocumentSer
     businessUnitOptions,
     departmentOptions,
     authorOptions,
+    participantOptions,
     searchAuthors,
     authorFilterDisabled: viewType === "owned-by-me",
     currentAuthorLabel: viewType === "owned-by-me"

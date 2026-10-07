@@ -59,6 +59,9 @@ public interface ControlledCopyRepository extends JpaRepository<ControlledCopyRe
     List<ControlledCopyRecord> findAllByStatusCodeAndHasExpiryDateTrueAndExpiryReminderSentAtIsNullAndExpiryDateBetween(String statusCode, Instant from, Instant to);
     long countByDocument_Id(UUID documentId);
     Optional<ControlledCopyRecord> findByControlledCopyNumber(String controlledCopyNumber);
+    Optional<ControlledCopyRecord> findByScanToken(String scanToken);
+    Optional<ControlledCopyRecord> findByControlledCopyNumberIgnoreCase(String controlledCopyNumber);
+    boolean existsByScanToken(String scanToken);
     Optional<ControlledCopyRecord> findTopByOrderByCreatedAtDesc();
     Optional<ControlledCopyRecord> findTopByDocument_IdOrderByCopyNumberDesc(UUID documentId);
     long countByCreatedAtIsNotNull();

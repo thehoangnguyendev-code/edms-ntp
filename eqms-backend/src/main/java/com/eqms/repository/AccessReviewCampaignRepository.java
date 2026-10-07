@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AccessReviewCampaignRepository extends JpaRepository<AccessReviewCampaign, UUID> {
+    long countByStatus(String status);
+
     List<AccessReviewCampaign> findAllByOrderByCreatedAtDesc();
 
     /** Used by {@code AccessReviewNotificationScheduler} to find campaigns due on a specific

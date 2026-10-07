@@ -42,6 +42,7 @@ import { IconPencilMinus } from "@tabler/icons-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   MarkCard,
+  QrCodeFields,
   ShowToggles,
   StampFields,
   WatermarkFields,
@@ -122,6 +123,12 @@ const defaultMarking: ControlledCopyPolicyMarking = {
   watermarkPages: "ALL",
   watermarkLayer: "BEHIND",
   watermarkFontFamily: "NOTO_SANS",
+  qrCodeEnabled: true,
+  qrCodePosition: "BOTTOM_RIGHT",
+  qrCodePages: "ALL",
+  qrCodeX: null,
+  qrCodeY: null,
+  qrCodeSizeMm: 20,
 };
 
 const defaultStatusMarking = (
@@ -188,22 +195,22 @@ const DURATION_UNIT_OPTIONS: {
   {
     label: "Hours",
     value: "HOURS",
-    example: "e.g. 24 Hours → expires 1 day after distribution",
+    example: "e.g. 24 Hours → the link stops working 1 day after the e-mail is sent",
   },
   {
     label: "Days",
     value: "DAYS",
-    example: "e.g. 30 Days → expires 1 month after distribution",
+    example: "e.g. 30 Days → the link stops working 1 month after the e-mail is sent",
   },
   {
     label: "Weeks",
     value: "WEEKS",
-    example: "e.g. 2 Weeks → expires 14 days after distribution",
+    example: "e.g. 2 Weeks → the link stops working 14 days after the e-mail is sent",
   },
   {
     label: "Months",
     value: "MONTHS",
-    example: "e.g. 6 Months → expires half a year after distribution",
+    example: "e.g. 6 Months → the link stops working half a year after the e-mail is sent",
   },
 ];
 
@@ -391,9 +398,6 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   // disabled until something in policy/expiryLimits actually diverges from it.
   const [original, setOriginal] = useState<{ policy: PolicyState; expiryLimits: ControlledCopyExpiryLimit[] } | null>(null);
   const [markingTab, setMarkingTab] = useState<MarkingTabKey>("ISSUED");
-  const [previewPageKind, setPreviewPageKind] = useState<"COVER" | "BODY">(
-    "COVER",
-  );
   // The page tab lives in the URL (?tab=markings) so a refresh or a shared link opens the same tab.
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab: PolicyTabKey =
@@ -517,7 +521,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   const handleDeleteLimit = (limit: ControlledCopyExpiryLimit) => {
     if (
       !window.confirm(
-        `Remove the expiry rule "${(limit.documentTypeName || "Any document type") + " / " + (limit.departmentName || "Any department")}" from this draft? It is only actually deleted once you click "Save Changes".`,
+        `Remove the link expiry rule "${(limit.documentTypeName || "Any document type") + " / " + (limit.departmentName || "Any department")}" from this draft? It is only actually deleted once you click "Save Changes".`,
       )
     ) {
       return;
@@ -1106,10 +1110,11 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                 </div>
               </FormSection>
 
-              {/* Every Controlled Copy always has an expiry; the mandatory "Global Default" row guarantees a
-                  resolution, with document type/department rows overriding it when more specific. */}
+              {/* How long the link in the distribution e-mail works. The copy itself expires with its document (Valid Until). The
+                  mandatory "Global Default" row guarantees a resolution, with document type/department rows overriding it when
+                  more specific. */}
               <FormSection
-                title="Expiry Duration"
+                title="Download Link Expiry"
                 icon={<TimerReset className="h-4 w-4" />}
                 headerRight={
                   canManagePolicy && (
@@ -1125,6 +1130,11 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                   )
                 }
               >
+                <p className="mb-3 text-xs text-slate-500">
+                  How long the link in the distribution e-mail stays valid, counted from the moment the e-mail is sent. After that
+                  the recipient asks the Document Control Officer for a new link. This does not change when a controlled copy
+                  expires: a copy is valid until the Valid Until date of its document.
+                </p>
                 <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
                   <TableMarkup.Root className="w-full text-xs sm:text-sm">
                     <TableMarkup.Head className="bg-slate-50">
@@ -1136,7 +1146,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                           Department
                         </TableMarkup.HeaderCell>
                         <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell43}>
-                          Duration
+                          Link valid for
                         </TableMarkup.HeaderCell>
                         <TableMarkup.HeaderCell className="text-right px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           Actions
@@ -1340,6 +1350,56 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                         />
                         {renderResetPosition("watermark")}
                       </MarkCard>
+
+                      <MarkCard
+                        title="QR code (paper copies)"
+                        enabled={policy.marking.qrCodeEnabled}
+                        onToggle={(v) => setMarking("qrCodeEnabled", v)}
+                        disabled={!canManagePolicy}
+                      >
+                        <p className="text-xs text-slate-500">
+                          Prints a code on every paper copy issued from now on (on every page or on the first page only),
+                          so the DCO can recall returned paper in bulk by scanning it (Controlled Copies &gt; Recall by Scan).
+                          The code is only a random lookup key, with the page number: it carries no document data. Copies issued before this was switched on have no
+                          code and are recalled one by one.
+                        </p>
+                        <QrCodeFields
+                          value={policy.marking}
+                          onChange={(k, v) => {
+                            // Choosing a corner puts the code back there; a dragged position would otherwise override the choice.
+                            if (k === "qrCodePosition") {
+                              setPolicy((p) => ({
+                                ...p,
+                                marking: { ...p.marking, qrCodePosition: v as ControlledCopyPolicyMarking["qrCodePosition"], qrCodeX: null, qrCodeY: null },
+                              }));
+                              return;
+                            }
+                            setMarking(k as keyof ControlledCopyPolicyMarking, v as never);
+                          }}
+                          positioned={policy.marking.qrCodeX != null && policy.marking.qrCodeY != null}
+                          disabled={!canManagePolicy}
+                        />
+                        {canManagePolicy &&
+                          policy.marking.qrCodeX != null &&
+                          policy.marking.qrCodeY != null && (
+                            <div className="mt-4 flex justify-end border-t border-slate-200 pt-3">
+                              <Button
+                                size="sm"
+                                variant="outline-emerald"
+                                aria-label="Reset QR Code Position"
+                                onClick={() =>
+                                  setPolicy((p) => ({
+                                    ...p,
+                                    marking: { ...p.marking, qrCodeX: null, qrCodeY: null },
+                                  }))
+                                }
+                                disabled={saving}
+                              >
+                                Reset Position
+                              </Button>
+                            </div>
+                          )}
+                      </MarkCard>
                     </div>
                   ) : (
                     (() => {
@@ -1446,8 +1506,11 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                       marking: policy.marking,
                       statusMarking: policy.statusMarking,
                     }}
-                    pageKind={previewPageKind}
-                    onPageKindChange={setPreviewPageKind}
+                    onQrChange={
+                      markingTab === "ISSUED"
+                        ? (patch) => setPolicy((p) => ({ ...p, marking: { ...p.marking, ...patch } }))
+                        : undefined
+                    }
                     onPlacementChange={
                       markingTab === "ISSUED"
                         ? handleIssuedPlacementChange
@@ -1475,8 +1538,8 @@ export const ControlledCopiesPolicyView: React.FC = () => {
           editingLimit
             ? editingLimit.isSystem
               ? "Edit Global Default"
-              : "Edit Expiry Rule"
-            : "Add Expiry Rule"
+              : "Edit Link Expiry Rule"
+            : "Add Link Expiry Rule"
         }
         confirmText="Save"
       >
@@ -1555,7 +1618,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                   "less specific"}{" "}
               rule it will override for this scope (
               {overriddenLimit.durationValue}{" "}
-              {overriddenLimit.durationUnit.toLowerCase()}) — controlled copies
+              {overriddenLimit.durationUnit.toLowerCase()}) — e-mail links
               here will stay valid longer than that policy intends. Confirm this
               relaxation is deliberate before saving.
             </p>

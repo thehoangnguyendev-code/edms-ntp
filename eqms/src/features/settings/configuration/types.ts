@@ -44,9 +44,13 @@ export interface LocaleSettings {
   numberFormat: string;
 }
 
+export type ToastPosition = 'center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+
 export interface AppearanceSettings {
   /** Desktop Search + two-column draft filter panel. */
   compactDesktopFilters?: boolean;
+  /** Where system toast notifications appear. Machine values only; labels live in GeneralTab. */
+  toastPosition?: ToastPosition;
   systemSidebarCollapsedLogo?: string;
   /** When enabled by an administrator, show the signed-in user's profile at the bottom of the sidebar. */
   showSidebarUserProfile?: boolean;
@@ -67,6 +71,8 @@ export interface GeneralConfig {
   systemSidebarCollapsedLogo?: string;
   systemFavicon: string;
   systemFooter: string;
+  /** Text of the Dashboard top bar; empty means the built-in default. */
+  systemHeaderTitle?: string;
   navigationLabelOverrides?: Record<string, string>;
   adminEmail: string;
   maintenanceMode: boolean;
@@ -223,7 +229,7 @@ export interface WebhookConfig {
 }
 
 export interface StorageIntegration {
-  provider: 'local' | 'aws-s3' | 'azure-blob' | 'google-cloud' | 'minio' | 'nas' | 'google-drive' | 'onedrive' | 'sharepoint' | 'dropbox';
+  provider: 'local' | 'aws-s3' | 'azure-blob' | 'google-cloud' | 'minio' | 'nas' | 'google-drive' | 'dropbox';
   bucketName: string;
   region: string;
   accessKeyId: string;
@@ -251,12 +257,6 @@ export interface StorageIntegration {
   googleDriveClientId?: string;
   googleDriveClientSecret?: string;
   googleDriveFolderId?: string;
-  msTenantId?: string;
-  msClientId?: string;
-  msClientSecret?: string;
-  msSiteId?: string;
-  msDriveId?: string;
-  msLibraryFolder?: string;
   dropboxAccessToken?: string;
   dropboxAppKey?: string;
   dropboxAppSecret?: string;

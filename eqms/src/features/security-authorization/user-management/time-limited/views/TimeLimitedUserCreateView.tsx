@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { authApi } from "@/services/api/auth";
 import { settingsApi } from "@/services/api/settings";
+import { metadataApi } from "@/services/api/metadata";
 import { ROUTES } from "@/app/routes.constants";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { createTimeLimitedUser } from "@/components/ui/breadcrumb/breadcrumbs.config";
@@ -47,9 +48,10 @@ export const TimeLimitedUserCreateView: React.FC = () => {
   // parent re-render (including the one the search itself causes via setSelectedUserOptions
   // below), which is what produced the "dropdown loading liên tục" loop.
   const searchUsers = useCallback(async (query: string): Promise<MultiSelectOption[]> => {
-    const response = await settingsApi.getUsers({ search: query, limit: 20, page: 1 } as any);
-    const options: MultiSelectOption[] = response.data.map((u: any) => ({
-      label: `${u.fullName} (${u.username})`,
+    // Active users only: the metadata lookup filters on status, so suspended/terminated accounts are never offered.
+    const users = (await metadataApi.getUsersLookup({ search: query.trim() || undefined })).slice(0, 20);
+    const options: MultiSelectOption[] = users.map((u) => ({
+      label: u.username ? `${u.fullName} (${u.username})` : u.fullName,
       value: u.id,
     }));
     // Keep already-selected options resolvable even if a later search doesn't return them again.

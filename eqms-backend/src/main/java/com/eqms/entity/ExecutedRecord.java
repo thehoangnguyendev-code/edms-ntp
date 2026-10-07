@@ -79,6 +79,19 @@ public class ExecutedRecord {
     @Column(length = 128)
     private String checksum;
 
+    /** The recall-by-scan batch that produced this record; null for records created before batches existed. */
+    @Column(name = "recall_batch_id")
+    private UUID recallBatchId;
+
+    @Column(name = "file_name", length = 255)
+    private String fileName;
+
+    @Column(name = "content_type", length = 120)
+    private String contentType;
+
+    @Column(name = "file_size")
+    private Long fileSize;
+
     @Column(name = "submit_signature_id")
     private UUID submitSignatureId;
 
@@ -150,6 +163,14 @@ public class ExecutedRecord {
     public void setStorageVersionId(String storageVersionId) { this.storageVersionId = storageVersionId; }
     public String getChecksum() { return checksum; }
     public void setChecksum(String checksum) { this.checksum = checksum; }
+    public UUID getRecallBatchId() { return recallBatchId; }
+    public void setRecallBatchId(UUID recallBatchId) { this.recallBatchId = recallBatchId; }
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getContentType() { return contentType; }
+    public void setContentType(String contentType) { this.contentType = contentType; }
+    public Long getFileSize() { return fileSize; }
+    public void setFileSize(Long fileSize) { this.fileSize = fileSize; }
     public UUID getSubmitSignatureId() { return submitSignatureId; }
     public void setSubmitSignatureId(UUID submitSignatureId) { this.submitSignatureId = submitSignatureId; }
     public UserAccount getApprovedBy() { return approvedBy; }

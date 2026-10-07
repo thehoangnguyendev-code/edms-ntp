@@ -210,8 +210,6 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                 { label: 'Google Cloud Storage', value: 'google-cloud' },
                 { label: 'Network Attached Storage (NAS)', value: 'nas' },
                 { label: 'Google Drive', value: 'google-drive' },
-                { label: 'Microsoft OneDrive', value: 'onedrive' },
-                { label: 'Microsoft SharePoint Workspace', value: 'sharepoint' },
                 { label: 'Dropbox', value: 'dropbox' },
               ]}
             />
@@ -689,96 +687,6 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             </div>
           )}
 
-          {['onedrive', 'sharepoint'].includes(config.storage.provider) && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Tenant ID
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.msTenantId || ''}
-                    onChange={(e) => handleStorageChange('msTenantId', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="Enter MS Tenant ID"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Client ID
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.msClientId || ''}
-                    onChange={(e) => handleStorageChange('msClientId', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="Enter MS Client ID"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Client Secret
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showMsClientSecret ? 'text' : 'password'}
-                      value={config.storage.msClientSecret || ''}
-                      onChange={(e) => handleStorageChange('msClientSecret', e.target.value)}
-                      className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowMsClientSecret(!showMsClientSecret)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showMsClientSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                {config.storage.provider === 'sharepoint' && (
-                  <div className="md:col-span-2">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                      SharePoint Workspace Site ID
-                    </label>
-                    <input
-                      type="text"
-                      value={config.storage.msSiteId || ''}
-                      onChange={(e) => handleStorageChange('msSiteId', e.target.value)}
-                      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                      placeholder="domain.sharepoint.com,xxxx-xxxx-xxxx,yyyy-yyyy-yyyy"
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Drive ID
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.msDriveId || ''}
-                    onChange={(e) => handleStorageChange('msDriveId', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="Enter OneDrive / SharePoint workspace Drive ID"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Workspace Folder / Path
-                  </label>
-                  <input
-                    type="text"
-                    value={config.storage.msLibraryFolder || ''}
-                    onChange={(e) => handleStorageChange('msLibraryFolder', e.target.value)}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 "
-                    placeholder="e.g. /Documents"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
           {config.storage.provider === 'dropbox' && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -866,8 +774,6 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                 || (config.storage.provider === 'azure-blob' && (!config.storage.bucketName?.trim() || !config.storage.accessKeyId?.trim() || !config.storage.secretAccessKey?.trim()))
                 || (config.storage.provider === 'google-cloud' && (!config.storage.bucketName?.trim() || !config.storage.accessKeyId?.trim() || !config.storage.secretAccessKey?.trim()))
                 || (config.storage.provider === 'google-drive' && (!config.storage.googleDriveClientId?.trim() || !config.storage.googleDriveClientSecret?.trim() || !config.storage.googleDriveFolderId?.trim()))
-                || (config.storage.provider === 'onedrive' && (!config.storage.msTenantId?.trim() || !config.storage.msClientId?.trim() || !config.storage.msClientSecret?.trim() || !config.storage.msDriveId?.trim()))
-                || (config.storage.provider === 'sharepoint' && (!config.storage.msTenantId?.trim() || !config.storage.msClientId?.trim() || !config.storage.msClientSecret?.trim() || !config.storage.msSiteId?.trim() || !config.storage.msDriveId?.trim()))
                 || (config.storage.provider === 'dropbox' && (!config.storage.dropboxAccessToken?.trim() || !config.storage.dropboxAppKey?.trim() || !config.storage.dropboxAppSecret?.trim() || !config.storage.dropboxFolderPath?.trim()))
               }
             >

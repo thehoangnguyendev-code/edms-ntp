@@ -1,6 +1,10 @@
 package com.eqms.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -33,6 +37,39 @@ class SystemConfigurationServiceBrandingTest {
         return new SystemConfigurationService(repository, null, mapper, null, null, null, null, null,
                 "http://localhost:9000", "bucket", "key", "secret", "documents", "controlled-copies",
                 "templates", "training", "audit", "temp", 5);
+    }
+
+    @Test
+    void headerTitleIsTheAdministratorsTextOrNothingAtAll() throws Exception {
+        assertNull(serviceWithGeneral("{}").getPublicBranding().systemHeaderTitle());
+        assertNull(serviceWithGeneral("{\"systemHeaderTitle\":null}").getPublicBranding().systemHeaderTitle());
+        assertNull(serviceWithGeneral("{\"systemHeaderTitle\":\"   \"}").getPublicBranding().systemHeaderTitle());
+        assertEquals("Quality Hub", serviceWithGeneral("{\"systemHeaderTitle\":\"  Quality Hub \"}").getPublicBranding().systemHeaderTitle());
+    }
+
+    @Test
+    void headerTitleIsReadFromTheGeneralSettingsNotFromTheAppearanceSection() throws Exception {
+        assertNull(serviceWithGeneral("{\"appearance\":{\"systemHeaderTitle\":\"Hidden\"}}").getPublicBranding().systemHeaderTitle());
+    }
+
+    @Test
+    void headerTitleValidationAcceptsMissingBlankAndOneShortLine() throws Exception {
+        for (String json : new String[] {"{}", "{\"systemHeaderTitle\":null}", "{\"systemHeaderTitle\":\"\"}",
+                "{\"systemHeaderTitle\":\"Electronic Quality Management Software\"}", "{\"systemHeaderTitle\":\"Phần mềm quản lý chất lượng điện tử\"}"}) {
+            assertDoesNotThrow(() -> SystemConfigurationService.validateSystemHeaderTitle(mapper.readTree(json)), json);
+        }
+        assertDoesNotThrow(() -> SystemConfigurationService.validateSystemHeaderTitle(null));
+    }
+
+    @Test
+    void headerTitleValidationRefusesWhatCannotBeATitle() throws Exception {
+        String tooLong = "x".repeat(SystemConfigurationService.SYSTEM_HEADER_TITLE_MAX_LENGTH + 1);
+        assertDoesNotThrow(() -> SystemConfigurationService.validateSystemHeaderTitle(
+                mapper.readTree("{\"systemHeaderTitle\":\"" + "x".repeat(SystemConfigurationService.SYSTEM_HEADER_TITLE_MAX_LENGTH) + "\"}")));
+        for (String json : new String[] {"{\"systemHeaderTitle\":\"" + tooLong + "\"}", "{\"systemHeaderTitle\":123}",
+                "{\"systemHeaderTitle\":{\"a\":1}}", "{\"systemHeaderTitle\":\"two\\nlines\"}", "{\"systemHeaderTitle\":\"tab\\there\"}"}) {
+            assertThrows(IllegalArgumentException.class, () -> SystemConfigurationService.validateSystemHeaderTitle(mapper.readTree(json)), json);
+        }
     }
 
     @Test

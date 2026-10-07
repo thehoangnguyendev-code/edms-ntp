@@ -39,6 +39,7 @@ const { documentApiMock, securityApiMock } = vi.hoisted(() => ({
     getDocumentDetailSnapshot: vi.fn(),
     getDocumentAuditTrail: vi.fn(),
     obsoleteDocument: vi.fn(),
+    reopenDocument: vi.fn(),
     getDocumentSignatures: vi.fn(async () => []),
   },
   securityApiMock: {
@@ -242,5 +243,68 @@ describe("DetailDocumentView -- TC-DOC-057/058/059/060: stale-state recovery on 
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Obsolete" })).not.toBeInTheDocument(),
     );
+  });
+});
+
+const reopenCapabilities = (reopenAllowed: boolean) => ({
+  actions: {
+    obsolete: { allowed: false },
+    reopen: { allowed: reopenAllowed },
+  },
+});
+
+describe("DetailDocumentView -- Reopen of a closed document", () => {
+  it("shows Reopen in the footer only when the server capability allows it", async () => {
+    securityApiMock.getResourceCapabilities.mockResolvedValue(reopenCapabilities(true));
+    const view = renderView();
+    expect(await screen.findByRole("button", { name: "Reopen" })).toBeInTheDocument();
+    view.unmount();
+
+    securityApiMock.getResourceCapabilities.mockResolvedValue(reopenCapabilities(false));
+    renderView();
+    await screen.findByTestId("general-tab");
+    await waitFor(() => expect(securityApiMock.getResourceCapabilities).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("button", { name: "Reopen" })).not.toBeInTheDocument();
+  });
+
+  it("never offers Reopen when the capability call fails (the screen decides nothing on its own)", async () => {
+    securityApiMock.getResourceCapabilities.mockRejectedValue(new Error("network error"));
+    renderView();
+    await screen.findByTestId("general-tab");
+    await waitFor(() => expect(securityApiMock.getResourceCapabilities).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Reopen" })).not.toBeInTheDocument();
+  });
+
+  it("asks for the e-signature, sends the reason and token, then reloads the document", async () => {
+    securityApiMock.getResourceCapabilities.mockResolvedValue(reopenCapabilities(true));
+    documentApiMock.reopenDocument.mockResolvedValue({ id: "doc-1" });
+    renderView();
+    await screen.findByText("doc-1");
+
+    // Nothing is sent before the signature is given.
+    fireEvent.click(await screen.findByRole("button", { name: "Reopen" }));
+    expect(documentApiMock.reopenDocument).not.toHaveBeenCalled();
+    const snapshotCallsBefore = documentApiMock.getDocumentDetailSnapshot.mock.calls.length;
+
+    fireEvent.click(await screen.findByTestId("esign-confirm"));
+
+    await waitFor(() => expect(documentApiMock.reopenDocument).toHaveBeenCalledWith("doc-1", {
+      reason: "test reason",
+      signatureToken: "tok-1",
+    }));
+    await waitFor(() => expect(documentApiMock.getDocumentDetailSnapshot.mock.calls.length).toBeGreaterThan(snapshotCallsBefore));
+  });
+
+  it("refreshes the document and its capabilities when the server refuses (stale state)", async () => {
+    securityApiMock.getResourceCapabilities.mockResolvedValue(reopenCapabilities(true));
+    documentApiMock.reopenDocument.mockRejectedValue({ response: { status: 409 } });
+    renderView();
+    await screen.findByText("doc-1");
+    fireEvent.click(await screen.findByRole("button", { name: "Reopen" }));
+    const capabilityCallsBefore = securityApiMock.getResourceCapabilities.mock.calls.length;
+
+    fireEvent.click(await screen.findByTestId("esign-confirm"));
+
+    await waitFor(() => expect(securityApiMock.getResourceCapabilities.mock.calls.length).toBeGreaterThan(capabilityCallsBefore));
   });
 });

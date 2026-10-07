@@ -105,10 +105,10 @@ class ControlledCopyAuthorizationServiceTest {
         policy.setAllowPortalView(true);
 
         lenient().when(controlledCopyPolicyService.loadOrDefault()).thenReturn(policy);
-        lenient().when(documentAuthorizationService.canAccessControlledCopy(eq(user), any(DocumentRecord.class))).thenReturn(true);
-        lenient().when(documentAuthorizationService.canAccessControlledCopy(eq(user), any(DocumentRevisionRecord.class))).thenReturn(true);
-        lenient().doNothing().when(documentAuthorizationService).requireCanAccessControlledCopy(eq(user), any(DocumentRecord.class));
-        lenient().doNothing().when(documentAuthorizationService).requireCanAccessControlledCopy(eq(user), any(DocumentRevisionRecord.class));
+        lenient().when(documentAuthorizationService.canViewControlledCopy(eq(user), any(ControlledCopyRecord.class))).thenReturn(true);
+        lenient().when(documentAuthorizationService.canViewControlledCopyBatch(eq(user))).thenReturn(true);
+        lenient().doNothing().when(documentAuthorizationService).requireCanViewControlledCopy(eq(user), any(ControlledCopyRecord.class));
+        lenient().doNothing().when(documentAuthorizationService).requireCanViewControlledCopyBatch(eq(user));
         lenient().when(secureFileAccessService.check(eq(user), any(), any(), any(), any())).thenAnswer(invocation -> com.eqms.dto.security.FileAccessDecision.allowed(
                 invocation.getArgument(1),
                 invocation.getArgument(2),

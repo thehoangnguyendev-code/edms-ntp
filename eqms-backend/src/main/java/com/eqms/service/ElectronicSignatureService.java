@@ -294,6 +294,15 @@ public class ElectronicSignatureService {
             String normalized = token.name().trim().toUpperCase(Locale.ROOT);
             String collapsed = collapsePlaceholderName(normalized);
 
+            // New documents with no review stage leave every reviewer-signature cell blank.
+            // Legacy skipped-stage rendering and existing signatures remain unchanged.
+            if ("OPTIONAL".equals(revision.reviewRequirement()) && isStageSkipped(revision, "REVIEWED")
+                    && (isReviewerCollectionPlaceholder(collapsed) || isReviewerIndexedPlaceholder(collapsed)
+                    || "REVIEWED".equals(meaningFromSignaturePlaceholder(placeholder)))) {
+                values.put(key, "");
+                continue;
+            }
+
             if (isReviewerCollectionPlaceholder(collapsed)) {
                 values.put(key, renderParticipantSignatureCollection(reviewerBlocks, token.transform()));
                 continue;

@@ -78,6 +78,15 @@ public class ControlledCopyBatchDiscrepancyScanner {
                     scanned++;
                 }
             } while (activeBatches.hasNext());
+            // A batch that was flagged and then reached a terminal status through the normal flow is no longer "active", so the
+            // loop above never sees it again and its alert would stay open for ever. Re-check every open alert whose batch is
+            // terminal: it is cleared when the batch agrees with its copies, kept (and refreshed) when it still does not.
+            for (ControlledCopyBatchStatusDiscrepancy open : discrepancyRepository.findAllByStatus(ControlledCopyBatchStatusDiscrepancy.STATUS_OPEN)) {
+                ControlledCopyDistributionBatch batch = open.getBatch();
+                if (batch != null && TERMINAL_STATUSES.contains(normalize(batch.getStatusCode()))) {
+                    found += scanBatch(batch, now) ? 1 : 0;
+                }
+            }
             if (scanned == 0) {
                 return;
             }

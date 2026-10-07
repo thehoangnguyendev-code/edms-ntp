@@ -9,6 +9,7 @@ import type { DocumentType, DocumentStatus } from "@/features/documents/types";
 import { IconFilter2 } from "@tabler/icons-react";
 import { DesktopFilterPanel, type DesktopFilterField } from '@/components/ui/filter/DesktopFilterPanel';
 import { FilterOptionList } from '@/components/ui/filter/FilterOptionList';
+import { FilterSearchInput } from '@/components/ui/filter/FilterSearchInput';
 import { useBranding } from '@/components/branding/BrandLogo';
 
 interface DocumentFiltersProps {
@@ -42,7 +43,19 @@ interface DocumentFiltersProps {
   onCorrelatedDocumentFilterChange?: (value: string) => void;
   templateFilter?: string;
   onTemplateFilterChange?: (value: string) => void;
+  reviewerFilter?: string;
+  onReviewerChange?: (value: string) => void;
+  approverFilter?: string;
+  onApproverChange?: (value: string) => void;
+  requiresTrainingFilter?: string;
+  onRequiresTrainingChange?: (value: string) => void;
+  showReviewerFilter?: boolean;
+  showApproverFilter?: boolean;
+  showRequiresTrainingFilter?: boolean;
+  /** Options of the Reviewers / Approvers filters (people), with the same debounced server search as Author. */
+  participantOptions?: SelectOption[];
   onClearFilters?: () => void;
+  filterTrailing?: React.ReactNode;
   showTypeFilter?: boolean;
   showBusinessUnitFilter?: boolean;
   showDepartmentFilter?: boolean;
@@ -98,7 +111,18 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
   onCorrelatedDocumentFilterChange = () => {},
   templateFilter = "All",
   onTemplateFilterChange = () => {},
+  reviewerFilter = "All",
+  onReviewerChange = () => {},
+  approverFilter = "All",
+  onApproverChange = () => {},
+  requiresTrainingFilter = "All",
+  onRequiresTrainingChange = () => {},
+  showReviewerFilter = false,
+  showApproverFilter = false,
+  showRequiresTrainingFilter = false,
+  participantOptions,
   onClearFilters = () => {},
+  filterTrailing,
   showTypeFilter = true,
   showBusinessUnitFilter = true,
   showDepartmentFilter = true,
@@ -153,6 +177,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
   const resolvedBusinessUnitOptions = businessUnitOptions ?? [ALL_OPTION];
   const resolvedDepartmentOptions = departmentOptions ?? [ALL_OPTION];
   const resolvedAuthorOptions = authorOptions ?? [ALL_OPTION];
+  const resolvedParticipantOptions = participantOptions ?? [ALL_OPTION];
 
   const binaryOptions = [
     { label: "All", value: "All" },
@@ -164,6 +189,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
     status: String(statusFilter), documentType: String(typeFilter), businessUnit: businessUnitFilter,
     department: departmentFilter, authorId: authorFilter, relatedDocument: relatedDocumentFilter,
     correlatedDocument: correlatedDocumentFilter, isTemplate: templateFilter,
+    reviewerId: reviewerFilter, approverId: approverFilter, requiresTraining: requiresTrainingFilter,
     createdFrom: createdFromDate, createdTo: createdToDate, effectiveFrom: effectiveFromDate,
     effectiveTo: effectiveToDate, validFrom: validFromDate, validTo: validToDate,
   };
@@ -175,7 +201,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
     if (visible) fields.push({ id, label, render: (draft, change, active) =>
       <FilterOptionList label={label} value={draft[id]} options={options} disabled={disabled} active={active}
         onChange={value => { if (!disabled) change(id, String(value)); }}
-        onSearch={id === 'authorId' ? onAuthorSearch : undefined} /> });
+        onSearch={id === 'authorId' || id === 'reviewerId' || id === 'approverId' ? onAuthorSearch : undefined} /> });
   };
   addSelect('status', 'Status', resolvedStatusOptions, true, disableStatusFilter);
   addSelect('documentType', 'Document Type', resolvedTypeOptions, showTypeFilter);
@@ -185,6 +211,9 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
   addSelect('relatedDocument', 'Related Document', binaryOptions, showRelatedDocumentFilter);
   addSelect('correlatedDocument', 'Correlated Document', binaryOptions, showCorrelatedDocumentFilter);
   addSelect('isTemplate', 'Is Template', binaryOptions, showTemplateFilter);
+  addSelect('reviewerId', 'Reviewers', resolvedParticipantOptions, showReviewerFilter);
+  addSelect('approverId', 'Approvers', resolvedParticipantOptions, showApproverFilter);
+  addSelect('requiresTraining', 'Required Training?', binaryOptions, showRequiresTrainingFilter);
   for (const [id, label] of [['created', 'Created Date Range'], ['effective', 'Effective Date Range'], ['valid', 'Valid Date Range']]) {
     fields.push({ id, label, render: (draft, change, active) => active ? <DateRangePicker inline label={label}
       startDate={draft[`${id}From`]} endDate={draft[`${id}To`]}
@@ -196,6 +225,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
       documentType: value => onTypeChange(value as DocumentType | 'All'), businessUnit: onBusinessUnitChange,
       department: onDepartmentChange, authorId: onAuthorChange, relatedDocument: onRelatedDocumentFilterChange,
       correlatedDocument: onCorrelatedDocumentFilterChange, isTemplate: onTemplateFilterChange,
+      reviewerId: onReviewerChange, approverId: onApproverChange, requiresTraining: onRequiresTrainingChange,
       createdFrom: onCreatedFromDateChange, createdTo: onCreatedToDateChange,
       effectiveFrom: onEffectiveFromDateChange, effectiveTo: onEffectiveToDateChange,
       validFrom: onValidFromDateChange, validTo: onValidToDateChange,
@@ -248,10 +278,9 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         </div>
       )}
 
-      {compactDesktopFilters && <DesktopFilterPanel values={committed} defaults={defaults} fields={fields} onApply={applyCompactFilters}
-        search={!hideSearch && <input type="search" aria-label="Search documents" placeholder="Search documents..." value={searchQuery}
-          onChange={event => onSearchChange(event.target.value)}
-          className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none" />} />}
+      {compactDesktopFilters && <DesktopFilterPanel values={committed} defaults={defaults} fields={fields} onApply={applyCompactFilters} trailing={filterTrailing}
+        search={!hideSearch && <FilterSearchInput aria-label="Search documents" placeholder="Search documents..." value={searchQuery}
+          onChange={onSearchChange} />} />}
       <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
         {!hideSearch && (
           <div className="w-full">
@@ -337,6 +366,46 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
           />
         </div>
 
+        {showReviewerFilter && (
+          <div className="w-full">
+            <Select
+              label="Reviewers"
+              value={reviewerFilter}
+              onChange={(value) => onReviewerChange(value as string)}
+              options={resolvedParticipantOptions}
+              onSearch={onAuthorSearch}
+              placeholder="Select reviewer"
+              searchPlaceholder="Search reviewer..."
+            />
+          </div>
+        )}
+
+        {showApproverFilter && (
+          <div className="w-full">
+            <Select
+              label="Approvers"
+              value={approverFilter}
+              onChange={(value) => onApproverChange(value as string)}
+              options={resolvedParticipantOptions}
+              onSearch={onAuthorSearch}
+              placeholder="Select approver"
+              searchPlaceholder="Search approver..."
+            />
+          </div>
+        )}
+
+        {showRequiresTrainingFilter && (
+          <div className="w-full">
+            <Select
+              label="Required Training?"
+              value={requiresTrainingFilter}
+              onChange={(value) => onRequiresTrainingChange(value as string)}
+              options={binaryOptions}
+              enableSearch={false}
+            />
+          </div>
+        )}
+
         {showRelatedDocumentFilter && (
           <div className="w-full">
             <Select
@@ -406,7 +475,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
           />
         </div>
 
-        <div className="flex items-end">
+        <div className="flex items-end gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -415,6 +484,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
           >
             Clear Filters
           </Button>
+          {filterTrailing}
         </div>
       </div>
     </div>
@@ -538,6 +608,69 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
             ))}
           </div>
         </FilterAccordionItem>
+
+        {showReviewerFilter && (
+          <FilterAccordionItem
+            label="Reviewers"
+            isExpanded={expandedSections.has("reviewer")}
+            onToggle={() => toggleSection("reviewer")}
+          >
+            <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
+              {resolvedParticipantOptions.map((opt) => (
+                <button
+                  key={String(opt.value)}
+                  onClick={() => onReviewerChange(opt.value as string)}
+                  className={getOptionClassName(reviewerFilter === opt.value)}
+                >
+                  <span className="text-xs">{opt.label}</span>
+                  {reviewerFilter === opt.value && <Check size={16} className="text-emerald-500" />}
+                </button>
+              ))}
+            </div>
+          </FilterAccordionItem>
+        )}
+
+        {showApproverFilter && (
+          <FilterAccordionItem
+            label="Approvers"
+            isExpanded={expandedSections.has("approver")}
+            onToggle={() => toggleSection("approver")}
+          >
+            <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
+              {resolvedParticipantOptions.map((opt) => (
+                <button
+                  key={String(opt.value)}
+                  onClick={() => onApproverChange(opt.value as string)}
+                  className={getOptionClassName(approverFilter === opt.value)}
+                >
+                  <span className="text-xs">{opt.label}</span>
+                  {approverFilter === opt.value && <Check size={16} className="text-emerald-500" />}
+                </button>
+              ))}
+            </div>
+          </FilterAccordionItem>
+        )}
+
+        {showRequiresTrainingFilter && (
+          <FilterAccordionItem
+            label="Required Training?"
+            isExpanded={expandedSections.has("requiresTraining")}
+            onToggle={() => toggleSection("requiresTraining")}
+          >
+            <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
+              {binaryOptions.map((opt) => (
+                <button
+                  key={String(opt.value)}
+                  onClick={() => onRequiresTrainingChange(opt.value)}
+                  className={getOptionClassName(requiresTrainingFilter === opt.value)}
+                >
+                  <span className="text-xs">{opt.label}</span>
+                  {requiresTrainingFilter === opt.value && <Check size={16} className="text-emerald-500" />}
+                </button>
+              ))}
+            </div>
+          </FilterAccordionItem>
+        )}
 
         {showRelatedDocumentFilter && (
           <FilterAccordionItem

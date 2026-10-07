@@ -1,23 +1,24 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigateWithLoading, usePortalDropdown, useTableDragScroll } from "@/hooks";
+import { useNavigateWithLoading, usePortalDropdown } from "@/hooks";
 import { ROUTES } from "@/app/routes.constants";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { documentList } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { Button } from "@/components/ui/button/Button";
 import { Badge, type BadgeColor } from "@/components/ui/badge/Badge";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { FullPageLoading, SectionLoading } from "@/components/ui/loading/Loading";
 import { cn } from "@/components/ui/utils";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import type { PortalDropdownMenuProps } from "@/components/ui/dropdown/PortalDropdownMenu";
 import { IconInfoCircle, IconPencilMinus, IconPlus, IconHistory, IconSparkles, IconArrowRight, IconFileUpload, IconFilePlus } from "@tabler/icons-react";
-import { ChevronDown, ChevronUp, ChevronRight, Download, History, MoreVertical, Edit, FileStack } from "lucide-react";
+import { ChevronRight, Download, History, MoreVertical, Edit, FileStack } from "lucide-react";
 import { formatDateTimeLong, formatDateUS } from "@/utils/format";
 import { DocumentFilters } from "@/features/documents/shared/components/DocumentFilters";
-import { ExpandedDocumentRow } from "@/features/documents/shared/components/ExpandedDocumentRow";
+import { ExpandedDocumentRow, preloadExpandedDocumentDetails } from "@/features/documents/shared/components/ExpandedDocumentRow";
 import { hasDocumentExpansion } from "@/features/documents/shared/rowExpansion";
 import { useDocumentServerTable } from "@/features/documents/hooks";
 import { useDocumentPermissions } from "@/features/documents/shared/useDocumentPermissions";
@@ -36,7 +37,7 @@ import type { DocumentViewType, DocumentListItem } from "./types";
 import type { SelectOption } from "@/components/ui/select/Select";
 import { mapRevisionSummaryFromApi } from "@/features/documents/shared/statusMapping";
 import { getStatusBadgeColor } from "@/utils/status";
-import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface DocumentsViewProps {
   viewType: DocumentViewType;
@@ -144,7 +145,6 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
   const canLegacyImport = hasPermissionAlias("documents.legacy_import.manage");
   const { showToast } = useToast();
   const { navigateTo, navigateToPrepared, isNavigating } = useNavigateWithLoading();
-  const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const [isNewDocChoiceOpen, setIsNewDocChoiceOpen] = useState(false);
   const [expandedDocumentId, setExpandedDocumentId] = React.useState<string | null>(null);
@@ -168,6 +168,13 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
     setTemplateFilter,
     authorFilter,
     setAuthorFilter,
+    reviewerFilter,
+    setReviewerFilter,
+    approverFilter,
+    setApproverFilter,
+    requiresTrainingFilter,
+    setRequiresTrainingFilter,
+    participantOptions,
     createdFromDate,
     setCreatedFromDate,
     createdToDate,
@@ -401,26 +408,111 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
   };
 
   
-  const tableColumns = useMemo(() => ([
-    { id: "documentNumber", label: "Document Number", sortable: true },
-    { id: "created", label: "Created", sortable: true },
-    { id: "openedBy", label: "Opened By", sortable: true },
-    { id: "title", label: "Document Name", sortable: true },
-    { id: "status", label: "Status", sortable: true },
-    { id: "type", label: "Document Type", sortable: true },
-    { id: "relatedDocuments", label: "Related Document", sortable: false },
-    { id: "correlatedDocuments", label: "Correlated Document", sortable: false },
-    { id: "template", label: "Template", sortable: false },
-    { id: "businessUnit", label: "Business Unit", sortable: true },
-    { id: "department", label: "Department", sortable: true },
-    { id: "author", label: "Author", sortable: true },
-    { id: "effectiveDate", label: "Effective Date", sortable: true },
-    { id: "validUntil", label: "Valid Until", sortable: true },
-    { id: "action", label: "Action", sortable: false },
-  ]), []);
 
   const visibleAuthorOptions = authorOptions as SelectOption[];
   const canRequestControlledCopyForRow = (doc: DocumentListItem) => Boolean(doc.canRequestControlledCopy);
+
+  type Row = DocumentListItem;
+  const renderYesNo = (value?: boolean) =>
+    value ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-400">No</span>;
+  const renderNames = (names?: string[]) =>
+    names && names.length > 0 ? <span title={names.join(", ")}>{names.join(", ")}</span> : "-";
+  const documentColumns: DataTableColumn<Row>[] = [
+    {
+      id: "expand",
+      header: "",
+      label: "Expand",
+      locked: true,
+      headerClassName: TABLE_STYLES.headerCell36,
+      cell: (doc) =>
+        hasDocumentExpansion(doc) ? (
+          <button
+            type="button"
+            onClick={() => handleExpandDocument(doc.id)}
+            // Fetch the document's revisions as soon as the pointer reaches the chevron, so the row opens with them.
+            onPointerEnter={() => expandedDocumentId !== doc.id && preloadExpandedDocumentDetails({ documentId: doc.id })}
+            onPointerDown={() => expandedDocumentId !== doc.id && preloadExpandedDocumentDetails({ documentId: doc.id })}
+            onFocus={() => expandedDocumentId !== doc.id && preloadExpandedDocumentDetails({ documentId: doc.id })}
+            aria-label={`${expandedDocumentId === doc.id ? "Collapse" : "Expand"} document ${doc.documentNumber}`}
+            aria-expanded={expandedDocumentId === doc.id}
+            className="inline-flex items-center justify-center h-5 w-5 rounded-lg transition-colors hover:bg-slate-200"
+          >
+            <ChevronRight className={cn("h-3.5 w-3.5 text-slate-500 transition-transform", expandedDocumentId === doc.id ? "rotate-90" : "rotate-0")} />
+          </button>
+        ) : null,
+    },
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_doc, index) => (currentPage - 1) * itemsPerPage + index + 1 },
+    {
+      id: "documentNumber",
+      header: "Document Number",
+      label: "Document Number",
+      sort: { direction: sortConfig.key === "documentNumber" ? sortConfig.direction : undefined, onSort: () => handleSort("documentNumber") },
+      cellClassName: TABLE_STYLES.cell27,
+      cell: (doc) => (
+        <span className="cursor-pointer hover:underline" onClick={() => { void navigateToDocument(doc.id); }}>
+          {doc.documentNumber}
+        </span>
+      ),
+    },
+    { id: "created", header: "Created", label: "Created", sort: { direction: sortConfig.key === "created" ? sortConfig.direction : undefined, onSort: () => handleSort("created") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (doc) => formatDateTimeLong(doc.created) },
+    { id: "openedBy", header: "Opened By", label: "Opened By", sort: { direction: sortConfig.key === "openedBy" ? sortConfig.direction : undefined, onSort: () => handleSort("openedBy") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.openedBy || "-" },
+    { id: "title", header: "Document Name", label: "Document Name", sort: { direction: sortConfig.key === "title" ? sortConfig.direction : undefined, onSort: () => handleSort("title") }, cellClassName: TABLE_STYLES.cell28, cell: (doc) => doc.documentName || "-" },
+    { id: "status", header: "Status", label: "Status", sort: { direction: sortConfig.key === "status" ? sortConfig.direction : undefined, onSort: () => handleSort("status") }, cell: (doc) => <Badge color={getBadgeColor(doc.statusCode, doc.status)} size="sm">{doc.status}</Badge> },
+    { id: "type", header: "Document Type", label: "Document Type", sort: { direction: sortConfig.key === "type" ? sortConfig.direction : undefined, onSort: () => handleSort("type") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.type || "-" },
+    { id: "relatedDocuments", header: "Related Document", label: "Related Document", cell: (doc) => renderYesNo(doc.hasRelatedDocuments) },
+    { id: "correlatedDocuments", header: "Correlated Document", label: "Correlated Document", cell: (doc) => renderYesNo(doc.hasCorrelatedDocuments) },
+    { id: "template", header: "Template", label: "Template", cell: (doc) => renderYesNo(doc.isTemplate) },
+    { id: "businessUnit", header: "Business Unit", label: "Business Unit", sort: { direction: sortConfig.key === "businessUnit" ? sortConfig.direction : undefined, onSort: () => handleSort("businessUnit") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.businessUnit || "-" },
+    { id: "department", header: "Department", label: "Department", sort: { direction: sortConfig.key === "department" ? sortConfig.direction : undefined, onSort: () => handleSort("department") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.department || "-" },
+    { id: "author", header: "Author", label: "Author", sort: { direction: sortConfig.key === "author" ? sortConfig.direction : undefined, onSort: () => handleSort("author") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.author || "-" },
+    { id: "effectiveDate", header: "Effective Date", label: "Effective Date", sort: { direction: sortConfig.key === "effectiveDate" ? sortConfig.direction : undefined, onSort: () => handleSort("effectiveDate") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (doc) => formatCellDate(doc.effectiveDate) },
+    { id: "validUntil", header: "Valid Until", label: "Valid Until", sort: { direction: sortConfig.key === "validUntil" ? sortConfig.direction : undefined, onSort: () => handleSort("validUntil") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (doc) => formatCellDate(doc.validUntil) },
+    { id: "reviewers", header: "Reviewers", label: "Reviewers", sort: { direction: sortConfig.key === "reviewers" ? sortConfig.direction : undefined, onSort: () => handleSort("reviewers") }, cellClassName: "text-slate-700", cell: (doc) => renderNames(doc.reviewerNames) },
+    { id: "requiresTraining", header: "Required Training?", label: "Required Training?", sort: { direction: sortConfig.key === "requiresTraining" ? sortConfig.direction : undefined, onSort: () => handleSort("requiresTraining") }, cell: (doc) => renderYesNo(doc.requiresTraining) },
+    { id: "trainingPeriodDays", header: "Training Period (Days)", label: "Training Period (Days)", sort: { direction: sortConfig.key === "trainingPeriodDays" ? sortConfig.direction : undefined, onSort: () => handleSort("trainingPeriodDays") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => (doc.requiresTraining && doc.trainingPeriodDays != null ? doc.trainingPeriodDays : "-") },
+    { id: "approvers", header: "Approvers", label: "Approvers", sort: { direction: sortConfig.key === "approvers" ? sortConfig.direction : undefined, onSort: () => handleSort("approvers") }, cellClassName: "text-slate-700", cell: (doc) => renderNames(doc.approverNames) },
+  ];
+  const documentsAction: DataTableAction<Row> = {
+    header: "Action",
+    cell: (doc) => (
+      <div onClick={(e) => e.stopPropagation()}>
+        <button
+          ref={getRef(doc.id)}
+          onClick={(e) => toggle(doc.id, e)}
+          className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
+          aria-label="More actions"
+        >
+          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
+        </button>
+        <RowMenu
+          onView={() => {
+            void navigateToDocument(doc.id);
+          }}
+          onEdit={() => {
+            // An Active document being upgraded is not an initial draft: the Author goes to its
+            // detail page, where Upload Revision is offered once the DCO saved the configuration.
+            if (doc.canEditForUpgrade) {
+              void navigateToDocument(doc.id);
+              return;
+            }
+            void handleEditDocument(doc.id);
+          }}
+          onRequestControlledCopy={() => {
+            handleRequestControlledCopy(doc);
+          }}
+          onAuditTrail={() => {
+            void navigateToDocument(doc.id, "audit");
+          }}
+          isOpen={openId === doc.id}
+          onClose={close}
+          position={position}
+          canEditDocument={canCurrentUserEditDocument(doc)}
+          canRequestControlledCopy={canRequestControlledCopyForRow(doc)}
+        />
+      </div>
+    ),
+  };
+  const { layout: documentLayout, control: documentControl } = useCustomColumnLayout("documents.list", documentColumns, documentsAction);
 
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
@@ -512,6 +604,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         <div className="p-4 md:p-5 flex-1 flex flex-col">
           <DocumentFilters
+            filterTrailing={documentControl}
             onApplyFilters={applyFilters}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -527,6 +620,16 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
             onCorrelatedDocumentFilterChange={setCorrelatedDocumentFilter}
             templateFilter={templateFilter}
             onTemplateFilterChange={setTemplateFilter}
+            showReviewerFilter
+            showApproverFilter
+            showRequiresTrainingFilter
+            reviewerFilter={reviewerFilter}
+            onReviewerChange={setReviewerFilter}
+            approverFilter={approverFilter}
+            onApproverChange={setApproverFilter}
+            requiresTrainingFilter={requiresTrainingFilter}
+            onRequiresTrainingChange={setRequiresTrainingFilter}
+            participantOptions={participantOptions}
             authorFilter={authorFilter}
             onAuthorChange={(value) => {
               if (!authorFilterDisabled) {
@@ -566,191 +669,51 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
             )}
 
             <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col flex-1 bg-white transition-all duration-300 relative">
-              <div
-                ref={scrollerRef as React.RefObject<HTMLDivElement>}
-                className={cn("overflow-x-auto", isDragging ? "cursor-grabbing select-none" : "cursor-grab")}
-                {...dragEvents}
-              >
-                <TableMarkup.Root className="w-full min-w-[1600px]">
-            <TableMarkup.Head className="sticky top-0 z-30">
-              <TableMarkup.Row>
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell36} />
-                <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
-                  No.
-                </TableMarkup.HeaderCell>
-                {tableColumns.map((col) => {
-                  const isSorted = sortConfig.key === col.id;
-                  const canSort = col.sortable;
-                  return (
-                    <TableMarkup.HeaderCell
-                      key={col.id}
-                      onClick={canSort ? () => handleSort(col.id) : undefined}
-                      className={cn(
-                        "sticky top-0 z-20 bg-slate-50 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap transition-colors group",
-                        canSort && "cursor-pointer hover:bg-slate-100 hover:text-slate-700",
-                        col.id === "action" && "right-0 z-30 text-center before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]",
-                        col.id === "documentNumber" && "min-w-[170px]"
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="truncate">{col.label}</span>
-                        {canSort && (
-                          <div className="flex flex-col text-slate-400 flex-shrink-0 group-hover:text-slate-500">
-                            <ChevronUp className={cn("h-3 w-3 -mb-1", isSorted && sortConfig.direction === "asc" ? "text-emerald-600" : "")} />
-                            <ChevronDown className={cn("h-3 w-3", isSorted && sortConfig.direction === "desc" ? "text-emerald-600" : "")} />
-                          </div>
-                        )}
-                      </div>
-                    </TableMarkup.HeaderCell>
-                  );
-                })}
-              </TableMarkup.Row>
-            </TableMarkup.Head>
-            <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
-              {!isLoading && documents.length === 0 ? (
-                <TableMarkup.Row>
-                  <TableMarkup.Cell colSpan={tableColumns.length + 2} className="p-0">
-                    <TableEmptyState
-                      title={error ? "Unable to load documents" : "No Documents Found"}
-                      description={error || "We couldn't find any documents matching your filters. Try adjusting your search criteria."}
+              <DataTable
+                rows={documents}
+                getRowKey={(doc) => doc.id}
+                columns={documentLayout.columns}
+                columnLayout={documentLayout}
+                action={documentsAction}
+                isLoading={isLoading}
+                expandedRow={{
+                  isExpanded: (doc) => expandedDocumentId === doc.id && hasDocumentExpansion(doc),
+                  render: (doc) => (
+                    <ExpandedDocumentRow
+                      revision={doc}
+                      isExpanded={true}
+                      visibleColumnsLength={documentLayout.columns.length + 1}
+                      hasDocs={hasDocumentExpansion(doc)}
+                      documentId={doc.id}
                     />
-                  </TableMarkup.Cell>
-                </TableMarkup.Row>
-              ) : (
-                documents.map((doc, index) => (
-                  <React.Fragment key={doc.id}>
-                  <TableMarkup.Row className="hover:bg-slate-50/80 transition-colors group">
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-center border-b border-slate-200">
-                      {hasDocumentExpansion(doc) && <button
-                        type="button"
-                        onClick={() => handleExpandDocument(doc.id)}
-                        aria-label={`${expandedDocumentId === doc.id ? "Collapse" : "Expand"} document ${doc.documentNumber}`}
-                        aria-expanded={expandedDocumentId === doc.id}
-                        className="inline-flex items-center justify-center h-5 w-5 rounded-lg transition-colors hover:bg-slate-200"
-                      >
-                        <ChevronRight className={cn("h-3.5 w-3.5 text-slate-500 transition-transform", expandedDocumentId === doc.id ? "rotate-90" : "rotate-0")} />
-                      </button>}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className={TABLE_STYLES.cell30}>
-                      {(currentPage - 1) * itemsPerPage + index + 1}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className={TABLE_STYLES.cell27}
-                      onClick={() => {
-                        void navigateToDocument(doc.id);
-                      }}
-                    >
-                      {doc.documentNumber}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                      {formatDateTimeLong(doc.created)}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                      {doc.openedBy || "-"}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className={TABLE_STYLES.cell28}>
-                      {doc.documentName || "-"}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap">
-                      <Badge color={getBadgeColor(doc.statusCode, doc.status)} size="sm">
-                        {doc.status}
-                      </Badge>
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                      {doc.type || "-"}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                      {doc.hasRelatedDocuments ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-400">No</span>}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                      {doc.hasCorrelatedDocuments ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-400">No</span>}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                      {doc.isTemplate ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-400">No</span>}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                      {doc.businessUnit || "-"}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                      {doc.department || "-"}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
-                      {doc.author || "-"}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                      {formatCellDate(doc.effectiveDate)}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-600">
-                      {formatCellDate(doc.validUntil)}
-                    </TableMarkup.Cell>
-                    <TableMarkup.Cell
-                      onClick={(e) => e.stopPropagation()}
-                      className={TABLE_STYLES.emptyCell3}
-                    >
-                      <button
-                        ref={getRef(doc.id)}
-                        onClick={(e) => toggle(doc.id, e)}
-                        className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                        aria-label="More actions"
-                      >
-                        <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
-                      </button>
-                      <RowMenu
-                        onView={() => {
-                          void navigateToDocument(doc.id);
+                  ),
+                  asRow: false,
+                }}
+                emptyState={
+                  <TableEmptyState
+                    title={error ? "Unable to load documents" : "No Documents Found"}
+                    description={error || "We couldn't find any documents matching your filters. Try adjusting your search criteria."}
+                  />
+                }
+                pagination={
+                  totalItems > 0 ? (
+                    <div className="border-t border-slate-200">
+                      <TablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        isLoading={isTableLoading}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(value) => {
+                          setItemsPerPage(value);
                         }}
-                        onEdit={() => {
-                          // An Active document being upgraded is not an initial draft: the Author goes to its
-                          // detail page, where Upload Revision is offered once the DCO saved the configuration.
-                          if (doc.canEditForUpgrade) {
-                            void navigateToDocument(doc.id);
-                            return;
-                          }
-                          void handleEditDocument(doc.id);
-                        }}
-                        onRequestControlledCopy={() => {
-                          handleRequestControlledCopy(doc);
-                        }}
-                        onAuditTrail={() => {
-                          void navigateToDocument(doc.id, "audit");
-                        }}
-                        isOpen={openId === doc.id}
-                        onClose={close}
-                        position={position}
-                        canEditDocument={canCurrentUserEditDocument(doc)}
-                        canRequestControlledCopy={canRequestControlledCopyForRow(doc)}
+                        itemsPerPageOptions={[10, 20, 50]}
                       />
-                    </TableMarkup.Cell>
-                  </TableMarkup.Row>
-                  <ExpandedDocumentRow
-                    revision={doc}
-                    isExpanded={expandedDocumentId === doc.id}
-                    visibleColumnsLength={tableColumns.length + 2}
-                    hasDocs={hasDocumentExpansion(doc)}
-                    documentId={doc.id}
-                  />
-                  </React.Fragment>
-                ))
-              )}
-            </TableMarkup.Body>
-                </TableMarkup.Root>
-              </div>
-
-              {totalItems > 0 && (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={isTableLoading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={(value) => {
-                      setItemsPerPage(value);
-                    }}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                </div>
-              )}
+                    </div>
+                  ) : undefined
+                }
+              />
             </div>
           </div>
         </div>
