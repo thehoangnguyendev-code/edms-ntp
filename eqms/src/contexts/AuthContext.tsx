@@ -12,6 +12,7 @@ import { authTokenStore } from '@/services/authTokenStore';
 import { setActiveUserId, clearActiveUserId } from '@/services/activeUser';
 import type { AuthResponse, LoginChallengeResponse, MfaMethod, AuthUser } from '@/services/api/auth';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { clearDismissedAnnouncements } from '@/components/layout/announcementDismissal';
 
 interface AuthContextType {
   user: User | null;
@@ -138,6 +139,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const applyAuthenticatedSession = (response: AuthResponse) => {
+    // Every successful sign-in (password or MFA) shows the active announcements again.
+    clearDismissedAnnouncements();
     const appUser = mapAuthUserToUser(response.user);
     setUser(appUser);
     setIsAuthenticated(true);
@@ -319,6 +322,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (import.meta.env.DEV) console.error('Logout error:', error);
       auditLog.log('logout_error', { error: String(error) });
     } finally {
+      clearDismissedAnnouncements();
       // Clear all secure storage
     secureStorage.removeItem('authToken');
     secureStorage.removeItem('refreshToken');

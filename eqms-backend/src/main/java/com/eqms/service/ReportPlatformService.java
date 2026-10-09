@@ -392,7 +392,7 @@ public class ReportPlatformService {
             if (bytes.length > 52_428_800) throw new IllegalArgumentException("REPORT_ARTIFACT_LIMIT_EXCEEDED");
             String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
             UUID artifactId=UUID.randomUUID(); String code=run.get("definition_code").toString().toLowerCase(Locale.ROOT);
-            String extension=format.toLowerCase(Locale.ROOT); String artifactKey="reports/"+code+"/"+java.time.Year.now().getValue()+"/"+String.format("%02d",java.time.LocalDate.now().getMonthValue())+"/"+runId+"/"+artifactId+"."+extension;
+            String extension=format.toLowerCase(Locale.ROOT); String artifactKey=StoragePathBuilder.reportArtifact(code,java.time.Year.now().getValue(),java.time.LocalDate.now().getMonthValue(),runId,artifactId,extension);
             int attempt = ((Number)run.get("attempt_count")).intValue();
             jdbc.update("insert into report_artifact_publication_journal(artifact_id,run_id,attempt_number,object_key,sha256) values(?,?,?,?,?)",artifactId,runId,attempt,artifactKey,hash);
             FileStorageService.StorageWriteResult stored = fileStorage.storeReportArtifact(artifactKey, new java.io.ByteArrayInputStream(bytes), mimeFor(format));

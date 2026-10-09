@@ -5,9 +5,22 @@ import { ProtectedRoute } from '@/middleware/ProtectedRoute';
 
 // ==================== LAZY LOADED ====================
 const ReportTemplatesView = lazy(() => import('@/features/report').then(m => ({ default: m.ReportTemplatesView })));
+const ReportOverviewView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportOverviewView })));
+const ReportRunDetailView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportRunDetailView })));
+const ReportAnalyticsView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportAnalyticsView })));
 const ReportHistoryView = lazy(() => import('@/features/report').then(m => ({ default: m.ReportHistoryView })));
 const ScheduledReportsView = lazy(() => import('@/features/report').then(m => ({ default: m.ScheduledReportsView })));
-const BackupRestoreView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupRestoreView })));
+const BackupOverviewView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupOverviewView })));
+const BackupsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupsView })));
+const RestoreRequestsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreRequestsView })));
+const DrDrillsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.DrDrillsView })));
+const BackupSchedulesView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupSchedulesView })));
+const BackupVerificationResultsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupVerificationResultsView })));
+const RestoreApprovalQueueView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreApprovalQueueView })));
+const RestoreVerificationReportsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreVerificationReportsView })));
+const RestoreHistoryView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreHistoryView })));
+const BackupDetailView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupDetailView })));
+const RestoreRequestView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreRequestView })));
 const AuditTrailView = lazy(() => import('@/features/audit-trail').then(m => ({ default: m.AuditTrailView })));
 const AuditTrailDetailView = lazy(() => import('@/features/audit-trail').then(m => ({ default: m.AuditTrailDetailView })));
 const AuditTrailReviewView = lazy(() => import('@/features/audit-trail').then(m => ({ default: m.AuditTrailReviewView })));
@@ -23,12 +36,27 @@ const protectedElement = (permission: string, element: React.ReactNode) => (
 export function qualityRoutes() {
   return (
     <>
-      <Route path="report" element={<Navigate to="/report/templates" replace />} />
+      <Route path="report" element={<Navigate to="/report/overview" replace />} />
+      <Route path="report/overview" element={protectedElement("report.module.view", <ReportOverviewView />)} />
+      <Route path="report/runs/preview" element={protectedElement("report.module.view", <ReportRunDetailView />)} />
+      <Route path="report/analytics" element={protectedElement("report.module.view", <ReportAnalyticsView />)} />
       <Route path="report/templates" element={protectedElement("report.module.view", <ReportTemplatesView />)} />
       <Route path="report/history" element={protectedElement("report.module.view", <ReportHistoryView />)} />
       <Route path="report/scheduled" element={protectedElement("report.module.view", <ScheduledReportsView />)} />
       <Route path="report/*" element={<Navigate to="/report/templates" replace />} />
-      <Route path="backup-restore" element={protectedElement("backup.module.view", <BackupRestoreView />)} />
+      <Route path="backup-restore" element={<Navigate to="/backup-restore/overview" replace />} />
+      <Route path="backup-restore/overview" element={protectedElement("backup.module.view", <BackupOverviewView />)} />
+      <Route path="backup-restore/backups" element={protectedElement("backup.module.view", <BackupsView />)} />
+      <Route path="backup-restore/restores" element={protectedElement("backup.module.view", <RestoreRequestsView />)} />
+      <Route path="backup-restore/restores/new" element={protectedElement("backup.module.view", <RestoreRequestView />)} />
+      <Route path="backup-restore/backups/schedules" element={protectedElement("backup.module.view", <BackupSchedulesView />)} />
+      <Route path="backup-restore/backups/verifications" element={protectedElement("backup.module.view", <BackupVerificationResultsView />)} />
+      <Route path="backup-restore/restores/approvals" element={protectedElement("backup.module.view", <RestoreApprovalQueueView />)} />
+      <Route path="backup-restore/restores/verification-reports" element={protectedElement("backup.module.view", <RestoreVerificationReportsView />)} />
+      <Route path="backup-restore/restores/history" element={protectedElement("backup.module.view", <RestoreHistoryView />)} />
+      <Route path="backup-restore/backups/:backupId" element={protectedElement("backup.module.view", <BackupDetailView />)} />
+      <Route path="backup-restore/dr-drills" element={protectedElement("backup.module.view", <DrDrillsView />)} />
+      <Route path="backup-restore/*" element={<Navigate to="/backup-restore/overview" replace />} />
       <Route path="audit-trail" element={protectedElement("audittrail.module.view", <AuditTrailView />)} />
       <Route path="audit-trail/:recordId" element={protectedElement("audittrail.module.view", <AuditTrailDetailView />)} />
       <Route path="audit-trail/reviews" element={protectedElement("audit.review.view", <AuditTrailReviewView />)} />

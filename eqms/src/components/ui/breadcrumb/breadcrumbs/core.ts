@@ -20,9 +20,12 @@ export const auditTrail = (navigate?: NavigateFn): BreadcrumbItem[] => [
   { label: "All Records", isActive: true },
 ];
 
-export const backupRestore = (navigate?: NavigateFn): BreadcrumbItem[] => [
+export const backupRestore = (navigate?: NavigateFn, title = "Backup Status Overview", parent?: { label: string; path: string }, group?: "Backup" | "Restore"): BreadcrumbItem[] => [
   dashboard(navigate),
-  { label: "Backup & Restore", isActive: true },
+  { label: "Backup & Restore" },
+  ...(group ? [{ label: group }] : []),
+  ...(parent ? [{ label: parent.label, onClick: () => navigate?.(parent.path) }] : []),
+  { label: title, isActive: true },
 ];
 
 export const auditTrailDetail =(navigate?: NavigateFn): BreadcrumbItem[] => [

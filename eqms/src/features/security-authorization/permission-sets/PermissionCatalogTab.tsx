@@ -181,7 +181,7 @@ export const PermissionCatalogTab: React.FC = () => {
           </div>
         </div>
         <Select label="Module" value={moduleFilter} onChange={setModuleFilter} options={moduleOptions} />
-        <div className="flex items-end">
+        <div className="flex items-end gap-2">
           <button
             onClick={clearFilters}
             disabled={!hasFilters}
@@ -189,6 +189,7 @@ export const PermissionCatalogTab: React.FC = () => {
           >
             Clear Filters
           </button>
+          {catalogControl}
         </div>
       </div>
 
@@ -208,7 +209,6 @@ export const PermissionCatalogTab: React.FC = () => {
                 getRowKey={(p) => p.code}
                 columns={catalogLayout.columns}
                 columnLayout={catalogLayout}
-                toolbar={catalogControl ? <div className="flex justify-end px-4 pt-3">{catalogControl}</div> : undefined}
                 scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
                 scrollProps={dragEvents}
                 isDragging={isDragging}

@@ -375,3 +375,21 @@ Assistant-proposed, pending QA: a document with no Valid Until date, or one whos
 or distributed under the document basis (the request screen says why) rather than getting an unbounded or already-expired copy; the date is
 worked out at request time for display and again at distribution, so if the document's Valid Until changes in between, the distribution
 value counts. Copies already distributed keep the validity they were given. Evidence: ../validation/UC_VALIDITY_2026_10_07_CHANGE_RECORD.md.
+
+## CC-PURPOSE-2026-10-07 — Usage purpose of a controlled copy: read-and-comply or record-keeping (decided, not built)
+
+Owner decisions (2026-10-07):
+- A controlled copy is issued for one of two purposes, **read and comply** or **record-keeping**, for **all documents**. On the request screen the DCO ticks
+  **exactly one of the two**. It is recorded in the **audit trail**, shown in the **detail**, and the tables get a **Purpose column and a filter**; the two
+  Controlled Copies sub-tabs (document detail, document creation) get the column too.
+- A read-and-comply copy is recalled **without a scan** (the DCO enters the Recall Date and the reason); a record-keeping copy is recalled by scan and its scan
+  becomes a Record. The **Records menu and tab show no scan of a read-and-comply copy**.
+- If the DCO uses Recall by Scan for a read-and-comply copy anyway, it is **recalled normally, no Record is made, and the review list says so before signing**
+  (the alternative, blocking it, was considered and not chosen).
+- A wrong purpose is corrected by **recalling the copy and requesting again** (or cancelling the request if it was not yet distributed); the purpose is not edited.
+- **Copies issued before the change are left alone**: not classified, shown with an empty Purpose, recalled as today, their existing Records still shown.
+- The **destruction of recalled paper (SOP.0015) stays outside the software**: no destruction round, no witness and no destruction record are built.
+Plan for the customer: ../../../docs/plans/KE_HOACH_MUC_DICH_SU_DUNG_BAN_SAO_KIEM_SOAT.md. Technical design: ../validation/CC_USAGE_PURPOSE_2026_10_07_DESIGN.md.
+
+### CC-PURPOSE-2026-10-07 amendment (owner, 2026-10-07)
+Recall by Scan: read-only (READ_AND_COMPLY) copies found in a scan are set apart and removed by the DCO with one click; they are not recalled by scan and make no Record. Their recall stays a manual action from Controlled Copies.

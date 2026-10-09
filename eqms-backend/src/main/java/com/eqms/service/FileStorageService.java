@@ -314,7 +314,7 @@ public class FileStorageService {
         String storedFileName = UUID.randomUUID() + "_" + storagePathBuilder.sanitizeFileName(originalName);
 
         if (isMinioProvider(provider)) {
-            String relativeKey = "personnel/certifications/" + userId + "/" + certificationId + "/" + storedFileName;
+            String relativeKey = storagePathBuilder.personnelCertification(userId, certificationId, storedFileName);
             MinioObjectStorageService.StoredObject stored = minioObjectStorageService.store(
                     storageConfig, relativeKey, contentStream, "application/octet-stream");
             return new StorageWriteResult(
@@ -339,7 +339,7 @@ public class FileStorageService {
         String storedFileName = UUID.randomUUID() + "_" + storagePathBuilder.sanitizeFileName(originalName);
 
         if (isMinioProvider(provider)) {
-            String relativeKey = "forms/executed-records/" + formDocumentId + "/" + executedRecordId + "/" + storedFileName;
+            String relativeKey = storagePathBuilder.executedRecordFile(formDocumentId, executedRecordId, storedFileName);
             MinioObjectStorageService.StoredObject stored = minioObjectStorageService.store(
                     storageConfig, relativeKey, contentStream, "application/octet-stream");
             return new StorageWriteResult(
@@ -364,7 +364,7 @@ public class FileStorageService {
         String storedFileName = UUID.randomUUID() + "_" + storagePathBuilder.sanitizeFileName(originalName);
 
         if (isMinioProvider(provider)) {
-            String relativeKey = "controlled-copies/recall-scans/" + batchId + "/" + itemId + "/" + storedFileName;
+            String relativeKey = storagePathBuilder.controlledCopyRecallScan(batchId, itemId, storedFileName);
             MinioObjectStorageService.StoredObject stored = minioObjectStorageService.store(
                     storageConfig, relativeKey, contentStream, "application/octet-stream");
             return new StorageWriteResult(
@@ -432,13 +432,11 @@ public class FileStorageService {
     public StorageWriteResult storeUncontrolledCopyPdf(UUID uncontrolledCopyId, String uncontrolledCopyNumber, InputStream contentStream) throws IOException {
         JsonNode storageConfig = getStorageConfig();
         String provider = storageConfig.path("provider").asText("local");
-        String id = String.valueOf(uncontrolledCopyId == null ? UUID.randomUUID() : uncontrolledCopyId);
-        String safeNumber = StringUtils.hasText(uncontrolledCopyNumber)
-                ? uncontrolledCopyNumber.trim().replaceAll("[^A-Za-z0-9._-]", "_")
-                : id;
+        UUID copyId = uncontrolledCopyId == null ? UUID.randomUUID() : uncontrolledCopyId;
+        String id = String.valueOf(copyId);
         String fileName = "uncontrolled-copy-" + System.currentTimeMillis() + ".pdf";
         if (isMinioProvider(provider)) {
-            return storeInMinio(storageConfig, "uncontrolled-copies/" + safeNumber + "/" + id + "/" + fileName, contentStream, "application/pdf");
+            return storeInMinio(storageConfig, storagePathBuilder.uncontrolledCopyPdf(uncontrolledCopyNumber, copyId, fileName), contentStream, "application/pdf");
         }
         Path root = Paths.get(System.getProperty("user.dir"), "storage", "uncontrolled-copies", "files").normalize();
         Path targetDir = root.resolve(id).normalize();

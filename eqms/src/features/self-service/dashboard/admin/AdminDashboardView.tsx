@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Workflow } from 'lucide-react';
 import { dashboardApi } from '@/services/api/dashboard';
@@ -28,16 +29,17 @@ export function AdminDashboardView() {
   const inPipeline = revision('PENDING_REVIEW') + revision('PENDING_APPROVAL') + revision('PENDING_TRAINING');
   const effective = st?.documentsByStatus.ACTIVE ?? 0;
   const activeRate = st ? share(st.activeUsers, st.totalUsers) : 0;
-  const auditSeries = st ? fillAuditDays(st.auditActivityByDay) : [];
-  const auditPeak = auditSeries.reduce((best, point) => (point.value > best.value ? point : best), { label: dash, value: 0 });
+  // Computed once per response: a new array on every render would make the chart play its entrance again each time another request lands.
+  const auditSeries = useMemo(() => (st ? fillAuditDays(st.auditActivityByDay) : []), [st]);
+  const auditPeak = useMemo(() => auditSeries.reduce((best, point) => (point.value > best.value ? point : best), { label: dash, value: 0 }), [auditSeries]);
 
   return (
     <div className="w-full space-y-4">
-      <header className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* <header className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="truncate text-xl font-semibold tracking-tight text-slate-900">Admin Dashboard</h1>
         </div>
-      </header>
+      </header> */}
 
       <KpiStrip
         label="Users, documents and audit totals"

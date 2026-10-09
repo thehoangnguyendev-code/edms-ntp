@@ -195,7 +195,7 @@ export function ReportTemplateEditor() {
           create ? "New Report Template" : "Report Template Configuration",
           true,
           {
-            label: "Report Configuration",
+            label: "Report Definitions",
             onClick: () => navigate("/settings/report-configuration"),
           },
         )}

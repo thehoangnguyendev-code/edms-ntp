@@ -150,9 +150,11 @@ public class NavigationService {
         if (hasPermission(normalizedPermissions, "report.module.view")
                 && systemConfigurationService.isFeatureEnabled("feat-system-reports")) {
             List<NavigationItemResponse> reportChildren = new ArrayList<>();
-            reportChildren.add(new NavigationItemResponse("report-templates", "Report Templates", null, "/report/templates", false, null));
+            reportChildren.add(new NavigationItemResponse("report-overview", "Reports Overview", null, "/report/overview", false, null));
+            reportChildren.add(new NavigationItemResponse("report-analytics", "Quality Analytics", null, "/report/analytics", false, null));
+            reportChildren.add(new NavigationItemResponse("report-templates", "Report Library", null, "/report/templates", false, null));
             reportChildren.add(new NavigationItemResponse("report-compliance", "Compliance Reports", null, "/report/compliance", false, null));
-            reportChildren.add(new NavigationItemResponse("report-history", "Report History", null, "/report/history", false, null));
+            reportChildren.add(new NavigationItemResponse("report-history", "Report Run History", null, "/report/history", false, null));
             reportChildren.add(new NavigationItemResponse("report-scheduled", "Scheduled Reports", null, "/report/scheduled", false, null));
             menu.add(new NavigationItemResponse("report", "Reports & Analytics", "IconChartBar", null, false, reportChildren));
         }
@@ -171,9 +173,23 @@ public class NavigationService {
             }
         }
 
-        // Backup & Restore: menu entry only for now (feature is developed later); gated by its own view permission.
+        // Backup & Restore: one screen per sub-menu; the UI is a preview until the feature is developed. Gated by its own view permission.
         if (hasPermission(normalizedPermissions, "backup.module.view")) {
-            menu.add(new NavigationItemResponse("backup-restore", "Backup & Restore", "DatabaseBackup", "/backup-restore", true, null));
+            List<NavigationItemResponse> backupChildren = new ArrayList<>();
+            backupChildren.add(new NavigationItemResponse("backup-overview", "Backup Status Overview", null, "/backup-restore/overview", false, null));
+            List<NavigationItemResponse> backupGroupChildren = new ArrayList<>();
+            backupGroupChildren.add(new NavigationItemResponse("backup-backups", "Backup History", null, "/backup-restore/backups", false, null));
+            backupGroupChildren.add(new NavigationItemResponse("backup-verifications", "Backup Verification Results", null, "/backup-restore/backups/verifications", false, null));
+            backupGroupChildren.add(new NavigationItemResponse("backup-schedules", "Backup Schedules", null, "/backup-restore/backups/schedules", false, null));
+            backupChildren.add(new NavigationItemResponse("backup-group", "Backup", null, null, false, backupGroupChildren));
+            List<NavigationItemResponse> restoreGroupChildren = new ArrayList<>();
+            restoreGroupChildren.add(new NavigationItemResponse("backup-restores", "Restore Requests", null, "/backup-restore/restores", false, null));
+            restoreGroupChildren.add(new NavigationItemResponse("restore-approvals", "Restore Approval Queue", null, "/backup-restore/restores/approvals", false, null));
+            restoreGroupChildren.add(new NavigationItemResponse("restore-verifications", "Restore Verification Reports", null, "/backup-restore/restores/verification-reports", false, null));
+            restoreGroupChildren.add(new NavigationItemResponse("restore-history", "Restore History & Evidence", null, "/backup-restore/restores/history", false, null));
+            restoreGroupChildren.add(new NavigationItemResponse("backup-dr-drills", "Disaster Recovery Drills", null, "/backup-restore/dr-drills", false, null));
+            backupChildren.add(new NavigationItemResponse("restore-group", "Restore", null, null, false, restoreGroupChildren));
+            menu.add(new NavigationItemResponse("backup-restore", "Backup & Restore", "DatabaseBackup", null, true, backupChildren));
         }
 
         List<NavigationItemResponse> securityChildren = new ArrayList<>();
@@ -260,11 +276,11 @@ public class NavigationService {
             if (hasAnyPermission(normalizedPermissions, "settings.email_template.view", "settings.email_template.manage", "settings.configuration.view")) {
                 settingsChildren.add(new NavigationItemResponse("email-templates", "Email Templates", "IconMailForward", "/settings/email-templates", false, null));
             }
+            if (hasAnyPermission(normalizedPermissions, "settings.announcement.view", "settings.announcement.manage")) {
+                settingsChildren.add(new NavigationItemResponse("system-announcements", "System Announcements", "IconSpeakerphone", "/settings/announcements", false, null));
+            }
             if (hasPermission(normalizedPermissions, "settings.configuration.view")) {
                 settingsChildren.add(new NavigationItemResponse("notification-policy", "Notification In-app", "Bell", "/settings/notification-policy", false, null));
-            }
-            if (hasPermission(normalizedPermissions, "reports.definition.view") || hasPermission(normalizedPermissions, "settings.configuration.view")) {
-                settingsChildren.add(new NavigationItemResponse("report-configuration", "Report Configuration", "IconFileDescription", "/settings/report-configuration", false, null));
             }
 
             // "Document Administration" moved to the System Administration group (see below).
@@ -336,6 +352,54 @@ public class NavigationService {
             }
             if (!trainingAdminChildren.isEmpty()) {
                 sysAdminChildren.add(new NavigationItemResponse("training-administration", "Training Administration", "GraduationCap", null, false, trainingAdminChildren));
+            }
+
+            // "Backup & Restore Administration" -- UI preview, one screen per sub-menu; each keeps its own
+            // backup.admin.<screen>.view permission, mirroring the Training / Document Administration split.
+            List<NavigationItemResponse> backupAdminChildren = new ArrayList<>();
+            if (hasPermission(normalizedPermissions, "backup.admin.policy.view")) {
+                backupAdminChildren.add(new NavigationItemResponse("backup-admin-policy", "Backup Policy", null, "/settings/administration/backup/policy", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "backup.admin.retention.view")) {
+                backupAdminChildren.add(new NavigationItemResponse("backup-admin-retention", "Backup Retention & Legal Hold", null, "/settings/administration/backup/retention", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "backup.admin.storage.view")) {
+                backupAdminChildren.add(new NavigationItemResponse("backup-admin-storage", "Backup Storage & Encryption", null, "/settings/administration/backup/storage", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "backup.admin.verification.view")) {
+                backupAdminChildren.add(new NavigationItemResponse("backup-admin-verification", "Backup Verification & Restore Drills", null, "/settings/administration/backup/verification", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "backup.admin.restore_controls.view")) {
+                backupAdminChildren.add(new NavigationItemResponse("backup-admin-restore-controls", "Restore Approval & Execution Rules", null, "/settings/administration/backup/restore-controls", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "backup.admin.alerts.view")) {
+                backupAdminChildren.add(new NavigationItemResponse("backup-admin-alerts", "Backup Alerts & Recipients", null, "/settings/administration/backup/alerts", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "backup.admin.disaster_recovery.view")) {
+                backupAdminChildren.add(new NavigationItemResponse("backup-admin-disaster-recovery", "Disaster Recovery Plan", null, "/settings/administration/backup/disaster-recovery", false, null));
+            }
+            if (!backupAdminChildren.isEmpty()) {
+                sysAdminChildren.add(new NavigationItemResponse("backup-restore-administration", "Backup & Restore Administration", "DatabaseBackup", null, false, backupAdminChildren));
+            }
+
+            // "Report Administration" -- definitions are real; the other screens are previews. Gated by existing report permissions.
+            List<NavigationItemResponse> reportAdminChildren = new ArrayList<>();
+            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-definitions", "Report Definitions", null, "/settings/report-configuration", false, null));
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-access", "Report Access & Data Scope", null, "/settings/administration/report/access", false, null));
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-output", "Report Output Controls", null, "/settings/administration/report/output", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-retention", "Report Retention & Legal Hold", null, "/settings/administration/report/retention", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-delivery", "Scheduled Report Delivery", null, "/settings/administration/report/delivery", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-validation", "Report Change History & Validation", null, "/settings/administration/report/validation", false, null));
+            }
+            if (!reportAdminChildren.isEmpty()) {
+                sysAdminChildren.add(new NavigationItemResponse("report-administration", "Report Administration", "IconChartBar", null, false, reportAdminChildren));
             }
 
             if (!sysAdminChildren.isEmpty()) {

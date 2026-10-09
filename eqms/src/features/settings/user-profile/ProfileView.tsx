@@ -8,7 +8,7 @@ import { cn } from '@/components/ui/utils';
 import { useToast } from '@/components/ui/toast';
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { PageHeader } from '@/components/ui/page/PageHeader';
-import { myProfile } from '@/components/ui/breadcrumb/breadcrumbs/settings';
+import { personalInformation } from '@/components/ui/breadcrumb/breadcrumbs/settings';
 import { resolveConfiguredNavigationLabel } from '@/app/navigation';
 import { useBranding } from '@/components/branding/BrandLogo';
 import { navigateBack } from '@/app/navigation/backNavigation';
@@ -17,7 +17,6 @@ import { PasswordTab } from "./PasswordTab";
 import { usePasswordPolicy } from '@/features/auth/usePasswordPolicy';
 import { evaluatePasswordPolicy } from '@/features/auth/passwordPolicyRules';
 import { authApi } from '@/services/api/auth';
-import { resolveProfilePermissionState } from './profilePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAvatarFileWithinLimit, isSupportedAvatarFile, readFileAsDataUrl } from '@/utils/avatar';
 
@@ -89,15 +88,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     const hasChanges =
         hasProfileChanges || hasPasswordChanges;
 
-    // Permissions state
-    const [permissions, setPermissions] = useState({
-        printControlledCopy: false,
-        viewAuditTrail: false,
-        createTrainingTest: false,
-        manageUsers: false,
-        approveDocuments: false,
-    });
-
     const loadProfile = async () => {
         try {
             setIsLoadingProfile(true);
@@ -130,7 +120,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             if (user.passwordChangedAt) {
                 setPasswordChangedAt(user.passwordChangedAt);
             }
-            setPermissions(resolveProfilePermissionState(user.permissions || []));
         } catch (error) {
             showToast({ type: 'error', title: 'Error', message: 'Failed to load user profile.' });
         } finally {
@@ -327,11 +316,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         <div className="space-y-4 sm:space-y-6 w-full flex-1 flex flex-col">
             <PageHeader
                 title={(() => {
-                    const base = resolveConfiguredNavigationLabel('My Profile', navigationLabelOverrides);
+                    const base = resolveConfiguredNavigationLabel('Personal Information', navigationLabelOverrides);
                     const displayName = authUser?.fullName || authUser?.username;
                     return displayName ? `${base} - ${displayName}` : base;
                 })()}
-                breadcrumbItems={myProfile(navigate)}
+                breadcrumbItems={personalInformation(navigate)}
                 actions={
                     <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                         <Button
@@ -372,7 +361,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                     {activeTab === 'account' && (
                         <AccountInfoTab
                             formData={formData}
-                            permissions={permissions}
                             avatarPreview={avatarPreview}
                             editingFields={editingFields}
                             onInputChange={handleInputChange}

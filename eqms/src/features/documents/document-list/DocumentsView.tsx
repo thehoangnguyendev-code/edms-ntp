@@ -15,7 +15,7 @@ import { cn } from "@/components/ui/utils";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import type { PortalDropdownMenuProps } from "@/components/ui/dropdown/PortalDropdownMenu";
 import { IconInfoCircle, IconPencilMinus, IconPlus, IconHistory, IconSparkles, IconArrowRight, IconFileUpload, IconFilePlus } from "@tabler/icons-react";
-import { ChevronRight, Download, History, MoreVertical, Edit, FileStack } from "lucide-react";
+import { ChevronRight, Download, MoreVertical, Edit, FileStack } from "lucide-react";
 import { formatDateTimeLong, formatDateUS } from "@/utils/format";
 import { DocumentFilters } from "@/features/documents/shared/components/DocumentFilters";
 import { ExpandedDocumentRow, preloadExpandedDocumentDetails } from "@/features/documents/shared/components/ExpandedDocumentRow";
@@ -64,7 +64,6 @@ const clearNewDocumentDraftState = () => {
 interface RowMenuProps {
   onView: () => void;
   onEdit: () => void | Promise<void>;
-  onAuditTrail: () => void;
   onRequestControlledCopy: () => void;
   isOpen: boolean;
   onClose: () => void;
@@ -76,7 +75,6 @@ interface RowMenuProps {
 const RowMenu: React.FC<RowMenuProps> = ({
   onView,
   onEdit,
-  onAuditTrail,
   onRequestControlledCopy,
   isOpen,
   onClose,
@@ -100,9 +98,6 @@ const RowMenu: React.FC<RowMenuProps> = ({
             Request Controlled Copy
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem icon={<History className="h-4 w-4" />} onClick={() => { onAuditTrail(); onClose(); }}>
-          View Audit Trail
-        </DropdownMenuItem>
       </div>
     </PortalDropdownMenu>
   );
@@ -499,9 +494,6 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
           }}
           onRequestControlledCopy={() => {
             handleRequestControlledCopy(doc);
-          }}
-          onAuditTrail={() => {
-            void navigateToDocument(doc.id, "audit");
           }}
           isOpen={openId === doc.id}
           onClose={close}

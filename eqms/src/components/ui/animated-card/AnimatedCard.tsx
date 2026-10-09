@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/components/ui/utils";
 import { CountUp } from "./CountUp";
@@ -52,6 +52,10 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
 }) => {
   const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // The pointer moves far more often than the screen redraws: keep the latest position and write it once per frame.
+  const frame = useRef(0);
+  const pointer = useRef({ x: 0, y: 0 });
+  useEffect(() => () => { if (frame.current) cancelAnimationFrame(frame.current); }, []);
   const main = tone ? ANIMATED_CARD_TONES[tone].main : undefined;
   return (
     <HoverContext.Provider value={hovered}>
@@ -72,11 +76,18 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
           onMouseLeave?.(event);
         }}
         onMouseMove={(event) => {
-          const el = ref.current;
-          if (el && main) {
-            const box = el.getBoundingClientRect();
-            el.style.setProperty("--mx", `${event.clientX - box.left}px`);
-            el.style.setProperty("--my", `${event.clientY - box.top}px`);
+          if (main) {
+            pointer.current = { x: event.clientX, y: event.clientY };
+            if (!frame.current) {
+              frame.current = requestAnimationFrame(() => {
+                frame.current = 0;
+                const el = ref.current;
+                if (!el) return;
+                const box = el.getBoundingClientRect();
+                el.style.setProperty("--mx", `${pointer.current.x - box.left}px`);
+                el.style.setProperty("--my", `${pointer.current.y - box.top}px`);
+              });
+            }
           }
           onMouseMove?.(event);
         }}

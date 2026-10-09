@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, Star } from "lucide-react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { NavItem } from "@/types";
@@ -23,6 +23,8 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { BrandLogo, useBranding } from "@/components/branding/BrandLogo";
 import { KNOWLEDGE_BASE_NAV_ID, openKnowledgeExplorer } from "@/features/self-service/knowledge/explorer/openExplorer";
 import { Avatar } from "@/components/ui/avatar";
+import { TabNav, type TabItem } from "@/components/ui/tabs";
+import { useSidebarFavorites } from "./useSidebarFavorites";
 import "./Sidebar.module.css";
 import { resolvePermissionAliasCodes } from "@/features/settings/permissionCatalog";
 import { notificationApi } from "@/services/api/notifications";
@@ -32,6 +34,12 @@ import { IconLogout, IconPointFilled, IconUser } from "@tabler/icons-react";
 // Constants
 const BASE_PADDING = 12;
 const LEVEL_PADDING = 16;
+/** Space between a nested item's guide rail and the left edge of its highlight. */
+const NESTED_RAIL_GAP = 4;
+const NESTED_PADDING = 10;
+const SIDEBAR_WIDTH = 360;
+/** Room kept at the right of every row for the favourite star, so it never covers the label. */
+const STAR_SLOT = 40;
 const MENU_WIDTH = 300;
 const MENU_GAP = 8;
 const SAFE_PADDING = 8;
@@ -84,6 +92,31 @@ const flattenNavigationIds = (items: NavItem[]): Set<string> => {
   visit(items);
   return ids;
 };
+
+const indexNavigation = (items: NavItem[], index = new Map<string, NavItem>()): Map<string, NavItem> => {
+  items.forEach((item) => {
+    index.set(item.id, item);
+    if (item.children) indexNavigation(item.children, index);
+  });
+  return index;
+};
+
+/** True when the item, or anything beneath it, is the screen the user is on. */
+const containsCurrent = (item: NavItem, activeId: string, pathname: string): boolean =>
+  item.id === activeId ||
+  (Boolean(item.path) && item.path === pathname) ||
+  Boolean(item.children?.some((child) => containsCurrent(child, activeId, pathname)));
+
+/** The entry's own id followed by the ids of everything beneath it. */
+const branchIds = (item: NavItem): string[] => [item.id, ...(item.children ?? []).flatMap(branchIds)];
+
+/** The entries that are starred, with the entries above them that lead to them, in menu order. */
+const favoriteTree = (items: NavItem[], starred: ReadonlySet<string>): NavItem[] =>
+  items.flatMap((item) => {
+    const children = item.children ? favoriteTree(item.children, starred) : undefined;
+    if (!starred.has(item.id) && (!children || children.length === 0)) return [];
+    return [{ ...item, ...(children ? { children } : {}) }];
+  });
 
 const flattenNavigationLabels = (items: NavItem[], labels = new Map<string, string>()): Map<string, string> => {
   items.forEach((item) => {
@@ -171,12 +204,14 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
     );
 
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
+    const [sidebarTab, setSidebarTab] = useState<"all" | "favorites">("all");
 
     // Empty until the real fetches below resolve -- a fabricated starting number (e.g. a fake
     // "12" for notifications) would be indistinguishable from real regulated-workflow counts.
     const [navCounts, setNavCounts] = useState<Record<string, number>>({});
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { user, logout } = useAuth();
+    const favorites = useSidebarFavorites(user?.id);
     const { showSidebarUserProfile, knowledgeExplorerEnabled } = useBranding();
     // With the Explorer enabled, Knowledge Base opens in a new tab: the current page is not left,
     // so the unsaved-changes guard does not apply and the router is not involved.
@@ -310,6 +345,20 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         return applyNavigationLabels(filterNavByPermissions(QUALITY_NAV_CONFIG, user?.permissions ?? []), navigationLabels);
       },
       [user?.permissions, authorizedNavigationIds, navigationLabels],
+    );
+
+    // Starred entries still open to this user, in the order they were starred; one the user lost access to is left out.
+    const favoriteItems = useMemo(() => favoriteTree(qualityNav, new Set(favorites.ids)), [qualityNav, favorites.ids]);
+    const favoriteCount = useMemo(() => {
+      const index = indexNavigation(qualityNav);
+      return favorites.ids.filter((id) => index.has(id)).length;
+    }, [qualityNav, favorites.ids]);
+    const sidebarTabs = useMemo<readonly TabItem[]>(
+      () => [
+        { id: "all", label: "All Items" },
+        { id: "favorites", label: "Favourite", count: favoriteCount },
+      ],
+      [favoriteCount],
     );
 
     const [hoverMenu, setHoverMenu] = useState<HoverMenuState>({
@@ -615,19 +664,23 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
     const renderMenuItem = useCallback(
       (item: NavItem, level: number = 0, index: number = 0) => {
         const hasChildren = Boolean(item.children?.length);
+        const starred = favorites.isFavorite(item.id);
+        // Collapsed, only the icon is left: the top-level entry that holds the current screen gets a filled tile.
+        const collapsedCurrent = isCollapsed && level === 0 && containsCurrent(item, activeId, location.pathname);
         const isExpanded = expandedItems.includes(item.id);
         const isActive = activeId === item.id || item.path === location.pathname;
         const rawIcon = item.icon;
         const Icon = typeof rawIcon === "string" ? ICON_MAP[rawIcon] : rawIcon;
         const submenuId = `sidebar-submenu-${item.id}`;
+        // Nested items sit beside the guide rail: the highlight starts just right of it, stops short of the
+        // sidebar edge and has its own padding, so it reads as a pill rather than a full-width bar.
+        const railLeft = level === 1 ? BASE_PADDING + 4 : BASE_PADDING + LEVEL_PADDING;
+        const nestedMarginLeft = railLeft + NESTED_RAIL_GAP;
         const paddingLeft = isCollapsed
           ? 0
           : level === 0
             ? BASE_PADDING
-            // A shallower third level leaves enough room for operational menu labels.
-            : level === 1
-              ? BASE_PADDING + LEVEL_PADDING
-              : BASE_PADDING + LEVEL_PADDING * 1.5;
+            : NESTED_PADDING;
 
         return (
           <>
@@ -646,6 +699,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   style={{ left: `${level === 1 ? BASE_PADDING + 4 : BASE_PADDING + LEVEL_PADDING}px` }}
                 />
               )}
+              <div className="relative">
               <button
                 type="button"
                 onClick={(e) => {
@@ -665,8 +719,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 aria-haspopup={isCollapsed && hasChildren ? "menu" : undefined}
                 className={cn(
                   "w-full flex items-center group relative overflow-visible z-10 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/20",
-                  "h-11 md:h-11",
-                  isCollapsed ? "justify-center px-0" : "justify-start pr-3",
+                  level === 0 ? "h-11 md:h-11" : "h-10 mr-1.5",
+                  isCollapsed ? "justify-center px-0" : "justify-start",
                   isActive
                     ? "text-emerald-700"
                     : "text-slate-600 hover:text-slate-900 active:bg-slate-100",
@@ -674,14 +728,26 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 )}
                 style={{
                   paddingLeft: isCollapsed ? 0 : `${paddingLeft}px`,
+                  paddingRight: isCollapsed ? 0 : `${STAR_SLOT}px`,
+                  ...(!isCollapsed && level > 0 ? { marginLeft: `${nestedMarginLeft}px`, width: `calc(100% - ${nestedMarginLeft + 6}px)` } : null),
                 }}
               >
                 {/* Sliding active background indicator */}
-                {isActive && (
+                {collapsedCurrent && (
+                  <motion.div
+                    layoutId="activeNavCollapsedTile"
+                    data-testid="collapsed-active-tile"
+                    aria-hidden="true"
+                    className="absolute inset-0 z-0 m-auto h-10 w-10 rounded-xl bg-emerald-100"
+                    transition={{ type: "tween", duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                )}
+                {isActive && !isCollapsed && (
                   <motion.div
                     layoutId="activeNavIndicator"
                     className={cn(
-                      "absolute inset-0 z-0 rounded-lg",
+                      "absolute inset-0 z-0",
+                      level === 0 ? "rounded-lg" : "rounded-xl",
                       level === 0
                         ? "bg-emerald-50/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_1px_2px_rgba(16,185,129,0.05),0_0_12px_rgba(16,185,129,0.08)]"
                         : "bg-emerald-50",
@@ -714,7 +780,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                       <Icon
                         className={cn(
                           "h-5 w-5 transition-colors duration-200",
-                          isActive
+                          collapsedCurrent
+                            ? "text-emerald-700"
+                            : isActive
                             ? "text-emerald-700"
                             : item.iconColor
                               ? `${item.iconColor} group-hover:opacity-80`
@@ -797,6 +865,25 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
 
               </button>
 
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => favorites.toggle(branchIds(item))}
+                  aria-pressed={starred}
+                  aria-label={starred ? `Remove ${item.label} from favourites` : `Add ${item.label} to favourites`}
+                  title={hasChildren ? (starred ? "Remove with everything beneath it" : "Add with everything beneath it") : starred ? "Remove from favourites" : "Add to favourites"}
+                  className={cn(
+                    "absolute top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-colors",
+                    "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                    starred ? "text-amber-500 hover:bg-amber-50" : "text-slate-300 hover:bg-slate-100 hover:text-amber-500",
+                  )}
+                  style={{ right: level === 0 ? 10 : 8 }}
+                >
+                  <Star className={cn("h-4 w-4", starred && "fill-amber-400")} />
+                </button>
+              )}
+              </div>
+
               {/* Expanded children (only in expanded sidebar) */}
               <AnimatePresence initial={false}>
                 {hasChildren && !isCollapsed && isExpanded && (
@@ -846,6 +933,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         onNavigate,
         onClose,
         navCounts,
+        favorites,
+        location.pathname,
       ],
     );
 
@@ -1154,7 +1243,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         {/* Sidebar */}
         <motion.aside
           initial={false}
-          animate={{ width: isCollapsed ? 80 : 320 }}
+          animate={{ width: isCollapsed ? 80 : SIDEBAR_WIDTH }}
           transition={{
             width: shouldReduceMotion ? { duration: 0 } : { duration: 0.56, ease: [0.22, 1, 0.36, 1] },
             transform: shouldReduceMotion ? { duration: 0 } : { duration: 0.46, ease: [0.22, 1, 0.36, 1] },
@@ -1166,7 +1255,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
 
             isCollapsed
               ? "w-16 md:w-20"
-              : "w-[320px] max-w-[92vw]",
+              : "w-[360px] max-w-[92vw]",
 
             "md:translate-x-0",
             isMobileOpen
@@ -1293,6 +1382,21 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
             </div>
           )}
 
+          {!isCollapsed && (
+            <div className="shrink-0 px-3 pt-3">
+              <TabNav
+                tabs={sidebarTabs}
+                activeTab={sidebarTab}
+                onChange={(tab) => setSidebarTab(tab === "favorites" ? "favorites" : "all")}
+                variant="pill"
+                fullWidth
+                ariaLabel="Sidebar menu"
+                tabIdPrefix="sidebar-tab"
+                panelIdPrefix="sidebar-panel"
+              />
+            </div>
+          )}
+
           {/* Navigation Menu */}
           <div
             ref={scrollContainerRef}
@@ -1331,8 +1435,22 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   exit={{ opacity: 0, y: -5 }}
                   transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  {qualityNav.map((item, index) =>
-                    renderMenuItem(item, 0, index),
+                  {isCollapsed || sidebarTab === "all" ? (
+                    <div role={isCollapsed ? undefined : "tabpanel"} id="sidebar-panel-all" aria-labelledby={isCollapsed ? undefined : "sidebar-tab-all"}>
+                      {qualityNav.map((item, index) => renderMenuItem(item, 0, index))}
+                    </div>
+                  ) : (
+                    <div role="tabpanel" id="sidebar-panel-favorites" aria-labelledby="sidebar-tab-favorites">
+                      {favoriteItems.length === 0 ? (
+                        <p className="mx-4 mt-3 rounded-lg border border-dashed border-slate-300 px-3 py-3 text-xs text-slate-500">
+                          No favourites yet. Press the star next to any menu in All Items to keep it here.
+                        </p>
+                      ) : (
+                        favoriteItems.map((item, index) => (
+                          <React.Fragment key={item.id}>{renderMenuItem(item, 0, index)}</React.Fragment>
+                        ))
+                      )}
+                    </div>
                   )}
                 </motion.div>
               </AnimatePresence>
@@ -1380,7 +1498,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                       className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
                     >
                       <IconUser className="h-4 w-4 shrink-0" />
-                      <span>Profile</span>
+                      <span>Personal Information</span>
                     </button>
                     <div className="border-t border-slate-100">
                       <button
@@ -1406,7 +1524,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   "flex w-full items-center rounded-lg text-left transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                   isCollapsed ? "justify-center p-1.5" : "gap-2.5 p-2",
                 )}
-                title={isCollapsed ? "Profile" : undefined}
+                title={isCollapsed ? "Personal Information" : undefined}
                 aria-label="Open user menu"
                 aria-expanded={isSidebarUserMenuOpen}
                 aria-haspopup="menu"

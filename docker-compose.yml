@@ -1,4 +1,6 @@
-name: eqms
+# Project name, container prefix and published ports come from the environment file (deploy/env/*.env.example).
+# Defaults are the DEV values, so a plain `docker compose up` behaves exactly as before.
+name: ${EQMS_PROJECT:-eqms}
 
 # Shared bounded log-rotation config -- without this, Docker's default json-file driver keeps
 # every log line forever, and at 500-concurrent-user request volume that fills the host disk in
@@ -20,7 +22,7 @@ services:
   postgres:
     <<: *default-resources
     image: postgres:17-alpine
-    container_name: eqms-postgres
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-postgres
     restart: unless-stopped
     logging: *default-logging
     security_opt:
@@ -43,7 +45,7 @@ services:
   adminer:
     <<: *default-resources
     image: adminer:4
-    container_name: eqms-adminer
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-adminer
     restart: unless-stopped
     logging: *default-logging
     security_opt:
@@ -57,7 +59,7 @@ services:
   minio:
     <<: *default-resources
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    container_name: eqms-minio
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-minio
     restart: unless-stopped
     logging: *default-logging
     security_opt:
@@ -78,6 +80,36 @@ services:
       retries: 10
       start_period: 10s
 
+  # T3 test target: a second MinIO that backups are copied to. Opt-in (`--profile backup-t3`), DEV and TEST only.
+  # Its data, credentials and volume are separate from the document store; the bucket is created with Object Lock by
+  # ObjectLockBucketProvisioner, never by the agent at run time. A real T3 sits on another machine or at another provider.
+  backup-target-t3:
+    <<: *default-resources
+    profiles: ["backup-t3"]
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-backup-target-t3
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${BACKUP_T3_MINIO_USER:-eqms-t3}
+      MINIO_ROOT_PASSWORD: ${BACKUP_T3_MINIO_PASSWORD:?BACKUP_T3_MINIO_PASSWORD is required for the backup-t3 profile}
+    ports:
+      - "127.0.0.1:${BACKUP_T3_API_PORT:-9100}:9000"
+    volumes:
+      - eqms_backup_t3_data:/data
+    networks:
+      - default
+      - backup-net
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   onlyoffice-documentserver:
     <<: *default-resources
     # Overrides the shared 3g default: pluginsmanager's startup plugin scan repeatedly got
@@ -86,7 +118,7 @@ services:
     # multi-GB WSL2 crash dump under %LOCALAPPDATA%\Temp\wsl-crashes.
     mem_limit: ${ONLYOFFICE_MEMORY_LIMIT:-5g}
     image: onlyoffice/documentserver:8.2
-    container_name: eqms-onlyoffice
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-onlyoffice
     restart: unless-stopped
     logging: *default-logging
     security_opt:
@@ -116,7 +148,7 @@ services:
   redis:
     <<: *default-resources
     image: redis:7-alpine
-    container_name: eqms-redis
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-redis
     restart: unless-stopped
     logging: *default-logging
     security_opt:
@@ -133,7 +165,7 @@ services:
   clamav:
     <<: *default-resources
     image: clamav/clamav:stable
-    container_name: eqms-clamav
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-clamav
     restart: unless-stopped
     logging: *default-logging
     security_opt:
@@ -158,12 +190,96 @@ services:
     # account. Point System Configuration's SMTP host at "mailhog" / port 1025 (no auth, no TLS)
     # and open http://localhost:8025 to read what was sent.
     image: mailhog/mailhog:v1.0.1
-    container_name: eqms-mailhog
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-mailhog
     restart: unless-stopped
     logging: *default-logging
     ports:
-      - "127.0.0.1:8025:8025" # web UI
-      - "127.0.0.1:1025:1025" # SMTP
+      - "127.0.0.1:${MAILHOG_UI_PORT:-8025}:8025" # web UI
+      - "127.0.0.1:${MAILHOG_SMTP_PORT:-1025}:1025" # SMTP
+
+  # ---- Backup & Restore (SDS-BR-001). The control database is separate from the eQMS database on purpose: restoring
+  # the eQMS database must never replace the history of backups, restores and approvals.
+  backup-control:
+    <<: *default-resources
+    image: postgres:17-alpine
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-backup-control
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: eqms_backup_control
+      POSTGRES_USER: eqms_backup
+      POSTGRES_PASSWORD: ${BACKUP_CONTROL_DB_PASSWORD:?BACKUP_CONTROL_DB_PASSWORD is required}
+    volumes:
+      - eqms_backup_control_data:/var/lib/postgresql/data
+    networks:
+      - backup-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eqms_backup -d eqms_backup_control"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backup-agent:
+    <<: *default-resources
+    build:
+      context: ./eqms-backup-agent
+      dockerfile: Dockerfile
+      args:
+        MAVEN_IMAGE: ${BACKEND_BUILD_IMAGE:-mirror.gcr.io/library/maven:3.9.16-eclipse-temurin-21}
+    image: ${EQMS_BACKUP_AGENT_IMAGE:-eqms-backup-agent:local}
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-backup-agent
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    depends_on:
+      backup-control:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      AGENT_ENVIRONMENT: ${EQMS_ENVIRONMENT:-DEV}
+      AGENT_API_TOKEN: ${BACKUP_AGENT_API_TOKEN:?BACKUP_AGENT_API_TOKEN is required}
+      CONTROL_DB_URL: jdbc:postgresql://backup-control:5432/eqms_backup_control
+      CONTROL_DB_USER: eqms_backup
+      CONTROL_DB_PASSWORD: ${BACKUP_CONTROL_DB_PASSWORD:?BACKUP_CONTROL_DB_PASSWORD is required}
+      SOURCE_DB_HOST: postgres
+      SOURCE_DB_NAME: ${POSTGRES_DB:-eqms-database}
+      SOURCE_DB_USER: eqms_backup_ro
+      SOURCE_DB_PASSWORD: ${BACKUP_SOURCE_DB_PASSWORD:?BACKUP_SOURCE_DB_PASSWORD is required}
+      AGENT_GPG_PUBLIC_KEY_FILE: /run/secrets/backup_gpg_public
+      # Document store the agent reads (list versions, read versions; it never writes). DEV uses the MinIO root account; a real
+      # deployment must give the agent a read-only service account (SDS section 5, open item in the P2 change record).
+      AGENT_OBJECTS_ENABLED: "true"
+      AGENT_OBJECTS_ENDPOINT: http://minio:9000
+      AGENT_OBJECTS_ACCESS_KEY: ${MINIO_ROOT_USER:-eqms-minio}
+      AGENT_OBJECTS_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-eqms-minio-secret}
+      AGENT_OBJECTS_BUCKETS: ${BACKUP_OBJECT_BUCKETS:-eqms-gmp-records,eqms-gmp-revisions,eqms-templates}
+    secrets:
+      - backup_gpg_public
+    volumes:
+      # T1: a folder on the server. Put it on a different disk from the database in any real deployment.
+      - ${BACKUP_T1_DIR:-./backups/dev/t1}:/backup/t1
+      - ${BACKUP_LEDGER_DIR:-./backups/dev/ledger}:/backup/ledger
+      - ${BACKUP_AGENT_STATE_DIR:-./backups/dev/agent}:/backup/agent
+      # Export Backup Set writes one folder per registered offline medium here. In a real deployment this is the mount point of the medium.
+      - ${BACKUP_EXPORT_DIR:-./backups/dev/export}:/backup/export
+    networks:
+      - default
+      - backup-net
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:5600/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
   backend:
     <<: *default-resources
@@ -172,8 +288,8 @@ services:
       dockerfile: Dockerfile
       args:
         MAVEN_IMAGE: ${BACKEND_BUILD_IMAGE:-mirror.gcr.io/library/maven:3.9.16-eclipse-temurin-21}
-    image: eqms-backend:local
-    container_name: eqms-backend
+    image: ${EQMS_BACKEND_IMAGE:-eqms-backend:local}
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-backend
     restart: unless-stopped
     logging: *default-logging
     security_opt:
@@ -191,6 +307,10 @@ services:
         condition: service_healthy
     environment:
       TZ: Asia/Ho_Chi_Minh
+      # DEV | TEST | PROD. Checked at startup and before every storage write (EnvironmentConfigurationValidator).
+      APP_ENVIRONMENT: ${EQMS_ENVIRONMENT:-DEV}
+      APP_BACKUP_AGENT_URL: http://backup-agent:5600
+      APP_BACKUP_AGENT_TOKEN: ${BACKUP_AGENT_API_TOKEN:?BACKUP_AGENT_API_TOKEN is required}
       SERVER_PORT: 5000
       # P3 legacy cleanup: all users are backfilled to Access Profiles (V166/V167)
       APP_SECURITY_LEGACY_ROLE_FALLBACK_ENABLED: "false"
@@ -224,7 +344,10 @@ services:
       APP_MINIO_ENDPOINT: http://minio:9000
       APP_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-eqms-minio}
       APP_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-eqms-minio-secret}
-      APP_MINIO_BUCKET: ${APP_MINIO_BUCKET:-eqms-gmp-revisions}
+      # Dev only: also loads db/migration-dev (V558 bucket switch). Production overlay does not set this.
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/migration-dev
+      APP_MINIO_BUCKET: ${APP_MINIO_BUCKET:-eqms-gmp-records}
+      APP_MINIO_TEMPLATES_BUCKET: ${APP_MINIO_TEMPLATES_BUCKET:-eqms-templates}
       APP_MINIO_DOCUMENTS_PREFIX: ${APP_MINIO_DOCUMENTS_PREFIX:-documents}
       APP_MINIO_CONTROLLED_COPIES_PREFIX: ${APP_MINIO_CONTROLLED_COPIES_PREFIX:-controlled-copies}
       APP_MINIO_TEMPLATES_PREFIX: ${APP_MINIO_TEMPLATES_PREFIX:-templates}
@@ -236,7 +359,7 @@ services:
       SPRING_DATA_REDIS_URL: redis://redis:6379
       SPRING_CACHE_TYPE: redis
       SPRING_CACHE_REDIS_TTL: 30s
-      APP_MINIO_RETENTION_YEARS: ${APP_MINIO_RETENTION_YEARS:-5}
+      APP_MINIO_RETENTION_YEARS: ${APP_MINIO_RETENTION_YEARS:-100}
       APP_MICROSOFT_GRAPH_ENABLED: ${APP_MICROSOFT_GRAPH_ENABLED:-true}
       APP_MICROSOFT_GRAPH_BASE_URL: ${APP_MICROSOFT_GRAPH_BASE_URL:-https://graph.microsoft.com/v1.0}
       APP_ONLYOFFICE_ENABLED: ${APP_ONLYOFFICE_ENABLED:-true}
@@ -261,6 +384,9 @@ services:
     volumes:
       - eqms_backend_storage:/app/storage
       - eqms_backend_logs:/app/logs
+    networks:
+      - default
+      - backup-net
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:5000/api/health"]
       interval: 10s
@@ -275,8 +401,8 @@ services:
       dockerfile: Dockerfile
       args:
         NODE_IMAGE: ${FRONTEND_BUILD_IMAGE:-mirror.gcr.io/library/node:22-alpine}
-    image: eqms-frontend:local
-    container_name: eqms-frontend
+    image: ${EQMS_FRONTEND_IMAGE:-eqms-frontend:local}
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-frontend
     restart: unless-stopped
     logging: *default-logging
     depends_on:
@@ -300,7 +426,19 @@ services:
       # HTTPS edge/proxy rather than a directly exposed Vite/Nginx application port.
       - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
 
+networks:
+  # The backup network has no route to the internet: the control database and the agent talk only to each other, to the
+  # eQMS backend and (the agent) to PostgreSQL over the default network.
+  backup-net:
+    internal: true
+
+secrets:
+  backup_gpg_public:
+    file: ${BACKUP_GPG_PUBLIC_KEY_FILE:-./backups/dev-keys/public.asc}
+
 volumes:
+  eqms_backup_control_data:
+  eqms_backup_t3_data:
   eqms_postgres_data:
   eqms_minio_data:
   eqms_redis_data:

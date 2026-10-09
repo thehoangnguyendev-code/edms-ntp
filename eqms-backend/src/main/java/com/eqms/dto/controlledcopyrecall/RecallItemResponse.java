@@ -5,7 +5,8 @@ package com.eqms.dto.controlledcopyrecall;
  * BLOCKED (identified but cannot be recalled; {@code matchMessage} says why). Machine values are stable; the screen
  * translates them for display. When one upload held pages of several copies, {@code sourceFileName}/{@code sourcePages} say where
  * the item came from, {@code pageNumbers} which pages of the copy it holds (comma separated, in file order) out of
- * {@code expectedPages}, and {@code loosePage} marks a single page that could not be recognised and needs a copy and page number.
+ * {@code expectedPages}, {@code readAndComply} marks a scan of a copy issued for reading only (never recalled by scan; the DCO removes
+ * it from the batch and recalls the copy from Controlled Copies), and {@code loosePage} marks a single page that could not be recognised and needs a copy and page number.
  */
 public record RecallItemResponse(
         String id,
@@ -31,6 +32,7 @@ public record RecallItemResponse(
         String sourcePages,
         String pageNumbers,
         Integer expectedPages,
-        boolean loosePage
+        boolean loosePage,
+        boolean readAndComply
 ) {
 }

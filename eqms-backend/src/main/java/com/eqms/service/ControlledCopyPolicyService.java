@@ -536,7 +536,8 @@ public class ControlledCopyPolicyService {
                     rule.watermarkScalePercent() == null ? null : requireRange(rule.watermarkScalePercent(), "Watermark size", 20, 150),
                     rule.watermarkAngleDegrees() == null ? null : requireRange(rule.watermarkAngleDegrees(), "Watermark angle", -90, 90)));
         }
-        return out;
+        // One watermark angle for the whole document: page 1 decides, so no copy reads one way on page 1 and another from page 2.
+        return com.eqms.dto.controlledcopypolicy.MarkingPlacementRule.withUniformWatermarkAngle(out, 2);
     }
 
     private static Double fraction(Double value, String label) {

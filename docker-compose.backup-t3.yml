@@ -1,0 +1,15 @@
+# Adds the T3 test target to the backup agent. Use together with the base file and the profile:
+#   docker compose -f docker-compose.yml -f docker-compose.backup-t3.yml --profile backup-t3 up -d
+# DEV and TEST only. The bucket is created beforehand by scripts/backup/provision-t3.sh.
+services:
+  backup-agent:
+    depends_on:
+      backup-target-t3:
+        condition: service_healthy
+    environment:
+      AGENT_TARGETS_EXTRA_T3_KIND: S3
+      AGENT_TARGETS_EXTRA_T3_ENDPOINT: http://backup-target-t3:9000
+      AGENT_TARGETS_EXTRA_T3_BUCKET: ${BACKUP_T3_BUCKET:-eqms-dev-backup-t3}
+      AGENT_TARGETS_EXTRA_T3_ACCESS_KEY: ${BACKUP_T3_MINIO_USER:-eqms-t3}
+      AGENT_TARGETS_EXTRA_T3_SECRET_KEY: ${BACKUP_T3_MINIO_PASSWORD:?BACKUP_T3_MINIO_PASSWORD is required}
+      AGENT_TARGETS_EXTRA_T3_IMMUTABLE: "true"

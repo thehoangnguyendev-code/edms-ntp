@@ -191,6 +191,7 @@ export const SystemMonitoringSection: React.FC = () => {
           emptyLabel={totalUsers === 0 && data ? 'There are no user accounts' : 'No data'}
           errorMessage="Users by status could not be loaded."
           idPrefix="users-status"
+          defaultView="bar"
           colorFor={userStatusColor}
         />
         <ComplianceCard data={data} loading={loading} error={error && !data} onRetry={reload} />

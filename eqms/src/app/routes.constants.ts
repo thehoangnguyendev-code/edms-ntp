@@ -160,8 +160,11 @@ export const ROUTES = {
   // Report
   REPORT: {
     BASE: '/report',
+    OVERVIEW: '/report/overview',
+    ANALYTICS: '/report/analytics',
     TEMPLATES: '/report/templates',
     HISTORY: '/report/history',
+    RUN_PREVIEW: '/report/runs/preview',
     SCHEDULED: '/report/scheduled',
   },
 
@@ -170,7 +173,20 @@ export const ROUTES = {
   AUDIT_TRAIL_REVIEW: '/audit-trail/reviews',
 
   // Backup & Restore
-  BACKUP_RESTORE: '/backup-restore',
+  BACKUP_RESTORE: {
+    BASE: '/backup-restore',
+    OVERVIEW: '/backup-restore/overview',
+    BACKUPS: '/backup-restore/backups',
+    BACKUP_DETAIL: (backupId: string) => `/backup-restore/backups/${encodeURIComponent(backupId)}`,
+    BACKUP_SCHEDULES: '/backup-restore/backups/schedules',
+    BACKUP_VERIFICATIONS: '/backup-restore/backups/verifications',
+    RESTORES: '/backup-restore/restores',
+    RESTORE_NEW: '/backup-restore/restores/new',
+    RESTORE_APPROVALS: '/backup-restore/restores/approvals',
+    RESTORE_VERIFICATIONS: '/backup-restore/restores/verification-reports',
+    RESTORE_HISTORY: '/backup-restore/restores/history',
+    DR_DRILLS: '/backup-restore/dr-drills',
+  },
 
   // Settings
   SETTINGS: {
@@ -192,10 +208,33 @@ export const ROUTES = {
     EMAIL_TEMPLATES: '/settings/email-templates',
     EMAIL_TEMPLATES_NEW: '/settings/email-templates/new',
     EMAIL_TEMPLATES_EDIT: (id: string) => `/settings/email-templates/edit/${id}`,
+    ANNOUNCEMENTS: '/settings/announcements',
+    ANNOUNCEMENTS_NEW: '/settings/announcements/new',
+    ANNOUNCEMENTS_EDIT: (id: string) => `/settings/announcements/edit/${id}`,
     ELECTRONIC_SIGNATURE: '/settings/electronic-signature',
     NOTIFICATION_POLICY: '/settings/notification-policy',
     SYSTEM_INFO: '/settings/system-info',
     REPORT_CONFIGURATION: '/settings/report-configuration',
+    REPORT_ADMINISTRATION: {
+      DEFINITIONS: '/settings/report-configuration',
+      ACCESS: '/settings/administration/report/access',
+      OUTPUT: '/settings/administration/report/output',
+      RETENTION: '/settings/administration/report/retention',
+      DELIVERY: '/settings/administration/report/delivery',
+      VALIDATION: '/settings/administration/report/validation',
+    },
+    BACKUP_ADMINISTRATION: {
+      POLICY: '/settings/administration/backup/policy',
+      POLICY_NEW: '/settings/administration/backup/policy/new',
+      POLICY_DETAIL: (version: number | string) => `/settings/administration/backup/policy/${version}`,
+      RETENTION: '/settings/administration/backup/retention',
+      STORAGE: '/settings/administration/backup/storage',
+      MEDIUM_DETAIL: (id: string) => `/settings/administration/backup/storage/media/${id}`,
+      VERIFICATION: '/settings/administration/backup/verification',
+      RESTORE_CONTROLS: '/settings/administration/backup/restore-controls',
+      ALERTS: '/settings/administration/backup/alerts',
+      DISASTER_RECOVERY: '/settings/administration/backup/disaster-recovery',
+    },
     TRAINING_ADMINISTRATION: {
       PROPERTIES: '/settings/administration/training/properties',
       REQUIREMENT_TEMPLATES: '/settings/administration/training/requirement-templates',
@@ -303,6 +342,10 @@ export const TRANSACTIONAL_PREFIXES: readonly string[] = [
   // ── Settings – Email Templates ─────────────────────────────────────────────
   '/settings/email-templates/new',
   '/settings/email-templates/edit/',  // /email-templates/edit/:id
+
+  // ── Settings – System Announcements ────────────────────────────────────────
+  '/settings/announcements/new',
+  '/settings/announcements/edit/',  // /announcements/edit/:id
 ] as const;
 
 /**

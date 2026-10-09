@@ -71,6 +71,10 @@ public class ControlledCopyDistributionBatch {
     @Column(name = "request_reason", columnDefinition = "TEXT")
     private String requestReason;
 
+    /** READ_AND_COMPLY or RECORD_KEEPING; every copy of the batch carries the same value. Null for a batch issued before the purpose existed. */
+    @Column(name = "usage_purpose", length = 30)
+    private String usagePurpose;
+
     @Column(name = "external_recipients", columnDefinition = "TEXT")
     private String externalRecipients;
 
@@ -162,6 +166,8 @@ public class ControlledCopyDistributionBatch {
     public void setLocation(String location) { this.location = location; }
     public String getLocationCode() { return locationCode; }
     public void setLocationCode(String locationCode) { this.locationCode = locationCode; }
+    public String getUsagePurpose() { return usagePurpose; }
+    public void setUsagePurpose(String usagePurpose) { this.usagePurpose = usagePurpose; }
     public String getRequestReason() { return requestReason; }
     public void setRequestReason(String requestReason) { this.requestReason = requestReason; }
     public String getExternalRecipients() { return externalRecipients; }

@@ -3,6 +3,7 @@ package com.eqms;
 import com.eqms.auth.AuthenticatedUser;
 import com.eqms.dto.controlledcopyrecall.RecallBatchCommitRequest;
 import com.eqms.dto.controlledcopyrecall.RecallBatchResponse;
+import com.eqms.dto.controlledcopyrecall.RecallItemUpdateRequest;
 import com.eqms.dto.document.ControlledCopyDistributeRequest;
 import com.eqms.dto.document.ControlledCopyListItemResponse;
 import com.eqms.dto.document.ControlledCopyRequestCreateRequest;
@@ -92,6 +93,9 @@ class ControlledCopyEndToEndIntegrationTest {
     @Autowired private ControlledCopyPreviewGrantService grantService;
     @Autowired private ControlledCopyPdfMarkingService markingService;
     @Autowired private com.eqms.service.ControlledCopyExpiryLimitService expiryLimitService;
+    @Autowired private com.eqms.repository.ExecutedRecordRepository executedRecordRepository;
+    @Autowired private com.eqms.repository.AuditLogRepository auditLogRepository;
+    @Autowired private com.eqms.repository.AuditLogChangeRepository auditLogChangeRepository;
 
     @MockitoBean private FileStorageService fileStorageService;
     @MockitoBean private ClamAvScanService clamAvScanService;
@@ -202,12 +206,16 @@ class ControlledCopyEndToEndIntegrationTest {
     }
 
     private ControlledCopyRecord requestAndDistribute(DocumentRecord document) {
+        return requestAndDistribute(document, "RECORD_KEEPING");
+    }
+
+    private ControlledCopyRecord requestAndDistribute(DocumentRecord document, String usagePurpose) {
         ControlledCopyRequestCreateRequest request = new ControlledCopyRequestCreateRequest(
                 document.getId().toString(), null, null, admin.getFullName(), null, null, "End to end test", 1,
                 "INTERNAL", "individual", false, null, List.of(), List.of(), List.of(), List.of(), List.of(),
                 "End to end test of the whole copy life", 1, null, "request-token",
                 List.of(new ControlledCopyRequestCreateRequest.ControlledCopyRecipientRequest(
-                        "USER", admin.getId().toString(), null, admin.getDepartment(), null, 1)));
+                        "USER", admin.getId().toString(), null, admin.getDepartment(), null, 1)), usagePurpose);
         ControlledCopyListItemResponse created = copyService.requestControlledCopy(request);
         ControlledCopyRecord copy = copyRepository.findById(UUID.fromString(created.id())).orElseThrow();
         assertThat(copy.getStatusCode()).isEqualTo("READY_FOR_DISTRIBUTION");
@@ -385,7 +393,7 @@ class ControlledCopyEndToEndIntegrationTest {
                 List.of(), List.of(), List.of(), List.of(), List.of(),
                 "Too long", 1, null, "request-token",
                 List.of(new ControlledCopyRequestCreateRequest.ControlledCopyRecipientRequest(
-                        "USER", admin.getId().toString(), null, admin.getDepartment(), null, 1)));
+                        "USER", admin.getId().toString(), null, admin.getDepartment(), null, 1)), "RECORD_KEEPING");
 
         assertThatThrownBy(() -> copyService.requestControlledCopy(request))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Valid Until");
@@ -419,5 +427,165 @@ class ControlledCopyEndToEndIntegrationTest {
         // Somebody signed in to eQMS does not need the link, so it does not bind them.
         SecurityContextHolder.getContext().setAuthentication(signedIn);
         assertThat(copyService.openPreview(copy.getId(), token, null)).isNotNull();
+    }
+
+    // ── usage purpose: read and comply, or record-keeping (CC-PURPOSE-2026-10-07) ─────────────────────
+
+    private ControlledCopyRequestCreateRequest requestWith(DocumentRecord document, String usagePurpose) {
+        return new ControlledCopyRequestCreateRequest(
+                document.getId().toString(), null, null, admin.getFullName(), null, null, "Purpose test", 1,
+                "INTERNAL", "individual", false, null, List.of(), List.of(), List.of(), List.of(), List.of(),
+                "Purpose test", 1, null, "request-token",
+                List.of(new ControlledCopyRequestCreateRequest.ControlledCopyRecipientRequest(
+                        "USER", admin.getId().toString(), null, admin.getDepartment(), null, 1)), usagePurpose);
+    }
+
+    @Test
+    void a_request_without_exactly_one_of_the_two_purposes_is_refused_and_creates_nothing() {
+        DocumentRecord document = requestableDocument();
+        configurePolicy(false);
+        long copies = copyRepository.count();
+
+        for (String bad : new String[] {null, "", "  ", "BOTH", "read", "READ_AND_COMPLY,RECORD_KEEPING", "Đọc và tuân thủ"}) {
+            assertThatThrownBy(() -> copyService.requestControlledCopy(requestWith(document, bad)))
+                    .as("purpose [" + bad + "]").isInstanceOf(IllegalArgumentException.class).satisfies(ex -> assertThat(ex.getMessage().toLowerCase()).contains("usage purpose"));
+        }
+
+        assertThat(copyRepository.count()).as("a refused request leaves no copy behind").isEqualTo(copies);
+    }
+
+    @Test
+    void the_purpose_is_stored_on_the_batch_and_on_every_copy_and_written_in_the_audit_trail() {
+        DocumentRecord document = requestableDocument();
+        configurePolicy(false);
+
+        ControlledCopyListItemResponse created = copyService.requestControlledCopy(requestWith(document, "READ_AND_COMPLY"));
+
+        ControlledCopyRecord copy = copyRepository.findById(UUID.fromString(created.id())).orElseThrow();
+        assertThat(created.usagePurpose()).isEqualTo("READ_AND_COMPLY");
+        assertThat(copy.getUsagePurpose()).isEqualTo("READ_AND_COMPLY");
+        assertThat(copy.getDistributionBatch().getUsagePurpose()).isEqualTo("READ_AND_COMPLY");
+        for (UUID entityId : List.of(copy.getId(), copy.getDistributionBatch().getId())) {
+            var requestEntry = auditLogRepository.findAll().stream()
+                    .filter(entry -> entityId.equals(entry.getEntityId()) && "REQUEST".equals(entry.getAction())).findFirst().orElseThrow();
+            assertThat(auditLogChangeRepository.findAllByAuditLogIdOrderByChangeOrderAscCreatedAtAsc(requestEntry.getId()))
+                    .anySatisfy(change -> {
+                        assertThat(change.getFieldName()).isEqualTo("usagePurpose");
+                        assertThat(change.getNewValue()).isEqualTo("Read and comply");
+                    });
+        }
+    }
+
+    @Test
+    void the_lists_filter_and_sort_by_purpose_on_the_server_and_old_copies_show_only_under_all() {
+        DocumentRecord document = requestableDocument();
+        configurePolicy(false);
+        ControlledCopyRecord read = copyRepository.findById(UUID.fromString(copyService.requestControlledCopy(requestWith(document, "READ_AND_COMPLY")).id())).orElseThrow();
+        ControlledCopyRecord record = copyRepository.findById(UUID.fromString(copyService.requestControlledCopy(requestWith(document, "RECORD_KEEPING")).id())).orElseThrow();
+        ControlledCopyRecord old = copyRepository.findById(UUID.fromString(copyService.requestControlledCopy(requestWith(document, "RECORD_KEEPING")).id())).orElseThrow();
+        old.setUsagePurpose(null);
+        old.getDistributionBatch().setUsagePurpose(null);
+        copyRepository.saveAndFlush(old);
+
+        java.util.function.Function<String, List<String>> copiesFor = filter -> copyService.list(1, 50, null, null, null, document.getId().toString(),
+                null, null, null, null, null, null, null, null, filter, "created", "desc").data().stream().map(ControlledCopyListItemResponse::id).toList();
+        assertThat(copiesFor.apply("READ_AND_COMPLY")).contains(read.getId().toString()).doesNotContain(record.getId().toString(), old.getId().toString());
+        assertThat(copiesFor.apply("RECORD_KEEPING")).contains(record.getId().toString()).doesNotContain(read.getId().toString(), old.getId().toString());
+        assertThat(copiesFor.apply("All")).contains(read.getId().toString(), record.getId().toString(), old.getId().toString());
+        assertThat(copiesFor.apply(null)).contains(old.getId().toString());
+        assertThat(copiesFor.apply("record_keeping")).as("the value is read case-insensitively").contains(record.getId().toString());
+        assertThat(copiesFor.apply("NONSENSE")).as("an unknown value matches nothing, it is not ignored").isEmpty();
+
+        java.util.function.Function<String, List<String>> batchesFor = filter -> copyService.listDistributionBatches(1, 50, null, null, document.getId().toString(),
+                null, null, null, null, null, null, null, null, filter, "created", "desc").data().stream().map(b -> b.id()).toList();
+        assertThat(batchesFor.apply("READ_AND_COMPLY")).contains(read.getDistributionBatch().getId().toString())
+                .doesNotContain(record.getDistributionBatch().getId().toString(), old.getDistributionBatch().getId().toString());
+        assertThat(batchesFor.apply("RECORD_KEEPING")).contains(record.getDistributionBatch().getId().toString()).doesNotContain(read.getDistributionBatch().getId().toString());
+        assertThat(batchesFor.apply("All")).contains(read.getDistributionBatch().getId().toString(), old.getDistributionBatch().getId().toString());
+
+        for (String direction : List.of("asc", "desc")) {
+            List<String> sorted = copyService.list(1, 50, null, null, null, document.getId().toString(), null, null, null, null, null, null, null, null,
+                    null, "usagePurpose", direction).data().stream().map(ControlledCopyListItemResponse::usagePurpose).toList();
+            assertThat(sorted).as("sorted " + direction).hasSizeGreaterThanOrEqualTo(3);
+            List<String> known = sorted.stream().filter(java.util.Objects::nonNull).toList();
+            assertThat(known).isSortedAccordingTo(direction.equals("asc") ? java.util.Comparator.<String>naturalOrder() : java.util.Comparator.<String>reverseOrder());
+            assertThat(copyService.listDistributionBatches(1, 50, null, null, document.getId().toString(), null, null, null, null, null, null, null, null,
+                    null, "usagePurpose", direction).data()).isNotEmpty();
+        }
+    }
+
+    @Test
+    void a_copy_for_reading_found_in_a_scan_is_set_apart_blocks_signing_until_removed_and_is_never_recalled_by_the_scan() throws Exception {
+        DocumentRecord document = requestableDocument();
+        configurePolicy(true);
+        ControlledCopyRecord read = requestAndDistribute(document, "READ_AND_COMPLY");
+        ControlledCopyRecord written = requestAndDistribute(document, "RECORD_KEEPING");
+        byte[] readScan = copyService.downloadControlledCopy(read.getId(), grantService.issue(read), null).bytes();
+        byte[] writtenScan = copyService.downloadControlledCopy(written.getId(), grantService.issue(written), null).bytes();
+
+        RecallBatchResponse draft = recallService.createDraft(List.of(
+                new MockMultipartFile("files", "read.pdf", "application/pdf", readScan),
+                new MockMultipartFile("files", "written.pdf", "application/pdf", writtenScan)));
+
+        var readItem = draft.items().stream().filter(item -> item.copy() != null && read.getId().toString().equals(item.copy().id())).findFirst().orElseThrow();
+        var writtenItem = draft.items().stream().filter(item -> item.copy() != null && written.getId().toString().equals(item.copy().id())).findFirst().orElseThrow();
+        assertThat(readItem.readAndComply()).isTrue();
+        assertThat(readItem.matchStatus()).isEqualTo("BLOCKED");
+        assertThat(readItem.matchMessage()).contains("for reading only").contains("not recalled by scan");
+        assertThat(writtenItem.readAndComply()).isFalse();
+        assertThat(writtenItem.matchStatus()).isEqualTo("READY");
+        assertThat(draft.readyToCommit()).as("the scan for reading holds the batch until it is removed").isFalse();
+        assertThatThrownBy(() -> recallService.commit(UUID.fromString(draft.id()), new RecallBatchCommitRequest("Purpose test", null, "recall-token")))
+                .hasMessageContaining("for reading only");
+        assertThat(copyRepository.findById(read.getId()).orElseThrow().getStatusCode()).isNotEqualTo("OBSOLETED");
+
+        // One click removes it (excludes it); the record-keeping copy is then processed as usual.
+        RecallBatchResponse removed = recallService.updateItem(UUID.fromString(draft.id()), UUID.fromString(readItem.id()), new RecallItemUpdateRequest(true, null, null));
+        assertThat(removed.readyToCommit()).isTrue();
+        RecallBatchResponse committed = recallService.commit(UUID.fromString(draft.id()), new RecallBatchCommitRequest("Purpose test", null, "recall-token"));
+
+        ControlledCopyRecord untouchedRead = copyRepository.findById(read.getId()).orElseThrow();
+        assertThat(untouchedRead.getStatusCode()).as("the copy for reading stays distributed until recalled by hand").isNotEqualTo("OBSOLETED");
+        assertThat(untouchedRead.getRecalledAt()).isNull();
+        assertThat(executedRecordRepository.existsBySourceControlledCopy_IdAndStatusNot(read.getId(), "REJECTED")).isFalse();
+        assertThat(executedRecordRepository.existsBySourceControlledCopy_IdAndStatusNot(written.getId(), "REJECTED")).isTrue();
+        assertThat(copyRepository.findById(written.getId()).orElseThrow().getStatusCode()).isEqualTo("OBSOLETED");
+        assertThat(committed.items()).anySatisfy(item -> assertThat(item.outcome()).isEqualTo("RECALLED"));
+    }
+
+    @Test
+    void records_never_list_or_serve_a_copy_for_reading_and_still_show_the_others_and_the_old_ones() throws Exception {
+        DocumentRecord document = requestableDocument();
+        configurePolicy(true);
+        ControlledCopyRecord read = requestAndDistribute(document, "READ_AND_COMPLY");
+        ControlledCopyRecord written = requestAndDistribute(document, "RECORD_KEEPING");
+        ControlledCopyRecord old = requestAndDistribute(document, "RECORD_KEEPING");
+        old.setUsagePurpose(null);
+        copyRepository.saveAndFlush(old);
+        RecallBatchResponse draft = recallService.createDraft(List.of(
+                new MockMultipartFile("files", "written.pdf", "application/pdf", copyService.downloadControlledCopy(written.getId(), grantService.issue(written), null).bytes()),
+                new MockMultipartFile("files", "old.pdf", "application/pdf", copyService.downloadControlledCopy(old.getId(), grantService.issue(old), null).bytes())));
+        recallService.commit(UUID.fromString(draft.id()), new RecallBatchCommitRequest("Purpose test", null, "recall-token"));
+        // A record that somehow exists for a copy for reading (made before this rule, or by another route) is hidden all the same.
+        com.eqms.entity.ExecutedRecord stray = new com.eqms.entity.ExecutedRecord();
+        stray.setId(UUID.randomUUID());
+        stray.setRecordNumber("PURPOSE-STRAY-" + System.nanoTime());
+        stray.setFormDocument(document);
+        stray.setFormRevision(read.getRevision());
+        stray.setCaptureMethod("PAPER_SCAN");
+        stray.setStatus("EXECUTED");
+        stray.setSourceControlledCopy(read);
+        stray.setFileName("stray.pdf");
+        executedRecordRepository.saveAndFlush(stray);
+
+        var all = executedRecordService.list(1, 100, null, document.getId().toString(), null, null, null, "created", "desc");
+
+        assertThat(all.data()).extracting(r -> r.recordNumber()).doesNotContain(stray.getRecordNumber());
+        assertThat(all.data()).hasSize(2); // the one written on and the old one
+        assertThat(executedRecordService.list(1, 100, null, null, read.getId().toString(), null, null, "created", "desc").data()).isEmpty();
+        assertThat(executedRecordService.list(1, 100, null, null, written.getId().toString(), null, null, "created", "desc").data()).hasSize(1);
+        assertThat(executedRecordService.list(1, 100, null, null, old.getId().toString(), null, null, "created", "desc").data()).hasSize(1);
+        assertThatThrownBy(() -> executedRecordService.getDetail(stray.getId())).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> executedRecordService.previewFile(stray.getId())).isInstanceOf(AccessDeniedException.class);
     }
 }

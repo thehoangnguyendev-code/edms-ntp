@@ -7,6 +7,7 @@
 /eqms/.env.local
 /eqms/.env.*.local
 /eqms-backend/target/
+/eqms-backup-agent/target/
 /eqms-backend/storage/
 /eqms-backend/tmp/
 /eqms-backend/logs/
@@ -50,3 +51,7 @@
 # Contains live secrets (SMTP password, Azure client secret) - never commit
 /update_config.sql
 /update_msgraph.sql
+
+# Environment files hold real secrets; only the *.example templates are versioned.
+/deploy/env/*.env
+!/deploy/env/*.env.example

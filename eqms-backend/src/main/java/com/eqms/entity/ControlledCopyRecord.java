@@ -95,6 +95,10 @@ public class ControlledCopyRecord {
     @Column(name = "request_reason", columnDefinition = "TEXT")
     private String requestReason;
 
+    /** READ_AND_COMPLY or RECORD_KEEPING; null only for a copy issued before the purpose existed. Fixed once issued. */
+    @Column(name = "usage_purpose", length = 30)
+    private String usagePurpose;
+
     @Column(name = "external_recipients", columnDefinition = "TEXT")
     private String externalRecipients;
 
@@ -348,6 +352,8 @@ public class ControlledCopyRecord {
     public void setLocation(String location) { this.location = location; }
     public String getLocationCode() { return locationCode; }
     public void setLocationCode(String locationCode) { this.locationCode = locationCode; }
+    public String getUsagePurpose() { return usagePurpose; }
+    public void setUsagePurpose(String usagePurpose) { this.usagePurpose = usagePurpose; }
     public String getRequestReason() { return requestReason; }
     public void setRequestReason(String requestReason) { this.requestReason = requestReason; }
     public String getExternalRecipients() { return externalRecipients; }

@@ -89,6 +89,7 @@ const item = (overrides: Partial<RecallItem>): RecallItem => ({
   outcome: "PENDING",
   previewAvailable: true,
   loosePage: false,
+  readAndComply: false,
   copy: {
     id: "c1",
     number: "CC-001",
@@ -349,6 +350,29 @@ describe("Recall by Scan", () => {
     await upload([pdf("pile.pdf")]);
 
     expect(await screen.findByText(/Pages 1, 2, 3 of 3/)).toBeInTheDocument();
+  });
+
+  it("sets a scan of a read-only copy apart and removes it with one click, leaving the others to be recalled", async () => {
+    const readOnly = item({
+      id: "r1", itemNo: 2, fileName: "read.pdf", matchStatus: "BLOCKED", readAndComply: true,
+      matchMessage: "Controlled copy CC-002 is for reading only (Read and comply) and is not recalled by scan.",
+      copy: { id: "c2", number: "CC-002", documentNumber: "SOP.QA.0008", documentTitle: "Gowning SOP", revisionNumber: "1.0.0", recipientName: "Lan Tran", status: "Distributed" },
+    });
+    const written = item({ id: "w1", itemNo: 1, fileName: "written.pdf" });
+    mocks.api.createDraft.mockResolvedValue(batchOf([written, readOnly]));
+    mocks.api.updateItem.mockResolvedValue(batchOf([written, { ...readOnly, excluded: true }]));
+    render(<ControlledCopyRecallScanView />);
+    await upload([pdf("written.pdf"), pdf("read.pdf")]);
+
+    expect(await screen.findByText(/scan\(s\) are of copies issued for reading only/)).toBeInTheDocument();
+    expect(screen.queryByText(/need attention/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Recall 1 controlled copy/ })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove read.pdf" }));
+
+    await waitFor(() => expect(mocks.api.updateItem).toHaveBeenCalledWith("b1", "r1", { excluded: true }));
+    expect(await screen.findByText("Removed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Recall 1 controlled copy/ })).toBeEnabled();
   });
 
   it("opens a scan in the preview modal", async () => {

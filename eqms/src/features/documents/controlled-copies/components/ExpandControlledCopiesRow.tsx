@@ -16,7 +16,7 @@ import { getControlledCopyMemberRecipientText } from "../distributionDisplay";
 import { normalizeControlledCopyRecord } from "../controlledCopyMapping";
 import { normalizeControlledCopyStatusLabel } from "../status";
 import type { ControlledCopy } from "../types";
-import { FileX, History, MoreVertical, RefreshCw, Send, Shredder } from "lucide-react";
+import { FileX, MoreVertical, RefreshCw, Send, Shredder } from "lucide-react";
 import { IconArrowBackUp, IconInfoCircle, IconShape3, IconX } from "@tabler/icons-react";
 import {
   getControlledCopyActionDecision,
@@ -79,7 +79,6 @@ interface ExpandControlledCopiesRowProps {
   isExpanded: boolean;
   visibleColumnsLength: number;
   onViewDetails?: (copy: ControlledCopy) => void;
-  onViewAuditTrail?: (copy: ControlledCopy) => void;
   onDistribute?: (copy: ControlledCopy) => void;
   onRecall?: (copy: ControlledCopy) => void;
   onCancel?: (copy: ControlledCopy) => void;
@@ -135,7 +134,6 @@ const ExpandedControlledCopyRow: React.FC<{
   copy: ControlledCopy;
   rowNumber: number;
   onViewDetails: (copy: ControlledCopy) => void;
-  onViewAuditTrail: (copy: ControlledCopy) => void;
   onDistribute?: (copy: ControlledCopy) => void;
   onRecall?: (copy: ControlledCopy) => void;
   onCancel?: (copy: ControlledCopy) => void;
@@ -145,7 +143,6 @@ const ExpandedControlledCopyRow: React.FC<{
   copy,
   rowNumber,
   onViewDetails,
-  onViewAuditTrail,
   onDistribute,
   onRecall,
   onCancel,
@@ -226,7 +223,6 @@ const ExpandedControlledCopyRow: React.FC<{
           reportLostDamagedDecision={reportLostDamagedDecision}
           reissueDecision={reissueDecision}
           onViewDetails={() => onViewDetails(copy)}
-          onViewAuditTrail={() => onViewAuditTrail(copy)}
           onDistribute={onDistribute ? () => onDistribute(copy) : undefined}
           onRecall={onRecall ? () => onRecall(copy) : undefined}
           onCancel={onCancel ? () => onCancel(copy) : undefined}
@@ -274,7 +270,6 @@ const ChildDropdownMenu: React.FC<{
   reportLostDamagedDecision?: ReturnType<typeof getControlledCopyActionDecision> | null;
   reissueDecision?: ReturnType<typeof getControlledCopyActionDecision> | null;
   onViewDetails?: () => void;
-  onViewAuditTrail?: () => void;
   onDistribute?: () => void;
   onRecall?: () => void;
   onCancel?: () => void;
@@ -291,7 +286,6 @@ const ChildDropdownMenu: React.FC<{
   reportLostDamagedDecision,
   reissueDecision,
   onViewDetails,
-  onViewAuditTrail,
   onDistribute,
   onRecall,
   onCancel,
@@ -312,19 +306,6 @@ const ChildDropdownMenu: React.FC<{
           >
             <IconInfoCircle className="h-4 w-4 flex-shrink-0" />
             <span className="font-medium">View Details</span>
-          </button>
-        )}
-        {onViewAuditTrail && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onViewAuditTrail();
-              onClose();
-            }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-          >
-            <History className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">View Audit Trail</span>
           </button>
         )}
         {onDistribute && !isCapabilityLoading && distributeDecision?.allowed && (
@@ -414,7 +395,6 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
   isExpanded,
   visibleColumnsLength,
   onViewDetails,
-  onViewAuditTrail,
   onDistribute,
   onRecall,
   onCancel,
@@ -507,22 +487,6 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
       return;
     }
     openDetail(copy.id);
-  };
-
-  const handleViewAuditTrail = (copy: ControlledCopy) => {
-    if (onViewAuditTrail) {
-      onViewAuditTrail(copy);
-      return;
-    }
-      void navigateToPrepared(
-        `${ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(copy.id)}?tab=audit`,
-        async () => ({
-          ...buildControlledCopySnapshotState(await documentApi.getControlledCopyDetailSnapshotById(copy.id)),
-        }),
-    ).catch((error) => {
-      console.error("Failed to preload controlled copy audit detail", error);
-      navigateTo(`${ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(copy.id)}?tab=audit`);
-    });
   };
 
   const handleRecall = (copy: ControlledCopy) => {
@@ -652,7 +616,6 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                                 copy={copy}
                                 rowNumber={((childPage - 1) * CHILD_PAGE_SIZE) + idx + 1}
                                 onViewDetails={handleViewDetails}
-                                onViewAuditTrail={handleViewAuditTrail}
                                 onDistribute={onDistribute}
                                 onRecall={onRecall}
                                 onCancel={onCancel}

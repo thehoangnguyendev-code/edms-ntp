@@ -5,7 +5,7 @@ import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { motion, useReducedMotion } from "framer-motion";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ROUTES } from '@/app/routes.constants';
-import { Download, Search, Check, X, MoreVertical, FileX, History, RefreshCw, ScanLine } from "lucide-react";
+import { Download, Search, Check, X, MoreVertical, FileX, RefreshCw, ScanLine } from "lucide-react";
 import { IconHandClick, IconX } from '@tabler/icons-react';
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
@@ -48,6 +48,13 @@ import {
 } from "./controlledCopyCapabilities";
 import { normalizeControlledCopyBatch } from "./controlledCopyMapping";
 import { Badge, BadgeColor } from "@/components/ui/badge/Badge";
+import {
+  USAGE_PURPOSE_ALL,
+  USAGE_PURPOSE_FILTER_OPTIONS,
+  normalizeUsagePurpose,
+  usagePurposeFilterFromParam,
+  usagePurposeLabel,
+} from "./usagePurpose";
 import type { ControlledCopyDistributionBatch, CurrentStage } from "./types";
 import {
   ExpandControlledCopiesRow,
@@ -143,14 +150,6 @@ const getDetailId = (copy: ControlledCopyRow) => {
   return getControlledCopyActionTargetId(copy) || copy.primaryControlledCopyId || "";
 };
 
-const getAuditTargetId = (copy: ControlledCopyRow) => {
-  if (!copy) {
-    return "";
-  }
-
-  return getControlledCopyActionTargetId(copy) || copy.primaryControlledCopyId || "";
-};
-
 // ==================== HELPER FUNCTIONS ====================
 
 const getBadgeColor = (statusCode?: string, statusLabel?: string): BadgeColor =>
@@ -176,7 +175,6 @@ const DropdownMenu: React.FC<{
   onRecall?: () => void;
   onReportLostDamaged?: () => void;
   onReissue?: () => void;
-  onViewAuditTrail?: () => void;
   viewType: ViewType;
 }> = ({
   isOpen,
@@ -196,7 +194,6 @@ const DropdownMenu: React.FC<{
   onRecall,
   onReportLostDamaged,
   onReissue,
-  onViewAuditTrail,
   viewType,
 }) => {
     return (
@@ -205,11 +202,6 @@ const DropdownMenu: React.FC<{
           {onViewDetails && (
             <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { onViewDetails!(); onClose(); }}>
               View Details
-            </DropdownMenuItem>
-          )}
-          {onViewAuditTrail && (
-            <DropdownMenuItem icon={<History className="h-4 w-4" />} onClick={() => { onViewAuditTrail!(); onClose(); }}>
-              View Audit Trail
             </DropdownMenuItem>
           )}
           {onDistribute && !isCapabilityLoading && distributeDecision?.allowed && (
@@ -285,6 +277,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   // Filter states
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
   const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") ?? "All");
+  const [usagePurposeFilter, setUsagePurposeFilter] = useState<string>(() => usagePurposeFilterFromParam(searchParams.get("usagePurpose")));
   const [statusOptions, setStatusOptions] = useState<Array<{ label: string; value: string }>>([{ label: "All States", value: "All" }]);
   const [createdFromDate, setCreatedFromDate] = useState(() => searchParams.get("createdFrom") ?? "");
   const [createdToDate, setCreatedToDate] = useState(() => searchParams.get("createdTo") ?? "");
@@ -323,6 +316,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   useLayoutEffect(() => {
     setSearchQuery(searchParams.get("search") ?? "");
     setStatusFilter(searchParams.get("status") ?? "All");
+    setUsagePurposeFilter(usagePurposeFilterFromParam(searchParams.get("usagePurpose")));
     setCreatedFromDate(searchParams.get("createdFrom") ?? "");
     setCreatedToDate(searchParams.get("createdTo") ?? "");
     setValidFromDate(searchParams.get("validFrom") ?? "");
@@ -341,6 +335,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     const params = new URLSearchParams();
     if (debouncedSearchQuery.trim()) params.set("search", debouncedSearchQuery.trim());
     if (viewType === "all" && statusFilter !== "All") params.set("status", statusFilter);
+    if (usagePurposeFilter !== USAGE_PURPOSE_ALL) params.set("usagePurpose", usagePurposeFilter);
     if (createdFromDate) params.set("createdFrom", createdFromDate);
     if (createdToDate) params.set("createdTo", createdToDate);
     if (validFromDate) params.set("validFrom", validFromDate);
@@ -354,7 +349,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     if (currentPage > 1) params.set("page", String(currentPage));
     if (itemsPerPage !== 10) params.set("limit", String(itemsPerPage));
     if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
-  }, [searchQuery, debouncedSearchQuery, statusFilter, createdFromDate, createdToDate, validFromDate, validToDate, expiryFromDate, expiryToDate, recallFromDate, recallToDate, sortConfig, currentPage, itemsPerPage, viewType, searchParams, setSearchParams]);
+  }, [searchQuery, debouncedSearchQuery, statusFilter, usagePurposeFilter, createdFromDate, createdToDate, validFromDate, validToDate, expiryFromDate, expiryToDate, recallFromDate, recallToDate, sortConfig, currentPage, itemsPerPage, viewType, searchParams, setSearchParams]);
 
   useEffect(() => {
     let mounted = true;
@@ -398,7 +393,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     // page with the full-screen spinner, or a batch distribution in progress makes the entire UI
     // flash/reload every time a copy finishes, on top of its own progress modal.
     const depsKey = JSON.stringify([
-      currentPage, itemsPerPage, debouncedSearchQuery, statusFilter,
+      currentPage, itemsPerPage, debouncedSearchQuery, statusFilter, usagePurposeFilter,
       createdFromDate, createdToDate, validFromDate, validToDate,
       expiryFromDate, expiryToDate, recallFromDate, recallToDate,
       sortConfig.key, sortConfig.direction, viewType,
@@ -426,6 +421,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
           expiryTo: expiryToDate ? convertDate(expiryToDate) : undefined,
           recallFrom: recallFromDate ? convertDate(recallFromDate) : undefined,
           recallTo: recallToDate ? convertDate(recallToDate) : undefined,
+          usagePurpose: usagePurposeFilter !== USAGE_PURPOSE_ALL ? usagePurposeFilter : undefined,
           sortBy: sortConfig.key,
           sortDirection: sortConfig.direction,
         });
@@ -460,7 +456,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     return () => {
       mounted = false;
     };
-  }, [currentPage, itemsPerPage, debouncedSearchQuery, statusFilter, createdFromDate, createdToDate, validFromDate, validToDate, expiryFromDate, expiryToDate, recallFromDate, recallToDate, sortConfig.key, sortConfig.direction, viewType, showToast, refreshToken]);
+  }, [currentPage, itemsPerPage, debouncedSearchQuery, statusFilter, usagePurposeFilter, createdFromDate, createdToDate, validFromDate, validToDate, expiryFromDate, expiryToDate, recallFromDate, recallToDate, sortConfig.key, sortConfig.direction, viewType, showToast, refreshToken]);
 
   // A controlled copy or batch was changed by anyone (distribute, recall, cancel, report lost/damaged ...):
   // refetch the current page so the list is never stale until a manual reload.
@@ -959,6 +955,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   const clearFilters = () => {
     setSearchQuery("");
     setStatusFilter("All");
+    setUsagePurposeFilter(USAGE_PURPOSE_ALL);
     setCreatedFromDate("");
     setCreatedToDate("");
     setValidFromDate("");
@@ -981,6 +978,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   const hasActiveFilters =
     !!searchQuery ||
     (viewType === "all" && statusFilter !== "All") ||
+    usagePurposeFilter !== USAGE_PURPOSE_ALL ||
     !!createdFromDate ||
     !!createdToDate ||
     !!validFromDate ||
@@ -1055,30 +1053,6 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     ).catch((error) => {
       console.error("Failed to preload controlled copy detail", error);
       navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(detailId), { state: buildControlledCopyRouteState({ from: fromPath }) });
-    });
-  };
-
-  const handleViewAuditTrail = (copy: ControlledCopy) => {
-    const detailId = getAuditTargetId(copy as ControlledCopyRow);
-    if (!detailId) {
-      showToast({
-        type: "error",
-        title: "Unable to open audit trail",
-        message: "This distribution batch does not expose a controlled copy record yet.",
-        duration: 3500,
-      });
-      return;
-    }
-    const fromPath = `${location.pathname}${location.search}`;
-    void navigateToPrepared(
-      `${ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(detailId)}?tab=audit`,
-      async () => ({
-        ...buildControlledCopySnapshotState(await documentApi.getControlledCopyDetailSnapshotById(detailId)),
-      }),
-      { state: buildControlledCopyRouteState({ from: fromPath }) },
-    ).catch((error) => {
-      console.error("Failed to preload controlled copy audit detail", error);
-      navigateTo(`${ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(detailId)}?tab=audit`, { state: buildControlledCopyRouteState({ from: fromPath }) });
     });
   };
 
@@ -1587,6 +1561,20 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         return <Badge color={getBadgeColor(copy.statusCode || copy.statusInfo?.id, statusLabel)}>{statusLabel}</Badge>;
       },
     },
+    {
+      id: "usagePurpose",
+      header: "Purpose",
+      label: "Purpose",
+      sort: { direction: sortConfig.key === "usagePurpose" ? sortConfig.direction : undefined, onSort: () => handleSort("usagePurpose") },
+      cell: (copy) => {
+        const purpose = normalizeUsagePurpose(copy.usagePurpose);
+        return purpose ? (
+          <Badge color={purpose === "READ_AND_COMPLY" ? "blue" : "emerald"} size="sm">{usagePurposeLabel(purpose)}</Badge>
+        ) : (
+          "-"
+        );
+      },
+    },
     { id: "validUntil", header: "Valid Until", label: "Valid Until", sort: { direction: sortConfig.key === "validUntil" ? sortConfig.direction : undefined, onSort: () => handleSort("validUntil") }, cell: (copy) => formatDateUS(copyMeta(copy).displayFields.validUntil) },
     {
       id: "expiryDate",
@@ -1719,6 +1707,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               status={viewType === 'all' ? statusFilter : viewType === 'ready' ? 'Ready for Distribution' : 'Distributed'}
               statusOptions={viewType === 'all' ? statusOptions : [{ value: viewType === 'ready' ? 'Ready for Distribution' : 'Distributed', label: viewType === 'ready' ? 'Ready for Distribution' : 'Distributed' }]}
               statusLocked={viewType !== 'all'} allStatus="All"
+              selects={[{ id: 'usagePurpose', label: 'Purpose', value: usagePurposeFilter, defaultValue: USAGE_PURPOSE_ALL, options: USAGE_PURPOSE_FILTER_OPTIONS }]}
               dates={[
                 { id: 'created', label: 'Created Date Range', from: createdFromDate, to: createdToDate },
                 { id: 'valid', label: 'Valid Until Date Range', from: validFromDate, to: validToDate },
@@ -1727,6 +1716,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               ]}
               onApply={draft => {
                 if (viewType === 'all') setStatusFilter(draft.status);
+                setUsagePurposeFilter(usagePurposeFilterFromParam(draft.usagePurpose === USAGE_PURPOSE_ALL ? null : draft.usagePurpose));
                 setCreatedFromDate(draft.createdFrom); setCreatedToDate(draft.createdTo);
                 setValidFromDate(draft.validFrom); setValidToDate(draft.validTo);
                 setExpiryFromDate(draft.expiryFrom); setExpiryToDate(draft.expiryTo);
@@ -1777,6 +1767,20 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                     disabled
                   />
                 )}
+              </div>
+
+              <div>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Purpose</label>
+                <Select
+                  value={usagePurposeFilter}
+                  onChange={(value) => {
+                    setUsagePurposeFilter(usagePurposeFilterFromParam(value === USAGE_PURPOSE_ALL ? null : String(value)));
+                    setCurrentPage(1);
+                  }}
+                  options={USAGE_PURPOSE_FILTER_OPTIONS}
+                  placeholder="All"
+                  enableSearch={false}
+                />
               </div>
 
               <div>
@@ -1890,6 +1894,28 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               </FilterAccordionItem>
 
               <FilterAccordionItem
+                label="Purpose"
+                isExpanded={expandedSections.has("purpose")}
+                onToggle={() => toggleSection("purpose")}
+              >
+                <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
+                  {USAGE_PURPOSE_FILTER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setUsagePurposeFilter(usagePurposeFilterFromParam(opt.value === USAGE_PURPOSE_ALL ? null : opt.value));
+                        setCurrentPage(1);
+                      }}
+                      className={getOptionClassName(usagePurposeFilter === opt.value)}
+                    >
+                      <span className="text-xs">{opt.label}</span>
+                      {usagePurposeFilter === opt.value && <Check size={16} className="text-emerald-500" />}
+                    </button>
+                  ))}
+                </div>
+              </FilterAccordionItem>
+
+              <FilterAccordionItem
                 label="Created Date Range"
                 isExpanded={expandedSections.has("createdDates")}
                 onToggle={() => toggleSection("createdDates")}
@@ -1993,7 +2019,6 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                       isExpanded={true}
                       visibleColumnsLength={controlledLayout.columns.length + 1}
                       onViewDetails={handleViewDetails}
-                      onViewAuditTrail={handleViewAuditTrail}
                       onDistribute={handleDistribute}
                       onRecall={handleRecall}
                       onCancel={handleCancel}
@@ -2053,7 +2078,6 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
           reissueDecision={selectedReissueDecision}
           viewType={viewType}
           onViewDetails={!selectedCopy ? undefined : () => handleViewDetails(selectedCopy)}
-          onViewAuditTrail={!selectedCopy ? undefined : () => handleViewAuditTrail(selectedCopy)}
           onDistribute={selectedCopy && selectedDistributeDecision ? () => handleDistribute(selectedCopy) : undefined}
           onRecall={selectedCopy && selectedRecallDecision ? () => handleRecall(selectedCopy) : undefined}
           onCancel={selectedCopy && selectedCancelDecision ? () => handleCancel(selectedCopy) : undefined}

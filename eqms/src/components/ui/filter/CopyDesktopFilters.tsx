@@ -4,13 +4,15 @@ import type { SelectOption } from '@/components/ui/select/Select';
 import { FilterOptionList } from './FilterOptionList';
 import { DateRangePicker } from '@/components/ui/datetime-picker/DateRangePicker';
 
-export function CopyDesktopFilters({ search, status, statusOptions, statusLocked, allStatus, dates, onApply }: {
+export function CopyDesktopFilters({ search, status, statusOptions, statusLocked, allStatus, dates, selects, onApply }: {
   search: React.ReactNode;
   status: string;
   statusOptions: SelectOption[];
   statusLocked: boolean;
   allStatus: string;
   dates: Array<{ id: string; label: string; from: string; to: string }>;
+  /** Further single-choice filters (for example Purpose), shown after Status. */
+  selects?: Array<{ id: string; label: string; value: string; defaultValue: string; options: SelectOption[] }>;
   onApply: (draft: Record<string, string>) => void;
 }) {
   const values: Record<string, string> = { status };
@@ -18,6 +20,13 @@ export function CopyDesktopFilters({ search, status, statusOptions, statusLocked
   const fields: DesktopFilterField[] = [{ id: 'status', label: 'Status', render: (draft, change) =>
     <FilterOptionList label="Status" value={draft.status} options={statusOptions} disabled={statusLocked}
       onChange={value => { if (!statusLocked) change('status', String(value)); }} /> }];
+  for (const select of selects ?? []) {
+    values[select.id] = select.value;
+    defaults[select.id] = select.defaultValue;
+    fields.push({ id: select.id, label: select.label, render: (draft, change) =>
+      <FilterOptionList label={select.label} value={draft[select.id]} options={select.options}
+        onChange={value => change(select.id, String(value))} /> });
+  }
   for (const date of dates) {
     values[`${date.id}From`] = date.from;
     values[`${date.id}To`] = date.to;

@@ -3,6 +3,7 @@ package com.eqms.service;
 import org.springframework.context.ApplicationEventPublisher;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.auth.TokenService;
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.document.ControlledCopyApproveRequest;
 import com.eqms.dto.document.ControlledCopyCancelRequest;
 import com.eqms.dto.document.ControlledCopyDestroyRequest;
@@ -321,6 +322,7 @@ public class ControlledCopyService {
             String expiryTo,
             String recallFrom,
             String recallTo,
+            String usagePurpose,
             String sortBy,
             String sortDirection
     ) {
@@ -339,7 +341,8 @@ public class ControlledCopyService {
                 expiryFrom,
                 expiryTo,
                 recallFrom,
-                recallTo
+                recallTo,
+                usagePurpose
         ).and(buildAuthorizationSpecification(currentUser));
 
         Pageable pageable = PageRequest.of(safePage - 1, safeLimit, resolveSort(sortBy, sortDirection));
@@ -364,6 +367,7 @@ public class ControlledCopyService {
             case "openedby" -> "requestedBy.fullName";
             case "revisionnumber", "version" -> "revisionNumber";
             case "revisionname" -> "revision.revisionName";
+            case "usagepurpose", "purpose" -> "usagePurpose";
             default -> "createdAt";
         };
         return Sort.by(direction, property).and(Sort.by(Sort.Direction.ASC, "createdAt"));
@@ -383,6 +387,7 @@ public class ControlledCopyService {
             String expiryTo,
             String recallFrom,
             String recallTo,
+            String usagePurpose,
             String sortBy,
             String sortDirection,
             OutputStream output
@@ -404,11 +409,12 @@ public class ControlledCopyService {
                 expiryFrom,
                 expiryTo,
                 recallFrom,
-                recallTo
+                recallTo,
+                usagePurpose
         ).and(buildAuthorizationSpecification(currentUser));
 
         Writer writer = new BufferedWriter(new java.io.OutputStreamWriter(output, StandardCharsets.UTF_8));
-        writer.write("Document Number,Controlled Copy Number,Created,Opened By,Name,Status,Valid Until,Document,Distribution List,Version,Location,Business Unit,Department,Recipient,Distribution Comment\n");
+        writer.write("Document Number,Controlled Copy Number,Created,Opened By,Name,Status,Valid Until,Document,Distribution List,Version,Location,Business Unit,Department,Recipient,Distribution Comment,Purpose\n");
 
         final int exportPageSize = 500;
         int pageNumber = 0;
@@ -889,6 +895,8 @@ public class ControlledCopyService {
         List<String> recipientIds = request == null || request.recipientIds() == null ? List.of() : request.recipientIds().stream().filter(StringUtils::hasText).map(String::trim).distinct().toList();
         List<String> recipientLabels = request == null || request.recipientLabels() == null ? List.of() : request.recipientLabels().stream().filter(StringUtils::hasText).map(String::trim).distinct().toList();
         List<String> externalRecipients = request == null || request.externalRecipients() == null ? List.of() : request.externalRecipients().stream().filter(StringUtils::hasText).map(String::trim).toList();
+        // Required, exactly one of the two: refused here, before any file is read or anything is created.
+        String usagePurpose = requireUsagePurpose(request == null ? null : request.usagePurpose());
         boolean requestedHasExpiryDate = request != null && Boolean.TRUE.equals(request.hasExpiryDate());
         Instant expiryDate = parseInstant(request == null ? null : request.expiryDate(), null);
         // A controlled copy is valid as long as its document is: it expires on the document's Valid Until date (owner decision
@@ -993,7 +1001,8 @@ public class ControlledCopyService {
                 reason,
                 hasExpiryDate,
                 expiryDate,
-                expiryAnchoredToDistribution
+                expiryAnchoredToDistribution,
+                usagePurpose
         );
 
         ControlledCopyRecord firstCreated = null;
@@ -1027,6 +1036,7 @@ public class ControlledCopyService {
             copy.setLocation(externalMode ? "External Recipients" : resolvedLocation);
             copy.setLocationCode(externalMode ? "EXT" : resolvedLocationCode);
             copy.setRequestReason(reason);
+            copy.setUsagePurpose(usagePurpose);
             copy.setExternalRecipients(externalMode ? recipient.identifier() : null);
             copy.setRecipientUser(recipient.user());
             copy.setRecipientName(recipient.displayName());
@@ -1053,7 +1063,7 @@ public class ControlledCopyService {
                     null,
                     copy.getStatus(),
                     reason,
-                    List.of(),
+                    List.of(new AuditTrailChangeResponse("usagePurpose", null, usagePurposeLabel(usagePurpose))),
                     signatureSessionId
             );
             if (firstCreated == null) {
@@ -1079,7 +1089,7 @@ public class ControlledCopyService {
                 null,
                 firstCreated == null ? null : firstCreated.getStatus(),
                 reason,
-                List.of(),
+                List.of(new AuditTrailChangeResponse("usagePurpose", null, usagePurposeLabel(usagePurpose))),
                 signatureSessionId
         );
         return toResponse(firstCreated, false);
@@ -1100,6 +1110,7 @@ public class ControlledCopyService {
             String expiryTo,
             String recallFrom,
             String recallTo,
+            String usagePurpose,
             String sortBy,
             String sortDirection
     ) {
@@ -1111,7 +1122,7 @@ public class ControlledCopyService {
         // into an unbounded memory/latency cost as the register grows.
         Specification<ControlledCopyDistributionBatch> dbFilters = buildBatchListSpecification(
                 search, status, documentId, createdFrom, createdTo, validFrom, validTo,
-                expiryFrom, expiryTo, recallFrom, recallTo)
+                expiryFrom, expiryTo, recallFrom, recallTo, usagePurpose)
                 .and(buildBatchAuthorizationSpecification(currentUser));
         Page<ControlledCopyDistributionBatch> pageResult = controlledCopyDistributionBatchRepository.findAll(
                 dbFilters,
@@ -1148,6 +1159,7 @@ public class ControlledCopyService {
             case "openedby" -> "requestedBy.fullName";
             case "revisionnumber", "version" -> "revisionNumber";
             case "lastupdated", "lastupdatedat", "updated", "updatedat" -> "updatedAt";
+            case "usagepurpose", "purpose" -> "usagePurpose";
             default -> "requestedAt";
         };
         return Sort.by(direction, property).and(Sort.by(Sort.Direction.ASC, "requestedAt"));
@@ -1156,9 +1168,10 @@ public class ControlledCopyService {
     private Specification<ControlledCopyDistributionBatch> buildBatchListSpecification(
             String search, String status, String documentId, String createdFrom, String createdTo,
             String validFrom, String validTo, String expiryFrom, String expiryTo,
-            String recallFrom, String recallTo) {
+            String recallFrom, String recallTo, String usagePurpose) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            addUsagePurposePredicate(predicates, cb, root.get("usagePurpose"), usagePurpose);
             if (StringUtils.hasText(search)) {
                 String pattern = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
                 Join<ControlledCopyDistributionBatch, UserAccount> requestedBy = root.join("requestedBy", JoinType.LEFT);
@@ -1201,6 +1214,20 @@ public class ControlledCopyService {
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };
+    }
+
+    /** The Purpose filter: All (or nothing) keeps every row, including those issued before the purpose existed; a value keeps only its rows. */
+    private static void addUsagePurposePredicate(List<Predicate> predicates, CriteriaBuilder cb,
+                                                 jakarta.persistence.criteria.Expression<String> column, String usagePurpose) {
+        if (!StringUtils.hasText(usagePurpose) || "all".equalsIgnoreCase(usagePurpose.trim())) {
+            return;
+        }
+        String value = usagePurpose.trim().toUpperCase(Locale.ROOT);
+        if (USAGE_READ_AND_COMPLY.equals(value) || USAGE_RECORD_KEEPING.equals(value)) {
+            predicates.add(cb.equal(column, value));
+        } else {
+            predicates.add(cb.disjunction()); // an unknown value matches nothing rather than being silently ignored
+        }
     }
 
     private void addInstantRangePredicates(CriteriaBuilder cb, jakarta.persistence.criteria.Expression<Instant> field,
@@ -1824,7 +1851,9 @@ public class ControlledCopyService {
                 original.getExpiryDate(),
                 // A Lost/Damaged replacement always inherits the original's already-fixed expiry
                 // exactly, never recomputed at this replacement's own Distribute time.
-                false
+                false,
+                // The replacement keeps the purpose of the copy it replaces (null for one issued before purposes existed).
+                original.getUsagePurpose()
         );
 
         ControlledCopyRecord copy = new ControlledCopyRecord();
@@ -1862,6 +1891,7 @@ public class ControlledCopyService {
         copy.setEffectiveDate(revision.getEffectiveDate());
         copy.setHasExpiryDate(original.getHasExpiryDate());
         copy.setExpiryDate(original.getExpiryDate());
+        copy.setUsagePurpose(original.getUsagePurpose());
         storeControlledCopyPublishedPdf(copy, publishedPdf);
         // Flush now so an optimistic-lock conflict surfaces here, before the notification below.
         // Also where the true-concurrency case of the duplicate-replacement guard above actually
@@ -2301,6 +2331,27 @@ public class ControlledCopyService {
         return "DESTROY";
     }
 
+    public static final String USAGE_READ_AND_COMPLY = "READ_AND_COMPLY";
+    public static final String USAGE_RECORD_KEEPING = "RECORD_KEEPING";
+
+    /** The purpose of the request: required and exactly one of the two values (checked here, not only on the screen). */
+    public static String requireUsagePurpose(String requested) {
+        String value = requested == null ? "" : requested.trim().toUpperCase(Locale.ROOT);
+        if (USAGE_READ_AND_COMPLY.equals(value) || USAGE_RECORD_KEEPING.equals(value)) {
+            return value;
+        }
+        throw new IllegalArgumentException(StringUtils.hasText(requested)
+                ? "Usage purpose must be either Read and comply or Record-keeping."
+                : "Choose the usage purpose of the controlled copy: Read and comply, or Record-keeping.");
+    }
+
+    /** Text for the audit trail only; never used to decide anything. */
+    static String usagePurposeLabel(String usagePurpose) {
+        if (USAGE_READ_AND_COMPLY.equals(usagePurpose)) return "Read and comply";
+        if (USAGE_RECORD_KEEPING.equals(usagePurpose)) return "Record-keeping";
+        return null;
+    }
+
     private ControlledCopyDistributionBatch createDistributionBatch(
             DocumentRecord document,
             DocumentRevisionRecord revision,
@@ -2315,7 +2366,8 @@ public class ControlledCopyService {
             String requestReason,
             boolean hasExpiryDate,
             Instant expiryDate,
-            boolean expiryAnchoredToDistribution
+            boolean expiryAnchoredToDistribution,
+            String usagePurpose
     ) {
         ControlledCopyDistributionBatch batch = new ControlledCopyDistributionBatch();
         batch.setId(UUID.randomUUID());
@@ -2335,6 +2387,7 @@ public class ControlledCopyService {
         batch.setLocationCode(locationCode);
         batch.setExternalRecipients(externalRecipients);
         batch.setRequestReason(requestReason);
+        batch.setUsagePurpose(usagePurpose);
         batch.setHasExpiryDate(hasExpiryDate);
         batch.setExpiryDate(expiryDate);
         batch.setExpiryAnchoredToDistribution(expiryAnchoredToDistribution);
@@ -2555,7 +2608,8 @@ public class ControlledCopyService {
                 batchBusinessUnitName,
                 batchDepartmentName,
                 copyIds,
-                effectiveLastUpdatedAt == null ? null : DateTimeFormatUtils.formatDateTime(effectiveLastUpdatedAt)
+                effectiveLastUpdatedAt == null ? null : DateTimeFormatUtils.formatDateTime(effectiveLastUpdatedAt),
+                batch != null && batch.getUsagePurpose() != null ? batch.getUsagePurpose() : (isSingleton ? firstCopy.getUsagePurpose() : null)
         );
     }
 
@@ -2871,10 +2925,12 @@ public class ControlledCopyService {
             String expiryFrom,
             String expiryTo,
             String recallFrom,
-            String recallTo
+            String recallTo,
+            String usagePurpose
     ) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            addUsagePurposePredicate(predicates, cb, root.get("usagePurpose"), usagePurpose);
             Join<ControlledCopyRecord, DocumentRecord> documentJoin = root.join("document", JoinType.LEFT);
             Join<ControlledCopyRecord, DocumentRevisionRecord> revisionJoin = root.join("revision", JoinType.LEFT);
             Join<ControlledCopyRecord, UserAccount> requestedByJoin = root.join("requestedBy", JoinType.LEFT);
@@ -3521,7 +3577,8 @@ public class ControlledCopyService {
                 replacedControlledCopy == null ? null : displayControlledCopyNumber(replacedControlledCopy.getControlledCopyNumber()),
                 replacementControlledCopy == null ? null : replacementControlledCopy.getId().toString(),
                 replacementControlledCopy == null ? null : displayControlledCopyNumber(replacementControlledCopy.getControlledCopyNumber()),
-                copy.getUpdatedAt() == null ? null : DateTimeFormatUtils.formatDateTime(copy.getUpdatedAt())
+                copy.getUpdatedAt() == null ? null : DateTimeFormatUtils.formatDateTime(copy.getUpdatedAt()),
+                copy.getUsagePurpose()
         );
     }
 

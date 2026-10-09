@@ -4,7 +4,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 export const DOCUMENT_PERMISSION_CODES = {
   moduleView: 'documents.module.view',
   view: 'documents.document.view',
-  viewAudit: 'documents.document.view_audit',
   createShell: 'documents.document.create',
   editMetadata: 'documents.document.edit_metadata',
   manageReviewCycle: 'documents.document.edit_metadata',

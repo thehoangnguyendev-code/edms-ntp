@@ -1695,6 +1695,8 @@ export const documentApi = {
     createdTo?: string;
     validFrom?: string;
     validTo?: string;
+    /** READ_AND_COMPLY or RECORD_KEEPING; omitted keeps every copy. */
+    usagePurpose?: string;
     sortBy?: string;
     sortDirection?: "asc" | "desc";
   }) => {
@@ -1725,6 +1727,8 @@ export const documentApi = {
     expiryTo?: string;
     recallFrom?: string;
     recallTo?: string;
+    /** READ_AND_COMPLY or RECORD_KEEPING; omitted keeps every batch. */
+    usagePurpose?: string;
     sortBy?: string;
     sortDirection?: "asc" | "desc";
   }) => {
@@ -1915,6 +1919,7 @@ export const documentApi = {
     createdTo?: string;
     validFrom?: string;
     validTo?: string;
+    usagePurpose?: string;
     sortBy?: string;
     sortDirection?: "asc" | "desc";
   }) => {
@@ -2084,6 +2089,8 @@ export const documentApi = {
       location?: string;
       quantity: number;
     }>;
+    /** Required: READ_AND_COMPLY or RECORD_KEEPING (the server refuses a request without exactly one). */
+    usagePurpose: "READ_AND_COMPLY" | "RECORD_KEEPING";
     signatureToken?: string;
   }) => {
     const response = await api.post(CONTROLLED_COPIES_ENDPOINT, data);

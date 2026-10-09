@@ -82,6 +82,27 @@ public record MarkingPlacementRule(
         return false;
     }
 
+    /**
+     * The watermark angle is one setting for the whole document: a copy must never read in one direction on page 1 and in another
+     * from page 2. The page-1 rule (the one the policy preview shows) decides; its angle, or none (= the marking's own angle), is
+     * given to every rule. Positions and sizes are left as they are.
+     */
+    public static java.util.List<MarkingPlacementRule> withUniformWatermarkAngle(java.util.List<MarkingPlacementRule> rules, int pageCount) {
+        if (rules == null || rules.isEmpty()) {
+            return rules;
+        }
+        MarkingPlacementRule first = null;
+        for (MarkingPlacementRule rule : rules) {
+            if (rule != null && rule.matches(1, pageCount) && (first == null || rule.specificity() > first.specificity())) {
+                first = rule;
+            }
+        }
+        Integer angle = first == null ? null : first.watermarkAngleDegrees();
+        return rules.stream().map(rule -> rule == null || java.util.Objects.equals(rule.watermarkAngleDegrees(), angle) ? rule
+                : new MarkingPlacementRule(rule.pages(), rule.stampX(), rule.stampY(), rule.stampWidthPercent(),
+                        rule.watermarkX(), rule.watermarkY(), rule.watermarkScalePercent(), angle)).toList();
+    }
+
     public boolean hasStampPosition() {
         return stampX != null && stampY != null;
     }

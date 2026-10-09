@@ -60,6 +60,7 @@ const normalizeApiResponseItems = (items: any[], documentId: string): Controlled
       status: firstText(normalized.status) as ControlledCopy["status"],
       openedBy: firstText(normalized.openedBy),
       validUntil: firstText(normalized.validUntil),
+      usagePurpose: normalized.usagePurpose,
       documentRevision: firstText(normalized.revisionName, normalized.revisionNumber),
       documentNumber: firstText(normalized.documentNumber),
     };

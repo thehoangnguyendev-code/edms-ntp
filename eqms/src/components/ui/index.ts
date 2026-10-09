@@ -24,6 +24,7 @@ export * from './modal';
 export * from './drawer';
 export * from './toast';
 export * from './badge';
+export * from './announcement-modal';
 export * from './avatar';
 export * from './icon-tile';
 export * from './popover';

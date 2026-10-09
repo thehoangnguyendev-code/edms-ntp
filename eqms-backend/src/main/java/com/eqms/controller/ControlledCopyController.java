@@ -108,6 +108,7 @@ public class ControlledCopyController {
             @RequestParam(required = false) String expiryTo,
             @RequestParam(required = false) String recallFrom,
             @RequestParam(required = false) String recallTo,
+            @RequestParam(required = false) String usagePurpose,
             @RequestParam(required = false, defaultValue = "created") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
@@ -126,6 +127,7 @@ public class ControlledCopyController {
                 expiryTo,
                 recallFrom,
                 recallTo,
+                usagePurpose,
                 sortBy,
                 sortDirection
         ));
@@ -146,6 +148,7 @@ public class ControlledCopyController {
             @RequestParam(required = false) String expiryTo,
             @RequestParam(required = false) String recallFrom,
             @RequestParam(required = false) String recallTo,
+            @RequestParam(required = false) String usagePurpose,
             @RequestParam(required = false, defaultValue = "created") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
@@ -163,6 +166,7 @@ public class ControlledCopyController {
                 expiryTo,
                 recallFrom,
                 recallTo,
+                usagePurpose,
                 sortBy,
                 sortDirection
         ));
@@ -218,12 +222,13 @@ public class ControlledCopyController {
             @RequestParam(required = false) String expiryTo,
             @RequestParam(required = false) String recallFrom,
             @RequestParam(required = false) String recallTo,
+            @RequestParam(required = false) String usagePurpose,
             @RequestParam(required = false, defaultValue = "created") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection
     ) {
         StreamingResponseBody csv = outputStream -> controlledCopyService.writeExport(
                 search, status, department, documentId, createdFrom, createdTo,
-                validFrom, validTo, expiryFrom, expiryTo, recallFrom, recallTo,
+                validFrom, validTo, expiryFrom, expiryTo, recallFrom, recallTo, usagePurpose,
                 sortBy, sortDirection, outputStream
         );
         return ResponseEntity.ok()

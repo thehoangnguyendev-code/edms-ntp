@@ -65,6 +65,8 @@ public record ControlledCopyListItemResponse(
         String replacedControlledCopyNumber,
         String replacementControlledCopyId,
         String replacementControlledCopyNumber,
-        String lastUpdatedAt
+        String lastUpdatedAt,
+        /** READ_AND_COMPLY, RECORD_KEEPING, or null for a copy issued before the purpose existed. */
+        String usagePurpose
 ) {
 }

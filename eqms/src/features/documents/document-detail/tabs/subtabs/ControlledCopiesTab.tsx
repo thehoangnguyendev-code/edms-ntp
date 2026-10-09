@@ -11,6 +11,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { SortableTh } from "./components/SortableTh";
 import { buildControlledCopySnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { usagePurposeLabel } from "@/features/documents/controlled-copies/usagePurpose";
 
 interface ControlledCopiesTabProps {
     copies?: ControlledCopy[];
@@ -154,6 +155,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                 {sortableTh("controlledCopyNumber", "Copy Number", "hidden md:table-cell")}
                                 {sortableTh("created", "Created", "hidden md:table-cell")}
                                 {sortableTh("status", "Status")}
+                                {sortableTh("usagePurpose", "Purpose", "hidden md:table-cell")}
                                 {sortableTh("openedBy", "Opened by", "hidden lg:table-cell")}
                                 {sortableTh("validUntil", "Valid Until", "hidden lg:table-cell")}
                                 {sortableTh("revisionName", "Document Revision", "hidden xl:table-cell")}
@@ -163,7 +165,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                         <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                             {error ? (
                                 <TableMarkup.Row>
-                                    <TableMarkup.Cell colSpan={9} className="py-12 text-center">
+                                    <TableMarkup.Cell colSpan={10} className="py-12 text-center">
                                         <div className="flex flex-col items-center justify-center gap-2.5">
                                             <div className="h-10 w-10 rounded-full bg-rose-50 flex items-center justify-center">
                                                 <Search className="h-5 w-5 text-rose-300" />
@@ -174,7 +176,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                 </TableMarkup.Row>
                             ) : currentCopies.length === 0 ? (
                                 <TableMarkup.Row>
-                                    <TableMarkup.Cell colSpan={9} className="p-0">
+                                    <TableMarkup.Cell colSpan={10} className="p-0">
                                         <TableEmptyState title={emptyMessage} />
                                     </TableMarkup.Cell>
                                 </TableMarkup.Row>
@@ -199,6 +201,9 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                         </TableMarkup.Cell>
                                         <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                                             <StatusBadge status={(copy.status || "").toLowerCase().replace(/ /g, "") as any} />
+                                        </TableMarkup.Cell>
+                                        <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700 hidden md:table-cell">
+                                            {usagePurposeLabel(copy.usagePurpose)}
                                         </TableMarkup.Cell>
                                         <TableMarkup.Cell className={TABLE_STYLES.cell14}>
                                             {copy.openedBy}

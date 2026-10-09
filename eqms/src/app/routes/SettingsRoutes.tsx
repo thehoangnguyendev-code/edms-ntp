@@ -54,6 +54,24 @@ const ControlledCopiesPolicyView = lazy(() => import('@/features/settings').then
 const UncontrolledCopyPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.UncontrolledCopyPolicyView })));
 
 // Training Administration -- coming soon placeholders, one per sub-screen
+// Backup & Restore Administration -- one screen per sub-menu (UI preview)
+const ReportAccessScopeView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportAccessScopeView })));
+const ReportOutputControlsView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportOutputControlsView })));
+const ReportRetentionView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportRetentionView })));
+const ReportDeliveryView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportDeliveryView })));
+const ReportValidationView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportValidationView })));
+const BackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupPolicyView })));
+const BackupPolicyDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupPolicyDetailView })));
+const NewBackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.NewBackupPolicyView })));
+const OfflineMediumDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.OfflineMediumDetailView })));
+const BackupRetentionView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupRetentionView })));
+const BackupStorageView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupStorageView })));
+const BackupVerificationView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupVerificationView })));
+const RestoreControlsView = lazy(() => import('@/features/settings').then(m => ({ default: m.RestoreControlsView })));
+const DisasterRecoveryPlanView = lazy(() => import('@/features/settings').then(m => ({ default: m.DisasterRecoveryPlanView })));
+const AnnouncementsView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementsView })));
+const AnnouncementEditorView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementEditorView })));
+const BackupAlertsView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupAlertsView })));
 const TrainingPropertiesView = lazy(() => import('@/features/settings').then(m => ({ default: m.TrainingPropertiesView })));
 const RequirementTemplatesView = lazy(() => import('@/features/settings').then(m => ({ default: m.RequirementTemplatesView })));
 const CreateQuizView = lazy(() => import('@/features/settings').then(m => ({ default: m.CreateQuizView })));
@@ -136,6 +154,11 @@ export function settingsRoutes(navigate: NavigateFunction) {
           <Route path="preview" element={<ProtectedRoute requiredPermissions={["settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><EmailTemplatePreviewView /></Suspense></ProtectedRoute>} />
           <Route path="preview/:id" element={<ProtectedRoute requiredPermissions={["settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><EmailTemplatePreviewView /></Suspense></ProtectedRoute>} />
         </Route>
+        <Route path="announcements">
+          <Route index element={<ProtectedRoute requiredPermissions={["settings.announcement.view", "settings.announcement.manage"]}><Suspense fallback={<LoadingFallback />}><AnnouncementsView /></Suspense></ProtectedRoute>} />
+          <Route path="new" element={<ProtectedRoute requiredPermissions={["settings.announcement.manage"]}><Suspense fallback={<LoadingFallback />}><AnnouncementEditorView /></Suspense></ProtectedRoute>} />
+          <Route path="edit/:id" element={<ProtectedRoute requiredPermissions={["settings.announcement.manage"]}><Suspense fallback={<LoadingFallback />}><AnnouncementEditorView /></Suspense></ProtectedRoute>} />
+        </Route>
         <Route path="notification-policy">
           <Route index element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view"]}><Suspense fallback={<LoadingFallback />}><NotificationPolicyView /></Suspense></ProtectedRoute>} />
           <Route path="new" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.manage"]}><Suspense fallback={<LoadingFallback />}><NotificationPolicyCreateView /></Suspense></ProtectedRoute>} />
@@ -173,6 +196,30 @@ export function settingsRoutes(navigate: NavigateFunction) {
         </Route>
         <Route path="controlled-copies-policy" element={<ProtectedRoute requiredPermissions={["documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage"]}><Suspense fallback={<LoadingFallback />}><ControlledCopiesPolicyView /></Suspense></ProtectedRoute>} />
         <Route path="uncontrolled-copies-policy" element={<ProtectedRoute requiredPermissions={["documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage"]}><Suspense fallback={<LoadingFallback />}><UncontrolledCopyPolicyView /></Suspense></ProtectedRoute>} />
+      </Route>
+
+      {/* ===== REPORT ADMINISTRATION (UI preview, one screen per sub-menu) ===== */}
+      <Route path="settings/administration/report">
+        <Route path="access" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportAccessScopeView /></Suspense></ProtectedRoute>} />
+        <Route path="output" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportOutputControlsView /></Suspense></ProtectedRoute>} />
+        <Route path="retention" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportRetentionView /></Suspense></ProtectedRoute>} />
+        <Route path="delivery" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportDeliveryView /></Suspense></ProtectedRoute>} />
+        <Route path="validation" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportValidationView /></Suspense></ProtectedRoute>} />
+      </Route>
+
+      {/* ===== BACKUP & RESTORE ADMINISTRATION (UI preview, one screen per sub-menu) ===== */}
+      <Route path="settings/administration/backup">
+        <Route index element={<Navigate to={ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY} replace />} />
+        <Route path="policy" element={<ProtectedRoute requiredPermissions={["backup.admin.policy.view"]}><Suspense fallback={<LoadingFallback />}><BackupPolicyView /></Suspense></ProtectedRoute>} />
+        <Route path="policy/new" element={<ProtectedRoute requiredPermissions={["backup.admin.policy.propose"]}><Suspense fallback={<LoadingFallback />}><NewBackupPolicyView /></Suspense></ProtectedRoute>} />
+        <Route path="policy/:version" element={<ProtectedRoute requiredPermissions={["backup.admin.policy.view"]}><Suspense fallback={<LoadingFallback />}><BackupPolicyDetailView /></Suspense></ProtectedRoute>} />
+        <Route path="retention" element={<ProtectedRoute requiredPermissions={["backup.admin.retention.view"]}><Suspense fallback={<LoadingFallback />}><BackupRetentionView /></Suspense></ProtectedRoute>} />
+        <Route path="storage" element={<ProtectedRoute requiredPermissions={["backup.admin.storage.view"]}><Suspense fallback={<LoadingFallback />}><BackupStorageView /></Suspense></ProtectedRoute>} />
+        <Route path="storage/media/:id" element={<ProtectedRoute requiredPermissions={["backup.admin.storage.view"]}><Suspense fallback={<LoadingFallback />}><OfflineMediumDetailView /></Suspense></ProtectedRoute>} />
+        <Route path="verification" element={<ProtectedRoute requiredPermissions={["backup.admin.verification.view"]}><Suspense fallback={<LoadingFallback />}><BackupVerificationView /></Suspense></ProtectedRoute>} />
+        <Route path="restore-controls" element={<ProtectedRoute requiredPermissions={["backup.admin.restore_controls.view"]}><Suspense fallback={<LoadingFallback />}><RestoreControlsView /></Suspense></ProtectedRoute>} />
+        <Route path="alerts" element={<ProtectedRoute requiredPermissions={["backup.admin.alerts.view"]}><Suspense fallback={<LoadingFallback />}><BackupAlertsView /></Suspense></ProtectedRoute>} />
+        <Route path="disaster-recovery" element={<ProtectedRoute requiredPermissions={["backup.admin.disaster_recovery.view"]}><Suspense fallback={<LoadingFallback />}><DisasterRecoveryPlanView /></Suspense></ProtectedRoute>} />
       </Route>
 
       {/* ===== TRAINING ADMINISTRATION (coming soon sub-screens) ===== */}

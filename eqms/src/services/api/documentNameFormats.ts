@@ -5,7 +5,7 @@ import type {
   DocumentComponentItem,
   DocumentNameFormatFormData,
   DocumentNameFormatItem,
-} from '@/features/settings/document-administration/documentNameFormatTypes';
+} from '@/features/settings/document-administration/document-name-formats/documentNameFormatTypes';
 
 type PageResponse<T> = {
   data: T[];

@@ -151,8 +151,8 @@ export function ReportHistoryView() {
   return (
     <div className="flex min-w-0 flex-col h-full gap-4 md:gap-6 w-full flex-1">
       <PageHeader
-        title="Report History"
-        breadcrumbItems={reportBreadcrumbs(navigate, "Report History")}
+        title="Report Run History"
+        breadcrumbItems={reportBreadcrumbs(navigate, "Report Run History")}
         actions={
           <Button
             size="sm"

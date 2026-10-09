@@ -1,15 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion';
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
+import { Cell, Pie, PieChart } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { TabNav, type TabItem } from '@/components/ui/tabs';
 import { ActivityBarChart } from './ActivityBarChart';
+import { LazyMount } from './LazyMount';
 import { groupTail, share, type RankedCount } from './dashboardMetrics';
 import { PanelError } from './dashboardParts';
 import { Card, CardHeader } from './dashboardUi';
 import type { DashboardResource } from './useDashboardResource';
 
-type View = 'bar' | 'donut';
+export type View = 'bar' | 'donut';
 
 const EASE_OUT = [0.2, 0.8, 0.3, 1] as const;
 const VIEW_ORDER: readonly string[] = ['bar', 'donut'];
@@ -44,6 +46,8 @@ const VIEWS: readonly TabItem[] = [
 export const BREAKDOWN_PALETTE = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#14b8a6', '#ec4899', '#f97316', '#6366f1', '#84cc16', '#06b6d4'];
 const OTHER_COLOR = '#94a3b8';
 const MAX_SLICES = 8;
+/** Above the figure written in the middle of the ring, which is drawn after the chart and would otherwise lie over the tooltip. */
+const TOOLTIP_WRAPPER = { outline: 'none', zIndex: 50 } as const;
 const COLUMN_WIDTH = 64;
 const CHART_HEIGHT = 248;
 
@@ -55,7 +59,7 @@ export type ColorFor = (row: RankedCount, index: number) => string;
 const paletteColor: ColorFor = (row, index) => (row.key === 'OTHER' ? OTHER_COLOR : BREAKDOWN_PALETTE[index % BREAKDOWN_PALETTE.length]);
 
 /** Name, count and share of every row, always visible; hovering a row highlights its slice in the donut. Rows arrive one after the other. */
-const Legend: React.FC<{ rows: RankedCount[]; total: number; colorFor: ColorFor; active?: number | null; onActive?: (index: number | null) => void }> = ({ rows, total, colorFor, active = null, onActive }) => {
+const Legend = memo(function Legend({ rows, total, colorFor, active = null, onActive }: { rows: RankedCount[]; total: number; colorFor: ColorFor; active?: number | null; onActive?: (index: number | null) => void }) {
   const reduceMotion = useReducedMotion();
   return (
     <ul className="max-h-[160px] space-y-0.5 overflow-y-auto custom-scrollbar sm:max-h-[248px]">
@@ -84,48 +88,53 @@ const Legend: React.FC<{ rows: RankedCount[]; total: number; colorFor: ColorFor;
       ))}
     </ul>
   );
-};
+});
 
 /** One coloured column per row, labelled with its short code and its count. */
-const Columns: React.FC<{ rows: RankedCount[]; total: number; valueLabel: string; colorFor: ColorFor }> = ({ rows, total, valueLabel, colorFor }) => {
+const Columns = memo(function Columns({ rows, total, valueLabel, colorFor }: { rows: RankedCount[]; total: number; valueLabel: string; colorFor: ColorFor }) {
+  // Stable while the rows are: a new array would make the chart play its entrance again.
+  const data = useMemo(() => rows.map((row) => ({ label: row.shortCode, value: row.value })), [rows]);
+  const colors = useMemo(() => rows.map(colorFor), [rows, colorFor]);
   const names = useMemo(() => new Map(rows.map((row) => [row.shortCode, row.name])), [rows]);
+  const titleFor = useCallback((label: string) => names.get(label) ?? label, [names]);
   return (
     <div className="grid h-full grid-cols-1 items-center gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(200px,280px)]">
       <div className="h-[200px] overflow-x-auto custom-scrollbar sm:h-full">
         <div className="h-full" style={{ minWidth: rows.length * COLUMN_WIDTH + 60 }}>
-          <ActivityBarChart
-            data={rows.map((row) => ({ label: row.shortCode, value: row.value }))}
-            color={BREAKDOWN_PALETTE[0]}
-            colors={rows.map(colorFor)}
-            valueLabel={valueLabel}
-            titleFor={(label) => names.get(label) ?? label}
-            height={CHART_HEIGHT}
-            showValues
-          />
+          <ActivityBarChart data={data} color={BREAKDOWN_PALETTE[0]} colors={colors} valueLabel={valueLabel} titleFor={titleFor} height={CHART_HEIGHT} showValues />
         </div>
       </div>
       <Legend rows={rows} total={total} colorFor={colorFor} />
     </div>
   );
-};
+});
 
 /** Ring of the rows with the total in the centre; the legend shares its colours. */
-const Donut: React.FC<{ rows: RankedCount[]; total: number; centerCaption: string; colorFor: ColorFor }> = ({ rows, total, centerCaption, colorFor }) => {
+const Donut = memo(function Donut({ rows, total, centerCaption, colorFor }: { rows: RankedCount[]; total: number; centerCaption: string; colorFor: ColorFor }) {
   const [active, setActive] = useState<number | null>(null);
   const reduceMotion = useReducedMotion();
   const centerValue = (active === null ? total : rows[active].value).toLocaleString();
+
+  // One entry per slice; `fill` is what the tooltip uses for the colour chip, and the config names each slice.
+  const slices = useMemo(() => rows.map((row, index) => ({ ...row, fill: colorFor(row, index) })), [rows, colorFor]);
+  const config = useMemo<ChartConfig>(
+    () => Object.fromEntries(slices.map((slice) => [slice.key, { label: slice.name, color: slice.fill }])),
+    [slices],
+  );
+
   return (
     <div className="grid h-full grid-cols-1 items-center gap-4 p-4 sm:grid-cols-[200px_minmax(0,1fr)]">
-      <div className="relative mx-auto h-[200px] w-[200px]">
-        <ResponsiveContainer width="100%" height="100%" minHeight={160}>
+      <LazyMount className="relative mx-auto h-[200px] w-[200px]" placeholder={<div className="mx-auto h-full w-full animate-pulse rounded-full bg-slate-50" aria-hidden />}>
+        <ChartContainer config={config} className="aspect-square h-full w-full">
           <PieChart>
+            <ChartTooltip wrapperStyle={TOOLTIP_WRAPPER} content={<ChartTooltipContent hideLabel nameKey="key" className="min-w-[10rem] bg-white" />} />
             <Pie
-              data={rows}
+              data={slices}
               dataKey="value"
               nameKey="name"
               innerRadius="64%"
               outerRadius="94%"
-              paddingAngle={rows.length > 1 ? 2 : 0}
+              paddingAngle={slices.length > 1 ? 2 : 0}
               stroke="none"
               animationBegin={120}
               animationDuration={900}
@@ -133,12 +142,12 @@ const Donut: React.FC<{ rows: RankedCount[]; total: number; centerCaption: strin
               onMouseEnter={(_, index) => setActive(index)}
               onMouseLeave={() => setActive(null)}
             >
-              {rows.map((row, index) => (
-                <Cell key={row.key} fill={colorFor(row, index)} fillOpacity={active === null || active === index ? 1 : 0.4} style={{ transition: 'fill-opacity 200ms ease' }} />
+              {slices.map((slice, index) => (
+                <Cell key={slice.key} fill={slice.fill} fillOpacity={active === null || active === index ? 1 : 0.4} style={{ transition: 'fill-opacity 200ms ease' }} />
               ))}
             </Pie>
           </PieChart>
-        </ResponsiveContainer>
+        </ChartContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           <motion.span
             key={centerValue}
@@ -151,11 +160,11 @@ const Donut: React.FC<{ rows: RankedCount[]; total: number; centerCaption: strin
           </motion.span>
           <span className="mt-1 max-w-[110px] truncate text-xs text-slate-500">{active === null ? centerCaption : rows[active].shortCode}</span>
         </div>
-      </div>
+      </LazyMount>
       <Legend rows={rows} total={total} colorFor={colorFor} active={active} onActive={setActive} />
     </div>
   );
-};
+});
 
 export interface BreakdownPanelProps {
   title: string;
@@ -174,6 +183,8 @@ export interface BreakdownPanelProps {
   errorMessage: string;
   /** Unique per page; ties each tab to its panel. */
   idPrefix: string;
+  /** The view shown first: 'bar' (tab 1) or 'donut' (tab 2). */
+  defaultView?: View;
   /** Overrides the shared palette, e.g. for statuses that carry a meaning. */
   colorFor?: ColorFor;
   className?: string;
@@ -184,9 +195,9 @@ export interface BreakdownPanelProps {
  * the columns show every row, the ring folds the smallest ones into "Other" so it stays readable.
  */
 export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
-  title, subtitle, idleSubtitle, resource, valueLabel, centerCaption, chartLabel, emptyLabel, errorMessage, idPrefix, colorFor = paletteColor, className,
+  title, subtitle, idleSubtitle, resource, valueLabel, centerCaption, chartLabel, emptyLabel, errorMessage, idPrefix, defaultView = 'bar', colorFor = paletteColor, className,
 }) => {
-  const [view, setView] = useState<View>('bar');
+  const [view, setView] = useState<View>(defaultView);
   const [direction, setDirection] = useState<1 | -1>(1);
   const reduceMotion = useReducedMotion();
   const viewMotion: ViewMotion = { direction, still: !!reduceMotion };
@@ -213,7 +224,7 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
             ariaLabel="Chart view"
             tabIdPrefix={`${idPrefix}-tab`}
             panelIdPrefix={`${idPrefix}-panel`}
-            className="!w-auto"
+            className="w-auto!"
           />
         }
       />

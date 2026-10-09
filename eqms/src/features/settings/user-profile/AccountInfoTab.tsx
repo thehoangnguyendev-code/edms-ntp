@@ -6,7 +6,6 @@ import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { useToast } from '@/components/ui/toast';
 import { FormSection } from '@/components/ui/form/FormSection';
 import { IconAddressBook, IconPencilMinus } from '@tabler/icons-react';
-import { type ProfilePermissionState } from './profilePermissions';
 import { AvatarCropModal } from './AvatarCropModal';
 import { Avatar } from '@/components/ui/avatar';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -26,7 +25,6 @@ interface AccountInfoTabProps {
         email: string;
         phone: string;
     };
-    permissions: ProfilePermissionState;
     avatarPreview: string;
     editingFields: {
         email: boolean;
@@ -42,7 +40,6 @@ interface AccountInfoTabProps {
 
 export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
     formData,
-    permissions,
     avatarPreview,
     editingFields,
     onInputChange,

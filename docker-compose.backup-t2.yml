@@ -1,0 +1,12 @@
+# Adds the T2 test target (a network share) to the backup agent. Use with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.backup-t2.yml up -d
+# DEV and TEST only. In DEV the "network share" is a folder on this PC, so it only proves the mechanism: it is a second device in
+# a real deployment (a NAS mounted by the host), and the host mount point replaces BACKUP_T2_DIR.
+services:
+  backup-agent:
+    volumes:
+      - ${BACKUP_T2_DIR:-./backups/dev/t2-nas}:/backup/t2
+    environment:
+      AGENT_TARGETS_EXTRA_T2_KIND: FOLDER
+      AGENT_TARGETS_EXTRA_T2_PATH: /backup/t2
+      AGENT_TARGETS_EXTRA_T2_IMMUTABLE: "false"

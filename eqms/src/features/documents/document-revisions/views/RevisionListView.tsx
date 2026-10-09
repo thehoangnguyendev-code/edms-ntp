@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { ROUTES } from '@/app/routes.constants';
 import {
-  History,
   Download,
   FilePlusCorner,
   FileStack,
@@ -379,13 +378,6 @@ export const RevisionListView: React.FC = () => {
         });
         break;
       }
-      case "audit":
-        void preloadRevisionAndNavigate(
-          `${ROUTES.DOCUMENTS.REVISIONS.DETAIL(id)}?tab=audit`,
-          id,
-          ROUTES.DOCUMENTS.REVISIONS.ALL,
-        );
-        break;
       default:
         break;
     }
@@ -654,7 +646,6 @@ export const RevisionListView: React.FC = () => {
                   if (Boolean(revision.canPublishRevision)) {
                     actions.push({ icon: <IconBrandTelegram className="h-4 w-4" />, label: "Publish Revision", action: "publish" });
                   }
-                  actions.push({ icon: <History className="h-4 w-4" />, label: "Audit Trail", action: "audit" });
                   return actions;
                 }}
                 onViewItem={handleViewRevision}
@@ -775,16 +766,6 @@ export const RevisionListView: React.FC = () => {
                   <span>Publish Revision</span>
                 </button>
               )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMenuAction("audit", openId);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-              >
-                <History className="h-4 w-4 text-slate-500" />
-                <span>View Audit Trail</span>
-              </button>
             </div>
           </PortalDropdownMenu>
         );

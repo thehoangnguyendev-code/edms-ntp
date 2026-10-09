@@ -112,6 +112,34 @@ class UserUiPreferenceServiceTest {
     }
 
     @Test
+    void sidebarFavouritesKeepTheListInOrderForThatUser() throws Exception {
+        String key = UserUiPreferenceService.SIDEBAR_FAVORITES;
+        when(repository.findByUserIdAndPrefKey(ADA, key)).thenReturn(Optional.empty());
+
+        var saved = service().save(ADA, key, mapper.readTree("{\"ids\":[\"b\",\"a\"]}"));
+
+        ArgumentCaptor<UserUiPreference> row = ArgumentCaptor.forClass(UserUiPreference.class);
+        verify(repository).save(row.capture());
+        assertThat(row.getValue().getUserId()).isEqualTo(ADA);
+        assertThat(row.getValue().getPrefKey()).isEqualTo(key);
+        assertThat(mapper.readTree(row.getValue().getValue()).get("ids")).extracting(n -> n.asText()).containsExactly("b", "a");
+        assertThat(saved.get("ids")).hasSize(2);
+        service().save(ADA, key, mapper.readTree("{\"ids\":[]}")); // clearing every favourite is allowed
+    }
+
+    @Test
+    void sidebarFavouritesRefuseAnyOtherShape() throws Exception {
+        String key = UserUiPreferenceService.SIDEBAR_FAVORITES;
+        String tooMany = "{\"ids\":[" + java.util.stream.IntStream.range(0, 201).mapToObj(i -> "\"m" + i + "\"").collect(java.util.stream.Collectors.joining(",")) + "]}";
+        String tooLong = "{\"ids\":[\"" + "x".repeat(101) + "\"]}";
+        for (String json : new String[] {"[]", "{}", "{\"ids\":\"a\"}", "{\"ids\":[1]}", "{\"ids\":[null]}", "{\"ids\":[\"\"]}", "{\"ids\":[\" \"]}",
+                "{\"ids\":[\"a\",\"a\"]}", "{\"ids\":[],\"x\":1}", tooMany, tooLong}) {
+            assertThatThrownBy(() -> service().save(ADA, key, mapper.readTree(json)), json).isInstanceOf(IllegalArgumentException.class);
+        }
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void resettingDeletesOnlyThatUsersRow() {
         UserUiPreference row = new UserUiPreference();
         when(repository.findByUserIdAndPrefKey(ADA, KEY)).thenReturn(Optional.of(row));

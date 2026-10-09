@@ -62,6 +62,8 @@ export interface RecallItem {
   expectedPages?: number | null;
   /** A single page nobody has placed in a copy yet: needs a controlled copy number and a page number. */
   loosePage: boolean;
+  /** The scan is of a copy issued for reading only: never recalled by scan; the DCO removes it from the batch. */
+  readAndComply: boolean;
 }
 
 export interface RecallBatch {

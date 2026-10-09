@@ -341,6 +341,53 @@ public class StoragePathBuilder {
         );
     }
 
+    // ---- Keys written by FileStorageService / ReportPlatformService -----------------------------------------------
+    // Every key that reaches object storage is built here, so the folder structure is defined in one place. Each one is
+    // <domain>/<readable grouping>/<immutable id(s)>/<stored file>; see StorageDomain for the domains.
+
+    /** Scan of a returned paper controlled copy: controlled-copies/recall-scans/{batchId}/{itemId}/{file}. */
+    public String controlledCopyRecallScan(UUID batchId, UUID itemId, String storedFileName) {
+        return buildPath(DEFAULT_CONTROLLED_COPIES_PREFIX, "recall-scans", safeIdentifier(batchId), safeIdentifier(itemId),
+                sanitizeFileName(storedFileName));
+    }
+
+    /** Filled-in paper form: forms/executed-records/{formDocumentId}/{recordId}/{file}. */
+    public String executedRecordFile(UUID formDocumentId, UUID executedRecordId, String storedFileName) {
+        return buildPath("forms", "executed-records", safeIdentifier(formDocumentId), safeIdentifier(executedRecordId),
+                sanitizeFileName(storedFileName));
+    }
+
+    /** Personnel certification file: personnel/certifications/{userId}/{certificationId}/{file}. */
+    public String personnelCertification(UUID userId, UUID certificationId, String storedFileName) {
+        return buildPath("personnel", "certifications", safeIdentifier(userId), safeIdentifier(certificationId),
+                sanitizeFileName(storedFileName));
+    }
+
+    /**
+     * Uncontrolled copy PDF: uncontrolled-copies/{number}/{copyId}/{file}. The number is the readable segment; the id is
+     * what identifies the copy.
+     */
+    public String uncontrolledCopyPdf(String uncontrolledCopyNumber, UUID uncontrolledCopyId, String fileName) {
+        String id = safeIdentifier(uncontrolledCopyId);
+        String number = StringUtils.hasText(uncontrolledCopyNumber)
+                ? uncontrolledCopyNumber.trim().replaceAll("[^A-Za-z0-9._-]", "_")
+                : id;
+        return buildPath("uncontrolled-copies", number, id, sanitizeFileName(fileName));
+    }
+
+    /**
+     * Report file: reports/{reportCode}/{yyyy}/{mm}/{runId}/{artifactId}.{ext}. Static because ReportPlatformService is
+     * constructed directly (not through Spring) in places, and a key needs no state.
+     */
+    public static String reportArtifact(String reportCode, int year, int month, UUID runId, UUID artifactId, String extension) {
+        String code = reportCode == null ? "" : reportCode.trim().replaceAll("[^A-Za-z0-9._-]", "_").toLowerCase(java.util.Locale.ROOT);
+        String ext = extension == null ? "bin" : extension.trim().replaceAll("[^A-Za-z0-9]", "").toLowerCase(java.util.Locale.ROOT);
+        if (code.isEmpty() || runId == null || artifactId == null) {
+            throw new IllegalArgumentException("A report file key needs the report code, run id and artifact id");
+        }
+        return "reports/" + code + "/" + year + "/" + String.format("%02d", month) + "/" + runId + "/" + artifactId + "." + (ext.isEmpty() ? "bin" : ext);
+    }
+
     public String legacyControlledCopyPdf(String controlledCopyId) {
         return buildPath(DEFAULT_CONTROLLED_COPIES_PREFIX, sanitizeSegment(controlledCopyId), "controlled-copy.pdf");
     }
@@ -457,12 +504,12 @@ public class StoragePathBuilder {
                 .replaceAll("[._-]+$", "");
     }
 
+    /**
+     * The top-level prefixes are fixed (see {@link StorageDomain}). A value an older configuration may still carry for
+     * {@code field} is deliberately ignored, so no stored setting can move new files outside the registered structure.
+     */
     private String resolvePrefix(JsonNode storageConfig, String field, String defaultValue) {
-        String resolved = text(storageConfig, field);
-        if (!StringUtils.hasText(resolved)) {
-            return defaultValue;
-        }
-        return normalizeKeySegment(resolved);
+        return defaultValue;
     }
 
     private String text(JsonNode node, String field) {

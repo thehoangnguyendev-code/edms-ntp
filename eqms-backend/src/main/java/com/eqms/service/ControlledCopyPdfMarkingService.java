@@ -529,6 +529,8 @@ public class ControlledCopyPdfMarkingService {
             PDFont watermarkFont = loadFont(document, policy.getWatermarkFontFamily(), loadedFonts);
             List<Placement> placements = new ArrayList<>();
             int pageCount = document.getNumberOfPages();
+            // Policies saved before the angle was made uniform may still hold a different angle for page 1 and pages 2+.
+            rules = MarkingPlacementRule.withUniformWatermarkAngle(rules, pageCount);
             for (int index = 0; index < pageCount; index++) {
                 boolean stamp = policy.isStampEnabled() && appliesTo(policy.getStampPages(), index);
                 boolean watermark = policy.isWatermarkEnabled() && appliesTo(policy.getWatermarkPages(), index);

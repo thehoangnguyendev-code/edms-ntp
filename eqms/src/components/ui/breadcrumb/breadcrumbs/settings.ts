@@ -265,6 +265,23 @@ export const emailTemplateEdit = (
   { label: templateName || "Edit Template", isActive: true },
 ];
 
+export const systemAnnouncements = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...appSettingsBase(navigate),
+  { label: "System Announcements", isActive: true },
+];
+
+export const systemAnnouncementCreate = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...appSettingsBase(navigate),
+  { label: "System Announcements", onClick: () => navigate?.(ROUTES.SETTINGS.ANNOUNCEMENTS) },
+  { label: "New Announcement", isActive: true },
+];
+
+export const systemAnnouncementEdit = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...appSettingsBase(navigate),
+  { label: "System Announcements", onClick: () => navigate?.(ROUTES.SETTINGS.ANNOUNCEMENTS) },
+  { label: "Edit Announcement", isActive: true },
+];
+
 export const preferences = (
   navigate?: NavigateFn,
   activeTabLabel?: string
@@ -282,9 +299,9 @@ export const preferences = (
   ];
 };
 
-export const myProfile = (navigate?: NavigateFn): BreadcrumbItem[] => [
+export const personalInformation = (navigate?: NavigateFn): BreadcrumbItem[] => [
   dashboard(navigate),
-  { label: "My Profile", isActive: true },
+  { label: "Personal Information", isActive: true },
 ];
 
 export const publishingTemplates = (navigate?: NavigateFn): BreadcrumbItem[] => [
@@ -399,6 +416,21 @@ export const documentSubTypesAdmin = (navigate?: NavigateFn): BreadcrumbItem[] =
 export const knowledgeCategories = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...documentControlBase(navigate),
   { label: "Knowledge Categories Hierarchies", isActive: true },
+];
+
+/** Breadcrumb of a "Backup & Restore Administration" screen (System Administration > Backup & Restore Administration). */
+export const backupRestoreAdministration = (navigate?: NavigateFn, title = "", parent?: { label: string; path: string }): BreadcrumbItem[] => [
+  ...systemAdminBase(navigate),
+  { label: "Backup & Restore Administration" },
+  ...(parent ? [{ label: parent.label, onClick: () => navigate?.(parent.path) }] : []),
+  { label: title, isActive: true },
+];
+
+/** Breadcrumb of a "Report Administration" screen (System Administration > Report Administration). */
+export const reportAdministration = (navigate?: NavigateFn, title = ""): BreadcrumbItem[] => [
+  ...systemAdminBase(navigate),
+  { label: "Report Administration" },
+  { label: title, isActive: true },
 ];
 
 /** Base breadcrumb path for the "Training Administration" nested group (coming soon

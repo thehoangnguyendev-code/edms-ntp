@@ -11,7 +11,6 @@ export interface Capabilities {
   canPublishRevision: boolean;
   canManageTraining: boolean;
   canCompleteTraining: boolean;
-  canViewAuditTrail: boolean;
   canRequestControlledCopy: boolean;
   canDistributeControlledCopy: boolean;
   canRecallControlledCopy: boolean;

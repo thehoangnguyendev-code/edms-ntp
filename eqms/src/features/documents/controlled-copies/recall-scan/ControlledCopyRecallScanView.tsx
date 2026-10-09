@@ -462,7 +462,9 @@ export const ControlledCopyRecallScanView: React.FC = () => {
           return (
             <div>
               {item.excluded ? (
-                <Badge color="slate" size="sm">Excluded</Badge>
+                <Badge color="slate" size="sm">{item.readAndComply ? "Removed" : "Excluded"}</Badge>
+              ) : item.readAndComply ? (
+                <Badge color="blue" size="sm">Read only</Badge>
               ) : item.matchStatus === "READY" ? (
                 <Badge color="emerald" size="sm">Ready</Badge>
               ) : item.matchStatus === "UNMATCHED" ? (
@@ -486,7 +488,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         header: "Actions",
         cell: (item: RecallItem) => (
           <div className="flex items-center justify-center gap-1.5" onClick={(event) => event.stopPropagation()}>
-            {!item.excluded && item.previewAvailable && item.virusStatus !== "INFECTED" && (
+            {!item.excluded && !item.readAndComply && item.previewAvailable && item.virusStatus !== "INFECTED" && (
               <Button
                 size="sm"
                 variant="outline"
@@ -509,12 +511,12 @@ export const ControlledCopyRecallScanView: React.FC = () => {
               variant="outline"
               className="gap-1 px-2"
               disabled={Boolean(busy)}
-              aria-label={item.excluded ? "Include" : "Exclude"}
-              title={item.excluded ? "Include" : "Exclude"}
+              aria-label={item.excluded ? "Include" : item.readAndComply ? "Remove" : "Exclude"}
+              title={item.excluded ? "Include" : item.readAndComply ? "Remove" : "Exclude"}
               onClick={() => patchItem(item, { excluded: !item.excluded })}
             >
-              {item.excluded ? <Undo2 className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
-              <span className="hidden lg:inline">{item.excluded ? "Include" : "Exclude"}</span>
+              {item.excluded ? <Undo2 className="h-3.5 w-3.5" /> : item.readAndComply ? <Trash2 className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+              <span className="hidden lg:inline">{item.excluded ? "Include" : item.readAndComply ? "Remove" : "Exclude"}</span>
             </Button>
           </div>
         ),
@@ -533,6 +535,13 @@ export const ControlledCopyRecallScanView: React.FC = () => {
     );
   }
 
+  // Scans of copies issued for reading only: shown apart, never recalled by scan; one click removes each from the batch.
+  const readOnlyItems = batch?.items.filter((item) => item.readAndComply && !item.excluded) ?? [];
+  const removeAllReadOnly = async () => {
+    for (const item of readOnlyItems) {
+      if (!(await patchItem(item, { excluded: true }))) return;
+    }
+  };
   const recalledCount = batch?.items.filter((item) => item.outcome === "RECALLED").length ?? 0;
 
   return (
@@ -693,9 +702,10 @@ export const ControlledCopyRecallScanView: React.FC = () => {
             {isDraft ? (
               <>
                 <Badge color="emerald" size="sm">{batch.readyItems} ready</Badge>
-                {batch.blockedItems + batch.unmatchedItems > 0 && (
-                  <Badge color="red" size="sm">{batch.blockedItems + batch.unmatchedItems} need attention</Badge>
+                {batch.blockedItems + batch.unmatchedItems - readOnlyItems.length > 0 && (
+                  <Badge color="red" size="sm">{batch.blockedItems + batch.unmatchedItems - readOnlyItems.length} need attention</Badge>
                 )}
+                {readOnlyItems.length > 0 && <Badge color="blue" size="sm">{readOnlyItems.length} read only</Badge>}
                 {batch.excludedItems > 0 && <Badge color="slate" size="sm">{batch.excludedItems} excluded</Badge>}
               </>
             ) : (
@@ -706,7 +716,38 @@ export const ControlledCopyRecallScanView: React.FC = () => {
             )}
           </div>
 
-          {isDraft && batch.blockedItems + batch.unmatchedItems > 0 && (
+          {isDraft && readOnlyItems.length > 0 && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900" role="status">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <span>
+                  {readOnlyItems.length} scan(s) are of copies issued for reading only (Read and comply). They are not recalled by scan and no Record is made
+                  from them. Remove them here; the other scans are processed as usual. If such a copy has to be recalled, do it from Controlled Copies.
+                </span>
+                {readOnlyItems.length > 1 && (
+                  <Button size="sm" variant="outline" className="gap-1 shrink-0" disabled={Boolean(busy)} onClick={removeAllReadOnly}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove all
+                  </Button>
+                )}
+              </div>
+              <ul className="mt-2 space-y-1.5">
+                {readOnlyItems.map((item) => (
+                  <li key={item.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5">
+                    <span className="min-w-0 truncate">
+                      <span className="font-semibold">{item.copy?.number ?? item.fileName}</span>
+                      <span className="text-blue-800"> · {item.fileName}</span>
+                    </span>
+                    <Button size="sm" variant="outline" className="gap-1 px-2 shrink-0" disabled={Boolean(busy)} aria-label={`Remove ${item.fileName}`} onClick={() => patchItem(item, { excluded: true })}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Remove</span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {isDraft && batch.blockedItems + batch.unmatchedItems - readOnlyItems.length > 0 && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="alert">
               <span>
                 Some scans cannot be recalled yet. Match them by copy number, or exclude them, then continue. A scan that is excluded stays

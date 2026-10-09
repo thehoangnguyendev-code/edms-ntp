@@ -35,7 +35,9 @@ public record ControlledCopyRequestCreateRequest(
         Integer quantity,
         @Size(max = 10000) String signature,
         @Size(max = 10000) String signatureToken,
-        List<ControlledCopyRecipientRequest> recipients
+        List<ControlledCopyRecipientRequest> recipients,
+        /** READ_AND_COMPLY or RECORD_KEEPING: required, exactly one. (Not the same as {@code purpose}, which is only the reason text.) */
+        @Size(max = 30) String usagePurpose
 ) {
     public record ControlledCopyRecipientRequest(
             String recipientType,

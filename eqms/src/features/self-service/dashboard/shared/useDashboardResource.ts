@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type DependencyList } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DependencyList } from 'react';
 
 export interface DashboardResource<T> {
   data: T | null;
@@ -29,5 +29,6 @@ export function useDashboardResource<T>(load: () => Promise<T>, deps: Dependency
   }, [...deps, attempt]);
 
   const reload = useCallback(() => setAttempt((value) => value + 1), []);
-  return { ...state, reload };
+  // Same object until something really changes, so the cards that receive it do not render again (and charts do not replay).
+  return useMemo(() => ({ data: state.data, loading: state.loading, error: state.error, reload }), [state.data, state.loading, state.error, reload]);
 }

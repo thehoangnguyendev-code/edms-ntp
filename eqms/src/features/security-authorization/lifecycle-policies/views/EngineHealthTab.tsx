@@ -283,7 +283,7 @@ export const EngineHealthTab: React.FC = () => {
             label="Mismatches only"
           />
         </div>
-        <div className="flex items-end">
+        <div className="flex items-end gap-2">
           <button
             type="button"
             onClick={clearFilters}
@@ -292,6 +292,7 @@ export const EngineHealthTab: React.FC = () => {
           >
             Clear Filters
           </button>
+          {engineControl}
         </div>
       </div>
 
@@ -316,7 +317,6 @@ export const EngineHealthTab: React.FC = () => {
                 scrollerRef={scrollerRef as React.RefObject<HTMLDivElement>}
                 scrollProps={dragEvents}
                 isDragging={isDragging}
-                toolbar={engineControl ? <div className="flex justify-end px-4 pt-3">{engineControl}</div> : undefined}
                 rowClassName={(entry) => (entry.policyAllowed !== entry.legacyAllowed ? "bg-red-50/40" : "")}
                 emptyState={
                   error ? (

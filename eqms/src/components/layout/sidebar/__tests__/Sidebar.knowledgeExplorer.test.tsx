@@ -36,8 +36,8 @@ const renderSidebar = (onNavigate: (id: string) => void, initialPath = "/dashboa
   );
 
 const openKnowledgeBase = async () => {
-  fireEvent.click(await screen.findByRole("button", { name: /Self-Service/ }));
-  fireEvent.click(await screen.findByRole("button", { name: /Knowledge/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Self-Service/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Knowledge/ }));
 };
 
 describe("Sidebar Knowledge Base entry", () => {
@@ -82,9 +82,9 @@ describe("Sidebar Knowledge Base entry", () => {
     renderSidebar(onNavigate, "/documents/all/new");
     // Let the server-driven nav (mocked getNavigation, resolved async) settle before interacting --
     // otherwise a click can race the swap from the local fallback tree to the server-filtered one.
-    await screen.findByRole("button", { name: /Self-Service/ });
-    fireEvent.click(await screen.findByRole("button", { name: /Document Control/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /All Documents/ }));
+    await screen.findByRole("button", { name: /^Self-Service/ });
+    fireEvent.click(await screen.findByRole("button", { name: /^Document Control/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^All Documents/ }));
     // The unsaved-changes confirmation intercepts it: the router is not asked to move yet.
     await waitFor(() => expect(screen.getAllByText(/leave/i).length).toBeGreaterThan(0));
     expect(onNavigate).not.toHaveBeenCalled();

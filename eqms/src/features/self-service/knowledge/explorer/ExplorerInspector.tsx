@@ -5,6 +5,7 @@ import { VisualBackdrop } from "@/components/ui/animated-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
+import { Card, CardHeader } from "@/features/self-service/dashboard/shared/dashboardUi";
 import type { KnowledgePortalDocument } from "@/services/api/knowledge";
 import { FileIcon, FolderIcon } from "./ExplorerIcons";
 import { folderColor, pluralize, typeBadgeColor, typeColor, type FolderEntry } from "./explorerModel";
@@ -27,17 +28,17 @@ interface ExplorerInspectorProps {
 }
 
 const Prop: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <>
+  <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-2.5 px-4 py-2 text-xs md:text-sm">
     <dt className="text-slate-500">{label}</dt>
-    <dd className="min-w-0 break-words font-medium text-slate-900">{children || "-"}</dd>
-  </>
+    <dd className="min-w-0 break-words font-medium tabular-nums text-slate-900">{children || "-"}</dd>
+  </div>
 );
 
 const Preview: React.FC<{ children: React.ReactNode; glow?: string }> = ({ children, glow = "#10b981" }) => (
-  <div className="relative grid place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white py-6">
+  <Card className="relative grid place-items-center py-6">
     <VisualBackdrop color={glow} gridColor="#80808015" />
     <div className="relative z-10">{children}</div>
-  </div>
+  </Card>
 );
 
 const Title: React.FC<{ title: string; subtitle: string }> = ({ title, subtitle }) => (
@@ -83,14 +84,17 @@ export const ExplorerInspector: React.FC<ExplorerInspectorProps> = ({
                   <Badge semantic="success" size="sm">Effective</Badge>
                   {item.featured && <Badge semantic="warning" size="sm">Featured</Badge>}
                 </div>
-                <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-2.5 gap-y-2.5 text-xs md:text-sm">
+                <Card>
+                  <CardHeader title="Details" className="pb-2" />
+                  <dl className="mt-1 divide-y divide-slate-100 border-t border-slate-100">
                   <Prop label="Business unit">{doc.businessUnit}</Prop>
                   <Prop label="Department">{doc.department}</Prop>
                   <Prop label="Effective">{doc.effectiveDate}</Prop>
                   <Prop label="Valid until">{doc.validUntil}</Prop>
                   <Prop label="Views">{item.views}</Prop>
                   <Prop label="Found helpful">{pluralize(item.helpfulVotes, "vote")}</Prop>
-                </dl>
+                  </dl>
+                </Card>
                 <div className="mt-auto flex flex-col gap-2">
                   <Button size="sm" fullWidth onClick={() => onOpenDocument(item)} className="gap-1.5">
                    Open document

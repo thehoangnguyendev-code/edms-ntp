@@ -829,7 +829,12 @@ public class ControlledCopyRecallBatchService {
             item.setMatchMessage(unmatchedMessage(item));
             return;
         }
-        String problem = recallProblem(copy, actor);
+        // A copy issued for reading only is not recalled by scan (nothing is written on it, so there is nothing to keep): it stays
+        // BLOCKED, shown apart on the screen, until the DCO removes it from the batch. The rest of the batch is unaffected.
+        String problem = isReadAndComply(copy)
+                ? "Controlled copy " + copy.getControlledCopyNumber()
+                        + " is for reading only (Read and comply) and is not recalled by scan. Remove this scan; if the copy has to be recalled, do it from Controlled Copies."
+                : recallProblem(copy, actor);
         if (problem == null) {
             problem = pageProblem(item, copy);
         }
@@ -849,6 +854,10 @@ public class ControlledCopyRecallBatchService {
             item.setMatchStatus(ControlledCopyRecallItem.MATCH_READY);
             item.setMatchMessage(null);
         }
+    }
+
+    private static boolean isReadAndComply(ControlledCopyRecord copy) {
+        return copy != null && ControlledCopyService.USAGE_READ_AND_COMPLY.equals(copy.getUsagePurpose());
     }
 
     /** Why this copy cannot be recalled by scan right now, or null when it can. */
@@ -1047,6 +1056,7 @@ public class ControlledCopyRecallBatchService {
                 item.getSourcePages(),
                 item.getPageNumbers(),
                 item.getExpectedPages(),
-                isLoosePage(item));
+                isLoosePage(item),
+                isReadAndComply(copy));
     }
 }

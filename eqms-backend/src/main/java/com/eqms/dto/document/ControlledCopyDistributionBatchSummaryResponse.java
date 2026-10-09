@@ -49,6 +49,8 @@ public record ControlledCopyDistributionBatchSummaryResponse(
         // sorted/scanned for "what changed recently" instead of only "what was created recently" --
         // a batch created months ago that was just Obsoleted today would otherwise stay buried by
         // the default created-date sort with no visual cue anything happened.
-        String lastUpdatedAt
+        String lastUpdatedAt,
+        /** READ_AND_COMPLY, RECORD_KEEPING, or null for a batch issued before the purpose existed. */
+        String usagePurpose
 ) {
 }

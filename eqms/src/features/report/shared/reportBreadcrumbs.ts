@@ -9,7 +9,7 @@ export function reportBreadcrumbs(
 ): BreadcrumbItem[] {
   return [
     dashboard(navigate),
-    { label: configuration ? "Application Settings" : "Reports & Analytics" },
+    ...(configuration ? [{ label: "System Administration" }, { label: "Report Administration" }] : [{ label: "Reports & Analytics" }]),
     ...(parent ? [parent] : []),
     { label: title, isActive: true },
   ];

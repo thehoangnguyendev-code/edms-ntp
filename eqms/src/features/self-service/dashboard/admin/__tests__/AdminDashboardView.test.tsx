@@ -78,7 +78,8 @@ describe('AdminDashboardView figures', () => {
     renderInRouter(<AdminDashboardView />);
 
     const byStatus = await screen.findByRole('region', { name: 'Documents by status' });
-    expect(await within(byStatus).findByText('Other')).toBeInTheDocument();
+    // the legend row (the chart also writes the name under its column, now that it is drawn without a measured size)
+    expect(await within(byStatus).findByText('Other', { selector: 'li span.block' })).toBeInTheDocument();
     expect(within(byStatus).getByText('110 total')).toBeInTheDocument();
     expect(await screen.findByText('55% effective')).toBeInTheDocument(); // 60 of 110, not of the 100 the other counts add up to
   });

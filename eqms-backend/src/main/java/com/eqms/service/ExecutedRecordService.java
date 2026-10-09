@@ -124,6 +124,7 @@ public class ExecutedRecordService {
         if (!document.getId().equals(controlledCopy.getDocument().getId())) {
             throw new IllegalArgumentException("The selected Controlled Copy does not belong to this Form");
         }
+        requireNotReadAndComply(controlledCopy);
         // Conflict check with the Controlled Copy lifecycle: only a copy still out in the field
         // (not yet recalled/expired/obsoleted) can be logged back in as an Executed Record.
         String ccStatus = controlledCopy.getStatusCode();
@@ -212,6 +213,7 @@ public class ExecutedRecordService {
     @Transactional
     public ExecutedRecord recordRecalledCopyScan(ControlledCopyRecord copy, ControlledCopyRecallItem item, UserAccount actor,
                                                  Instant receivedAt, UUID recallBatchId, String recallBatchNumber, UUID signatureId) {
+        requireNotReadAndComply(copy);
         DocumentRecord document = copy.getDocument();
         ExecutedRecord record = new ExecutedRecord();
         record.setId(UUID.randomUUID());
@@ -240,6 +242,14 @@ public class ExecutedRecordService {
         return saved;
     }
 
+    /** A copy issued for reading carries nothing worth keeping, so it never becomes a Record (CC-PURPOSE-2026-10-07). */
+    private static void requireNotReadAndComply(ControlledCopyRecord copy) {
+        if (copy != null && ControlledCopyService.USAGE_READ_AND_COMPLY.equals(copy.getUsagePurpose())) {
+            throw new IllegalStateException("Controlled Copy " + copy.getControlledCopyNumber()
+                    + " is for reading only (Read and comply): nothing is written on it, so no Record is made from it.");
+        }
+    }
+
     // ---- Read / list --------------------------------------------------------------------------
 
     @Transactional(readOnly = true)
@@ -254,6 +264,10 @@ public class ExecutedRecordService {
     /** A scan record follows the visibility of the controlled copy it came from: blanket copy viewers see every record,
      *  everyone else only the records of copies on which they are the named recipient. */
     private boolean canViewRecord(UserAccount user, ExecutedRecord record) {
+        ControlledCopyRecord origin = record.getSourceControlledCopy();
+        if (origin != null && ControlledCopyService.USAGE_READ_AND_COMPLY.equals(origin.getUsagePurpose())) {
+            return false; // the Records screens show only what was written: never a record of a copy for reading
+        }
         if (documentAuthorizationService.canViewAllControlledCopies(user)) {
             return true;
         }
@@ -333,6 +347,12 @@ public class ExecutedRecordService {
         boolean seesAll = documentAuthorizationService.canViewAllControlledCopies(currentUser);
         Specification<ExecutedRecord> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            // A record of a copy issued for reading is never listed (a record without a source copy, and records of copies issued before the
+            // purpose existed, stay as they are). LEFT join: the filter must not drop records that have no copy.
+            var originJoin = root.join("sourceControlledCopy", jakarta.persistence.criteria.JoinType.LEFT);
+            predicates.add(cb.or(
+                    cb.isNull(originJoin.get("usagePurpose")),
+                    cb.notEqual(originJoin.<String>get("usagePurpose"), ControlledCopyService.USAGE_READ_AND_COMPLY)));
             if (!seesAll) {
                 // Everyone else sees only the records of copies they hold as the named recipient (account id).
                 predicates.add(cb.equal(root.get("sourceControlledCopy").get("recipientUser").get("id"), currentUser.getId()));

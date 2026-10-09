@@ -1,0 +1,13 @@
+-- V540: Remove the standalone "View Document Audit Trail" permission
+-- (documents.document.view_audit / legacy VIEW_DOCUMENT_AUDIT_TRAIL, VIEW_AUDIT_TRAIL).
+--
+-- The Audit Trail tab on a Document/Revision detail view is now folded into detail-view access:
+-- whoever can view the Document or Revision (AuditTrailService#requireScopedEntityView ->
+-- DocumentAuthorizationService#canViewDocument / canViewRevision) can see its Audit Trail tab.
+-- No separate permission is checked or granted for it anymore.
+--
+-- Nothing else references this code: no permission_dependencies row, no workflow_action_policies
+-- or lifecycle_state_policies row, and no sod_constraints row names it (confirmed against every
+-- prior migration). permission_set_items.permission_id has ON DELETE CASCADE, so every permission
+-- set's grant of this permission is removed along with it.
+DELETE FROM permissions WHERE code = 'documents.document.view_audit';

@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { authApi } from '@/services/api/auth';
 import { settingsApi } from '@/services/api/settings';
 import { SECURITY_CONFIG_STORAGE_KEY } from '@/config/security';
+import { AnnouncementHost } from '../AnnouncementHost';
 
 const MainLayoutContent: React.FC = () => {
   const navigate = useNavigate();
@@ -25,8 +26,8 @@ const MainLayoutContent: React.FC = () => {
   const { activeId, handleNavigate } = useNavigation();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pageColumnRef = useRef<HTMLDivElement>(null);
-  /** Distance (px) between the right edge of the page column and the right edge of the window: whatever sits beside the page. */
-  const [pageColumnGap, setPageColumnGap] = useState(0);
+  /** The box the scroll-to-top button is positioned inside; its right edge follows the page column. */
+  const scrollTopHolderRef = useRef<HTMLDivElement>(null);
   const heartbeatInFlightRef = useRef<Promise<void> | null>(null);
   const lastHeartbeatAtRef = useRef(0);
   const sessionLockedRef = useRef(false);
@@ -42,7 +43,11 @@ const MainLayoutContent: React.FC = () => {
   useLayoutEffect(() => {
     const column = pageColumnRef.current;
     if (!column) return undefined;
-    const measure = () => setPageColumnGap(Math.max(0, Math.round(window.innerWidth - column.getBoundingClientRect().right)));
+    // Written straight to the element: this runs for every frame of a width animation, and a state update would render the layout each time.
+    const measure = () => {
+      const holder = scrollTopHolderRef.current;
+      if (holder) holder.style.right = `${Math.max(0, Math.round(window.innerWidth - column.getBoundingClientRect().right))}px`;
+    };
     measure();
     window.addEventListener('resize', measure);
     if (typeof ResizeObserver === 'undefined') {
@@ -110,22 +115,30 @@ const MainLayoutContent: React.FC = () => {
     const domObserver = new MutationObserver(syncTitle);
     domObserver.observe(scrollContainer, { childList: true, subtree: true, characterData: true });
 
+    // Scrolling fires far more often than the screen can draw. Measure at most once per frame and keep whole percents: the
+    // 2 px progress bar cannot show less, and React skips the update when the percent is unchanged, so scrolling no longer
+    // re-renders the whole layout (sidebar, header, footer) on every event.
+    let frame = 0;
     const handleScrollProgress = () => {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-      const scrollHeight = container.scrollHeight - container.clientHeight;
-      if (scrollHeight > 0) {
-        const progress = (container.scrollTop / scrollHeight) * 100;
-        setScrollProgress(progress);
-      }
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const container = scrollContainerRef.current;
+        if (!container) return;
+        const scrollHeight = container.scrollHeight - container.clientHeight;
+        if (scrollHeight > 0) {
+          setScrollProgress(Math.round((container.scrollTop / scrollHeight) * 100));
+        }
+      });
     };
 
-    scrollContainer.addEventListener('scroll', handleScrollProgress);
+    scrollContainer.addEventListener('scroll', handleScrollProgress, { passive: true });
 
     return () => {
       domObserver.disconnect();
       intersectionObserver?.disconnect();
       scrollContainer.removeEventListener('scroll', handleScrollProgress);
+      if (frame) window.cancelAnimationFrame(frame);
     };
   }, [location.pathname]);
 
@@ -363,6 +376,7 @@ const MainLayoutContent: React.FC = () => {
             >
               <main className="w-full px-4 pt-2 pb-6 md:px-6 md:pt-3 lg:px-8 lg:pt-4">
                 <div className="w-full max-w-[1920px] mx-auto space-y-4 md:space-y-6">
+                  <AnnouncementHost />
                   <Outlet />
                 </div>
               </main>
@@ -379,7 +393,7 @@ const MainLayoutContent: React.FC = () => {
         The button positions itself against the window. This holder is a window-sized box that stops at the page column, and a
         transform makes it the box the button is positioned against, so the button sits at the page's right edge instead.
       */}
-      <div className="pointer-events-none fixed inset-y-0 left-0 z-50" style={{ right: pageColumnGap, transform: 'translateZ(0)' }}>
+      <div ref={scrollTopHolderRef} className="pointer-events-none fixed inset-y-0 left-0 z-50" style={{ transform: 'translateZ(0)' }}>
         <ScrollToTop
           scrollContainerRef={scrollContainerRef}
           isMobileMenuOpen={isMobileMenuOpen}

@@ -13,6 +13,13 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { requestControlledCopy } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { FormSection } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge/Badge";
+import { RadioGroup } from "@/components/ui/radio";
+import {
+  USAGE_PURPOSE_DESCRIPTIONS,
+  USAGE_PURPOSE_LABELS,
+  normalizeUsagePurpose,
+  type ControlledCopyUsagePurpose,
+} from "@/features/documents/controlled-copies/usagePurpose";
 import { toTitleCase } from "@/utils/format";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -332,6 +339,8 @@ export const RequestControlledCopyView: React.FC = () => {
   }, [documentId, revisionId]);
 
   const [reason, setReason] = useState("");
+  // No preselection: the DCO must choose one of the two purposes on purpose.
+  const [usagePurpose, setUsagePurpose] = useState<ControlledCopyUsagePurpose | "">("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const distributionModeTabs: TabItem[] = [
     { id: "internal", label: "Internal" },
@@ -615,6 +624,7 @@ export const RequestControlledCopyView: React.FC = () => {
       ? selectedRecipientCount > 0
       : parsedExternalRecipients.length > 0) &&
     reason.trim().length > 0 &&
+    usagePurpose !== "" &&
     !requestBlocked;
 
   // Validation
@@ -638,6 +648,10 @@ export const RequestControlledCopyView: React.FC = () => {
       newErrors.reason = "Reason is required";
     }
 
+    if (!usagePurpose) {
+      newErrors.usagePurpose = "Choose the usage purpose of the controlled copy";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -648,6 +662,7 @@ export const RequestControlledCopyView: React.FC = () => {
     const hasFormData =
       selectedLocations.length > 0 ||
       reason.trim() !== "" ||
+      usagePurpose !== "" ||
       externalRecipients.length > 0;
 
     if (hasFormData) {
@@ -717,6 +732,10 @@ export const RequestControlledCopyView: React.FC = () => {
     }
 
     const signatureReason = data.reason;
+    if (!usagePurpose) {
+      setShowesignModal(false);
+      return;
+    }
     const selectedTargets = locationOptions.filter((option) =>
       selectedLocations.includes(String(option.value)),
     );
@@ -775,6 +794,7 @@ export const RequestControlledCopyView: React.FC = () => {
             ? selectedTargets[0]?.label || ""
             : "External Recipients",
         purpose: request.reason,
+        usagePurpose,
         copies: selectedRecipientCount,
         quantity: selectedRecipientCount,
         signatureToken: data.signatureToken,
@@ -1264,6 +1284,28 @@ export const RequestControlledCopyView: React.FC = () => {
                 </p>
               </div>
 
+              {/* Usage purpose: exactly one, no default */}
+              <RadioGroup
+                label="Usage Purpose"
+                required
+                variant="card"
+                layout="horizontal"
+                name="usagePurpose"
+                value={usagePurpose}
+                onChange={(value) => {
+                  setUsagePurpose(normalizeUsagePurpose(value) ?? "");
+                  if (errors.usagePurpose) {
+                    setErrors({ ...errors, usagePurpose: "" });
+                  }
+                }}
+                options={(Object.keys(USAGE_PURPOSE_LABELS) as ControlledCopyUsagePurpose[]).map((code) => ({
+                  value: code,
+                  label: USAGE_PURPOSE_LABELS[code],
+                  description: USAGE_PURPOSE_DESCRIPTIONS[code],
+                }))}
+                error={errors.usagePurpose || undefined}
+              />
+
               {/* Reason */}
               <div>
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">
@@ -1454,6 +1496,7 @@ export const RequestControlledCopyView: React.FC = () => {
         actionTitle="Confirm Controlled Copy Request"
         meaningDisplayName="Controlled Copy Requested"
         meaningCode="CONTROLLED_COPY_REQUESTED"
+        changes={usagePurpose ? [{ action: "Usage Purpose", oldValue: "-", newValue: USAGE_PURPOSE_LABELS[usagePurpose], category: "metadata" }] : undefined}
       />
 
       {/* Cancel Confirmation Modal */}

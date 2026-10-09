@@ -118,7 +118,7 @@ export function ReportTemplateRun({
       <PageHeader
         title="Create Report"
         breadcrumbItems={reportBreadcrumbs(navigate, "Create Report", false, {
-          label: "Report Templates",
+          label: "Report Library",
           onClick: onBack,
         })}
         actions={

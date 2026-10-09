@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
-import { myProfile } from "@/components/ui/breadcrumb/breadcrumbs/settings";
+import { personalInformation } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import notice from "./dataPrivacyNotice.json";
 
 const icons = {
@@ -39,7 +39,7 @@ export const DataPrivacyNoticeView: React.FC = () => {
       <PageHeader
         title={notice.title}
         breadcrumbItems={[
-          ...myProfile(navigate),
+          ...personalInformation(navigate),
           { label: notice.title, isActive: true },
         ]}
         actions={
@@ -48,7 +48,7 @@ export const DataPrivacyNoticeView: React.FC = () => {
             variant="outline-emerald"
             onClick={() => navigate("/profile")}
           >
-            Back to Profile
+            Back to Personal Information
           </Button>
         }
       />

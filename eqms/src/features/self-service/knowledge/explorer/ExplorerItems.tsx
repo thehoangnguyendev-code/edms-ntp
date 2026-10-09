@@ -8,7 +8,8 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { cn } from "@/components/ui/utils";
 import type { KnowledgePortalDocument } from "@/services/api/knowledge";
 import { FileIcon, FolderIcon } from "./ExplorerIcons";
-import { FOCUS_RING, GROUP_LABEL } from "./explorerStyles";
+import { Card, CardHeader } from "@/features/self-service/dashboard/shared/dashboardUi";
+import { FOCUS_RING } from "./explorerStyles";
 import { folderColor, pluralize, typeBadgeColor, type FolderEntry, type Selection, type ViewMode } from "./explorerModel";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
@@ -46,8 +47,12 @@ const Highlight: React.FC<{ text: string; term?: string }> = ({ text, term }) =>
   );
 };
 
-const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <h2 className={cn(GROUP_LABEL, "mb-2.5 flex items-center gap-2 after:h-px after:flex-1 after:bg-slate-200 after:content-['']")}>{children}</h2>
+/** A group of items as a dashboard card: the title with its real count as a badge, the items beneath. */
+const Group: React.FC<{ title: string; count: number; className?: string; children: React.ReactNode }> = ({ title, count, className, children }) => (
+  <Card aria-label={title} className={className}>
+    <CardHeader title={title} badge={<Badge variant="soft">{count}</Badge>} className="pb-2.5" />
+    <div className="border-t border-slate-100 p-2">{children}</div>
+  </Card>
 );
 
 const useStagger = () => {
@@ -84,8 +89,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
         transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.2, 0.8, 0.3, 1] }}
       >
       {folders.length > 0 && (
-        <section aria-label="Folders" className="mb-5">
-          <SectionTitle>Folders · {folders.length}</SectionTitle>
+        <Group title="Folders" count={folders.length} className="mb-3">
           {view === "grid" ? <div role="listbox" aria-label="Folders" className={GRID}>
             {folders.map((folder) => {
               const sel = { type: "folder", key: folder.key } as const;
@@ -128,7 +132,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               );
             })}
           </div> : (
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto">
               <TableMarkup.Root className="w-full border-collapse">
                 <TableMarkup.Head><TableMarkup.Row className="bg-slate-50 text-left">
                   <TableMarkup.HeaderCell className={TABLE_STYLES.table1}>Name</TableMarkup.HeaderCell>
@@ -151,12 +155,11 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               </TableMarkup.Root>
             </div>
           )}
-        </section>
+        </Group>
       )}
 
       {docs.length > 0 && (
-        <section aria-label="Documents">
-          <SectionTitle>Documents · {docs.length}</SectionTitle>
+        <Group title="Documents" count={docs.length}>
           {view === "grid" ? (
             <div role="listbox" aria-label="Documents" className={GRID}>
               {docs.map((item) => {
@@ -189,7 +192,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               })}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto">
               <TableMarkup.Root className="w-full border-collapse">
                 <TableMarkup.Head>
                   <TableMarkup.Row className="bg-slate-50 text-left">
@@ -245,7 +248,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               </TableMarkup.Root>
             </div>
           )}
-        </section>
+        </Group>
       )}
       </motion.div>
     </AnimatePresence>

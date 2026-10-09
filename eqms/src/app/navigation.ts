@@ -1,3 +1,4 @@
+import { IconInfoCircle } from "@tabler/icons-react";
 /**
  * Navigation Configuration
  * Defines the application navigation structure
@@ -55,6 +56,7 @@ import {
   IconAdjustmentsHorizontal,
   IconAlertSquareRounded,
   IconMailForward,
+  IconSpeakerphone,
   IconChartBar,
   IconKey,
   IconArrowsShuffle,
@@ -103,6 +105,7 @@ export const ICON_MAP: Record<string, React.ComponentType<any>> = {
   IconAdjustmentsHorizontal,
   IconAlertSquareRounded,
   IconMailForward,
+  IconSpeakerphone,
   IconChartBar,
   IconKey,
   IconArrowsShuffle,
@@ -137,7 +140,10 @@ const CORE_NAV: NavItem[] = [
     icon: IconLayoutGrid,
     // Shown if the user has either child's permission -- mirrors the server's
     // NavigationService#getNavigation self-service block, which is the real authority.
-    allowedPermissions: ["dashboard.module.view", "self_service.knowledge.view"],
+    allowedPermissions: [
+      "dashboard.module.view",
+      "self_service.knowledge.view",
+    ],
     showDividerAfter: true,
     children: [
       {
@@ -222,7 +228,10 @@ const FOUNDATION_MODULES: NavItem[] = [
       {
         id: "uncontrolled-copies",
         label: "Uncontrolled Copies",
-        allowedPermissions: ["documents.uncontrolled_copy.view", "documents.uncontrolled_copy.request"],
+        allowedPermissions: [
+          "documents.uncontrolled_copy.view",
+          "documents.uncontrolled_copy.request",
+        ],
         children: [
           {
             id: "uc-all",
@@ -338,13 +347,23 @@ const SYSTEM_MODULES: NavItem[] = [
     allowedPermissions: ["report.module.view"],
     children: [
       {
+        id: "report-overview",
+        label: "Reports Overview",
+        path: ROUTES.REPORT.OVERVIEW,
+      },
+      {
+        id: "report-analytics",
+        label: "Quality Analytics",
+        path: ROUTES.REPORT.ANALYTICS,
+      },
+      {
         id: "report-templates",
-        label: "Report Templates",
+        label: "Report Library",
         path: ROUTES.REPORT.TEMPLATES,
       },
       {
         id: "report-history",
-        label: "Report History",
+        label: "Report Run History",
         path: ROUTES.REPORT.HISTORY,
       },
       {
@@ -378,9 +397,35 @@ const SYSTEM_MODULES: NavItem[] = [
     id: "backup-restore",
     label: "Backup & Restore",
     icon: DatabaseBackup,
-    path: ROUTES.BACKUP_RESTORE,
     allowedPermissions: ["backup.module.view"],
     showDividerAfter: true,
+    children: [
+      {
+        id: "backup-overview",
+        label: "Backup Status Overview",
+        path: ROUTES.BACKUP_RESTORE.OVERVIEW,
+      },
+      {
+        id: "backup-group",
+        label: "Backup",
+        children: [
+          { id: "backup-backups", label: "Backup History", path: ROUTES.BACKUP_RESTORE.BACKUPS },
+          { id: "backup-verifications", label: "Backup Verification Results", path: ROUTES.BACKUP_RESTORE.BACKUP_VERIFICATIONS },
+          { id: "backup-schedules", label: "Backup Schedules", path: ROUTES.BACKUP_RESTORE.BACKUP_SCHEDULES },
+        ],
+      },
+      {
+        id: "restore-group",
+        label: "Restore",
+        children: [
+          { id: "backup-restores", label: "Restore Requests", path: ROUTES.BACKUP_RESTORE.RESTORES },
+          { id: "restore-approvals", label: "Restore Approval Queue", path: ROUTES.BACKUP_RESTORE.RESTORE_APPROVALS },
+          { id: "restore-verifications", label: "Restore Verification Reports", path: ROUTES.BACKUP_RESTORE.RESTORE_VERIFICATIONS },
+          { id: "restore-history", label: "Restore History & Evidence", path: ROUTES.BACKUP_RESTORE.RESTORE_HISTORY },
+          { id: "backup-dr-drills", label: "Disaster Recovery Drills", path: ROUTES.BACKUP_RESTORE.DR_DRILLS },
+        ],
+      },
+    ],
   },
 
   // ── Security & Authorization ──────────────────────────────────────────────
@@ -480,7 +525,7 @@ const SYSTEM_MODULES: NavItem[] = [
             path: ROUTES.SECURITY.WORKFLOW_ROLE_CATALOG,
             allowedPermissions: ["security.workflow_authorization.view"],
           },
-                    {
+          {
             id: "sec-sod",
             label: "Segregation of Duties",
             path: ROUTES.SECURITY.SOD,
@@ -518,23 +563,95 @@ const SYSTEM_MODULES: NavItem[] = [
         id: "dictionaries",
         label: "Dictionaries",
         icon: BookText,
-        allowedPermissions: ["settings.business_unit.view", "settings.business_unit.manage", "settings.department.view", "settings.department.manage", "settings.position.view", "settings.position.manage", "settings.storage_location.view", "settings.storage_location.manage", "settings.retention_policy.view", "settings.retention_policy.manage"],
+        allowedPermissions: [
+          "settings.business_unit.view",
+          "settings.business_unit.manage",
+          "settings.department.view",
+          "settings.department.manage",
+          "settings.position.view",
+          "settings.position.manage",
+          "settings.storage_location.view",
+          "settings.storage_location.manage",
+          "settings.retention_policy.view",
+          "settings.retention_policy.manage",
+        ],
         children: [
-          { id: "dict-business-units", label: "Business Units", path: ROUTES.SETTINGS.DICTIONARIES_BUSINESS_UNITS, allowedPermissions: ["settings.business_unit.view", "settings.business_unit.manage"] },
-          { id: "dict-departments", label: "Departments", path: ROUTES.SETTINGS.DICTIONARIES_DEPARTMENTS, allowedPermissions: ["settings.department.view", "settings.department.manage"] },
-          { id: "dict-positions", label: "Positions", path: ROUTES.SETTINGS.DICTIONARIES_POSITIONS, allowedPermissions: ["settings.position.view", "settings.position.manage"] },
-          { id: "dict-storage-locations", label: "Storage Locations", path: ROUTES.SETTINGS.DICTIONARIES_STORAGE_LOCATIONS, allowedPermissions: ["settings.storage_location.view", "settings.storage_location.manage"] },
-          { id: "dict-retention-policies", label: "Retention Policies", path: ROUTES.SETTINGS.DICTIONARIES_RETENTION_POLICIES, allowedPermissions: ["settings.retention_policy.view", "settings.retention_policy.manage"] },
+          {
+            id: "dict-business-units",
+            label: "Business Units",
+            path: ROUTES.SETTINGS.DICTIONARIES_BUSINESS_UNITS,
+            allowedPermissions: [
+              "settings.business_unit.view",
+              "settings.business_unit.manage",
+            ],
+          },
+          {
+            id: "dict-departments",
+            label: "Departments",
+            path: ROUTES.SETTINGS.DICTIONARIES_DEPARTMENTS,
+            allowedPermissions: [
+              "settings.department.view",
+              "settings.department.manage",
+            ],
+          },
+          {
+            id: "dict-positions",
+            label: "Positions",
+            path: ROUTES.SETTINGS.DICTIONARIES_POSITIONS,
+            allowedPermissions: [
+              "settings.position.view",
+              "settings.position.manage",
+            ],
+          },
+          {
+            id: "dict-storage-locations",
+            label: "Storage Locations",
+            path: ROUTES.SETTINGS.DICTIONARIES_STORAGE_LOCATIONS,
+            allowedPermissions: [
+              "settings.storage_location.view",
+              "settings.storage_location.manage",
+            ],
+          },
+          {
+            id: "dict-retention-policies",
+            label: "Retention Policies",
+            path: ROUTES.SETTINGS.DICTIONARIES_RETENTION_POLICIES,
+            allowedPermissions: [
+              "settings.retention_policy.view",
+              "settings.retention_policy.manage",
+            ],
+          },
         ],
       },
       {
         id: "education",
         label: "Education",
         icon: University,
-        allowedPermissions: ["settings.education.degree_level.view", "settings.education.degree_level.manage", "settings.education.school.view", "settings.education.school.manage"],
+        allowedPermissions: [
+          "settings.education.degree_level.view",
+          "settings.education.degree_level.manage",
+          "settings.education.school.view",
+          "settings.education.school.manage",
+        ],
         children: [
-          { id: "education-degree-levels", label: "Degree Levels", path: ROUTES.SETTINGS.EDUCATION_DEGREE_LEVELS, allowedPermissions: ["settings.education.degree_level.view", "settings.education.degree_level.manage"] },
-          { id: "education-schools", label: "Schools", path: ROUTES.SETTINGS.EDUCATION_SCHOOLS, allowedPermissions: ["settings.education.school.view", "settings.education.school.manage"] },
+          {
+            id: "education-degree-levels",
+            label: "Degree Levels",
+            path: ROUTES.SETTINGS.EDUCATION_DEGREE_LEVELS,
+            allowedPermissions: [
+              "settings.education.degree_level.view",
+              "settings.education.degree_level.manage",
+            ],
+          },
+          {
+            id: "education-schools",
+            label: "Schools",
+            path: ROUTES.SETTINGS.EDUCATION_SCHOOLS,
+            allowedPermissions: [
+              "settings.education.school.view",
+              "settings.education.school.manage",
+            ],
+          },
         ],
       },
       {
@@ -542,7 +659,21 @@ const SYSTEM_MODULES: NavItem[] = [
         label: "Email Templates",
         icon: IconMailForward,
         path: ROUTES.SETTINGS.EMAIL_TEMPLATES,
-        allowedPermissions: ["settings.email_template.view", "settings.email_template.manage", "settings.configuration.view"],
+        allowedPermissions: [
+          "settings.email_template.view",
+          "settings.email_template.manage",
+          "settings.configuration.view",
+        ],
+      },
+      {
+        id: "system-announcements",
+        label: "System Announcements",
+        icon: IconSpeakerphone,
+        path: ROUTES.SETTINGS.ANNOUNCEMENTS,
+        allowedPermissions: [
+          "settings.announcement.view",
+          "settings.announcement.manage",
+        ],
       },
       {
         id: "notification-policy",
@@ -550,13 +681,6 @@ const SYSTEM_MODULES: NavItem[] = [
         icon: Bell,
         path: ROUTES.SETTINGS.NOTIFICATION_POLICY,
         allowedPermissions: ["settings.configuration.view"],
-      },
-      {
-        id: "report-configuration",
-        label: "Report Configuration",
-        icon: IconTableOptions,
-        path: ROUTES.SETTINGS.REPORT_CONFIGURATION,
-        allowedPermissions: ["reports.definition.view", "settings.configuration.view"],
       },
     ],
   },
@@ -567,13 +691,22 @@ const SYSTEM_MODULES: NavItem[] = [
     label: "System Administration",
     icon: UserStar,
     allowedPermissions: [
-      "settings.configuration.view", "documents.admin.view",
-      "documents.admin.properties.view", "documents.admin.properties.manage",
-      "documents.admin.name_formats.view", "documents.admin.name_formats.manage",
-      "documents.admin.document_types.view", "documents.admin.document_types.manage",
-      "documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage",
-      "documents.admin.publishing_templates.view", "documents.admin.publishing_templates.manage",
-      "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage", "documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage",
+      "settings.configuration.view",
+      "documents.admin.view",
+      "documents.admin.properties.view",
+      "documents.admin.properties.manage",
+      "documents.admin.name_formats.view",
+      "documents.admin.name_formats.manage",
+      "documents.admin.document_types.view",
+      "documents.admin.document_types.manage",
+      "documents.admin.knowledge_categories.view",
+      "documents.admin.knowledge_categories.manage",
+      "documents.admin.publishing_templates.view",
+      "documents.admin.publishing_templates.manage",
+      "documents.admin.controlled_copies_policy.view",
+      "documents.admin.controlled_copies_policy.manage",
+      "documents.admin.uncontrolled_copies_policy.view",
+      "documents.admin.uncontrolled_copies_policy.manage",
       "training.admin.view",
     ],
     children: [
@@ -595,73 +728,111 @@ const SYSTEM_MODULES: NavItem[] = [
         id: "doc-administration",
         label: "Document Administration",
         allowedPermissions: [
-          "documents.admin.properties.view", "documents.admin.properties.manage",
-          "documents.admin.name_formats.view", "documents.admin.name_formats.manage",
-          "documents.admin.document_types.view", "documents.admin.document_types.manage",
-          "documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage",
-          "documents.admin.publishing_templates.view", "documents.admin.publishing_templates.manage",
-          "documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage", "documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage",
+          "documents.admin.properties.view",
+          "documents.admin.properties.manage",
+          "documents.admin.name_formats.view",
+          "documents.admin.name_formats.manage",
+          "documents.admin.document_types.view",
+          "documents.admin.document_types.manage",
+          "documents.admin.knowledge_categories.view",
+          "documents.admin.knowledge_categories.manage",
+          "documents.admin.publishing_templates.view",
+          "documents.admin.publishing_templates.manage",
+          "documents.admin.controlled_copies_policy.view",
+          "documents.admin.controlled_copies_policy.manage",
+          "documents.admin.uncontrolled_copies_policy.view",
+          "documents.admin.uncontrolled_copies_policy.manage",
         ],
         children: [
           {
             id: "doc-admin-properties",
             label: "Document Properties",
             path: ROUTES.DOCUMENTS.ADMIN.PROPERTIES,
-            allowedPermissions: ["documents.admin.properties.view", "documents.admin.properties.manage"],
+            allowedPermissions: [
+              "documents.admin.properties.view",
+              "documents.admin.properties.manage",
+            ],
           },
           {
             id: "doc-admin-name-formats",
             label: "Document Name Formats",
             path: ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS,
-            allowedPermissions: ["documents.admin.name_formats.view", "documents.admin.name_formats.manage"],
+            allowedPermissions: [
+              "documents.admin.name_formats.view",
+              "documents.admin.name_formats.manage",
+            ],
           },
           {
             id: "doc-admin-document-components",
             label: "Document Components",
             path: ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS,
-            allowedPermissions: ["documents.admin.name_formats.view", "documents.admin.name_formats.manage"],
+            allowedPermissions: [
+              "documents.admin.name_formats.view",
+              "documents.admin.name_formats.manage",
+            ],
           },
           {
             id: "doc-admin-document-types",
             label: "Document Types",
             path: ROUTES.DOCUMENTS.ADMIN.DOCUMENT_TYPES,
-            allowedPermissions: ["documents.admin.document_types.view", "documents.admin.document_types.manage"],
+            allowedPermissions: [
+              "documents.admin.document_types.view",
+              "documents.admin.document_types.manage",
+            ],
           },
           {
             id: "doc-admin-document-sub-types",
             label: "Document Sub-Types",
             path: ROUTES.DOCUMENTS.ADMIN.DOCUMENT_SUB_TYPES,
-            allowedPermissions: ["documents.admin.document_types.view", "documents.admin.document_types.manage"],
+            allowedPermissions: [
+              "documents.admin.document_types.view",
+              "documents.admin.document_types.manage",
+            ],
           },
           {
             id: "doc-admin-knowledge-categories",
             label: "Knowledge Categories Hierarchies",
             path: ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES,
-            allowedPermissions: ["documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage"],
+            allowedPermissions: [
+              "documents.admin.knowledge_categories.view",
+              "documents.admin.knowledge_categories.manage",
+            ],
           },
           {
             id: "doc-admin-knowledge-components",
             label: "Knowledge Category Components",
             path: ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS,
-            allowedPermissions: ["documents.admin.knowledge_categories.view", "documents.admin.knowledge_categories.manage"],
+            allowedPermissions: [
+              "documents.admin.knowledge_categories.view",
+              "documents.admin.knowledge_categories.manage",
+            ],
           },
           {
             id: "publishing-templates",
             label: "Publishing Templates",
             path: ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES,
-            allowedPermissions: ["documents.admin.publishing_templates.view", "documents.admin.publishing_templates.manage"],
+            allowedPermissions: [
+              "documents.admin.publishing_templates.view",
+              "documents.admin.publishing_templates.manage",
+            ],
           },
           {
             id: "controlled-copy-policy",
             label: "Controlled Copies Policy",
             path: ROUTES.DOCUMENTS.ADMIN.CONTROLLED_COPIES_POLICY,
-            allowedPermissions: ["documents.admin.controlled_copies_policy.view", "documents.admin.controlled_copies_policy.manage"],
+            allowedPermissions: [
+              "documents.admin.controlled_copies_policy.view",
+              "documents.admin.controlled_copies_policy.manage",
+            ],
           },
           {
             id: "uncontrolled-copy-policy",
             label: "Uncontrolled Copies Policy",
             path: ROUTES.DOCUMENTS.ADMIN.UNCONTROLLED_COPIES_POLICY,
-            allowedPermissions: ["documents.admin.uncontrolled_copies_policy.view", "documents.admin.uncontrolled_copies_policy.manage"],
+            allowedPermissions: [
+              "documents.admin.uncontrolled_copies_policy.view",
+              "documents.admin.uncontrolled_copies_policy.manage",
+            ],
           },
         ],
       },
@@ -703,6 +874,127 @@ const SYSTEM_MODULES: NavItem[] = [
           },
         ],
       },
+      {
+        id: "report-administration",
+        label: "Report Administration",
+        allowedPermissions: [
+          "reports.definition.view",
+          "settings.configuration.view",
+        ],
+        children: [
+          {
+            id: "report-admin-definitions",
+            label: "Report Definitions",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.DEFINITIONS,
+            allowedPermissions: [
+              "reports.definition.view",
+              "settings.configuration.view",
+            ],
+          },
+          {
+            id: "report-admin-access",
+            label: "Report Access & Data Scope",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.ACCESS,
+            allowedPermissions: [
+              "reports.definition.view",
+              "settings.configuration.view",
+            ],
+          },
+          {
+            id: "report-admin-output",
+            label: "Report Output Controls",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.OUTPUT,
+            allowedPermissions: [
+              "reports.definition.view",
+              "settings.configuration.view",
+            ],
+          },
+          {
+            id: "report-admin-retention",
+            label: "Report Retention & Legal Hold",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.RETENTION,
+            allowedPermissions: [
+              "reports.definition.view",
+              "settings.configuration.view",
+            ],
+          },
+          {
+            id: "report-admin-delivery",
+            label: "Scheduled Report Delivery",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.DELIVERY,
+            allowedPermissions: [
+              "reports.definition.view",
+              "settings.configuration.view",
+            ],
+          },
+          {
+            id: "report-admin-validation",
+            label: "Report Change History & Validation",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.VALIDATION,
+            allowedPermissions: [
+              "reports.definition.view",
+              "settings.configuration.view",
+            ],
+          },
+        ],
+      },
+      {
+        id: "backup-restore-administration",
+        label: "Backup & Restore Administration",
+        allowedPermissions: [
+          "backup.admin.policy.view",
+          "backup.admin.retention.view",
+          "backup.admin.storage.view",
+          "backup.admin.verification.view",
+          "backup.admin.restore_controls.view",
+          "backup.admin.alerts.view",
+          "backup.admin.disaster_recovery.view",
+        ],
+        children: [
+          {
+            id: "backup-admin-policy",
+            label: "Backup Policy",
+            path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY,
+            allowedPermissions: ["backup.admin.policy.view"],
+          },
+          {
+            id: "backup-admin-retention",
+            label: "Backup Retention & Legal Hold",
+            path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.RETENTION,
+            allowedPermissions: ["backup.admin.retention.view"],
+          },
+          {
+            id: "backup-admin-storage",
+            label: "Backup Storage & Encryption",
+            path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.STORAGE,
+            allowedPermissions: ["backup.admin.storage.view"],
+          },
+          {
+            id: "backup-admin-verification",
+            label: "Backup Verification & Restore Drills",
+            path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.VERIFICATION,
+            allowedPermissions: ["backup.admin.verification.view"],
+          },
+          {
+            id: "backup-admin-restore-controls",
+            label: "Restore Approval & Execution Rules",
+            path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.RESTORE_CONTROLS,
+            allowedPermissions: ["backup.admin.restore_controls.view"],
+          },
+          {
+            id: "backup-admin-alerts",
+            label: "Backup Alerts & Recipients",
+            path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.ALERTS,
+            allowedPermissions: ["backup.admin.alerts.view"],
+          },
+          {
+            id: "backup-admin-disaster-recovery",
+            label: "Disaster Recovery Plan",
+            path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.DISASTER_RECOVERY,
+            allowedPermissions: ["backup.admin.disaster_recovery.view"],
+          },
+        ],
+      },
     ],
   },
 
@@ -717,7 +1009,7 @@ const SYSTEM_MODULES: NavItem[] = [
   {
     id: "system-information",
     label: "System Information",
-    icon: IconAlertSquareRounded,
+    icon: IconInfoCircle,
     path: ROUTES.SETTINGS.SYSTEM_INFO,
     allowedPermissions: ["settings.configuration.view"],
   },
@@ -733,9 +1025,7 @@ export const QUALITY_NAV_CONFIG: NavItem[] = [
 ];
 
 // The aggregate config is retained for shared route lookup and navigation.
-export const NAV_CONFIG: NavItem[] = [
-  ...QUALITY_NAV_CONFIG,
-];
+export const NAV_CONFIG: NavItem[] = [...QUALITY_NAV_CONFIG];
 
 export interface NavigationLabelOption {
   id: string;
@@ -746,11 +1036,12 @@ export interface NavigationLabelOption {
 /** Stable menu identifiers available for presentation-only label overrides. */
 export const NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = (() => {
   const options: NavigationLabelOption[] = [];
-  const visit = (items: NavItem[], ancestors: string[] = []) => items.forEach((item) => {
-    const hierarchy = [...ancestors, item.label].join(' › ');
-    options.push({ id: item.id, defaultLabel: item.label, hierarchy });
-    if (item.children) visit(item.children, [...ancestors, item.label]);
-  });
+  const visit = (items: NavItem[], ancestors: string[] = []) =>
+    items.forEach((item) => {
+      const hierarchy = [...ancestors, item.label].join(" › ");
+      options.push({ id: item.id, defaultLabel: item.label, hierarchy });
+      if (item.children) visit(item.children, [...ancestors, item.label]);
+    });
   visit(NAV_CONFIG);
   return options;
 })();
@@ -763,7 +1054,9 @@ export const resolveConfiguredNavigationLabel = (
   if (!label?.trim() || !overrides) return label;
   const direct = overrides[label];
   if (direct?.trim()) return direct.trim();
-  const option = NAVIGATION_LABEL_OPTIONS.find((item) => item.defaultLabel === label);
+  const option = NAVIGATION_LABEL_OPTIONS.find(
+    (item) => item.defaultLabel === label,
+  );
   const configured = option ? overrides[option.id] : undefined;
   return configured?.trim() || label;
 };
@@ -798,9 +1091,9 @@ export const findNodeByPath = (
       return item;
     }
     if (
-      item.path
-      && targetPath.startsWith(`${item.path.replace(/\/$/, "")}/`)
-      && (!closestParent || item.path.length > closestParent.path!.length)
+      item.path &&
+      targetPath.startsWith(`${item.path.replace(/\/$/, "")}/`) &&
+      (!closestParent || item.path.length > closestParent.path!.length)
     ) {
       closestParent = item;
     }

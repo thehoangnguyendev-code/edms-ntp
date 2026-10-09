@@ -1,1 +1,11 @@
-export { BackupRestoreView } from './BackupRestoreView';
+export { BackupOverviewView } from './views/BackupOverviewView';
+export { BackupsView } from './views/BackupsView';
+export { RestoreRequestsView } from './views/RestoreRequestsView';
+export { RestoreRequestView } from './RestoreRequestView';
+export { DrDrillsView } from './views/DrDrillsView';
+export { BackupSchedulesView } from './views/BackupSchedulesView';
+export { BackupVerificationResultsView } from './views/BackupVerificationResultsView';
+export { RestoreApprovalQueueView } from './views/RestoreApprovalQueueView';
+export { RestoreVerificationReportsView } from './views/RestoreVerificationReportsView';
+export { RestoreHistoryView } from './views/RestoreHistoryView';
+export { BackupDetailView } from './views/BackupDetailView';

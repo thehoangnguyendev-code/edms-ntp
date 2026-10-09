@@ -4,7 +4,6 @@ import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { ROUTES } from '@/app/routes.constants';
 import {
   Download,
-  History,
   FilePlusCorner,
   FileStack,
   MoreVertical,
@@ -16,7 +15,7 @@ import { useRevisionServerTable } from "@/features/documents/hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/components/ui/utils";
 import { Badge, type BadgeColor } from '@/components/ui/badge';
-import { IconInfoCircle, IconChecks, IconCheck, IconHistory, IconPencilMinus } from "@tabler/icons-react";
+import { IconInfoCircle, IconChecks, IconCheck, IconPencilMinus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { revisionsOwnedByMe } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
@@ -254,13 +253,6 @@ export const RevisionsOwnedByMeView: React.FC = () => {
       case "training":
         void preloadRevisionAndNavigate(
           ROUTES.DOCUMENTS.REVISIONS.TRAINING(id),
-          id,
-          ROUTES.DOCUMENTS.REVISIONS.OWNED,
-        );
-        break;
-      case "audit":
-        void preloadRevisionAndNavigate(
-          `${ROUTES.DOCUMENTS.REVISIONS.DETAIL(id)}?tab=audit`,
           id,
           ROUTES.DOCUMENTS.REVISIONS.OWNED,
         );
@@ -517,7 +509,6 @@ export const RevisionsOwnedByMeView: React.FC = () => {
                 if (revision.state === "Effective" && Boolean(revision.canRequestControlledCopy)) {
                   actions.push({ icon: <FileStack className="h-4 w-4" />, label: "Request Controlled Copy", action: "print" });
                 }
-                actions.push({ icon: <History className="h-4 w-4" />, label: "View Audit Trail", action: "audit" });
                 return actions;
               }}
               onViewItem={(id) => {
@@ -632,16 +623,6 @@ export const RevisionsOwnedByMeView: React.FC = () => {
                   <span>Request Controlled Copy</span>
                 </button>
               )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMenuAction("audit", openId);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
-              >
-                <IconHistory className="h-4 w-4 text-slate-500" />
-                <span>View Audit Trail</span>
-              </button>
             </div>
           </PortalDropdownMenu>
         );

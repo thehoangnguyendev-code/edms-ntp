@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.config.DeploymentEnvironment;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.minio.BucketExistsArgs;
 import io.minio.GetBucketVersioningArgs;
@@ -56,6 +57,7 @@ public class MinioObjectStorageService {
             String accessKey,
             String secretKey,
             String bucket,
+            String templatesBucket,
             int retentionYears
     ) {
     }
@@ -63,6 +65,8 @@ public class MinioObjectStorageService {
     private record ObjectReference(String bucket, String objectKey, String versionId) {
     }
 
+    /** The longest default retention Object Lock accepts (100 years). "Permanent" in the settings means this value. */
+    static final int MAX_RETENTION_YEARS = 100;
     private static final long PART_SIZE = 10L * 1024L * 1024L;
     private static final String URI_PREFIX = "minio://";
     private static final Logger log = LoggerFactory.getLogger(MinioObjectStorageService.class);
@@ -73,8 +77,14 @@ public class MinioObjectStorageService {
     private final String defaultAccessKey;
     private final String defaultSecretKey;
     private final String defaultBucket;
+    private final String defaultTemplatesBucket;
     private final int defaultRetentionYears;
     private final SystemConfigurationService systemConfigurationService;
+    private final ClamAvScanService clamAvScanService;
+
+    /** DEV, TEST or PROD; injected as a field so the constructor used by existing tests is unchanged. */
+    @Value("${app.environment:DEV}")
+    private String environmentName = "DEV";
 
     public MinioObjectStorageService(
             @Value("${app.minio.enabled:true}") boolean enabled,
@@ -82,9 +92,11 @@ public class MinioObjectStorageService {
             @Value("${app.minio.endpoint:http://localhost:9000}") String endpoint,
             @Value("${app.minio.access-key:eqms-minio}") String accessKey,
             @Value("${app.minio.secret-key:eqms-minio-secret}") String secretKey,
-            @Value("${app.minio.bucket:eqms-gmp-revisions}") String bucket,
-            @Value("${app.minio.retention-years:5}") int retentionYears,
-            SystemConfigurationService systemConfigurationService
+            @Value("${app.minio.bucket:eqms-gmp-records}") String bucket,
+            @Value("${app.minio.templates-bucket:eqms-templates}") String templatesBucket,
+            @Value("${app.minio.retention-years:100}") int retentionYears,
+            SystemConfigurationService systemConfigurationService,
+            ClamAvScanService clamAvScanService
     ) {
         this.enabled = enabled;
         this.initializeOnStartup = initializeOnStartup;
@@ -92,8 +104,10 @@ public class MinioObjectStorageService {
         this.defaultAccessKey = requireValue(accessKey, "MinIO access key");
         this.defaultSecretKey = requireValue(secretKey, "MinIO secret key");
         this.defaultBucket = requireValue(bucket, "MinIO bucket");
-        this.defaultRetentionYears = Math.max(retentionYears, 1);
+        this.defaultTemplatesBucket = requireValue(templatesBucket, "MinIO templates bucket");
+        this.defaultRetentionYears = clampRetentionYears(retentionYears);
         this.systemConfigurationService = systemConfigurationService;
+        this.clamAvScanService = clamAvScanService;
         // #6: these @Value defaults exist only so a fresh dev/test environment boots without any
         // configuration -- an admin can always override them for real via Integration Settings
         // (IntegrationTab.tsx), which SystemConfigurationService-backed config takes precedence
@@ -120,7 +134,10 @@ public class MinioObjectStorageService {
             return;
         }
         try {
-            ensureBucket(resolveDefaultConfig());
+            MinioConfig config = resolveDefaultConfig();
+            MinioClient client = buildClient(config);
+            ensureBucket(client, config.bucket(), config.retentionYears(), true);
+            ensureBucket(client, config.templatesBucket(), config.retentionYears(), false);
         } catch (Exception ex) {
             log.warn(
                     "MinIO is not ready during startup. The application will remain available so an administrator can configure storage: {}",
@@ -136,38 +153,74 @@ public class MinioObjectStorageService {
     public StoredObject store(JsonNode storageConfig, String relativeObjectKey, InputStream inputStream, String contentType) throws IOException {
         MinioConfig config = resolveConfig(storageConfig);
         MinioClient client = buildClient(config);
-        ensureBucket(client, config.bucket(), config.retentionYears());
         String objectKey = normalizePath(relativeObjectKey);
+        // Reject a key outside the registered domains before anything is staged or scanned: a stray folder in the locked
+        // records bucket could never be removed again.
+        StorageDomain domain = StorageDomain.of(objectKey).orElseThrow(() -> new IllegalArgumentException(
+                "Object key is outside the registered storage domains: " + objectKey));
+        String bucket = bucketFor(config.bucket(), config.templatesBucket(), domain);
+        // Nothing is written to a bucket until the bytes have passed the virus scan (see scanStaged).
+        // A rejected or unscannable file never reaches the locked records bucket.
         Path stagingDirectory = Files.createTempDirectory("eqms-minio-upload-");
         Path stagingFile = stagingDirectory.resolve(fileName(objectKey));
         stagingFile.toFile().deleteOnExit();
         try {
             Files.copy(inputStream, stagingFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            scanStaged(stagingFile, objectKey);
+            ensureBucket(client, bucket, config.retentionYears(), bucket.equals(config.bucket()));
             String checksum = sha256(stagingFile);
             try (InputStream stagedInput = Files.newInputStream(stagingFile)) {
                 ObjectWriteResponse response = client.putObject(
                         PutObjectArgs.builder()
-                                .bucket(config.bucket())
+                                .bucket(bucket)
                                 .object(objectKey)
                                 .contentType(StringUtils.hasText(contentType) ? contentType : "application/octet-stream")
-                                .userMetadata(Map.of("sha256", checksum))
+                                .userMetadata(Map.of("sha256", checksum, "domain", domain.name()))
                                 .stream(stagedInput, Files.size(stagingFile), PART_SIZE)
                                 .build()
                 );
                 String versionId = response.versionId();
                 return new StoredObject(
                         stagingFile,
-                        toUri(config.bucket(), objectKey, versionId),
-                        config.bucket(),
+                        toUri(bucket, objectKey, versionId),
+                        bucket,
                         objectKey,
                         versionId,
                         checksum
                 );
             }
+        } catch (VirusRejectedException | ClamAvScanService.VirusScanUnavailableException rejected) {
+            Files.deleteIfExists(stagingFile);
+            throw rejected;
         } catch (Exception ex) {
             Files.deleteIfExists(stagingFile);
             throw storageException("Failed to store object in MinIO", ex);
         }
+    }
+
+    /** A file the scanner reported as infected. Nothing is written for it. */
+    public static class VirusRejectedException extends IOException {
+        public VirusRejectedException(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * Scans the staged bytes before any write. Fails closed: an infected file is rejected, and a scanner that is
+     * enabled but unreachable raises {@link ClamAvScanService.VirusScanUnavailableException} (the same behaviour as
+     * the upload validators). When scanning is switched off in configuration the scanner returns clean and this is a no-op.
+     */
+    private void scanStaged(Path stagingFile, String objectKey) throws IOException {
+        ClamAvScanService.ScanResult result = clamAvScanService.scan(Files.readAllBytes(stagingFile));
+        if (!result.clean()) {
+            log.warn("Upload rejected by virus scan: key={} signature={}", objectKey, result.signatureName());
+            throw new VirusRejectedException("The file was rejected by the virus scan");
+        }
+    }
+
+    /** Records and their evidence go to the locked records bucket; templates go to their own unlocked bucket. */
+    static String bucketFor(String recordsBucket, String templatesBucket, StorageDomain domain) {
+        return domain.bucketClass() == StorageDomain.BucketClass.TEMPLATES ? templatesBucket : recordsBucket;
     }
 
     public InputStream open(String uri) throws IOException {
@@ -227,7 +280,8 @@ public class MinioObjectStorageService {
     public void testConnection(JsonNode storageConfig) throws IOException {
         MinioConfig config = resolveConfig(storageConfig);
         MinioClient client = buildClient(config);
-        ensureBucket(client, config.bucket(), config.retentionYears());
+        ensureBucket(client, config.bucket(), config.retentionYears(), true);
+        ensureBucket(client, config.templatesBucket(), config.retentionYears(), false);
         try {
             validateComplianceConfiguration(client, config.bucket(), config.retentionYears());
             Iterable<Result<Item>> objects = client.listObjects(
@@ -246,17 +300,23 @@ public class MinioObjectStorageService {
         return StringUtils.hasText(value) && value.trim().toLowerCase().startsWith(URI_PREFIX);
     }
 
-    private synchronized void ensureBucket(MinioConfig config) throws IOException {
-        ensureBucket(buildClient(config), config.bucket(), config.retentionYears());
-    }
-
-    private synchronized void ensureBucket(MinioClient client, String bucket, int retentionYears) throws IOException {
+    /** Object Lock can only be switched on when a bucket is created, so the flag is decided per bucket. */
+    private synchronized void ensureBucket(MinioClient client, String bucket, int retentionYears, boolean locked) throws IOException {
         try {
             boolean exists = client.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
             if (!exists) {
-                client.makeBucket(MakeBucketArgs.builder().bucket(bucket).objectLock(true).build());
+                client.makeBucket(MakeBucketArgs.builder().bucket(bucket).objectLock(locked).build());
             }
-            enableVersioningAndLock(client, bucket, retentionYears);
+            if (locked) {
+                enableVersioningAndLock(client, bucket, retentionYears);
+            } else {
+                client.setBucketVersioning(
+                        SetBucketVersioningArgs.builder()
+                                .bucket(bucket)
+                                .config(new VersioningConfiguration(VersioningConfiguration.Status.ENABLED, Boolean.FALSE))
+                                .build()
+                );
+            }
         } catch (Exception ex) {
             throw storageException("Failed to initialize MinIO bucket " + bucket, ex);
         }
@@ -293,13 +353,25 @@ public class MinioObjectStorageService {
         if (!StringUtils.hasText(bucket)) {
             bucket = defaultBucket;
         }
+        String templatesBucket = firstText(storageNode, "minioTemplatesBucket", "templatesBucket");
+        if (!StringUtils.hasText(templatesBucket)) {
+            templatesBucket = defaultTemplatesBucket;
+        }
         int retentionYears = resolveRetentionYears(storageNode);
+
+        // The effective bucket can come from the database (Integration Settings), so the environment rule is checked here, on
+        // every use, and not only at startup: a database copied from another environment must not write into that
+        // environment's store.
+        DeploymentEnvironment deploymentEnvironment = DeploymentEnvironment.parse(environmentName);
+        deploymentEnvironment.requireBucketAllowed(bucket, "records");
+        deploymentEnvironment.requireBucketAllowed(templatesBucket, "templates");
 
         return new MinioConfig(
                 requireValue(endpoint, "MinIO endpoint"),
                 requireValue(accessKey, "MinIO access key"),
                 requireValue(secretKey, "MinIO secret key"),
                 requireValue(bucket, "MinIO bucket"),
+                requireValue(templatesBucket, "MinIO templates bucket"),
                 retentionYears
         );
     }
@@ -310,6 +382,7 @@ public class MinioObjectStorageService {
                 defaultAccessKey,
                 defaultSecretKey,
                 defaultBucket,
+                defaultTemplatesBucket,
                 defaultRetentionYears
         );
     }
@@ -343,7 +416,11 @@ public class MinioObjectStorageService {
         if (value == null || value.isNull() || !value.canConvertToInt()) {
             return defaultRetentionYears;
         }
-        return Math.max(value.asInt(defaultRetentionYears), 1);
+        return clampRetentionYears(value.asInt(defaultRetentionYears));
+    }
+
+    static int clampRetentionYears(int years) {
+        return Math.min(Math.max(years, 1), MAX_RETENTION_YEARS);
     }
 
     private MinioClient buildClient(MinioConfig config) {
@@ -365,7 +442,7 @@ public class MinioObjectStorageService {
                         .bucket(bucket)
                         .config(new ObjectLockConfiguration(
                                 RetentionMode.COMPLIANCE,
-                                new RetentionDurationYears(Math.max(retentionYears, 1))
+                                new RetentionDurationYears(clampRetentionYears(retentionYears))
                         ))
                         .build()
         );
@@ -386,9 +463,9 @@ public class MinioObjectStorageService {
             throw new IllegalStateException("Object Lock Compliance Mode is not enabled");
         }
         if (!(objectLock.duration() instanceof RetentionDurationYears years)
-                || years.duration() < Math.max(retentionYears, 1)) {
+                || years.duration() < clampRetentionYears(retentionYears)) {
             throw new IllegalStateException(
-                    "Object Lock retention is shorter than the configured " + Math.max(retentionYears, 1) + " year(s)"
+                    "Object Lock retention is shorter than the configured " + clampRetentionYears(retentionYears) + " year(s)"
             );
         }
     }

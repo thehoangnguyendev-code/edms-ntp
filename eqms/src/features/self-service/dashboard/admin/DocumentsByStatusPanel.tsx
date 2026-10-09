@@ -39,6 +39,7 @@ export const DocumentsByStatusPanel: React.FC<{ stats: DashboardResource<Dashboa
       emptyLabel="There are no documents yet"
       errorMessage="Documents by status could not be loaded."
       idPrefix="documents-status"
+      defaultView="bar"
       colorFor={statusColor}
     />
   );

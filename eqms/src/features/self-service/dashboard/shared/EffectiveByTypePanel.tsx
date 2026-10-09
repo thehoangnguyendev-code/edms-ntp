@@ -31,6 +31,7 @@ export const EffectiveByTypePanel: React.FC<{ className?: string }> = ({ classNa
       emptyLabel="No document is effective yet"
       errorMessage="Effective documents by type could not be loaded."
       idPrefix="effective-type"
+      defaultView="donut"
     />
   );
 };

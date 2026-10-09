@@ -37,6 +37,7 @@ export const MyDocumentsPanel: React.FC<{ className?: string }> = ({ className }
       emptyLabel="You have not authored any document yet"
       errorMessage="Your documents could not be loaded."
       idPrefix="my-documents"
+      defaultView="bar"
       colorFor={statusColor}
     />
   );

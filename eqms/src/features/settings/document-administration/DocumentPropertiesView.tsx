@@ -16,7 +16,7 @@ import { settingsApi } from "@/services/api/settings";
 import { documentNameFormatApi } from "@/services/api";
 import { documentProperties } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { ROUTES } from "@/app/routes.constants";
-import type { DocumentNameFormatItem } from "./documentNameFormatTypes";
+import type { DocumentNameFormatItem } from "./document-name-formats/documentNameFormatTypes";
 import { IconApiBook, IconFileTextShield, IconTableSpark } from "@tabler/icons-react";
 
 type RevisionSeed = "0.0.1" | "0.1";

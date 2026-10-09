@@ -665,39 +665,11 @@ public class AuditTrailService {
             }
             return;
         }
-        // GMP decision (HDR-AUTH-001): a direct stakeholder of the Document/Revision (Author,
-        // Co-author, Reviewer/Approver, or Admin/DCO) automatically sees its Audit Trail tab --
-        // no separate documents.document.view_audit / global audit.view permission required.
-        // Indirect/broad viewers (visible only via Record visibility = "All") still need it.
-        if (!resolveIsDirectStakeholder(normalized, entityId, actor)) {
-            // DOCUMENT has its own scoped "documents.document.view_audit" permission -- the exact
-            // permission CapabilityService already uses to decide whether the FE even shows this
-            // tab. Requiring the separate, admin-only Audit Trail *module* permission on top of that
-            // (as this used to do unconditionally) meant the tab could be visible yet 403 for any
-            // document-module user who was never separately granted Security & Authorization access.
-            boolean hasScopedDocumentAuditView = normalized.equals("DOCUMENT")
-                    && permissionEvaluationService.hasPermission(actor, "documents.document.view_audit");
-            if (!hasScopedDocumentAuditView) {
-                requireAuditView();
-            }
-        }
+        // GMP decision: the Audit Trail tab is folded into Document/Revision detail access --
+        // no separate documents.document.view_audit / global audit.view permission exists anymore.
+        // Whoever can view the Document or Revision (Author, Co-author, Reviewer/Approver, Admin/DCO,
+        // or a broad viewer via Record visibility = "All") can see its Audit Trail tab.
         requireScopedEntityView(module, entityId.toString());
-    }
-
-    /** See {@link DocumentAuthorizationService#isDirectStakeholder(UserAccount, DocumentRecord)}. */
-    private boolean resolveIsDirectStakeholder(String normalizedModule, UUID entityId, UserAccount actor) {
-        DocumentAuthorizationService authorization = documentAuthorizationServiceProvider.getObject();
-        if (normalizedModule.equals("DOCUMENT")) {
-            return documentRecordRepository.findById(entityId)
-                    .map(document -> authorization.isDirectStakeholder(actor, document))
-                    .orElse(false);
-        }
-        if (normalizedModule.equals("REVISION")) {
-            return documentRevisionRepository.findById(entityId)
-                    .map(revision -> authorization.isDirectStakeholder(actor, revision))
-                    .orElse(false);
-        }
-        return false;
     }
 
     /**
@@ -2035,6 +2007,7 @@ public class AuditTrailService {
             case "CONTROLLEDCOPYDISTRIBUTIONBATCH" -> "Controlled Copy Distribution Batch";
             case "SETTINGS", "SYSTEMCONFIGURATION", "SYSTEM" -> "Settings";
             case "SESSION", "AUTH", "AUTHENTICATION" -> "System";
+            case "SYSTEMANNOUNCEMENT" -> "System Announcement";
             default -> entityType;
         };
     }
@@ -2078,6 +2051,11 @@ public class AuditTrailService {
             case "EMAIL_TEMPLATE_TEST_SENT" -> "Test Send Email Template";
             case "EMAIL_TEMPLATE_PUBLISHED" -> "Publish Email Template";
             case "EMAIL_TEMPLATE_VERSION_RESTORED" -> "Restore Email Template Version";
+            case "SYSTEM_ANNOUNCEMENT_CREATED" -> "Create System Announcement";
+            case "SYSTEM_ANNOUNCEMENT_UPDATED" -> "Update System Announcement";
+            case "SYSTEM_ANNOUNCEMENT_ENABLED" -> "Enable System Announcement";
+            case "SYSTEM_ANNOUNCEMENT_DISABLED" -> "Disable System Announcement";
+            case "SYSTEM_ANNOUNCEMENT_DELETED" -> "Delete System Announcement";
             case "SYSTEM_CONFIGURATION_UPDATED" -> "Update System Configuration";
             case "SYSTEM_SECURITY_CONFIGURATION_UPDATED" -> "Update Security Configuration";
             case "USER_CREATED" -> "Create User";

@@ -26,7 +26,6 @@ public class PermissionEvaluationService {
             Map.entry("documents.module.view", List.of("VIEW_DOCUMENTS")),
             Map.entry("documents.document.create", List.of("CREATE_DOCUMENT_SHELL", "CREATE_DOCUMENTS")),
             Map.entry("documents.document.edit_metadata", List.of("EDIT_DOCUMENT_METADATA", "EDIT_DOCUMENTS")),
-            Map.entry("documents.document.view_audit", List.of("VIEW_DOCUMENT_AUDIT_TRAIL", "VIEW_AUDIT_TRAIL")),
             Map.entry("documents.revision.review", List.of("COMPLETE_REVIEW", "REVIEW_DOCUMENTS")),
             Map.entry("documents.revision.approve", List.of("APPROVE_REVISION", "APPROVE_DOCUMENTS")),
             Map.entry("documents.revision.publish", List.of("PUBLISH_REVISION", "PUBLISH_DOCUMENTS")),

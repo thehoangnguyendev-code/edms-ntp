@@ -7,6 +7,7 @@ import { Button } from '../../ui/button/Button';
 import { cn } from '../../ui/utils';
 import { Breadcrumb } from '../../ui/breadcrumb/Breadcrumb';
 import { NotificationsDropdown } from './NotificationsDropdown';
+import { EnvironmentBadge } from './EnvironmentBadge';
 import { useBreadcrumb } from '@/contexts/BreadcrumbContext';
 import { AlertModal } from '../../ui/modal/AlertModal';
 import { FullPageLoading } from '../../ui/loading/Loading';
@@ -241,6 +242,8 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
             transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
             className="flex items-center gap-1.5 md:gap-2 lg:gap-3 shrink-0"
           >
+            <EnvironmentBadge />
+
             {/* Notifications */}
             <motion.div layout="position">
               <NotificationsDropdown
@@ -295,7 +298,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
                               <div className="py-0">
                                 <button type="button" className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-3 transition-colors" onClick={handleProfileClick}>
                                   <IconUser className="h-4 w-4 shrink-0" />
-                                  <span>Profile</span>
+                                  <span>Personal Information</span>
                                 </button>
                               </div>
                               <div className="border-t border-slate-100">

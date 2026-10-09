@@ -69,6 +69,7 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/branding",
                                 "/branding/logo",
+                                "/system/environment",
                                 "/localization",
                                 "/health",
                                 // Controlled-copy portal links authenticate with

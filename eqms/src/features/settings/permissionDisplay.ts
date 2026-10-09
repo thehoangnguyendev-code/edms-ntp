@@ -10,46 +10,30 @@ export interface ProfilePermissionDescriptor {
   codes: string[];
 }
 
-export interface ProfilePermissionState {
-  printControlledCopy: boolean;
-  viewAuditTrail: boolean;
-  createTrainingTest: boolean;
-  manageUsers: boolean;
-  approveDocuments: boolean;
-}
-
-export const PROFILE_PERMISSION_ITEMS: Array<ProfilePermissionDescriptor & { stateKey: keyof ProfilePermissionState }> = [
+// Legacy-code label fallback for findPermissionDescriptor below: a handful of legacy permission
+// codes (for example PRINT_CONTROLLED_COPY) aren't listed in any current catalog entry's
+// legacyCodes, so getPermissionDisplayDescriptor falls back to this list for their label.
+export const PROFILE_PERMISSION_ITEMS: ProfilePermissionDescriptor[] = [
   {
     id: 'perm-print',
-    stateKey: 'printControlledCopy',
     codes: ['REQUEST_CONTROLLED_COPY', 'PRINT_CONTROLLED_COPY'],
     label: 'Request Controlled Copy',
     description: 'Request or print controlled document copies',
   },
   {
-    id: 'perm-audit',
-    stateKey: 'viewAuditTrail',
-    codes: ['VIEW_DOCUMENT_AUDIT_TRAIL'],
-    label: 'View Document Audit Trail',
-    description: 'Access to the document and revision audit trail',
-  },
-  {
     id: 'perm-training',
-    stateKey: 'createTrainingTest',
     codes: ['MANAGE_TRAINING_PLAN'],
     label: 'Manage Training Plan',
     description: 'Manage training plan and distribution details',
   },
   {
     id: 'perm-users',
-    stateKey: 'manageUsers',
     codes: ['VIEW_USERS', 'CREATE_USERS', 'EDIT_USERS'],
     label: 'Manage Users',
     description: 'Create, edit, and manage user accounts and roles',
   },
   {
     id: 'perm-approve',
-    stateKey: 'approveDocuments',
     codes: ['APPROVE_REVISION'],
     label: 'Approve Revision',
     description: 'Final approval authority for document workflows',
@@ -85,19 +69,4 @@ export const normalizePermissionDescriptor = (
     module: "Unknown",
     group: "Unknown",
   };
-};
-
-export const resolveProfilePermissionState = (permissionCodes: string[]): ProfilePermissionState => {
-  const hasCode = (codes: string[]) => codes.some((code) => permissionCodes.includes(code));
-
-  return PROFILE_PERMISSION_ITEMS.reduce((state, item) => {
-    state[item.stateKey] = hasCode(item.codes);
-    return state;
-  }, {
-    printControlledCopy: false,
-    viewAuditTrail: false,
-    createTrainingTest: false,
-    manageUsers: false,
-    approveDocuments: false,
-  } as ProfilePermissionState);
 };

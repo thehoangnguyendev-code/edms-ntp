@@ -131,15 +131,6 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     legacyCodes: ["EDIT_DOCUMENT_METADATA", "EDIT_DOCUMENTS"],
   },
   {
-    code: "documents.document.view_audit",
-    label: "View Document Audit Trail",
-    description:
-      "View the Audit Trail tab for a document or revision. Direct stakeholders (Author, Co-author, Reviewer/Approver, Admin/DCO) see it automatically without this permission; it is only required for indirect/broad viewers.",
-    module: "documents",
-    group: "document_master",
-    legacyCodes: ["VIEW_DOCUMENT_AUDIT_TRAIL", "VIEW_AUDIT_TRAIL"],
-  },
-  {
     code: "documents.document.reopen",
     label: "Reopen Document",
     description: "Reopen a Closed - Cancelled or Obsoleted document to the state it had before it was closed, with an e-signature and an audit entry. Its revisions and controlled copies stay closed.",
@@ -602,6 +593,64 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
   },
 
 
+  // ─── Backup & Restore Administration ─────────────────────────────────────────
+  {
+    code: "backup.admin.view",
+    label: "View Backup & Restore Administration",
+    description: "View the Backup & Restore Administration section under System Administration.",
+    module: "backup",
+    group: "backup_admin",
+  },
+  {
+    code: "backup.admin.policy.view",
+    label: "View Backup Policy",
+    description: "View the Backup Policy section under Backup & Restore Administration.",
+    module: "backup",
+    group: "backup_admin",
+  },
+  {
+    code: "backup.admin.retention.view",
+    label: "View Retention & Legal Hold",
+    description: "View the Retention & Legal Hold section under Backup & Restore Administration.",
+    module: "backup",
+    group: "backup_admin",
+  },
+  {
+    code: "backup.admin.storage.view",
+    label: "View Storage & Encryption",
+    description: "View the Storage & Encryption section under Backup & Restore Administration.",
+    module: "backup",
+    group: "backup_admin",
+  },
+  {
+    code: "backup.admin.verification.view",
+    label: "View Verification & Drills",
+    description: "View the Verification & Drills section under Backup & Restore Administration.",
+    module: "backup",
+    group: "backup_admin",
+  },
+  {
+    code: "backup.admin.restore_controls.view",
+    label: "View Restore Controls",
+    description: "View the Restore Controls section under Backup & Restore Administration.",
+    module: "backup",
+    group: "backup_admin",
+  },
+  {
+    code: "backup.admin.alerts.view",
+    label: "View Backup Alerts",
+    description: "View the Alerts section under Backup & Restore Administration.",
+    module: "backup",
+    group: "backup_admin",
+  },
+  {
+    code: "backup.admin.disaster_recovery.view",
+    label: "View Disaster Recovery Plan",
+    description: "View the Disaster Recovery Plan section under Backup & Restore Administration.",
+    module: "backup",
+    group: "backup_admin",
+  },
+
   // ─── Reports & Analytics ─────────────────────────────────────────────────────
   {
     code: "report.module.view",
@@ -902,6 +951,20 @@ const LEGACY_PERMISSION_CATALOG: PermissionDescriptor[] = [
     module: "settings",
     group: "system_settings",
     legacyCodes: ["settings.configuration.edit", "EDIT_SETTINGS"],
+  },
+  {
+    code: "settings.announcement.view",
+    label: "View System Announcements",
+    description: "View the banner announcements shown to users after sign-in.",
+    module: "settings",
+    group: "system_settings",
+  },
+  {
+    code: "settings.announcement.manage",
+    label: "Manage System Announcements",
+    description: "Create, edit, schedule and delete the banner announcements shown to users after sign-in.",
+    module: "settings",
+    group: "system_settings",
   },
   {
     code: "security.access_review.view",

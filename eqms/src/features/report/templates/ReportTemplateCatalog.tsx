@@ -302,7 +302,7 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
         }}
       />
     );
-  const title = admin ? "Report Configuration" : "Report Templates";
+  const title = admin ? "Report Definitions" : "Report Library";
   return (
     <div className="flex min-w-0 flex-col h-full gap-4 md:gap-6 w-full flex-1">
       <PageHeader

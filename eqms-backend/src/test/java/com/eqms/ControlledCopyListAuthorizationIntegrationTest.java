@@ -84,7 +84,7 @@ public class ControlledCopyListAuthorizationIntegrationTest {
         int pageNumber = 1;
         while (true) {
             PageResponse<ControlledCopyListItemResponse> page = controlledCopyService.list(
-                    pageNumber, 50, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
+                    pageNumber, 50, null, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
             if (page.data().isEmpty()) {
                 break;
             }
@@ -107,13 +107,13 @@ public class ControlledCopyListAuthorizationIntegrationTest {
         authenticateAs(requester);
 
         PageResponse<ControlledCopyListItemResponse> fullPage = controlledCopyService.list(
-                1, 1000, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
+                1, 1000, null, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
         long total = fullPage.pagination().total();
         assertEquals(50, fullPage.pagination().limit(), "The server must cap a requested list page to 50 rows");
         assertTrue(total >= 2, "Test requires at least 2 visible controlled copies for this user; adjust seed data if this fails");
 
         PageResponse<ControlledCopyListItemResponse> firstPageOfTwo = controlledCopyService.list(
-                1, 2, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
+                1, 2, null, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
 
         assertEquals(2, firstPageOfTwo.data().size(), "A page size of 2 must return exactly 2 rows when more are available");
         assertEquals(total, firstPageOfTwo.pagination().total(), "Total count must reflect all visible rows, not just the current page");
@@ -147,7 +147,7 @@ public class ControlledCopyListAuthorizationIntegrationTest {
 
         authenticateAs(unrelatedUser);
         PageResponse<ControlledCopyListItemResponse> page = controlledCopyService.list(
-                1, 1000, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
+                1, 1000, null, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
 
         List<String> visibleIds = page.data().stream().map(ControlledCopyListItemResponse::id).toList();
         assertFalse(visibleIds.contains(targetCopy.getId().toString()),
@@ -159,7 +159,7 @@ public class ControlledCopyListAuthorizationIntegrationTest {
         int pageNumber = 1;
         while (true) {
             PageResponse<ControlledCopyListItemResponse> page = controlledCopyService.list(
-                    pageNumber, 50, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
+                    pageNumber, 50, null, null, null, null, null, null, null, null, null, null, null, null, null, "created", "desc");
             page.data().forEach(item -> ids.add(item.id()));
             if (page.data().isEmpty() || pageNumber >= page.pagination().totalPages()) {
                 return ids;

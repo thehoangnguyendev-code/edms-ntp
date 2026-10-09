@@ -1,3 +1,5 @@
+import type { ControlledCopyUsagePurpose } from "./usagePurpose";
+
 export type ControlledCopyStatus =
   | "Ready for Distribution"
   | "Distributed"
@@ -62,6 +64,8 @@ export interface ControlledCopy {
   recallDate?: string;
   recalledBy?: string;
   recallReason?: string;
+  /** READ_AND_COMPLY or RECORD_KEEPING; undefined for a copy issued before the purpose existed. */
+  usagePurpose?: ControlledCopyUsagePurpose;
   destroyedBy?: string;
   destroyedDate?: string;
   destroyReason?: string;
@@ -145,6 +149,8 @@ export interface ControlledCopyDistributionBatch {
   distributedAt?: string;
   recallDate?: string;
   recallReason?: string;
+  /** READ_AND_COMPLY or RECORD_KEEPING; undefined for a copy issued before the purpose existed. */
+  usagePurpose?: ControlledCopyUsagePurpose;
   externalRecipients?: string;
   // Only populated by the detail endpoint (already loads the member copies) -- the shared value
   // when every member copy agrees, "Multiple" when a batch was distributed to more than one

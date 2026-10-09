@@ -30,15 +30,19 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * HDR-AUTH-001: a direct stakeholder of a Document/Revision (Author, Co-author, Reviewer/Approver,
- * or Admin/DCO) must see its Audit Trail tab without the separate documents.document.view_audit /
- * global audit.view permission. Non-stakeholder (broad/indirect) viewers still need it -- this file
- * locks in that behavior for getByEntity(...)/requireEntityAuditView, which had zero prior coverage.
+ * The Audit Trail tab on a Document/Revision detail view is folded into detail-view access: there
+ * is no separate documents.document.view_audit or global audit.view permission anymore.
+ * getByEntity(...)/requireEntityAuditView delegates entirely to
+ * {@link DocumentAuthorizationService#requireCanViewDocument} /
+ * {@link DocumentAuthorizationService#requireCanViewRevision}, the same check the detail page
+ * itself uses -- this file locks that contract in for getByEntity, which had zero prior coverage.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -109,67 +113,58 @@ class AuditTrailServiceTest {
     }
 
     @Test
-    void revisionStakeholder_getByEntity_allowedWithoutAnyAuditPermission() {
+    void revision_getByEntity_allowedWhenCanViewRevision() {
         DocumentRevisionRecord revision = new DocumentRevisionRecord();
         revision.setId(entityId);
         when(documentRevisionRepository.findById(entityId)).thenReturn(Optional.of(revision));
-        when(documentAuthorizationService.isDirectStakeholder(user, revision)).thenReturn(true);
-        when(permissionEvaluationService.hasAnyPermission(any(), any(String[].class))).thenReturn(false);
-        when(permissionEvaluationService.hasPermission(any(), anyString())).thenReturn(false);
 
         service.getByEntity("REVISION", entityId);
 
-        // requireScopedEntityView must still be exercised (object-scope check), but no audit.view
-        // permission was ever required for this stakeholder.
-        assertThat(true).isTrue();
+        // No permission is ever consulted directly here -- the object-scope check is the only gate.
+        verify(documentAuthorizationService).requireCanViewRevision(user, revision);
     }
 
     @Test
-    void revisionNonStakeholder_getByEntity_deniedWithoutAuditViewPermission() {
+    void revision_getByEntity_deniedWhenCannotViewRevision() {
         DocumentRevisionRecord revision = new DocumentRevisionRecord();
         revision.setId(entityId);
         when(documentRevisionRepository.findById(entityId)).thenReturn(Optional.of(revision));
-        when(documentAuthorizationService.isDirectStakeholder(user, revision)).thenReturn(false);
-        when(permissionEvaluationService.hasAnyPermission(any(), any(String[].class))).thenReturn(false);
+        doThrow(new AccessDeniedException("Revision access denied"))
+                .when(documentAuthorizationService).requireCanViewRevision(user, revision);
 
         assertThatThrownBy(() -> service.getByEntity("REVISION", entityId))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
-    void revisionNonStakeholder_getByEntity_allowedWithGlobalAuditViewPermission() {
-        DocumentRevisionRecord revision = new DocumentRevisionRecord();
-        revision.setId(entityId);
-        when(documentRevisionRepository.findById(entityId)).thenReturn(Optional.of(revision));
-        when(documentAuthorizationService.isDirectStakeholder(user, revision)).thenReturn(false);
-        when(permissionEvaluationService.hasAnyPermission(any(), any(String[].class))).thenReturn(true);
-        when(documentAuthorizationService.canViewRevision(user, revision)).thenReturn(true);
-
-        service.getByEntity("REVISION", entityId);
-    }
-
-    @Test
-    void documentStakeholder_getByEntity_allowedWithoutAnyAuditPermission() {
+    void document_getByEntity_allowedWhenCanViewDocument() {
         DocumentRecord document = new DocumentRecord();
         document.setId(entityId);
         when(documentRecordRepository.findById(entityId)).thenReturn(Optional.of(document));
-        when(documentAuthorizationService.isDirectStakeholder(user, document)).thenReturn(true);
-        when(permissionEvaluationService.hasPermission(any(), anyString())).thenReturn(false);
-        when(permissionEvaluationService.hasAnyPermission(any(), any(String[].class))).thenReturn(false);
 
         service.getByEntity("DOCUMENT", entityId);
+
+        verify(documentAuthorizationService).requireCanViewDocument(user, document);
     }
 
     @Test
-    void documentNonStakeholder_getByEntity_deniedWithoutViewAuditOrGlobalPermission() {
+    void document_getByEntity_deniedWhenCannotViewDocument() {
         DocumentRecord document = new DocumentRecord();
         document.setId(entityId);
         when(documentRecordRepository.findById(entityId)).thenReturn(Optional.of(document));
-        when(documentAuthorizationService.isDirectStakeholder(user, document)).thenReturn(false);
-        when(permissionEvaluationService.hasPermission(user, "documents.document.view_audit")).thenReturn(false);
-        when(permissionEvaluationService.hasAnyPermission(any(), any(String[].class))).thenReturn(false);
+        doThrow(new AccessDeniedException("Document access denied"))
+                .when(documentAuthorizationService).requireCanViewDocument(user, document);
 
         assertThatThrownBy(() -> service.getByEntity("DOCUMENT", entityId))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void document_getByEntity_deniedWhenDocumentNotFound() {
+        when(documentRecordRepository.findById(entityId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getByEntity("DOCUMENT", entityId))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(true).isTrue();
     }
 }

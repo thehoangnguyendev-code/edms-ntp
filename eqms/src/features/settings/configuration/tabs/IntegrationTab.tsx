@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { settingsApi, type StorageTestPayload } from '@/services/api/settings';
 import { IconServer2 } from '@tabler/icons-react';
+import { Switch } from '@/components/ui/switch/Switch';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types & Constants
@@ -26,6 +27,11 @@ interface FolderItem {
 }
 
 type StoragePathPreview = Awaited<ReturnType<typeof settingsApi.getStoragePathPreview>>;
+
+/** The longest retention the object storage accepts; the settings call it Permanent. */
+const MAX_RETENTION_YEARS = 100;
+/** Years offered when Permanent is switched off. */
+const DEFAULT_FIXED_RETENTION_YEARS = 5;
 
 const buildNasUncPath = (host?: string, shareName?: string) => {
   const cleanedHost = (host || '').trim().replace(/^\\\\+/, '').replace(/^smb:\/\//i, '').replace(/[\\/]+$/, '');
@@ -94,13 +100,7 @@ const buildStorageTestPayload = (storage: IntegrationConfig['storage']): Storage
         minioBucket: storage.minioBucket || '',
         minioAccessKeyId: storage.minioAccessKeyId || '',
         minioSecretAccessKey: storage.minioSecretAccessKey || '',
-        minioRetentionYears: storage.minioRetentionYears || 5,
-        documentsPrefix: storage.documentsPrefix || 'documents',
-        controlledCopiesPrefix: storage.controlledCopiesPrefix || 'controlled-copies',
-        templatesPrefix: storage.templatesPrefix || 'templates',
-        trainingPrefix: storage.trainingPrefix || 'training',
-        auditPrefix: storage.auditPrefix || 'audit',
-        tempPrefix: storage.tempPrefix || 'temp',
+        minioRetentionYears: storage.minioRetentionYears || MAX_RETENTION_YEARS,
       };
   }
 };
@@ -180,14 +180,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
         if (!cancelled) setStoragePathPreview(null);
       });
     return () => { cancelled = true; };
-  }, [
-    config.storage.documentsPrefix,
-    config.storage.controlledCopiesPrefix,
-    config.storage.templatesPrefix,
-    config.storage.trainingPrefix,
-    config.storage.auditPrefix,
-    config.storage.tempPrefix,
-  ]);
+  }, []);
 
   return (
     <div className="p-4 md:p-5 space-y-4">
@@ -424,116 +417,63 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                 </div>
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                    Retention Period (Years)
+                    Retention Period
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={config.storage.minioRetentionYears ?? 5}
-                    onChange={(e) => handleStorageChange('minioRetentionYears', Number(e.target.value || 5))}
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="5"
-                  />
+                  <div className="flex h-9 items-center gap-3">
+                    <Switch
+                      size="sm"
+                      checked={(config.storage.minioRetentionYears ?? MAX_RETENTION_YEARS) >= MAX_RETENTION_YEARS}
+                      onChange={(permanent) =>
+                        handleStorageChange('minioRetentionYears', permanent ? MAX_RETENTION_YEARS : DEFAULT_FIXED_RETENTION_YEARS)
+                      }
+                    />
+                    <span className="text-xs sm:text-sm text-slate-700">Permanent</span>
+                    {(config.storage.minioRetentionYears ?? MAX_RETENTION_YEARS) < MAX_RETENTION_YEARS && (
+                      <input
+                        type="number"
+                        min={1}
+                        max={MAX_RETENTION_YEARS - 1}
+                        value={config.storage.minioRetentionYears ?? DEFAULT_FIXED_RETENTION_YEARS}
+                        onChange={(e) =>
+                          handleStorageChange(
+                            'minioRetentionYears',
+                            Math.min(Math.max(Number(e.target.value || DEFAULT_FIXED_RETENTION_YEARS), 1), MAX_RETENTION_YEARS - 1),
+                          )
+                        }
+                        className="h-9 w-24 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                        aria-label="Retention period in years"
+                      />
+                    )}
+                  </div>
                   <p className="mt-1 text-xs text-slate-500">
-                    WORM retention in Compliance Mode. Existing retained objects cannot be shortened or deleted.
+                    WORM retention in Compliance Mode. Permanent is the longest period the storage allows ({MAX_RETENTION_YEARS} years).
+                    Retained objects cannot be shortened or deleted by anyone, administrators included, before it ends. A change
+                    applies to objects stored after it; objects already stored keep the period they were written with.
                   </p>
                 </div>
               </div>
               <div className="pt-2 border-t border-slate-200 space-y-4">
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-900">Storage Prefix Configuration</h4>
+                  <h4 className="text-sm font-semibold text-slate-900">Storage Layout</h4>
                   <p className="mt-1 text-xs text-slate-500">
-                    These values are top-level namespaces only. The backend owns the V2 folders below them and uses immutable IDs, so do not add revision, source, published, or copy subfolders here.
+                    The folder structure is fixed by the system and cannot be changed here. Every file is stored under one of the
+                    registered data domains below, which keeps backup, restore and reconciliation reliable. A folder appears when
+                    the first file is stored in it.
                   </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                      Documents Prefix
-                    </label>
-                    <input
-                      type="text"
-                      value={config.storage.documentsPrefix || 'documents'}
-                      onChange={(e) => handleStorageChange('documentsPrefix', e.target.value)}
-                      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="documents"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                      Controlled Copies Prefix
-                    </label>
-                    <input
-                      type="text"
-                      value={config.storage.controlledCopiesPrefix || 'controlled-copies'}
-                      onChange={(e) => handleStorageChange('controlledCopiesPrefix', e.target.value)}
-                      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="controlled-copies"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                      Templates Prefix
-                    </label>
-                    <input
-                      type="text"
-                      value={config.storage.templatesPrefix || 'templates'}
-                      onChange={(e) => handleStorageChange('templatesPrefix', e.target.value)}
-                      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="templates"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                      Training Prefix
-                    </label>
-                    <input
-                      type="text"
-                      value={config.storage.trainingPrefix || 'training'}
-                      onChange={(e) => handleStorageChange('trainingPrefix', e.target.value)}
-                      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="training"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                      Audit Prefix
-                    </label>
-                    <input
-                      type="text"
-                      value={config.storage.auditPrefix || 'audit'}
-                      onChange={(e) => handleStorageChange('auditPrefix', e.target.value)}
-                      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="audit"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                      Temp Prefix
-                    </label>
-                    <input
-                      type="text"
-                      value={config.storage.tempPrefix || 'temp'}
-                      onChange={(e) => handleStorageChange('tempPrefix', e.target.value)}
-                      className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="temp"
-                    />
-                  </div>
-                </div>
                 <div className="rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-3">
-                  <p className="text-xs font-semibold text-sky-900">System-managed V2 object-key examples</p>
+                  <p className="text-xs font-semibold text-sky-900">Object-key examples</p>
                   <p className="mt-1 text-xs leading-relaxed text-sky-800">
-                    Returned by the server using the persisted configuration and production path builder. Save a changed prefix to refresh these examples. Changing a prefix creates a new root for future objects; it does not move or rename existing retained objects.
+                    Generated by the server with the production path builder. Records are written to the locked records bucket;
+                    templates to the templates bucket.
                   </p>
                   <dl className="mt-3 grid grid-cols-1 gap-x-5 gap-y-2 lg:grid-cols-2">
                     {[
                       ['Documents', storagePathPreview?.documents],
                       ['Controlled Copies', storagePathPreview?.controlledCopies],
                       ['Templates', storagePathPreview?.templates],
-                      ['Training', storagePathPreview?.training],
-                      ['Audit evidence', storagePathPreview?.auditEvidence],
-                      ['Temporary files', storagePathPreview?.temporaryFiles],
+                      ['Training (reserved)', storagePathPreview?.training],
+                      ['Audit evidence (reserved)', storagePathPreview?.auditEvidence],
                     ].map(([label, path]) => (
                       <div key={label} className="min-w-0">
                         <dt className="text-2xs font-semibold uppercase tracking-wide text-sky-700">{label}</dt>

@@ -8,6 +8,7 @@ import {
   formatDocumentRevisionLabel,
 } from "../../display";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { usagePurposeLabel } from "../../usagePurpose";
 
 interface DocumentInformationTabProps {
   controlledCopy: ControlledCopy;
@@ -170,6 +171,19 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           <input
             type="text"
             value={controlledCopy.revisionNumber || ""}
+            readOnly
+            className={CONTROL_STATE_CLASSES.readonlyField}
+          />
+        </div>
+
+        {/* Purpose (a dash for a copy issued before the purpose existed) */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs sm:text-sm font-medium text-slate-700">
+            Purpose
+          </label>
+          <input
+            type="text"
+            value={usagePurposeLabel(controlledCopy.usagePurpose)}
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
           />

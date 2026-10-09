@@ -11,7 +11,6 @@ public record CapabilityResponse(
         boolean canPublishRevision,
         boolean canManageTraining,
         boolean canCompleteTraining,
-        boolean canViewAuditTrail,
 
         // Controlled Copy
         boolean canRequestControlledCopy,

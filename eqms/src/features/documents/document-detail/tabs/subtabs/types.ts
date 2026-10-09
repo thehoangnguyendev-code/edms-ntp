@@ -61,6 +61,8 @@ export interface ControlledCopy {
     status: "draft" | "pendingReview" | "approved" | "effective" | "obsolete";
     openedBy: string;
     validUntil: string;
+    /** READ_AND_COMPLY or RECORD_KEEPING; undefined for a copy issued before the purpose existed. */
+    usagePurpose?: string;
     documentRevision: string;
     documentNumber: string;
 }

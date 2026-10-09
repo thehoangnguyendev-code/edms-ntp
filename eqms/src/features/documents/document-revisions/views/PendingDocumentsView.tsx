@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { ROUTES } from "@/app/routes.constants";
 import {
-  History,
   Download,
   Check,
   CircleCheck,
@@ -101,17 +100,6 @@ const DropdownMenu: React.FC<{
           <span className="font-medium">Approve Revision</span>
         </button>
       )}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onAction("audit");
-          onClose();
-        }}
-        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
-      >
-        <History className="h-4 w-4 flex-shrink-0" />
-        <span className="font-medium">View Audit Trail</span>
-      </button>
     </div>
   </PortalDropdownMenu>
 );
@@ -249,13 +237,6 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
           ROUTES.DOCUMENTS.REVISIONS.APPROVAL(openId),
           openId,
           ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL,
-        );
-        break;
-      case "audit":
-        void preloadRevisionAndNavigate(
-          `${ROUTES.DOCUMENTS.REVISIONS.DETAIL(openId)}?tab=audit`,
-          openId,
-          viewType === "review" ? ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW : ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL,
         );
         break;
     }
@@ -481,7 +462,6 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
                   } else if (viewType === "approval" && canApprove) {
                     actions.push({ icon: <CircleCheck className="h-4 w-4" />, label: "Approve Revision", action: "approve" });
                   }
-                  actions.push({ icon: <History className="h-4 w-4" />, label: "View Audit Trail", action: "audit" });
                   return actions;
                 }}
               onViewItem={(id) => {

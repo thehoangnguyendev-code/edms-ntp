@@ -1,0 +1,13 @@
+{
+  "A_put_same_key_twice_versionIds_differ": true,
+  "A_server_copy_new_versionId_differs_from_source": true,
+  "A_caller_can_choose_versionId": false,
+  "B_site_replication_added": true,
+  "B_existing_objects_replicated_with_same_versionIds": true,
+  "B_versions_s1": 3,
+  "B_versions_s2": 3,
+  "B_locked_bucket_appears_on_s2": true,
+  "B_locked_versionIds_equal": true,
+  "B_retention_replicated": "COMPLIANCE until 2026-10-09",
+  "B_s2_can_delete_locked_version": "refused: InvalidRequest"
+}

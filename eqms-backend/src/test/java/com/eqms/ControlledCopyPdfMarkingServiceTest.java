@@ -90,6 +90,31 @@ class ControlledCopyPdfMarkingServiceTest {
     }
 
     @Test
+    void watermarkAngle_isTheSameOnPageOneAndLaterPages_evenWhenStoredRulesDiffer() throws IOException {
+        ControlledCopyPolicySetting policy = new ControlledCopyPolicySetting();
+        policy.setWatermarkEnabled(true);
+        // legacy data: page 1 at -45 degrees, pages 2+ at -42
+        policy.setMarkingPlacements(mapper.readTree("[{\"pages\":\"FIRST\",\"watermarkAngleDegrees\":-45},"
+                + "{\"pages\":\"OTHERS\",\"watermarkAngleDegrees\":-42}]"));
+        var marked = service.applyWithLayout(pdf(3, 0, PDRectangle.A4), copy(), recipient("A"), policy);
+
+        List<Float> angles = marked.placements().stream().filter(p -> "WATERMARK".equals(p.kind())).map(p -> p.angle()).toList();
+        assertEquals(3, angles.size());
+        assertTrue(angles.stream().allMatch(a -> a == -45f), angles.toString());
+    }
+
+    @Test
+    void watermarkAngle_fallsBackToTheMarkingAngleOnEveryPage_whenPageOneHasNone() throws IOException {
+        ControlledCopyPolicySetting policy = new ControlledCopyPolicySetting();
+        policy.setWatermarkEnabled(true);
+        policy.setWatermarkAngleDegrees(35);
+        policy.setMarkingPlacements(mapper.readTree("[{\"pages\":\"FIRST\"},{\"pages\":\"OTHERS\",\"watermarkAngleDegrees\":-38}]"));
+        var marked = service.applyWithLayout(pdf(2, 0, PDRectangle.A4), copy(), recipient("A"), policy);
+
+        assertTrue(marked.placements().stream().filter(p -> "WATERMARK".equals(p.kind())).allMatch(p -> p.angle() == 35f));
+    }
+
+    @Test
     void stampAndWatermark_areBurnedIn_andOriginalContentIsPreserved() throws IOException {
         ControlledCopyPolicySetting policy = new ControlledCopyPolicySetting();
         // the defaults are a compact stamp; ask for every line so the content is checked too

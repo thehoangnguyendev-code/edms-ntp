@@ -25,7 +25,6 @@ public class CapabilityService {
                 has(user, "documents.revision.publish"),
                 has(user, "documents.training.manage"),
                 has(user, "documents.training.complete"),
-                has(user, "documents.document.view_audit"),
                 has(user, "documents.controlled_copy.request"),
                 has(user, "documents.controlled_copy.distribute"),
                 has(user, "documents.controlled_copy.recall"),

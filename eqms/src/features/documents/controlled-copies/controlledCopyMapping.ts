@@ -2,6 +2,7 @@ import type { ControlledCopy, ControlledCopyDistributionBatch } from "./types";
 import { formatControlledCopyNumber } from "./display";
 import { formatDocumentDisplayLabel } from "../shared/documentDisplay";
 import { normalizeControlledCopyStatusLabel } from "./status";
+import { normalizeUsagePurpose } from "./usagePurpose";
 
 const firstText = (...values: Array<string | null | undefined>) => {
   for (const value of values) {
@@ -111,6 +112,7 @@ export const normalizeControlledCopyRecord = (payload: any, fallbackId = ""): Co
     recallDate: firstText(payload?.recallDate) || undefined,
     recalledBy: firstText(payload?.recalledBy) || undefined,
     recallReason: firstText(payload?.recallReason) || undefined,
+    usagePurpose: normalizeUsagePurpose(payload?.usagePurpose),
     destroyedBy: firstText(payload?.destroyedBy) || undefined,
     destroyedDate: firstText(payload?.destroyedDate) || undefined,
     destroyReason: firstText(payload?.destroyReason) || undefined,
@@ -204,6 +206,7 @@ export const normalizeControlledCopyBatch = (batch: ControlledCopyDistributionBa
     distributedBy: firstText(batch.distributedBy),
     recallDate: firstText(batch.recallDate) || undefined,
     recallReason: firstText(batch.recallReason) || undefined,
+    usagePurpose: normalizeUsagePurpose(batch.usagePurpose),
     recipientName: firstText(batch.distributionRecipients, batch.externalRecipients, batch.distributionList),
     distributionComment: "",
     controlNumber: controlledCopyNumber,

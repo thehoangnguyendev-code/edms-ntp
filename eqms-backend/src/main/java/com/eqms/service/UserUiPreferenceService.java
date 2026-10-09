@@ -24,8 +24,14 @@ public class UserUiPreferenceService {
     /** The notification list pinned to the side of the layout: {@code {"pinned": true|false}}. */
     public static final String NOTIFICATION_DOCK = "notification-dock";
 
+    /** The menu entries the user starred in the sidebar: {@code {"ids": ["menu-id", ...]}}, in the order they were starred. */
+    public static final String SIDEBAR_FAVORITES = "sidebar-favorites";
+    static final int MAX_FAVORITES = 200;
+    static final int MAX_FAVORITE_ID_LENGTH = 100;
+
     private static final Map<String, Consumer<JsonNode>> VALIDATORS = Map.of(
-            NOTIFICATION_DOCK, UserUiPreferenceService::validateNotificationDock
+            NOTIFICATION_DOCK, UserUiPreferenceService::validateNotificationDock,
+            SIDEBAR_FAVORITES, UserUiPreferenceService::validateSidebarFavorites
     );
 
     private final UserUiPreferenceRepository repository;
@@ -78,6 +84,27 @@ public class UserUiPreferenceService {
         JsonNode pinned = value.get("pinned");
         if (pinned == null || !pinned.isBoolean()) {
             throw new IllegalArgumentException("The notification dock setting 'pinned' must be true or false");
+        }
+    }
+
+    static void validateSidebarFavorites(JsonNode value) {
+        if (value == null || !value.isObject()) {
+            throw new IllegalArgumentException("The sidebar favourites preference must be a JSON object");
+        }
+        value.fieldNames().forEachRemaining(field -> {
+            if (!"ids".equals(field)) {
+                throw new IllegalArgumentException("Unknown sidebar favourites setting: " + field);
+            }
+        });
+        JsonNode ids = value.get("ids");
+        if (ids == null || !ids.isArray() || ids.size() > MAX_FAVORITES) {
+            throw new IllegalArgumentException("The sidebar favourites 'ids' must be a list of at most " + MAX_FAVORITES + " menu ids");
+        }
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (JsonNode id : ids) {
+            if (!id.isTextual() || id.asText().isBlank() || id.asText().length() > MAX_FAVORITE_ID_LENGTH || !seen.add(id.asText())) {
+                throw new IllegalArgumentException("Each sidebar favourite must be a distinct, non-blank menu id of at most " + MAX_FAVORITE_ID_LENGTH + " characters");
+            }
         }
     }
 
