@@ -11,6 +11,7 @@ import { AuthField, AuthLayout } from "./components";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { ACCOUNT_NOTICE_STORAGE_KEY } from "@/services/api/client";
+import { LoginMaintenanceNotice } from "@/features/maintenance/LoginMaintenanceNotice";
 
 
 // ============================================================================
@@ -295,6 +296,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
                 </p>
               </div>
             </div>
+
+            {!isSignInAccepted && <LoginMaintenanceNotice />}
 
             {/* Keep semantic credential fields so the browser password manager can offer to
                 save/update credentials only after the existing login request succeeds. */}

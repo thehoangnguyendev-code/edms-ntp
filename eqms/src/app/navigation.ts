@@ -419,9 +419,9 @@ const SYSTEM_MODULES: NavItem[] = [
         label: "Restore",
         children: [
           { id: "backup-restores", label: "Restore Requests", path: ROUTES.BACKUP_RESTORE.RESTORES },
-          { id: "restore-approvals", label: "Restore Approval Queue", path: ROUTES.BACKUP_RESTORE.RESTORE_APPROVALS },
           { id: "restore-verifications", label: "Restore Verification Reports", path: ROUTES.BACKUP_RESTORE.RESTORE_VERIFICATIONS },
           { id: "restore-history", label: "Restore History & Evidence", path: ROUTES.BACKUP_RESTORE.RESTORE_HISTORY },
+          { id: "backup-inspections", label: "Backup Inspections", path: ROUTES.BACKUP_RESTORE.INSPECTIONS },
           { id: "backup-dr-drills", label: "Disaster Recovery Drills", path: ROUTES.BACKUP_RESTORE.DR_DRILLS },
         ],
       },

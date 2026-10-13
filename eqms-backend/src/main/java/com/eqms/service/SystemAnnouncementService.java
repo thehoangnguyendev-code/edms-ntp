@@ -108,6 +108,35 @@ public class SystemAnnouncementService {
         return toResponse(saved, now);
     }
 
+    /**
+     * An announcement written by the system (the maintenance window), not by a signed-in person. The audit trail cannot name a
+     * person here; the Backup Agent's ledger records the same step with the Super Administrator's name (SDS 11.5, 11.6).
+     */
+    @Transactional
+    public AnnouncementResponse createForSystem(String title, String message, String severity, Instant startsAt, Instant endsAt, String by) {
+        Instant now = Instant.now();
+        Validated v = validate(new AnnouncementRequest(title, message, severity, startsAt, endsAt, true, null), true, now);
+        SystemAnnouncement announcement = new SystemAnnouncement();
+        apply(announcement, v);
+        announcement.setCreatedBy(by);
+        announcement.setUpdatedBy(by);
+        return toResponse(repository.save(announcement), now);
+    }
+
+    /** Switches off the announcements of one maintenance request; returns how many were switched off. */
+    @Transactional
+    public int disableForRequest(String marker, String by) {
+        int changed = 0;
+        for (SystemAnnouncement a : repository.findAll()) {
+            if (a.isEnabled() && a.getTitle() != null && a.getTitle().contains(marker)) {
+                a.setEnabled(false);
+                a.setUpdatedBy(by);
+                changed++;
+            }
+        }
+        return changed;
+    }
+
     @Transactional
     public AnnouncementResponse update(UUID id, AnnouncementRequest request) {
         UserAccount actor = currentUserService.requireCurrentUser();

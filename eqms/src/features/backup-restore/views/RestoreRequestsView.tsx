@@ -1,87 +1,226 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { MoreVertical, Plus } from "lucide-react";
+import { IconChecks, IconInfoCircle, IconX } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
-import { DataTable } from "@/components/ui/table";
-import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
-import { useToast } from "@/components/ui/toast/Toast";
-import { useTableDragScroll } from "@/hooks/useTableDragScroll";
+import type { DataTableAction, DataTableColumn } from "@/components/ui/table/DataTable";
+import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
+import { useDebounce, usePortalDropdown } from "@/hooks";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { ROUTES } from "@/app/routes.constants";
+import { backupRestoreApi, type RestoreRequestRecord, type RestoreRequestStatus } from "@/services/api/backupRestore";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupRestorePage } from "../components/BackupRestorePage";
-import { RestoreDetailDrawer } from "../components/RestoreDetailDrawer";
-import { SAMPLE_RESTORES } from "../sampleData";
-import { RESTORE_STATUS_COLOR, statusLabel, type RestoreRequest, type RestoreTarget } from "../types";
+import { ServerListPanel } from "../components/ServerListPanel";
+import { RestoreStatusBadge } from "../components/RestoreStatusBadge";
+import { statusLabel } from "../types";
 import { formatDateTime } from "../format";
 
-const TARGET_BADGE: Record<RestoreTarget, { color: "red" | "blue" | "purple"; label: string }> = {
-  PRODUCTION: { color: "red", label: "Production" },
-  VALIDATION_ENV: { color: "blue", label: "Validation environment" },
-  REBUILT_ENVIRONMENT: { color: "purple", label: "Rebuilt environment" },
-};
+const ALL = "ALL";
+const STATUS_COLOR = { PENDING_APPROVAL: "amber", APPROVED: "emerald", REJECTED: "red" } as const;
+const STATUS_OPTIONS = [{ label: "All Statuses", value: ALL }, ...(Object.keys(STATUS_COLOR) as RestoreRequestStatus[]).map((value) => ({ label: statusLabel(value), value }))];
+const TARGET_OPTIONS = [
+  { label: "All Targets", value: ALL },
+  { label: "Validation environment", value: "VALIDATION" },
+  { label: "Production", value: "PRODUCTION" },
+];
+const TYPE_LABEL: Record<string, string> = { "R-FULL": "Full restore", "R-DB": "Database only", "R-OBJ": "Documents only", "R-ONE": "One record" };
 
+type SortKey = "requestedAt" | "status" | "backupId" | "requestedBy";
+
+/**
+ * Restore requests: one list for asking, deciding and following a request. Asking never runs a restore; a request waits for a second
+ * person's electronic signature, and an approved request is then run by an administrator (the run is not built yet).
+ */
 export const RestoreRequestsView: React.FC = () => {
   const navigate = useNavigate();
-  const { showToast } = useToast();
-  const drag = useTableDragScroll();
-  const [selected, setSelected] = useState<RestoreRequest>();
+  const { user } = useAuth();
+  const { hasPermission } = usePermissions();
+  const canRequest = hasPermission("backup.restore.request");
+  const canApprove = hasPermission("backup.restore.approve");
+  const me = user?.username?.toLowerCase() ?? "";
+  const menu = usePortalDropdown();
+
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
+  const [status, setStatus] = useState(ALL);
+  const [target, setTarget] = useState(ALL);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "requestedAt", direction: "desc" });
+  const [rows, setRows] = useState<RestoreRequestRecord[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [error, setError] = useState("");
+  const [reloadKey] = useState(0);
+
+  const actionRow = rows.find((row) => row.id === menu.openId);
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    setError("");
+    backupRestoreApi
+      .restoreRequests({
+        search: debouncedSearch.trim() || undefined,
+        status: status === ALL ? undefined : status,
+        target: target === ALL ? undefined : target,
+        sortBy: sort.key,
+        sortDirection: sort.direction,
+        page,
+        limit: pageSize,
+      })
+      .then((data) => {
+        if (!live) return;
+        setRows(data.data);
+        setTotal(data.pagination.total);
+        setTotalPages(data.pagination.totalPages || 1);
+        if (data.pagination.page !== page) setPage(data.pagination.page);
+      })
+      .catch((e) => {
+        if (!live) return;
+        setRows([]);
+        setTotal(0);
+        setError(getApiErrorMessage(e, "Unable to load the restore requests."));
+      })
+      .finally(() => {
+        if (!live) return;
+        setLoading(false);
+        setHasLoaded(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [debouncedSearch, status, target, sort, page, pageSize, reloadKey]);
+
+  useEffect(() => setPage(1), [debouncedSearch, status, target, pageSize]);
+
+  const sortFor = (key: SortKey) => ({
+    direction: sort.key === key ? sort.direction : undefined,
+    onSort: () => {
+      setSort((prev) => ({ key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc" }));
+      setPage(1);
+    },
+  });
+
+  const mine = (request: RestoreRequestRecord) => request.requestedBy.toLowerCase() === me;
+  const canDecide = (request: RestoreRequestRecord) => request.status === "PENDING_APPROVAL" && canApprove && !mine(request);
+  const open = (request: RestoreRequestRecord) => navigate(ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(request.requestId));
+
+  const columns: DataTableColumn<RestoreRequestRecord>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
+    { id: "requestId", header: "Request ID", label: "Request ID", headerClassName: TABLE_STYLES.headerCell35, cell: (row) => (
+      <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => open(row)}>{row.requestId}</button>
+    ) },
+    { id: "backupId", header: "Backup ID", label: "Backup ID", sort: sortFor("backupId"), cell: (row) => (
+      <button type="button" className="text-left text-emerald-600 hover:underline" onClick={() => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(row.backupId))}>{row.backupId}</button>
+    ) },
+    { id: "type", header: "Type", label: "Type", cell: (row) => TYPE_LABEL[row.type] ?? row.type },
+    { id: "target", header: "Target", label: "Target", cell: (row) => <Badge color={row.target === "PRODUCTION" ? "red" : "blue"}>{row.target === "PRODUCTION" ? "Production" : "Validation"}</Badge> },
+    { id: "status", header: "Status", label: "Status", sort: sortFor("status"), cell: (row) => <RestoreStatusBadge status={row.status} /> },
+    { id: "requestedBy", header: "Requested by", label: "Requested by", sort: sortFor("requestedBy"), cell: (row) => row.requestedBy },
+    { id: "requestedAt", header: "Requested", label: "Requested", sort: sortFor("requestedAt"), cell: (row) => formatDateTime(row.requestedAt) },
+    { id: "approvedBy", header: "Approved by", label: "Approved by", cell: (row) => row.approvedBy ?? "—" },
+  ];
+
+  const action: DataTableAction<RestoreRequestRecord> = {
+    header: "Actions",
+    headerClassName: TABLE_STYLES.headerCell35,
+    cell: (row) => (
+      <button
+        type="button"
+        ref={menu.getRef(row.id)}
+        aria-label="More actions"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
+        onClick={(event) => menu.toggle(row.id, event)}
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+    ),
+  };
 
   return (
     <BackupRestorePage
       title="Restore Requests"
       group="Restore"
+      preview={false}
       actions={
-        <Button size="sm" className="gap-2 whitespace-nowrap" onClick={() => navigate(ROUTES.BACKUP_RESTORE.RESTORE_NEW)}>
-          <Plus className="h-4 w-4" />
-          New Restore Request
-        </Button>
+        canRequest ? (
+          <Button size="sm" className="gap-2 whitespace-nowrap" onClick={() => navigate(ROUTES.BACKUP_RESTORE.RESTORE_NEW)}>
+            <Plus className="h-4 w-4" />
+            New Restore Request
+          </Button>
+        ) : undefined
       }
     >
       <WarningBanner
         variant="info"
         title="How a restore runs"
-        description="Request → second-person approval with e-signature → maintenance window → restore → automatic verification (schema, row counts, files against records). A restore replaces data, it never merges; practise in the validation environment first."
+        description="Request, then approval by a second person with an e-signature, then a maintenance window, then the restore and its automatic checks. Approval is recorded now; running the restore is not built yet."
       />
-      <div className="flex min-w-0 w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-1 flex-col p-4 md:p-5">
-          <DataTable
-            rows={SAMPLE_RESTORES}
-            getRowKey={(r) => r.id}
-            emptyState={<TableEmptyState title="No Restore Requests" description="Restore requests and recoveries will appear here." />}
-            scrollerRef={drag.scrollerRef}
-            scrollProps={drag.dragEvents}
-            isDragging={drag.isDragging}
-            columns={[
-              { id: "no", header: "No.", cell: (_r, i) => i + 1 },
-              {
-                id: "id",
-                header: "Request",
-                cell: (r) => (
-                  <div>
-                    <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => setSelected(r)}>
-                      {r.id}
-                    </button>
-                    <span className="block text-xs text-slate-500">From {r.backupId}</span>
-                  </div>
-                ),
-              },
-              { id: "kind", header: "Type", cell: (r) => (r.kind === "DISASTER_RECOVERY" ? <Badge color="rose">Disaster recovery</Badge> : <Badge color="slate">Restore</Badge>) },
-              { id: "target", header: "Target", cell: (r) => <Badge color={TARGET_BADGE[r.target].color}>{TARGET_BADGE[r.target].label}</Badge> },
-              { id: "status", header: "Status", cell: (r) => <Badge color={RESTORE_STATUS_COLOR[r.status]}>{statusLabel(r.status)}</Badge> },
-              { id: "by", header: "Requested by", cell: (r) => r.requestedBy },
-              { id: "at", header: "Requested", cell: (r) => formatDateTime(r.requestedAt) },
-            ]}
-          />
-        </div>
-      </div>
-      <RestoreDetailDrawer
-        request={selected}
-        onClose={() => setSelected(undefined)}
-        onDecision={(_request, decision) =>
-          showToast({ type: "info", title: decision === "approve" ? "Approve and sign" : "Reject", message: "Design preview: nothing was sent to a server." })
-        }
+      <ServerListPanel
+        tableKey="backup-restore.restore-requests.v2"
+        columns={columns}
+        action={action}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        loading={loading}
+        hasLoaded={hasLoaded}
+        error={error}
+        emptyTitle="No Restore Requests"
+        emptyDescription="Restore requests appear here once someone asks for one. Try changing your search or filters."
+        search={search}
+        onSearch={setSearch}
+        searchLabel="Search restore requests"
+        searchPlaceholder="Request, backup or person…"
+        filters={[
+          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Statuses", onChange: setStatus },
+          { id: "target", label: "Target", value: target, options: TARGET_OPTIONS, defaultValue: ALL, placeholder: "All Targets", onChange: setTarget },
+        ]}
+        onClear={() => {
+          setSearch("");
+          setStatus(ALL);
+          setTarget(ALL);
+          setPage(1);
+        }}
+        page={page}
+        totalPages={totalPages}
+        totalItems={total}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
       />
+
+      <PortalDropdownMenu isOpen={!!actionRow} onClose={menu.close} position={menu.position} minWidth={200}>
+        {actionRow && (
+          <div className="py-1">
+            <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { open(actionRow); menu.close(); }}>
+              View Detail
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<IconChecks className="h-4 w-4" />}
+              disabled={!canDecide(actionRow)}
+              onClick={() => { navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(actionRow.requestId)}?decision=approve`); menu.close(); }}
+            >
+              Approve Request
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<IconX className="h-4 w-4" />}
+              disabled={!canDecide(actionRow)}
+              onClick={() => { navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(actionRow.requestId)}?decision=reject`); menu.close(); }}
+            >
+              Reject Request
+            </DropdownMenuItem>
+          </div>
+        )}
+      </PortalDropdownMenu>
+
     </BackupRestorePage>
   );
 };

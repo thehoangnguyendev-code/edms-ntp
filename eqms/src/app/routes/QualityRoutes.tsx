@@ -16,11 +16,13 @@ const RestoreRequestsView = lazy(() => import('@/features/backup-restore').then(
 const DrDrillsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.DrDrillsView })));
 const BackupSchedulesView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupSchedulesView })));
 const BackupVerificationResultsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupVerificationResultsView })));
-const RestoreApprovalQueueView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreApprovalQueueView })));
 const RestoreVerificationReportsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreVerificationReportsView })));
 const RestoreHistoryView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreHistoryView })));
+const InspectionsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.InspectionsView })));
 const BackupDetailView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupDetailView })));
 const RestoreRequestView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreRequestView })));
+const RestoreRequestDetailView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreRequestDetailView })));
+const RestoreExecutionView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreExecutionView })));
 const AuditTrailView = lazy(() => import('@/features/audit-trail').then(m => ({ default: m.AuditTrailView })));
 const AuditTrailDetailView = lazy(() => import('@/features/audit-trail').then(m => ({ default: m.AuditTrailDetailView })));
 const AuditTrailReviewView = lazy(() => import('@/features/audit-trail').then(m => ({ default: m.AuditTrailReviewView })));
@@ -51,9 +53,11 @@ export function qualityRoutes() {
       <Route path="backup-restore/restores/new" element={protectedElement("backup.module.view", <RestoreRequestView />)} />
       <Route path="backup-restore/backups/schedules" element={protectedElement("backup.module.view", <BackupSchedulesView />)} />
       <Route path="backup-restore/backups/verifications" element={protectedElement("backup.module.view", <BackupVerificationResultsView />)} />
-      <Route path="backup-restore/restores/approvals" element={protectedElement("backup.module.view", <RestoreApprovalQueueView />)} />
+      <Route path="backup-restore/restores/:requestId" element={protectedElement("backup.module.view", <RestoreRequestDetailView />)} />
+      <Route path="backup-restore/restores/:requestId/execution" element={protectedElement("backup.module.view", <RestoreExecutionView />)} />
       <Route path="backup-restore/restores/verification-reports" element={protectedElement("backup.module.view", <RestoreVerificationReportsView />)} />
       <Route path="backup-restore/restores/history" element={protectedElement("backup.module.view", <RestoreHistoryView />)} />
+      <Route path="backup-restore/restores/inspections" element={protectedElement("backup.module.view", <InspectionsView />)} />
       <Route path="backup-restore/backups/:backupId" element={protectedElement("backup.module.view", <BackupDetailView />)} />
       <Route path="backup-restore/dr-drills" element={protectedElement("backup.module.view", <DrDrillsView />)} />
       <Route path="backup-restore/*" element={<Navigate to="/backup-restore/overview" replace />} />

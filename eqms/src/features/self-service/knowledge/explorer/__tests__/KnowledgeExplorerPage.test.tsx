@@ -286,3 +286,64 @@ describe("KnowledgeExplorerPage", () => {
     }
   });
 });
+
+describe("KnowledgeExplorerPage document table", () => {
+  const manyDocs = {
+    ...browseDocs,
+    documents: [
+      doc("d1", "Balance calibration", { sizeBytes: 2_621_440, myLastOpenedAt: "2026-10-05T10:30:00Z" }),
+      doc("d2", "HPLC dissolution testing", { sizeBytes: null, myLastOpenedAt: null }),
+    ],
+    totalDocuments: 45,
+    page: 1,
+    limit: 20,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    window.localStorage.setItem("eqms.knowledgeExplorer.view", "list");
+    knowledgeApiMock.overview.mockResolvedValue(overview);
+    knowledgeApiMock.browse.mockImplementation(async (_h: unknown, _kb: string, path: string[]) => (path.length === 0 ? browseFolders : manyDocs));
+    vi.spyOn(window, "open").mockImplementation(() => null);
+  });
+
+  const openLab = async () => {
+    fireEvent.doubleClick(await screen.findByRole("option", { name: /Manufacturing/ }));
+    fireEvent.doubleClick(await screen.findByRole("option", { name: /QC Laboratory/ }));
+    await screen.findByText("Balance calibration");
+  };
+
+  it("shows each document's size and when you last opened it, and says so when you never did", async () => {
+    renderPage();
+    await openLab();
+
+    expect(screen.getByText("2.5 MB")).toBeTruthy();
+    expect(screen.getByText("Never opened")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /Last update/i })).toBeTruthy();
+  });
+
+  it("asks the server to sort when a column header is pressed, flipping the direction on a second press", async () => {
+    renderPage();
+    await openLab();
+    const lastCall = () => knowledgeApiMock.browse.mock.calls.filter((call) => call[2]?.length === 1).at(-1);
+
+    fireEvent.click(within(screen.getByRole("columnheader", { name: /^Size/i })).getByRole("button"));
+    await waitFor(() => expect(lastCall()?.[3]).toMatchObject({ sortBy: "size", sortDirection: "desc", page: 1, limit: 20 }));
+    fireEvent.click(within(screen.getByRole("columnheader", { name: /^Size/i })).getByRole("button"));
+    await waitFor(() => expect(lastCall()?.[3]).toMatchObject({ sortBy: "size", sortDirection: "asc" }));
+  });
+
+  it("pages twenty at a time from the server and starts again from page one after a sort", async () => {
+    renderPage();
+    await openLab();
+    const lastCall = () => knowledgeApiMock.browse.mock.calls.filter((call) => call[2]?.length === 1).at(-1);
+    expect(lastCall()?.[3]).toMatchObject({ page: 1, limit: 20 });
+
+    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
+    await waitFor(() => expect(lastCall()?.[3]).toMatchObject({ page: 2, limit: 20 }));
+
+    fireEvent.click(within(screen.getByRole("columnheader", { name: /^Name/i })).getByRole("button"));
+    await waitFor(() => expect(lastCall()?.[3]).toMatchObject({ sortBy: "name", page: 1 }));
+  });
+});

@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarClock, ListChecks, ShieldCheck } from "lucide-react";
+import { CalendarClock, FileText, ListChecks, ShieldCheck } from "lucide-react";
 import { IconServer2 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { FormSection } from "@/components/ui/form";
-import { FormField, Input, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { TimePicker } from "@/components/ui/datetime-picker/TimePicker";
+import { ReadOnlyField } from "@/components/ui/form/ReadOnlyField";
 import { Select } from "@/components/ui/select/Select";
 import { Switch } from "@/components/ui/switch/Switch";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -15,6 +17,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { backupRestoreApi, type BackupTargetInfo, type PolicyGate, type PolicyMedium, type PolicyTarget } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
+import { SwitchRow } from "./BackupAdminPage";
 import { GateTable } from "./BackupPolicyDetailView";
 import { COMPONENT_LABEL, MEDIUM_LABEL, policyErrorMessage } from "./policyLabels";
 
@@ -144,7 +147,7 @@ export const NewBackupPolicyView: React.FC = () => {
   if (loadError) {
     return (
       <BackupAdminLivePage title="Propose Policy Change" parent={parent}>
-        <WarningBanner variant="error" title="Unable to prepare the form" description={loadError} />
+        <WarningBanner variant="error" title="Unable to prepare the form." description={loadError} />
       </BackupAdminLivePage>
     );
   }
@@ -156,58 +159,64 @@ export const NewBackupPolicyView: React.FC = () => {
     );
   }
 
+  const included = choices.filter((c) => c.included).length;
+  const failing = gate.conditions.filter((c) => !c.ok && !c.pending).length;
+
   return (
     <BackupAdminLivePage title="Propose Policy Change" parent={parent} actions={actions}>
       <WarningBanner variant="info" description="Proposing creates a draft only. The running policy does not change until another person approves the draft with an electronic signature." />
 
-      <FormSection title="What Is Backed Up" icon={<ListChecks className="h-4 w-4" />}>
-        <div className="divide-y divide-slate-100 -my-2">
-          <div className="flex items-center justify-between gap-3 py-2.5">
-            <div>
-              <span className="text-xs font-medium text-slate-900 sm:text-sm">{COMPONENT_LABEL.DATABASE}</span>
-              <Badge color="slate" className="ml-2">Required</Badge>
-            </div>
-            <Switch checked size="sm" disabled onChange={() => undefined} />
+      <div className="grid grid-cols-1 gap-4 md:gap-6 xl:grid-cols-2">
+        <FormSection title="What Is Backed Up" icon={<ListChecks className="h-4 w-4" />} description="The data each backup copies.">
+          <div className="-my-2 divide-y divide-slate-100">
+            <SwitchRow label={COMPONENT_LABEL.DATABASE} checked disabled onChange={() => undefined} note="Required: every backup contains the database." />
+            <SwitchRow label={COMPONENT_LABEL.OBJECT_STORE} checked={documents} onChange={setDocuments} note="Every stored version of every document is copied once, encrypted." />
           </div>
-          <div className="flex items-center justify-between gap-3 py-2.5">
+        </FormSection>
+
+        <FormSection title="Schedule and Retention" icon={<CalendarClock className="h-4 w-4" />} description="When the database is backed up, and for how long it is kept.">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <span className="text-xs font-medium text-slate-900 sm:text-sm">{COMPONENT_LABEL.OBJECT_STORE}</span>
-              <p className="mt-0.5 text-2xs text-slate-400 sm:text-xs">Every stored version of every document is copied once, encrypted.</p>
+              <span className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Database backup</span>
+              <div className="flex h-9 items-center gap-3">
+                <Switch checked={dbEnabled} size="sm" onChange={setDbEnabled} />
+                <span className="text-xs text-slate-600 sm:text-sm">{dbEnabled ? "Daily" : "Switched off"}</span>
+              </div>
             </div>
-            <Switch checked={documents} size="sm" onChange={setDocuments} />
+            <TimePicker label="Time of day" value={time} onChange={setTime} disabled={!dbEnabled} />
+            <div>
+              <span className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Kept</span>
+              <ReadOnlyField value="Permanently" />
+              <p className="mt-1 text-2xs text-slate-500 sm:text-xs">Fixed by decision BR-2.</p>
+            </div>
           </div>
-        </div>
-      </FormSection>
+        </FormSection>
+      </div>
 
-      <FormSection title="Schedule and Retention" icon={<CalendarClock className="h-4 w-4" />}>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <FormField label="Database backup">
-            <div className="flex h-9 items-center gap-3">
-              <Switch checked={dbEnabled} size="sm" onChange={setDbEnabled} />
-              <span className="text-xs text-slate-600 sm:text-sm">{dbEnabled ? "Daily" : "Switched off"}</span>
-            </div>
-          </FormField>
-          <FormField label="Time of day" required>
-            <Input type="time" value={time} onChange={(event) => setTime(event.target.value)} disabled={!dbEnabled} />
-          </FormField>
-          <FormField label="Kept">
-            <div className="flex h-9 items-center text-xs text-slate-700 sm:text-sm">Permanently (fixed by decision BR-2)</div>
-          </FormField>
+      <FormSection
+        title="Backup Targets"
+        icon={<IconServer2 className="h-4 w-4" />}
+        description="T1 is where every backup is written first. Declare which of the others are in another location or cannot be changed."
+        headerRight={<Badge color="slate" size="sm">{included} of {choices.length} used</Badge>}
+      >
+        <div className="hidden grid-cols-[minmax(0,1fr)_14rem_7rem_7rem] gap-3 border-b border-slate-100 pb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
+          <span>Target</span>
+          <span>Medium</span>
+          <span>Off-site</span>
+          <span>Immutable</span>
         </div>
-      </FormSection>
-
-      <FormSection title="Backup Targets" icon={<IconServer2 className="h-4 w-4" />} description="T1 is where every backup is written first. Declare which of the others are in another location or cannot be changed.">
         <div className="divide-y divide-slate-100">
           {choices.map((c) => {
             const media = mediaFor(c.info);
+            const locked = !c.included || c.info.code === "T1";
             return (
-              <div key={c.info.code} className="grid grid-cols-1 gap-3 py-4 first:pt-0 last:pb-0 md:grid-cols-[1fr_14rem_7rem_7rem] md:items-center">
+              <div key={c.info.code} className="grid grid-cols-1 gap-3 py-3 first:pt-3 last:pb-0 md:grid-cols-[minmax(0,1fr)_14rem_7rem_7rem] md:items-center">
                 <div className="flex items-start gap-3">
                   <Switch checked={c.included} size="sm" disabled={c.info.code === "T1"} onChange={(included) => change(c.info.code, { included })} />
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-slate-900 sm:text-sm">{c.info.code}</p>
-                    <p className="break-all font-mono text-2xs text-slate-400 sm:text-xs">{c.info.location}</p>
-                    {c.info.immutable && <Badge color="slate" className="mt-1">Configured as immutable</Badge>}
+                    <p className="break-all font-mono text-2xs text-slate-500 sm:text-xs">{c.info.location}</p>
+                    {c.info.immutable && <Badge color="slate" size="sm" className="mt-1">Configured as immutable</Badge>}
                   </div>
                 </div>
                 <Select
@@ -216,13 +225,13 @@ export const NewBackupPolicyView: React.FC = () => {
                   options={media.map((m) => ({ label: MEDIUM_LABEL[m], value: m }))}
                   disabled={!c.included || media.length === 1}
                 />
-                <label className="flex items-center gap-2 text-xs text-slate-700">
-                  <Switch checked={c.offsite} size="sm" disabled={!c.included || c.info.code === "T1"} onChange={(offsite) => change(c.info.code, { offsite })} />
-                  Off-site
+                <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
+                  <Switch checked={c.offsite} size="sm" disabled={locked} onChange={(offsite) => change(c.info.code, { offsite })} />
+                  <span className="md:sr-only">Off-site</span>
                 </label>
-                <label className="flex items-center gap-2 text-xs text-slate-700">
-                  <Switch checked={c.immutable} size="sm" disabled={!c.included || c.info.code === "T1"} onChange={(immutable) => change(c.info.code, { immutable })} />
-                  Immutable
+                <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
+                  <Switch checked={c.immutable} size="sm" disabled={locked} onChange={(immutable) => change(c.info.code, { immutable })} />
+                  <span className="md:sr-only">Immutable</span>
                 </label>
               </div>
             );
@@ -230,17 +239,21 @@ export const NewBackupPolicyView: React.FC = () => {
         </div>
       </FormSection>
 
-      <FormSection title="3-2-1-1 Rule" icon={<ShieldCheck className="h-4 w-4" />} description="What the choices above would give. The Backup Agent decides when the version is proposed and again when it is activated.">
+      <FormSection
+        title="3-2-1-1 Rule"
+        icon={<ShieldCheck className="h-4 w-4" />}
+        description="What the choices above would give. The Backup Agent decides when the version is proposed and again when it is activated."
+        headerRight={<Badge color={failing > 0 ? "red" : "emerald"} size="sm">{failing > 0 ? `${failing} not met` : "No condition failing"}</Badge>}
+        contentClassName="p-2 md:p-3"
+      >
         <GateTable gate={gate} />
       </FormSection>
 
-      <FormSection title="Reason for Change">
+      <FormSection title="Reason for Change" icon={<FileText className="h-4 w-4" />} description="Recorded with the proposal, with your name and the time.">
         <FormField label="Reason" required>
-          <Textarea rows={3} value={reason} onChange={(event) => setReason(event.target.value)} />
+          <Textarea rows={3} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Why is this change needed?" />
         </FormField>
       </FormSection>
-
-      <div className="flex items-center gap-3">{actions}</div>
     </BackupAdminLivePage>
   );
 };

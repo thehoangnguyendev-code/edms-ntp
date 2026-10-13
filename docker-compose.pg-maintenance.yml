@@ -1,0 +1,33 @@
+# Weekly physical base backup and WAL retention for the eQMS Postgres (SDS 15.1). DEV. The job runs in its own container with
+# the existing eqms role; the backup and restore workers get no extra privilege.
+services:
+  pg-maintenance:
+    image: postgres:17-alpine
+    profiles: ["pg-maintenance"]
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-pg-maintenance
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: eqms
+      PGPASSWORD: ${POSTGRES_PASSWORD:-eqms}
+      KEEP_DAYS: "14"
+      RUN_NOW: ${PG_MAINTENANCE_RUN_NOW:-0}
+      # empty = the weekly Sunday 03:00 schedule; a number of minutes = that cadence (used for testing on DEV)
+      BACKUP_EVERY_MINUTES: ${PG_MAINTENANCE_EVERY_MINUTES:-}
+      # alert when free space on the backup or off-site volume is below this many MB
+      MIN_FREE_MB: ${PG_MIN_FREE_MB:-5120}
+    volumes:
+      - eqms_pg_archive:/pgdata/archive
+      - eqms_pg_basebackup:/backups
+      # the off-site copy: a folder on drive D (another disk than the Docker volumes' default location, if Docker runs on C:)
+      - ${EQMS_OFFSITE_DIR:-D:/eqms-dev-backups}:/offsite
+      - ./scripts/backup/pg-maintenance.sh:/usr/local/bin/pg-maintenance.sh:ro
+    entrypoint: ["sh", "/usr/local/bin/pg-maintenance.sh"]
+
+volumes:
+  eqms_pg_basebackup:

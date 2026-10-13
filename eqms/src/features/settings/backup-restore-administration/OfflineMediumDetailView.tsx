@@ -274,7 +274,7 @@ export const OfflineMediumDetailView: React.FC = () => {
           <FormField label="Result">
             <Select value={result} onChange={(value) => setResult(value as "PASSED" | "FAILED")} options={[{ label: "Passed", value: "PASSED" }, { label: "Failed", value: "FAILED" }]} />
           </FormField>
-          <FormField label="What was checked" required hint="For example: brought back, verify-chain.sh run, database decrypted by two key holders.">
+          <FormField label="What was checked" required hint="For example: brought back, verify-chain.sh run, database decrypted for the check.">
             <Textarea rows={3} value={detail} maxLength={500} onChange={(event) => setDetail(event.target.value)} />
           </FormField>
         </div>

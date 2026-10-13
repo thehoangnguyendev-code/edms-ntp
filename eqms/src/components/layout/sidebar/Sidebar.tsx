@@ -25,6 +25,7 @@ import { KNOWLEDGE_BASE_NAV_ID, openKnowledgeExplorer } from "@/features/self-se
 import { Avatar } from "@/components/ui/avatar";
 import { TabNav, type TabItem } from "@/components/ui/tabs";
 import { useSidebarFavorites } from "./useSidebarFavorites";
+import { APP_SIDEBAR_COLLAPSED_WIDTH, APP_SIDEBAR_WIDTH } from "./sidebarWidths";
 import "./Sidebar.module.css";
 import { resolvePermissionAliasCodes } from "@/features/settings/permissionCatalog";
 import { notificationApi } from "@/services/api/notifications";
@@ -37,7 +38,7 @@ const LEVEL_PADDING = 16;
 /** Space between a nested item's guide rail and the left edge of its highlight. */
 const NESTED_RAIL_GAP = 4;
 const NESTED_PADDING = 10;
-const SIDEBAR_WIDTH = 360;
+const SIDEBAR_WIDTH = APP_SIDEBAR_WIDTH;
 /** Room kept at the right of every row for the favourite star, so it never covers the label. */
 const STAR_SLOT = 40;
 const MENU_WIDTH = 300;
@@ -1018,18 +1019,20 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
     const renderHoverSubItem = useCallback(
       (item: NavItem, level: number = 1) => {
         const hasChildren = Boolean(item.children?.length);
+        const starred = favorites.isFavorite(item.id);
         const isExpanded = hoverMenu.expandedSubItems.includes(item.id);
         const isActive = activeId === item.id;
 
         return (
           <div key={item.id} className="w-full">
+            <div className="relative">
             <button
               type="button"
               onClick={() => handleSubItemClick(item, hasChildren)}
               aria-expanded={hasChildren ? isExpanded : undefined}
               aria-current={!hasChildren && isActive ? "page" : undefined}
               className={cn(
-                "w-full flex items-center gap-2 px-4 py-2.5 text-sm transition-colors group",
+                "w-full flex items-center gap-2 pl-4 pr-11 py-2.5 text-sm transition-colors group",
                 isActive
                   ? "text-emerald-700 bg-emerald-50 font-semibold"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
@@ -1047,7 +1050,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               )}
               <span
                 className={cn(
-                  "flex items-center gap-1.5 flex-1 text-left break-words leading-tight",
+                  "flex min-w-0 items-center gap-1.5 flex-1 text-left break-words leading-tight",
                   level >= 2 ? "ml-0" : "ml-3",
                 )}
               >
@@ -1081,6 +1084,21 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 </div>
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => favorites.toggle(branchIds(item))}
+              aria-pressed={starred}
+              aria-label={starred ? `Remove ${item.label} from favourites` : `Add ${item.label} to favourites`}
+              title={hasChildren ? (starred ? "Remove with everything beneath it" : "Add with everything beneath it") : starred ? "Remove from favourites" : "Add to favourites"}
+              className={cn(
+                "absolute right-2 top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition-colors",
+                "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                starred ? "text-amber-500 hover:bg-amber-50" : "text-slate-300 hover:bg-slate-100 hover:text-amber-500",
+              )}
+            >
+              <Star className={cn("h-4 w-4", starred && "fill-amber-400")} />
+            </button>
+            </div>
 
             <AnimatePresence initial={false}>
               {hasChildren && isExpanded && (
@@ -1106,7 +1124,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           </div>
         );
       },
-      [hoverMenu.expandedSubItems, activeId, handleSubItemClick, navCounts, shouldReduceMotion, sidebarExpandTransition],
+      [hoverMenu.expandedSubItems, activeId, handleSubItemClick, navCounts, shouldReduceMotion, sidebarExpandTransition, favorites, springConfig],
     );
 
     // Hover menu portal component
@@ -1243,7 +1261,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         {/* Sidebar */}
         <motion.aside
           initial={false}
-          animate={{ width: isCollapsed ? 80 : SIDEBAR_WIDTH }}
+          animate={{ width: isCollapsed ? APP_SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH }}
           transition={{
             width: shouldReduceMotion ? { duration: 0 } : { duration: 0.56, ease: [0.22, 1, 0.36, 1] },
             transform: shouldReduceMotion ? { duration: 0 } : { duration: 0.46, ease: [0.22, 1, 0.36, 1] },
@@ -1383,7 +1401,14 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           )}
 
           {!isCollapsed && (
-            <div className="shrink-0 px-3 pt-3">
+            <motion.div
+              className="shrink-0 overflow-hidden px-3 pt-3"
+              initial={shouldReduceMotion ? false : { opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {/* Keep tab geometry stable while the sidebar width animates. */}
+              <div style={{ width: `min(${SIDEBAR_WIDTH - 25}px, calc(92vw - 25px))` }}>
               <TabNav
                 tabs={sidebarTabs}
                 activeTab={sidebarTab}
@@ -1394,16 +1419,19 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 tabIdPrefix="sidebar-tab"
                 panelIdPrefix="sidebar-panel"
               />
-            </div>
+              </div>
+            </motion.div>
           )}
 
           {/* Navigation Menu */}
-          <div
+          <motion.div
+            layoutScroll
             ref={scrollContainerRef}
             className={cn(
               "sidebar-navigation-scroll flex-1 overflow-y-auto overflow-x-hidden scroll-smooth",
               // Mobile: More padding for easier scrolling
               "pt-1 md:pt-3 md:pb-3",
+              isCollapsed && "flex min-h-0 flex-col",
             )}
             style={{
               // Smooth scrolling on mobile with momentum
@@ -1417,14 +1445,22 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               willChange: "scroll-position",
               transform: "translateZ(0)",
               // Safe area padding bottom for iPad/iPhone
-              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+              paddingBottom: isCollapsed ? 12 : "calc(env(safe-area-inset-bottom, 0px) + 80px)",
             }}
           >
-            <nav
+            <motion.nav
+              layout={shouldReduceMotion ? false : "position"}
+              transition={{
+                layout: shouldReduceMotion
+                  ? { duration: 0 }
+                  : { duration: 0.56, ease: [0.22, 1, 0.36, 1] },
+              }}
               aria-label="Sidebar navigation"
               className={cn(
                 // Mobile: Larger spacing between items
                 "space-y-[-1px] md:space-y-0.5",
+                // Auto margins center short menus and become zero when scrolling is needed.
+                isCollapsed && "my-auto w-full shrink-0",
               )}
             >
               <AnimatePresence initial={false}>
@@ -1454,7 +1490,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   )}
                 </motion.div>
               </AnimatePresence>
-            </nav>
+            </motion.nav>
 
             {/* Extra spacer at bottom for mobile/tablet to ensure last items are accessible */}
             <div
@@ -1465,7 +1501,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
               }}
               aria-hidden="true"
             />
-          </div>
+          </motion.div>
 
           {showSidebarUserProfile && user && (
             <div

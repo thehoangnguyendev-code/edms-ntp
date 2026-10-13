@@ -53,6 +53,11 @@ final class FakeCommandRunner implements CommandRunner {
         return new Result(0, "", "");
     }
 
+    @Override
+    public HashResult hashOutput(Command command, long timeoutSeconds) {
+        return new HashResult(0, "", 0, "");
+    }
+
     boolean encryptFails;
     int streams;
 

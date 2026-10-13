@@ -1,11 +1,12 @@
 import React from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Bell, ChevronLeft, ChevronRight, Eye, Home, LayoutPanelLeft, Star, ThumbsUp } from "lucide-react";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/components/ui/utils";
 import type { KnowledgePortalOverview } from "@/services/api/knowledge";
+import { ExplorerLibraryTree } from "./ExplorerLibraryTree";
 import { FOCUS_RING, GROUP_LABEL } from "./explorerStyles";
 import { folderColor, type ExplorerNav, type SmartKey } from "./explorerModel";
 
@@ -29,9 +30,9 @@ const QUICK: { key: SmartKey | "home"; label: string; Icon: React.ElementType }[
 
 const itemClass = (active: boolean) =>
   cn(
-    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors md:text-sm",
+    "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium transition-colors md:gap-2.5 md:px-2.5 md:py-2",
     FOCUS_RING,
-    active ? "bg-emerald-50 text-emerald-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+    active ? "bg-emerald-50 text-emerald-700" : "text-slate-600 hover:bg-emerald-50/70 hover:text-emerald-700",
   );
 
 export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav, onGo, onHierarchyChange, onOpenClassic, collapsed = false, onToggleCollapsed }) => {
@@ -82,7 +83,7 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
       </div>
 
       <div className={cn("flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-3.5 custom-scrollbar", collapsed ? "px-2" : "px-2.5")}>
-        {!collapsed && <h2 className="px-2.5 text-sm font-semibold text-slate-900">Knowledge Base</h2>}
+        {!collapsed && <h2 className="px-2.5 text-base font-semibold text-slate-900 md:text-sm">Knowledge Base</h2>}
 
         <div>
           {!collapsed && <p className={cn(GROUP_LABEL, "px-2.5 pb-1")}>Quick access</p>}
@@ -98,9 +99,9 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
                     className={cn(itemClass(isActive(key)), collapsed && "justify-center px-2")}
                     title={collapsed ? label : undefined}
                   >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <Icon className="h-5 w-5 shrink-0 md:h-4 md:w-4" aria-hidden="true" />
                     {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
-                    {!collapsed && count !== undefined && <span className="text-2xs tabular-nums text-slate-400 md:text-xs">{count}</span>}
+                    {!collapsed && count !== undefined && <span className="text-xs tabular-nums text-slate-400">{count}</span>}
                   </button>
                 </li>
               );
@@ -124,7 +125,7 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
                       className={cn(
                         "flex w-full justify-center rounded-lg p-2 transition-colors",
                         FOCUS_RING,
-                        active ? "bg-emerald-50" : "hover:bg-slate-50",
+                        active ? "bg-emerald-50" : "hover:bg-emerald-50/70",
                       )}
                     >
                       <span
@@ -158,30 +159,7 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
           ) : overview.knowledgeBases.length === 0 ? (
             <p className="px-2.5 py-2 text-xs text-slate-500">No documents yet.</p>
           ) : (
-            <ul className="space-y-0.5">
-              <AnimatePresence initial={false}>
-                {overview.knowledgeBases.map((kb) => (
-                  <motion.li
-                    key={kb.key}
-                    initial={reduceMotion ? false : { opacity: 0, x: -6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: reduceMotion ? 0 : 0.18 }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => onGo({ kind: "kb", kb: { key: kb.key, label: kb.label }, path: [] })}
-                      aria-current={activeKbKey === kb.key ? "page" : undefined}
-                      className={itemClass(activeKbKey === kb.key)}
-                    >
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: folderColor(kb.label) }} aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate">{kb.label}</span>
-                      {kb.subscribed && <Bell className="h-3 w-3 shrink-0 text-emerald-600" aria-label="Subscribed" />}
-                      <span className="text-2xs tabular-nums text-slate-400 md:text-xs">{kb.documentCount}</span>
-                    </button>
-                  </motion.li>
-                ))}
-              </AnimatePresence>
-            </ul>
+            <ExplorerLibraryTree overview={overview} nav={nav} onGo={onGo} />
           )}
         </div>}
       </div>

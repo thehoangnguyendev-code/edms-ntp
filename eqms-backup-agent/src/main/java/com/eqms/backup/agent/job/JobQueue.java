@@ -28,11 +28,16 @@ public class JobQueue {
 
     /** Takes the oldest queued job, or a job whose lease ran out because the agent died while running it. */
     public Optional<Job> claimNext(int leaseMinutes) {
+        return claimNext(leaseMinutes, List.of("BACKUP_DB", "VERIFY", "EXPORT"));
+    }
+
+    /** Takes the oldest queued job of the given types, so the API process and the restore worker never take each other's work. */
+    public Optional<Job> claimNext(int leaseMinutes, List<String> types) {
         List<Job> claimed = jdbc.query(
                 "update backup_job set status='RUNNING', attempts = attempts + 1, lease_until = now() + (? * interval '1 minute') "
-                        + "where id = (select id from backup_job where status = 'QUEUED' or (status = 'RUNNING' and lease_until < now()) "
+                        + "where id = (select id from backup_job where (status = 'QUEUED' or (status = 'RUNNING' and lease_until < now())) and job_type = any (?) "
                         + "order by created_at limit 1 for update skip locked) returning id, job_type, payload_json::text, requested_by",
-                (rs, i) -> new Job(rs.getObject("id", UUID.class), rs.getString("job_type"), rs.getString(3), rs.getString("requested_by")), leaseMinutes);
+                (rs, i) -> new Job(rs.getObject("id", UUID.class), rs.getString("job_type"), rs.getString(3), rs.getString("requested_by")), leaseMinutes, types.toArray(new String[0]));
         return claimed.stream().findFirst();
     }
 

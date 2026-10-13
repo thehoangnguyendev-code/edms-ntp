@@ -22,6 +22,7 @@ import io.minio.messages.VersioningConfiguration;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -38,6 +39,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class MinioObjectStorageService {
@@ -85,6 +87,8 @@ public class MinioObjectStorageService {
     /** DEV, TEST or PROD; injected as a field so the constructor used by existing tests is unchanged. */
     @Value("${app.environment:DEV}")
     private String environmentName = "DEV";
+    /** The alias lookup used after a restore (SDS 11.4.2); null in a test that does not wire it. */
+    private ObjectVersionAliases versionAliases;
 
     public MinioObjectStorageService(
             @Value("${app.minio.enabled:true}") boolean enabled,
@@ -239,8 +243,60 @@ public class MinioObjectStorageService {
             }
             return buildClient(config).getObject(builder.build());
         } catch (Exception ex) {
+            // SDS 11.4.2: only when MinIO says this version does not exist is the alias table consulted, and the bytes are checked
+            // against the recorded SHA-256 before they are returned.
+            if (versionAliases != null && StringUtils.hasText(reference.versionId()) && isNoSuchVersion(ex)) {
+                Optional<ObjectVersionAliases.Alias> alias = versionAliases.find(reference.bucket(), reference.objectKey(), reference.versionId());
+                if (alias.isPresent()) return openAliased(config, reference, alias.get());
+            }
             throw storageException("Failed to read object from MinIO", ex);
         }
+    }
+
+    @Autowired(required = false)
+    public void setVersionAliases(ObjectVersionAliases versionAliases) {
+        this.versionAliases = versionAliases;
+    }
+
+    private InputStream openAliased(MinioConfig config, ObjectReference reference, ObjectVersionAliases.Alias alias) throws IOException {
+        try (InputStream in = buildClient(config).getObject(GetObjectArgs.builder()
+                .bucket(alias.currentBucket() == null ? reference.bucket() : alias.currentBucket()).object(reference.objectKey())
+                .versionId(alias.currentVersionId()).build())) {
+            return Files.newInputStream(verifiedCopy(in, alias.sha256(), reference.objectKey()));
+        } catch (IOException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw storageException("Failed to read the aliased object from MinIO", ex);
+        }
+    }
+
+    /** Copies the bytes to a temporary file while hashing them; refuses (and removes the copy) when the SHA-256 is not the recorded one. */
+    static Path verifiedCopy(InputStream in, String expectedSha256, String objectKey) throws IOException {
+        Path copy = Files.createTempFile("eqms-alias-", ".bin");
+        copy.toFile().deleteOnExit();
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            try (java.io.OutputStream out = Files.newOutputStream(copy); java.security.DigestOutputStream hashing = new java.security.DigestOutputStream(out, digest)) {
+                in.transferTo(hashing);
+            }
+            String actual = HexFormat.of().formatHex(digest.digest());
+            if (!actual.equals(expectedSha256)) {
+                throw new IOException("Object " + objectKey + " does not match its recorded SHA-256 after restore");
+            }
+            return copy;
+        } catch (IOException ex) {
+            Files.deleteIfExists(copy);
+            throw ex;
+        } catch (NoSuchAlgorithmException ex) {
+            Files.deleteIfExists(copy);
+            throw new IOException("SHA-256 is not available", ex);
+        }
+    }
+
+    /** True when MinIO answers that the requested version does not exist (its error code is NoSuchVersion). */
+    static boolean isNoSuchVersion(Exception ex) {
+        return ex instanceof io.minio.errors.ErrorResponseException e && e.errorResponse() != null
+                && "NoSuchVersion".equals(e.errorResponse().code());
     }
 
     public Path materialize(String uri) throws IOException {

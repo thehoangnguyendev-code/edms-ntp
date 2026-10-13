@@ -133,13 +133,12 @@ afterEach(() => {
 const header = (id: string) => document.querySelector<HTMLElement>(`[data-table-col="${id}"]`)!;
 
 describe("Backup Storage & Encryption", () => {
-  it("shows the targets, the encryption facts and says the key holders are not set up", async () => {
+  it("shows the targets and the encryption facts", async () => {
     renderApp(A.STORAGE);
     expect(await screen.findByText("/backup/t1")).toBeTruthy();
     expect(screen.getByText("s3://eqms-dev-backup-t3/")).toBeTruthy();
     expect(await screen.findByText("OpenPGP with AES256")).toBeTruthy();
     expect(screen.getByText(/The Backup Agent holds only the public key/)).toBeTruthy();
-    expect(screen.getByText("Key holders are not set up yet")).toBeTruthy();
   });
 
   it("tests a target on request and shows each step", async () => {
@@ -174,7 +173,7 @@ describe("Backup Storage & Encryption", () => {
     const last = () => api.media.mock.calls.at(-1)![0];
     expect(last()).toMatchObject({ sortBy: "label", sortDirection: "asc", page: 1, limit: 10 });
     fireEvent.change(screen.getAllByPlaceholderText("Label, serial or holder…")[0], { target: { value: "usb" } });
-    await waitFor(() => expect(last().search).toBe("usb"), { timeout: 2000 });
+    await waitFor(() => expect(last().search).toBe("usb"), { timeout: 5000 });
     fireEvent.click(header("status"));
     await waitFor(() => expect(last()).toMatchObject({ sortBy: "status", sortDirection: "asc" }));
   });

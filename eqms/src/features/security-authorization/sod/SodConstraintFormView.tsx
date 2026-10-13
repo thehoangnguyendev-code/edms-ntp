@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, Ban, Shield, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -242,9 +243,7 @@ export const SodConstraintFormView: React.FC = () => {
       />
 
       {isSystem && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-800">
-          This is a system-defined constraint. Its definition cannot be modified or deleted; it can only be activated or deactivated.
-        </div>
+        <WarningBanner variant="info">This is a system-defined constraint. Its definition cannot be modified or deleted; it can only be activated or deactivated.</WarningBanner>
       )}
 
       <FormSection
@@ -317,19 +316,19 @@ export const SodConstraintFormView: React.FC = () => {
           </div>
         )}
         {codeA && codeB && !checkingDuplicate && duplicateConstraint && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <WarningBanner variant="error">
             <span className="font-semibold">Duplicate:</span> an active constraint for this exact permission pair
             already exists — "{duplicateConstraint.name}" ({duplicateConstraint.severity}).
             Edit that constraint instead of creating a second one for the same pair.
-          </div>
+          </WarningBanner>
         )}
         {codeA && codeB && !checkingDuplicate && !duplicateConstraint && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <WarningBanner variant="success">
             This rule will flag any user or Access Profile holding both{" "}
             <span className="font-semibold">{permissionRows.find((p) => p.id === codeA)?.label ?? codeA}</span> and{" "}
             <span className="font-semibold">{permissionRows.find((p) => p.id === codeB)?.label ?? codeB}</span> as a
             Segregation of Duties {severity === "BLOCK" ? "violation to block" : "warning"}.
-          </div>
+          </WarningBanner>
         )}
 
         {codeA && codeB && codeA !== codeB && (

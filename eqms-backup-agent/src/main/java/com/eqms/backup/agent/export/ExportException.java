@@ -14,15 +14,15 @@ public class ExportException extends RuntimeException {
         this.code = code;
     }
 
-    static ExportException invalid(String code, String message) {
+    public static ExportException invalid(String code, String message) {
         return new ExportException(Kind.INVALID, code, message);
     }
 
-    static ExportException conflict(String code, String message) {
+    public static ExportException conflict(String code, String message) {
         return new ExportException(Kind.CONFLICT, code, message);
     }
 
-    static ExportException notFound(String code, String message) {
+    public static ExportException notFound(String code, String message) {
         return new ExportException(Kind.NOT_FOUND, code, message);
     }
 }

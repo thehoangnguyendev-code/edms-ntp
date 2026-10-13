@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import {
   useLocation,
   useNavigate,
@@ -6,7 +7,6 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import {
-  AlertTriangle,
   Shield,
   ShieldCheck,
   Fingerprint,
@@ -671,18 +671,14 @@ const TransitionPolicyForm: React.FC = () => {
       />
 
       {mode === "override" && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-800">
-          This override applies only to the selected document type. If no
-          override matches, runtime uses the global policy.
-        </div>
+        <WarningBanner variant="info">This override applies only to the selected document type. If no
+          override matches, runtime uses the global policy.</WarningBanner>
       )}
       {sourcePolicy?.system && mode === "edit" && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
-          <p className="text-xs text-amber-800">
-            This is a system policy. Key identity fields cannot be changed.
-            Actors and permission can be reconfigured.
-          </p>
-        </div>
+        <WarningBanner variant="warning">
+          This is a system policy. Key identity fields cannot be changed.
+          Actors and permission can be reconfigured.
+        </WarningBanner>
       )}
 
       <FormSection
@@ -729,7 +725,7 @@ const TransitionPolicyForm: React.FC = () => {
                 disabled={!form.workflowKey}
               />
               {!form.workflowKey && (
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-2xs text-slate-400 mt-1">
                   Select a workflow first.
                 </p>
               )}
@@ -750,7 +746,7 @@ const TransitionPolicyForm: React.FC = () => {
                 disabled={!form.workflowKey}
               />
               {!form.workflowKey && (
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-2xs text-slate-400 mt-1">
                   Select a workflow first.
                 </p>
               )}
@@ -785,7 +781,7 @@ const TransitionPolicyForm: React.FC = () => {
                 className="h-9 w-full border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-400"
               />
               {!form.actionCode && (
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-2xs text-slate-400 mt-1">
                   Select a workflow action first.
                 </p>
               )}
@@ -863,26 +859,24 @@ const TransitionPolicyForm: React.FC = () => {
         }
       >
         {invalidActorIndices.length > 0 && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-3">
-            <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-xs text-red-700 font-medium">
-                {invalidActorIndices.length} actor
-                {invalidActorIndices.length > 1 ? "s" : ""} not allowed for the
-                selected action.
-              </p>
-              <p className="text-xs text-red-600 mt-0.5">
-                Remove them before saving.
-              </p>
-            </div>
+          <WarningBanner
+            variant="error"
+            className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+          >
+            <span>
+              <span className="font-semibold">
+                {invalidActorIndices.length} actor{invalidActorIndices.length > 1 ? "s" : ""} not allowed for the selected action.
+              </span>{" "}
+              Remove them before saving.
+            </span>
             <button
               type="button"
               onClick={removeInvalidActors}
-              className="text-xs font-medium text-red-600 hover:text-red-800 underline whitespace-nowrap"
+              className="whitespace-nowrap text-xs font-medium underline hover:text-red-900"
             >
               Remove invalid actors
             </button>
-          </div>
+          </WarningBanner>
         )}
         <WorkflowPolicyActorSelector
           actors={form.actors}
@@ -1255,11 +1249,9 @@ const CapabilityPolicyForm: React.FC = () => {
       />
 
       {initial?.system && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-800">
-          This is a system policy seeded for strict participant visibility. You
+        <WarningBanner variant="info">This is a system policy seeded for strict participant visibility. You
           can adjust or deactivate it, but it cannot be deleted. Changes take
-          effect immediately for all users.
-        </div>
+          effect immediately for all users.</WarningBanner>
       )}
 
       <FormSection

@@ -14,6 +14,9 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID>,
     /** Sessions in the given status that were not revoked and have not expired at {@code now}. */
     long countByStatusAndRevokedAtIsNullAndExpiresAtAfter(AuthSession.SessionStatus status, Instant now);
 
+    /** Sessions that are still open, for the maintenance window: everyone is signed out when the window drains (SDS 11.5.2 M3). */
+    List<AuthSession> findAllByRevokedAtIsNull();
+
     Optional<AuthSession> findByRefreshTokenHash(String refreshTokenHash);
     List<AuthSession> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
     List<AuthSession> findAllByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(UUID userId);

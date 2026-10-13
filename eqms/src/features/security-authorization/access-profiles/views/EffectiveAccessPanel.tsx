@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronRight, Info, Search, ShieldCheck, X } from "lucide-react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
+import { ChevronRight, Search, ShieldCheck, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { cn } from "@/components/ui/utils";
@@ -121,10 +122,7 @@ export const EffectiveAccessPanel: React.FC<EffectiveAccessPanelProps> = ({ acce
         </div>
       </section>
 
-      <div className="flex gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs leading-relaxed text-blue-800">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-        <p>{data.objectAccessRulesNote}</p>
-      </div>
+      <WarningBanner variant="info" description={data.objectAccessRulesNote} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="relative w-full sm:max-w-md">
@@ -214,6 +212,6 @@ const SummaryMetric: React.FC<{
     !tone && "border-slate-200 bg-white",
   )}>
     <p className="text-lg font-semibold leading-tight text-slate-800">{value}</p>
-    <p className="mt-0.5 truncate text-[11px] font-medium text-slate-500">{label}</p>
+    <p className="mt-0.5 truncate text-2xs font-medium text-slate-500">{label}</p>
   </div>
 );

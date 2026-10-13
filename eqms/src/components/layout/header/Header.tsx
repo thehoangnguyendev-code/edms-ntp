@@ -7,6 +7,7 @@ import { Button } from '../../ui/button/Button';
 import { cn } from '../../ui/utils';
 import { Breadcrumb } from '../../ui/breadcrumb/Breadcrumb';
 import { NotificationsDropdown } from './NotificationsDropdown';
+import { MaintenanceCountdownChip } from '@/features/maintenance/MaintenanceCountdownChip';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import { useBreadcrumb } from '@/contexts/BreadcrumbContext';
 import { AlertModal } from '../../ui/modal/AlertModal';
@@ -243,6 +244,9 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
             className="flex items-center gap-1.5 md:gap-2 lg:gap-3 shrink-0"
           >
             <EnvironmentBadge />
+
+            {/* Maintenance countdown: shown only while a notice runs (SDS 11.5.4) */}
+            <MaintenanceCountdownChip />
 
             {/* Notifications */}
             <motion.div layout="position">

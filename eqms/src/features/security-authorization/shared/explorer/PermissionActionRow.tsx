@@ -90,7 +90,7 @@ export const PermissionActionRow: React.FC<PermissionActionRowProps> = ({
         </span>
         {/* Legacy catalogs can have distinct codes sharing a display label — the code,
             on its own line, disambiguates rows that otherwise look like exact duplicates. */}
-        <span className="break-all text-[11px] font-medium leading-4 text-slate-500 sm:text-xs">
+        <span className="break-all text-2xs font-medium leading-4 text-slate-500 sm:text-xs">
           {permission.id}
         </span>
         {permission.description && (

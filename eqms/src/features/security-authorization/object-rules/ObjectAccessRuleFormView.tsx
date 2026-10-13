@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Shield, Filter, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -228,9 +229,7 @@ export const ObjectAccessRuleFormView: React.FC = () => {
         description="Choose the subject profile, protected resource scope and actions this rule evaluates."
         contentClassName="p-4 md:p-5 space-y-4"
       >
-        <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-800">
-          Leave the subject profile or resource name as All only when the rule must apply system-wide.
-        </div>
+        <WarningBanner variant="success">Leave the subject profile or resource name as All only when the rule must apply system-wide.</WarningBanner>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Select
             label="Subject Access Profile"

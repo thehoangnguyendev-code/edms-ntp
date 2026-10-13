@@ -185,7 +185,7 @@ export const RelationDefinitionsTab: React.FC = () => {
         return configEntries.length > 0 ? (
           <div className="flex w-full flex-wrap items-center gap-1">
             {configEntries.map(([key, value]) => (
-              <span key={key} className="rounded-md bg-slate-100 px-1.5 py-0.5 text-2xs text-slate-600 break-all">
+              <span key={key} className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs text-slate-600 break-all">
                 {key}={String(value)}
               </span>
             ))}

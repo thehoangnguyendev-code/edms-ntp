@@ -36,8 +36,12 @@ public class KnowledgePortalController {
     public ResponseEntity<BrowseResult> browse(
             @RequestParam(required = false) UUID hierarchyId,
             @RequestParam String kb,
-            @RequestParam(required = false) List<String> path) {
-        return ResponseEntity.ok(service.browse(hierarchyId, kb, path));
+            @RequestParam(required = false) List<String> path,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection) {
+        return ResponseEntity.ok(service.browse(hierarchyId, kb, path, page, limit, sortBy, sortDirection));
     }
 
     @GetMapping("/search")

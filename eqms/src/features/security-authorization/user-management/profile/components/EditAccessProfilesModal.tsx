@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Search, ChevronRight, ChevronLeft } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -229,11 +230,13 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
           <SectionLoading minHeight="200px" />
         ) : (
           <div className="flex flex-col h-full">
-            <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3.5 py-2.5 text-xs text-blue-700">
-              {isLocalMode
+            <WarningBanner
+              variant="info"
+              className="mb-3"
+              description={`${isLocalMode
                 ? "Access is cumulative across all selected profiles -- there is no primary/secondary distinction."
-                : "Unassigning a profile immediately removes every permission it grants once saved."} System profiles and inactive profiles cannot be changed here.
-            </div>
+                : "Unassigning a profile immediately removes every permission it grants once saved."} System profiles and inactive profiles cannot be changed here.`}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-2 lg:gap-6">
               {/* Available Profiles */}
@@ -265,11 +268,11 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                           onClick={() => toggleAvailablePick(p.id)}
                           onDoubleClick={() => moveToSelected([p.id])}
                           className={cn(
-                            "px-3 py-2.5 cursor-pointer transition-all text-[11px] hover:bg-emerald-50/50 flex items-center gap-2.5",
+                            "px-3 py-2.5 cursor-pointer transition-all text-2xs hover:bg-emerald-50/50 flex items-center gap-2.5",
                             pickedAvailableIds.includes(p.id) && "bg-emerald-50/80 font-medium",
                           )}
                         >
-                          <div className="h-6 w-6 rounded-md bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                          <div className="h-6 w-6 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
                             <IconUserKey className="h-3 w-3 text-emerald-600" />
                           </div>
                           <span className="font-medium text-slate-900 truncate min-w-0 flex-1">{p.name}</span>
@@ -297,7 +300,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                 <button
                   onClick={() => moveToAvailable(pickedSelectedIds)}
                   disabled={pickedSelectedIds.length === 0}
-                  className="p-2 sm:p-2.5 border border-slate-200 rounded-xl bg-white shadow-sm hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  className="p-2 sm:p-2.5 border border-slate-200 rounded-xl bg-white shadow-sm hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   title="Move to available"
                 >
                   <ChevronLeft className="h-5 w-5 rotate-90 lg:rotate-0" />
@@ -336,12 +339,12 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                             onDoubleClick={() => !locked && moveToAvailable([p.id])}
                             title={locked ? (p.system ? "System profiles cannot be modified." : "Inactive profiles cannot be changed here.") : undefined}
                             className={cn(
-                              "px-3 py-2.5 transition-all text-[11px] flex items-center gap-2.5",
+                              "px-3 py-2.5 transition-all text-2xs flex items-center gap-2.5",
                               locked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-white/80",
                               pickedSelectedIds.includes(p.id) && "bg-blue-50/80 font-medium",
                             )}
                           >
-                            <div className="h-6 w-6 rounded-md bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                            <div className="h-6 w-6 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
                               <IconUserKey className="h-3 w-3 text-emerald-600" />
                             </div>
                             <span className="font-medium text-slate-900 truncate min-w-0 flex-1">{p.name}</span>

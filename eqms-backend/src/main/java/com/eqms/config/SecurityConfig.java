@@ -70,6 +70,9 @@ public class SecurityConfig {
                                 "/branding",
                                 "/branding/logo",
                                 "/system/environment",
+                                // Maintenance window (SDS 11.5): the state is public; the actions need a Maintenance Pass checked in the controller
+                                "/system/maintenance-status",
+                                "/system/maintenance/**",
                                 "/localization",
                                 "/health",
                                 // Controlled-copy portal links authenticate with

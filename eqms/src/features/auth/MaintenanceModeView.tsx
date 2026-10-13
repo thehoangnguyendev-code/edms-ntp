@@ -1,8 +1,40 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BrandLogo } from '@/components/branding/BrandLogo';
+import { ROUTES } from '@/app/routes.constants';
+import { fetchMaintenanceStatus } from '@/features/maintenance/maintenanceStatus';
 
+/**
+ * Shown only when the administrator switches maintenance mode on (System Administration > Configuration > General), or when a
+ * restore window has run out and the system is drained or locked. It leaves by itself once the window is closed and the switch is
+ * off, so nobody has to reload it to get back in.
+ */
 export const MaintenanceModeView: React.FC = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      try {
+        const status = await fetchMaintenanceStatus();
+        if (!alive) return;
+        if (status.state === 'NORMAL' && !status.manual) {
+          navigate(ROUTES.LOGIN, { replace: true });
+          return;
+        }
+      } catch {
+        // keep showing the page; a failed read does not open the system
+      }
+      if (alive) timer = setTimeout(poll, 15000);
+    };
+    void poll();
+    return () => {
+      alive = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [navigate]);
+
   return (
     <div className="relative isolate flex min-h-screen min-h-dvh w-full flex-col items-center justify-center overflow-hidden bg-[#fefcff] px-6 py-12">
       {/* Background radial gradients matching AuthLayout */}

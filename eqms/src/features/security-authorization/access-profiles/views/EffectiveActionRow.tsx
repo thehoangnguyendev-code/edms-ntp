@@ -16,7 +16,7 @@ export const EffectiveActionRow: React.FC<EffectiveActionRowProps> = ({ row }) =
           <span className="text-xs font-semibold text-slate-800 sm:text-sm">{row.actionLabel}</span>
           <Badge color="blue" size="xs">{row.statusLabel}</Badge>
           {row.requiredPermissionCode && (
-            <span className="inline-flex min-w-0 items-center gap-1  text-[10px] leading-none text-slate-500 sm:text-xs">
+            <span className="inline-flex min-w-0 items-center gap-1  text-2xs leading-none text-slate-500 sm:text-xs">
               <KeyRound className="h-3.5 w-3.5 shrink-0 text-slate-400" />
               <span className="break-all">{row.requiredPermissionCode}</span>
             </span>
@@ -34,14 +34,14 @@ export const EffectiveActionRow: React.FC<EffectiveActionRowProps> = ({ row }) =
       </div>
 
       {!row.allowed && row.message && (
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] leading-relaxed text-slate-600 sm:text-xs">
+        <div className="mt-2 flex items-center gap-1.5 text-2xs leading-relaxed text-slate-600 sm:text-xs">
           <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
           <span>{row.message}</span>
         </div>
       )}
 
       {row.allowed && !row.objectAccessRuleEvaluated && (
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] leading-relaxed text-amber-700 sm:text-xs">
+        <div className="mt-2 flex items-center gap-1.5 text-2xs leading-relaxed text-amber-700 sm:text-xs">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           <span>Object Access Rules were not evaluated; a real document can still be restricted.</span>
         </div>

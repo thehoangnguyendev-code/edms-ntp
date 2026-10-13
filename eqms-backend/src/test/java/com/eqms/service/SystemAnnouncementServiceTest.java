@@ -168,7 +168,10 @@ class SystemAnnouncementServiceTest {
 
     @Test
     void createWritesAnAuditEntryWithTheActor() {
-        var created = service.create(valid());
+        // create() checks the window against the real clock, so this window is built from it, not from the fixed NOW above
+        Instant now = Instant.now();
+        var created = service.create(request("Maintenance", "The system will be unavailable from 22:00.", "WARNING",
+                now.plus(Duration.ofHours(1)), now.plus(Duration.ofHours(13)), null));
         assertEquals("Quality Admin", created.createdBy());
         verify(audit).logAs(eq(actor), eq("SYSTEM_ANNOUNCEMENT"), eq("Maintenance"), any(), eq("SYSTEM_ANNOUNCEMENT_CREATED"), eq(null), any(), any());
     }

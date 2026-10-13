@@ -210,10 +210,10 @@ export const PermissionSetDetailView: React.FC = () => {
             </div>
             <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto">
               {[
-                { icon: <Grid3X3 className="h-4 w-4 text-sky-600" />, label: "Modules", value: modules.length },
+                { icon: <Grid3X3 className="h-4 w-4 text-emerald-600" />, label: "Modules", value: modules.length },
                 { icon: <KeyRound className="h-4 w-4 text-emerald-600" />, label: "Permissions", value: permissionSet.permissionCount },
-                { icon: <ShieldCheck className="h-4 w-4 text-blue-500" />, label: "Access Profiles", value: assignedProfiles.length },
-                { icon: <Users className="h-4 w-4 text-purple-500" />, label: "Users", value: assignedUserCount },
+                { icon: <ShieldCheck className="h-4 w-4 text-emerald-600" />, label: "Access Profiles", value: assignedProfiles.length },
+                { icon: <Users className="h-4 w-4 text-emerald-600" />, label: "Users", value: assignedUserCount },
               ].map(({ icon, label, value }) => (
                 <div key={label} className="flex min-w-[112px] flex-col items-center rounded-xl border border-slate-200 bg-white/90 px-3 py-2.5 shadow-sm">
                   <div className="flex items-center gap-1.5">
@@ -244,31 +244,31 @@ export const PermissionSetDetailView: React.FC = () => {
               <FormSection title="Basic Information" icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Name</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Name</p>
                     <p className="text-sm font-semibold text-slate-900">{permissionSet.name}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Code</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Code</p>
                     <p className="text-sm text-slate-700">{permissionSet.code}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Type</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Type</p>
                     <Badge color={permissionSet.system ? "blue" : "slate"} size="sm">
                       {permissionSet.system ? "System" : "Custom"}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Status</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Status</p>
                     <Badge color={permissionSet.active ? "emerald" : "slate"} size="sm" >
                       {permissionSet.active ? "Active" : "Inactive"}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Category</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Category</p>
                     <p className="text-sm text-slate-700">{category}</p>
                   </div>
                   <div className="sm:col-span-2">
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Description</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Description</p>
                     <p className="text-sm text-slate-700 whitespace-pre-line">
                       {permissionSet.description || <span className="text-slate-400">No description provided.</span>}
                     </p>
@@ -279,19 +279,19 @@ export const PermissionSetDetailView: React.FC = () => {
               <FormSection title="Metadata" icon={<IconChartColumn className="h-4 w-4" />} contentClassName="p-4 md:p-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Created By</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Created By</p>
                     <p className="text-sm text-slate-700">—</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Created Date</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Created Date</p>
                     <p className="text-sm text-slate-700">{safeDate(permissionSet.createdAt)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Updated By</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Updated By</p>
                     <p className="text-sm text-slate-700">—</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Updated Date</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Updated Date</p>
                     <p className="text-sm text-slate-700">{safeDate(permissionSet.updatedAt)}</p>
                   </div>
                 </div>

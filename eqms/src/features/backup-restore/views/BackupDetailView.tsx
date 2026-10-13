@@ -11,10 +11,12 @@ import { DataTable } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
-import { backupRestoreApi, type BackupDetail } from "@/services/api/backupRestore";
+import { backupRestoreApi, type BackupDetail, type RestoreRehearsal } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupRestorePage } from "../components/BackupRestorePage";
 import { ExportBackupModal } from "../components/ExportBackupModal";
+import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { FormModal } from "@/components/ui/modal/FormModal";
 import { useBackupJobs } from "../components/useBackupJobs";
 import { BACKUP_STATUS_COLOR, COMPONENT_LABEL, VERIFICATION_COLOR, statusLabel } from "../types";
 import { formatBytes, formatDateTime, formatDuration } from "../format";
@@ -41,6 +43,11 @@ export const BackupDetailView: React.FC = () => {
   const { working, follow } = useBackupJobs(reload);
   const canVerify = hasPermission("backup.backup.verify");
   const canExport = hasPermission("backup.backup.export");
+  const canRehearse = hasPermission("backup.restore.test");
+  const [rehearsals, setRehearsals] = useState<RestoreRehearsal[]>([]);
+  const [rehearsing, setRehearsing] = useState(false);
+  const [rehearseReason, setRehearseReason] = useState("");
+  const [rehearseBusy, setRehearseBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
 
@@ -79,6 +86,32 @@ export const BackupDetailView: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    let live = true;
+    backupRestoreApi
+      .rehearsals({ backupId, sortBy: "requestedAt", sortDirection: "desc", limit: 10 })
+      .then((data) => live && setRehearsals(data.data))
+      .catch(() => live && setRehearsals([]));
+    return () => {
+      live = false;
+    };
+  }, [backupId, reloadKey]);
+
+  const requestRehearsal = async () => {
+    setRehearseBusy(true);
+    try {
+      const created = await backupRestoreApi.requestRehearsal(backupId, rehearseReason.trim());
+      showToast({ type: "success", title: "Test restore requested", message: `${created.rehearsalId} is queued.` });
+      setRehearsing(false);
+      setRehearseReason("");
+      reload();
+    } catch (e) {
+      showToast({ type: "error", title: "The test restore was not requested", message: exportErrorMessage(e, "The request was refused.") });
+    } finally {
+      setRehearseBusy(false);
+    }
+  };
+
   const parent = { label: "Backup History", path: ROUTES.BACKUP_RESTORE.BACKUPS };
   const back = () => navigate(ROUTES.BACKUP_RESTORE.BACKUPS);
 
@@ -105,6 +138,7 @@ export const BackupDetailView: React.FC = () => {
   const restorable = backup.status === "COMPLETED";
   const verified = backup.verification === "VERIFIED";
   const canRestore = restorable && verified;
+  const busyRehearsal = rehearsals.some((r) => r.status === "QUEUED" || r.status === "RUNNING");
 
   const actions = (
     <>
@@ -114,6 +148,11 @@ export const BackupDetailView: React.FC = () => {
       <Button variant="outline-emerald" size="sm" disabled={!restorable || !canVerify || working > 0} onClick={() => void verify()} className="whitespace-nowrap touch-manipulation">
         {working > 0 ? "Checking…" : "Verify Integrity"}
       </Button>
+      {canRehearse && (
+        <Button variant="outline-emerald" size="sm" disabled={!canRestore || busyRehearsal} onClick={() => setRehearsing(true)} className="whitespace-nowrap touch-manipulation">
+          Test Restore
+        </Button>
+      )}
       {canExport && (
         <Button variant="outline-emerald" size="sm" disabled={!canRestore} onClick={() => setExporting(true)} className="whitespace-nowrap touch-manipulation">
           Export Backup Set
@@ -247,7 +286,40 @@ export const BackupDetailView: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-3">{actions}</div>
+      <FormSection title="Restore Tests" icon={<IconHistory className="h-4 w-4" />} description="A test restore puts this backup into a scratch database, runs the checks and drops the database. Production is not changed.">
+        {rehearsals.length === 0 ? (
+          <p className="text-xs text-slate-500 lg:text-sm">No test restore has been run for this backup.</p>
+        ) : (
+          <DataTable
+            rows={rehearsals}
+            getRowKey={(row) => row.rehearsalId}
+            columns={[
+              { id: "id", header: "Test", cell: (row) => <span className="font-medium">{row.rehearsalId}</span> },
+              { id: "status", header: "Result", cell: (row) => <Badge color={row.status === "PASSED" ? "emerald" : row.status === "FAILED" ? "red" : "amber"}>{statusLabel(row.status)}</Badge> },
+              { id: "checks", header: "Checks", cell: (row) => (row.checkCount > 0 ? `${row.checkCount - row.failedCount} of ${row.checkCount} passed` : "—") },
+              { id: "error", header: "Problem", cell: (row) => (row.errorCode ? <span className="font-mono text-xs">{row.errorCode}</span> : "—") },
+              { id: "by", header: "Requested by", cell: (row) => row.requestedBy },
+              { id: "at", header: "Requested", cell: (row) => formatDateTime(row.requestedAt) },
+              { id: "took", header: "Restore time", cell: (row) => (row.restoreSeconds == null ? "—" : `${row.restoreSeconds} s`) },
+            ]}
+          />
+        )}
+      </FormSection>
+
       <ExportBackupModal backupId={backupId} isOpen={exporting} busy={exportBusy} onClose={() => setExporting(false)} onConfirm={(mediaId, reason) => void requestExport(mediaId, reason)} />
+      <FormModal
+        isOpen={rehearsing}
+        onClose={() => setRehearsing(false)}
+        title="Test Restore"
+        description={`Restore ${backupId} into a scratch database and run the checks. Production is not changed; the scratch database is dropped afterwards.`}
+        confirmText={rehearseBusy ? "Requesting…" : "Start Test"}
+        confirmDisabled={!rehearseReason.trim() || rehearseBusy}
+        onConfirm={() => void requestRehearsal()}
+      >
+        <FormField label="Reason" required hint="For example: annual restore test for the validation report.">
+          <Textarea rows={3} value={rehearseReason} maxLength={500} onChange={(event) => setRehearseReason(event.target.value)} />
+        </FormField>
+      </FormModal>
     </BackupRestorePage>
   );
 };

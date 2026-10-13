@@ -4,7 +4,7 @@ import { IconFilter2 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
-import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn, type DataTableSelection } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -61,6 +61,10 @@ interface Props<T> {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   pageSizeOptions?: number[];
+  /** Row selection column (for example a checkbox), passed to the table as is. */
+  selection?: DataTableSelection<T>;
+  onRowClick?: (row: T, index: number) => void;
+  rowClassName?: string | ((row: T, index: number) => string);
 }
 
 /**
@@ -72,6 +76,7 @@ export function ServerListPanel<T>({
   tableKey, columns, action, rows, getRowKey, loading, hasLoaded, error, emptyTitle, emptyDescription,
   search, onSearch, searchLabel, searchPlaceholder, filters, dates = [], onClear,
   page, totalPages, totalItems, pageSize, onPageChange, onPageSizeChange, pageSizeOptions = [10, 20, 50],
+  selection, onRowClick, rowClassName,
 }: Props<T>) {
   const { layout, control } = useCustomColumnLayout(tableKey, columns, action);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -209,6 +214,9 @@ export function ServerListPanel<T>({
               columns={layout.columns}
               columnLayout={layout}
               action={action}
+              selection={selection}
+              onRowClick={onRowClick}
+              rowClassName={rowClassName}
               isLoading={loading}
               emptyState={<TableEmptyState title={error ? `Unable to load: ${emptyTitle.toLowerCase()}` : emptyTitle} description={error || emptyDescription} />}
               pagination={

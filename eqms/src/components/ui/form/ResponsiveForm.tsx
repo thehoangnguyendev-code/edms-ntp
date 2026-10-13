@@ -74,11 +74,11 @@ export const FormField: React.FC<FormFieldProps> = ({
       <label
         htmlFor={controlId}
         className={cn(
-          'block text-slate-700 font-medium mb-2',
+          'block text-slate-700 font-medium mb-1.5',
           // Responsive font size
-          'text-sm md:text-base',
+          'text-xs sm:text-sm',
           // Horizontal layout
-          layout === 'horizontal' && 'md:w-1/3 md:pt-3 md:mb-0 md:text-right',
+          layout === 'horizontal' && 'md:w-1/3 md:pt-2 md:mb-0 md:text-right',
         )}
       >
         {label}
@@ -88,10 +88,10 @@ export const FormField: React.FC<FormFieldProps> = ({
       <div className={cn('flex-1', layout === 'horizontal' && 'md:w-2/3')}>
         {enhancedChildren}
         {hint && !error && (
-          <p id={hintId} className="mt-1.5 text-xs md:text-sm text-slate-500">{hint}</p>
+          <p id={hintId} className="mt-1 text-2xs sm:text-xs text-slate-500">{hint}</p>
         )}
         {error && (
-          <p id={errorId} className="mt-1.5 text-xs md:text-sm text-red-600 flex items-center gap-1">
+          <p id={errorId} className="mt-1 text-2xs sm:text-xs text-red-600 flex items-center gap-1">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {error}
           </p>
         )}
@@ -117,8 +117,8 @@ export const Input: React.FC<InputProps> = ({
       className={cn(
         'h-9 rounded-lg border transition-all',
         // Responsive padding and font
-        'px-3 md:px-4',
-        'text-sm md:text-base',
+        'px-3',
+        'text-sm',
         // Width
         fullWidth ? 'w-full' : 'w-auto',
         // States
@@ -153,8 +153,8 @@ export const Textarea: React.FC<TextareaProps> = ({
       className={cn(
         'rounded-lg border transition-all resize-none',
         // Responsive padding and font
-        'px-3 py-2 md:px-4 md:py-3',
-        'text-sm md:text-base',
+        'px-3 py-2',
+        'text-sm',
         // Width
         fullWidth ? 'w-full' : 'w-auto',
         // States

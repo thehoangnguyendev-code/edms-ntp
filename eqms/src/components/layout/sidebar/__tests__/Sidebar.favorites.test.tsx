@@ -1,5 +1,5 @@
 import React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
@@ -100,6 +100,30 @@ describe("Sidebar favourites", () => {
 });
 
 describe("Collapsed sidebar", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("toggles a flyout favourite without navigating or closing the menu", async () => {
+    vi.stubGlobal("ResizeObserver", class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
+    const onNavigate = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <Sidebar isCollapsed activeId="dashboard" onNavigate={onNavigate} isMobileOpen={false} onClose={vi.fn()} onToggleSidebar={vi.fn()} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /^Self-Service/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add Knowledge to favourites" }));
+    expect(prefs.save).toHaveBeenLastCalledWith("sidebar-favorites", { ids: ["knowledge-base"] });
+    expect(screen.getByRole("button", { name: "Remove Knowledge from favourites" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^Dashboard/ })).toBeInTheDocument();
+    expect(onNavigate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Remove Knowledge from favourites" }));
+    expect(prefs.save).toHaveBeenLastCalledWith("sidebar-favorites", { ids: [] });
+  });
+
   it("fills the icon of the top-level menu that holds the current screen, and only that one", async () => {
     render(
       <MemoryRouter initialEntries={["/dashboard"]}>

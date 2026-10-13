@@ -38,7 +38,7 @@ class AuthSignatureCredentialsTest {
         actor.setPasswordHash("hash");
         when(current.requireCurrentUser()).thenReturn(actor);
         service = new AuthService(null, null, null, null, null, null, null, null,
-                tokens, null, passwords, audit, null, current, null, null, null, null, null,
+                tokens, null, passwords, audit, null, current, null, null, null, null, null, null,
                 15, 1, 5, 5);
     }
 

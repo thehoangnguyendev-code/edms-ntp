@@ -1,4 +1,5 @@
 import React from 'react';
+import { TimePicker } from '@/components/ui/datetime-picker/TimePicker';
 import { AlarmClock, Siren } from 'lucide-react';
 import { FormSection } from '@/components/ui/form/FormSection';
 import { Select } from '@/components/ui/select/Select';
@@ -51,26 +52,8 @@ export const DeliveryTab: React.FC<DeliveryTabProps> = ({
     <FormSection title="Digest & Quiet Hours" icon={<AlarmClock className="h-4 w-4" />} contentClassName="p-4 md:p-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Select label="Digest Mode" value={digestMode} onChange={(v) => onDigestModeChange(v as DigestMode)} options={DIGEST_OPTIONS} disabled={readOnly} />
-        <div>
-          <label className={labelClass}>Quiet Hours Start</label>
-          <input
-            type="time"
-            value={quietHoursStart}
-            onChange={(e) => onQuietHoursStartChange(e.target.value)}
-            disabled={readOnly}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Quiet Hours End</label>
-          <input
-            type="time"
-            value={quietHoursEnd}
-            onChange={(e) => onQuietHoursEndChange(e.target.value)}
-            disabled={readOnly}
-            className={inputClass}
-          />
-        </div>
+        <TimePicker label="Quiet Hours Start" value={quietHoursStart} onChange={onQuietHoursStartChange} disabled={readOnly} />
+        <TimePicker label="Quiet Hours End" value={quietHoursEnd} onChange={onQuietHoursEndChange} disabled={readOnly} />
       </div>
     </FormSection>
 

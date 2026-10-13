@@ -97,7 +97,7 @@ export const SimulatorTab: React.FC = () => {
                 <p className="truncate text-xs text-slate-500">{[actor.email, actor.employeeCode, actor.department].filter(Boolean).join(" · ")}</p>
               </div>
               <Button size="sm" variant="outline" onClick={() => setIsActorPickerOpen(true)}>Change</Button>
-              <button type="button" onClick={() => { setActor(null); setActorId(""); }} className="rounded-md p-1 text-slate-400 transition hover:bg-white hover:text-slate-600" aria-label="Clear selected actor"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => { setActor(null); setActorId(""); }} className="rounded-lg p-1 text-slate-400 transition hover:bg-white hover:text-slate-600" aria-label="Clear selected actor"><X className="h-4 w-4" /></button>
             </div>
           ) : (
             <button type="button" onClick={() => setIsActorPickerOpen(true)} className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40 focus:outline-none focus:ring-1 focus:ring-emerald-500">
@@ -209,7 +209,7 @@ export const SimulatorTab: React.FC = () => {
                 <p className="font-medium text-slate-500 uppercase text-2xs mb-1.5">Required Controls</p>
                 <div className="flex flex-wrap gap-1">
                   {Object.entries(decision.requiredControls).map(([key, value]) => (
-                    <span key={key} className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5  text-2xs text-slate-600">
+                    <span key={key} className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-2xs text-slate-600">
                       {key}={String(value)}
                     </span>
                   ))}

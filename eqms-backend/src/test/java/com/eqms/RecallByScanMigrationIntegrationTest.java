@@ -39,7 +39,9 @@ class RecallByScanMigrationIntegrationTest {
 
     private static final List<String> DCO_AND_ADMINISTRATOR_SETS = List.of(
             "PS_DCO_TEST", "PS_DOCUMENT_DCO", "PS_UAT_DOCUMENT_DCO", "PS_DOCUMENT_VIEW_ALL",
-            "ROLE_DCO", "ROLE_ADMINISTRATOR", "ROLE_DOCUMENT_CONTROLLER", "SYSTEM_ADMINISTRATION");
+            "ROLE_DCO", "ROLE_ADMINISTRATOR", "ROLE_DOCUMENT_CONTROLLER", "SYSTEM_ADMINISTRATION",
+            // a copy of System Administration without the maintenance bypass (created on DEV for the administration account)
+            "ADMIN_NO_BYPASS_SET");
 
     @Test
     void document_and_controlled_copy_blanket_visibility_is_held_only_by_dco_and_administrator_sets() {
@@ -64,7 +66,7 @@ class RecallByScanMigrationIntegrationTest {
                 join permission_set_items i on i.permission_set_id = ps.id
                 join permissions p on p.id = i.permission_id
                 where p.code in ('documents.document.view_all', 'documents.controlled_copy.view_all', 'documents.uncontrolled_copy.view_all')
-                  and ps.code in (?, ?, ?, ?, ?, ?, ?, ?)
+                  and ps.code in (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 group by ps.code
                 having count(distinct p.code) < 3
                 """, String.class, DCO_AND_ADMINISTRATOR_SETS.toArray());
@@ -83,7 +85,7 @@ class RecallByScanMigrationIntegrationTest {
                 join permission_set_items i on i.permission_set_id = ps.id
                 join permissions p on p.id = i.permission_id
                 where p.code = 'documents.uncontrolled_copy.view_all'
-                  and ps.code not in (?, ?, ?, ?, ?, ?, ?, ?)
+                  and ps.code not in (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, String.class, DCO_AND_ADMINISTRATOR_SETS.toArray());
 
         for (String code : others) {

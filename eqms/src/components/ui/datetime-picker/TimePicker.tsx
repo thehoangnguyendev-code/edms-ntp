@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Clock, ChevronDown } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronDown, Clock } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { cn } from '../utils';
 import { Button } from '../button/Button';
 
@@ -18,147 +18,199 @@ export interface TimePickerProps {
   disabled?: boolean;
 }
 
+interface Draft {
+  hour: number | null;
+  minute: number | null;
+}
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+/** Minutes offered as quick picks; a typed minute can still be any value. */
+const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+const MARGIN = 12;
+const GAP = 8;
+
+const parseTime = (value: string): Draft => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value ?? '');
+  if (!match) return { hour: null, minute: null };
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return { hour: null, minute: null };
+  return { hour, minute };
+};
+
+const pad = (n: number | null) => (n === null ? '--' : String(n).padStart(2, '0'));
+
+/** What a typed field reads as: at most two digits, capped at the largest valid value; an empty field is no value yet. */
+const fromInput = (raw: string, max: number): number | null => {
+  const digits = raw.replace(/\D/g, '').slice(0, 2);
+  if (!digits) return null;
+  return Math.min(Number(digits), max);
+};
+
+const TimeField: React.FC<{ label: string; value: number | null; max: number; onChange: (next: number | null) => void; onEnter: () => void }> = ({
+  label, value, max, onChange, onEnter,
+}) => (
+  <div className="flex flex-col items-center gap-1.5">
+    <input
+      aria-label={label}
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      maxLength={2}
+      value={pad(value)}
+      onFocus={(event) => event.target.select()}
+      onChange={(event) => onChange(fromInput(event.target.value, max))}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          onEnter();
+        }
+      }}
+      className="h-12 w-16 rounded-xl border border-slate-200 bg-white text-center text-2xl font-semibold tabular-nums text-slate-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+    />
+    <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+  </div>
+);
+
+const ChoiceGrid: React.FC<{ label: string; unit: string; options: number[]; selected: number | null; columns: string; onPick: (n: number) => void }> = ({
+  label, unit, options, selected, columns, onPick,
+}) => (
+  <div>
+    <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+    <div role="group" aria-label={label} className={cn('grid gap-1', columns)}>
+      {options.map((n) => (
+        <button
+          key={n}
+          type="button"
+          aria-pressed={selected === n}
+          aria-label={`${pad(n)} ${unit}`}
+          onClick={() => onPick(n)}
+          className={cn(
+            'h-9 rounded-lg text-xs font-medium tabular-nums transition-colors md:h-8',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+            selected === n ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-700 hover:bg-emerald-50 hover:text-emerald-700',
+          )}
+        >
+          {pad(n)}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
 export const TimePicker: React.FC<TimePickerProps> = ({
   label,
   value,
   onChange,
-  placeholder = "Select time",
+  placeholder = 'Select time',
   disabled = false,
 }) => {
-  const pickerIdRef = useRef(`time-picker-${Math.random().toString(36).slice(2, 11)}`);
-  const pickerId = pickerIdRef.current;
+  const pickerId = useId();
+  const reduceMotion = useReducedMotion();
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Internal state for hours and minutes
-  const [hours, setHours] = useState<number>(() => {
-    if (!value) return 0;
-    const [h] = value.split(':');
-    return parseInt(h) || 0;
-  });
-  const [minutes, setMinutes] = useState<number>(() => {
-    if (!value) return 0;
-    const [, m] = value.split(':');
-    return parseInt(m) || 0;
-  });
-
+  // The choice being made. It reaches `value` only on "Set time", so Cancel, Escape or a click outside leave the value alone.
+  const [draft, setDraft] = useState<Draft>(() => parseTime(value));
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({ opacity: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({ opacity: 0 });
 
-  // Sync internal state with external value
-  useEffect(() => {
-    if (value) {
-      const [h, m] = value.split(':');
-      setHours(parseInt(h) || 0);
-      setMinutes(parseInt(m) || 0);
-    }
-  }, [value]);
+  const open = () => {
+    if (disabled) return;
+    window.dispatchEvent(new CustomEvent('select-dropdown-open', { detail: { openId: pickerId } }));
+    setDraft(parseTime(value));
+    setIsOpen(true);
+  };
 
-  // Close sibling dropdowns
+  const close = useCallback((restoreFocus = true) => {
+    setIsOpen(false);
+    if (restoreFocus) triggerRef.current?.focus();
+  }, []);
+
+  // Only one picker is open at a time.
   useEffect(() => {
-    const handleCloseOthers = (event: CustomEvent<{ openId: string }>) => {
-      if (event.detail.openId !== pickerId && isOpen) setIsOpen(false);
+    const closeIfOther = (event: Event) => {
+      const { openId } = (event as CustomEvent<{ openId: string }>).detail;
+      if (openId !== pickerId) setIsOpen(false);
     };
-    window.addEventListener('select-dropdown-open' as any, handleCloseOthers);
-    return () => window.removeEventListener('select-dropdown-open' as any, handleCloseOthers);
-  }, [pickerId, isOpen]);
+    window.addEventListener('select-dropdown-open', closeIfOther);
+    return () => window.removeEventListener('select-dropdown-open', closeIfOther);
+  }, [pickerId]);
 
-  // Popover positioning
+  // Place the panel beside the trigger, above it when there is more room there, and never past the viewport edges.
   useLayoutEffect(() => {
-    if (!isOpen || !triggerRef.current) return;
-    const updatePosition = () => {
-      if (!triggerRef.current) return;
-      const rect = triggerRef.current.getBoundingClientRect();
-      const { innerWidth: sw, innerHeight: sh } = window;
-      const popoverWidth = 200;
-      const popoverHeight = 160;
-      
-      let left = rect.left;
-      if (left + popoverWidth > sw - 20) left = sw - popoverWidth - 20;
-      if (left < 20) left = 20;
-      
-      const spaceBelow = sh - rect.bottom - 8;
-      const spaceAbove = rect.top - 8;
-      
-      const style: React.CSSProperties = { position: 'fixed', zIndex: 9999, opacity: 1, left };
-      
-      if (spaceBelow < popoverHeight && spaceAbove > spaceBelow) {
-        style.bottom = sh - rect.top + 8;
+    if (!isOpen) return undefined;
+    const place = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const { innerWidth: screenWidth, innerHeight: screenHeight } = window;
+      const width = popoverRef.current?.offsetWidth || 288;
+      const height = popoverRef.current?.offsetHeight || 360;
+      const left = Math.min(Math.max(rect.left, MARGIN), screenWidth - width - MARGIN);
+      const spaceBelow = screenHeight - rect.bottom - GAP;
+      const spaceAbove = rect.top - GAP;
+      const style: React.CSSProperties = { position: 'fixed', zIndex: 9999, opacity: 1, left, width, maxHeight: `calc(100dvh - ${MARGIN * 2}px)` };
+      if (spaceBelow < height && spaceAbove > spaceBelow) {
+        style.bottom = screenHeight - rect.top + GAP;
         style.top = 'auto';
       } else {
-        style.top = rect.bottom + 8;
+        style.top = rect.bottom + GAP;
         style.bottom = 'auto';
       }
       setPopoverStyle(style);
     };
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
     return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
     };
   }, [isOpen]);
 
-  // Click-outside + Escape
+  // Click outside and Escape close the panel.
   useEffect(() => {
-    if (!isOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
-        triggerRef.current && !triggerRef.current.contains(e.target as Node)
-      ) setIsOpen(false);
+    if (!isOpen) return undefined;
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (popoverRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      setIsOpen(false);
     };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setIsOpen(false); triggerRef.current?.focus(); }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, close]);
 
-  const handleApply = () => {
-    const hh = String(hours).padStart(2, '0');
-    const mm = String(minutes).padStart(2, '0');
-    onChange(`${hh}:${mm}`);
-    setIsOpen(false);
-    triggerRef.current?.focus();
+  const { hour, minute } = draft;
+  const complete = hour !== null && minute !== null;
+
+  const apply = () => {
+    if (hour === null || minute === null) return;
+    onChange(`${pad(hour)}:${pad(minute)}`);
+    close();
   };
 
-  const handleClear = () => {
+  const clear = () => {
     onChange('');
-    setHours(0);
-    setMinutes(0);
-    setIsOpen(false);
-    triggerRef.current?.focus();
+    setDraft({ hour: null, minute: null });
+    close();
   };
 
-  const handleHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, '').slice(0, 2);
-    if (val === '') { setHours(0); return; }
-    let h = parseInt(val);
-    if (h > 23) h = 23;
-    setHours(h);
-  };
-
-  const handleMinuteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, '').slice(0, 2);
-    if (val === '') { setMinutes(0); return; }
-    let m = parseInt(val);
-    if (m > 59) m = 59;
-    setMinutes(m);
+  const useNow = () => {
+    const now = new Date();
+    setDraft({ hour: now.getHours(), minute: now.getMinutes() });
   };
 
   return (
     <div className="relative w-full">
       {label && (
-        <label
-          htmlFor={`${pickerId}-trigger`}
-          className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block"
-        >
+        <label htmlFor={`${pickerId}-trigger`} className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">
           {label}
         </label>
       )}
@@ -167,35 +219,26 @@ export const TimePicker: React.FC<TimePickerProps> = ({
         ref={triggerRef}
         id={`${pickerId}-trigger`}
         type="button"
+        aria-haspopup="dialog"
         aria-expanded={isOpen}
-        onClick={() => {
-          if (disabled) return;
-          if (!isOpen) {
-            window.dispatchEvent(new CustomEvent('select-dropdown-open', { detail: { openId: pickerId } }));
-          }
-          setIsOpen(prev => !prev);
-        }}
         disabled={disabled}
+        onClick={() => (isOpen ? close(false) : open())}
         className={cn(
-          'flex items-center justify-between gap-2 w-full px-3 py-2 h-9 rounded-lg text-sm transition-colors focus:outline-none',
-          'border bg-white',
+          'flex h-9 w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 text-left text-sm transition-colors focus:outline-none',
           disabled
-            ? 'bg-slate-100 cursor-default border-slate-200 text-slate-600'
+            ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500'
             : isOpen
-              ? 'ring-1 ring-emerald-500 border-emerald-500'
-              : 'border-slate-200 hover:border-slate-300 focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:border-emerald-500'
+              ? 'border-emerald-500 ring-1 ring-emerald-500'
+              : 'border-slate-200 hover:border-slate-300 focus-visible:border-emerald-500 focus-visible:ring-1 focus-visible:ring-emerald-500',
         )}
       >
-        <div className="flex items-center gap-2 min-w-0 truncate">
-          <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-          <span className={cn("truncate", !value ? "text-slate-400" : (disabled ? "text-slate-600" : "text-slate-700"))}>
+        <span className="flex min-w-0 items-center gap-2">
+          <Clock className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+          <span className={cn('truncate tabular-nums', !value ? 'text-slate-400' : disabled ? 'text-slate-500' : 'text-slate-900')}>
             {value || placeholder}
           </span>
-        </div>
-        <ChevronDown className={cn(
-          'h-4 w-4 text-slate-400 shrink-0 transition-transform duration-200',
-          isOpen && 'rotate-180'
-        )} />
+        </span>
+        <ChevronDown className={cn('h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200', isOpen && 'rotate-180')} aria-hidden="true" />
       </button>
 
       {createPortal(
@@ -204,66 +247,56 @@ export const TimePicker: React.FC<TimePickerProps> = ({
             <motion.div
               ref={popoverRef}
               role="dialog"
-              initial={{ opacity: 0, y: popoverStyle.top === 'auto' ? 10 : -10, scale: 0.98 }}
+              aria-label="Choose time"
+              initial={reduceMotion ? false : { opacity: 0, y: popoverStyle.top === 'auto' ? 10 : -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: popoverStyle.top === 'auto' ? 10 : -10, scale: 0.98 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.85 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: popoverStyle.top === 'auto' ? 10 : -10, scale: 0.98 }}
+              transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34, mass: 0.85 }}
               style={popoverStyle}
-              className="bg-white rounded-xl shadow-[0_20px_60px_rgba(15,23,42,0.14)] border border-slate-200 overflow-hidden flex flex-col w-[200px] focus:outline-none"
+              className="flex flex-col overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl"
             >
-              <div className="p-4 bg-slate-50/30">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 relative group">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={2}
-                      value={String(hours).padStart(2, '0')}
-                      onChange={handleHourChange}
-                      onFocus={(e) => e.target.select()}
-                      className="w-full h-10 text-center border border-slate-200 rounded-lg text-base font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
-                    />
-                    <span className="absolute right-1.5 top-1 -translate-y-0 text-[8px] text-slate-400 font-bold pointer-events-none uppercase">H</span>
-                  </div>
-
-                  <span className="text-slate-400 font-bold">:</span>
-
-                  <div className="flex-1 relative group">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={2}
-                      value={String(minutes).padStart(2, '0')}
-                      onChange={handleMinuteChange}
-                      onFocus={(e) => e.target.select()}
-                      className="w-full h-10 text-center border border-slate-200 rounded-lg text-base font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
-                    />
-                    <span className="absolute right-1.5 top-1 -translate-y-0 text-[8px] text-slate-400 font-bold pointer-events-none uppercase">M</span>
-                  </div>
-                </div>
+              <div className="flex items-start justify-center gap-3 px-4 pb-3 pt-4">
+                <TimeField label="Hour" value={hour} max={23} onChange={(next) => setDraft((d) => ({ ...d, hour: next }))} onEnter={apply} />
+                <span aria-hidden="true" className="pt-2.5 text-2xl font-semibold text-slate-300">:</span>
+                <TimeField label="Minute" value={minute} max={59} onChange={(next) => setDraft((d) => ({ ...d, minute: next }))} onEnter={apply} />
               </div>
 
-              <div className="border-t border-slate-100 p-2 px-3 flex items-center justify-between gap-2 bg-white">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClear}
-                  className="text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 h-8"
-                >
+              <div className="space-y-3 border-t border-slate-100 px-4 py-3">
+                <ChoiceGrid
+                  label="Hour"
+                  unit="hours"
+                  options={HOURS}
+                  selected={hour}
+                  columns="grid-cols-6"
+                  onPick={(next) => setDraft((d) => ({ ...d, hour: next }))}
+                />
+                <ChoiceGrid
+                  label="Minute"
+                  unit="minutes"
+                  options={MINUTES}
+                  selected={minute}
+                  columns="grid-cols-4"
+                  onPick={(next) => setDraft((d) => ({ ...d, minute: next }))}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                <Button variant="ghost" size="sm" onClick={clear} className="text-slate-500 hover:bg-rose-50 hover:text-rose-600">
                   Clear
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleApply}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-4 text-xs"
-                >
-                  Set Time
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={useNow}>
+                    Now
+                  </Button>
+                  <Button size="sm" onClick={apply} disabled={!complete} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                    Set time
+                  </Button>
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>,
-        document.body
+        document.body,
       )}
     </div>
   );

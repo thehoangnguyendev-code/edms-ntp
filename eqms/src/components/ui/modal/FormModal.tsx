@@ -110,6 +110,8 @@ export const FormModal: React.FC<FormModalProps> = ({
 
     const focusTimeout = setTimeout(() => {
       if (!modalRef.current) return;
+      // Do not take focus back from a field the person has already moved to inside the dialog.
+      if (modalRef.current.contains(document.activeElement)) return;
 
       const firstFocusable = modalRef.current.querySelector<HTMLElement>(
         'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])'

@@ -6,7 +6,6 @@ import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { backupRestore } from "@/components/ui/breadcrumb/breadcrumbs/core";
 import { BackupSchedulesView } from "../views/BackupSchedulesView";
 import { BackupVerificationResultsView } from "../views/BackupVerificationResultsView";
-import { RestoreApprovalQueueView } from "../views/RestoreApprovalQueueView";
 import { RestoreHistoryView } from "../views/RestoreHistoryView";
 import { RestoreVerificationReportsView } from "../views/RestoreVerificationReportsView";
 import { RestoreRequestsView } from "../views/RestoreRequestsView";
@@ -15,7 +14,7 @@ import { BackupsView } from "../views/BackupsView";
 vi.mock("@/services/api/backupRestore", async () => {
   const actual = await vi.importActual<typeof import("@/services/api/backupRestore")>("@/services/api/backupRestore");
   const empty = { data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 1 } };
-  return { ...actual, backupRestoreApi: { list: async () => empty, scheduleRows: async () => empty, schedules: async () => ({ version: 1, status: "ACTIVE", scope: "{}", retention: "{}", targets: "{}", schedule: "{}", nextDue: null, zone: "UTC", lastScheduledRun: null }) } };
+  return { ...actual, backupRestoreApi: { list: async () => empty, restoreRequests: async () => empty, rehearsals: async () => empty, scheduleRows: async () => empty, schedules: async () => ({ version: 1, status: "ACTIVE", scope: "{}", retention: "{}", targets: "{}", schedule: "{}", nextDue: null, zone: "UTC", lastScheduledRun: null }) } };
 });
 vi.mock("@/components/branding/BrandLogo", () => ({ useBranding: () => ({ compactDesktopFilters: false }) }));
 vi.mock("@/components/ui/table/useTableColumnPreferences", async () => {
@@ -39,7 +38,6 @@ it.each([
   ["Backup Schedules", "Backup", <BackupSchedulesView />],
   ["Backup Verification Results", "Backup", <BackupVerificationResultsView />],
   ["Backup History", "Backup", <BackupsView />],
-  ["Restore Approval Queue", "Restore", <RestoreApprovalQueueView />],
   ["Restore Verification Reports", "Restore", <RestoreVerificationReportsView />],
   ["Restore History & Evidence", "Restore", <RestoreHistoryView />],
   ["Restore Requests", "Restore", <RestoreRequestsView />],

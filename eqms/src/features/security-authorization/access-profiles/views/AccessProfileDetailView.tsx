@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ShieldCheck, Users, KeyRound, Building2, Factory } from "lucide-react";
@@ -309,10 +310,10 @@ export const AccessProfileDetailView: React.FC = () => {
     if (!profile) return [];
     return [
       { icon: <KeyRound className="h-4 w-4 text-emerald-600" />, value: profile.permissionSets.length, label: "Permission Sets" },
-      { icon: <IconArrowsShuffle className="h-4 w-4 text-blue-500" />, value: profile.workflowRoles.length, label: "Workflow Eligibility" },
-      { icon: <Users className="h-4 w-4 text-purple-500" />, value: profile.assignedUsers.length, label: "Assigned Users" },
-      { icon: <Building2 className="h-4 w-4 text-sky-600" />, value: parseScopeCount(profile.businessUnitScope), label: "Business Units" },
-      { icon: <Factory className="h-4 w-4 text-indigo-600" />, value: parseScopeCount(profile.departmentScope), label: "Departments" },
+      { icon: <IconArrowsShuffle className="h-4 w-4 text-emerald-600" />, value: profile.workflowRoles.length, label: "Workflow Eligibility" },
+      { icon: <Users className="h-4 w-4 text-emerald-600" />, value: profile.assignedUsers.length, label: "Assigned Users" },
+      { icon: <Building2 className="h-4 w-4 text-emerald-600" />, value: parseScopeCount(profile.businessUnitScope), label: "Business Units" },
+      { icon: <Factory className="h-4 w-4 text-emerald-600" />, value: parseScopeCount(profile.departmentScope), label: "Departments" },
     ];
   }, [profile]);
 
@@ -442,10 +443,10 @@ export const AccessProfileDetailView: React.FC = () => {
       )}
 
       {isEditing && !isNew && hasChanges && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
+        <WarningBanner variant="warning">
           Unsaved changes: {generalDirty ? "general information; " : ""}{managedDirty ? "direct permissions; " : ""}{assignmentsDirty ? "assignments; " : ""}
           click <b>Save</b> to review and confirm all changes with one electronic signature.
-        </div>
+        </WarningBanner>
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1">

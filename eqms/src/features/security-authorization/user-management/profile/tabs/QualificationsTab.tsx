@@ -209,14 +209,14 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
         title="Professional Expertise"
         icon={<Briefcase className="h-4 w-4" />}
       >
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
           <EditableField
             label="Professional Level" value={user.professionalLevel} draftValue={draft.professionalLevel}
             isEditing={isEditing}
             field={{ type: "text", fieldKey: "professionalLevel" }}
             onChange={onDraftChange}
             placeholder="e.g. Senior, Specialist, Manager"
-            className="col-span-2"
+            className="sm:col-span-2"
             error={fieldErrors.professionalLevel}
             />
           <EditableField
@@ -225,7 +225,7 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
             field={{ type: "text", fieldKey: "areaOfExpertise" }}
             onChange={onDraftChange}
             placeholder="e.g. Quality Assurance, Document Control"
-            className="col-span-2"
+            className="sm:col-span-2"
             error={fieldErrors.areaOfExpertise}
             />
           <EditableField
@@ -323,7 +323,7 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
                                 <span className={cn("font-medium", isExpired ? "text-rose-600" : "text-slate-700")}>
                                   {formatDate(cert.expiryDate)}
                                 </span>
-                                {isExpired && <span className="text-[12px] font-semibold text-rose-500 tracking-tight">Expired</span>}
+                                {isExpired && <span className="text-xs font-semibold text-rose-500 tracking-tight">Expired</span>}
                               </div>
                             ) : (
                               <span className="text-slate-400 italic">-</span>

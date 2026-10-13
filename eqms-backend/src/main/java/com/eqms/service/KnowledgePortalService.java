@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 public class KnowledgePortalService {
 
     static final String NO_VALUE_KEY = "__none__";
+    static final int MAX_PAGE_SIZE = 100;
     private static final String MANAGE = "documents.admin.knowledge_categories.manage";
 
     private final DocumentService documentService;
@@ -130,11 +131,13 @@ public class KnowledgePortalService {
     // ---- browse ---------------------------------------------------------------------------
 
     @Transactional(readOnly = true)
-    public BrowseResult browse(UUID hierarchyId, String kb, List<String> path) {
+    public BrowseResult browse(UUID hierarchyId, String kb, List<String> path, int page, int limit, String sortBy, String sortDirection) {
         UserAccount user = currentUserService.requireCurrentUser();
+        int pageSize = Math.max(1, Math.min(limit, MAX_PAGE_SIZE));
+        int pageNumber = Math.max(1, page);
         KnowledgeCategoryHierarchy hierarchy = pickHierarchy(hierarchyRepository.findAllByActiveTrueOrderByNameAsc(), hierarchyId);
         if (hierarchy == null || !StringUtils.hasText(kb)) {
-            return new BrowseResult(List.of(), null, List.of(), List.of());
+            return new BrowseResult(List.of(), null, List.of(), List.of(), 0, pageNumber, pageSize);
         }
         List<KnowledgeCategoryLevel> levels = hierarchy.getLevels();
         List<String> chosen = path == null ? List.of() : path.stream().filter(StringUtils::hasText).toList();
@@ -173,16 +176,40 @@ public class KnowledgePortalService {
             List<Folder> folders = counts.entrySet().stream()
                     .map(e -> new Folder(e.getKey(), labels.get(e.getKey()), e.getValue()[0]))
                     .sorted(Comparator.comparing(Folder::label, String.CASE_INSENSITIVE_ORDER)).toList();
-            return new BrowseResult(crumbs, componentService.nameOf(next.name()), folders, List.of());
+            return new BrowseResult(crumbs, componentService.nameOf(next.name()), folders, List.of(), 0, pageNumber, pageSize);
         }
 
         Map<UUID, KnowledgeEntry> byId = matching.stream().collect(Collectors.toMap(e -> e.document().getId(), e -> e, (a, b) -> a));
         Map<UUID, long[]> stats = stats(byId.keySet(), user);
-        List<PortalDocument> documents = matching.stream()
-                .sorted(Comparator.comparing((KnowledgeEntry e) -> Objects.toString(e.document().getDocumentName(), ""), String.CASE_INSENSITIVE_ORDER))
-                .map(e -> portalDocument(e, stats.get(e.document().getId())))
+        List<PortalDocument> sorted = matching.stream()
+                .map(e -> new SortRow(e, portalDocument(e, stats.get(e.document().getId()))))
+                .sorted(documentOrder(sortBy, sortDirection))
+                .map(SortRow::doc)
                 .toList();
-        return new BrowseResult(crumbs, null, List.of(), documents);
+        int from = (int) Math.min((long) (pageNumber - 1) * pageSize, sorted.size());
+        List<PortalDocument> documents = sorted.subList(from, Math.min(sorted.size(), from + pageSize));
+        return new BrowseResult(crumbs, null, List.of(), documents, sorted.size(), pageNumber, pageSize);
+    }
+
+    record SortRow(KnowledgeEntry entry, PortalDocument doc) {}
+
+    /** Sort keys the document table offers; anything else falls back to the name. Ties are broken by name so pages are stable. */
+    static Comparator<SortRow> documentOrder(String sortBy, String sortDirection) {
+        Comparator<SortRow> byName = Comparator.comparing(r -> Objects.toString(r.doc().document().documentName(), ""), String.CASE_INSENSITIVE_ORDER);
+        Comparator<SortRow> primary = switch (sortBy == null ? "name" : sortBy) {
+            case "number" -> Comparator.comparing(r -> Objects.toString(r.doc().document().documentNumber(), ""), String.CASE_INSENSITIVE_ORDER);
+            case "department" -> Comparator.comparing(r -> Objects.toString(r.doc().document().department(), ""), String.CASE_INSENSITIVE_ORDER);
+            case "type" -> Comparator.comparing(r -> Objects.toString(r.doc().document().documentType(), ""), String.CASE_INSENSITIVE_ORDER);
+            case "views" -> Comparator.comparingLong(r -> r.doc().views());
+            case "helpful" -> Comparator.comparingLong(r -> r.doc().helpfulVotes());
+            case "size" -> Comparator.comparingLong(r -> r.doc().sizeBytes() == null ? -1L : r.doc().sizeBytes());
+            // Never opened sorts as the oldest.
+            case "lastOpened" -> Comparator.comparing(r -> r.doc().myLastOpenedAt() == null ? "" : r.doc().myLastOpenedAt());
+            case "created" -> Comparator.comparing(r -> r.entry().revision().getCreatedAt() == null ? Instant.EPOCH : r.entry().revision().getCreatedAt());
+            default -> byName;
+        };
+        boolean descending = "desc".equalsIgnoreCase(sortDirection);
+        return (descending ? primary.reversed() : primary).thenComparing(byName);
     }
 
     // ---- search ---------------------------------------------------------------------------
@@ -295,10 +322,10 @@ public class KnowledgePortalService {
                 String.class, user.getId(), field.name()));
     }
 
-    /** id -> [views in the last 30 days, helpful votes, featured (0/1), my feedback (-1 none, 0 not helpful, 1 helpful)] */
+    /** id -> [views in the last 30 days, helpful votes, featured (0/1), my feedback (-1 none, 0 not helpful, 1 helpful), when I last opened it (epoch ms, 0 never)] */
     private Map<UUID, long[]> stats(Set<UUID> ids, UserAccount user) {
         Map<UUID, long[]> result = new HashMap<>();
-        ids.forEach(id -> result.put(id, new long[]{0, 0, 0, -1}));
+        ids.forEach(id -> result.put(id, new long[]{0, 0, 0, -1, 0}));
         if (ids.isEmpty()) return result;
         Instant since = Instant.now().minus(systemConfigurationService.getKnowledgePortalViewsWindowDays(), ChronoUnit.DAYS);
         jdbc.query("select document_id, count(*) c from knowledge_document_views where viewed_at >= ? group by document_id",
@@ -308,6 +335,9 @@ public class KnowledgePortalService {
                 rs -> { long[] s = result.get(UUID.fromString(rs.getString(1))); if (s != null) s[1] = rs.getLong(2); });
         jdbc.query("select document_id from knowledge_featured_documents",
                 rs -> { long[] s = result.get(UUID.fromString(rs.getString(1))); if (s != null) s[2] = 1; });
+        jdbc.query("select document_id, max(viewed_at) from knowledge_document_views where user_id = ? group by document_id",
+                rs -> { long[] s = result.get(UUID.fromString(rs.getString(1))); if (s != null && rs.getTimestamp(2) != null) s[4] = rs.getTimestamp(2).getTime(); },
+                user.getId());
         jdbc.query("select document_id, helpful from knowledge_document_feedback where user_id = ?",
                 rs -> { long[] s = result.get(UUID.fromString(rs.getString(1))); if (s != null) s[3] = rs.getBoolean(2) ? 1 : 0; },
                 user.getId());
@@ -324,9 +354,10 @@ public class KnowledgePortalService {
     }
 
     private PortalDocument portalDocument(KnowledgeEntry entry, long[] s) {
-        long[] stat = s == null ? new long[]{0, 0, 0, -1} : s;
+        long[] stat = s == null ? new long[]{0, 0, 0, -1, 0} : s;
         Boolean mine = stat[3] < 0 ? null : stat[3] == 1;
-        return new PortalDocument(toDocument(entry), stat[0], stat[1], stat[2] == 1, mine);
+        String lastOpened = stat[4] > 0 ? Instant.ofEpochMilli(stat[4]).toString() : null;
+        return new PortalDocument(toDocument(entry), stat[0], stat[1], stat[2] == 1, mine, entry.revision().getFileSize(), lastOpened);
     }
 
     private KnowledgeBaseDocumentResponse toDocument(KnowledgeEntry entry) {

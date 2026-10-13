@@ -129,9 +129,14 @@ public class BackupExportController {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, APPROVE);
         String id = validExportId(exportId);
+        // The audit row needs the export's own id; a refusal body carries none, so it is read first, from the agent.
+        BackupAgentClient.Reply current = agent.exchange(HttpMethod.GET, "/internal/exports/" + id, null);
+        UUID exportUuid = current.ok() ? uuid(current.body().path("id").asText()) : null;
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/exports/" + id + "/approve", body("by", actor.getUsername()));
-        audit.logAs(actor, "BACKUP_EXPORT", id, uuid(reply.body().path("id").asText()), reply.ok() ? "BACKUP_EXPORT_APPROVED" : "BACKUP_EXPORT_APPROVAL_REFUSED", "REQUESTED",
-                reply.ok() ? "APPROVED" : "REQUESTED", reply.ok() ? "Approved export " + id : "Approval refused: " + reply.body().path("code").asText("UNKNOWN"));
+        if (exportUuid != null) {
+            audit.logAs(actor, "BACKUP_EXPORT", id, exportUuid, reply.ok() ? "BACKUP_EXPORT_APPROVED" : "BACKUP_EXPORT_APPROVAL_REFUSED", "REQUESTED",
+                    reply.ok() ? "APPROVED" : "REQUESTED", reply.ok() ? "Approved export " + id : "Approval refused: " + reply.body().path("code").asText("UNKNOWN"));
+        }
         return reply(reply);
     }
 

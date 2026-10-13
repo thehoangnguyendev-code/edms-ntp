@@ -8,7 +8,19 @@ export type ExplorerNav =
   | { kind: "smart"; key: SmartKey }
   | { kind: "kb"; kb: { key: string; label: string }; path: string[] };
 
-export type SortKey = "name" | "views" | "helpful" | "newest";
+export type SortKey = "name" | "number" | "department" | "type" | "size" | "lastOpened" | "views" | "helpful" | "newest";
+export type SortDir = "asc" | "desc";
+
+/** Documents shown on one page of the table. */
+export const PAGE_SIZE = 20;
+
+/** The direction a column sorts in the first time it is chosen: names and codes A to Z, figures and dates biggest or latest first. */
+export const DEFAULT_SORT_DIR: Record<SortKey, SortDir> = {
+  name: "asc", number: "asc", department: "asc", type: "asc", size: "desc", lastOpened: "desc", views: "desc", helpful: "desc", newest: "desc",
+};
+
+/** The key the server knows for a sort (it calls the revision date "created"). */
+export const serverSortKey = (sort: SortKey): string => (sort === "newest" ? "created" : sort);
 export type ViewMode = "grid" | "list";
 
 export interface FolderEntry {
@@ -34,7 +46,21 @@ export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "views", label: "Most viewed" },
   { value: "helpful", label: "Most helpful" },
   { value: "newest", label: "Newest" },
+  { value: "number", label: "Number" },
+  { value: "department", label: "Department" },
+  { value: "type", label: "Type" },
+  { value: "size", label: "Size" },
+  { value: "lastOpened", label: "Last update" },
 ];
+
+/** "1.4 MB" for a file size; a dash where none is recorded. */
+export const formatFileSize = (bytes?: number | null): string => {
+  if (!bytes || bytes < 0) return "—";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const value = bytes / 1024 ** index;
+  return `${value >= 100 || index === 0 ? Math.round(value) : value.toFixed(1)} ${units[index]}`;
+};
 
 // Each document type gets one hue, used for the file icon (hex) and the badge (design-system colour).
 const TYPE_PALETTE: { hex: string; badge: BadgeColor }[] = [
@@ -88,20 +114,27 @@ export const parseDateValue = (value?: string | null): number => {
   return Number.isNaN(parsed) ? 0 : parsed;
 };
 
-export const sortDocuments = (docs: KnowledgePortalDocument[], sort: SortKey): KnowledgePortalDocument[] => {
-  const byName = (a: KnowledgePortalDocument, b: KnowledgePortalDocument) =>
-    a.document.documentName.localeCompare(b.document.documentName, undefined, { sensitivity: "base", numeric: true });
-  const copy = [...docs];
-  switch (sort) {
-    case "views":
-      return copy.sort((a, b) => b.views - a.views || byName(a, b));
-    case "helpful":
-      return copy.sort((a, b) => b.helpfulVotes - a.helpfulVotes || byName(a, b));
-    case "newest":
-      return copy.sort((a, b) => parseDateValue(b.document.effectiveDate ?? b.document.created) - parseDateValue(a.document.effectiveDate ?? a.document.created) || byName(a, b));
-    default:
-      return copy.sort(byName);
-  }
+/** Sorts a list the server did not sort (search hits and the ranked lists). Ties fall back to the name, so the order is stable. */
+export const sortDocuments = (docs: KnowledgePortalDocument[], sort: SortKey, dir: SortDir = DEFAULT_SORT_DIR[sort]): KnowledgePortalDocument[] => {
+  const text = (value?: string | null) => (value ?? "").trim();
+  const byText = (x?: string | null, y?: string | null) => text(x).localeCompare(text(y), undefined, { sensitivity: "base", numeric: true });
+  const byName = (x: KnowledgePortalDocument, y: KnowledgePortalDocument) => byText(x.document.documentName, y.document.documentName);
+  // Ascending order of each key; the direction is applied afterwards.
+  const ascending = (x: KnowledgePortalDocument, y: KnowledgePortalDocument): number => {
+    switch (sort) {
+      case "number": return byText(x.document.documentNumber, y.document.documentNumber);
+      case "department": return byText(x.document.department, y.document.department);
+      case "type": return byText(x.document.documentType, y.document.documentType);
+      case "size": return (x.sizeBytes ?? -1) - (y.sizeBytes ?? -1);
+      case "lastOpened": return parseDateValue(x.myLastOpenedAt) - parseDateValue(y.myLastOpenedAt);
+      case "views": return x.views - y.views;
+      case "helpful": return x.helpfulVotes - y.helpfulVotes;
+      case "newest": return parseDateValue(x.document.effectiveDate ?? x.document.created) - parseDateValue(y.document.effectiveDate ?? y.document.created);
+      default: return byName(x, y);
+    }
+  };
+  const sign = dir === "asc" ? 1 : -1;
+  return [...docs].sort((x, y) => sign * ascending(x, y) || byName(x, y));
 };
 
 export const sortFolders = (folders: FolderEntry[], sort: SortKey): FolderEntry[] => {

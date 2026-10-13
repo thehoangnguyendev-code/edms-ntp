@@ -49,8 +49,7 @@ export type RestoreStatus =
   | "VERIFYING"
   | "COMPLETED"
   | "FAILED"
-  | "REJECTED"
-  | "CANCELLED";
+  | "REJECTED";
 
 export interface RestoreEvent {
   at: string;
@@ -112,7 +111,6 @@ export const RESTORE_STATUS_COLOR = {
   COMPLETED: "emerald",
   FAILED: "red",
   REJECTED: "red",
-  CANCELLED: "slate",
 } as const;
 
 export const VERIFICATION_COLOR = {

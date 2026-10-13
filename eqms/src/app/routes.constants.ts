@@ -182,9 +182,11 @@ export const ROUTES = {
     BACKUP_VERIFICATIONS: '/backup-restore/backups/verifications',
     RESTORES: '/backup-restore/restores',
     RESTORE_NEW: '/backup-restore/restores/new',
-    RESTORE_APPROVALS: '/backup-restore/restores/approvals',
+    RESTORE_DETAIL: (requestId: string) => `/backup-restore/restores/${encodeURIComponent(requestId)}`,
+    RESTORE_EXECUTION: (requestId: string) => `/backup-restore/restores/${encodeURIComponent(requestId)}/execution`,
     RESTORE_VERIFICATIONS: '/backup-restore/restores/verification-reports',
     RESTORE_HISTORY: '/backup-restore/restores/history',
+    INSPECTIONS: '/backup-restore/restores/inspections',
     DR_DRILLS: '/backup-restore/dr-drills',
   },
 

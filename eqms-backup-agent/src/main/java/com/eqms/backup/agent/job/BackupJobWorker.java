@@ -4,6 +4,8 @@ import com.eqms.backup.agent.backup.BackupRepository;
 import com.eqms.backup.agent.backup.DatabaseBackupService;
 import com.eqms.backup.agent.config.AgentProperties;
 import com.eqms.backup.agent.export.ExportService;
+import com.eqms.backup.agent.restore.InspectionService;
+import com.eqms.backup.agent.restore.RestoreRehearsalService;
 import com.eqms.backup.agent.ledger.CanonicalJson;
 import com.eqms.backup.agent.ledger.LedgerService;
 import com.eqms.backup.agent.verify.VerificationService;
@@ -35,10 +37,15 @@ public class BackupJobWorker {
     private final BackupRepository repository;
     private final AgentProperties properties;
     private final ExportService exports;
+    private final RestoreRehearsalService rehearsals;
+    private final InspectionService inspections;
 
     public BackupJobWorker(JobQueue queue, DatabaseBackupService backups, VerificationService verification, LedgerService ledger,
-                           BackupRepository repository, AgentProperties properties, ExportService exports) {
+                           BackupRepository repository, AgentProperties properties, ExportService exports, RestoreRehearsalService rehearsals,
+                           InspectionService inspections) {
         this.exports = exports;
+        this.rehearsals = rehearsals;
+        this.inspections = inspections;
         this.queue = queue;
         this.backups = backups;
         this.verification = verification;
@@ -49,6 +56,10 @@ public class BackupJobWorker {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onStart() {
+        if (properties.isRestoreWorker()) {
+            log.info("Restore worker started: it takes rehearsal and inspection jobs only");
+            return;
+        }
         for (Map<String, Object> stale : repository.failStaleRunning(Instant.now())) {
             String backupId = (String) stale.get("backup_id");
             ledger.append("agent", "BACKUP_FAILED", backupId, Map.of("code", "AGENT_RESTARTED"));
@@ -60,7 +71,7 @@ public class BackupJobWorker {
 
     @Scheduled(fixedDelayString = "${agent.poll-millis:5000}", initialDelayString = "${agent.poll-millis:5000}")
     public void poll() {
-        Optional<JobQueue.Job> job = queue.claimNext(120);
+        Optional<JobQueue.Job> job = properties.isRestoreWorker() ? queue.claimNext(120, java.util.List.of("REHEARSAL", "INSPECTION")) : queue.claimNext(120);
         if (job.isEmpty()) return;
         JobQueue.Job j = job.get();
         try {
@@ -83,6 +94,20 @@ public class BackupJobWorker {
                     result.put("backupId", o.backupId());
                     result.put("verification", o.result());
                 }
+                case "REHEARSAL" -> {
+                    Map<String, Object> r = rehearsals.run(payload.path("rehearsalId").asText());
+                    ok = "PASSED".equals(r.get("status"));
+                    result.put("rehearsalId", r.get("rehearsalId"));
+                    result.put("status", r.get("status"));
+                    result.put("errorCode", r.get("errorCode"));
+                }
+                case "INSPECTION" -> {
+                    Map<String, Object> i = inspections.open(payload.path("inspectionId").asText());
+                    ok = "OPEN".equals(i.get("status"));
+                    result.put("inspectionId", i.get("inspectionId"));
+                    result.put("status", i.get("status"));
+                    result.put("errorCode", i.get("errorCode"));
+                }
                 case "EXPORT" -> {
                     Map<String, Object> export = exports.run(payload.path("exportId").asText(), j.requestedBy());
                     ok = "COMPLETED".equals(export.get("status"));
@@ -102,9 +127,22 @@ public class BackupJobWorker {
         }
     }
 
+    /** Every few seconds on the restore worker: an inspection copy whose five minutes are over is dropped (SDS 7.2). */
+    @Scheduled(fixedDelay = 15_000, initialDelay = 15_000)
+    public void expireInspections() {
+        // the agent that is not the restore worker cannot drop copies: it only warns when a copy is overdue
+        if (!properties.isRestoreWorker()) {
+            inspections.alertOverdue();
+            return;
+        }
+        inspections.expireDue();
+        inspections.retryUndropped();
+    }
+
     /** Daily and at start-up: the chain must still be intact. A broken chain is the most serious alert the agent can raise. */
     @Scheduled(cron = "0 0 6 * * *", zone = "${agent.zone:Asia/Ho_Chi_Minh}")
     public void checkLedger() {
+        if (properties.isRestoreWorker()) return;
         LedgerService.Verification v = ledger.verify();
         if (v.ok()) return;
         repository.insertAlert("CRITICAL", "LEDGER_CHAIN_BROKEN", v.reason(), v.firstBrokenSeq() == null ? null : String.valueOf(v.firstBrokenSeq()));

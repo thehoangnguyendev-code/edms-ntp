@@ -1,6 +1,6 @@
 import React from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Bell, BellOff, FolderSearch, RefreshCw, Star, ThumbsUp } from "lucide-react";
+import { Bell, BellOff, ChevronDown, ChevronUp, FolderSearch, RefreshCw, Star, ThumbsUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionLoading } from "@/components/ui/loading";
@@ -10,12 +10,19 @@ import type { KnowledgePortalDocument } from "@/services/api/knowledge";
 import { FileIcon, FolderIcon } from "./ExplorerIcons";
 import { Card, CardHeader } from "@/features/self-service/dashboard/shared/dashboardUi";
 import { FOCUS_RING } from "./explorerStyles";
-import { folderColor, pluralize, typeBadgeColor, type FolderEntry, type Selection, type ViewMode } from "./explorerModel";
+import { folderColor, formatFileSize, pluralize, typeBadgeColor, type FolderEntry, type Selection, type SortDir, type SortKey, type ViewMode } from "./explorerModel";
+import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 interface ExplorerItemsProps {
   folders: FolderEntry[];
+  /** The documents on the current page. */
   docs: KnowledgePortalDocument[];
+  /** All documents in this location, across pages. */
+  totalDocs: number;
+  sort: SortKey;
+  sortDir: SortDir;
+  onSortColumn: (key: SortKey) => void;
   view: ViewMode;
   selection: Selection;
   highlight?: string;
@@ -32,6 +39,33 @@ const TILE = "group relative flex cursor-default select-none flex-col items-cent
 // Reserve two title lines in every grid tile so its metadata shares one baseline
 // with neighbouring tiles, regardless of whether the title wraps.
 const TILE_NAME = "line-clamp-2 min-h-10 w-full break-words text-xs font-medium leading-tight text-slate-900 md:text-sm";
+/** Header of the shared tables: uppercase, small, bold. */
+const TH = TABLE_STYLES.headerCell9.replace("py-1.5 px-2 sm:py-2.5 sm:px-4", "px-2.5 py-2.5");
+const TH_RIGHT = cn(TH, "text-right");
+
+/** A column header that sorts when pressed; the arrow of the active column shows its direction, as in the shared tables. */
+const SortHeader: React.FC<{ id: SortKey; label: string; sort: SortKey; dir: SortDir; onSort: (key: SortKey) => void; className?: string; align?: "right"; title?: string }> = ({
+  id, label, sort, dir, onSort, className, align, title,
+}) => (
+  <TableMarkup.HeaderCell
+    aria-sort={sort === id ? (dir === "asc" ? "ascending" : "descending") : "none"}
+    className={cn(align === "right" ? TH_RIGHT : TH, "bg-slate-50 text-slate-500", className)}
+  >
+    <button
+      type="button"
+      onClick={() => onSort(id)}
+      title={title ?? `Sort by ${label}`}
+      className={cn("group inline-flex w-full items-center gap-1.5 uppercase tracking-wider transition-colors hover:text-slate-700", FOCUS_RING, align === "right" && "justify-end")}
+    >
+      <span className="truncate">{label}</span>
+      <span className="flex shrink-0 flex-col text-slate-400 group-hover:text-slate-600" aria-hidden="true">
+        <ChevronUp className={cn("-mb-1 h-3 w-3", sort === id && dir === "asc" && "text-emerald-600")} />
+        <ChevronDown className={cn("h-3 w-3", sort === id && dir === "desc" && "text-emerald-600")} />
+      </span>
+    </button>
+  </TableMarkup.HeaderCell>
+);
+
 const TILE_META = "max-w-full truncate text-2xs tabular-nums text-slate-500 md:text-xs";
 
 const Highlight: React.FC<{ text: string; term?: string }> = ({ text, term }) => {
@@ -70,7 +104,7 @@ const itemKeys = (open: () => void, select: () => void) => (e: React.KeyboardEve
 };
 
 export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
-  folders, docs, view, selection, highlight, singleTapOpen, onSelect, onOpen, onContextMenu, onToggleSubscribe,
+  folders, docs, totalDocs, sort, sortDir, onSortColumn, view, selection, highlight, singleTapOpen, onSelect, onOpen, onContextMenu, onToggleSubscribe,
 }) => {
   const stagger = useStagger();
   const reduceMotion = useReducedMotion();
@@ -135,9 +169,9 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
             <div className="overflow-x-auto">
               <TableMarkup.Root className="w-full border-collapse">
                 <TableMarkup.Head><TableMarkup.Row className="bg-slate-50 text-left">
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.table1}>Name</TableMarkup.HeaderCell>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.table2}>Type</TableMarkup.HeaderCell>
-                  <TableMarkup.HeaderCell className="border-b border-slate-200 px-2.5 py-2 text-right text-2xs font-semibold text-slate-600 md:text-xs">Documents</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={cn(TH, "bg-slate-50")}>Name</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={cn(TH, "hidden bg-slate-50 sm:table-cell")}>Type</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={cn(TH_RIGHT, "bg-slate-50")}>Documents</TableMarkup.HeaderCell>
                 </TableMarkup.Row></TableMarkup.Head>
                 <TableMarkup.Body role="listbox" aria-label="Folders" className="divide-y divide-slate-100">
                   {folders.map((folder) => {
@@ -159,7 +193,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
       )}
 
       {docs.length > 0 && (
-        <Group title="Documents" count={docs.length}>
+        <Group title="Documents" count={totalDocs}>
           {view === "grid" ? (
             <div role="listbox" aria-label="Documents" className={GRID}>
               {docs.map((item) => {
@@ -196,12 +230,14 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               <TableMarkup.Root className="w-full border-collapse">
                 <TableMarkup.Head>
                   <TableMarkup.Row className="bg-slate-50 text-left">
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.table1}>Name</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.table2}>Number</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className="hidden border-b border-slate-200 px-2.5 py-2 text-2xs font-semibold text-slate-600 lg:table-cell md:text-xs">Department</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.table2}>Type</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.table3}>Views</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.table3}>Helpful</TableMarkup.HeaderCell>
+                    <SortHeader id="name" label="Name" sort={sort} dir={sortDir} onSort={onSortColumn} />
+                    <SortHeader id="number" label="Number" sort={sort} dir={sortDir} onSort={onSortColumn} className="hidden sm:table-cell" />
+                    <SortHeader id="department" label="Department" sort={sort} dir={sortDir} onSort={onSortColumn} className="hidden lg:table-cell" />
+                    <SortHeader id="type" label="Type" sort={sort} dir={sortDir} onSort={onSortColumn} className="hidden sm:table-cell" />
+                    <SortHeader id="size" label="Size" sort={sort} dir={sortDir} onSort={onSortColumn} align="right" className="hidden md:table-cell" />
+                    <SortHeader id="lastOpened" label="Last update" sort={sort} dir={sortDir} onSort={onSortColumn} className="hidden md:table-cell" title="Sort by when you last opened the document" />
+                    <SortHeader id="views" label="Views" sort={sort} dir={sortDir} onSort={onSortColumn} align="right" className="hidden md:table-cell" />
+                    <SortHeader id="helpful" label="Helpful" sort={sort} dir={sortDir} onSort={onSortColumn} align="right" className="hidden md:table-cell" />
                   </TableMarkup.Row>
                 </TableMarkup.Head>
                 <TableMarkup.Body role="listbox" aria-label="Documents" className="divide-y divide-slate-100">
@@ -238,6 +274,10 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                         <TableMarkup.Cell className="hidden whitespace-nowrap px-2.5 py-2 text-xs text-slate-600 lg:table-cell md:text-sm">{doc.department || "-"}</TableMarkup.Cell>
                         <TableMarkup.Cell className="hidden px-2.5 py-2 sm:table-cell">
                           <Badge color={typeBadgeColor(doc.documentType)} size="sm">{doc.documentType || "Document"}</Badge>
+                        </TableMarkup.Cell>
+                        <TableMarkup.Cell className={TABLE_STYLES.table4}>{formatFileSize(item.sizeBytes)}</TableMarkup.Cell>
+                        <TableMarkup.Cell className="hidden whitespace-nowrap px-2.5 py-2 text-xs text-slate-600 md:table-cell md:text-sm" title="When you last opened this document">
+                          {item.myLastOpenedAt ? formatDateTime(item.myLastOpenedAt) : <span className="text-slate-400">Never opened</span>}
                         </TableMarkup.Cell>
                         <TableMarkup.Cell className={TABLE_STYLES.table4}>{item.views}</TableMarkup.Cell>
                         <TableMarkup.Cell className={TABLE_STYLES.table4}>{item.helpfulVotes}</TableMarkup.Cell>

@@ -12,6 +12,8 @@ import java.nio.file.Path;
 public class AgentProperties {
 
     private String environment = "DEV";
+    /** API serves the eQMS backend and runs backups; RESTORE_WORKER is a separate process that alone may hold the restore key. */
+    private String role = "API";
     /** Shared secret the eQMS backend presents on /internal calls. */
     private String apiToken = "";
     private final Source source = new Source();
@@ -20,6 +22,8 @@ public class AgentProperties {
     private final Tools tools = new Tools();
     private final Objects objects = new Objects();
     private final Exports exports = new Exports();
+    private final Restore restore = new Restore();
+    private final Maintenance maintenance = new Maintenance();
     private Path ledgerDir = Path.of("/backup/ledger");
     private long minFreeBytes = 1_073_741_824L;
     /** Time zone used to read the schedule of the policy (stored times are UTC). */
@@ -118,6 +122,87 @@ public class AgentProperties {
         public void setRoot(Path root) { this.root = root; }
     }
 
+    /** Restore rehearsals run only in the worker, which is the only process given the private key and a role that may create databases. */
+    public static class Restore {
+        private boolean enabled;
+        /** Folder holding the private OpenPGP key ring. Copied to a temporary folder for the run; never written to. */
+        private Path gnupgHome = Path.of("/restore-keys/gnupg-home");
+        private String host = "postgres";
+        private int port = 5432;
+        private String user = "eqms_restore";
+        private String password = "";
+        /** Every scratch database name starts with this; the role can create databases but owns nothing else. */
+        private String dbPrefix = "eqms_restore_";
+        /**
+         * The MinIO account of the restore worker for the test buckets (SDS 14.1, WP3.1 slice 4). It may act only on buckets named
+         * eqms-test-*; it has no access to the records or template buckets.
+         */
+        private final TestObjects testObjects = new TestObjects();
+        /** host:port of the services a restored copy depends on; C12 reports whether they answer (SDS 14.3). */
+        private java.util.List<String> dependencyEndpoints = new java.util.ArrayList<>(
+                java.util.List.of("minio:9000", "clamav:3310", "mailhog:1025", "onlyoffice:80"));
+
+        public TestObjects getTestObjects() { return testObjects; }
+        /**
+         * DEV only: C5 is reported as a warning instead of a required check, because the DEV database holds test data without
+         * signature records. Ignored in every other environment. A labelled DEV deviation, not a relaxation of the rule.
+         */
+        private boolean signatureCheckAdvisory;
+
+        public boolean isSignatureCheckAdvisory() { return signatureCheckAdvisory; }
+        public void setSignatureCheckAdvisory(boolean signatureCheckAdvisory) { this.signatureCheckAdvisory = signatureCheckAdvisory; }
+        public java.util.List<String> getDependencyEndpoints() { return dependencyEndpoints; }
+        public void setDependencyEndpoints(java.util.List<String> dependencyEndpoints) { this.dependencyEndpoints = dependencyEndpoints; }
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        public Path getGnupgHome() { return gnupgHome; }
+        public void setGnupgHome(Path gnupgHome) { this.gnupgHome = gnupgHome; }
+        public String getHost() { return host; }
+        public void setHost(String host) { this.host = host; }
+        public int getPort() { return port; }
+        public void setPort(int port) { this.port = port; }
+        public String getUser() { return user; }
+        public void setUser(String user) { this.user = user; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+        public String getDbPrefix() { return dbPrefix; }
+        public void setDbPrefix(String dbPrefix) { this.dbPrefix = dbPrefix; }
+    }
+
+    /** The test-bucket account of the restore worker; see {@link Restore#getTestObjects()}. */
+    public static class TestObjects {
+        private String endpoint = "http://minio:9000";
+        private String accessKey = "";
+        private String secretKey = "";
+        /** Every bucket the restore creates starts with this. */
+        private String bucketPrefix = "eqms-test-";
+
+        public String getEndpoint() { return endpoint; }
+        public void setEndpoint(String endpoint) { this.endpoint = endpoint; }
+        public String getAccessKey() { return accessKey; }
+        public void setAccessKey(String accessKey) { this.accessKey = accessKey; }
+        public String getSecretKey() { return secretKey; }
+        public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
+        public String getBucketPrefix() { return bucketPrefix; }
+        public void setBucketPrefix(String bucketPrefix) { this.bucketPrefix = bucketPrefix; }
+    }
+
+    /** Maintenance window settings (SDS 11.5). The notice length is the decision BR-16: default 10 minutes, allowed 5 to 240. */
+    public static class Maintenance {
+        /** Shared with the eQMS backend, which reads it on every request (mounted read only there). */
+        private Path lockFile = Path.of("/backup/maintenance/maintenance.lock");
+        private int noticeMinMinutes = 5;
+        private int noticeMaxMinutes = 240;
+
+        public Path getLockFile() { return lockFile; }
+        public void setLockFile(Path lockFile) { this.lockFile = lockFile; }
+        public int getNoticeMinMinutes() { return noticeMinMinutes; }
+        public void setNoticeMinMinutes(int noticeMinMinutes) { this.noticeMinMinutes = noticeMinMinutes; }
+        public int getNoticeMaxMinutes() { return noticeMaxMinutes; }
+        public void setNoticeMaxMinutes(int noticeMaxMinutes) { this.noticeMaxMinutes = noticeMaxMinutes; }
+    }
+
     public static class Crypto {
         /** Public OpenPGP key (ASCII armour). The agent can encrypt with it but never decrypt: the private half is not here. */
         private Path publicKeyFile = Path.of("/run/secrets/backup_gpg_public.asc");
@@ -135,14 +220,22 @@ public class AgentProperties {
 
     public static class Tools {
         private String pgDump = "pg_dump";
+    private String pgRestore = "pg_restore";
         private String gpg = "gpg";
 
+        public String getPgRestore() { return pgRestore; }
+        public void setPgRestore(String pgRestore) { this.pgRestore = pgRestore; }
         public String getPgDump() { return pgDump; }
         public void setPgDump(String pgDump) { this.pgDump = pgDump; }
         public String getGpg() { return gpg; }
         public void setGpg(String gpg) { this.gpg = gpg; }
     }
 
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    public boolean isRestoreWorker() { return "RESTORE_WORKER".equalsIgnoreCase(role); }
+    public Restore getRestore() { return restore; }
+    public Maintenance getMaintenance() { return maintenance; }
     public String getEnvironment() { return environment; }
     public void setEnvironment(String environment) { this.environment = environment; }
     public String getApiToken() { return apiToken; }

@@ -26,13 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Live check against the dev docker stack (MinIO on localhost:9000, ClamAV on localhost:3310); skipped when either is not
- * reachable. It writes nothing to the locked records bucket, because everything stored there is kept for the permanent
- * retention period and could never be removed. Writes go to the templates bucket, which is not locked.
+ * Storage rules against real MinIO and ClamAV. The storage service checks that its records bucket is versioned and under COMPLIANCE
+ * retention, so these checks need a throwaway MinIO container configured that way. They run only when that container is named by the
+ * system property eqms.tmpMinio.endpoint (for example -Deqms.tmpMinio.endpoint=http://localhost:19000) and ClamAV is reachable on
+ * localhost:3310. The dev stack's MinIO is never used: SDS 14.x forbids tests to write to eqms-gmp-records or eqms-templates.
  */
 class MinioStorageLiveTest {
 
-    private static final String ENDPOINT = "http://localhost:9000";
     private static final String ACCESS = "eqms-minio";
     private static final String SECRET = "eqms-minio-secret";
     private static final String RECORDS = "eqms-gmp-records";
@@ -43,7 +43,8 @@ class MinioStorageLiveTest {
 
     @Test
     void storageRulesHoldAgainstRealMinioAndClamAv() throws Exception {
-        assumeReachable("localhost", 9000);
+        String endpoint = System.getProperty("eqms.tmpMinio.endpoint");
+        assumeTrue(endpoint != null && !endpoint.isBlank(), "set -Deqms.tmpMinio.endpoint to a throwaway MinIO container configured like the records bucket");
         assumeReachable("localhost", 3310);
 
         ClamAvScanService clam = new ClamAvScanService();
@@ -52,15 +53,15 @@ class MinioStorageLiveTest {
         ReflectionTestUtils.setField(clam, "port", 3310);
         ReflectionTestUtils.setField(clam, "timeoutMs", 15000);
         MinioObjectStorageService storage = new MinioObjectStorageService(
-                true, false, ENDPOINT, ACCESS, SECRET, RECORDS, TEMPLATES, MinioObjectStorageService.MAX_RETENTION_YEARS, null, clam);
+                true, false, endpoint, ACCESS, SECRET, RECORDS, TEMPLATES, MinioObjectStorageService.MAX_RETENTION_YEARS, null, clam);
         ObjectNode storageConfig = new ObjectMapper().createObjectNode()
-                .put("minioEndpoint", ENDPOINT)
+                .put("minioEndpoint", endpoint)
                 .put("minioAccessKeyId", ACCESS)
                 .put("minioSecretAccessKey", SECRET)
                 .put("minioBucket", RECORDS)
                 .put("minioTemplatesBucket", TEMPLATES)
                 .put("minioRetentionYears", MinioObjectStorageService.MAX_RETENTION_YEARS);
-        MinioClient client = MinioClient.builder().endpoint(ENDPOINT).credentials(ACCESS, SECRET).build();
+        MinioClient client = MinioClient.builder().endpoint(endpoint).credentials(ACCESS, SECRET).build();
         String run = "verification/" + UUID.randomUUID();
 
         // 1. A key outside the registered domains is rejected before anything is stored.
@@ -88,7 +89,7 @@ class MinioStorageLiveTest {
         // 4. The application's own compliance check: records bucket versioned, COMPLIANCE, permanent retention.
         storage.testConnection(storageConfig);
 
-        // 5. Enforcement: an object that already sits in the locked records bucket cannot be removed.
+        // 5. Enforcement: an object in the locked records bucket cannot be removed, and its bytes are still there.
         Item existing = null;
         for (var result : client.listObjects(ListObjectsArgs.builder().bucket(RECORDS).prefix("verification/").recursive(true).includeVersions(true).build())) {
             existing = result.get();

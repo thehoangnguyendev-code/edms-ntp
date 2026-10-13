@@ -139,13 +139,13 @@ export const WorkflowPolicyActorSelector: React.FC<WorkflowPolicyActorSelectorPr
                         />
                       )}
                       {!actor.actorCode && !disabled && (
-                        <p className="text-[10px] text-amber-600 mt-0.5">Actor code is required for this actor type.</p>
+                        <p className="text-2xs text-amber-600 mt-0.5">Actor code is required for this actor type.</p>
                       )}
                     </div>
                   );
                 })()}
                 {isInvalid && (
-                  <p className="text-[10px] text-red-600 mt-1">
+                  <p className="text-2xs text-red-600 mt-1">
                     This actor type is not allowed for the selected action.
                   </p>
                 )}

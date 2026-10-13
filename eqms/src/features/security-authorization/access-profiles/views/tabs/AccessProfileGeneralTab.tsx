@@ -117,7 +117,7 @@ export const GeneralTab: React.FC<{
           )}
         </div>
       </div>
-      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3">
         <div>
           <p className="text-sm font-medium text-slate-700">Status</p>
           <p className="text-xs text-slate-500 mt-0.5">Current availability of this access profile</p>
@@ -206,7 +206,7 @@ export const NewProfileForm: React.FC<{
           />
         </div>
       </div>
-      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3">
         <div>
           <p className="text-sm font-medium text-slate-700">Active on creation</p>
           <p className="text-xs text-slate-500 mt-0.5">Profile will be immediately available if enabled</p>

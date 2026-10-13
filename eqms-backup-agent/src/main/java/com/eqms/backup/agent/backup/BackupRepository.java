@@ -127,4 +127,9 @@ public class BackupRepository {
         jdbc.update("insert into backup_object_blob(bucket, object_key, version_id, plain_sha256, plain_size, cipher_sha256, cipher_size, blob_path, first_run_id) values (?,?,?,?,?,?,?,?,?)",
                 b.bucket(), b.key(), b.versionId(), b.plainSha256(), b.plainSize(), b.cipherSha256(), b.cipherSize(), b.path(), b.firstRunId());
     }
+
+    /** Where a backup set was written, and whether the copy there was confirmed. */
+    public List<Map<String, Object>> locationsFor(UUID runId) {
+        return jdbc.queryForList("select target_code, ok from backup_set_location where run_id = ? order by target_code", runId);
+    }
 }

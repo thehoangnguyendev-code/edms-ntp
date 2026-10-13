@@ -3,6 +3,8 @@ import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { ROUTES, isDashboardPath } from '@/app/routes.constants';
 import { Sidebar } from '@/components/layout/sidebar/Sidebar';
 import { Header } from '@/components/layout/header/Header';
+import { MaintenanceStatusProvider } from '@/features/maintenance/MaintenanceStatusProvider';
+import { MaintenanceNoticeHost } from '@/features/maintenance/MaintenanceNoticeHost';
 import { Footer } from '@/components/layout/footer/Footer';
 import { NotificationDockProvider } from '@/components/layout/header/NotificationDockContext';
 import { NotificationDock } from '@/components/layout/header/NotificationDock';
@@ -408,7 +410,10 @@ export const MainLayout: React.FC = () => {
   const { user } = useAuth();
   return (
     <NotificationDockProvider userId={user?.id}>
-      <MainLayoutContent />
+      <MaintenanceStatusProvider>
+        <MaintenanceNoticeHost />
+        <MainLayoutContent />
+      </MaintenanceStatusProvider>
     </NotificationDockProvider>
   );
 };

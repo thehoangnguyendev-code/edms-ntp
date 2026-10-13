@@ -91,7 +91,7 @@ export const SuspendModal: React.FC<SuspendModalProps> = ({
               onChange={setSuspendedUntil}
               placeholder="Leave empty for indefinite"
             />
-            <p className="text-[11px] sm:text-xs font-normal text-slate-400 flex items-center gap-1">Leave empty to suspend indefinitely</p>
+            <p className="text-2xs sm:text-xs font-normal text-slate-400 flex items-center gap-1">Leave empty to suspend indefinitely</p>
           </div>
 
           <WarningBanner

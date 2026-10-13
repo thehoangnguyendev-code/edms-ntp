@@ -1,4 +1,5 @@
 import React from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -38,18 +39,9 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
       size="md"
     >
       <div className="space-y-4">
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start gap-2">
-            <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">Important: Save these login credentials</p>
-              <p>
-                These credentials can be used to sign in to the system.
-                The password is temporary and must be changed on the user's
-                first login.
-              </p>
-            </div>
-          </div>
-        </div>
+        <WarningBanner variant="info" title="Important: Save these login credentials.">
+          These credentials can be used to sign in to the system. The password is temporary and must be changed on the user's first login.
+        </WarningBanner>
 
         {/* Employee ID */}
         <div>
@@ -117,7 +109,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
               showToast={showToast}
             />
           </div>
-          <p className="text-[11px] sm:text-xs font-normal text-slate-400 flex items-center gap-1">
+          <p className="text-2xs sm:text-xs font-normal text-slate-400 flex items-center gap-1">
             Click refresh icon to generate a new temporary password
           </p>
         </div>

@@ -45,8 +45,13 @@ public class BackupPolicyService {
         return reply;
     }
 
+    /** A target has no database id; its audit row carries a stable id derived from its code, because the audit table needs one. */
+    public static UUID targetAuditId(String code) {
+        return UUID.nameUUIDFromBytes(("backup-target:" + code).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     public void recordTargetTest(UserAccount actor, String code, boolean ok) {
-        auditTrailService.logAs(actor, "BACKUP_TARGET", code, null, "BACKUP_TARGET_TESTED", null, ok ? "OK" : "FAILED",
+        auditTrailService.logAs(actor, "BACKUP_TARGET", code, targetAuditId(code), "BACKUP_TARGET_TESTED", null, ok ? "OK" : "FAILED",
                 "Tested backup target " + code + ": " + (ok ? "it accepted, returned and (if immutable) refused to delete a test file" : "the test failed"));
     }
 

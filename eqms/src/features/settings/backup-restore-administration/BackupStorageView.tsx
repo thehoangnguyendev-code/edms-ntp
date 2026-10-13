@@ -138,8 +138,7 @@ export const BackupStorageView: React.FC = () => {
                 {encryption.fingerprint && <span className="mt-1 block break-all font-mono text-2xs text-slate-500">{encryption.fingerprint}</span>}
               </Fact>
               <Fact label="Signing">{encryption.signingAlgorithm}, key <span className="font-mono text-xs">{encryption.signingKeyId}</span></Fact>
-              <Fact label="Can the system decrypt?">{encryption.agentCanDecrypt ? <Badge color="red">Yes</Badge> : "No. The Backup Agent holds only the public key; the private key is kept by the key holders."}</Fact>
-              <WarningBanner variant="info" title="Key holders are not set up yet" description="Naming the key holders and requiring two of them to decrypt is part of the restore work that has not been built. Until then the private key is held outside the system by whoever installed it." />
+              <Fact label="Can the system decrypt?">{encryption.agentCanDecrypt ? <Badge color="red">Yes</Badge> : "No. The Backup Agent holds only the public key. The private key is used only by the restore worker, for an approved restore."}</Fact>
             </div>
           )
         )}

@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, RefreshCw, ShieldOff } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
+import { FormSection } from "@/components/ui/form/FormSection";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
@@ -100,10 +102,9 @@ export const SodViolationReviewView: React.FC = () => {
 
   const renderViolationList = (list: SodViolationResponse[]) =>
     list.length === 0 ? (
-      <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-emerald-700">
-        <ShieldOff className="h-5 w-5 shrink-0" />
-        <span className="text-sm font-medium">No violations found — all Access Profiles comply with SoD constraints.</span>
-      </div>
+      <WarningBanner variant="success" title="No violations found.">
+        All Access Profiles comply with SoD constraints.
+      </WarningBanner>
     ) : (
       <div className="space-y-3">
         {list.map((v) => (
@@ -232,11 +233,7 @@ export const SodViolationReviewView: React.FC = () => {
             )}
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex-1 flex flex-col">
-            <div className="flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-900">Scan History</h3>
-              {historyControl}
-            </div>
+          <FormSection title="Scan History" headerRight={historyControl} className="flex flex-1 flex-col" contentClassName="flex flex-1 flex-col">
             {historyLoading ? (
               <SectionLoading minHeight="150px" />
             ) : history.length === 0 ? (
@@ -272,7 +269,7 @@ export const SodViolationReviewView: React.FC = () => {
                 />
               </div>
             )}
-          </div>
+          </FormSection>
         </>
       )}
     </div>

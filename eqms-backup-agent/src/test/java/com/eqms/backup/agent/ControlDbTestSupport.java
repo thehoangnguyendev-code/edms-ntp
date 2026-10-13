@@ -53,10 +53,22 @@ public final class ControlDbTestSupport implements AutoCloseable {
         try (Connection c = DriverManager.getConnection(url, user, password); Statement s = c.createStatement()) {
             s.execute("create table documents(id serial primary key, title text)");
             s.execute("insert into documents(title) select 'doc ' || g from generate_series(1, 25) g");
-            s.execute("create table audit_logs(id serial primary key, what text)");
+            s.execute("create table audit_logs(id serial primary key, what text, created_at timestamptz default now())");
             s.execute("insert into audit_logs(what) select 'event ' || g from generate_series(1, 40) g");
             s.execute("create table flyway_schema_history(version text)");
             s.execute("insert into flyway_schema_history values ('1'), ('559'), ('560')");
+            // the tables the state checks read (SDS 14.3): one active account with a profile, nothing else
+            s.execute("create table app_users(id serial primary key, status text)");
+            s.execute("insert into app_users(status) values ('Active')");
+            s.execute("create table user_access_profiles(user_id int, access_profile_id int)");
+            s.execute("insert into user_access_profiles(user_id, access_profile_id) values (1, 1)");
+            s.execute("create table report_schedules(id serial primary key, active boolean not null)");
+            s.execute("create table controlled_copy_distribution_jobs(id serial primary key, status text)");
+            s.execute("create table uncontrolled_copy_distribution_jobs(id serial primary key, status text)");
+            s.execute("create table publishing_workspace_jobs(id serial primary key, status text)");
+            s.execute("create table notification_dispatch_queue(id serial primary key, status text)");
+            s.execute("create table document_revisions(id text primary key, status_code text, source_storage_bucket text, source_storage_object_key text, source_storage_version_id text, source_file_checksum text)");
+            s.execute("create table electronic_signatures(id serial primary key, revision_id text, meaning text, document_checksum_after_sign text, signed_at timestamptz default now())");
         }
         return name;
     }

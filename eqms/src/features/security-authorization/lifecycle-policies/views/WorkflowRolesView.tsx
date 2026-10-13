@@ -1,4 +1,5 @@
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Check, ChevronDown, ChevronUp, LockKeyhole, MoreVertical, Plus, Search, Shield, X } from "lucide-react";
@@ -897,10 +898,8 @@ const WorkflowRoleForm: React.FC<{
 }> = ({ form, setForm }) => (
   <div className="space-y-4">
     {!form.id && (
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-800">
-        This creates a catalog entry only. It does not grant permissions or
-        change a workflow policy.
-      </div>
+      <WarningBanner variant="info">This creates a catalog entry only. It does not grant permissions or
+        change a workflow policy.</WarningBanner>
     )}
     <FormField label="Code" required>
       <input
@@ -912,7 +911,7 @@ const WorkflowRoleForm: React.FC<{
         className={inputClass}
       />
       {form.id && (
-        <p className="mt-1 text-[11px] text-slate-400">
+        <p className="mt-1 text-2xs text-slate-400">
           Code is immutable once created. Rename the role through Label.
         </p>
       )}
@@ -958,7 +957,7 @@ const WorkflowRoleForm: React.FC<{
         label="Active"
       />
       {form.isSystem && (
-        <span className="text-[11px] text-slate-400">
+        <span className="text-2xs text-slate-400">
           <LockKeyhole className="mr-1 inline h-3 w-3" />
           System role cannot be deactivated
         </span>

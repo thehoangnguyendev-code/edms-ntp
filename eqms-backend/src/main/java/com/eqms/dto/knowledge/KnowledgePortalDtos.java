@@ -11,8 +11,12 @@ public final class KnowledgePortalDtos {
 
     public record HierarchyOption(UUID id, String name, boolean isDefault) {}
 
+    /**
+     * @param sizeBytes      size of the current revision's file, when one is recorded
+     * @param myLastOpenedAt when the signed-in user last opened this document from the portal (ISO-8601 instant), or null
+     */
     public record PortalDocument(KnowledgeBaseDocumentResponse document, long views, long helpfulVotes,
-                                 boolean featured, Boolean myFeedback) {}
+                                 boolean featured, Boolean myFeedback, Long sizeBytes, String myLastOpenedAt) {}
 
     public record KnowledgeBaseCard(String key, String label, int documentCount, boolean subscribed) {}
 
@@ -39,7 +43,12 @@ public final class KnowledgePortalDtos {
             List<Crumb> path,
             String nextFieldLabel,
             List<Folder> folders,
-            List<PortalDocument> documents
+            /** One page of the documents in this folder. */
+            List<PortalDocument> documents,
+            /** All documents in this folder, across pages. */
+            int totalDocuments,
+            int page,
+            int limit
     ) {}
 
     public record DeterminatorInfo(String field, String label) {}

@@ -35,6 +35,8 @@ services:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - eqms_postgres_data:/var/lib/postgresql/data
+      # WAL archive (SDS 15.1): its own volume, so an archived segment survives a container re-creation
+      - eqms_pg_archive:/var/lib/postgresql/archive
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eqms} -d ${POSTGRES_DB:-eqms-database}"]
       interval: 5s
@@ -250,6 +252,8 @@ services:
       CONTROL_DB_URL: jdbc:postgresql://backup-control:5432/eqms_backup_control
       CONTROL_DB_USER: eqms_backup
       CONTROL_DB_PASSWORD: ${BACKUP_CONTROL_DB_PASSWORD:?BACKUP_CONTROL_DB_PASSWORD is required}
+      # notice bounds (BR-16: 5-240). The minimum may be lowered to 1 in DEV only, for testing; the agent refuses it elsewhere.
+      AGENT_MAINTENANCE_NOTICE_MIN_MINUTES: ${AGENT_MAINTENANCE_NOTICE_MIN_MINUTES:-5}
       SOURCE_DB_HOST: postgres
       SOURCE_DB_NAME: ${POSTGRES_DB:-eqms-database}
       SOURCE_DB_USER: eqms_backup_ro
@@ -269,6 +273,8 @@ services:
       - ${BACKUP_T1_DIR:-./backups/dev/t1}:/backup/t1
       - ${BACKUP_LEDGER_DIR:-./backups/dev/ledger}:/backup/ledger
       - ${BACKUP_AGENT_STATE_DIR:-./backups/dev/agent}:/backup/agent
+      # maintenance window: the agent writes the lock file here; the backend reads it on every request (SDS 11.5.3)
+      - ${BACKUP_MAINTENANCE_DIR:-./backups/dev/maintenance}:/backup/maintenance
       # Export Backup Set writes one folder per registered offline medium here. In a real deployment this is the mount point of the medium.
       - ${BACKUP_EXPORT_DIR:-./backups/dev/export}:/backup/export
     networks:
@@ -311,6 +317,9 @@ services:
       APP_ENVIRONMENT: ${EQMS_ENVIRONMENT:-DEV}
       APP_BACKUP_AGENT_URL: http://backup-agent:5600
       APP_BACKUP_AGENT_TOKEN: ${BACKUP_AGENT_API_TOKEN:?BACKUP_AGENT_API_TOKEN is required}
+      # maintenance window (SDS 11.5): the lock file is read only here; the pass secret signs the Super Administrator's pass
+      APP_MAINTENANCE_LOCK_FILE: /maintenance/maintenance.lock
+      APP_MAINTENANCE_PASS_SECRET: ${MAINTENANCE_PASS_SECRET:-}
       SERVER_PORT: 5000
       # P3 legacy cleanup: all users are backfilled to Access Profiles (V166/V167)
       APP_SECURITY_LEGACY_ROLE_FALLBACK_ENABLED: "false"
@@ -383,6 +392,8 @@ services:
       - "127.0.0.1:${BACKEND_PORT:-5000}:5000"
     volumes:
       - eqms_backend_storage:/app/storage
+      # maintenance lock file, read only (written by the Backup Agent)
+      - ${BACKUP_MAINTENANCE_DIR:-./backups/dev/maintenance}:/maintenance:ro
       - eqms_backend_logs:/app/logs
     networks:
       - default
@@ -440,6 +451,7 @@ volumes:
   eqms_backup_control_data:
   eqms_backup_t3_data:
   eqms_postgres_data:
+  eqms_pg_archive:
   eqms_minio_data:
   eqms_redis_data:
   eqms_backend_storage:

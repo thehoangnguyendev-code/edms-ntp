@@ -1,4 +1,5 @@
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -340,7 +341,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         <div className="flex flex-col items-start gap-1">
           <div>
             <div className="font-semibold text-slate-900">{policy.actionLabel ?? policy.actionCode}</div>
-            <div className="text-[10px] text-slate-400">{policy.actionCode}</div>
+            <div className="text-2xs text-slate-400">{policy.actionCode}</div>
           </div>
           {(policy.warnings?.length ?? 0) > 0 && <Badge color="amber" size="sm">Warning</Badge>}
         </div>
@@ -490,9 +491,9 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
       )}
 
       {optionsError && (
-        <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+        <WarningBanner variant="warning">
           Unable to load workflow authorization options. Some dropdowns may be empty. Please refresh or contact system administrator.
-        </div>
+        </WarningBanner>
       )}
 
       <div className="w-full overflow-hidden flex flex-col">

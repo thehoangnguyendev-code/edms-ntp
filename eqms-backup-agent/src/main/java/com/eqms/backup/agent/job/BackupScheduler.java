@@ -27,19 +27,24 @@ public class BackupScheduler {
     private final JdbcTemplate jdbc;
     private final JobQueue queue;
     private final AgentProperties properties;
+    private final com.eqms.backup.agent.maintenance.MaintenanceService maintenance;
 
-    public BackupScheduler(JdbcTemplate jdbc, JobQueue queue, AgentProperties properties) {
+    public BackupScheduler(JdbcTemplate jdbc, JobQueue queue, AgentProperties properties, com.eqms.backup.agent.maintenance.MaintenanceService maintenance) {
         this.jdbc = jdbc;
         this.queue = queue;
         this.properties = properties;
+        this.maintenance = maintenance;
     }
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
     public void tick() {
+        if (properties.isRestoreWorker()) return;
         tick(Instant.now());
     }
 
     public void tick(Instant now) {
+        // SDS 11.1: the scheduler stays off while users are being drained or the system is locked for a restore
+        if (maintenance.status().state() != com.eqms.backup.agent.maintenance.MaintenanceService.State.NORMAL) return;
         Optional<Instant> due = lastDue(now);
         if (due.isEmpty() || queue.hasOpenBackupJob()) return;
         Integer already = jdbc.queryForObject(

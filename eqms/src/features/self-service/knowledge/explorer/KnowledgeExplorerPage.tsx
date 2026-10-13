@@ -17,6 +17,7 @@ import {
 import { ExplorerContextMenu, type ContextMenuAction } from "./ExplorerContextMenu";
 import { ExplorerInspector, type InspectorTarget } from "./ExplorerInspector";
 import { ExplorerEmpty, ExplorerItems, ExplorerLoading } from "./ExplorerItems";
+import { TablePagination } from "@/components/ui/table/TablePagination";
 import { ExplorerSidebar } from "./ExplorerSidebar";
 import { ExplorerToolbar } from "./ExplorerToolbar";
 import { ExplorerWidgets } from "./ExplorerWidgets";
@@ -25,20 +26,26 @@ import {
   cardsToFolders,
   navKey,
   parentOf,
+  DEFAULT_SORT_DIR,
+  PAGE_SIZE,
+  serverSortKey,
   sortDocuments,
   sortFolders,
   SMART_LABELS,
   type ExplorerNav,
   type FolderEntry,
   type Selection,
+  type SortDir,
   type SortKey,
   type ViewMode,
 } from "./explorerModel";
 import { openKnowledgePreview } from "./openExplorer";
 import { useMediaQuery } from "./useMediaQuery";
+import { APP_SIDEBAR_COLLAPSED_WIDTH, APP_SIDEBAR_WIDTH } from "@/components/layout/sidebar/sidebarWidths";
 
 const VIEW_STORAGE_KEY = "eqms.knowledgeExplorer.view";
 const WIDGETS_STORAGE_KEY = "eqms.knowledgeExplorer.widgets";
+
 const SIDEBAR_STORAGE_KEY = "eqms.knowledgeExplorer.sidebar";
 const MIN_SEARCH_LENGTH = 3;
 
@@ -90,7 +97,9 @@ export const KnowledgeExplorerPage: React.FC = () => {
   const [searchVersion, setSearchVersion] = useState(0);
 
   const [sort, setSort] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [sortTouched, setSortTouched] = useState(false);
+  const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>(() => (readStored(VIEW_STORAGE_KEY) === "list" ? "list" : "grid"));
   const [widgetsVisible, setWidgetsVisible] = useState<boolean>(() => readStored(WIDGETS_STORAGE_KEY) !== "off");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readStored(SIDEBAR_STORAGE_KEY) === "collapsed");
@@ -107,7 +116,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
 
   const explorerGridTemplateColumns = useMemo(() => {
     if (!isMedium) return "minmax(0, 1fr)";
-    const sidebarWidth = sidebarCollapsed ? "4.5rem" : "18rem";
+    const sidebarWidth = sidebarCollapsed ? `${APP_SIDEBAR_COLLAPSED_WIDTH}px` : `${APP_SIDEBAR_WIDTH}px`;
     return isWide ? `${sidebarWidth} minmax(0, 1fr) 22rem` : `${sidebarWidth} minmax(0, 1fr)`;
   }, [isMedium, isWide, sidebarCollapsed]);
 
@@ -129,7 +138,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
     if (nav.kind !== "kb") { setBrowse(null); setBrowseStatus("ready"); return undefined; }
     let alive = true;
     setBrowseStatus("loading");
-    knowledgeApi.browse(activeHierarchyId, nav.kb.key, nav.path)
+    knowledgeApi.browse(activeHierarchyId, nav.kb.key, nav.path, { page, limit: PAGE_SIZE, sortBy: serverSortKey(sort), sortDirection: sortDir })
       .then((result) => { if (alive) { setBrowse(result); setBrowseStatus("ready"); } })
       .catch((error) => {
         if (!alive) return;
@@ -137,7 +146,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
         showToast({ type: "error", title: "Failed to load", message: errorMessage(error, "Unable to open this folder.") });
       });
     return () => { alive = false; };
-  }, [nav, activeHierarchyId, browseVersion, showToast]);
+  }, [nav, activeHierarchyId, browseVersion, page, sort, sortDir, showToast]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -172,6 +181,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
     setSearchInput("");
     setSearchTerm("");
     setSortTouched(false);
+    setPage(1);
   }, []);
 
   const go = useCallback((next: ExplorerNav) => {
@@ -232,14 +242,18 @@ export const KnowledgeExplorerPage: React.FC = () => {
       folders = browse.folders.map((f) => ({ key: f.key, label: f.label, documentCount: f.documentCount, isKnowledgeBase: false }));
       docs = browse.documents;
     }
-    // "Most viewed" and friends are ranked lists; only re-sort them when the user asks to.
+    // A folder's documents arrive already sorted and cut to the page by the server. Search hits and the ranked lists are
+    // short lists held here, so they are sorted and cut to the page here; ranked lists keep their ranking until asked to re-sort.
+    const fromServer = !searching && nav.kind === "kb";
     const rankedList = searching || nav.kind === "smart";
     if (!rankedList || sortTouched) {
-      docs = sortDocuments(docs, sort);
+      if (!fromServer) docs = sortDocuments(docs, sort, sortDir);
       folders = sortFolders(folders, sort);
     }
-    return { folders, docs };
-  }, [searching, shortQuery, searchActive, searchResults, nav, overview, browse, sort, sortTouched]);
+    const totalDocs = fromServer ? browse?.totalDocuments ?? docs.length : docs.length;
+    if (!fromServer) docs = docs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    return { folders, docs, totalDocs };
+  }, [searching, shortQuery, searchActive, searchResults, nav, overview, browse, sort, sortDir, sortTouched, page]);
 
   const knownDocuments = useMemo(() => {
     const map = new Map<string, KnowledgePortalDocument>();
@@ -250,7 +264,21 @@ export const KnowledgeExplorerPage: React.FC = () => {
 
   const loading = searching ? !shortQuery && (searchPending || searchStatus === "loading") : nav.kind === "kb" ? browseStatus === "loading" && !browse : overviewStatus === "loading";
   const failed = searching ? !shortQuery && !searchPending && searchStatus === "error" : nav.kind === "kb" ? browseStatus === "error" : overviewStatus === "error";
-  const itemCount = content.folders.length + content.docs.length;
+  const itemCount = content.folders.length + content.totalDocs;
+  const totalPages = Math.max(1, Math.ceil(content.totalDocs / PAGE_SIZE));
+  // The list shrank (another search, a refresh): never sit on a page that no longer exists.
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
+
+  const chooseSort = useCallback((key: SortKey, dir?: SortDir) => {
+    setSort(key);
+    setSortDir(dir ?? DEFAULT_SORT_DIR[key]);
+    setSortTouched(true);
+    setPage(1);
+  }, []);
+  // A column header: the same column flips its direction, another column starts in its natural direction.
+  const sortByColumn = useCallback((key: SortKey) => {
+    chooseSort(key, key === sort ? (sortDir === "asc" ? "desc" : "asc") : undefined);
+  }, [chooseSort, sort, sortDir]);
   const showWidgets = nav.kind === "home" && !searchInput && widgetsVisible && overview !== null && overviewStatus === "ready";
 
   const crumbs = buildCrumbs(nav, browse?.path, searchActive ? searchTerm : searching ? searchInput.trim() : undefined);
@@ -475,7 +503,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
             onUp={goUp}
             onCrumb={go}
             onSearch={setSearchInput}
-            onSort={(value) => { setSort(value); setSortTouched(true); }}
+            onSort={(value) => chooseSort(value)}
             onView={(mode) => { setViewMode(mode); writeStored(VIEW_STORAGE_KEY, mode); }}
             onToggleWidgets={() => setWidgetsVisible((v) => { writeStored(WIDGETS_STORAGE_KEY, v ? "off" : "on"); return !v; })}
             onOpenMenu={() => setMenuOpen(true)}
@@ -521,6 +549,10 @@ export const KnowledgeExplorerPage: React.FC = () => {
                   <ExplorerItems
                     folders={content.folders}
                     docs={content.docs}
+                    totalDocs={content.totalDocs}
+                    sort={sort}
+                    sortDir={sortDir}
+                    onSortColumn={sortByColumn}
                     view={viewMode}
                     selection={selection}
                     highlight={searchActive ? searchTerm : undefined}
@@ -534,6 +566,20 @@ export const KnowledgeExplorerPage: React.FC = () => {
               </motion.div>
             </AnimatePresence>
           </div>
+
+          {content.totalDocs > 0 && (
+            <div className="border-t border-slate-200 bg-white">
+              <TablePagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={content.totalDocs}
+                itemsPerPage={PAGE_SIZE}
+                isLoading={loading}
+                onPageChange={setPage}
+                showItemsPerPageSelector={false}
+              />
+            </div>
+          )}
 
           <div className="flex items-center gap-4 border-t border-slate-200 bg-white px-4 py-1.5 text-2xs text-slate-500 md:text-xs">
             <span><span className="font-semibold tabular-nums text-slate-700">{itemCount}</span> {itemCount === 1 ? "item" : "items"}</span>
@@ -550,7 +596,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
           <div className="fixed inset-0 z-50 md:hidden">
             <motion.div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMenuOpen(false)} />
             <motion.aside
-              className="absolute inset-y-0 left-0 w-72 max-w-[85%] bg-white shadow-xl"
+              className="absolute inset-y-0 left-0 max-w-[92vw] bg-white shadow-xl" style={{ width: APP_SIDEBAR_WIDTH }}
               initial={reduceMotion ? false : { x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}

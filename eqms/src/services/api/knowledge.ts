@@ -69,6 +69,10 @@ export interface KnowledgePortalDocument {
   helpfulVotes: number;
   featured: boolean;
   myFeedback?: boolean | null;
+  /** Size of the current revision's file, when one is recorded. */
+  sizeBytes?: number | null;
+  /** When the signed-in user last opened this document from the portal (ISO-8601), or null. */
+  myLastOpenedAt?: string | null;
 }
 
 export interface KnowledgeBaseCard {
@@ -97,7 +101,19 @@ export interface KnowledgeBrowseResult {
   path: { fieldLabel: string; key: string; label: string }[];
   nextFieldLabel?: string | null;
   folders: { key: string; label: string; documentCount: number }[];
+  /** One page of the documents in this folder. */
   documents: KnowledgePortalDocument[];
+  /** All documents in this folder, across pages. */
+  totalDocuments: number;
+  page: number;
+  limit: number;
+}
+
+export interface KnowledgeBrowseOptions {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
 }
 
 const ADMIN = '/settings/knowledge-hierarchies';
@@ -140,9 +156,9 @@ export const knowledgeApi = {
     (await api.get<{ field?: string | null; label?: string | null }>(`${PORTAL}/default-determinator`)).data,
   overview: async (hierarchyId?: string) =>
     (await api.get<KnowledgePortalOverview>(PORTAL, { params: { hierarchyId } })).data,
-  browse: async (hierarchyId: string | undefined, kb: string, path: string[]) =>
+  browse: async (hierarchyId: string | undefined, kb: string, path: string[], options: KnowledgeBrowseOptions = {}) =>
     (await api.get<KnowledgeBrowseResult>(`${PORTAL}/browse`, {
-      params: { hierarchyId, kb, path },
+      params: { hierarchyId, kb, path, ...options },
       paramsSerializer: { indexes: null },
     })).data,
   search: async (q: string) => (await api.get<KnowledgePortalDocument[]>(`${PORTAL}/search`, { params: { q } })).data,

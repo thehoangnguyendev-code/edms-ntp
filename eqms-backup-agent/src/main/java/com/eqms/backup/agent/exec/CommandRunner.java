@@ -38,4 +38,14 @@ public interface CommandRunner {
 
     /** Feeds {@code input} to the command and writes its output to {@code out} (which must not exist). */
     StreamResult encryptStream(InputStream input, Command command, Path out, long timeoutSeconds) throws IOException, InterruptedException;
+
+    /** Result of a command whose output is only hashed, never stored. */
+    record HashResult(int exitCode, String sha256, long bytes, String stderrTail) {
+        public boolean ok() {
+            return exitCode == 0;
+        }
+    }
+
+    /** Runs the command and returns the SHA-256 of what it wrote to stdout. Nothing is written to disk. */
+    HashResult hashOutput(Command command, long timeoutSeconds) throws IOException, InterruptedException;
 }

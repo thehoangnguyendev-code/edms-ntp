@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, it } from "vitest";
 import { ToastProvider } from "@/components/ui/toast/Toast";
@@ -32,33 +32,10 @@ const renderAt = (path: string) =>
     </ToastProvider>,
   );
 
-// Overview and Backup History read the Backup Agent and are tested in their own files. These screens still show sample data.
-it.each([
-  [R.RESTORES, "RS-20261008-001"],
-  [R.DR_DRILLS, "DR-20260612-001"],
-])("%s is its own screen and says it is a design preview", (path, text) => {
-  renderAt(path);
+// Overview, Backup History, Restore Requests and New Restore Request read the Backup Agent and are tested in their own files.
+// Disaster recovery still shows sample data.
+it("Disaster Recovery Drills is its own screen and says it is a design preview", () => {
+  renderAt(R.DR_DRILLS);
   expect(screen.getByText("Design preview")).toBeTruthy();
-  expect(screen.getAllByText(text).length).toBeGreaterThan(0);
-});
-
-it("blocks a production restore without a change control reference", () => {
-  renderAt(`${R.RESTORE_NEW}?backup=BK-20261007-0200`);
-  fireEvent.click(screen.getByText("Next"));
-  fireEvent.click(screen.getByText("Production"));
-  fireEvent.change(screen.getByPlaceholderText("Why is this restore needed?"), { target: { value: "Recover corrupted register" } });
-  fireEvent.click(screen.getByText("Next"));
-  expect(screen.getByText("Blocks restore")).toBeTruthy();
-  expect((screen.getByText("Next").closest("button") as HTMLButtonElement).disabled).toBe(true);
-});
-
-it("requires a disaster declaration reference before a disaster recovery can be submitted", () => {
-  renderAt(`${R.RESTORE_NEW}?backup=BK-20261007-0200`);
-  fireEvent.click(screen.getByText("Next"));
-  fireEvent.click(screen.getByText("Disaster recovery"));
-  fireEvent.change(screen.getByPlaceholderText("Why is this restore needed?"), { target: { value: "Server room lost" } });
-  fireEvent.click(screen.getByText("Next"));
-  expect(screen.getByText("Disaster declaration")).toBeTruthy();
-  expect(screen.getByText("Blocks restore")).toBeTruthy();
-  expect((screen.getByText("Next").closest("button") as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getAllByText("DR-20260612-001").length).toBeGreaterThan(0);
 });

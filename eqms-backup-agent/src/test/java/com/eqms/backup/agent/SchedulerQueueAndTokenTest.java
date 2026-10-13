@@ -31,7 +31,10 @@ class SchedulerQueueAndTokenTest {
         queue = new JobQueue(db.jdbc);
         properties = new AgentProperties();
         properties.setZone("Asia/Ho_Chi_Minh");
-        scheduler = new BackupScheduler(db.jdbc, queue, properties);
+        properties.setLedgerDir(java.nio.file.Files.createTempDirectory("ledger-test"));
+        var ledger = new com.eqms.backup.agent.ledger.LedgerService(db.jdbc, db.tx, properties);
+        var maintenance = new com.eqms.backup.agent.maintenance.MaintenanceService(db.jdbc, db.tx, ledger, properties);
+        scheduler = new BackupScheduler(db.jdbc, queue, properties, maintenance);
     }
 
     @AfterEach

@@ -247,7 +247,7 @@ export const PermissionSplitExplorer: React.FC<
           </div>
 
           <aside className="border-t border-slate-200 bg-slate-50/40 lg:w-72 lg:shrink-0 lg:border-l lg:border-t-0">
-            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5 sm:px-4">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 sm:px-4">
               <span className="text-sm font-semibold text-slate-700">Selected ({selectedPermissions.length})</span>
               {!readOnly && selectedPermissions.length > 0 && (
                 <button
@@ -274,7 +274,7 @@ export const PermissionSplitExplorer: React.FC<
                       <div className="flex items-start gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium leading-5 text-emerald-800">{permission.label}</p>
-                          <p className="mt-0.5 break-all text-[11px] font-medium leading-4 text-emerald-700 sm:text-xs">{permission.id}</p>
+                          <p className="mt-0.5 break-all text-2xs font-medium leading-4 text-emerald-700 sm:text-xs">{permission.id}</p>
                           <p className="mt-1 text-xs text-slate-600">{permission.module}</p>
                         </div>
                         {!readOnly && !locked && (

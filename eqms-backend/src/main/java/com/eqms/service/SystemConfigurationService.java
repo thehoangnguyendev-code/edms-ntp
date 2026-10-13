@@ -707,6 +707,17 @@ public class SystemConfigurationService {
         return value == null || value.isNull() || value.asBoolean(true);
     }
 
+    /** The administrator address of the general configuration, or null when it is empty. */
+    @Transactional(readOnly = true)
+    public String getAdminEmail() {
+        JsonNode general = requireConfiguration().getGeneralConfig();
+        if (general == null) {
+            return null;
+        }
+        JsonNode value = general.get("adminEmail");
+        return value == null || value.isNull() || value.asText().isBlank() ? null : value.asText().trim();
+    }
+
     @Transactional(readOnly = true)
     public boolean isMaintenanceModeEnabled() {
         JsonNode general = requireConfiguration().getGeneralConfig();

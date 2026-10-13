@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { createPortal } from "react-dom";
 import { UserX, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -102,9 +103,9 @@ export const TerminateModal: React.FC<TerminateModalProps> = ({
             {errors.date && <p className="text-xs text-red-600 mt-1">{errors.date}</p>}
           </div>
 
-          <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-[10px] sm:text-xs text-rose-700 leading-relaxed">
+          <WarningBanner variant="error">
             The user's account will be permanently deactivated. All historical records, documents, and audit trail entries will be preserved.
-          </div>
+          </WarningBanner>
         </div>
       </FormModal>
 

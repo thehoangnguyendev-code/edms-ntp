@@ -100,6 +100,7 @@ class PermissionDependencySeedDataIntegrationTest {
         // documents.module.view and IMPLY their own base *.view permission.
         // NOTE: before V540 the table held 40 rows, not the 42 this assertion used to expect -- an earlier migration
         // removed two rows without this count being updated. 44 is the verified current total (40 + 4).
-        assertEquals(44, permissionDependencyRepository.findAll().size());
+        // 57 after V566 (backup restore request and approve dependencies, +2) and the backup permissions of V561-V567 on DEV
+        assertEquals(57, permissionDependencyRepository.findAll().size());
     }
 }

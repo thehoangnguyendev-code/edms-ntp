@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import {
-  AlertTriangle,
   Boxes,
   Coffee,
   Cpu,
@@ -9,17 +9,16 @@ import {
   GitBranch,
   HardDrive,
   Layers,
-  RefreshCw,
   Server,
   ShieldCheck,
   Terminal,
   Zap,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
-import { FormSection } from "@/components/ui/form/FormSection";
+import { Badge } from "@/components/ui/badge/Badge";
 import { systemInformation } from "@/components/ui/breadcrumb/breadcrumbs.config";
-import { SectionLoading } from "@/components/ui/loading/Loading";
-import { Button } from "@/components/ui/button/Button";
+import { Card, CardHeader, KpiStrip, type KpiCellData } from "@/features/self-service/dashboard/shared/dashboardUi";
+import { PanelError, RowsSkeleton } from "@/features/self-service/dashboard/shared/dashboardParts";
 import { cn } from "@/components/ui/utils";
 import { ROUTES } from "@/app/routes.constants";
 import { systemInfoApi, type SystemInfoResponse } from "@/services/api/systemInfo";
@@ -152,10 +151,32 @@ const CATEGORY_ICON: Record<string, React.ComponentType<{ className?: string }>>
 /*  Building blocks                                                   */
 /* ------------------------------------------------------------------ */
 
+const EASE = [0.2, 0.8, 0.3, 1] as const;
+
+/** A dashboard card whose header carries the title and a real value or state as its badge; cards rise in one after another. */
+const InfoCard: React.FC<{ title: string; subtitle?: string; badge?: React.ReactNode; index: number; className?: string; children: React.ReactNode }> = ({
+  title, subtitle, badge, index, className, children,
+}) => {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.div
+      className={cn("min-w-0", className)}
+      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduceMotion ? 0 : 0.35, delay: reduceMotion ? 0 : index * 0.06, ease: EASE }}
+    >
+      <Card aria-label={title} className="h-full">
+        <CardHeader title={title} subtitle={subtitle} badge={badge} />
+        <div className="px-4 pb-3 pt-2">{children}</div>
+      </Card>
+    </motion.div>
+  );
+};
+
 const Field: React.FC<{ label: string; value: React.ReactNode; mono?: boolean }> = ({ label, value, mono }) => (
-  <div className="flex items-start justify-between gap-4 py-2.5 border-b border-slate-100 last:border-0">
-    <span className="text-xs font-medium text-slate-500 shrink-0 pt-0.5">{label}</span>
-    <span className={cn("text-sm font-semibold text-slate-900 text-right break-all", mono && "font-mono text-xs text-slate-700")}>
+  <div className="flex items-start justify-between gap-4 border-b border-slate-100 py-2.5 last:border-0">
+    <span className="shrink-0 pt-0.5 text-xs font-medium text-slate-500">{label}</span>
+    <span className={cn("break-all text-right text-sm font-medium text-slate-900", mono && "font-mono text-xs text-slate-700")}>
       {value}
     </span>
   </div>
@@ -168,15 +189,15 @@ const TechTile: React.FC<{
   Mark?: React.FC<MarkProps>;
   FallbackIcon?: React.ComponentType<{ className?: string }>;
 }> = ({ name, category, version, Mark, FallbackIcon = Layers }) => (
-  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-shadow hover:shadow-md">
+  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:border-emerald-200 hover:bg-emerald-50/30">
     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
       {Mark ? <Mark className="h-7 w-7" /> : <FallbackIcon className="h-5 w-5 text-slate-500" />}
     </div>
     <div className="min-w-0 flex-1">
-      <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
-      <p className="truncate text-2xs font-medium uppercase tracking-wide text-slate-400">{category}</p>
+      <p className="truncate text-sm font-medium text-slate-900">{name}</p>
+      <p className="truncate text-2xs font-medium uppercase tracking-wide text-slate-500">{category}</p>
     </div>
-    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 font-mono text-2xs text-slate-600">{version}</span>
+    <Badge color="slate" size="sm">{version}</Badge>
   </div>
 );
 
@@ -193,6 +214,29 @@ const formatUptime = (ms: number) => {
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
   return [d && `${d}d`, h && `${h}h`, `${m}m`].filter(Boolean).join(" ");
+};
+
+/** Heap in use against its ceiling; the bar is that real ratio and fills when it appears. */
+const HeapBar: React.FC<{ used: number; max: number }> = ({ used, max }) => {
+  const reduceMotion = useReducedMotion();
+  if (!max || max < 0) return null;
+  const pct = Math.min(100, Math.round((used / max) * 100));
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      <div className="mb-1.5 flex items-center justify-between text-xs">
+        <span className="font-medium text-slate-500">Heap in use</span>
+        <span className="font-medium tabular-nums text-slate-800">{pct}%</span>
+      </div>
+      <div role="progressbar" aria-label="Heap in use" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="h-2 overflow-hidden rounded-full bg-slate-100">
+        <motion.div
+          className={cn("h-full rounded-full", pct > 90 ? "bg-red-500" : pct > 75 ? "bg-amber-500" : "bg-gradient-to-r from-emerald-600 to-emerald-400")}
+          initial={reduceMotion ? false : { width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.9, delay: reduceMotion ? 0 : 0.2, ease: EASE }}
+        />
+      </div>
+    </div>
+  );
 };
 
 /* ------------------------------------------------------------------ */
@@ -222,12 +266,36 @@ export const SystemInformationView: React.FC = () => {
   const server = data?.server;
   const db = data?.database;
 
+  // Only facts the server reported; nothing here is estimated.
+  const cells = React.useMemo<KpiCellData[]>(() => {
+    if (!server || !db) return [];
+    return [
+      { title: "Backend version", accent: "#10b981", value: server.version, footValue: server.activeProfiles.length ? server.activeProfiles.join(", ") : "default", footLabel: "active profiles" },
+      { title: "Uptime", accent: "#3b82f6", value: formatUptime(server.uptimeMillis), footValue: server.timeZone, footLabel: "server time zone" },
+      { title: "Schema migration", accent: "#8b5cf6", value: `v${db.schemaMigrationVersion}`, footValue: db.appliedMigrations, footLabel: "applied migrations" },
+      { title: "Database", accent: "#f59e0b", value: stripRange(db.productVersion).split(" ")[0], footValue: db.product, footLabel: "engine" },
+    ];
+  }, [server, db]);
+
   return (
-    <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
+    <div className="flex w-full flex-1 flex-col space-y-4 md:space-y-6">
       <PageHeader title="System Information" breadcrumbItems={systemInformation(navigate)} />
 
-      {/* Application (frontend) */}
-      <FormSection title="Application" icon={<Boxes className="h-4 w-4" />}>
+      {loading && (
+        <Card aria-label="Reading server information">
+          <RowsSkeleton rows={5} />
+        </Card>
+      )}
+
+      {!loading && error && (
+        <Card role="alert" className="border-red-200">
+          <PanelError message="Unable to load server and database information." onRetry={load} />
+        </Card>
+      )}
+
+      {!loading && !error && server && db && <KpiStrip cells={cells} label="Server and database summary" />}
+
+      <InfoCard title="Application" subtitle="This web application" badge={<Badge color="emerald" size="sm">v{packageJson.version}</Badge>} index={0}>
         <Field label="Application name" value={metadata.name} />
         <Field label="Package name" value={packageJson.name} mono />
         <Field label="Frontend version" value={packageJson.version} mono />
@@ -235,40 +303,18 @@ export const SystemInformationView: React.FC = () => {
         <Field label="Runtime mode" value={import.meta.env.MODE} />
         <Field label="Private package" value={String(packageJson.private)} />
         <div className="py-2.5">
-          <p className="text-xs font-medium text-slate-500 mb-1">Description</p>
+          <p className="mb-1 text-xs font-medium text-slate-500">Description</p>
           <p className="text-sm leading-relaxed text-slate-700">{metadata.description}</p>
         </div>
-      </FormSection>
+      </InfoCard>
 
-      {loading && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-          <SectionLoading text="Reading server information..." />
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
-          <AlertTriangle className="h-6 w-6 text-amber-500" />
-          <p className="text-sm font-medium text-amber-800">Unable to load server &amp; database information.</p>
-          <Button size="sm" variant="outline" onClick={load} className="gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Retry
-          </Button>
-        </div>
-      )}
-
-      {!loading && !error && server && db && (
+      {!loading && !error && server && db && data && (
         <>
           <div className="grid grid-cols-1 gap-4 md:gap-6 xl:grid-cols-2">
-            {/* Server */}
-            <FormSection title="Server Runtime" icon={<Server className="h-4 w-4" />}>
+            <InfoCard title="Server Runtime" subtitle={`${server.javaVendor} ${server.javaVersion}`} badge={<Badge color="emerald" size="sm">{server.applicationName}</Badge>} index={1}>
               <Field label="Service name" value={server.applicationName} mono />
               <Field label="Backend version" value={server.version} mono />
-              <Field
-                label="Active profiles"
-                value={server.activeProfiles.length ? server.activeProfiles.join(", ") : "default"}
-                mono
-              />
+              <Field label="Active profiles" value={server.activeProfiles.length ? server.activeProfiles.join(", ") : "default"} mono />
               <Field label="Java" value={`${server.javaVersion} · ${server.javaVendor}`} />
               <Field label="JVM" value={server.jvmName} />
               <Field label="Operating system" value={`${server.osName} (${server.osArch})`} />
@@ -284,10 +330,10 @@ export const SystemInformationView: React.FC = () => {
               <Field label="Time zone" value={server.timeZone} />
               <Field label="Started at" value={server.startedAt} />
               <Field label="Uptime" value={formatUptime(server.uptimeMillis)} />
-            </FormSection>
+              <HeapBar used={server.heapUsedBytes} max={server.heapMaxBytes} />
+            </InfoCard>
 
-            {/* Database */}
-            <FormSection title="Database" icon={<Database className="h-4 w-4" />}>
+            <InfoCard title="Database" subtitle={db.driverName} badge={<Badge color="emerald" size="sm">{db.product}</Badge>} index={2}>
               <Field label="Engine" value={`${db.product} ${stripRange(db.productVersion).split(" ")[0]}`} />
               <Field label="Full version" value={db.productVersion} mono />
               <Field label="JDBC driver" value={`${db.driverName} ${db.driverVersion}`} />
@@ -301,14 +347,18 @@ export const SystemInformationView: React.FC = () => {
                     : `${db.poolActive ?? "?"} active · ${db.poolIdle ?? "?"} idle · ${db.poolMax} max`
                 }
               />
-            </FormSection>
+            </InfoCard>
           </div>
 
-          {/* Technology stack */}
-          <FormSection title="Technology Stack" icon={<Layers className="h-4 w-4" />}>
-            <div className="py-2 space-y-4">
+          <InfoCard
+            title="Technology Stack"
+            subtitle="Frontend packages and backend components"
+            badge={<Badge color="slate" size="sm">{FRONTEND_STACK.length + data.techStack.length}</Badge>}
+            index={3}
+          >
+            <div className="space-y-4 py-2">
               <div>
-                <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-400">Frontend</p>
+                <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">Frontend</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {FRONTEND_STACK.map(({ id, name, category, version, Mark }) => (
                     <TechTile key={id} name={name} category={category} version={stripRange(version)} Mark={Mark} />
@@ -316,7 +366,7 @@ export const SystemInformationView: React.FC = () => {
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-400">Backend</p>
+                <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">Backend</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {data.techStack.map((t) => (
                     <TechTile
@@ -331,16 +381,15 @@ export const SystemInformationView: React.FC = () => {
                 </div>
               </div>
             </div>
-          </FormSection>
+          </InfoCard>
         </>
       )}
 
-      {/* Routing reference */}
-      <FormSection title="Routing" icon={<Terminal className="h-4 w-4" />}>
+      <InfoCard title="Routing" subtitle="Client-side route map" index={4}>
         <Field label="System information route" value={ROUTES.SETTINGS.SYSTEM_INFO} mono />
         <Field label="Settings route keys" value={String(Object.keys(ROUTES.SETTINGS).length)} />
         <Field label="Top-level route groups" value={String(Object.keys(ROUTES).length)} />
-      </FormSection>
+      </InfoCard>
     </div>
   );
 };

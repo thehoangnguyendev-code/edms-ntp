@@ -99,19 +99,19 @@ export const CertPreviewModal: React.FC<CertPreviewModalProps> = ({ isOpen, cert
         {/* Info grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5 pb-5 border-b border-slate-100 bg-white shrink-0">
           <div>
-            <p className="text-[10px] sm:text-xs text-slate-400 mb-0.5">Issue Date</p>
+            <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">Issue Date</p>
             <p className="text-sm font-semibold text-slate-700">
               {cert?.issueDate ? formatDate(cert.issueDate) : "—"}
             </p>
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-slate-400 mb-0.5">Expiry Date</p>
+            <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">Expiry Date</p>
             <p className={cn("text-sm font-semibold", isExpired ? "text-red-600" : "text-slate-700")}>
               {cert?.expiryDate ? formatDate(cert.expiryDate) : "No expiry"}
             </p>
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-slate-400 mb-0.5">Status</p>
+            <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">Status</p>
             {isExpired ? (
               <Badge color="red" size="sm" pill>Expired</Badge>
             ) : (
@@ -120,7 +120,7 @@ export const CertPreviewModal: React.FC<CertPreviewModalProps> = ({ isOpen, cert
           </div>
           {cert?.fileName && (
             <div>
-              <p className="text-[10px] sm:text-xs text-slate-400 mb-0.5">File</p>
+              <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">File</p>
               <p className="text-sm font-semibold text-slate-700 truncate">{cert.fileName}</p>
             </div>
           )}

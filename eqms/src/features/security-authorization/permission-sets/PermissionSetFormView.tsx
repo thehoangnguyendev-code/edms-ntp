@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Info, KeyRound, ListChecks } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -141,9 +142,7 @@ export const PermissionSetFormView: React.FC = () => {
       />
 
       {isSystemLocked && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
-          This is a system permission set. Its definition is protected and cannot be modified.
-        </div>
+        <WarningBanner variant="warning">This is a system permission set. Its definition is protected and cannot be modified.</WarningBanner>
       )}
 
       <FormSection title="Basic Information" icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">

@@ -141,13 +141,15 @@ class BackupExportControllerTest {
     @Test
     void anApprovalAndAnApprovalRefusedForTheSamePersonAreBothAudited() {
         UUID exportUuid = UUID.randomUUID();
-        when(agent.exchange(eq(HttpMethod.POST), eq("/internal/exports/" + EXPORT + "/approve"), any())).thenReturn(reply(200, "{\"id\":\"" + exportUuid + "\",\"status\":\"APPROVED\"}"));
+        when(agent.exchange(eq(HttpMethod.GET), eq("/internal/exports/" + EXPORT), isNull())).thenReturn(reply(200, "{\"id\":\"" + exportUuid + "\",\"status\":\"REQUESTED\"}"));
+        when(agent.exchange(eq(HttpMethod.POST), eq("/internal/exports/" + EXPORT + "/approve"), any())).thenReturn(reply(200, "{\"status\":\"APPROVED\"}"));
         assertThat(controller.approve(EXPORT).getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(audit).logAs(eq(actor), eq("BACKUP_EXPORT"), eq(EXPORT), eq(exportUuid), eq("BACKUP_EXPORT_APPROVED"), eq("REQUESTED"), eq("APPROVED"), anyString());
 
+        // A refusal body has no id. The audit row must still carry the export's id, or the audit write itself fails.
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/exports/" + EXPORT + "/approve"), any())).thenReturn(reply(409, "{\"code\":\"EXPORT_SAME_PERSON\"}"));
         assertThat(controller.approve(EXPORT).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        verify(audit).logAs(eq(actor), eq("BACKUP_EXPORT"), eq(EXPORT), isNull(), eq("BACKUP_EXPORT_APPROVAL_REFUSED"), eq("REQUESTED"), eq("REQUESTED"), org.mockito.ArgumentMatchers.contains("EXPORT_SAME_PERSON"));
+        verify(audit).logAs(eq(actor), eq("BACKUP_EXPORT"), eq(EXPORT), eq(exportUuid), eq("BACKUP_EXPORT_APPROVAL_REFUSED"), eq("REQUESTED"), eq("REQUESTED"), org.mockito.ArgumentMatchers.contains("EXPORT_SAME_PERSON"));
     }
 
     @Test

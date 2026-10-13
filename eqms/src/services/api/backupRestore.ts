@@ -322,6 +322,166 @@ export interface EncryptionFacts {
 
 type Paged<T> = { data: T[]; pagination: BackupPage["pagination"] };
 
+
+/** A test restore of a backup into a scratch database (SDS 14.1). Machine values only. */
+export interface RestoreRehearsal {
+  id: string;
+  rehearsalId: string;
+  backupId: string;
+  status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED";
+  requestedBy: string;
+  reason: string;
+  requestedAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  restoreSeconds: number | null;
+  errorCode: string | null;
+  errorDetail: string | null;
+  checkCount: number;
+  failedCount: number;
+  /** Only in the single-rehearsal read; the list carries the counts. */
+  checks?: { code: string; title: string; required: boolean; ok: boolean; detail: string | null; checkedAt: string }[];
+}
+
+export interface RehearsalListParams {
+  search?: string;
+  status?: string;
+  backupId?: string;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
+
+/** A restore request (SDS 11.3, steps R0-R3). Execution (R4-R12) is not built: an approved request is a record, not a running restore. */
+export type RestoreRequestType = "R-FULL" | "R-DB" | "R-OBJ" | "R-ONE";
+export type RestoreRequestTarget = "VALIDATION" | "PRODUCTION";
+export type RestoreRequestStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+
+export interface RestoreImpact {
+  backupId: string;
+  measuredAt: string;
+  measuredBy: string;
+  dbSnapshotAt: string | null;
+  schemaVersion: string | null;
+  components: { key: string; sizeBytes: number; objectCount: number | null; rows?: number }[];
+  rowsInBackup: number;
+  targets: { target: string; ok: boolean }[];
+  liveRowsAfterBackup: { measured: boolean; auditRows?: number; reason?: string; note?: string };
+}
+
+export interface RestoreRequestRecord {
+  id: string;
+  requestId: string;
+  backupId: string;
+  type: RestoreRequestType;
+  target: RestoreRequestTarget;
+  status: RestoreRequestStatus;
+  reason: string;
+  changeControlRef: string | null;
+  requestedBy: string;
+  requestedAt: string | null;
+  impactSha256: string | null;
+  impact: RestoreImpact | null;
+  rehearsalId: string | null;
+  approvedBy: string | null;
+  approvalSignatureRef: string | null;
+  decidedAt: string | null;
+  decisionReason: string | null;
+  events?: { event: string; by: string; at: string }[];
+}
+
+export interface RestoreRequestListParams {
+  search?: string;
+  status?: string;
+  target?: string;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
+/** The test restore queued in the window, with the outcome of its rehearsal and the checks it ran. */
+export interface RestoreTestRestore {
+  rehearsalId: string;
+  status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED";
+  requestedBy: string;
+  errorCode: string | null;
+  errorDetail: string | null;
+  checks: { code: string; title: string; required: boolean; ok: boolean; detail: string; checkedAt?: string }[];
+}
+
+/** The checks before a restore runs, and its schedule if one exists (SDS 11.3, R4). Read on the server. */
+export interface RestoreExecutionChecks {
+  requestId: string;
+  status: RestoreRequestStatus;
+  checks: { code: string; ok: boolean; detail: string }[];
+  readyToSchedule: boolean;
+  schedule: { id: string; status: string; windowStart: string; scheduledBy: string; scheduledAt: string } | null;
+  /** The state of the whole system, and the request that holds it when it is locked for a restore. */
+  systemState: string;
+  systemRequestId: string | null;
+  testRestore: RestoreTestRestore | null;
+  notCheckedYet: string[];
+}
+
+/** Decided on the server: the passed test restore of a backup that is recent enough for a production request, or null. */
+export interface RestoreReadiness {
+  backupId: string;
+  maxAgeDays: number;
+  testRestore: { rehearsalId: string; finishedAt: string } | null;
+}
+
+export interface CreateRestoreRequestPayload {
+  type: RestoreRequestType;
+  target: RestoreRequestTarget;
+  reason: string;
+  changeControlRef?: string;
+}
+
+/** The signed evidence pack of one restore request (SDS 16): the canonical text, its SHA-256, the signature and the key id. */
+export interface RestoreEvidencePack {
+  pack: string;
+  sha256: string;
+  signature: string;
+  keyId: string;
+}
+
+/** Backup Inspection (SDS 7.2): a read-only copy of one verified backup, open for five minutes. */
+export type InspectionStatus = "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "OPENING" | "OPEN" | "CLOSED" | "FAILED";
+
+export interface InspectionRecord {
+  id: string;
+  inspectionId: string;
+  backupId: string;
+  status: InspectionStatus;
+  reason: string;
+  requestedBy: string;
+  requestedAt: string | null;
+  approvedBy: string | null;
+  approvalSignatureRef: string | null;
+  decidedAt: string | null;
+  decisionReason: string | null;
+  scratchDb: string | null;
+  openedAt: string | null;
+  expiresAt: string | null;
+  closedAt: string | null;
+  closedBy: string | null;
+  closeReason: string | null;
+  errorCode: string | null;
+  errorDetail: string | null;
+  events?: { event: string; by: string; at: string }[];
+  checks?: { code: string; title: string; required: boolean; ok: boolean; detail: string | null }[];
+}
+
+export interface InspectionListParams {
+  search?: string;
+  status?: InspectionStatus;
+  page?: number;
+  limit?: number;
+}
+
 export const backupRestoreApi = {
   overview: async (): Promise<BackupOverview> => (await api.get<BackupOverview>(`${BASE}/overview`)).data,
 
@@ -357,6 +517,64 @@ export const backupRestoreApi = {
 
   discardPolicy: async (version: number, reason: string): Promise<PolicyVersion> =>
     (await api.post<PolicyVersion>(`${BASE}/policies/${version}/discard`, { reason })).data,
+
+  rehearsals: async (params?: RehearsalListParams): Promise<Paged<RestoreRehearsal>> => (await api.get<Paged<RestoreRehearsal>>(`${BASE}/rehearsals`, { params })).data,
+
+  rehearsal: async (rehearsalId: string): Promise<RestoreRehearsal> => (await api.get<RestoreRehearsal>(`${BASE}/rehearsals/${encodeURIComponent(rehearsalId)}`)).data,
+
+  requestRehearsal: async (backupId: string, reason: string): Promise<RestoreRehearsal> =>
+    (await api.post<RestoreRehearsal>(`${BASE}/backups/${encodeURIComponent(backupId)}/rehearsals`, { reason })).data,
+
+  restoreRequests: async (params?: RestoreRequestListParams): Promise<Paged<RestoreRequestRecord>> =>
+    (await api.get<Paged<RestoreRequestRecord>>(`${BASE}/restores`, { params })).data,
+
+  restoreRequest: async (requestId: string): Promise<RestoreRequestRecord> =>
+    (await api.get<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(requestId)}`)).data,
+
+  restoreEvidence: async (requestId: string): Promise<RestoreEvidencePack> =>
+    (await api.get<RestoreEvidencePack>(`${BASE}/restores/${encodeURIComponent(requestId)}/evidence`)).data,
+
+  restoreReadiness: async (backupId: string): Promise<RestoreReadiness> =>
+    (await api.get<RestoreReadiness>(`${BASE}/backups/${encodeURIComponent(backupId)}/restore-readiness`)).data,
+
+  restoreExecution: async (requestId: string): Promise<RestoreExecutionChecks> =>
+    (await api.get<RestoreExecutionChecks>(`${BASE}/restores/${encodeURIComponent(requestId)}/execution`)).data,
+
+  scheduleRestore: async (requestId: string, windowStart: string): Promise<RestoreExecutionChecks> =>
+    (await api.post<RestoreExecutionChecks>(`${BASE}/restores/${encodeURIComponent(requestId)}/schedule`, { windowStart })).data,
+
+  startTestRestore: async (requestId: string): Promise<{ requestId: string; rehearsalId: string; status: string }> =>
+    (await api.post<{ requestId: string; rehearsalId: string; status: string }>(`${BASE}/restores/${encodeURIComponent(requestId)}/test-restore`, {})).data,
+
+  enterRestoreWindow: async (requestId: string, noUserConfirmed: boolean): Promise<{ requestId: string; systemState: string }> =>
+    (await api.post<{ requestId: string; systemState: string }>(`${BASE}/restores/${encodeURIComponent(requestId)}/enter-window`, { noUserConfirmed })).data,
+
+  createRestoreRequest: async (backupId: string, payload: CreateRestoreRequestPayload): Promise<RestoreRequestRecord> =>
+    (await api.post<RestoreRequestRecord>(`${BASE}/backups/${encodeURIComponent(backupId)}/restores`, payload)).data,
+
+  approveRestoreRequest: async (requestId: string, signatureToken: string): Promise<RestoreRequestRecord> =>
+    (await api.post<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(requestId)}/approve`, { signatureToken })).data,
+
+  rejectRestoreRequest: async (requestId: string, reason: string, signatureToken: string): Promise<RestoreRequestRecord> =>
+    (await api.post<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(requestId)}/reject`, { reason, signatureToken })).data,
+
+  inspections: async (params?: InspectionListParams): Promise<Paged<InspectionRecord>> =>
+    (await api.get<Paged<InspectionRecord>>(`${BASE}/inspections`, { params })).data,
+
+  inspection: async (inspectionId: string): Promise<InspectionRecord> =>
+    (await api.get<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionId)}`)).data,
+
+  askInspection: async (backupId: string, reason: string): Promise<InspectionRecord> =>
+    (await api.post<InspectionRecord>(`${BASE}/backups/${encodeURIComponent(backupId)}/inspections`, { reason })).data,
+
+  approveInspection: async (inspectionId: string, signatureToken: string): Promise<InspectionRecord> =>
+    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionId)}/approve`, { signatureToken })).data,
+
+  rejectInspection: async (inspectionId: string, reason: string, signatureToken: string): Promise<InspectionRecord> =>
+    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionId)}/reject`, { reason, signatureToken })).data,
+
+  closeInspection: async (inspectionId: string, reason: string): Promise<InspectionRecord> =>
+    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionId)}/close`, { reason })).data,
 
   encryption: async (): Promise<EncryptionFacts> => (await api.get<EncryptionFacts>(`${BASE}/encryption`)).data,
 

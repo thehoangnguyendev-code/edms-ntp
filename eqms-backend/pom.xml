@@ -146,9 +146,14 @@
 					<!-- Several @SpringBootTest classes each open their own Hikari pool against the shared dev
 					     Postgres (max_connections=100) next to the running backend; small pools keep a full run
 					     from failing with "too many clients already". -->
+					<!-- The tests run against the shared DEV database, whose Flyway history includes the DEV-only migrations V558/V559
+					     (db/migration-dev, applied on DEV by docker-compose.yml). Without this location Flyway refuses the history
+					     ("Detected applied migration not resolved locally") and 33 integration classes fail. Environments with
+					     controlled settings still refuse migration-dev (EnvironmentConfigurationValidator). -->
 					<environmentVariables>
 						<SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE>5</SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE>
 						<SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE>1</SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE>
+						<SPRING_FLYWAY_LOCATIONS>classpath:db/migration,classpath:db/migration-dev</SPRING_FLYWAY_LOCATIONS>
 					</environmentVariables>
 				</configuration>
 			</plugin>

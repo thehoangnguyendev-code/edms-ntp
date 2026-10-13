@@ -1,4 +1,5 @@
 import React from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import type { DocumentAdministrationRule } from "@/services/api/settings";
@@ -53,7 +54,7 @@ export const DocumentWorkflowRulesPanel: React.FC<{
                 {rule.label}
               </span>
               {rule.description && (
-                <span className="mt-0.5 block text-[11px] sm:text-xs leading-5 text-slate-500">
+                <span className="mt-0.5 block text-2xs sm:text-xs leading-5 text-slate-500">
                   {rule.description}
                 </span>
               )}
@@ -65,10 +66,8 @@ export const DocumentWorkflowRulesPanel: React.FC<{
             No document revision integrity rules are available from the server.
           </div>
         )}
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs sm:text-sm text-emerald-800">
-          These rules are enforced by the server when a Document Master or Revision is saved/submitted —
-          toggling one here changes real validation behavior immediately after saving.
-        </div>
+        <WarningBanner variant="success">These rules are enforced by the server when a Document Master or Revision is saved/submitted —
+          toggling one here changes real validation behavior immediately after saving.</WarningBanner>
       </div>
     </div>
   );

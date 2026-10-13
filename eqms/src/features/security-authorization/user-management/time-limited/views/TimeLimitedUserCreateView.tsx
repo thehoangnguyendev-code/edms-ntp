@@ -144,7 +144,7 @@ export const TimeLimitedUserCreateView: React.FC = () => {
               searchPlaceholder="Search name, username, email..."
               disabled={isSaving || !canManage}
             />
-            <p className="mt-1.5 flex items-center gap-1 text-[11px] font-normal text-slate-400 sm:text-xs">
+            <p className="mt-1.5 flex items-center gap-1 text-2xs font-normal text-slate-400 sm:text-xs">
               Selecting several users creates one separate record for each -- they are never merged into a single row.
             </p>
           </div>
@@ -178,7 +178,7 @@ export const TimeLimitedUserCreateView: React.FC = () => {
           <div>
             <p className={labelClass}>Selected Users ({selectedUsers.length})</p>
             {selectedUsers.length === 0 ? (
-              <p className="text-[11px] font-normal text-slate-400 sm:text-xs">No users selected yet.</p>
+              <p className="text-2xs font-normal text-slate-400 sm:text-xs">No users selected yet.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {selectedUsers.map((u) => (
@@ -190,7 +190,7 @@ export const TimeLimitedUserCreateView: React.FC = () => {
           <div>
             <p className={labelClass}>Active Window</p>
             <p className="text-xs text-slate-700 sm:text-sm">
-              {startDisplay && endDisplay ? `${startDisplay} → ${endDisplay}` : <span className="text-[11px] font-normal text-slate-400 sm:text-xs">Not set yet.</span>}
+              {startDisplay && endDisplay ? `${startDisplay} → ${endDisplay}` : <span className="text-2xs font-normal text-slate-400 sm:text-xs">Not set yet.</span>}
             </p>
           </div>
           <div>

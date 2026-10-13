@@ -1,0 +1,71 @@
+# The restore worker: the only container that holds the PRIVATE backup key and may create databases. It runs the same image as the
+# agent in RESTORE_WORKER role. It shares the control database and the backup folders with the agent, but it is not given the
+# document-store credentials, the agent's API token or the eQMS database owner account.
+#   bash scripts/backup/provision-restore-worker.sh                       (once)
+#   docker compose -f docker-compose.yml -f docker-compose.backup-restore.yml --profile restore-worker up -d backup-restore-worker
+# DEV only in this form. In TEST and PROD the private key is mounted by the key holders for the duration of a restore, not kept here.
+services:
+  backup-restore-worker:
+    build:
+      context: ./eqms-backup-agent
+      dockerfile: Dockerfile
+      args:
+        MAVEN_IMAGE: ${BACKEND_BUILD_IMAGE:-mirror.gcr.io/library/maven:3.9.16-eclipse-temurin-21}
+    image: ${EQMS_BACKUP_AGENT_IMAGE:-eqms-backup-agent:local}
+    profiles: ["restore-worker"]
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-backup-restore-worker
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    depends_on:
+      backup-control:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      AGENT_ROLE: RESTORE_WORKER
+      AGENT_ENVIRONMENT: ${EQMS_ENVIRONMENT:-DEV}
+      AGENT_API_TOKEN: ${BACKUP_AGENT_API_TOKEN:?BACKUP_AGENT_API_TOKEN is required}
+      CONTROL_DB_URL: jdbc:postgresql://backup-control:5432/eqms_backup_control
+      CONTROL_DB_USER: eqms_backup
+      CONTROL_DB_PASSWORD: ${BACKUP_CONTROL_DB_PASSWORD:?BACKUP_CONTROL_DB_PASSWORD is required}
+      AGENT_TARGET_T1: /backup/t1
+      AGENT_LEDGER_DIR: /backup/ledger
+      AGENT_RESTORE_ENABLED: "true"
+      AGENT_RESTORE_GNUPG_HOME: /restore-keys/gnupg-home
+      AGENT_RESTORE_HOST: postgres
+      AGENT_RESTORE_PORT: "5432"
+      AGENT_RESTORE_USER: eqms_restore
+      AGENT_RESTORE_PASSWORD: ${BACKUP_RESTORE_DB_PASSWORD:?BACKUP_RESTORE_DB_PASSWORD is required}
+      # the worker's own MinIO account: it may act only on the eqms-test-* buckets (SDS 14.1, WP3.1 slice 4)
+      # DEV only: C5 is a warning here (the DEV database holds unsigned test data); ignored outside DEV
+      AGENT_RESTORE_SIGNATURECHECKADVISORY: "true"
+      AGENT_RESTORE_TESTOBJECTS_ENDPOINT: http://minio:9000
+      AGENT_RESTORE_TESTOBJECTS_ACCESSKEY: eqms-test-worker
+      AGENT_RESTORE_TESTOBJECTS_SECRETKEY: ${BACKUP_RESTORE_OBJECT_SECRET:?BACKUP_RESTORE_OBJECT_SECRET is required}
+    volumes:
+      # the private key ring: read only, copied into a throw-away folder for each run
+      - ${BACKUP_PRIVATE_KEYS_DIR:-./backups/dev-keys/gnupg-home}:/restore-keys/gnupg-home:ro
+      # the backup sets and the document pool are only read; the ledger file is appended
+      - ${BACKUP_T1_DIR:-./backups/dev/t1}:/backup/t1:ro
+      # the manifest signing key, read only: without it the worker would create a new key in DEV and no old signature would verify
+      - ${BACKUP_AGENT_STATE_DIR:-./backups/dev/agent}:/backup/agent:ro
+      - ${BACKUP_LEDGER_DIR:-./backups/dev/ledger}:/backup/ledger
+    networks:
+      - default
+      - backup-net
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:5600/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s

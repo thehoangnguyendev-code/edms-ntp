@@ -6,7 +6,7 @@ import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { backupRestore } from "@/components/ui/breadcrumb/breadcrumbs/core";
 import { BackupDetailView } from "../views/BackupDetailView";
 
-const api = vi.hoisted(() => ({ get: vi.fn(), verify: vi.fn(), media: vi.fn(), exportEstimate: vi.fn(), requestExport: vi.fn() }));
+const api = vi.hoisted(() => ({ get: vi.fn(), verify: vi.fn(), media: vi.fn(), exportEstimate: vi.fn(), requestExport: vi.fn(), rehearsals: vi.fn(), requestRehearsal: vi.fn() }));
 const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
 vi.mock("@/services/api/backupRestore", async () => {
   const actual = await vi.importActual<typeof import("@/services/api/backupRestore")>("@/services/api/backupRestore");
@@ -40,6 +40,7 @@ beforeEach(() => {
   Object.values(api).forEach((fn) => fn.mockReset());
   perms.granted = new Set(["backup.module.view", "backup.backup.verify"]);
   api.get.mockResolvedValue(detail());
+  api.rehearsals.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 1 } });
 });
 afterEach(cleanup);
 
@@ -124,5 +125,33 @@ describe("Backup Details", () => {
   it("puts the page title, not the backup number, in the breadcrumb, under the Backup group", () => {
     const labels = backupRestore(vi.fn(), "Backup Details", { label: "Backup History", path: "/backup-restore/backups" }, "Backup").map((item) => item.label);
     expect(labels).toEqual(["Dashboard", "Backup & Restore", "Backup", "Backup History", "Backup Details"]);
+  });
+
+  it("offers Test Restore only with its permission and only for a backup that passed its check", async () => {
+    perms.granted = new Set(["backup.module.view", "backup.restore.test"]);
+    renderAt();
+    await screen.findByText("Backup Information");
+    expect(((await screen.findAllByRole("button", { name: "Test Restore" })) as HTMLButtonElement[]).every((b) => !b.disabled)).toBe(true);
+    cleanup();
+    perms.granted = new Set(["backup.module.view"]);
+    renderAt();
+    await screen.findByText("Backup Information");
+    expect(screen.queryByRole("button", { name: "Test Restore" })).toBeNull();
+  });
+
+  it("asks for a test restore with a reason and lists the results with their checks", async () => {
+    perms.granted = new Set(["backup.module.view", "backup.restore.test"]);
+    api.requestRehearsal.mockResolvedValue({ rehearsalId: "RH-20261009-0001" });
+    api.rehearsals.mockResolvedValue({
+      data: [{ id: "r", rehearsalId: "RH-20261009-0001", backupId: "BK-20261008-0200-0001", status: "PASSED", requestedBy: "tester", reason: "x", requestedAt: "2026-10-09T01:00:00Z", startedAt: null, finishedAt: null, restoreSeconds: 14, errorCode: null, errorDetail: null, checkCount: 2, failedCount: 0 }],
+      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+    });
+    renderAt();
+    expect(await screen.findByText("RH-20261009-0001")).toBeTruthy();
+    expect(screen.getByText("2 of 2 passed")).toBeTruthy();
+    fireEvent.click((await screen.findAllByRole("button", { name: "Test Restore" }))[0]);
+    fireEvent.change(await screen.findByRole("textbox"), { target: { value: "Annual test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start Test" }));
+    await waitFor(() => expect(api.requestRehearsal).toHaveBeenCalledWith("BK-20261008-0200-0001", "Annual test"));
   });
 });

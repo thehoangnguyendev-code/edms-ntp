@@ -250,7 +250,8 @@ class BackupPolicyControllerTest {
         verifyNoInteractions(agent);
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/targets/T3/test"), any())).thenReturn(reply(200, "{\"ok\":false}"));
         assertThat(controller.testTarget("T3").getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(audit).logAs(eq(actor), eq("BACKUP_TARGET"), eq("T3"), isNull(), eq("BACKUP_TARGET_TESTED"), isNull(), eq("FAILED"), anyString());
+        // the audit row needs a non-null id; a target has a stable one derived from its code (a null id made the audit write fail)
+        verify(audit).logAs(eq(actor), eq("BACKUP_TARGET"), eq("T3"), eq(com.eqms.service.BackupPolicyService.targetAuditId("T3")), eq("BACKUP_TARGET_TESTED"), isNull(), eq("FAILED"), anyString());
     }
 
     @Test

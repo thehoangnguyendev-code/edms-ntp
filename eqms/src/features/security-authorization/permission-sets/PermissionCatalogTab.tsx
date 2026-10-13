@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
@@ -244,26 +244,15 @@ export const PermissionCatalogTab: React.FC = () => {
         )}
       </div>
 
-      {openLifecycleId && (() => {
-        const activeItem = items.find((p) => p.code === openLifecycleId);
-        const usages: PermissionLifecycleUsage[] = activeItem?.lifecycleUsages ?? [];
-        return createPortal(
-          <>
-            <div className="fixed inset-0 z-40" onClick={closeLifecycle} />
-            <div
-              className="fixed z-50 w-[260px] max-h-[280px] overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg py-1.5"
-              style={lifecyclePosition.style}
-            >
-              {usages.map((u, i) => (
-                <div key={i} className="px-3 py-1.5 text-xs text-slate-600">
-                  {formatLifecycleUsage(u)}
-                </div>
-              ))}
+      <PortalDropdownMenu isOpen={!!openLifecycleId} onClose={closeLifecycle} position={lifecyclePosition}>
+        <div className="max-h-[280px] w-[260px] overflow-y-auto py-1.5">
+          {(items.find((p) => p.code === openLifecycleId)?.lifecycleUsages ?? []).map((usage: PermissionLifecycleUsage, i: number) => (
+            <div key={i} className="px-3 py-1.5 text-xs text-slate-600">
+              {formatLifecycleUsage(usage)}
             </div>
-          </>,
-          document.body
-        );
-      })()}
+          ))}
+        </div>
+      </PortalDropdownMenu>
     </div>
   );
 };

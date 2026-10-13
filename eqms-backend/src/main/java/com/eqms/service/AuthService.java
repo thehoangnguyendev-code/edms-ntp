@@ -9,6 +9,7 @@ import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.auth.*;
 import com.eqms.dto.user.UserManagementResponse;
 import com.eqms.entity.*;
+import com.eqms.maintenance.MaintenanceGateFilter;
 import com.eqms.repository.*;
 import com.eqms.util.NotificationPreferenceUtils;
 import com.eqms.util.DateTimeFormatUtils;
@@ -17,12 +18,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -61,6 +64,7 @@ public class AuthService {
     private final EmailService emailService;
     private final NotificationDispatcher notificationDispatcher;
     private final ObjectMapper objectMapper;
+    private final MaintenanceGateFilter maintenanceGate;
     private final long accessTokenTtlMinutes;
     private final long refreshTokenTtlDays;
     private final long loginChallengeTtlMinutes;
@@ -86,6 +90,7 @@ public class AuthService {
             EmailService emailService,
             NotificationDispatcher notificationDispatcher,
             ObjectMapper objectMapper,
+            MaintenanceGateFilter maintenanceGate,
             @Value("${app.auth.access-token-ttl-minutes}") long accessTokenTtlMinutes,
             @Value("${app.auth.refresh-token-ttl-days}") long refreshTokenTtlDays,
             @Value("${app.auth.login-challenge-ttl-minutes}") long loginChallengeTtlMinutes,
@@ -110,6 +115,7 @@ public class AuthService {
         this.emailService = emailService;
         this.notificationDispatcher = notificationDispatcher;
         this.objectMapper = objectMapper;
+        this.maintenanceGate = maintenanceGate;
         this.accessTokenTtlMinutes = accessTokenTtlMinutes;
         this.refreshTokenTtlDays = refreshTokenTtlDays;
         this.loginChallengeTtlMinutes = loginChallengeTtlMinutes;
@@ -133,6 +139,12 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new UnauthorizedException(handleFailedLogin(user, httpRequest));
+        }
+
+        // While the system is drained or locked for a restore, only a person with the maintenance bypass may sign in (SDS 11.5.3).
+        // Checked before any session is created, so a refused person leaves no session behind.
+        if (maintenanceGate.isLocked() && !permissionEvaluationService.hasPermission(user, MaintenanceGateFilter.BYPASS_PERMISSION)) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "MAINTENANCE_MODE");
         }
 
         // A successful primary-password login starts a new consecutive-failure

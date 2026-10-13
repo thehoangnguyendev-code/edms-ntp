@@ -140,6 +140,37 @@ public class ProcessCommandRunner implements CommandRunner {
         }
     }
 
+    @Override
+    public HashResult hashOutput(Command command, long timeoutSeconds) throws IOException, InterruptedException {
+        ProcessBuilder b = builder(command);
+        Path err = Files.createTempFile("agent-hash-", ".err");
+        b.redirectError(err.toFile());
+        try {
+            Process process = b.start();
+            process.getOutputStream().close();
+            MessageDigest digest = newDigest();
+            long bytes = 0;
+            try (InputStream in = process.getInputStream()) {
+                byte[] buffer = new byte[1 << 16];
+                int read;
+                while ((read = in.read(buffer)) >= 0) {
+                    digest.update(buffer, 0, read);
+                    bytes += read;
+                }
+            }
+            int code;
+            if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                code = -1;
+            } else {
+                code = process.exitValue();
+            }
+            return new HashResult(code, HexFormat.of().formatHex(digest.digest()), bytes, tail(err));
+        } finally {
+            Files.deleteIfExists(err);
+        }
+    }
+
     private static ProcessBuilder builder(Command command) {
         ProcessBuilder b = new ProcessBuilder(command.argv());
         b.environment().putAll(command.env());
