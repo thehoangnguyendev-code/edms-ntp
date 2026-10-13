@@ -101,7 +101,7 @@ class ExportAndMediaTest {
         DatabaseBackupService.Outcome o = backups.run(new DatabaseBackupService.Request("FULL", "MANUAL", "operator.one", "test run", null));
         assertThat(o.ok()).as(String.valueOf(o.errorDetail())).isTrue();
         assertThat(o.verification().verified()).isTrue();
-        return o.backupId();
+        return o.backupNumber();
     }
 
     private UUID usb(String label) {
@@ -109,8 +109,8 @@ class ExportAndMediaTest {
         return UUID.fromString((String) m.get("id"));
     }
 
-    private Map<String, Object> approvedExport(String backupId, UUID mediaId) {
-        Map<String, Object> requested = exports.request(backupId, mediaId, "Weekly off-site copy", "operator.one");
+    private Map<String, Object> approvedExport(String backupNumber, UUID mediaId) {
+        Map<String, Object> requested = exports.request(backupNumber, mediaId, "Weekly off-site copy", "operator.one");
         return exports.approve((String) requested.get("exportId"), "approver.two");
     }
 
@@ -174,37 +174,37 @@ class ExportAndMediaTest {
 
     @Test
     void anExportNeedsAVerifiedBackupAnAvailableMediumAndAReason() {
-        String backupId = backup();
+        String backupNumber = backup();
         UUID m = usb("USB-01");
-        refused(() -> exports.request(backupId, m, " ", "operator.one"), "EXPORT_REASON_REQUIRED");
+        refused(() -> exports.request(backupNumber, m, " ", "operator.one"), "EXPORT_REASON_REQUIRED");
         refused(() -> exports.request("BK-20200101-0000-0001", m, "why", "operator.one"), "BACKUP_NOT_FOUND");
-        refused(() -> exports.request(backupId, UUID.randomUUID(), "why", "operator.one"), "MEDIA_NOT_FOUND");
+        refused(() -> exports.request(backupNumber, UUID.randomUUID(), "why", "operator.one"), "MEDIA_NOT_FOUND");
 
         db.jdbc.update("insert into backup_verification(run_id, tier, result, detail_json, verified_at, verified_by) "
-                + "select id, 'V1', 'FAILED', '{}'::jsonb, now() + interval '1 second', 'x' from backup_run where backup_id = ?", backupId);
-        refused(() -> exports.request(backupId, m, "why", "operator.one"), "EXPORT_BACKUP_NOT_VERIFIED");
+                + "select id, 'V1', 'FAILED', '{}'::jsonb, now() + interval '1 second', 'x' from backup_run where backup_number = ?", backupNumber);
+        refused(() -> exports.request(backupNumber, m, "why", "operator.one"), "EXPORT_BACKUP_NOT_VERIFIED");
     }
 
     @Test
     void aMediumThatIsTooSmallOrNotAvailableOrAlreadyBusyIsRefused() {
-        String backupId = backup();
+        String backupNumber = backup();
         UUID tiny = UUID.fromString((String) media.register(new MediaService.Registration("TINY", "S", "USB", 100, "tiny", null, "c")).get("id"));
-        refused(() -> exports.request(backupId, tiny, "why", "operator.one"), "EXPORT_MEDIA_TOO_SMALL");
+        refused(() -> exports.request(backupNumber, tiny, "why", "operator.one"), "EXPORT_MEDIA_TOO_SMALL");
 
         UUID m = usb("USB-01");
-        exports.request(backupId, m, "first", "operator.one");
-        refused(() -> exports.request(backupId, m, "second", "operator.one"), "EXPORT_MEDIA_BUSY");
+        exports.request(backupNumber, m, "first", "operator.one");
+        refused(() -> exports.request(backupNumber, m, "second", "operator.one"), "EXPORT_MEDIA_BUSY");
 
         UUID retired = usb("OLD");
         media.retire(retired, "Shredded, certificate 77", "custodian.one");
-        refused(() -> exports.request(backupId, retired, "why", "operator.one"), "EXPORT_MEDIA_NOT_AVAILABLE");
+        refused(() -> exports.request(backupNumber, retired, "why", "operator.one"), "EXPORT_MEDIA_NOT_AVAILABLE");
     }
 
     @Test
     void theApproverMustBeAnotherPersonAndTheRefusalIsRecorded() {
-        String backupId = backup();
+        String backupNumber = backup();
         UUID m = usb("USB-01");
-        String id = (String) exports.request(backupId, m, "why", "Operator.One").get("exportId");
+        String id = (String) exports.request(backupNumber, m, "why", "Operator.One").get("exportId");
         assertThatThrownBy(() -> exports.approve(id, "operator.one")).isInstanceOfSatisfying(ExportException.class, e -> {
             assertThat(e.code).isEqualTo("EXPORT_SAME_PERSON");
             assertThat(e.kind).isEqualTo(ExportException.Kind.SEPARATION);
@@ -216,32 +216,32 @@ class ExportAndMediaTest {
 
     @Test
     void approvingQueuesTheJobAndRejectingFreesTheMedium() {
-        String backupId = backup();
+        String backupNumber = backup();
         UUID m = usb("USB-01");
-        String id = (String) exports.request(backupId, m, "why", "operator.one").get("exportId");
+        String id = (String) exports.request(backupNumber, m, "why", "operator.one").get("exportId");
         assertThat(exports.approve(id, "approver.two")).containsEntry("status", "APPROVED").containsEntry("approvedBy", "approver.two");
         assertThat(db.jdbc.queryForObject("select count(*) from backup_job where job_type = 'EXPORT' and status = 'QUEUED'", Integer.class)).isEqualTo(1);
         refused(() -> exports.approve(id, "third.person"), "EXPORT_STATE");
 
         UUID m2 = usb("USB-02");
-        String id2 = (String) exports.request(backupId, m2, "why", "operator.one").get("exportId");
+        String id2 = (String) exports.request(backupNumber, m2, "why", "operator.one").get("exportId");
         refused(() -> exports.reject(id2, "approver.two", " "), "EXPORT_REASON_REQUIRED");
         assertThat(exports.reject(id2, "approver.two", "Wrong medium")).containsEntry("status", "REJECTED");
-        assertThat(exports.request(backupId, m2, "again", "operator.one")).containsEntry("status", "REQUESTED");
+        assertThat(exports.request(backupNumber, m2, "again", "operator.one")).containsEntry("status", "REQUESTED");
     }
 
     @Test
     void inProductionAnExportFolderOnTheSameDiskAsT1IsRefused() {
-        String backupId = backup();
+        String backupNumber = backup();
         UUID m = usb("USB-01");
         properties.setEnvironment("PROD");
-        refused(() -> exports.request(backupId, m, "why", "operator.one"), "EXPORT_SAME_DISK");
+        refused(() -> exports.request(backupNumber, m, "why", "operator.one"), "EXPORT_SAME_DISK");
     }
 
     @Test
     void inDevTheSameDiskIsAllowedAndSaidSoInTheRecord() {
-        String backupId = backup();
-        Map<String, Object> requested = exports.request(backupId, usb("USB-01"), "why", "operator.one");
+        String backupNumber = backup();
+        Map<String, Object> requested = exports.request(backupNumber, usb("USB-01"), "why", "operator.one");
         assertThat((String) requested.get("notes")).contains("sameDiskAsT1");
     }
 
@@ -249,14 +249,14 @@ class ExportAndMediaTest {
 
     @Test
     void aPackageHoldsEverythingTheBackupNeedsAndIsClosedByASignedReceipt() throws Exception {
-        String backupId = backup();
+        String backupNumber = backup();
         UUID m = usb("USB-01");
-        Map<String, Object> approved = approvedExport(backupId, m);
+        Map<String, Object> approved = approvedExport(backupNumber, m);
         Map<String, Object> done = exports.run((String) approved.get("exportId"), "agent");
 
         assertThat(done).containsEntry("status", "COMPLETED");
         Path pkg = Path.of((String) done.get("packagePath"));
-        assertThat(pkg.getFileName().toString()).startsWith("EXPORT-" + backupId + "-");
+        assertThat(pkg.getFileName().toString()).startsWith("EXPORT-" + backupNumber + "-");
         List<String> files = filesIn(pkg);
         assertThat(files).contains("README-RESTORE.txt", "manifest.json", "manifest.sig", "SHA256SUMS", "PACKAGE-SHA256SUMS", "EXPORT-RECEIPT.json", "EXPORT-RECEIPT.sig",
                 "database/eqms.dump.gpg", "objects/index.json.gpg", "tools/verify-chain.sh", "tools/verify-chain.ps1", "public-keys/manifest-signing.pub");
@@ -278,8 +278,8 @@ class ExportAndMediaTest {
     @Test
     void thePackageCanBeCheckedWithoutTheSoftwareAndTamperingIsCaught() throws Exception {
         Assumptions.assumeTrue(tool("sh") && tool("openssl") && tool("sha256sum") && tool("base64"), "sh, openssl, sha256sum and base64 are needed");
-        String backupId = backup();
-        Map<String, Object> done = exports.run((String) approvedExport(backupId, usb("USB-01")).get("exportId"), "agent");
+        String backupNumber = backup();
+        Map<String, Object> done = exports.run((String) approvedExport(backupNumber, usb("USB-01")).get("exportId"), "agent");
         Path pkg = Path.of((String) done.get("packagePath"));
 
         assertThat(verifyChain(pkg)).as("a good package passes").isZero();
@@ -299,9 +299,9 @@ class ExportAndMediaTest {
 
     @Test
     void aStoredDocumentThatNoLongerMatchesMakesThePackageInvalidAndRaisesAnAlert() throws Exception {
-        String backupId = backup();
+        String backupNumber = backup();
         UUID m = usb("USB-01");
-        Map<String, Object> approved = approvedExport(backupId, m);
+        Map<String, Object> approved = approvedExport(backupNumber, m);
         String blob = db.jdbc.queryForList("select blob_path from backup_object_blob order by id", String.class).get(0);
         Files.writeString(properties.getTargets().getT1().resolve("DEV").resolve(blob), "tampered");
 
@@ -317,28 +317,28 @@ class ExportAndMediaTest {
 
     @Test
     void aRunIsRefusedUnlessTheExportWasApproved() {
-        String backupId = backup();
-        String id = (String) exports.request(backupId, usb("USB-01"), "why", "operator.one").get("exportId");
+        String backupNumber = backup();
+        String id = (String) exports.request(backupNumber, usb("USB-01"), "why", "operator.one").get("exportId");
         refused(() -> exports.run(id, "agent"), "EXPORT_STATE");
     }
 
     @Test
     void aSecondPackageWithTheSameNameOnTheSameMediumIsNotOverwritten() {
-        String backupId = backup();
+        String backupNumber = backup();
         UUID m = usb("USB-01");
-        Map<String, Object> first = exports.run((String) approvedExport(backupId, m).get("exportId"), "agent");
+        Map<String, Object> first = exports.run((String) approvedExport(backupNumber, m).get("exportId"), "agent");
         assertThat(first).containsEntry("status", "COMPLETED");
         db.jdbc.update("update offline_media set status = 'AVAILABLE' where id = ?", m);
-        Map<String, Object> second = exports.run((String) approvedExport(backupId, m).get("exportId"), "agent");
+        Map<String, Object> second = exports.run((String) approvedExport(backupNumber, m).get("exportId"), "agent");
         assertThat(second).containsEntry("status", "INVALID").containsEntry("errorCode", "EXPORT_PACKAGE_EXISTS");
     }
 
     // ------------------------------------------------------------------ the medium's life
 
     private UUID exportedMedium() {
-        String backupId = backup();
+        String backupNumber = backup();
         UUID m = usb("USB-01");
-        exports.run((String) approvedExport(backupId, m).get("exportId"), "agent");
+        exports.run((String) approvedExport(backupNumber, m).get("exportId"), "agent");
         return m;
     }
 
@@ -403,21 +403,21 @@ class ExportAndMediaTest {
 
     @Test
     void theEstimateCountsTheDatabaseTheIndexAndEveryStoredDocument() {
-        String backupId = backup();
-        Map<String, Object> estimate = exports.estimate(backupId);
+        String backupNumber = backup();
+        Map<String, Object> estimate = exports.estimate(backupNumber);
         assertThat(((Number) estimate.get("estimatedBytes")).longValue()).isGreaterThan(0);
         assertThat(((Number) estimate.get("fileCount")).intValue()).isGreaterThanOrEqualTo(2 + 2 + 6);
     }
 
     @Test
     void theExportListPagesFiltersAndSearchesOnTheServer() {
-        String backupId = backup();
-        exports.request(backupId, usb("USB-01"), "one", "operator.one");
-        exports.request(backupId, usb("USB-02"), "two", "operator.one");
+        String backupNumber = backup();
+        exports.request(backupNumber, usb("USB-01"), "one", "operator.one");
+        exports.request(backupNumber, usb("USB-02"), "two", "operator.one");
         assertThat(exports.page(null, null, null, "requestedAt", false, 1, 1).total()).isEqualTo(2);
         assertThat(exports.page("usb-02", null, null, "requestedAt", false, 1, 10).data()).hasSize(1);
         assertThat(exports.page(null, "COMPLETED", null, "requestedAt", false, 1, 10).total()).isZero();
-        assertThat(exports.page(null, null, backupId, "media", true, 1, 10).data()).extracting(e -> e.get("mediaLabel")).containsExactly("USB-01", "USB-02");
+        assertThat(exports.page(null, null, backupNumber, "media", true, 1, 10).data()).extracting(e -> e.get("mediaLabel")).containsExactly("USB-01", "USB-02");
         assertThat(exports.page(null, null, null, "requestedAt", false, 1, 1000).limit()).isEqualTo(100);
     }
 

@@ -4,8 +4,8 @@ import { Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
-import type { DataTableAction, DataTableColumn } from "@/components/ui/table/DataTable";
-import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import type { DataTableAction, DataTableColumn } from "@/components/ui/table";
+import { TABLE_STYLES } from "@/components/ui/table";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField, Input, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
@@ -135,13 +135,13 @@ export const InspectionsView: React.FC = () => {
   const canClose = (row: InspectionRecord) => row.status === "OPEN" && canAsk;
 
   const ask = async () => {
-    const backupId = askBackup.trim();
+    const backupNumber = askBackup.trim();
     const reason = askReason.trim();
-    if (!BACKUP_ID.test(backupId) || !reason) return;
+    if (!BACKUP_ID.test(backupNumber) || !reason) return;
     setBusy(true);
     try {
-      const created = await backupRestoreApi.askInspection(backupId, reason);
-      showToast({ type: "success", title: "Inspection requested", message: `${created.inspectionId} waits for a second person's approval.` });
+      const created = await backupRestoreApi.askInspection(backupNumber, reason);
+      showToast({ type: "success", title: "Inspection requested", message: `${created.inspectionNumber} waits for a second person's approval.` });
       setAsking(false);
       setAskBackup("");
       setAskReason("");
@@ -166,12 +166,12 @@ export const InspectionsView: React.FC = () => {
     setBusy(true);
     try {
       const updated = mode === "approve"
-        ? await backupRestoreApi.approveInspection(current.row.inspectionId, data.signatureToken)
-        : await backupRestoreApi.rejectInspection(current.row.inspectionId, why ?? "", data.signatureToken);
+        ? await backupRestoreApi.approveInspection(current.row.inspectionNumber, data.signatureToken)
+        : await backupRestoreApi.rejectInspection(current.row.inspectionNumber, why ?? "", data.signatureToken);
       showToast({
         type: "success",
         title: mode === "approve" ? "Inspection approved" : "Inspection rejected",
-        message: mode === "approve" ? `${updated.inspectionId} is being opened on the validation environment.` : updated.inspectionId,
+        message: mode === "approve" ? `${updated.inspectionNumber} is being opened on the validation environment.` : updated.inspectionNumber,
       });
       setReloadKey((k) => k + 1);
     } catch (e) {
@@ -190,8 +190,8 @@ export const InspectionsView: React.FC = () => {
     const row = pending.row;
     setBusy(true);
     try {
-      await backupRestoreApi.closeInspection(row.inspectionId, closeReason.trim());
-      showToast({ type: "success", title: "Inspection closed", message: `${row.inspectionId}: the copy is dropped.` });
+      await backupRestoreApi.closeInspection(row.inspectionNumber, closeReason.trim());
+      showToast({ type: "success", title: "Inspection closed", message: `${row.inspectionNumber}: the copy is dropped.` });
       setPending(undefined);
       setCloseReason("");
       setReloadKey((k) => k + 1);
@@ -204,9 +204,9 @@ export const InspectionsView: React.FC = () => {
 
   const columns: DataTableColumn<InspectionRecord>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
-    { id: "inspectionId", header: "Inspection ID", label: "Inspection ID", headerClassName: TABLE_STYLES.headerCell35, cell: (row) => row.inspectionId },
-    { id: "backupId", header: "Backup ID", label: "Backup ID", cell: (row) => (
-      <button type="button" className="text-left text-emerald-600 hover:underline" onClick={() => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(row.backupId))}>{row.backupId}</button>
+    { id: "inspectionNumber", header: "Inspection Number", label: "Inspection Number", headerClassName: TABLE_STYLES.headerCell35, cell: (row) => row.inspectionNumber },
+    { id: "backupNumber", header: "Backup Number", label: "Backup Number", cell: (row) => (
+      <button type="button" className="text-left text-emerald-600 hover:underline" onClick={() => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(row.backupNumber))}>{row.backupNumber}</button>
     ) },
     { id: "status", header: "Status", label: "Status", cell: (row) => <Badge color={STATUS_COLOR[row.status]}>{STATUS_LABEL[row.status]}</Badge> },
     { id: "requestedBy", header: "Requested by", label: "Requested by", cell: (row) => row.requestedBy },
@@ -292,7 +292,7 @@ export const InspectionsView: React.FC = () => {
         confirmDisabled={!BACKUP_ID.test(askBackup.trim()) || !askReason.trim() || busy}
         onConfirm={ask}
       >
-        <FormField label="Backup ID" required>
+        <FormField label="Backup Number" required>
           <Input value={askBackup} placeholder="BK-20261009-1900-0001" onChange={(event) => setAskBackup(event.target.value)} />
         </FormField>
         <FormField label="Reason" required>
@@ -303,7 +303,7 @@ export const InspectionsView: React.FC = () => {
       <FormModal
         isOpen={pending?.mode === "close"}
         onClose={() => setPending(undefined)}
-        title={`Close ${pending?.row.inspectionId ?? ""}`}
+        title={`Close ${pending?.row.inspectionNumber ?? ""}`}
         description="The copy is dropped now. Nothing else changes; the record stays in the history."
         confirmText="Close copy"
         confirmDisabled={busy}
@@ -317,7 +317,7 @@ export const InspectionsView: React.FC = () => {
       <FormModal
         isOpen={rejecting}
         onClose={() => setPending(undefined)}
-        title={`Reject ${pending?.row.inspectionId ?? ""}`}
+        title={`Reject ${pending?.row.inspectionNumber ?? ""}`}
         description="The inspection is kept in the history as rejected. Say why, then sign to confirm."
         confirmText="Continue to sign"
         confirmDisabled={!closeReason.trim() || busy}
@@ -342,7 +342,7 @@ export const InspectionsView: React.FC = () => {
         onClose={() => setDecision(undefined)}
         deferConfirm
         onConfirm={signed("approve")}
-        actionTitle={`Approve inspection ${decision?.row.inspectionId ?? ""}`}
+        actionTitle={`Approve inspection ${decision?.row.inspectionNumber ?? ""}`}
         meaningDisplayName="Backup Inspection Approval"
         meaningCode="BACKUP_INSPECTION_APPROVAL"
       />
@@ -354,7 +354,7 @@ export const InspectionsView: React.FC = () => {
         }}
         deferConfirm
         onConfirm={signed("reject")}
-        actionTitle={`Reject inspection ${decision?.row.inspectionId ?? ""}`}
+        actionTitle={`Reject inspection ${decision?.row.inspectionNumber ?? ""}`}
         meaningDisplayName="Backup Inspection Rejection"
         meaningCode="BACKUP_INSPECTION_REJECTION"
       />

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast/Toast";
@@ -125,13 +125,13 @@ describe("Backup Policy list", () => {
     renderApp(A.POLICY);
     expect(await screen.findByText("Running Policy")).toBeTruthy();
     expect(await screen.findByText("Installed with the Backup Agent")).toBeTruthy();
-    expect((await screen.findAllByText("Version 2")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByRole("button", { name: "2" })).length).toBeGreaterThan(0);
     expect(lastList()).toMatchObject({ sortBy: "version", sortDirection: "desc", page: 1, limit: 10 });
   });
 
   it("searches, filters, sorts and pages on the server", async () => {
     renderApp(A.POLICY);
-    await screen.findAllByText("Version 2");
+    await screen.findAllByRole("button", { name: "2" });
     fireEvent.change(screen.getAllByPlaceholderText("Version, person or reason…")[0], { target: { value: "alice" } });
     await waitFor(() => expect(lastList().search).toBe("alice"), { timeout: 2000 });
     fireEvent.click(header("status"));
@@ -153,7 +153,7 @@ describe("Backup Policy list", () => {
   it("says so when the versions cannot be loaded", async () => {
     api.policies.mockRejectedValue(new Error("network"));
     renderApp(A.POLICY);
-    expect((await screen.findAllByText(/Unable to load/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/could not be loaded/)).length).toBeGreaterThan(0);
   });
 });
 
@@ -229,6 +229,12 @@ describe("Backup Policy version", () => {
   });
 });
 
+const confirmProposal = async () => {
+  fireEvent.click(screen.getAllByRole("button", { name: "Propose Version" })[0]);
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Propose Version" }));
+};
+
 describe("Propose a policy change", () => {
   const targets = [
     { code: "T1", kind: "FOLDER", immutable: false, location: "/backup/t1" },
@@ -257,7 +263,7 @@ describe("Propose a policy change", () => {
     expect(submit.disabled).toBe(true);
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Add the immutable copy" } });
     await waitFor(() => expect((screen.getAllByRole("button", { name: "Propose Version" })[0] as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(screen.getAllByRole("button", { name: "Propose Version" })[0]);
+    await confirmProposal();
     await waitFor(() => expect(api.proposePolicy).toHaveBeenCalled());
     expect(api.proposePolicy.mock.calls[0][0]).toMatchObject({
       scope: { components: ["DATABASE", "OBJECT_STORE"] },
@@ -266,7 +272,7 @@ describe("Propose a policy change", () => {
       targets: { targets: [{ code: "T1", medium: "SERVER_FOLDER", offsite: false, immutable: false }] },
       reason: "Add the immutable copy",
     });
-    expect(await screen.findByText("Policy Version 4")).toBeTruthy();
+    expect(await screen.findByText("Backup Policy Detail")).toBeTruthy();
   });
 
   it("reports a refusal from the server in plain words and stays on the form", async () => {
@@ -274,7 +280,7 @@ describe("Propose a policy change", () => {
     renderApp(A.POLICY_NEW);
     await screen.findByText("/backup/t1");
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "again" } });
-    fireEvent.click(screen.getAllByRole("button", { name: "Propose Version" })[0]);
+    await confirmProposal();
     expect(await screen.findByText(/A draft is already waiting/)).toBeTruthy();
   });
 });

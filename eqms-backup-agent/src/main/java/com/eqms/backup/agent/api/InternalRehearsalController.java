@@ -31,10 +31,10 @@ public class InternalRehearsalController {
     }
 
     @GetMapping("/rehearsals")
-    public Map<String, Object> list(@RequestParam(required = false) String search, @RequestParam(required = false) String status, @RequestParam(required = false) String backupId,
+    public Map<String, Object> list(@RequestParam(required = false) String search, @RequestParam(required = false) String status, @RequestParam(required = false) String backupNumber,
                                     @RequestParam(defaultValue = "requestedAt") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
                                     @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        RestoreRehearsalService.Page result = rehearsals.page(search, status, backupId, sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit);
+        RestoreRehearsalService.Page result = rehearsals.page(search, status, backupNumber, sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit);
         Map<String, Object> pagination = new LinkedHashMap<>();
         pagination.put("page", result.page());
         pagination.put("limit", result.limit());
@@ -51,9 +51,9 @@ public class InternalRehearsalController {
         return rehearsals.get(rehearsalId);
     }
 
-    @PostMapping("/backups/{backupId}/rehearsals")
-    public ResponseEntity<Map<String, Object>> request(@PathVariable String backupId, @RequestBody RehearsalRequest r) {
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(rehearsals.request(backupId, r.by(), r.reason()));
+    @PostMapping("/backups/{backupNumber}/rehearsals")
+    public ResponseEntity<Map<String, Object>> request(@PathVariable String backupNumber, @RequestBody RehearsalRequest r) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(rehearsals.request(backupNumber, r.by(), r.reason()));
     }
 
     @ExceptionHandler(ExportException.class)

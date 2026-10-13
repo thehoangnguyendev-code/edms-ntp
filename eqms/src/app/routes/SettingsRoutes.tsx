@@ -64,10 +64,8 @@ const BackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ d
 const BackupPolicyDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupPolicyDetailView })));
 const NewBackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.NewBackupPolicyView })));
 const OfflineMediumDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.OfflineMediumDetailView })));
-const BackupRetentionView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupRetentionView })));
+const BackupControlsView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupControlsView })));
 const BackupStorageView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupStorageView })));
-const BackupVerificationView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupVerificationView })));
-const RestoreControlsView = lazy(() => import('@/features/settings').then(m => ({ default: m.RestoreControlsView })));
 const DisasterRecoveryPlanView = lazy(() => import('@/features/settings').then(m => ({ default: m.DisasterRecoveryPlanView })));
 const AnnouncementsView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementsView })));
 const AnnouncementEditorView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementEditorView })));
@@ -213,11 +211,12 @@ export function settingsRoutes(navigate: NavigateFunction) {
         <Route path="policy" element={<ProtectedRoute requiredPermissions={["backup.admin.policy.view"]}><Suspense fallback={<LoadingFallback />}><BackupPolicyView /></Suspense></ProtectedRoute>} />
         <Route path="policy/new" element={<ProtectedRoute requiredPermissions={["backup.admin.policy.propose"]}><Suspense fallback={<LoadingFallback />}><NewBackupPolicyView /></Suspense></ProtectedRoute>} />
         <Route path="policy/:version" element={<ProtectedRoute requiredPermissions={["backup.admin.policy.view"]}><Suspense fallback={<LoadingFallback />}><BackupPolicyDetailView /></Suspense></ProtectedRoute>} />
-        <Route path="retention" element={<ProtectedRoute requiredPermissions={["backup.admin.retention.view"]}><Suspense fallback={<LoadingFallback />}><BackupRetentionView /></Suspense></ProtectedRoute>} />
+        <Route path="controls" element={<ProtectedRoute requiredPermissions={["backup.admin.restore_controls.view", "backup.admin.verification.view", "backup.admin.retention.view"]}><Suspense fallback={<LoadingFallback />}><BackupControlsView /></Suspense></ProtectedRoute>} />
+        <Route path="retention" element={<Navigate to={`${ROUTES.SETTINGS.BACKUP_ADMINISTRATION.CONTROLS}?tab=retention`} replace />} />
+        <Route path="verification" element={<Navigate to={`${ROUTES.SETTINGS.BACKUP_ADMINISTRATION.CONTROLS}?tab=verification`} replace />} />
+        <Route path="restore-controls" element={<Navigate to={`${ROUTES.SETTINGS.BACKUP_ADMINISTRATION.CONTROLS}?tab=restore-rules`} replace />} />
         <Route path="storage" element={<ProtectedRoute requiredPermissions={["backup.admin.storage.view"]}><Suspense fallback={<LoadingFallback />}><BackupStorageView /></Suspense></ProtectedRoute>} />
         <Route path="storage/media/:id" element={<ProtectedRoute requiredPermissions={["backup.admin.storage.view"]}><Suspense fallback={<LoadingFallback />}><OfflineMediumDetailView /></Suspense></ProtectedRoute>} />
-        <Route path="verification" element={<ProtectedRoute requiredPermissions={["backup.admin.verification.view"]}><Suspense fallback={<LoadingFallback />}><BackupVerificationView /></Suspense></ProtectedRoute>} />
-        <Route path="restore-controls" element={<ProtectedRoute requiredPermissions={["backup.admin.restore_controls.view"]}><Suspense fallback={<LoadingFallback />}><RestoreControlsView /></Suspense></ProtectedRoute>} />
         <Route path="alerts" element={<ProtectedRoute requiredPermissions={["backup.admin.alerts.view"]}><Suspense fallback={<LoadingFallback />}><BackupAlertsView /></Suspense></ProtectedRoute>} />
         <Route path="disaster-recovery" element={<ProtectedRoute requiredPermissions={["backup.admin.disaster_recovery.view"]}><Suspense fallback={<LoadingFallback />}><DisasterRecoveryPlanView /></Suspense></ProtectedRoute>} />
       </Route>

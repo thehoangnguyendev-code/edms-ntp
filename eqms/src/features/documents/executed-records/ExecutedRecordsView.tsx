@@ -28,7 +28,7 @@ import { RecordScanPreview } from "./RecordScanPreview";
 
 
 /** The emerald text of a cell that opens something: the scan, the document, the controlled copy. */
-const LINK_CLASS = "text-left font-semibold text-emerald-700 hover:text-emerald-800 hover:underline underline-offset-2 focus:outline-none focus-visible:underline";
+const LINK_CLASS = "text-left font-medium text-emerald-600 hover:text-emerald-700 hover:underline underline-offset-2 focus:outline-none focus-visible:underline";
 
 type SortKey = "created" | "number" | "document" | "copy" | "recipient" | "filled";
 
@@ -168,29 +168,32 @@ export const ExecutedRecordsView: React.FC = () => {
     {
       id: "document",
       sort: sort("document"),
-      header: "Document",
-      label: "Document",
+      header: "Document Number",
+      label: "Document Number",
       cellClassName: TABLE_STYLES.cell28,
-      cell: (r) => (
-        <div className="min-w-0">
-          {r.formDocumentId && r.formDocumentNumber ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                navigateTo(ROUTES.DOCUMENTS.DETAIL(r.formDocumentId!));
-              }}
-              className={cn(LINK_CLASS, "max-w-full truncate")}
-              aria-label={`Open document ${r.formDocumentNumber}`}
-            >
-              {r.formDocumentNumber}
-            </button>
-          ) : (
-            <p className="truncate font-medium text-slate-800">{r.formDocumentNumber ?? "-"}</p>
-          )}
-          <p className="truncate text-2xs text-slate-500">{r.formDocumentTitle}</p>
-        </div>
-      ),
+      cell: (r) =>
+        r.formDocumentId && r.formDocumentNumber ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              navigateTo(ROUTES.DOCUMENTS.DETAIL(r.formDocumentId!));
+            }}
+            className={cn(LINK_CLASS, "max-w-full truncate")}
+            aria-label={`Open document ${r.formDocumentNumber}`}
+          >
+            {r.formDocumentNumber}
+          </button>
+        ) : (
+          <p className="truncate font-medium text-slate-800">{r.formDocumentNumber ?? "-"}</p>
+        ),
+    },
+    {
+      id: "documentName",
+      header: "Document Name",
+      label: "Document Name",
+      cellClassName: "max-w-[260px] truncate text-slate-600",
+      cell: (r) => r.formDocumentTitle || "-",
     },
     {
       id: "copy",

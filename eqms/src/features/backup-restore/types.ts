@@ -67,7 +67,7 @@ export interface RestoreVerificationCheck {
 export interface RestoreRequest {
   id: string;
   kind: RestoreKind;
-  backupId: string;
+  backupNumber: string;
   components: BackupComponentKey[];
   target: RestoreTarget;
   status: RestoreStatus;

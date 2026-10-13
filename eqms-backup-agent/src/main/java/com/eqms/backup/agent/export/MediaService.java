@@ -110,12 +110,12 @@ public class MediaService {
     /** The packages on a medium that are still on it: completed, and not before the medium was last recycled. */
     public List<Map<String, Object>> packages(UUID id) {
         get(id);
-        return jdbc.queryForList("select e.export_id, r.backup_id, e.finished_at, e.size_bytes, e.receipt_sha256 from backup_export e join backup_run r on r.id = e.run_id "
+        return jdbc.queryForList("select e.export_id, r.backup_number, e.finished_at, e.size_bytes, e.receipt_sha256 from backup_export e join backup_run r on r.id = e.run_id "
                 + "where e.media_id = ? and e.status = 'COMPLETED' and e.finished_at > coalesce((select max(at) from media_event v where v.media_id = e.media_id and v.event = 'RECYCLED'), 'epoch'::timestamptz) "
                 + "order by e.finished_at desc", id).stream().map(row -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("exportId", row.get("export_id"));
-            m.put("backupId", row.get("backup_id"));
+            m.put("backupNumber", row.get("backup_number"));
             m.put("finishedAt", ((Timestamp) row.get("finished_at")).toInstant().toString());
             m.put("sizeBytes", row.get("size_bytes"));
             m.put("receiptSha256", row.get("receipt_sha256") == null ? null : String.valueOf(row.get("receipt_sha256")).trim());

@@ -32,7 +32,7 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
 
 /** One backup on its own screen: what it is, whether it can be trusted, where it is stored and every check it has had. */
 export const BackupDetailView: React.FC = () => {
-  const { backupId = "" } = useParams();
+  const { backupId: backupNumber = "" } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
@@ -55,18 +55,18 @@ export const BackupDetailView: React.FC = () => {
     let active = true;
     setError("");
     backupRestoreApi
-      .get(backupId)
+      .get(backupNumber)
       .then((data) => active && setBackup(data))
       .catch((e) => active && setError(getApiErrorMessage(e, "The backup could not be read.")));
     return () => {
       active = false;
     };
-  }, [backupId, reloadKey]);
+  }, [backupNumber, reloadKey]);
 
   const verify = async () => {
     try {
-      const { jobId } = await backupRestoreApi.verify(backupId);
-      showToast({ type: "info", title: "Integrity check requested", message: backupId });
+      const { jobId } = await backupRestoreApi.verify(backupNumber);
+      showToast({ type: "info", title: "Integrity check requested", message: backupNumber });
       void follow(jobId, "Integrity check");
     } catch (e) {
       showToast({ type: "error", title: "Unable to start the check", message: getApiErrorMessage(e, "The request was refused.") });
@@ -76,7 +76,7 @@ export const BackupDetailView: React.FC = () => {
   const requestExport = async (mediaId: string, reason: string) => {
     setExportBusy(true);
     try {
-      const created = await backupRestoreApi.requestExport(backupId, mediaId, reason);
+      const created = await backupRestoreApi.requestExport(backupNumber, mediaId, reason);
       showToast({ type: "success", title: "Export requested", message: `${created.exportId} is waiting for another person to approve it.` });
       setExporting(false);
     } catch (e) {
@@ -89,18 +89,18 @@ export const BackupDetailView: React.FC = () => {
   useEffect(() => {
     let live = true;
     backupRestoreApi
-      .rehearsals({ backupId, sortBy: "requestedAt", sortDirection: "desc", limit: 10 })
+      .rehearsals({ backupNumber, sortBy: "requestedAt", sortDirection: "desc", limit: 10 })
       .then((data) => live && setRehearsals(data.data))
       .catch(() => live && setRehearsals([]));
     return () => {
       live = false;
     };
-  }, [backupId, reloadKey]);
+  }, [backupNumber, reloadKey]);
 
   const requestRehearsal = async () => {
     setRehearseBusy(true);
     try {
-      const created = await backupRestoreApi.requestRehearsal(backupId, rehearseReason.trim());
+      const created = await backupRestoreApi.requestRehearsal(backupNumber, rehearseReason.trim());
       showToast({ type: "success", title: "Test restore requested", message: `${created.rehearsalId} is queued.` });
       setRehearsing(false);
       setRehearseReason("");
@@ -183,7 +183,7 @@ export const BackupDetailView: React.FC = () => {
       <FormSection title="Backup Information" icon={<Info className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-x-10 gap-y-3 lg:gap-y-4 xl:grid-cols-2">
           <div className="space-y-3 lg:space-y-4">
-            <Field label="Backup ID">
+            <Field label="Backup Number">
               <span className="font-medium">{backup.id}</span>
             </Field>
             <Field label="Status">
@@ -306,12 +306,12 @@ export const BackupDetailView: React.FC = () => {
         )}
       </FormSection>
 
-      <ExportBackupModal backupId={backupId} isOpen={exporting} busy={exportBusy} onClose={() => setExporting(false)} onConfirm={(mediaId, reason) => void requestExport(mediaId, reason)} />
+      <ExportBackupModal backupNumber={backupNumber} isOpen={exporting} busy={exportBusy} onClose={() => setExporting(false)} onConfirm={(mediaId, reason) => void requestExport(mediaId, reason)} />
       <FormModal
         isOpen={rehearsing}
         onClose={() => setRehearsing(false)}
         title="Test Restore"
-        description={`Restore ${backupId} into a scratch database and run the checks. Production is not changed; the scratch database is dropped afterwards.`}
+        description={`Restore ${backupNumber} into a scratch database and run the checks. Production is not changed; the scratch database is dropped afterwards.`}
         confirmText={rehearseBusy ? "Requesting…" : "Start Test"}
         confirmDisabled={!rehearseReason.trim() || rehearseBusy}
         onConfirm={() => void requestRehearsal()}

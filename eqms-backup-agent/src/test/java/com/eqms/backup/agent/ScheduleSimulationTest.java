@@ -96,10 +96,10 @@ class ScheduleSimulationTest {
         });
         weekly = new WeeklyV2Verification(db.jdbc, rehearsals, ledger, properties, repository, clock);
         // one completed backup whose verification passed, so that there is something to check
-        db.jdbc.update("insert into backup_run(backup_id, environment, type, trigger_kind, status, started_at, requested_by) "
+        db.jdbc.update("insert into backup_run(backup_number, environment, type, trigger_kind, status, started_at, requested_by) "
                 + "values ('BK-SIM-0001', 'DEV', 'FULL', 'SCHEDULED', 'COMPLETED', ?, 'simulation')", java.sql.Timestamp.from(START.toInstant().minus(Duration.ofDays(1))));
         db.jdbc.update("insert into backup_verification(run_id, tier, result, detail_json, verified_at, verified_by) "
-                + "select id, 'V1', 'VERIFIED', '{}'::jsonb, ?, 'simulation' from backup_run where backup_id = 'BK-SIM-0001'",
+                + "select id, 'V1', 'VERIFIED', '{}'::jsonb, ?, 'simulation' from backup_run where backup_number = 'BK-SIM-0001'",
                 java.sql.Timestamp.from(START.toInstant().minus(Duration.ofDays(1))));
     }
 
@@ -111,7 +111,7 @@ class ScheduleSimulationTest {
     private String recordRequest() {
         String id = "RH-SIM-" + (++rehearsalSeq);
         db.jdbc.update("insert into restore_rehearsal(rehearsal_id, run_id, status, requested_by, reason, requested_at) "
-                + "select ?, id, 'QUEUED', 'system:V2', 'simulated weekly check', ? from backup_run where backup_id = 'BK-SIM-0001'",
+                + "select ?, id, 'QUEUED', 'system:V2', 'simulated weekly check', ? from backup_run where backup_number = 'BK-SIM-0001'",
                 id, java.sql.Timestamp.from(clock.instant()));
         return id;
     }
@@ -119,7 +119,7 @@ class ScheduleSimulationTest {
     private void recordPassed(String rehearsalId) {
         db.jdbc.update("update restore_rehearsal set status = 'PASSED', finished_at = ? where rehearsal_id = ?", java.sql.Timestamp.from(clock.instant()), rehearsalId);
         db.jdbc.update("insert into backup_verification(run_id, tier, result, detail_json, verified_at, verified_by) "
-                + "select id, 'V2', 'VERIFIED', '{}'::jsonb, ?, 'system:V2' from backup_run where backup_id = 'BK-SIM-0001'",
+                + "select id, 'V2', 'VERIFIED', '{}'::jsonb, ?, 'system:V2' from backup_run where backup_number = 'BK-SIM-0001'",
                 java.sql.Timestamp.from(clock.instant()));
     }
 

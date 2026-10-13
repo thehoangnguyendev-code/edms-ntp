@@ -81,9 +81,9 @@ class DatabaseBackupServiceTest {
         return new DatabaseBackupService.Request("FULL", "MANUAL", "operator.one", "test run", null);
     }
 
-    private Path setDir(String backupId) throws Exception {
+    private Path setDir(String backupNumber) throws Exception {
         try (Stream<Path> files = Files.walk(properties.getTargets().getT1())) {
-            return files.filter(p -> p.getFileName().toString().equals(backupId)).findFirst().orElseThrow();
+            return files.filter(p -> p.getFileName().toString().equals(backupNumber)).findFirst().orElseThrow();
         }
     }
 
@@ -97,14 +97,14 @@ class DatabaseBackupServiceTest {
 
         assertThat(outcome.ok()).as(String.valueOf(outcome.errorDetail())).isTrue();
         assertThat(outcome.verification().verified()).as(outcome.verification().checks().toString()).isTrue();
-        assertThat(outcome.backupId()).matches("BK-\\d{8}-\\d{4}-0001");
+        assertThat(outcome.backupNumber()).matches("BK-\\d{8}-\\d{4}-0001");
 
-        Path dir = setDir(outcome.backupId());
+        Path dir = setDir(outcome.backupNumber());
         assertThat(dir.resolve("database").resolve("eqms.dump.gpg")).exists();
         assertThat(dir.resolve("manifest.json")).exists();
         assertThat(dir.resolve("manifest.sig")).exists();
         assertThat(dir.resolve("SHA256SUMS")).exists();
-        assertThat(dir.getParent().resolve(outcome.backupId() + ".partial")).doesNotExist();
+        assertThat(dir.getParent().resolve(outcome.backupNumber() + ".partial")).doesNotExist();
 
         JsonNode manifest = new ObjectMapper().readTree(Files.readString(dir.resolve("manifest.json"), StandardCharsets.UTF_8));
         assertThat(manifest.path("schema").asText()).isEqualTo("eqms-backup-manifest/1");
@@ -116,7 +116,7 @@ class DatabaseBackupServiceTest {
 
         assertThat(ledgerEvents()).containsSubsequence("BACKUP_STARTED", "BACKUP_COMPLETED", "BACKUP_VERIFIED");
         assertThat(ledger.verify().ok()).isTrue();
-        assertThat(db.jdbc.queryForObject("select status from backup_run where backup_id = ?", String.class, outcome.backupId())).isEqualTo("COMPLETED");
+        assertThat(db.jdbc.queryForObject("select status from backup_run where backup_number = ?", String.class, outcome.backupNumber())).isEqualTo("COMPLETED");
     }
 
     private DatabaseBackupService withTargets(com.eqms.backup.agent.target.BackupTarget... targets) throws Exception {
@@ -133,9 +133,9 @@ class DatabaseBackupServiceTest {
         DatabaseBackupService.Outcome outcome = withTargets(t2).run(request());
 
         assertThat(outcome.ok()).isTrue();
-        String key = "DEV/" + outcome.backupId().substring(3, 7) + "/" + outcome.backupId().substring(7, 9) + "/" + outcome.backupId();
+        String key = "DEV/" + outcome.backupNumber().substring(3, 7) + "/" + outcome.backupNumber().substring(7, 9) + "/" + outcome.backupNumber();
         assertThat(t2.list(key)).extracting(k -> k.substring(key.length() + 1)).containsExactlyInAnyOrder("database/eqms.dump.gpg", "manifest.json", "manifest.sig", "SHA256SUMS");
-        assertThat(db.jdbc.queryForList("select target_code from backup_set_location l join backup_run r on r.id = l.run_id where r.backup_id = ? and l.ok order by 1", String.class, outcome.backupId()))
+        assertThat(db.jdbc.queryForList("select target_code from backup_set_location l join backup_run r on r.id = l.run_id where r.backup_number = ? and l.ok order by 1", String.class, outcome.backupNumber()))
                 .containsExactly("T1", "T2");
         assertThat(ledgerEvents()).contains("BACKUP_COPIED");
     }
@@ -147,8 +147,8 @@ class DatabaseBackupServiceTest {
         DatabaseBackupService.Outcome outcome = withTargets(broken).run(request());
 
         assertThat(outcome.ok()).isTrue();
-        assertThat(db.jdbc.queryForObject("select status from backup_run where backup_id = ?", String.class, outcome.backupId())).isEqualTo("COMPLETED");
-        assertThat(db.jdbc.queryForList("select l.ok from backup_set_location l join backup_run r on r.id = l.run_id where r.backup_id = ? and l.target_code = 'T2'", Boolean.class, outcome.backupId()))
+        assertThat(db.jdbc.queryForObject("select status from backup_run where backup_number = ?", String.class, outcome.backupNumber())).isEqualTo("COMPLETED");
+        assertThat(db.jdbc.queryForList("select l.ok from backup_set_location l join backup_run r on r.id = l.run_id where r.backup_number = ? and l.target_code = 'T2'", Boolean.class, outcome.backupNumber()))
                 .containsExactly(false);
         assertThat(db.jdbc.queryForObject("select count(*) from backup_alert where code = 'BACKUP_COPY_FAILED'", Integer.class)).isEqualTo(1);
         assertThat(ledgerEvents()).contains("BACKUP_COPY_FAILED");
@@ -160,9 +160,9 @@ class DatabaseBackupServiceTest {
         DatabaseBackupService.Outcome first = service.run(request());
         DatabaseBackupService.Outcome second = service.run(request());
         assertThat(second.ok()).isTrue();
-        assertThat(second.backupId()).endsWith("-0002");
-        String firstManifestSha = db.jdbc.queryForObject("select m.manifest_sha256 from backup_manifest m join backup_run r on r.id=m.run_id where r.backup_id=?", String.class, first.backupId());
-        String previous = db.jdbc.queryForObject("select m.previous_manifest_sha256 from backup_manifest m join backup_run r on r.id=m.run_id where r.backup_id=?", String.class, second.backupId());
+        assertThat(second.backupNumber()).endsWith("-0002");
+        String firstManifestSha = db.jdbc.queryForObject("select m.manifest_sha256 from backup_manifest m join backup_run r on r.id=m.run_id where r.backup_number=?", String.class, first.backupNumber());
+        String previous = db.jdbc.queryForObject("select m.previous_manifest_sha256 from backup_manifest m join backup_run r on r.id=m.run_id where r.backup_number=?", String.class, second.backupNumber());
         assertThat(previous).isEqualTo(firstManifestSha);
         assertThat(second.verification().verified()).isTrue();
     }
@@ -170,12 +170,12 @@ class DatabaseBackupServiceTest {
     @Test
     void changingOneByteOfTheBackupFileIsFound() throws Exception {
         DatabaseBackupService.Outcome outcome = service.run(request());
-        Path file = setDir(outcome.backupId()).resolve("database").resolve("eqms.dump.gpg");
+        Path file = setDir(outcome.backupNumber()).resolve("database").resolve("eqms.dump.gpg");
         byte[] bytes = Files.readAllBytes(file);
         bytes[10] ^= 0x01;
         Files.write(file, bytes);
 
-        VerificationService.Outcome again = verification.verifyV1(outcome.backupId(), "operator.one");
+        VerificationService.Outcome again = verification.verifyV1(outcome.backupNumber(), "operator.one");
         assertThat(again.verified()).isFalse();
         assertThat(again.checks()).anyMatch(c -> c.code().equals("FILES_MATCH_MANIFEST") && !c.ok());
         assertThat(db.jdbc.queryForObject("select count(*) from backup_alert where code='BACKUP_VERIFY_FAILED'", Integer.class)).isEqualTo(1);
@@ -187,10 +187,10 @@ class DatabaseBackupServiceTest {
     @Test
     void editingTheManifestIsFoundByTheSignature() throws Exception {
         DatabaseBackupService.Outcome outcome = service.run(request());
-        Path manifest = setDir(outcome.backupId()).resolve("manifest.json");
+        Path manifest = setDir(outcome.backupNumber()).resolve("manifest.json");
         Files.writeString(manifest, Files.readString(manifest).replace("\"environment\":\"DEV\"", "\"environment\":\"PROD\""));
 
-        VerificationService.Outcome again = verification.verifyV1(outcome.backupId(), "operator.one");
+        VerificationService.Outcome again = verification.verifyV1(outcome.backupNumber(), "operator.one");
         assertThat(again.verified()).isFalse();
         assertThat(again.checks()).anyMatch(c -> c.code().equals("MANIFEST_UNCHANGED") && !c.ok());
     }
@@ -201,17 +201,17 @@ class DatabaseBackupServiceTest {
         db.jdbc.execute("alter table backup_manifest disable trigger user");
         db.jdbc.update("update backup_manifest set signature_base64 = ?", java.util.Base64.getEncoder().encodeToString(new byte[64]));
         db.jdbc.execute("alter table backup_manifest enable trigger user");
-        assertThat(verification.verifyV1(outcome.backupId(), "operator.one").checks()).anyMatch(c -> c.code().equals("MANIFEST_SIGNATURE") && !c.ok());
+        assertThat(verification.verifyV1(outcome.backupNumber(), "operator.one").checks()).anyMatch(c -> c.code().equals("MANIFEST_SIGNATURE") && !c.ok());
     }
 
     @Test
     void aMissingBackupFolderIsFound() throws Exception {
         DatabaseBackupService.Outcome outcome = service.run(request());
-        Path dir = setDir(outcome.backupId());
+        Path dir = setDir(outcome.backupNumber());
         try (Stream<Path> walk = Files.walk(dir)) {
             walk.sorted(java.util.Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
         }
-        VerificationService.Outcome again = verification.verifyV1(outcome.backupId(), "operator.one");
+        VerificationService.Outcome again = verification.verifyV1(outcome.backupNumber(), "operator.one");
         assertThat(again.verified()).isFalse();
         assertThat(again.checks()).anyMatch(c -> c.code().equals("SET_PRESENT") && !c.ok());
     }
@@ -220,7 +220,7 @@ class DatabaseBackupServiceTest {
     void aFileThatIsNotEncryptedToTheExpectedKeyIsFound() throws Exception {
         DatabaseBackupService.Outcome outcome = service.run(request());
         runner.packetsLookEncrypted = false;
-        assertThat(verification.verifyV1(outcome.backupId(), "operator.one").checks()).anyMatch(c -> c.code().equals("ENCRYPTED_FOR_KEY") && !c.ok());
+        assertThat(verification.verifyV1(outcome.backupNumber(), "operator.one").checks()).anyMatch(c -> c.code().equals("ENCRYPTED_FOR_KEY") && !c.ok());
     }
 
     @Test
@@ -236,7 +236,7 @@ class DatabaseBackupServiceTest {
         db.jdbc.execute("alter table ledger_event disable trigger user");
         db.jdbc.update("update ledger_event set ref = 'BK-other' where event = 'BACKUP_COMPLETED'");
         db.jdbc.execute("alter table ledger_event enable trigger user");
-        assertThat(verification.verifyV1(outcome.backupId(), "operator.one").checks()).anyMatch(c -> c.code().equals("LEDGER_RECORDS_MANIFEST") && !c.ok());
+        assertThat(verification.verifyV1(outcome.backupNumber(), "operator.one").checks()).anyMatch(c -> c.code().equals("LEDGER_RECORDS_MANIFEST") && !c.ok());
     }
 
     @Test
@@ -245,13 +245,13 @@ class DatabaseBackupServiceTest {
         DatabaseBackupService.Outcome outcome = service.run(request());
         assertThat(outcome.ok()).isFalse();
         assertThat(outcome.errorCode()).isEqualTo("BACKUP_DUMP_FAILED");
-        assertThat(db.jdbc.queryForObject("select status from backup_run where backup_id=?", String.class, outcome.backupId())).isEqualTo("FAILED");
-        assertThat(db.jdbc.queryForObject("select error_code from backup_run where backup_id=?", String.class, outcome.backupId())).isEqualTo("BACKUP_DUMP_FAILED");
+        assertThat(db.jdbc.queryForObject("select status from backup_run where backup_number=?", String.class, outcome.backupNumber())).isEqualTo("FAILED");
+        assertThat(db.jdbc.queryForObject("select error_code from backup_run where backup_number=?", String.class, outcome.backupNumber())).isEqualTo("BACKUP_DUMP_FAILED");
         assertThat(db.jdbc.queryForObject("select count(*) from backup_manifest", Integer.class)).isZero();
         assertThat(db.jdbc.queryForObject("select count(*) from backup_alert where code='BACKUP_DUMP_FAILED'", Integer.class)).isEqualTo(1);
         assertThat(ledgerEvents()).contains("BACKUP_FAILED");
         try (Stream<Path> files = Files.walk(properties.getTargets().getT1())) {
-            assertThat(files.map(p -> p.getFileName().toString())).noneMatch(n -> n.equals(outcome.backupId()));
+            assertThat(files.map(p -> p.getFileName().toString())).noneMatch(n -> n.equals(outcome.backupNumber()));
         }
     }
 
@@ -282,7 +282,7 @@ class DatabaseBackupServiceTest {
 
     @Test
     void aSecondBackupWhileOneIsRunningIsRefused() {
-        db.jdbc.update("insert into backup_run(backup_id, environment, type, trigger_kind, status, started_at, requested_by) "
+        db.jdbc.update("insert into backup_run(backup_number, environment, type, trigger_kind, status, started_at, requested_by) "
                 + "values ('BK-running', 'DEV', 'FULL', 'MANUAL', 'RUNNING', now(), 'someone')");
         DatabaseBackupService.Outcome outcome = service.run(request());
         assertThat(outcome.ok()).isFalse();
@@ -292,10 +292,10 @@ class DatabaseBackupServiceTest {
 
     @Test
     void aRunLeftRunningByADeadAgentIsClosedAsFailedAndDoesNotBlockTheNextBackup() {
-        db.jdbc.update("insert into backup_run(backup_id, environment, type, trigger_kind, status, started_at, requested_by) "
+        db.jdbc.update("insert into backup_run(backup_number, environment, type, trigger_kind, status, started_at, requested_by) "
                 + "values ('BK-stale', 'DEV', 'FULL', 'MANUAL', 'RUNNING', now() - interval '3 hours', 'someone')");
         assertThat(repository.failStaleRunning(java.time.Instant.now())).hasSize(1);
-        assertThat(db.jdbc.queryForObject("select error_code from backup_run where backup_id='BK-stale'", String.class)).isEqualTo("AGENT_RESTARTED");
+        assertThat(db.jdbc.queryForObject("select error_code from backup_run where backup_number='BK-stale'", String.class)).isEqualTo("AGENT_RESTARTED");
         assertThat(service.run(request()).ok()).isTrue();
     }
 
@@ -330,7 +330,7 @@ class DatabaseBackupServiceTest {
         var checkedNow = queries.list(new com.eqms.backup.agent.api.BackupQueryService.Query(null, null, null, null, null, null, now.minusSeconds(600), now.plusSeconds(600), "verifiedAt", false, 1, 10));
         var checkedLongAgo = queries.list(new com.eqms.backup.agent.api.BackupQueryService.Query(null, null, null, null, null, null, null, now.minusSeconds(600), "verifiedAt", false, 1, 10));
         assertThat(checkedNow.total()).isEqualTo(1);
-        assertThat(checkedNow.data().get(0)).containsEntry("id", outcome.backupId());
+        assertThat(checkedNow.data().get(0)).containsEntry("id", outcome.backupNumber());
         assertThat(checkedLongAgo.total()).isZero();
         // a backup that was never checked has no checked time, so a time range leaves it out instead of guessing
         db.jdbc.execute("alter table backup_verification disable trigger user");
@@ -403,7 +403,7 @@ class DatabaseBackupServiceTest {
         assertThat(byPerson.total()).isEqualTo(1);
         var verified = queries.list(new com.eqms.backup.agent.api.BackupQueryService.Query(null, null, null, "VERIFIED", null, null, null, null, "startedAt", false, 1, 10));
         assertThat(verified.total()).isEqualTo(3);
-        var pageTwo = queries.list(new com.eqms.backup.agent.api.BackupQueryService.Query(null, null, null, null, null, null, null, null, "backupId", true, 2, 3));
+        var pageTwo = queries.list(new com.eqms.backup.agent.api.BackupQueryService.Query(null, null, null, null, null, null, null, null, "backupNumber", true, 2, 3));
         assertThat(pageTwo.data()).hasSize(1);
         var hostile = queries.list(new com.eqms.backup.agent.api.BackupQueryService.Query("x'; drop table backup_run; --", null, null, null, null, null, null, null, "startedAt; drop table backup_run", false, 1, 10));
         assertThat(hostile.total()).isZero();

@@ -105,9 +105,9 @@ class InspectionTest {
     /** The copies this test opened: a test that fails before closing its copy must not leave it for the next test. */
     private final List<String> opened = new java.util.ArrayList<>();
 
-    private Map<String, Object> open(String inspectionId) {
-        opened.add(inspectionId.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]", "_"));
-        return inspections.open(inspectionId);
+    private Map<String, Object> open(String inspectionNumber) {
+        opened.add(inspectionNumber.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]", "_"));
+        return inspections.open(inspectionNumber);
     }
 
     @AfterEach
@@ -126,7 +126,7 @@ class InspectionTest {
         DatabaseBackupService.Outcome o = backups.run(new DatabaseBackupService.Request("FULL", "MANUAL", "operator.one", "test run", null));
         assertThat(o.ok()).as(String.valueOf(o.errorDetail())).isTrue();
         assertThat(o.verification().verified()).isTrue();
-        return o.backupId();
+        return o.backupNumber();
     }
 
     private boolean databaseExists(String name) {
@@ -141,16 +141,16 @@ class InspectionTest {
         return ledger.all().stream().map(LedgerService.Event::event).collect(Collectors.toList());
     }
 
-    private String approvedInspection(String backupId) {
-        String id = (String) inspections.request(backupId, "requester.one", "Look at revision 164 before the audit").get("inspectionId");
+    private String approvedInspection(String backupNumber) {
+        String id = (String) inspections.request(backupNumber, "requester.one", "Look at revision 164 before the audit").get("inspectionNumber");
         inspections.approve(id, "approver.one", "SIG-INSPECTION-1");
         return id;
     }
 
     @Test
     void anApprovedBackupOpensReadOnlyForFiveMinutesAndIsDroppedWhenClosed() throws Exception {
-        String backupId = backup();
-        String id = approvedInspection(backupId);
+        String backupNumber = backup();
+        String id = approvedInspection(backupNumber);
         assertThat(db.jdbc.queryForObject("select count(*) from backup_job where job_type = 'INSPECTION'", Integer.class)).isEqualTo(1);
 
         Map<String, Object> open = open(id);
@@ -196,7 +196,7 @@ class InspectionTest {
         Map<String, Object> open = open(id);
         String scratch = (String) open.get("scratchDb");
         // the clock is moved past the time limit in the record, not by waiting five minutes in a test
-        db.jdbc.update("update backup_inspection set expires_at = now() - interval '1 second' where inspection_id = ?", id);
+        db.jdbc.update("update backup_inspection set expires_at = now() - interval '1 second' where inspection_number = ?", id);
 
         assertThat(inspections.expireDue()).isEqualTo(1);
         Map<String, Object> after = inspections.get(id);
@@ -207,7 +207,7 @@ class InspectionTest {
 
     @Test
     void theRequesterCannotApproveAndAnApprovalNeedsASignature() {
-        String id = (String) inspections.request(backup(), "requester.one", "Look at the copy").get("inspectionId");
+        String id = (String) inspections.request(backup(), "requester.one", "Look at the copy").get("inspectionNumber");
         assertThatThrownBy(() -> inspections.approve(id, "requester.one", "SIG-1"))
                 .isInstanceOf(ExportException.class).hasFieldOrPropertyWithValue("code", "INSPECTION_SAME_PERSON");
         assertThatThrownBy(() -> inspections.approve(id, "approver.one", " "))
@@ -218,15 +218,15 @@ class InspectionTest {
 
     @Test
     void onlyOneInspectionAtATimeAndARejectionFreesTheSlot() {
-        String backupId = backup();
-        String first = (String) inspections.request(backupId, "requester.one", "First look").get("inspectionId");
-        assertThatThrownBy(() -> inspections.request(backupId, "requester.two", "Second look"))
+        String backupNumber = backup();
+        String first = (String) inspections.request(backupNumber, "requester.one", "First look").get("inspectionNumber");
+        assertThatThrownBy(() -> inspections.request(backupNumber, "requester.two", "Second look"))
                 .isInstanceOf(ExportException.class).hasFieldOrPropertyWithValue("code", "INSPECTION_BUSY");
 
         assertThatThrownBy(() -> inspections.reject(first, "requester.one", "not mine to decide"))
                 .isInstanceOf(ExportException.class).hasFieldOrPropertyWithValue("code", "INSPECTION_SAME_PERSON");
         assertThat(inspections.reject(first, "approver.one", "Not needed now")).containsEntry("status", "REJECTED");
-        assertThat(inspections.request(backupId, "requester.two", "Second look")).containsEntry("status", "PENDING_APPROVAL");
+        assertThat(inspections.request(backupNumber, "requester.two", "Second look")).containsEntry("status", "PENDING_APPROVAL");
     }
 
     @Test
@@ -255,19 +255,19 @@ class InspectionTest {
 
     @Test
     void aCopyThatWasNotDroppedIsDroppedByTheNextRetry() throws Exception {
-        String id = (String) inspections.request(backup(), "requester.one", "Left behind").get("inspectionId");
+        String id = (String) inspections.request(backup(), "requester.one", "Left behind").get("inspectionNumber");
         String scratch = "inspect_retry_" + id.toLowerCase().replaceAll("[^a-z0-9]", "_");
         try (java.sql.Connection admin = java.sql.DriverManager.getConnection("jdbc:postgresql://" + db.host() + ":" + db.port() + "/postgres", db.user(), db.password());
              java.sql.Statement st = admin.createStatement()) {
             st.execute("create database \"" + scratch + "\"");
         }
         // the state a failed open leaves when the drop was refused: recorded, not dropped
-        db.jdbc.update("update backup_inspection set status = 'FAILED', scratch_db = ?, close_reason = 'OPEN_FAILED_NOT_DROPPED', closed_at = now() where inspection_id = ?", scratch, id);
+        db.jdbc.update("update backup_inspection set status = 'FAILED', scratch_db = ?, close_reason = 'OPEN_FAILED_NOT_DROPPED', closed_at = now() where inspection_number = ?", scratch, id);
         opened.add(scratch.substring("inspect_".length()));
 
         assertThat(inspections.retryUndropped()).isEqualTo(1);
         assertThat(databaseExists(scratch)).as("the retry drops the copy").isFalse();
-        assertThat(db.jdbc.queryForObject("select close_reason from backup_inspection where inspection_id = ?", String.class, id)).isEqualTo("OPEN_FAILED");
+        assertThat(db.jdbc.queryForObject("select close_reason from backup_inspection where inspection_number = ?", String.class, id)).isEqualTo("OPEN_FAILED");
         assertThat(inspections.retryUndropped()).as("nothing is left to retry").isZero();
     }
 
@@ -275,7 +275,7 @@ class InspectionTest {
     void aMissingRestoreWorkerIsWarnedOnceForAnOverdueCopy() {
         String id = approvedInspection(backup());
         db.jdbc.update("update backup_inspection set status = 'OPEN', scratch_db = 'inspect_overdue_probe', opened_at = now() - interval '6 minutes', "
-                + "expires_at = now() - interval '3 minutes' where inspection_id = ?", id);
+                + "expires_at = now() - interval '3 minutes' where inspection_number = ?", id);
 
         inspections.alertOverdue();
         inspections.alertOverdue();
@@ -285,7 +285,7 @@ class InspectionTest {
 
     @Test
     void onlyAnApprovedInspectionOpens() {
-        String id = (String) inspections.request(backup(), "requester.one", "Not approved yet").get("inspectionId");
+        String id = (String) inspections.request(backup(), "requester.one", "Not approved yet").get("inspectionNumber");
         assertThatThrownBy(() -> open(id)).isInstanceOf(ExportException.class).hasFieldOrPropertyWithValue("code", "INSPECTION_STATE");
         assertThat(inspections.page(null, null, 1, 10)).extractingByKey("pagination").asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
                 .containsEntry("total", 1L).containsEntry("totalPages", 1);

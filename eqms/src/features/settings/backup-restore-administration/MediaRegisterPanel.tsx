@@ -2,17 +2,17 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
+import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { FormField, Input } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Select } from "@/components/ui/select/Select";
-import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
-import type { DataTableColumn } from "@/components/ui/table/DataTable";
+import { TABLE_STYLES } from "@/components/ui/table";
+import type { DataTableColumn } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast/Toast";
 import { useDebounce } from "@/hooks";
-import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { ServerListPanel } from "@/features/backup-restore/components/ServerListPanel";
-import { formatBytes, formatDate, formatDateTime } from "@/features/backup-restore/format";
+import { formatBytes, formatDate, formatDateTime, pickerDateToIsoDate } from "@/features/backup-restore/format";
 import { statusLabel } from "@/features/backup-restore/types";
 import { backupRestoreApi, type MediaKind, type MediaStatus, type OfflineMedium } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
@@ -46,7 +46,7 @@ const RegisterMediumModal: React.FC<{ isOpen: boolean; onClose: () => void; onDo
         kind,
         capacityBytes: Math.round(capacity * GB),
         exportDir: folder.trim(),
-        expiresOn: expires || undefined,
+        expiresOn: pickerDateToIsoDate(expires),
       });
       setLabel("");
       setSerial("");
@@ -78,7 +78,7 @@ const RegisterMediumModal: React.FC<{ isOpen: boolean; onClose: () => void; onDo
         <FormField label="Serial number" required>
           <Input value={serial} maxLength={120} onChange={(event) => setSerial(event.target.value)} />
         </FormField>
-        <FormField label="Kind">
+        <FormField label="Kind" hint="The kind decides how the medium is written and how much it holds.">
           <Select value={kind} onChange={(value) => setKind(value as MediaKind)} options={(Object.keys(MEDIA_KIND_LABEL) as MediaKind[]).map((k) => ({ label: MEDIA_KIND_LABEL[k], value: k }))} />
         </FormField>
         <FormField label="Capacity (GB)" required>
@@ -87,20 +87,23 @@ const RegisterMediumModal: React.FC<{ isOpen: boolean; onClose: () => void; onDo
         <FormField label="Folder on the export mount" required hint="One folder name (letters, digits, dot, dash, underscore). The Backup Agent writes only here for this medium.">
           <Input value={folder} maxLength={64} onChange={(event) => setFolder(event.target.value)} />
         </FormField>
-        <FormField label="Expires on" hint="Replace the medium by this date, or when it shows read errors.">
-          <Input type="date" value={expires} onChange={(event) => setExpires(event.target.value)} />
-        </FormField>
+        <DateTimePicker
+          label="Expires on"
+          value={expires}
+          onChange={setExpires}
+          placeholder="Select a date"
+        />
+        <p className="text-xs text-slate-500">Replace the medium by this date, or when it shows read errors.</p>
       </div>
     </FormModal>
   );
 };
 
 /** The Offline Media Register: every medium a package can be written to, where it is and who holds it. */
-export const MediaRegisterPanel: React.FC = () => {
+/** The media list. The Register Medium button and its state belong to the screen's header; the panel only receives them. */
+export const MediaRegisterPanel: React.FC<{ registering: boolean; onRegisterClose: () => void }> = ({ registering, onRegisterClose }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { hasPermission } = usePermissions();
-  const canManage = hasPermission("backup.media.manage");
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
@@ -116,7 +119,6 @@ export const MediaRegisterPanel: React.FC = () => {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-  const [registering, setRegistering] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -194,19 +196,9 @@ export const MediaRegisterPanel: React.FC = () => {
   ];
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900 sm:text-base">Offline Media Register</h2>
-          <p className="text-xs text-slate-500">Every medium a backup package can be written to. A medium that is not registered here is not used.</p>
-        </div>
-        {canManage && (
-          <Button size="sm" variant="outline-emerald" onClick={() => setRegistering(true)} className="whitespace-nowrap">
-            Register Medium
-          </Button>
-        )}
-      </div>
+    <>
       <ServerListPanel
+        framed={false}
         tableKey="backup-admin.offline-media"
         columns={columns}
         rows={rows}
@@ -239,13 +231,13 @@ export const MediaRegisterPanel: React.FC = () => {
       />
       <RegisterMediumModal
         isOpen={registering}
-        onClose={() => setRegistering(false)}
+        onClose={onRegisterClose}
         onDone={(medium) => {
-          setRegistering(false);
+          onRegisterClose();
           showToast({ type: "success", title: "Medium registered", message: medium.label });
           setReloadKey((key) => key + 1);
         }}
       />
-    </section>
+    </>
   );
 };

@@ -341,7 +341,7 @@ export const DocumentPropertiesView: React.FC = () => {
               </Group>
 
               <div className="lg:col-span-2 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <Group title="Effective date — Required Training documents">
+                <Group title="Effective date — Required Training">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <Select
                       label="Effective Date is counted from"
@@ -368,7 +368,7 @@ export const DocumentPropertiesView: React.FC = () => {
                   </p>
                 </Group>
 
-                <Group title="Effective date — Non-Required Training documents">
+                <Group title="Effective date — Non-Required Training">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <Select
                       label="Effective Date is counted from"

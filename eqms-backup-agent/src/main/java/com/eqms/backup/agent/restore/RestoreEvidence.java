@@ -34,18 +34,18 @@ public class RestoreEvidence {
     }
 
     /** The signed pack: the canonical text, its SHA-256, the signature and the key id. */
-    public Map<String, Object> pack(String requestId) {
-        Map<String, Object> request = requests.get(requestId);
-        Map<String, Object> checks = execution.preflight(requestId);
+    public Map<String, Object> pack(String restoreNumber) {
+        Map<String, Object> request = requests.get(restoreNumber);
+        Map<String, Object> checks = execution.preflight(restoreNumber);
         Map<String, Object> rehearsal = null;
         Object test = checks.get("testRestore");
         if (test instanceof Map<?, ?> t && t.get("rehearsalId") != null) {
             rehearsal = rehearsals.get(String.valueOf(t.get("rehearsalId")));
         }
-        String backupId = String.valueOf(request.get("backupId"));
+        String backupNumber = String.valueOf(request.get("backupNumber"));
         List<Map<String, Object>> events = new ArrayList<>();
         for (LedgerService.Event e : ledger.all()) {
-            if (requestId.equals(e.ref()) || backupId.equals(e.ref()) || requestId.equals(detailRef(e))) {
+            if (restoreNumber.equals(e.ref()) || backupNumber.equals(e.ref()) || restoreNumber.equals(detailRef(e))) {
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("seq", e.seq());
                 row.put("at", e.at() == null ? null : e.at().toString());
@@ -65,7 +65,7 @@ public class RestoreEvidence {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("type", "RESTORE_EVIDENCE");
-        body.put("requestId", requestId);
+        body.put("restoreNumber", restoreNumber);
         body.put("generatedAt", Instant.now().toString());
         body.put("request", request);
         body.put("checks", checks);
@@ -85,7 +85,7 @@ public class RestoreEvidence {
     private static String detailRef(LedgerService.Event e) {
         String data = e.dataJson();
         if (data == null) return null;
-        int at = data.indexOf("\"requestId\":\"");
+        int at = data.indexOf("\"restoreNumber\":\"");
         if (at < 0) return null;
         int start = at + 13;
         int end = data.indexOf('"', start);

@@ -47,8 +47,8 @@ public class RestoreExecutionService {
     }
 
     /** The checks that decide whether the request can be scheduled, and the schedule that exists, if any. */
-    public Map<String, Object> preflight(String requestId) {
-        Map<String, Object> request = request(requestId);
+    public Map<String, Object> preflight(String restoreNumber) {
+        Map<String, Object> request = request(restoreNumber);
         List<Map<String, Object>> checks = new ArrayList<>();
         checks.add(check("REQUEST_APPROVED", "APPROVED".equals(request.get("status")),
                 "The request is " + request.get("status") + "; only an approved request can run"));
@@ -68,7 +68,7 @@ public class RestoreExecutionService {
         boolean ready = checks.stream().allMatch(c -> Boolean.TRUE.equals(c.get("ok")));
 
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("requestId", requestId);
+        out.put("restoreNumber", restoreNumber);
         out.put("status", request.get("status"));
         out.put("checks", checks);
         out.put("readyToSchedule", ready);
@@ -77,32 +77,32 @@ public class RestoreExecutionService {
         MaintenanceService.Status system = maintenance.status();
         out.put("systemState", system.state().name());
         // the request id is kept after the window closes; it names a holder only while the system is locked for it
-        out.put("systemRequestId", system.state() == MaintenanceService.State.LOCKED_RESTORING ? system.requestId() : null);
+        out.put("systemRequestId", system.state() == MaintenanceService.State.LOCKED_RESTORING ? system.restoreNumber() : null);
         out.put("testRestore", schedule == null ? null : testRestoreOf(UUID.fromString((String) schedule.get("id"))));
         out.put("notCheckedYet", NOT_CHECKED_YET);
         return out;
     }
 
     /** Schedules an approved request for a window that starts later. The executor may not be the approver. */
-    public Map<String, Object> schedule(String requestId, String by, Instant windowStart) {
+    public Map<String, Object> schedule(String restoreNumber, String by, Instant windowStart) {
         String who = by == null ? "" : by.trim();
         if (who.isEmpty()) throw ExportException.invalid("RESTORE_EXECUTOR_REQUIRED", "Name the person who schedules the restore");
         if (windowStart == null || !windowStart.isAfter(Instant.now())) {
             throw ExportException.invalid("RESTORE_WINDOW_IN_PAST", "The maintenance window must start later than now");
         }
-        Map<String, Object> request = request(requestId);
+        Map<String, Object> request = request(restoreNumber);
         if (!"APPROVED".equals(request.get("status"))) {
             throw ExportException.conflict("RESTORE_STATE", "Only an approved request can be scheduled");
         }
         if (who.equalsIgnoreCase(String.valueOf(request.get("approved_by")))) {
             throw ExportException.conflict("RESTORE_SAME_PERSON", "The person who approved a restore cannot schedule it");
         }
-        Map<String, Object> ready = preflight(requestId);
+        Map<String, Object> ready = preflight(restoreNumber);
         if (!Boolean.TRUE.equals(ready.get("readyToSchedule"))) {
             throw ExportException.conflict("RESTORE_NOT_READY", "A check is not passed; see the pre-checks before scheduling");
         }
         UUID requestUuid = (UUID) request.get("id");
-        String backupId = String.valueOf(request.get("backup_id"));
+        String backupNumber = String.valueOf(request.get("backup_number"));
         try {
             tx.executeWithoutResult(s -> {
                 UUID execution = jdbc.queryForObject("insert into restore_execution(request_id, status, window_start, scheduled_by) "
@@ -112,8 +112,8 @@ public class RestoreExecutionService {
         } catch (DuplicateKeyException e) {
             throw ExportException.conflict("RESTORE_IN_PROGRESS", "This request already has an open schedule");
         }
-        ledger.append(who, "RESTORE_SCHEDULED", backupId, Map.of("requestId", requestId, "windowStart", windowStart.toString()));
-        return preflight(requestId);
+        ledger.append(who, "RESTORE_SCHEDULED", backupNumber, Map.of("restoreNumber", restoreNumber, "windowStart", windowStart.toString()));
+        return preflight(restoreNumber);
     }
 
     /**
@@ -122,10 +122,10 @@ public class RestoreExecutionService {
      * this same request. The administrator confirms that no user is still working. The run itself (R5 onward) is not built, so the
      * system stays locked until it is reopened.
      */
-    public Map<String, Object> enterWindow(String requestId, String by, boolean noUserConfirmed) {
+    public Map<String, Object> enterWindow(String restoreNumber, String by, boolean noUserConfirmed) {
         String who = by == null ? "" : by.trim();
         if (who.isEmpty()) throw ExportException.invalid("RESTORE_EXECUTOR_REQUIRED", "Name the person who starts the restore window");
-        Map<String, Object> request = request(requestId);
+        Map<String, Object> request = request(restoreNumber);
         List<Map<String, Object>> open = jdbc.queryForList("select id, window_start from restore_execution where request_id = ? and status = 'SCHEDULED'",
                 request.get("id"));
         if (open.isEmpty()) throw ExportException.conflict("RESTORE_NOT_SCHEDULED", "Schedule a window before the system is locked for this restore");
@@ -135,16 +135,16 @@ public class RestoreExecutionService {
             throw ExportException.conflict("RESTORE_WINDOW_NOT_REACHED", "The maintenance window starts at " + windowStart + "; it has not come yet");
         }
         MaintenanceService.Status state = maintenance.status();
-        if (state.state() != MaintenanceService.State.DRAINED || !requestId.equals(state.requestId())) {
-            throw ExportException.conflict("RESTORE_NOT_DRAINED", "The notice for " + requestId + " must have run out and drained the system first; it is "
-                    + state.state() + (state.requestId() == null ? "" : " for " + state.requestId()));
+        if (state.state() != MaintenanceService.State.DRAINED || !restoreNumber.equals(state.restoreNumber())) {
+            throw ExportException.conflict("RESTORE_NOT_DRAINED", "The notice for " + restoreNumber + " must have run out and drained the system first; it is "
+                    + state.state() + (state.restoreNumber() == null ? "" : " for " + state.restoreNumber()));
         }
         MaintenanceService.Status locked = maintenance.lock(who, noUserConfirmed);
         UUID execution = (UUID) schedule.get("id");
         jdbc.update("insert into restore_execution_event(execution_id, event, by_user, detail_json) values (?, 'WINDOW_LOCKED', ?, ?::jsonb)",
                 execution, who, CanonicalJson.of(Map.of("systemState", locked.state().name())));
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("requestId", requestId);
+        out.put("restoreNumber", restoreNumber);
         out.put("systemState", locked.state().name());
         return out;
     }
@@ -154,35 +154,35 @@ public class RestoreExecutionService {
      * restores the backup into a scratch database and runs the checks of the rehearsal (C1 to C4 and C6 among them). Production is
      * not touched. Allowed only while the system is LOCKED_RESTORING for this request, and once per window.
      */
-    public Map<String, Object> startTestRestore(String requestId, String by) {
+    public Map<String, Object> startTestRestore(String restoreNumber, String by) {
         String who = by == null ? "" : by.trim();
         if (who.isEmpty()) throw ExportException.invalid("RESTORE_EXECUTOR_REQUIRED", "Name the person who starts the test restore");
-        Map<String, Object> request = request(requestId);
+        Map<String, Object> request = request(restoreNumber);
         List<Map<String, Object>> open = jdbc.queryForList("select id from restore_execution where request_id = ? and status = 'SCHEDULED'", request.get("id"));
         if (open.isEmpty()) throw ExportException.conflict("RESTORE_NOT_SCHEDULED", "Schedule a window before the test restore");
         UUID execution = (UUID) open.get(0).get("id");
         MaintenanceService.Status state = maintenance.status();
-        if (state.state() != MaintenanceService.State.LOCKED_RESTORING || !requestId.equals(state.requestId())) {
+        if (state.state() != MaintenanceService.State.LOCKED_RESTORING || !restoreNumber.equals(state.restoreNumber())) {
             throw ExportException.conflict("RESTORE_NOT_LOCKED", "The system must be locked for this restore before the test restore starts; it is " + state.state());
         }
         Integer already = jdbc.queryForObject("select count(*) from restore_execution_event where execution_id = ? and event = 'TEST_RESTORE_QUEUED'", Integer.class, execution);
         if (already != null && already > 0) throw ExportException.conflict("RESTORE_TEST_ALREADY_REQUESTED", "A test restore was already started in this window");
-        String backupId = String.valueOf(request.get("backup_id"));
-        String rehearsalId = String.valueOf(rehearsals.request(backupId, who, "Test restore for " + requestId + " in the restore window").get("rehearsalId"));
+        String backupNumber = String.valueOf(request.get("backup_number"));
+        String rehearsalId = String.valueOf(rehearsals.request(backupNumber, who, "Test restore for " + restoreNumber + " in the restore window").get("rehearsalId"));
         tx.executeWithoutResult(s -> jdbc.update("insert into restore_execution_event(execution_id, event, by_user, detail_json) values (?, 'TEST_RESTORE_QUEUED', ?, ?::jsonb)",
                 execution, who, CanonicalJson.of(Map.of("rehearsalId", rehearsalId))));
-        ledger.append(who, "RESTORE_TEST_QUEUED", backupId, Map.of("requestId", requestId, "rehearsalId", rehearsalId));
+        ledger.append(who, "RESTORE_TEST_QUEUED", backupNumber, Map.of("restoreNumber", restoreNumber, "rehearsalId", rehearsalId));
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("requestId", requestId);
+        out.put("restoreNumber", restoreNumber);
         out.put("rehearsalId", rehearsalId);
         out.put("status", "QUEUED");
         return out;
     }
 
-    private Map<String, Object> request(String requestId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("select r.id, r.request_id, r.status, r.requested_by, r.approved_by, r.approval_signature_ref, "
-                + "r.run_id, b.backup_id, b.status as run_status from restore_request r join backup_run b on b.id = r.run_id where r.request_id = ?", requestId);
-        if (rows.isEmpty()) throw ExportException.notFound("RESTORE_REQUEST_NOT_FOUND", "There is no restore request " + requestId);
+    private Map<String, Object> request(String restoreNumber) {
+        List<Map<String, Object>> rows = jdbc.queryForList("select r.id, r.restore_number, r.status, r.requested_by, r.approved_by, r.approval_signature_ref, "
+                + "r.run_id, b.backup_number, b.status as run_status from restore_request r join backup_run b on b.id = r.run_id where r.restore_number = ?", restoreNumber);
+        if (rows.isEmpty()) throw ExportException.notFound("RESTORE_REQUEST_NOT_FOUND", "There is no restore request " + restoreNumber);
         return rows.get(0);
     }
 

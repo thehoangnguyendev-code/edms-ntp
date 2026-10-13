@@ -167,7 +167,7 @@ class BackupExportControllerTest {
         controller.mediaList("usb 1", "AVAILABLE", "USB", "kind", "desc", 2, 20);
         ArgumentCaptor<String> path = ArgumentCaptor.forClass(String.class);
         verify(agent, org.mockito.Mockito.times(2)).exchange(eq(HttpMethod.GET), path.capture(), isNull());
-        assertThat(path.getAllValues().get(0)).startsWith("/internal/exports?").contains("search=a%26b%20c").contains("status=COMPLETED").contains("backupId=" + BACKUP).contains("page=1").contains("limit=100");
+        assertThat(path.getAllValues().get(0)).startsWith("/internal/exports?").contains("search=a%26b%20c").contains("status=COMPLETED").contains("backupNumber=" + BACKUP).contains("page=1").contains("limit=100");
         assertThat(path.getAllValues().get(1)).startsWith("/internal/media?").contains("search=usb%201").contains("kind=USB").contains("sortDirection=desc").contains("page=2").contains("limit=20");
     }
 

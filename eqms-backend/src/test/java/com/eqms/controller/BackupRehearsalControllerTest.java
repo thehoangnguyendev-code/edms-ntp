@@ -118,6 +118,6 @@ class BackupRehearsalControllerTest {
         ArgumentCaptor<String> path = ArgumentCaptor.forClass(String.class);
         verify(agent).exchange(eq(HttpMethod.GET), path.capture(), isNull());
         assertThat(path.getValue()).startsWith("/internal/rehearsals?").contains("search=a%26b").contains("status=PASSED")
-                .contains("backupId=" + BACKUP).contains("sortDirection=asc").contains("page=1").contains("limit=100");
+                .contains("backupNumber=" + BACKUP).contains("sortDirection=asc").contains("page=1").contains("limit=100");
     }
 }

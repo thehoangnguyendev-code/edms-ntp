@@ -4,8 +4,8 @@ import { MoreVertical, Plus } from "lucide-react";
 import { IconChecks, IconInfoCircle, IconRestore, IconShieldCheck } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
-import type { DataTableAction, DataTableColumn } from "@/components/ui/table/DataTable";
-import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import type { DataTableAction, DataTableColumn } from "@/components/ui/table";
+import { TABLE_STYLES } from "@/components/ui/table";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast/Toast";
@@ -22,7 +22,7 @@ import { useBackupJobs } from "../components/useBackupJobs";
 import { BACKUP_STATUS_COLOR, VERIFICATION_COLOR, statusLabel, type BackupRecord } from "../types";
 import { formatBytes, formatDateTime } from "../format";
 
-type SortKey = "startedAt" | "backupId" | "status" | "type" | "sizeBytes" | "createdBy" | "verification";
+type SortKey = "startedAt" | "backupNumber" | "status" | "type" | "sizeBytes" | "createdBy" | "verification";
 
 const ALL = "ALL";
 const option = (value: string) => ({ label: statusLabel(value), value });
@@ -142,26 +142,26 @@ export const BackupsView: React.FC = () => {
     }
   };
 
-  const verify = async (backupId: string) => {
+  const verify = async (backupNumber: string) => {
     try {
-      const { jobId } = await backupRestoreApi.verify(backupId);
-      showToast({ type: "info", title: "Integrity check requested", message: backupId });
+      const { jobId } = await backupRestoreApi.verify(backupNumber);
+      showToast({ type: "info", title: "Integrity check requested", message: backupNumber });
       void follow(jobId, "Integrity check");
     } catch (e) {
       showToast({ type: "error", title: "Unable to start the check", message: getApiErrorMessage(e, "The request was refused.") });
     }
   };
 
-  const open = (backupId: string) => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(backupId));
-  const requestRestore = (backupId: string) => navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_NEW}?backup=${encodeURIComponent(backupId)}`);
+  const open = (backupNumber: string) => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(backupNumber));
+  const requestRestore = (backupNumber: string) => navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_NEW}?backup=${encodeURIComponent(backupNumber)}`);
 
   const columns: DataTableColumn<BackupRecord>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_b, i) => (page - 1) * pageSize + i + 1 },
     {
       id: "id",
-      header: "Backup",
-      label: "Backup",
-      sort: sortFor("backupId"),
+      header: "Backup Number",
+      label: "Backup Number",
+      sort: sortFor("backupNumber"),
       cell: (b) => (
         <div>
           <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => open(b.id)}>
@@ -233,7 +233,7 @@ export const BackupsView: React.FC = () => {
         search={search}
         onSearch={setSearch}
         searchLabel="Search backups"
-        searchPlaceholder="Backup ID, person or reason…"
+        searchPlaceholder="Backup Number, person or reason…"
         filters={[
           { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Status", onChange: setStatus },
           { id: "type", label: "Type", value: type, options: TYPE_OPTIONS, defaultValue: ALL, placeholder: "All Types", onChange: setType },

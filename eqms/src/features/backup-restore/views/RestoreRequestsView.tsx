@@ -5,8 +5,8 @@ import { IconChecks, IconInfoCircle, IconX } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
-import type { DataTableAction, DataTableColumn } from "@/components/ui/table/DataTable";
-import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import type { DataTableAction, DataTableColumn } from "@/components/ui/table";
+import { TABLE_STYLES } from "@/components/ui/table";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { useDebounce, usePortalDropdown } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -30,7 +30,7 @@ const TARGET_OPTIONS = [
 ];
 const TYPE_LABEL: Record<string, string> = { "R-FULL": "Full restore", "R-DB": "Database only", "R-OBJ": "Documents only", "R-ONE": "One record" };
 
-type SortKey = "requestedAt" | "status" | "backupId" | "requestedBy";
+type SortKey = "requestedAt" | "status" | "backupNumber" | "requestedBy" | "decidedAt";
 
 /**
  * Restore requests: one list for asking, deciding and following a request. Asking never runs a restore; a request waits for a second
@@ -111,15 +111,15 @@ export const RestoreRequestsView: React.FC = () => {
 
   const mine = (request: RestoreRequestRecord) => request.requestedBy.toLowerCase() === me;
   const canDecide = (request: RestoreRequestRecord) => request.status === "PENDING_APPROVAL" && canApprove && !mine(request);
-  const open = (request: RestoreRequestRecord) => navigate(ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(request.requestId));
+  const open = (request: RestoreRequestRecord) => navigate(ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(request.restoreNumber));
 
   const columns: DataTableColumn<RestoreRequestRecord>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
-    { id: "requestId", header: "Request ID", label: "Request ID", headerClassName: TABLE_STYLES.headerCell35, cell: (row) => (
-      <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => open(row)}>{row.requestId}</button>
+    { id: "restoreNumber", header: "Restore Number", label: "Restore Number", headerClassName: TABLE_STYLES.headerCell35, cell: (row) => (
+      <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => open(row)}>{row.restoreNumber}</button>
     ) },
-    { id: "backupId", header: "Backup ID", label: "Backup ID", sort: sortFor("backupId"), cell: (row) => (
-      <button type="button" className="text-left text-emerald-600 hover:underline" onClick={() => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(row.backupId))}>{row.backupId}</button>
+    { id: "backupNumber", header: "Backup Number", label: "Backup Number", sort: sortFor("backupNumber"), cell: (row) => (
+      <button type="button" className="text-left text-emerald-600 hover:underline" onClick={() => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(row.backupNumber))}>{row.backupNumber}</button>
     ) },
     { id: "type", header: "Type", label: "Type", cell: (row) => TYPE_LABEL[row.type] ?? row.type },
     { id: "target", header: "Target", label: "Target", cell: (row) => <Badge color={row.target === "PRODUCTION" ? "red" : "blue"}>{row.target === "PRODUCTION" ? "Production" : "Validation"}</Badge> },
@@ -127,6 +127,8 @@ export const RestoreRequestsView: React.FC = () => {
     { id: "requestedBy", header: "Requested by", label: "Requested by", sort: sortFor("requestedBy"), cell: (row) => row.requestedBy },
     { id: "requestedAt", header: "Requested", label: "Requested", sort: sortFor("requestedAt"), cell: (row) => formatDateTime(row.requestedAt) },
     { id: "approvedBy", header: "Approved by", label: "Approved by", cell: (row) => row.approvedBy ?? "—" },
+    { id: "approvedAt", header: "Approved at", label: "Approved at", cell: (row) => (row.status === "APPROVED" && row.decidedAt ? formatDateTime(row.decidedAt) : "—") },
+    { id: "rejectedAt", header: "Rejected at", label: "Rejected at", cell: (row) => (row.status === "REJECTED" && row.decidedAt ? formatDateTime(row.decidedAt) : "—") },
   ];
 
   const action: DataTableAction<RestoreRequestRecord> = {
@@ -206,14 +208,14 @@ export const RestoreRequestsView: React.FC = () => {
             <DropdownMenuItem
               icon={<IconChecks className="h-4 w-4" />}
               disabled={!canDecide(actionRow)}
-              onClick={() => { navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(actionRow.requestId)}?decision=approve`); menu.close(); }}
+              onClick={() => { navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(actionRow.restoreNumber)}?decision=approve`); menu.close(); }}
             >
               Approve Request
             </DropdownMenuItem>
             <DropdownMenuItem
               icon={<IconX className="h-4 w-4" />}
               disabled={!canDecide(actionRow)}
-              onClick={() => { navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(actionRow.requestId)}?decision=reject`); menu.close(); }}
+              onClick={() => { navigate(`${ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(actionRow.restoreNumber)}?decision=reject`); menu.close(); }}
             >
               Reject Request
             </DropdownMenuItem>

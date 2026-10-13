@@ -2,29 +2,34 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
-import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
-import type { DataTableAction, DataTableColumn } from "@/components/ui/table/DataTable";
+import { TABLE_STYLES } from "@/components/ui/table";
+import type { DataTableAction, DataTableColumn } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDebounce } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
-import { ServerListPanel } from "@/features/backup-restore/components/ServerListPanel";
-import { formatBytes, formatDateTime } from "@/features/backup-restore/format";
-import { statusLabel } from "@/features/backup-restore/types";
+import { EXPORT_STATUS_COLOR, exportErrorMessage } from "@/features/settings/backup-restore-administration/mediaLabels";
 import { backupRestoreApi, type BackupExport, type ExportStatus } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
-import { EXPORT_STATUS_COLOR, exportErrorMessage } from "./mediaLabels";
+import { BackupRestorePage } from "../components/BackupRestorePage";
+import { ServerListPanel } from "../components/ServerListPanel";
+import { formatBytes, formatDateTime } from "../format";
+import { statusLabel } from "../types";
 
-type SortKey = "requestedAt" | "status" | "backupId" | "media" | "requestedBy" | "finishedAt";
+type SortKey = "requestedAt" | "status" | "backupNumber" | "media" | "requestedBy" | "finishedAt";
 
 const ALL = "ALL";
 const STATUS_OPTIONS = [{ label: "All Statuses", value: ALL }, ...(Object.keys(EXPORT_STATUS_COLOR) as ExportStatus[]).map((value) => ({ label: statusLabel(value), value }))];
 
-/** Requests to write a backup to an offline medium. A second person approves each one; the Backup Agent then builds the package. */
-export const ExportRequestsPanel: React.FC = () => {
+/**
+ * Export requests: a backup written to an offline medium so a copy can be kept somewhere else. A second person approves each request;
+ * the Backup Agent then builds the package. A request is made from the backup's own screen.
+ */
+export const BackupExportsView: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { user } = useAuth();
@@ -124,15 +129,16 @@ export const ExportRequestsPanel: React.FC = () => {
   };
 
   const columns: DataTableColumn<BackupExport>[] = [
-    { id: "exportId", header: "Export", label: "Export", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (row) => <span className="font-medium">{row.exportId}</span> },
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
+    { id: "exportId", header: "Export", label: "Export", headerClassName: TABLE_STYLES.headerCell35, cell: (row) => <span className="font-medium">{row.exportId}</span> },
     {
-      id: "backupId",
-      header: "Backup",
-      label: "Backup",
-      sort: sortFor("backupId"),
+      id: "backupNumber",
+      header: "Backup Number",
+      label: "Backup Number",
+      sort: sortFor("backupNumber"),
       cell: (row) => (
-        <button type="button" className="text-left text-emerald-600 hover:underline" onClick={() => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(row.backupId))}>
-          {row.backupId}
+        <button type="button" className="text-left text-emerald-600 hover:underline" onClick={() => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(row.backupNumber))}>
+          {row.backupNumber}
         </button>
       ),
     },
@@ -184,13 +190,10 @@ export const ExportRequestsPanel: React.FC = () => {
   };
 
   return (
-    <section className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-sm font-semibold text-slate-900 sm:text-base">Export Requests</h2>
-        <p className="text-xs text-slate-500">Backups written to an offline medium so a copy can be kept somewhere else. Request one from the backup&apos;s own screen.</p>
-      </div>
+    <BackupRestorePage title="Export Requests" group="Backup" preview={false}>
+      <WarningBanner variant="info" description="Backups written to an offline medium so a copy can be kept somewhere else. A second person approves each request. Request one from the backup's own screen." />
       <ServerListPanel
-        tableKey="backup-admin.export-requests"
+        tableKey="backup-restore.export-requests.v1"
         columns={columns}
         action={action}
         rows={rows}
@@ -199,7 +202,7 @@ export const ExportRequestsPanel: React.FC = () => {
         hasLoaded={hasLoaded}
         error={error}
         emptyTitle="No Export Requests"
-        emptyDescription="Exports appear here once someone asks for a backup to be written to an offline medium."
+        emptyDescription="Exports appear here once someone asks for a backup to be written to an offline medium. Try changing your search or filters."
         search={search}
         onSearch={setSearch}
         searchLabel="Search export requests"
@@ -226,10 +229,12 @@ export const ExportRequestsPanel: React.FC = () => {
         confirmDisabled={!rejectReason.trim() || busy}
         onConfirm={() => void reject()}
       >
-        <FormField label="Reason" required>
-          <Textarea rows={3} value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} />
-        </FormField>
+        <div className="space-y-4">
+          <FormField label="Reason" required hint="Recorded with the decision, with your name and the time.">
+            <Textarea rows={3} value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} />
+          </FormField>
+        </div>
       </FormModal>
-    </section>
+    </BackupRestorePage>
   );
 };

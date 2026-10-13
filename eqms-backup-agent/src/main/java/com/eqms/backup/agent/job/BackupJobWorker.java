@@ -39,10 +39,12 @@ public class BackupJobWorker {
     private final ExportService exports;
     private final RestoreRehearsalService rehearsals;
     private final InspectionService inspections;
+    private final com.eqms.backup.agent.restore.RestoreKeepService keeps;
 
     public BackupJobWorker(JobQueue queue, DatabaseBackupService backups, VerificationService verification, LedgerService ledger,
                            BackupRepository repository, AgentProperties properties, ExportService exports, RestoreRehearsalService rehearsals,
-                           InspectionService inspections) {
+                           InspectionService inspections, com.eqms.backup.agent.restore.RestoreKeepService keeps) {
+        this.keeps = keeps;
         this.exports = exports;
         this.rehearsals = rehearsals;
         this.inspections = inspections;
@@ -61,9 +63,9 @@ public class BackupJobWorker {
             return;
         }
         for (Map<String, Object> stale : repository.failStaleRunning(Instant.now())) {
-            String backupId = (String) stale.get("backup_id");
-            ledger.append("agent", "BACKUP_FAILED", backupId, Map.of("code", "AGENT_RESTARTED"));
-            repository.insertAlert("HIGH", "AGENT_RESTARTED", "The agent stopped while backup " + backupId + " was running", backupId);
+            String backupNumber = (String) stale.get("backup_number");
+            ledger.append("agent", "BACKUP_FAILED", backupNumber, Map.of("code", "AGENT_RESTARTED"));
+            repository.insertAlert("HIGH", "AGENT_RESTARTED", "The agent stopped while backup " + backupNumber + " was running", backupNumber);
         }
         ledger.append("agent", "AGENT_STARTED", null, Map.of("environment", properties.getEnvironment().toUpperCase(), "version", "0.0.1"));
         checkLedger();
@@ -71,7 +73,7 @@ public class BackupJobWorker {
 
     @Scheduled(fixedDelayString = "${agent.poll-millis:5000}", initialDelayString = "${agent.poll-millis:5000}")
     public void poll() {
-        Optional<JobQueue.Job> job = properties.isRestoreWorker() ? queue.claimNext(120, java.util.List.of("REHEARSAL", "INSPECTION")) : queue.claimNext(120);
+        Optional<JobQueue.Job> job = properties.isRestoreWorker() ? queue.claimNext(120, java.util.List.of("REHEARSAL", "INSPECTION", "RESTORE_KEEP")) : queue.claimNext(120);
         if (job.isEmpty()) return;
         JobQueue.Job j = job.get();
         try {
@@ -84,14 +86,14 @@ public class BackupJobWorker {
                             payload.path("type").asText("FULL"), payload.path("trigger").asText("MANUAL"), j.requestedBy(),
                             payload.path("reason").asText(null), payload.path("changeControlRef").asText(null)));
                     ok = o.ok();
-                    result.put("backupId", o.backupId());
+                    result.put("backupNumber", o.backupNumber());
                     result.put("errorCode", o.errorCode());
                     result.put("verification", o.verification() == null ? null : o.verification().result());
                 }
                 case "VERIFY" -> {
-                    VerificationService.Outcome o = verification.verifyV1(payload.path("backupId").asText(), j.requestedBy());
+                    VerificationService.Outcome o = verification.verifyV1(payload.path("backupNumber").asText(), j.requestedBy());
                     ok = o.verified();
-                    result.put("backupId", o.backupId());
+                    result.put("backupNumber", o.backupNumber());
                     result.put("verification", o.result());
                 }
                 case "REHEARSAL" -> {
@@ -101,10 +103,17 @@ public class BackupJobWorker {
                     result.put("status", r.get("status"));
                     result.put("errorCode", r.get("errorCode"));
                 }
+                case "RESTORE_KEEP" -> {
+                    Map<String, Object> k = keeps.keep(payload.path("backupNumber").asText(), payload.path("by").asText());
+                    ok = true;
+                    result.put("keepCode", k.get("keepCode"));
+                    result.put("database", k.get("database"));
+                    result.put("checks", k.get("checks"));
+                }
                 case "INSPECTION" -> {
-                    Map<String, Object> i = inspections.open(payload.path("inspectionId").asText());
+                    Map<String, Object> i = inspections.open(payload.path("inspectionNumber").asText());
                     ok = "OPEN".equals(i.get("status"));
-                    result.put("inspectionId", i.get("inspectionId"));
+                    result.put("inspectionNumber", i.get("inspectionNumber"));
                     result.put("status", i.get("status"));
                     result.put("errorCode", i.get("errorCode"));
                 }

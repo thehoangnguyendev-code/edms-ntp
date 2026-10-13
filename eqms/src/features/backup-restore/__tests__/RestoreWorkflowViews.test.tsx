@@ -49,7 +49,7 @@ vi.mock("@/components/ui/esign-modal/ESignatureModal", async () => {
 });
 
 const restoreRow = (over: Partial<RestoreRequestRecord> = {}): RestoreRequestRecord => ({
-  id: "1", requestId: "RR-1", backupId: "BK-1", type: "R-FULL", target: "VALIDATION", status: "PENDING_APPROVAL", reason: "Drill",
+  id: "1", restoreNumber: "RR-1", backupNumber: "BK-1", type: "R-FULL", target: "VALIDATION", status: "PENDING_APPROVAL", reason: "Drill",
   changeControlRef: null, requestedBy: "admin", requestedAt: "2026-10-09T01:00:00Z", impactSha256: null, impact: null, rehearsalId: null,
   approvedBy: null, approvalSignatureRef: null, decidedAt: null, decisionReason: null, ...over,
 });
@@ -92,7 +92,7 @@ describe("New Restore Request", () => {
   beforeEach(() => {
     api.list.mockResolvedValue(pageOf(completed));
     api.get.mockImplementation(async (id: string) => backup({ id }));
-    api.restoreReadiness.mockImplementation(async (id: string) => ({ backupId: id, maxAgeDays: 30, testRestore: null }));
+    api.restoreReadiness.mockImplementation(async (id: string) => ({ backupNumber: id, maxAgeDays: 30, testRestore: null }));
   });
 
   const pickBackupAndContinue = async () => {
@@ -124,7 +124,7 @@ describe("New Restore Request", () => {
   });
 
   it("sends the request for a validation restore and returns to the request list", async () => {
-    api.createRestoreRequest.mockResolvedValue(restoreRow({ requestId: "RR-9" }));
+    api.createRestoreRequest.mockResolvedValue(restoreRow({ restoreNumber: "RR-9" }));
     renderAt("/backup-restore/restores/new", <RestoreRequestView />);
     await pickBackupAndContinue();
     fireEvent.change(screen.getByPlaceholderText("Why is this restore needed?"), { target: { value: "Annual drill" } });

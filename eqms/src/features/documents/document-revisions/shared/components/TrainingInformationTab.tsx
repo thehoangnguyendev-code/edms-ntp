@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarDays } from "lucide-react";
 import { TemplateNoTrainingNotice } from "./TemplateNoTrainingNotice";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
+import { FormField, Input } from "@/components/ui/form/ResponsiveForm";
 
 export interface TrainingInformationValue {
   trainingPlannedDate?: string | null;
@@ -62,12 +64,38 @@ const addDays = (value: string, days: number) => {
   return formatDate(parsed);
 };
 
+/** dd/mm/yyyy to the yyyy-mm-dd a date input speaks, and back. Empty or unreadable stays empty. */
+const toIsoDate = (value: string) => {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : "";
+};
+const fromIsoDate = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+};
+
+/** Types dd/mm/yyyy: keeps digits only and puts the slashes in as the user goes. */
+const formatTypedDate = (raw: string) => {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
+
 const validatePlannedDate = (value: string, shouldValidate: boolean) => {
   if (!shouldValidate) {
     return undefined;
   }
 
-  return value.trim() ? undefined : "Training Planned Date is required.";
+  if (!value.trim()) {
+    return "Training Planned Date is required.";
+  }
+
+  // Date() rolls 31/02 over to 03/03, so the day and month typed must be the ones that come back.
+  const typed = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  const parsed = typed ? parseDate(value) : null;
+  const real = !!typed && !!parsed && parsed.getDate() === Number(typed[1]) && parsed.getMonth() + 1 === Number(typed[2]);
+  return real ? undefined : "Enter a real date as dd/mm/yyyy.";
 };
 
 export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
@@ -149,6 +177,14 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
     }
   };
 
+  const calendarRef = useRef<HTMLInputElement>(null);
+  const openCalendar = () => {
+    const input = calendarRef.current;
+    if (!input) return;
+    if (typeof input.showPicker === "function") input.showPicker();
+    else input.focus();
+  };
+
   const handleCompletionDateChange = (value: string) => {
     setTrainingCompletionDate(value);
   };
@@ -160,14 +196,45 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <DateTimePicker
+        <FormField
           label="Training Planned Date"
-          value={trainingPlannedDate}
-          onChange={handlePlannedDateChange}
-          placeholder="Select planned date"
-          disabled={isReadOnly || !canEditPlannedDate}
+          required={!isReadOnly && canEditPlannedDate}
           error={localErrors.trainingPlannedDate}
-        />
+        >
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="dd/mm/yyyy"
+              maxLength={10}
+              value={trainingPlannedDate}
+              onChange={(event) => handlePlannedDateChange(formatTypedDate(event.target.value))}
+              disabled={isReadOnly || !canEditPlannedDate}
+              error={Boolean(localErrors.trainingPlannedDate)}
+            />
+            <button
+              type="button"
+              onClick={openCalendar}
+              disabled={isReadOnly || !canEditPlannedDate}
+              aria-label="Choose the planned date from the calendar"
+              title="Choose from calendar"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              <CalendarDays className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <input
+              ref={calendarRef}
+              type="date"
+              tabIndex={-1}
+              aria-hidden="true"
+              className="sr-only"
+              value={toIsoDate(trainingPlannedDate)}
+              onChange={(event) => handlePlannedDateChange(fromIsoDate(event.target.value))}
+              disabled={isReadOnly || !canEditPlannedDate}
+            />
+          </div>
+        </FormField>
 
         <DateTimePicker
           label="Training Period End Date"

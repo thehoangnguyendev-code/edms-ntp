@@ -91,7 +91,7 @@ describe("Backup Details", () => {
   it("asks a second person to approve: requesting an export sends the medium and the reason", async () => {
     perms.granted = new Set(["backup.module.view", "backup.backup.export"]);
     api.media.mockResolvedValue({ data: [{ id: "m-1", label: "USB-01", capacityBytes: 4_000_000_000 }], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
-    api.exportEstimate.mockResolvedValue({ backupId: "BK-20261008-0200-0001", estimatedBytes: 1000, fileCount: 5 });
+    api.exportEstimate.mockResolvedValue({ backupNumber: "BK-20261008-0200-0001", estimatedBytes: 1000, fileCount: 5 });
     api.requestExport.mockResolvedValue({ exportId: "EXP-20261008-0001" });
     renderAt();
     fireEvent.click((await screen.findAllByRole("button", { name: "Export Backup Set" }))[0]);
@@ -143,7 +143,7 @@ describe("Backup Details", () => {
     perms.granted = new Set(["backup.module.view", "backup.restore.test"]);
     api.requestRehearsal.mockResolvedValue({ rehearsalId: "RH-20261009-0001" });
     api.rehearsals.mockResolvedValue({
-      data: [{ id: "r", rehearsalId: "RH-20261009-0001", backupId: "BK-20261008-0200-0001", status: "PASSED", requestedBy: "tester", reason: "x", requestedAt: "2026-10-09T01:00:00Z", startedAt: null, finishedAt: null, restoreSeconds: 14, errorCode: null, errorDetail: null, checkCount: 2, failedCount: 0 }],
+      data: [{ id: "r", rehearsalId: "RH-20261009-0001", backupNumber: "BK-20261008-0200-0001", status: "PASSED", requestedBy: "tester", reason: "x", requestedAt: "2026-10-09T01:00:00Z", startedAt: null, finishedAt: null, restoreSeconds: 14, errorCode: null, errorDetail: null, checkCount: 2, failedCount: 0 }],
       pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
     });
     renderAt();

@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { HardDrive, KeyRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
-import { FormSection } from "@/components/ui/form";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { DataTable } from "@/components/ui/table";
+import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
+import { Fact } from "@/features/backup-restore/components/Fact";
 import { backupRestoreApi, type BackupTargetInfo, type EncryptionFacts, type TargetTestResult } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
-import { ExportRequestsPanel } from "./ExportRequestsPanel";
 import { MediaRegisterPanel } from "./MediaRegisterPanel";
 import { MEDIUM_LABEL } from "./policyLabels";
 
@@ -22,22 +23,37 @@ const STEP_LABEL: Record<string, string> = {
   "delete-refused": "Delete was refused (immutable)",
 };
 
-const Fact: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="flex flex-col gap-1.5 border-b border-slate-200 pb-3 last:border-b-0 last:pb-0 lg:flex-row lg:items-center lg:gap-2">
-    <label className="w-full flex-shrink-0 text-xs font-medium text-slate-700 sm:text-sm lg:w-44">{label}</label>
-    <div className="min-w-0 flex-1 break-words text-xs text-slate-900 lg:text-sm">{children}</div>
-  </div>
-);
+const TABS: TabItem[] = [
+  { id: "targets", label: "Targets" },
+  { id: "encryption", label: "Encryption" },
+  { id: "media", label: "Offline Media" },
+];
+
+/** The result of a test run from this page: passed, or failed at the first step that did not work. */
+const TestResult: React.FC<{ result: TargetTestResult }> = ({ result }) => {
+  const failed = result.steps.find((step) => !step.ok);
+  return (
+    <span className="inline-flex flex-col gap-0.5">
+      <Badge color={result.ok ? "emerald" : "red"}>{result.ok ? "Passed" : "Failed"}</Badge>
+      {failed && <span className="text-2xs text-slate-500">Failed at: {STEP_LABEL[failed.name] ?? failed.name}</span>}
+    </span>
+  );
+};
+
+/** A part of a tab: its content, with no heading of its own. The tab names what it holds. */
+const Part: React.FC<{ children: React.ReactNode }> = ({ children }) => <div className="space-y-3">{children}</div>;
 
 /**
- * Backup Storage & Encryption: where backups are copied to (and a test that proves each place works), what protects them, the
- * offline media register and the requests to export a backup to one of those media. Targets and encryption are read from the
- * Backup Agent; nothing here shows a key or a credential.
+ * Backup Storage & Encryption: where backups are copied to and a test that proves each copy works, how they are protected, and the
+ * offline media that a backup package can be written to. One tab for each part. Targets and encryption are read from the Backup Agent;
+ * nothing here shows a key or a credential. Export requests are not here: they are in Backup > Export Requests.
  */
 export const BackupStorageView: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canTest = hasPermission("backup.admin.storage.test");
+  const canManage = hasPermission("backup.media.manage");
 
   const [targets, setTargets] = useState<BackupTargetInfo[] | undefined>();
   const [targetsError, setTargetsError] = useState("");
@@ -45,6 +61,10 @@ export const BackupStorageView: React.FC = () => {
   const [encryptionError, setEncryptionError] = useState("");
   const [results, setResults] = useState<Record<string, TargetTestResult>>({});
   const [testing, setTesting] = useState("");
+  const [registering, setRegistering] = useState(false);
+
+  const requested = searchParams.get("tab");
+  const active = TABS.find((tab) => tab.id === requested)?.id ?? "targets";
 
   useEffect(() => {
     let live = true;
@@ -75,77 +95,103 @@ export const BackupStorageView: React.FC = () => {
     [showToast],
   );
 
-  return (
-    <BackupAdminLivePage title="Backup Storage & Encryption">
+  const targetsTab = (
+    <Part>
       {targetsError && <WarningBanner variant="error" title="The backup targets could not be read" description={targetsError} />}
-      <FormSection
-        title="Backup Targets"
-        icon={<HardDrive className="h-4 w-4" />}
-        description="Where each backup is copied. Which of them the backups use is decided by the running Backup Policy. Credentials are held by the Backup Agent and are never displayed."
-      >
-        {targets === undefined ? (
-          <SectionLoading minHeight="80px" />
-        ) : (
-          <DataTable
-            rows={targets}
-            getRowKey={(row) => row.code}
-            columns={[
-              { id: "code", header: "Target", cell: (row) => <span className="font-medium">{row.code}</span> },
-              { id: "kind", header: "Type", cell: (row) => (row.kind === "S3" ? MEDIUM_LABEL.OBJECT_STORAGE : "Folder") },
-              { id: "location", header: "Location", cell: (row) => <span className="break-all font-mono text-xs">{row.location}</span> },
-              { id: "immutable", header: "Locked against deletion", cell: (row) => (row.immutable ? <Badge color="emerald">Immutable</Badge> : "No") },
-              {
-                id: "test",
-                header: "Last test in this session",
-                cell: (row) => {
-                  const result = results[row.code];
-                  if (!result) return <span className="text-slate-400">Not tested here</span>;
-                  return (
-                    <span className="inline-flex flex-col gap-1">
-                      <Badge color={result.ok ? "emerald" : "red"}>{result.ok ? "Passed" : "Failed"}</Badge>
-                      <span className="text-2xs text-slate-500">{result.steps.map((s) => `${s.ok ? "✓" : "✗"} ${STEP_LABEL[s.name] ?? s.name}`).join(" · ")}</span>
-                    </span>
-                  );
-                },
-              },
-            ]}
-            action={
-              canTest
-                ? {
-                    cell: (row) => (
-                      <Button size="sm" variant="outline" disabled={!!testing} onClick={() => void test(row.code)}>
-                        {testing === row.code ? "Testing…" : "Test"}
-                      </Button>
-                    ),
-                  }
-                : undefined
-            }
-          />
-        )}
-      </FormSection>
+      {targets === undefined ? (
+        <SectionLoading minHeight="80px" />
+      ) : (
+        <DataTable
+          rows={targets}
+          getRowKey={(row) => row.code}
+          columns={[
+            { id: "code", header: "Target", cell: (row) => <span className="font-medium">{row.code}</span> },
+            { id: "kind", header: "Kind", cell: (row) => (row.kind === "S3" ? MEDIUM_LABEL.OBJECT_STORAGE : "Folder") },
+            { id: "location", header: "Location", cell: (row) => <span className="break-all font-mono text-xs">{row.location}</span> },
+            { id: "immutable", header: "Cannot be deleted", cell: (row) => (row.immutable ? <Badge color="emerald">Yes</Badge> : "No") },
+            {
+              id: "test",
+              header: "Last test",
+              cell: (row) => (results[row.code] ? <TestResult result={results[row.code]} /> : <span className="text-slate-400">Not tested on this page</span>),
+            },
+          ]}
+          action={
+            canTest
+              ? {
+                  cell: (row) => (
+                    <Button size="sm" variant="outline" disabled={!!testing} onClick={() => void test(row.code)}>
+                      {testing === row.code ? "Testing…" : "Test"}
+                    </Button>
+                  ),
+                }
+              : undefined
+          }
+        />
+      )}
+    </Part>
+  );
 
-      <FormSection title="Encryption" icon={<KeyRound className="h-4 w-4" />} description="Every backup is encrypted before it is written and signed afterwards. Encryption cannot be switched off.">
+  const encryptionTab = (
+    <>
+      <Part>
         {encryptionError && <WarningBanner variant="error" title="The encryption details could not be read" description={encryptionError} />}
         {encryption === undefined && !encryptionError ? (
           <SectionLoading minHeight="80px" />
         ) : (
           encryption && (
-            <div className="space-y-3 lg:space-y-4">
+            <div className="space-y-3">
               {!encryption.available && <WarningBanner variant="error" title="No encryption key is available" description={`Backups cannot be written. ${encryption.problem ?? ""}`} />}
-              <Fact label="Encryption">{encryption.scheme} with {encryption.cipher}</Fact>
-              <Fact label="Recipient key">
-                {encryption.recipientKeyId ? <span className="font-mono text-xs">{encryption.recipientKeyId}</span> : "—"}
-                {encryption.fingerprint && <span className="mt-1 block break-all font-mono text-2xs text-slate-500">{encryption.fingerprint}</span>}
+              <Fact label="Are backups encrypted?">Yes, {encryption.scheme} with {encryption.cipher}.</Fact>
+              <Fact label="Are backups signed?">Yes, with {encryption.signingAlgorithm}.</Fact>
+              <Fact label="Can this system read backups?">
+                {encryption.agentCanDecrypt ? (
+                  <Badge color="red">Yes</Badge>
+                ) : (
+                  "No. The Backup Agent holds only the public key. The private key is used only by the restore worker, and only for an approved restore."
+                )}
               </Fact>
-              <Fact label="Signing">{encryption.signingAlgorithm}, key <span className="font-mono text-xs">{encryption.signingKeyId}</span></Fact>
-              <Fact label="Can the system decrypt?">{encryption.agentCanDecrypt ? <Badge color="red">Yes</Badge> : "No. The Backup Agent holds only the public key. The private key is used only by the restore worker, for an approved restore."}</Fact>
             </div>
           )
         )}
-      </FormSection>
+      </Part>
 
-      <MediaRegisterPanel />
-      <ExportRequestsPanel />
+      {encryption && (
+        <details className="group">
+          <summary className="cursor-pointer select-none text-sm font-medium text-slate-700 hover:text-emerald-700">
+            Technical details <span className="text-xs font-normal text-slate-500">· key identifiers, for an auditor or a support engineer</span>
+          </summary>
+          <div className="mt-3 space-y-3">
+            <Fact label="Recipient key">{encryption.recipientKeyId ? <span className="font-mono text-xs">{encryption.recipientKeyId}</span> : "—"}</Fact>
+            <Fact label="Recipient fingerprint">
+              {encryption.fingerprint ? <span className="break-all font-mono text-xs font-normal text-slate-500">{encryption.fingerprint}</span> : "—"}
+            </Fact>
+            <Fact label="Signing key">
+              <span className="font-mono text-xs">{encryption.signingKeyId}</span>
+            </Fact>
+          </div>
+        </details>
+      )}
+    </>
+  );
+
+  const mediaTab = <MediaRegisterPanel registering={registering} onRegisterClose={() => setRegistering(false)} />;
+
+  const content = active === "encryption" ? encryptionTab : active === "media" ? mediaTab : targetsTab;
+
+  // The Register Medium action sits in the page header, on the same row as the title, as on the other screens.
+  const headerActions =
+    active === "media" && canManage ? (
+      <Button size="sm" variant="default" onClick={() => setRegistering(true)} className="whitespace-nowrap">
+        Register Medium
+      </Button>
+    ) : undefined;
+
+  return (
+    <BackupAdminLivePage title="Backup Storage & Encryption" actions={headerActions}>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-storage-tab" ariaLabel="Backup storage" />
+        <div className="p-4 md:p-5 space-y-6">{content}</div>
+      </div>
     </BackupAdminLivePage>
   );
 };

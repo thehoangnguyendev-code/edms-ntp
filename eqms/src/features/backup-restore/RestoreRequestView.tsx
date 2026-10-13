@@ -6,8 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
-import type { DataTableColumn } from "@/components/ui/table/DataTable";
-import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import type { DataTableColumn } from "@/components/ui/table";
+import { TABLE_STYLES } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast/Toast";
 import { useDebounce } from "@/hooks";
 import { Database, RotateCcw, Server, FileText, Info, ShieldCheck, ClipboardCheck } from "lucide-react";
@@ -42,7 +42,7 @@ interface Check {
   severity: Severity;
 }
 const SEVERITY_BADGE = { ok: ["emerald", "Pass"], warning: ["amber", "Warning"], blocking: ["red", "Blocks request"] } as const;
-type BackupSortKey = "backupId" | "startedAt" | "type" | "sizeBytes";
+type BackupSortKey = "backupNumber" | "startedAt" | "type" | "sizeBytes";
 
 /** A bordered block with an uppercase title, as on Document Properties. */
 const Group: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -93,7 +93,7 @@ export const RestoreRequestView: React.FC = () => {
   const [backupHasLoaded, setBackupHasLoaded] = useState(false);
   const [backupsError, setBackupsError] = useState("");
   const [backup, setBackup] = useState<BackupRecord>();
-  const backupId = backup?.id ?? "";
+  const backupNumber = backup?.id ?? "";
 
   const [step, setStep] = useState(0);
   const [type, setType] = useState<RestoreRequestType>("R-FULL");
@@ -163,14 +163,14 @@ export const RestoreRequestView: React.FC = () => {
   }, [requestedBackup]);
 
   useEffect(() => {
-    if (!backupId) {
+    if (!backupNumber) {
       setReadiness(undefined);
       setReadinessError("");
       return;
     }
     let live = true;
     backupRestoreApi
-      .restoreReadiness(backupId)
+      .restoreReadiness(backupNumber)
       .then((answer) => {
         if (!live) return;
         setReadiness(answer);
@@ -184,7 +184,7 @@ export const RestoreRequestView: React.FC = () => {
     return () => {
       live = false;
     };
-  }, [backupId]);
+  }, [backupNumber]);
 
   const sortFor = (key: BackupSortKey) => ({
     direction: backupSort.key === key ? backupSort.direction : undefined,
@@ -197,10 +197,10 @@ export const RestoreRequestView: React.FC = () => {
   const backupColumns: DataTableColumn<BackupRecord>[] = [
     { id: "no", header: "No.", label: "No.", headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_b, index) => (backupPage - 1) * backupPageSize + index + 1 },
     {
-      id: "backupId",
-      header: "Backup ID",
-      label: "Backup ID",
-      sort: sortFor("backupId"),
+      id: "backupNumber",
+      header: "Backup Number",
+      label: "Backup Number",
+      sort: sortFor("backupNumber"),
       cell: (b) => (
         <button
           type="button"
@@ -299,7 +299,7 @@ export const RestoreRequestView: React.FC = () => {
         reason: reason.trim(),
         changeControlRef: production ? changeRef.trim() : undefined,
       });
-      showToast({ type: "success", title: "Restore requested", message: `${created.requestId} waits for a second person's approval.` });
+      showToast({ type: "success", title: "Restore requested", message: `${created.restoreNumber} waits for a second person's approval.` });
       navigate(ROUTES.BACKUP_RESTORE.RESTORES);
     } catch (e) {
       showToast({ type: "error", title: "The request was not created", message: getApiErrorMessage(e, "The request was refused.") });
@@ -337,7 +337,7 @@ export const RestoreRequestView: React.FC = () => {
             search={backupSearch}
             onSearch={setBackupSearch}
             searchLabel="Search backups"
-            searchPlaceholder="Backup ID…"
+            searchPlaceholder="Backup Number…"
             filters={[{ id: "type", label: "Type", value: backupType, options: BACKUP_TYPE_OPTIONS, defaultValue: ALL, placeholder: "All Types", onChange: setBackupType }]}
             onClear={() => {
               setBackupSearch("");
@@ -358,12 +358,12 @@ export const RestoreRequestView: React.FC = () => {
               cell: (b) => (
                 // The checkbox handles its own click: the row's click (which also selects) must not run after it.
                 <div onClick={(event) => event.stopPropagation()}>
-                  <Checkbox checked={b.id === backupId} onChange={(checked) => setBackup(checked ? b : undefined)} />
+                  <Checkbox checked={b.id === backupNumber} onChange={(checked) => setBackup(checked ? b : undefined)} />
                 </div>
               ),
             }}
             onRowClick={(b) => setBackup(b)}
-            rowClassName={(b) => (b.id === backupId ? "bg-emerald-50 hover:bg-emerald-50" : "")}
+            rowClassName={(b) => (b.id === backupNumber ? "bg-emerald-50 hover:bg-emerald-50" : "")}
           />
         </FormSection>
       )}
@@ -463,7 +463,7 @@ export const RestoreRequestView: React.FC = () => {
             <Group title="Request">
               <dl className="divide-y divide-slate-200">
                 {[
-                  ["Backup", `${backup.id} · ${formatDateTime(backup.startedAt)}`],
+                  ["Backup Number", `${backup.id} · ${formatDateTime(backup.startedAt)}`],
                   ["Type", TYPE_LABEL[type] ?? type],
                   ["Target", production ? "Production — replaces live data" : "Validation environment"],
                   ["Reason", reason.trim()],

@@ -43,9 +43,17 @@ export interface BackupOverview {
   failed: number;
   running: number;
   notVerified: number;
-  lastCompleted: { backupId: string; finishedAt: string; sizeBytes: number } | null;
+  lastCompleted: { backupNumber: string; finishedAt: string; sizeBytes: number } | null;
   openAlerts: { id: string; at: string; severity: string; code: string; detail: string | null; ref: string | null }[];
   ledger: { ok: boolean; checked: number; reason: string | null; fileCopyCompared: boolean };
+}
+
+/** One day of the overview chart. `completed` includes `notVerified`; `failed` is separate. */
+export interface BackupDailyPoint {
+  date: string;
+  completed: number;
+  failed: number;
+  notVerified: number;
 }
 
 export interface BackupJob {
@@ -66,7 +74,7 @@ export interface BackupSchedulePolicy {
   /** When the next scheduled backup is due, and the time zone the schedule is read in. */
   nextDue: string | null;
   zone: string;
-  lastScheduledRun: { backupId: string; status: string; startedAt: string } | null;
+  lastScheduledRun: { backupNumber: string; status: string; startedAt: string } | null;
 }
 
 export interface ScheduleRowRecord {
@@ -242,7 +250,7 @@ export interface MediaEvent {
 
 export interface MediaPackage {
   exportId: string;
-  backupId: string;
+  backupNumber: string;
   finishedAt: string;
   sizeBytes: number;
   receiptSha256: string | null;
@@ -251,7 +259,7 @@ export interface MediaPackage {
 export interface BackupExport {
   id: string;
   exportId: string;
-  backupId: string;
+  backupNumber: string;
   mediaId: string;
   mediaLabel: string;
   status: ExportStatus;
@@ -285,7 +293,7 @@ export interface MediaListParams {
 export interface ExportListParams {
   search?: string;
   status?: string;
-  backupId?: string;
+  backupNumber?: string;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
   page?: number;
@@ -327,7 +335,7 @@ type Paged<T> = { data: T[]; pagination: BackupPage["pagination"] };
 export interface RestoreRehearsal {
   id: string;
   rehearsalId: string;
-  backupId: string;
+  backupNumber: string;
   status: "QUEUED" | "RUNNING" | "PASSED" | "FAILED";
   requestedBy: string;
   reason: string;
@@ -346,7 +354,7 @@ export interface RestoreRehearsal {
 export interface RehearsalListParams {
   search?: string;
   status?: string;
-  backupId?: string;
+  backupNumber?: string;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
   page?: number;
@@ -360,7 +368,7 @@ export type RestoreRequestTarget = "VALIDATION" | "PRODUCTION";
 export type RestoreRequestStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
 
 export interface RestoreImpact {
-  backupId: string;
+  backupNumber: string;
   measuredAt: string;
   measuredBy: string;
   dbSnapshotAt: string | null;
@@ -373,8 +381,8 @@ export interface RestoreImpact {
 
 export interface RestoreRequestRecord {
   id: string;
-  requestId: string;
-  backupId: string;
+  restoreNumber: string;
+  backupNumber: string;
   type: RestoreRequestType;
   target: RestoreRequestTarget;
   status: RestoreRequestStatus;
@@ -414,7 +422,7 @@ export interface RestoreTestRestore {
 
 /** The checks before a restore runs, and its schedule if one exists (SDS 11.3, R4). Read on the server. */
 export interface RestoreExecutionChecks {
-  requestId: string;
+  restoreNumber: string;
   status: RestoreRequestStatus;
   checks: { code: string; ok: boolean; detail: string }[];
   readyToSchedule: boolean;
@@ -428,7 +436,7 @@ export interface RestoreExecutionChecks {
 
 /** Decided on the server: the passed test restore of a backup that is recent enough for a production request, or null. */
 export interface RestoreReadiness {
-  backupId: string;
+  backupNumber: string;
   maxAgeDays: number;
   testRestore: { rehearsalId: string; finishedAt: string } | null;
 }
@@ -438,6 +446,100 @@ export interface CreateRestoreRequestPayload {
   target: RestoreRequestTarget;
   reason: string;
   changeControlRef?: string;
+}
+
+/** A backup alert (SDS 15.1) and whether someone has acknowledged it. */
+export interface BackupAlertRecord {
+  id: string;
+  at: string;
+  severity: "INFO" | "WARNING" | "HIGH" | "CRITICAL";
+  code: string;
+  detail: string | null;
+  ref: string | null;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+}
+
+export interface BackupAlertRecipient {
+  username: string;
+  addedBy: string;
+  addedAt: string;
+}
+
+export interface BackupAlertListParams {
+  state?: "OPEN" | "ACKNOWLEDGED" | "ALL";
+  severity?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+/** A restore rule the owner may change (SDS 14.1), with the range the value must stay in. */
+export interface RestoreRuleRecord {
+  code: string;
+  value: number;
+  min: number;
+  max: number;
+  description: string;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+/** A disaster recovery scenario and its proposed targets (SDS 15.2). Targets are proposals until the plan is approved. */
+export interface DrScenarioRecord {
+  code: string;
+  label: string;
+  description: string;
+  rpoHours: number;
+  rtoHours: number;
+  status: "PROPOSED" | "APPROVED";
+  approvedBy: string | null;
+  approvedAt: string | null;
+}
+
+/** A rebuild-kit item and the last time a person verified it; null when no one has verified it yet. */
+export interface DrKitItemRecord {
+  code: string;
+  label: string;
+  detail: string;
+  lastVerifiedAt: string | null;
+  lastVerifiedBy: string | null;
+  note: string | null;
+  state: "NOT_VERIFIED" | "VERIFIED";
+}
+
+/** A recorded disaster recovery drill; never edited afterwards. */
+export interface DrDrillRecord {
+  drillCode: string;
+  scenario: string;
+  performedAt: string;
+  lead: string;
+  rpoTargetHours: number;
+  rtoTargetHours: number;
+  achievedRtoHours: number;
+  result: "PASSED" | "PASSED_WITH_FINDINGS" | "FAILED";
+  findings: string | null;
+  recordedBy: string;
+  recordedAt: string;
+}
+
+export interface DrDrillListParams {
+  search?: string;
+  scenario?: string;
+  result?: DrDrillRecord["result"];
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
+export interface DrDrillPayload {
+  scenario: string;
+  performedAt: string;
+  lead: string;
+  achievedRtoHours: number;
+  result: DrDrillRecord["result"];
+  findings?: string;
 }
 
 /** The signed evidence pack of one restore request (SDS 16): the canonical text, its SHA-256, the signature and the key id. */
@@ -453,8 +555,8 @@ export type InspectionStatus = "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "O
 
 export interface InspectionRecord {
   id: string;
-  inspectionId: string;
-  backupId: string;
+  inspectionNumber: string;
+  backupNumber: string;
   status: InspectionStatus;
   reason: string;
   requestedBy: string;
@@ -484,15 +586,17 @@ export interface InspectionListParams {
 
 export const backupRestoreApi = {
   overview: async (): Promise<BackupOverview> => (await api.get<BackupOverview>(`${BASE}/overview`)).data,
+  overviewDaily: async (days = 30): Promise<BackupDailyPoint[]> =>
+    (await api.get<BackupDailyPoint[]>(`${BASE}/overview/daily`, { params: { days } })).data,
 
   list: async (params?: BackupListParams): Promise<BackupPage> => (await api.get<BackupPage>(`${BASE}/backups`, { params })).data,
 
-  get: async (backupId: string): Promise<BackupDetail> => (await api.get<BackupDetail>(`${BASE}/backups/${encodeURIComponent(backupId)}`)).data,
+  get: async (backupNumber: string): Promise<BackupDetail> => (await api.get<BackupDetail>(`${BASE}/backups/${encodeURIComponent(backupNumber)}`)).data,
 
   create: async (payload: CreateBackupPayload): Promise<{ jobId: string }> => (await api.post<{ jobId: string }>(`${BASE}/backups`, payload)).data,
 
-  verify: async (backupId: string): Promise<{ jobId: string }> =>
-    (await api.post<{ jobId: string }>(`${BASE}/backups/${encodeURIComponent(backupId)}/verify`)).data,
+  verify: async (backupNumber: string): Promise<{ jobId: string }> =>
+    (await api.post<{ jobId: string }>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/verify`)).data,
 
   job: async (jobId: string): Promise<BackupJob> => (await api.get<BackupJob>(`${BASE}/jobs/${encodeURIComponent(jobId)}`)).data,
 
@@ -522,59 +626,100 @@ export const backupRestoreApi = {
 
   rehearsal: async (rehearsalId: string): Promise<RestoreRehearsal> => (await api.get<RestoreRehearsal>(`${BASE}/rehearsals/${encodeURIComponent(rehearsalId)}`)).data,
 
-  requestRehearsal: async (backupId: string, reason: string): Promise<RestoreRehearsal> =>
-    (await api.post<RestoreRehearsal>(`${BASE}/backups/${encodeURIComponent(backupId)}/rehearsals`, { reason })).data,
+  requestRehearsal: async (backupNumber: string, reason: string): Promise<RestoreRehearsal> =>
+    (await api.post<RestoreRehearsal>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/rehearsals`, { reason })).data,
 
   restoreRequests: async (params?: RestoreRequestListParams): Promise<Paged<RestoreRequestRecord>> =>
     (await api.get<Paged<RestoreRequestRecord>>(`${BASE}/restores`, { params })).data,
 
-  restoreRequest: async (requestId: string): Promise<RestoreRequestRecord> =>
-    (await api.get<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(requestId)}`)).data,
+  restoreRequest: async (restoreNumber: string): Promise<RestoreRequestRecord> =>
+    (await api.get<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}`)).data,
 
-  restoreEvidence: async (requestId: string): Promise<RestoreEvidencePack> =>
-    (await api.get<RestoreEvidencePack>(`${BASE}/restores/${encodeURIComponent(requestId)}/evidence`)).data,
+  alerts: async (params?: BackupAlertListParams): Promise<Paged<BackupAlertRecord>> =>
+    (await api.get<Paged<BackupAlertRecord>>(`${BASE}/alerts`, { params })).data,
 
-  restoreReadiness: async (backupId: string): Promise<RestoreReadiness> =>
-    (await api.get<RestoreReadiness>(`${BASE}/backups/${encodeURIComponent(backupId)}/restore-readiness`)).data,
+  acknowledgeAlert: async (alertId: string, comment: string): Promise<{ id: string; acknowledgedBy: string }> =>
+    (await api.post<{ id: string; acknowledgedBy: string }>(`${BASE}/alerts/${encodeURIComponent(alertId)}/acknowledge`, { comment })).data,
 
-  restoreExecution: async (requestId: string): Promise<RestoreExecutionChecks> =>
-    (await api.get<RestoreExecutionChecks>(`${BASE}/restores/${encodeURIComponent(requestId)}/execution`)).data,
+  alertRecipients: async (): Promise<BackupAlertRecipient[]> => (await api.get<BackupAlertRecipient[]>(`${BASE}/alert-recipients`)).data,
 
-  scheduleRestore: async (requestId: string, windowStart: string): Promise<RestoreExecutionChecks> =>
-    (await api.post<RestoreExecutionChecks>(`${BASE}/restores/${encodeURIComponent(requestId)}/schedule`, { windowStart })).data,
+  addAlertRecipient: async (username: string): Promise<BackupAlertRecipient> =>
+    (await api.post<BackupAlertRecipient>(`${BASE}/alert-recipients`, { username })).data,
 
-  startTestRestore: async (requestId: string): Promise<{ requestId: string; rehearsalId: string; status: string }> =>
-    (await api.post<{ requestId: string; rehearsalId: string; status: string }>(`${BASE}/restores/${encodeURIComponent(requestId)}/test-restore`, {})).data,
+  removeAlertRecipient: async (username: string): Promise<void> => {
+    await api.post(`${BASE}/alert-recipients/${encodeURIComponent(username)}/remove`);
+  },
 
-  enterRestoreWindow: async (requestId: string, noUserConfirmed: boolean): Promise<{ requestId: string; systemState: string }> =>
-    (await api.post<{ requestId: string; systemState: string }>(`${BASE}/restores/${encodeURIComponent(requestId)}/enter-window`, { noUserConfirmed })).data,
+  drScenarios: async (): Promise<DrScenarioRecord[]> => (await api.get<DrScenarioRecord[]>(`${BASE}/dr/scenarios`)).data,
 
-  createRestoreRequest: async (backupId: string, payload: CreateRestoreRequestPayload): Promise<RestoreRequestRecord> =>
-    (await api.post<RestoreRequestRecord>(`${BASE}/backups/${encodeURIComponent(backupId)}/restores`, payload)).data,
+  drDrills: async (params?: DrDrillListParams): Promise<Paged<DrDrillRecord>> =>
+    (await api.get<Paged<DrDrillRecord>>(`${BASE}/dr/drills`, { params })).data,
 
-  approveRestoreRequest: async (requestId: string, signatureToken: string): Promise<RestoreRequestRecord> =>
-    (await api.post<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(requestId)}/approve`, { signatureToken })).data,
+  changeDrTargets: async (code: string, rpoHours: number, rtoHours: number, reason: string, signatureToken: string): Promise<DrScenarioRecord> =>
+    (await api.post<DrScenarioRecord>(`${BASE}/dr/scenarios/${encodeURIComponent(code)}/targets`, { rpoHours, rtoHours, reason, signatureToken })).data,
 
-  rejectRestoreRequest: async (requestId: string, reason: string, signatureToken: string): Promise<RestoreRequestRecord> =>
-    (await api.post<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(requestId)}/reject`, { reason, signatureToken })).data,
+  drKit: async (): Promise<DrKitItemRecord[]> => (await api.get<DrKitItemRecord[]>(`${BASE}/dr/kit`)).data,
+
+  verifyDrKitItem: async (code: string, verifiedAt: string, note: string): Promise<void> => {
+    await api.post(`${BASE}/dr/kit/${encodeURIComponent(code)}/verify`, { verifiedAt, note });
+  },
+
+  drAuthority: async (): Promise<{ key: string; value: string }> => (await api.get<{ key: string; value: string }>(`${BASE}/dr/authority`)).data,
+
+  changeDrAuthority: async (username: string, reason: string, signatureToken: string): Promise<{ key: string; value: string }> =>
+    (await api.post<{ key: string; value: string }>(`${BASE}/dr/authority`, { value: username, reason, signatureToken })).data,
+
+  recordDrDrill: async (payload: DrDrillPayload): Promise<DrDrillRecord> => (await api.post<DrDrillRecord>(`${BASE}/dr/drills`, payload)).data,
+
+  restoreRules: async (): Promise<RestoreRuleRecord[]> => (await api.get<RestoreRuleRecord[]>(`${BASE}/restore-rules`)).data,
+
+  changeRestoreRule: async (code: string, value: number, reason: string, signatureToken: string): Promise<{ code: string; value: number; previous: number }> =>
+    (await api.post<{ code: string; value: number; previous: number }>(`${BASE}/restore-rules/${encodeURIComponent(code)}`, { value, reason, signatureToken })).data,
+
+  restoreEvidence: async (restoreNumber: string): Promise<RestoreEvidencePack> =>
+    (await api.get<RestoreEvidencePack>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/evidence`)).data,
+
+  restoreReadiness: async (backupNumber: string): Promise<RestoreReadiness> =>
+    (await api.get<RestoreReadiness>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/restore-readiness`)).data,
+
+  restoreExecution: async (restoreNumber: string): Promise<RestoreExecutionChecks> =>
+    (await api.get<RestoreExecutionChecks>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/execution`)).data,
+
+  scheduleRestore: async (restoreNumber: string, windowStart: string): Promise<RestoreExecutionChecks> =>
+    (await api.post<RestoreExecutionChecks>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/schedule`, { windowStart })).data,
+
+  startTestRestore: async (restoreNumber: string): Promise<{ restoreNumber: string; rehearsalId: string; status: string }> =>
+    (await api.post<{ restoreNumber: string; rehearsalId: string; status: string }>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/test-restore`, {})).data,
+
+  enterRestoreWindow: async (restoreNumber: string, noUserConfirmed: boolean): Promise<{ restoreNumber: string; systemState: string }> =>
+    (await api.post<{ restoreNumber: string; systemState: string }>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/enter-window`, { noUserConfirmed })).data,
+
+  createRestoreRequest: async (backupNumber: string, payload: CreateRestoreRequestPayload): Promise<RestoreRequestRecord> =>
+    (await api.post<RestoreRequestRecord>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/restores`, payload)).data,
+
+  approveRestoreRequest: async (restoreNumber: string, signatureToken: string): Promise<RestoreRequestRecord> =>
+    (await api.post<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/approve`, { signatureToken })).data,
+
+  rejectRestoreRequest: async (restoreNumber: string, reason: string, signatureToken: string): Promise<RestoreRequestRecord> =>
+    (await api.post<RestoreRequestRecord>(`${BASE}/restores/${encodeURIComponent(restoreNumber)}/reject`, { reason, signatureToken })).data,
 
   inspections: async (params?: InspectionListParams): Promise<Paged<InspectionRecord>> =>
     (await api.get<Paged<InspectionRecord>>(`${BASE}/inspections`, { params })).data,
 
-  inspection: async (inspectionId: string): Promise<InspectionRecord> =>
-    (await api.get<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionId)}`)).data,
+  inspection: async (inspectionNumber: string): Promise<InspectionRecord> =>
+    (await api.get<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionNumber)}`)).data,
 
-  askInspection: async (backupId: string, reason: string): Promise<InspectionRecord> =>
-    (await api.post<InspectionRecord>(`${BASE}/backups/${encodeURIComponent(backupId)}/inspections`, { reason })).data,
+  askInspection: async (backupNumber: string, reason: string): Promise<InspectionRecord> =>
+    (await api.post<InspectionRecord>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/inspections`, { reason })).data,
 
-  approveInspection: async (inspectionId: string, signatureToken: string): Promise<InspectionRecord> =>
-    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionId)}/approve`, { signatureToken })).data,
+  approveInspection: async (inspectionNumber: string, signatureToken: string): Promise<InspectionRecord> =>
+    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionNumber)}/approve`, { signatureToken })).data,
 
-  rejectInspection: async (inspectionId: string, reason: string, signatureToken: string): Promise<InspectionRecord> =>
-    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionId)}/reject`, { reason, signatureToken })).data,
+  rejectInspection: async (inspectionNumber: string, reason: string, signatureToken: string): Promise<InspectionRecord> =>
+    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionNumber)}/reject`, { reason, signatureToken })).data,
 
-  closeInspection: async (inspectionId: string, reason: string): Promise<InspectionRecord> =>
-    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionId)}/close`, { reason })).data,
+  closeInspection: async (inspectionNumber: string, reason: string): Promise<InspectionRecord> =>
+    (await api.post<InspectionRecord>(`${BASE}/inspections/${encodeURIComponent(inspectionNumber)}/close`, { reason })).data,
 
   encryption: async (): Promise<EncryptionFacts> => (await api.get<EncryptionFacts>(`${BASE}/encryption`)).data,
 
@@ -596,10 +741,10 @@ export const backupRestoreApi = {
     (await api.post<OfflineMedium>(`${BASE}/media/${encodeURIComponent(id)}/retire`, { destructionRecord })).data,
 
   exports: async (params?: ExportListParams): Promise<Paged<BackupExport>> => (await api.get<Paged<BackupExport>>(`${BASE}/exports`, { params })).data,
-  exportEstimate: async (backupId: string): Promise<{ backupId: string; estimatedBytes: number; fileCount: number }> =>
-    (await api.get<{ backupId: string; estimatedBytes: number; fileCount: number }>(`${BASE}/backups/${encodeURIComponent(backupId)}/export-estimate`)).data,
-  requestExport: async (backupId: string, mediaId: string, reason: string): Promise<BackupExport> =>
-    (await api.post<BackupExport>(`${BASE}/backups/${encodeURIComponent(backupId)}/exports`, { mediaId, reason })).data,
+  exportEstimate: async (backupNumber: string): Promise<{ backupNumber: string; estimatedBytes: number; fileCount: number }> =>
+    (await api.get<{ backupNumber: string; estimatedBytes: number; fileCount: number }>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/export-estimate`)).data,
+  requestExport: async (backupNumber: string, mediaId: string, reason: string): Promise<BackupExport> =>
+    (await api.post<BackupExport>(`${BASE}/backups/${encodeURIComponent(backupNumber)}/exports`, { mediaId, reason })).data,
   approveExport: async (exportId: string): Promise<BackupExport> => (await api.post<BackupExport>(`${BASE}/exports/${encodeURIComponent(exportId)}/approve`)).data,
   rejectExport: async (exportId: string, reason: string): Promise<BackupExport> =>
     (await api.post<BackupExport>(`${BASE}/exports/${encodeURIComponent(exportId)}/reject`, { reason })).data,

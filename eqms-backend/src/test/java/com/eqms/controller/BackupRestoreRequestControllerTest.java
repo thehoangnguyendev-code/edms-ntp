@@ -84,7 +84,7 @@ class BackupRestoreRequestControllerTest {
         when(actor.getUsername()).thenReturn("approver.two");
         allow("backup.module.view", "backup.restore.request", "backup.restore.approve");
         when(agent.exchange(eq(HttpMethod.GET), eq("/internal/restores/" + REQUEST), isNull()))
-                .thenReturn(reply(200, "{\"id\":\"" + REQUEST_UUID + "\",\"requestId\":\"" + REQUEST + "\",\"requestedBy\":\"requester.one\",\"status\":\"PENDING_APPROVAL\"}"));
+                .thenReturn(reply(200, "{\"id\":\"" + REQUEST_UUID + "\",\"restoreNumber\":\"" + REQUEST + "\",\"requestedBy\":\"requester.one\",\"status\":\"PENDING_APPROVAL\"}"));
     }
 
     @Test
@@ -110,7 +110,7 @@ class BackupRestoreRequestControllerTest {
     @Test
     void aRequestIsAuditedWithItsOwnIdentifierOnlyWhenAccepted() {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/backups/" + BACKUP + "/restores"), any()))
-                .thenReturn(reply(201, "{\"id\":\"" + REQUEST_UUID + "\",\"requestId\":\"" + REQUEST + "\",\"status\":\"PENDING_APPROVAL\"}"));
+                .thenReturn(reply(201, "{\"id\":\"" + REQUEST_UUID + "\",\"restoreNumber\":\"" + REQUEST + "\",\"status\":\"PENDING_APPROVAL\"}"));
         controller.request(BACKUP, new BackupRestoreRequestController.CreateRestoreBody("R-FULL", "VALIDATION", "Annual test", "CC-1"));
         verify(audit).logAs(eq(actor), eq("BACKUP_RESTORE"), eq(REQUEST), eq(REQUEST_UUID), eq("RESTORE_REQUESTED"), isNull(), eq("PENDING_APPROVAL"), anyString());
     }

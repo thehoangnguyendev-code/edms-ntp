@@ -42,41 +42,41 @@ public class ReplicationService {
         this.ledger = ledger;
     }
 
-    public List<Outcome> replicate(UUID runId, String backupId, Path setDir, String keyPrefix, Path envRoot, java.util.Set<String> wanted) {
+    public List<Outcome> replicate(UUID runId, String backupNumber, Path setDir, String keyPrefix, Path envRoot, java.util.Set<String> wanted) {
         List<Outcome> outcomes = new ArrayList<>();
         // a target the policy names but the agent does not have is a failure to copy, never a silent skip
         for (String code : wanted) {
             if (!"T1".equals(code) && registry.all().stream().noneMatch(t -> t.code().equals(code))) {
                 outcomes.add(new Outcome(code, false, "Target " + code + " is in the policy but not configured on the agent"));
                 repository.insertLocation(runId, code, "(not configured)", Instant.now(), null, false);
-                ledger.append("agent", "BACKUP_COPY_FAILED", backupId, Map.of("target", code, "ok", false, "detail", "not configured"));
-                repository.insertAlert("HIGH", "BACKUP_COPY_FAILED", "Backup " + backupId + " could not be copied to " + code + ": the target is in the policy but not configured on the agent", backupId);
+                ledger.append("agent", "BACKUP_COPY_FAILED", backupNumber, Map.of("target", code, "ok", false, "detail", "not configured"));
+                repository.insertAlert("HIGH", "BACKUP_COPY_FAILED", "Backup " + backupNumber + " could not be copied to " + code + ": the target is in the policy but not configured on the agent", backupNumber);
             }
         }
         for (BackupTarget target : registry.all()) {
             if (!wanted.contains(target.code())) continue;
-            Outcome outcome = copy(target, backupId, setDir, keyPrefix, envRoot);
+            Outcome outcome = copy(target, backupNumber, setDir, keyPrefix, envRoot);
             outcomes.add(outcome);
-            repository.insertLocation(runId, target.code(), target.describe(keyPrefix + "/" + backupId), Instant.now(), outcome.ok() ? "ALL_FILES_MATCH" : null, outcome.ok());
+            repository.insertLocation(runId, target.code(), target.describe(keyPrefix + "/" + backupNumber), Instant.now(), outcome.ok() ? "ALL_FILES_MATCH" : null, outcome.ok());
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("target", target.code());
             data.put("ok", outcome.ok());
             if (!outcome.ok()) data.put("detail", outcome.detail());
-            ledger.append("agent", outcome.ok() ? "BACKUP_COPIED" : "BACKUP_COPY_FAILED", backupId, data);
+            ledger.append("agent", outcome.ok() ? "BACKUP_COPIED" : "BACKUP_COPY_FAILED", backupNumber, data);
             if (!outcome.ok()) {
-                repository.insertAlert("HIGH", "BACKUP_COPY_FAILED", "Backup " + backupId + " could not be copied to " + target.code() + ": " + outcome.detail(), backupId);
+                repository.insertAlert("HIGH", "BACKUP_COPY_FAILED", "Backup " + backupNumber + " could not be copied to " + target.code() + ": " + outcome.detail(), backupNumber);
             }
         }
         return outcomes;
     }
 
-    private Outcome copy(BackupTarget target, String backupId, Path setDir, String keyPrefix, Path envRoot) {
+    private Outcome copy(BackupTarget target, String backupNumber, Path setDir, String keyPrefix, Path envRoot) {
         Path scratch = null;
         try (Stream<Path> walk = Files.walk(setDir)) {
             List<Path> files = walk.filter(Files::isRegularFile).sorted().toList();
             scratch = Files.createTempFile("replica-", ".bin");
             for (Path file : files) {
-                String key = keyPrefix + "/" + backupId + "/" + setDir.relativize(file).toString().replace('\\', '/');
+                String key = keyPrefix + "/" + backupNumber + "/" + setDir.relativize(file).toString().replace('\\', '/');
                 target.put(key, file);
                 target.get(key, scratch);
                 if (!sha(file).equals(sha(scratch))) {
@@ -86,7 +86,7 @@ public class ReplicationService {
             int blobsCopied = copyMissingBlobs(target, envRoot, scratch);
             return new Outcome(target.code(), true, files.size() + " files, " + blobsCopied + " stored documents");
         } catch (IOException | RuntimeException e) {
-            log.warn("Copy of {} to {} failed", backupId, target.code(), e);
+            log.warn("Copy of {} to {} failed", backupNumber, target.code(), e);
             return new Outcome(target.code(), false, e.getMessage());
         } finally {
             try {

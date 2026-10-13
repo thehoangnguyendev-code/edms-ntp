@@ -19,7 +19,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,7 +44,7 @@ public class RestoreRequestService {
     static final Set<String> TYPES = Set.of("R-FULL", "R-DB", "R-OBJ", "R-ONE");
     static final Set<String> TARGETS = Set.of("VALIDATION", "PRODUCTION");
     /** A production restore needs a test restore of the same backup that passed in the last 30 days (SDS 14.1). */
-    static final Duration REHEARSAL_MAX_AGE = Duration.ofDays(30);
+    /** The number of days (default 30) is an owner rule in restore_rule; see RestoreRules. */
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneOffset.UTC);
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -57,18 +56,21 @@ public class RestoreRequestService {
     private final LedgerService ledger;
     private final BackupRepository repository;
     private final AgentProperties properties;
+    private final RestoreRules rules;
 
-    public RestoreRequestService(JdbcTemplate jdbc, TransactionTemplate tx, LedgerService ledger, BackupRepository repository, AgentProperties properties) {
+    public RestoreRequestService(JdbcTemplate jdbc, TransactionTemplate tx, LedgerService ledger, BackupRepository repository, AgentProperties properties,
+                                 RestoreRules rules) {
         this.jdbc = jdbc;
         this.tx = tx;
         this.ledger = ledger;
         this.repository = repository;
         this.properties = properties;
+        this.rules = rules;
     }
 
     // ------------------------------------------------------------------ reading
 
-    private static final String SELECT = "select r.id, r.request_id, b.backup_id, r.restore_type, r.target, r.status, r.reason, r.change_control_ref, r.requested_by, r.requested_at, "
+    private static final String SELECT = "select r.id, r.restore_number, b.backup_number, r.restore_type, r.target, r.status, r.reason, r.change_control_ref, r.requested_by, r.requested_at, "
             + "r.impact_sha256, r.impact_json::text as impact, r.rehearsal_id, r.approved_by, r.approval_signature_ref, r.decided_at, r.decision_reason "
             + "from restore_request r join backup_run b on b.id = r.run_id";
 
@@ -86,30 +88,31 @@ public class RestoreRequestService {
             args.add(target.trim().toUpperCase(Locale.ROOT));
         }
         if (search != null && !search.isBlank()) {
-            where.append(" and (lower(r.request_id) like ? or lower(b.backup_id) like ? or lower(r.requested_by) like ?)");
+            where.append(" and (lower(r.restore_number) like ? or lower(b.backup_number) like ? or lower(r.requested_by) like ?)");
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
             for (int i = 0; i < 3; i++) args.add(like);
         }
         String column = switch (sortBy == null ? "" : sortBy) {
             case "status" -> "r.status";
-            case "backupId" -> "b.backup_id";
+            case "backupNumber" -> "b.backup_number";
             case "requestedBy" -> "r.requested_by";
+            case "decidedAt" -> "r.decided_at";
             default -> "r.requested_at";
         };
         Long total = jdbc.queryForObject("select count(*) from restore_request r join backup_run b on b.id = r.run_id" + where, Long.class, args.toArray());
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(safeLimit);
         pageArgs.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = jdbc.queryForList(SELECT + where + " order by " + column + (ascending ? " asc" : " desc") + " nulls last, r.request_id desc limit ? offset ?", pageArgs.toArray())
+        List<Map<String, Object>> rows = jdbc.queryForList(SELECT + where + " order by " + column + (ascending ? " asc" : " desc") + " nulls last, r.restore_number desc limit ? offset ?", pageArgs.toArray())
                 .stream().map(RestoreRequestService::view).toList();
         return new Page(rows, safePage, safeLimit, total == null ? 0 : total);
     }
 
-    public Map<String, Object> get(String requestId) {
-        Map<String, Object> out = jdbc.queryForList(SELECT + " where r.request_id = ?", requestId).stream().findFirst().map(RestoreRequestService::view)
-                .orElseThrow(() -> ExportException.notFound("RESTORE_REQUEST_NOT_FOUND", "There is no restore request " + requestId));
+    public Map<String, Object> get(String restoreNumber) {
+        Map<String, Object> out = jdbc.queryForList(SELECT + " where r.restore_number = ?", restoreNumber).stream().findFirst().map(RestoreRequestService::view)
+                .orElseThrow(() -> ExportException.notFound("RESTORE_REQUEST_NOT_FOUND", "There is no restore request " + restoreNumber));
         List<Map<String, Object>> events = jdbc.queryForList("select e.event, e.by_user, e.at from restore_request_event e join restore_request r on r.id = e.request_id "
-                + "where r.request_id = ? order by e.id", requestId).stream().map(e -> {
+                + "where r.restore_number = ? order by e.id", restoreNumber).stream().map(e -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("event", e.get("event"));
             m.put("by", e.get("by_user"));
@@ -123,8 +126,8 @@ public class RestoreRequestService {
     private static Map<String, Object> view(Map<String, Object> row) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", String.valueOf(row.get("id")));
-        m.put("requestId", row.get("request_id"));
-        m.put("backupId", row.get("backup_id"));
+        m.put("restoreNumber", row.get("restore_number"));
+        m.put("backupNumber", row.get("backup_number"));
         m.put("type", row.get("restore_type"));
         m.put("target", row.get("target"));
         m.put("status", row.get("status"));
@@ -160,13 +163,13 @@ public class RestoreRequestService {
      * The test restore that decides whether a production request may be asked for (SDS 14.1): the latest passed test restore of this
      * backup, if it finished within the last 30 days; otherwise null. Read on the server, so the form only shows the answer.
      */
-    public Map<String, Object> readiness(String backupId) {
-        Map<String, Object> run = repository.runByBackupId(backupId).orElseThrow(() -> ExportException.notFound("BACKUP_NOT_FOUND", "There is no backup " + backupId));
-        int days = (int) REHEARSAL_MAX_AGE.toDays();
+    public Map<String, Object> readiness(String backupNumber) {
+        Map<String, Object> run = repository.runByBackupNumber(backupNumber).orElseThrow(() -> ExportException.notFound("BACKUP_NOT_FOUND", "There is no backup " + backupNumber));
+        int days = rules.value(RestoreRules.REHEARSAL_MAX_AGE_DAYS);
         List<Map<String, Object>> recent = jdbc.queryForList("select h.rehearsal_id, h.finished_at from restore_rehearsal h where h.run_id = ? and h.status = 'PASSED' "
                 + "and h.finished_at > now() - make_interval(days => ?) order by h.finished_at desc limit 1", run.get("id"), days);
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("backupId", backupId);
+        out.put("backupNumber", backupNumber);
         out.put("maxAgeDays", days);
         if (recent.isEmpty()) {
             out.put("testRestore", null);
@@ -179,7 +182,7 @@ public class RestoreRequestService {
         return out;
     }
 
-    public Map<String, Object> request(String backupId, String type, String target, String reason, String changeControlRef, String by) {
+    public Map<String, Object> request(String backupNumber, String type, String target, String reason, String changeControlRef, String by) {
         String who = person(by);
         String kind = type == null ? "" : type.trim().toUpperCase(Locale.ROOT);
         if (!TYPES.contains(kind)) throw ExportException.invalid("RESTORE_TYPE", "The restore type must be one of " + TYPES);
@@ -189,7 +192,7 @@ public class RestoreRequestService {
         String change = changeControlRef == null || changeControlRef.isBlank() ? null : changeControlRef.trim();
         if (change != null && change.length() > 120) throw ExportException.invalid("RESTORE_CHANGE_REF", "The change control reference is too long");
 
-        Map<String, Object> run = repository.runByBackupId(backupId).orElseThrow(() -> ExportException.notFound("BACKUP_NOT_FOUND", "There is no backup " + backupId));
+        Map<String, Object> run = repository.runByBackupNumber(backupNumber).orElseThrow(() -> ExportException.notFound("BACKUP_NOT_FOUND", "There is no backup " + backupNumber));
         if (!"COMPLETED".equals(run.get("status"))) throw ExportException.conflict("RESTORE_BACKUP_NOT_COMPLETED", "Only a completed backup can be restored");
         String latest = jdbc.queryForList("select result from backup_verification where run_id = ? order by verified_at desc limit 1", String.class, run.get("id")).stream().findFirst().orElse("NOT_VERIFIED");
         if (!"VERIFIED".equals(latest)) throw ExportException.conflict("RESTORE_BACKUP_NOT_VERIFIED", "Only a backup whose latest integrity check passed can be restored");
@@ -197,28 +200,28 @@ public class RestoreRequestService {
         UUID rehearsal = null;
         if ("PRODUCTION".equals(where)) {
             rehearsal = jdbc.queryForList("select h.id from restore_rehearsal h where h.run_id = ? and h.status = 'PASSED' and h.finished_at > now() - make_interval(days => ?) "
-                    + "order by h.finished_at desc limit 1", UUID.class, run.get("id"), (int) REHEARSAL_MAX_AGE.toDays()).stream().findFirst().orElse(null);
+                    + "order by h.finished_at desc limit 1", UUID.class, run.get("id"), rules.value(RestoreRules.REHEARSAL_MAX_AGE_DAYS)).stream().findFirst().orElse(null);
             if (rehearsal == null) {
                 throw ExportException.conflict("RESTORE_REHEARSAL_REQUIRED", "A production restore needs a test restore of this backup that passed in the last 30 days");
             }
         }
 
-        Map<String, Object> impact = impact((UUID) run.get("id"), backupId, by);
+        Map<String, Object> impact = impact((UUID) run.get("id"), backupNumber, by);
         String impactJson = CanonicalJson.of(impact);
         String impactSha = ManifestService.sha256(impactJson);
         final UUID rehearsalRef = rehearsal;
         try {
-            String requestId = tx.execute(s -> {
+            String restoreNumber = tx.execute(s -> {
                 Long seq = jdbc.queryForObject("select nextval('restore_request_seq')", Long.class);
                 String id = "RS-" + DAY.format(Instant.now()) + "-" + String.format("%04d", seq);
-                UUID row = jdbc.queryForObject("insert into restore_request(request_id, run_id, restore_type, target, status, reason, change_control_ref, requested_by, impact_json, impact_sha256, rehearsal_id) "
+                UUID row = jdbc.queryForObject("insert into restore_request(restore_number, run_id, restore_type, target, status, reason, change_control_ref, requested_by, impact_json, impact_sha256, rehearsal_id) "
                                 + "values (?,?,?,?,'PENDING_APPROVAL',?,?,?,?::jsonb,?,?) returning id",
                         UUID.class, id, run.get("id"), kind, where, why, change, who, impactJson, impactSha, rehearsalRef);
                 event(row, "REQUESTED", who, Map.of("type", kind, "target", where, "impactSha256", impactSha));
                 return id;
             });
-            ledger.append(who, "RESTORE_REQUESTED", backupId, Map.of("requestId", requestId, "type", kind, "target", where, "impactSha256", impactSha));
-            return get(requestId);
+            ledger.append(who, "RESTORE_REQUESTED", backupNumber, Map.of("restoreNumber", restoreNumber, "type", kind, "target", where, "impactSha256", impactSha));
+            return get(restoreNumber);
         } catch (DuplicateKeyException e) {
             throw ExportException.conflict("RESTORE_ALREADY_OPEN", "A restore request for this backup is already waiting for approval");
         }
@@ -229,9 +232,9 @@ public class RestoreRequestService {
      * after the backup would be lost by a restore; they are counted, not guessed. If the live database cannot be read, the count is
      * recorded as not measured, with the reason, and the request is still possible: the approver sees it.
      */
-    Map<String, Object> impact(UUID runId, String backupId, String by) {
+    Map<String, Object> impact(UUID runId, String backupNumber, String by) {
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("backupId", backupId);
+        out.put("backupNumber", backupNumber);
         out.put("measuredAt", Instant.now().toString());
         out.put("measuredBy", by == null ? "system" : by);
         JsonNode manifest;
@@ -294,54 +297,54 @@ public class RestoreRequestService {
 
     // ------------------------------------------------------------------ R3: approval and rejection
 
-    public Map<String, Object> approve(String requestId, String by, String signatureRef) {
+    public Map<String, Object> approve(String restoreNumber, String by, String signatureRef) {
         String approver = person(by);
         String ref = required(signatureRef, 120, "RESTORE_SIGNATURE_REQUIRED", "An electronic signature is required to approve a restore");
-        Map<String, Object> request = get(requestId);
+        Map<String, Object> request = get(restoreNumber);
         requirePending(request);
         if (approver.equalsIgnoreCase((String) request.get("requestedBy"))) {
-            ledger.append(approver, "RESTORE_APPROVAL_REFUSED", (String) request.get("backupId"), Map.of("requestId", requestId, "reason", "SAME_PERSON"));
+            ledger.append(approver, "RESTORE_APPROVAL_REFUSED", (String) request.get("backupNumber"), Map.of("restoreNumber", restoreNumber, "reason", "SAME_PERSON"));
             throw new ExportException(ExportException.Kind.SEPARATION, "RESTORE_SAME_PERSON", "The person who requested a restore cannot approve it");
         }
-        UUID runId = jdbc.queryForObject("select r.run_id from restore_request r where r.request_id = ?", UUID.class, requestId);
-        String backupId = (String) request.get("backupId");
+        UUID runId = jdbc.queryForObject("select r.run_id from restore_request r where r.restore_number = ?", UUID.class, restoreNumber);
+        String backupNumber = (String) request.get("backupNumber");
         // R4 prerequisite: the impact is measured again now, because the live system has changed since the request
-        Map<String, Object> impact = impact(runId, backupId, approver);
+        Map<String, Object> impact = impact(runId, backupNumber, approver);
         String impactJson = CanonicalJson.of(impact);
         String impactSha = ManifestService.sha256(impactJson);
         tx.executeWithoutResult(s -> {
             int changed = jdbc.update("update restore_request set status = 'APPROVED', approved_by = ?, approval_signature_ref = ?, decided_at = now(), "
-                    + "impact_json = ?::jsonb, impact_sha256 = ? where request_id = ? and status = 'PENDING_APPROVAL'", approver, ref, impactJson, impactSha, requestId);
+                    + "impact_json = ?::jsonb, impact_sha256 = ? where restore_number = ? and status = 'PENDING_APPROVAL'", approver, ref, impactJson, impactSha, restoreNumber);
             if (changed != 1) throw ExportException.conflict("RESTORE_STATE", "The request changed while it was approved; reload and try again");
-            UUID row = jdbc.queryForObject("select id from restore_request where request_id = ?", UUID.class, requestId);
+            UUID row = jdbc.queryForObject("select id from restore_request where restore_number = ?", UUID.class, restoreNumber);
             event(row, "APPROVED", approver, Map.of("signatureRef", ref, "impactSha256", impactSha, "previousImpactSha256", request.get("impactSha256")));
         });
-        ledger.append(approver, "RESTORE_APPROVED", backupId, Map.of("requestId", requestId, "impactSha256", impactSha, "signatureRef", ref));
-        return get(requestId);
+        ledger.append(approver, "RESTORE_APPROVED", backupNumber, Map.of("restoreNumber", restoreNumber, "impactSha256", impactSha, "signatureRef", ref));
+        return get(restoreNumber);
     }
 
-    public Map<String, Object> reject(String requestId, String by, String reason) {
+    public Map<String, Object> reject(String restoreNumber, String by, String reason) {
         String rejecter = person(by);
         String why = required(reason, 500, "RESTORE_REASON_REQUIRED", "A reason is required");
-        Map<String, Object> request = get(requestId);
+        Map<String, Object> request = get(restoreNumber);
         requirePending(request);
         if (rejecter.equalsIgnoreCase((String) request.get("requestedBy"))) {
             throw new ExportException(ExportException.Kind.SEPARATION, "RESTORE_SAME_PERSON", "The person who requested a restore cannot decide on it");
         }
-        decide(requestId, "REJECTED", rejecter, why, "RESTORE_REJECTED");
-        return get(requestId);
+        decide(restoreNumber, "REJECTED", rejecter, why, "RESTORE_REJECTED");
+        return get(restoreNumber);
     }
 
-    private void decide(String requestId, String status, String by, String reason, String ledgerEvent) {
+    private void decide(String restoreNumber, String status, String by, String reason, String ledgerEvent) {
         tx.executeWithoutResult(s -> {
-            int changed = jdbc.update("update restore_request set status = ?, decided_at = now(), decision_reason = ? where request_id = ? and status = 'PENDING_APPROVAL'",
-                    status, reason, requestId);
+            int changed = jdbc.update("update restore_request set status = ?, decided_at = now(), decision_reason = ? where restore_number = ? and status = 'PENDING_APPROVAL'",
+                    status, reason, restoreNumber);
             if (changed != 1) throw ExportException.conflict("RESTORE_STATE", "The request is no longer waiting for a decision");
-            UUID row = jdbc.queryForObject("select id from restore_request where request_id = ?", UUID.class, requestId);
+            UUID row = jdbc.queryForObject("select id from restore_request where restore_number = ?", UUID.class, restoreNumber);
             event(row, status, by, Map.of("reason", reason));
         });
-        String backupId = jdbc.queryForObject("select b.backup_id from restore_request r join backup_run b on b.id = r.run_id where r.request_id = ?", String.class, requestId);
-        ledger.append(by, ledgerEvent, backupId, Map.of("requestId", requestId, "reason", reason));
+        String backupNumber = jdbc.queryForObject("select b.backup_number from restore_request r join backup_run b on b.id = r.run_id where r.restore_number = ?", String.class, restoreNumber);
+        ledger.append(by, ledgerEvent, backupNumber, Map.of("restoreNumber", restoreNumber, "reason", reason));
     }
 
     private void requirePending(Map<String, Object> request) {

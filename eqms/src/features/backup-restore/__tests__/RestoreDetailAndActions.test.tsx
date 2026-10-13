@@ -44,10 +44,10 @@ vi.mock("@/components/ui/esign-modal/ESignatureModal", async () => {
 });
 
 const row = (over: Partial<RestoreRequestRecord> = {}): RestoreRequestRecord => ({
-  id: "1", requestId: "RS-1", backupId: "BK-1", type: "R-FULL", target: "VALIDATION", status: "PENDING_APPROVAL", reason: "Drill",
+  id: "1", restoreNumber: "RS-1", backupNumber: "BK-1", type: "R-FULL", target: "VALIDATION", status: "PENDING_APPROVAL", reason: "Drill",
   changeControlRef: null, requestedBy: "admin", requestedAt: "2026-10-09T01:00:00Z", impactSha256: null,
   impact: {
-    backupId: "BK-1", measuredAt: "2026-10-09T01:00:00Z", measuredBy: "agent", dbSnapshotAt: null, schemaVersion: "567",
+    backupNumber: "BK-1", measuredAt: "2026-10-09T01:00:00Z", measuredBy: "agent", dbSnapshotAt: null, schemaVersion: "567",
     components: [{ key: "DATABASE", sizeBytes: 1000, objectCount: null, rows: 12 }, { key: "OBJECT_STORE", sizeBytes: 2000, objectCount: 5 }],
     rowsInBackup: 12, targets: [{ target: "T1", ok: true }], liveRowsAfterBackup: { measured: true, auditRows: 3 },
   },
@@ -116,7 +116,8 @@ describe("Restore request detail", () => {
   it("shows what the restore would put back, from the backup and from the impact report", async () => {
     api.restoreRequest.mockResolvedValue(row());
     renderAt("/backup-restore/restores/RS-1", <RestoreRequestDetailView />, "/backup-restore/restores/:requestId");
-    expect(await screen.findByText("What This Restore Puts Back")).toBeTruthy();
+    // each section is a tab: open the impact tab first
+    fireEvent.click(await screen.findByText("What This Restore Puts Back"));
     expect(screen.getByText("Backup to Restore")).toBeTruthy();
     expect(await screen.findByText("Documents")).toBeTruthy();
     expect(screen.getByText("Audit rows lost")).toBeTruthy();
@@ -160,7 +161,7 @@ describe("Restore request detail", () => {
 
 describe("Restore requests list actions", () => {
   it("offers View Detail and, for another person's pending request, Approve Request", async () => {
-    api.restoreRequests.mockResolvedValue(page([row({ requestId: "RS-1", requestedBy: "admin" })]));
+    api.restoreRequests.mockResolvedValue(page([row({ restoreNumber: "RS-1", requestedBy: "admin" })]));
     renderAt("/backup-restore/restores", <RestoreRequestsView />, "/backup-restore/restores");
     fireEvent.click(await screen.findByRole("button", { name: "More actions" }));
     expect(screen.getByRole("button", { name: "View Detail" })).toBeTruthy();
@@ -169,7 +170,7 @@ describe("Restore requests list actions", () => {
 
   it("does not offer Approve Request on the person's own request", async () => {
     session.username = "admin";
-    api.restoreRequests.mockResolvedValue(page([row({ requestId: "RS-1", requestedBy: "admin" })]));
+    api.restoreRequests.mockResolvedValue(page([row({ restoreNumber: "RS-1", requestedBy: "admin" })]));
     renderAt("/backup-restore/restores", <RestoreRequestsView />, "/backup-restore/restores");
     fireEvent.click(await screen.findByRole("button", { name: "More actions" }));
     expect(screen.getByRole("button", { name: "View Detail" })).toBeTruthy();
@@ -177,8 +178,8 @@ describe("Restore requests list actions", () => {
   });
 
   it("opens the detail screen to approve from the menu, and signs there", async () => {
-    api.restoreRequests.mockResolvedValue(page([row({ requestId: "RS-1", requestedBy: "admin" })]));
-    api.restoreRequest.mockResolvedValue(row({ requestId: "RS-1", requestedBy: "admin" }));
+    api.restoreRequests.mockResolvedValue(page([row({ restoreNumber: "RS-1", requestedBy: "admin" })]));
+    api.restoreRequest.mockResolvedValue(row({ restoreNumber: "RS-1", requestedBy: "admin" }));
     api.approveRestoreRequest.mockResolvedValue(row({ status: "APPROVED" }));
     renderRoutes("/backup-restore/restores", [
       ["/backup-restore/restores", <RestoreRequestsView />],
@@ -193,8 +194,8 @@ describe("Restore requests list actions", () => {
   });
 
   it("opens the detail screen to reject from the menu: reason first, then the rejection signature", async () => {
-    api.restoreRequests.mockResolvedValue(page([row({ requestId: "RS-1", requestedBy: "admin" })]));
-    api.restoreRequest.mockResolvedValue(row({ requestId: "RS-1", requestedBy: "admin" }));
+    api.restoreRequests.mockResolvedValue(page([row({ restoreNumber: "RS-1", requestedBy: "admin" })]));
+    api.restoreRequest.mockResolvedValue(row({ restoreNumber: "RS-1", requestedBy: "admin" }));
     api.rejectRestoreRequest.mockResolvedValue(row({ status: "REJECTED" }));
     renderRoutes("/backup-restore/restores", [
       ["/backup-restore/restores", <RestoreRequestsView />],
@@ -210,8 +211,8 @@ describe("Restore requests list actions", () => {
     await waitFor(() => expect(api.rejectRestoreRequest).toHaveBeenCalledWith("RS-1", "Wrong backup", "tok-1"));
   });
 
-  it("opens the backup from its Backup ID", async () => {
-    api.restoreRequests.mockResolvedValue(page([row({ requestId: "RS-1", backupId: "BK-1", requestedBy: "admin" })]));
+  it("opens the backup from its Backup Number", async () => {
+    api.restoreRequests.mockResolvedValue(page([row({ restoreNumber: "RS-1", backupNumber: "BK-1", requestedBy: "admin" })]));
     renderRoutes("/backup-restore/restores", [
       ["/backup-restore/restores", <RestoreRequestsView />],
       ["/backup-restore/backups/:backupId", <span>backup detail page</span>],
@@ -220,9 +221,9 @@ describe("Restore requests list actions", () => {
     expect(await screen.findByText("backup detail page")).toBeTruthy();
   });
 
-  it("names the request column Request ID", async () => {
-    api.restoreRequests.mockResolvedValue(page([row({ requestId: "RS-1", requestedBy: "admin" })]));
+  it("names the request column Restore Number", async () => {
+    api.restoreRequests.mockResolvedValue(page([row({ restoreNumber: "RS-1", requestedBy: "admin" })]));
     renderAt("/backup-restore/restores", <RestoreRequestsView />, "/backup-restore/restores");
-    expect(await screen.findByText("Request ID")).toBeTruthy();
+    expect(await screen.findByText("Restore Number")).toBeTruthy();
   });
 });

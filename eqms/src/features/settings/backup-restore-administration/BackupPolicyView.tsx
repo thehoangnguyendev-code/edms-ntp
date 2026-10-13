@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button/Button";
 import { FormSection } from "@/components/ui/form";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
-import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
-import type { DataTableColumn } from "@/components/ui/table/DataTable";
+import { TABLE_STYLES } from "@/components/ui/table";
+import type { DataTableColumn } from "@/components/ui/table";
 import { useDebounce } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
+import { Fact } from "@/features/backup-restore/components/Fact";
 import { ServerListPanel } from "@/features/backup-restore/components/ServerListPanel";
 import { formatDateTime } from "@/features/backup-restore/format";
 import { statusLabel } from "@/features/backup-restore/types";
@@ -18,6 +19,7 @@ import { backupRestoreApi, readPolicyBody, type PolicyStatus, type PolicyVersion
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { COMPONENT_LABEL, MEDIUM_LABEL, POLICY_STATUS_COLOR } from "./policyLabels";
+import { IconSettingsAutomation } from "@tabler/icons-react";
 
 type SortKey = "version" | "status" | "proposedBy" | "approvedBy" | "createdAt" | "activatedAt";
 
@@ -106,16 +108,16 @@ export const BackupPolicyView: React.FC = () => {
   const open = (version: number) => navigate(ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY_DETAIL(version));
 
   const columns: DataTableColumn<PolicyVersion>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
     {
       id: "version",
       header: "Version",
       label: "Version",
-      locked: true,
       sort: sortFor("version"),
       headerClassName: TABLE_STYLES.headerCell35,
       cell: (row) => (
         <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => open(row.version)}>
-          Version {row.version}
+          {row.version}
         </button>
       ),
     },
@@ -135,37 +137,48 @@ export const BackupPolicyView: React.FC = () => {
       title="Backup Policy"
       actions={
         canPropose ? (
-          <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY_NEW)} className="gap-2 whitespace-nowrap">
+          <Button size="sm" variant="default" onClick={() => navigate(ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY_NEW)} className="gap-2 whitespace-nowrap">
             Propose Policy Change
           </Button>
         ) : undefined
       }
     >
       {activeError && <WarningBanner variant="error" title="The running policy could not be read" description={activeError} />}
-      <FormSection title="Running Policy" icon={<ShieldCheck className="h-4 w-4" />}>
+      <FormSection title="Running Policy" icon={<IconSettingsAutomation className="h-4 w-4" />}>
         {active === undefined ? (
           <SectionLoading minHeight="80px" />
         ) : active && activeBody ? (
-          <div className="flex flex-col gap-3 text-xs sm:text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => open(active.version)}>
-                Version {active.version}
-              </button>
-              <Badge color={POLICY_STATUS_COLOR[active.status]}>{statusLabel(active.status)}</Badge>
-              <span className="text-slate-500">
-                {active.approvedBy ? `Approved by ${active.approvedBy} on ${formatDateTime(active.activatedAt)}` : "Installed with the Backup Agent"}
-              </span>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
+            <div className="space-y-3">
+              <Fact label="Version">
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  <button type="button" className="font-semibold text-emerald-600 hover:underline" onClick={() => open(active.version)}>
+                    Version {active.version}
+                  </button>
+                  <Badge color={POLICY_STATUS_COLOR[active.status]}>{statusLabel(active.status)}</Badge>
+                </span>
+              </Fact>
+              <Fact label="Approved">
+                {active.approvedBy ? `${active.approvedBy}, ${formatDateTime(active.activatedAt)}` : "Installed with the Backup Agent"}
+              </Fact>
             </div>
-            <p className="text-slate-700">Backs up: {activeBody.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ")}. Database backup {activeBody.enabled ? `daily at ${activeBody.time}` : "is switched off"}.</p>
-            <ul className="grid grid-cols-1 gap-1 md:grid-cols-2">
-              {activeBody.targets.map((t) => (
-                <li key={t.code} className="text-slate-700">
-                  <span className="font-medium">{t.code}</span> · {MEDIUM_LABEL[t.medium] ?? t.medium}
-                  {t.offsite && <Badge color="slate" className="ml-2">Off-site</Badge>}
-                  {t.immutable && <Badge color="slate" className="ml-2">Immutable</Badge>}
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-3">
+              <Fact label="Backs up">{activeBody.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ")}</Fact>
+              <Fact label="Database backup">{activeBody.enabled ? `Daily at ${activeBody.time}` : "Switched off"}</Fact>
+            </div>
+            <div className="space-y-3">
+              <Fact label="Copied to">
+                <ul className="space-y-1">
+                  {activeBody.targets.map((t) => (
+                    <li key={t.code}>
+                      {t.code} · {MEDIUM_LABEL[t.medium] ?? t.medium}
+                      {t.offsite && <Badge color="slate" className="ml-2">Off-site</Badge>}
+                      {t.immutable && <Badge color="slate" className="ml-2">Immutable</Badge>}
+                    </li>
+                  ))}
+                </ul>
+              </Fact>
+            </div>
           </div>
         ) : (
           <p className="text-xs text-slate-500 sm:text-sm">No policy is running.</p>

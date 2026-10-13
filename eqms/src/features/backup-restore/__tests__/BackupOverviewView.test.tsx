@@ -5,7 +5,7 @@ import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import type { BackupOverview } from "@/services/api/backupRestore";
 import { BackupOverviewView, groupAlerts, toAlerts } from "../views/BackupOverviewView";
 
-const api = vi.hoisted(() => ({ overview: vi.fn() }));
+const api = vi.hoisted(() => ({ overview: vi.fn(), overviewDaily: vi.fn() }));
 vi.mock("@/services/api/backupRestore", () => ({ backupRestoreApi: api }));
 
 const healthy: BackupOverview = {
@@ -14,7 +14,7 @@ const healthy: BackupOverview = {
   failed: 0,
   running: 0,
   notVerified: 0,
-  lastCompleted: { backupId: "BK-20261008-0831-0008", finishedAt: "2026-10-08T01:31:00Z", sizeBytes: 85_000_000 },
+  lastCompleted: { backupNumber: "BK-20261008-0831-0008", finishedAt: "2026-10-08T01:31:00Z", sizeBytes: 85_000_000 },
   openAlerts: [],
   ledger: { ok: true, checked: 44, reason: null, fileCopyCompared: true },
 };
@@ -32,6 +32,8 @@ const renderOverview = () =>
 
 beforeEach(() => {
   api.overview.mockReset();
+  api.overviewDaily.mockReset();
+  api.overviewDaily.mockResolvedValue([{ date: "2026-10-08", completed: 2, failed: 1, notVerified: 1 }]);
 });
 afterEach(cleanup);
 
@@ -141,5 +143,23 @@ describe("grouping", () => {
       toAlerts({ ...healthy, openAlerts: [alert("a", "X", "HIGH", "2026-10-08T01:00:00Z"), alert("b", "X", "WARNING", "2026-10-08T02:00:00Z")] }),
     );
     expect(groups).toHaveLength(2);
+  });
+
+  it("draws the last 30 days as stacked results, with the unverified part inside the completed count", async () => {
+    api.overview.mockResolvedValue(healthy);
+    api.overviewDaily.mockResolvedValue([{ date: "2026-10-08", completed: 2, failed: 1, notVerified: 1 }]);
+    renderOverview();
+    const card = await screen.findByRole("region", { name: "Last 30 days" });
+    expect(within(card).getByText("3 runs")).toBeTruthy();
+    expect(within(card).getByText("Completed, not verified")).toBeTruthy();
+  });
+
+  it("says the history could not be loaded instead of drawing zeros", async () => {
+    api.overview.mockResolvedValue(healthy);
+    api.overviewDaily.mockRejectedValue(new Error("agent down"));
+    renderOverview();
+    const card = await screen.findByRole("region", { name: "Last 30 days" });
+    expect(await within(card).findByText("Could not load the 30-day history.")).toBeTruthy();
+    expect(within(card).queryByText(/runs$/)).toBeNull();
   });
 });

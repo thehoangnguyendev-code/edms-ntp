@@ -11,7 +11,7 @@ const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
 
 vi.mock("@/services/api/backupRestore", async () => {
   const actual = await vi.importActual<typeof import("@/services/api/backupRestore")>("@/services/api/backupRestore");
-  return { ...actual, backupRestoreApi: api, waitForBackupJob: vi.fn().mockResolvedValue({ id: "j", job_type: "BACKUP_DB", status: "DONE", result_json: "{\"backupId\":\"BK-20261008-0900-0001\",\"verification\":\"VERIFIED\"}" }) };
+  return { ...actual, backupRestoreApi: api, waitForBackupJob: vi.fn().mockResolvedValue({ id: "j", job_type: "BACKUP_DB", status: "DONE", result_json: "{\"backupNumber\":\"BK-20261008-0900-0001\",\"verification\":\"VERIFIED\"}" }) };
 });
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: (code: string) => perms.granted.has(code) }) }));
 vi.mock("@/components/branding/BrandLogo", () => ({ useBranding: () => ({ compactDesktopFilters: false }) }));
@@ -71,9 +71,9 @@ describe("Backup History", () => {
   it("sends search, sorting and paging to the server, and every data column sorts by a key the server accepts", async () => {
     renderView();
     await screen.findByText("BK-20261008-0200-0001");
-    fireEvent.change(screen.getAllByPlaceholderText("Backup ID, person or reason…")[0], { target: { value: "quarter" } });
+    fireEvent.change(screen.getAllByPlaceholderText("Backup Number, person or reason…")[0], { target: { value: "quarter" } });
     await waitFor(() => expect(last().search).toBe("quarter"), { timeout: 2000 });
-    const keys: Record<string, string> = { id: "backupId", status: "status", type: "type", started: "startedAt", size: "sizeBytes", verify: "verification", by: "createdBy" };
+    const keys: Record<string, string> = { id: "backupNumber", status: "status", type: "type", started: "startedAt", size: "sizeBytes", verify: "verification", by: "createdBy" };
     for (const [column, sortBy] of Object.entries(keys)) {
       fireEvent.click(header(column));
       await waitFor(() => expect(last().sortBy).toBe(sortBy), { timeout: 1500 });
@@ -115,7 +115,7 @@ describe("Backup History", () => {
   it("clears the search and every filter, and asks the server again", async () => {
     renderView();
     await screen.findByText("BK-20261008-0200-0001");
-    fireEvent.change(screen.getAllByPlaceholderText("Backup ID, person or reason…")[0], { target: { value: "x" } });
+    fireEvent.change(screen.getAllByPlaceholderText("Backup Number, person or reason…")[0], { target: { value: "x" } });
     await waitFor(() => expect(last().search).toBe("x"), { timeout: 2000 });
     fireEvent.click(screen.getByRole("button", { name: "Clear Filters" }));
     await waitFor(() => expect(last().search).toBeUndefined(), { timeout: 2000 });
@@ -153,6 +153,6 @@ describe("Backup History", () => {
   it("says so, instead of showing an empty list as if nothing were wrong, when the agent cannot be reached", async () => {
     api.list.mockRejectedValue(new Error("network"));
     renderView();
-    expect((await screen.findAllByText(/Unable to load/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/could not be loaded/)).length).toBeGreaterThan(0);
   });
 });

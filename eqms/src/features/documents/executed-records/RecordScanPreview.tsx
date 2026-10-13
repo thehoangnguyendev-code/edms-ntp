@@ -13,13 +13,13 @@ import { executedRecordApi, type ExecutedRecord } from "@/services/api/executedR
 export const RecordScanPreview: React.FC<{ record: ExecutedRecord | null; onClose: () => void }> = ({ record, onClose }) => {
   const shown = useRetainedValue(record);
   if (!shown) return null;
-  const subtitle = [shown.sourceControlledCopyNumber, shown.formDocumentNumber, shown.fileName].filter(Boolean).join(" · ");
+  // const subtitle = [shown.sourceControlledCopyNumber, shown.formDocumentNumber, shown.fileName].filter(Boolean).join(" · ");
   return (
     <ScanPreviewModal
       isOpen={Boolean(record)}
       onClose={onClose}
       title={shown.recordNumber}
-      subtitle={subtitle}
+      // subtitle={subtitle}
       fileKey={shown.id}
       loadFile={() => executedRecordApi.fetchExecutedRecordPreview(shown.id)}
     />

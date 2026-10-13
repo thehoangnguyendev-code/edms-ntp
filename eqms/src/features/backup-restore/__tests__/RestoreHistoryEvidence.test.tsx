@@ -15,8 +15,8 @@ vi.mock("@/components/branding/BrandLogo", () => ({ useBranding: () => ({ compac
 
 const rejected = {
   id: "row-1",
-  requestId: "RS-20261009-0001",
-  backupId: "BK-20261009-1900-0001",
+  restoreNumber: "RS-20261009-0001",
+  backupNumber: "BK-20261009-1900-0001",
   type: "R-FULL",
   target: "VALIDATION",
   status: "REJECTED",

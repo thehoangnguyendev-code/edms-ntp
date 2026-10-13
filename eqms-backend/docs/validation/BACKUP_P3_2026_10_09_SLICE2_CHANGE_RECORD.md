@@ -766,3 +766,150 @@ Remove the five check calls and the C12 call from the rehearsal run; the state t
 - Base backup failure alert (SDS 15.1), exercised: a one-off run of `pg-maintenance` with an unresolvable host (`PGHOST=no-such-host.invalid`, RUN_NOW=1). Result: the failed directory was removed, `ALERT base backup FAILED` written to the log and to `D:\eqms-dev-backups\ALERTS.log`; retention and WAL cleanup did not run (the failure branch returns first). The 5 existing base backups were untouched. The probe container was removed.
 - Finding (owner attention): drive D is 96% full (about 4.4 GB free). The low-space alert is active and below the 5,120 MB minimum. Old base backups were not removed: deleting them is the owner's decision.
 - Not done: restore history for completed restores (needs a real restore run); the remaining items in the SDS status table (see the status row).
+
+## Slice 45 (2026-10-13): safety backup before the first destructive restore step
+
+- Owner's instruction (2026-10-13): perform the whole remaining work; the owner is the only person available. Not covered by that instruction: production (not on this machine), the P3 gate and GMP sign-off (need a named decision and a qualified approver), and any change of the Decision Log outcomes.
+- Safety base backup `base-20261013-084316` taken on DEV before any restore step (`pg-maintenance`, RUN_NOW=1). The local copy is complete.
+- Off-site copy: first attempt interrupted by my own cleanup (the one-off container was removed as soon as the local backup finished; the copy stopped mid-way). Completed inside the running `eqms-pg-maintenance` container with the same steps as `offsite_copy`: copy of the base, the WAL segments (692 of 693; the 693rd is the segment being written at that moment), and `SHA256SUMS-base-wal.txt` recomputed (2245 lines for the new base).
+- Lesson recorded: a one-off backup run must not be removed until its log shows `off-site copy ok`.
+- Drive D: about 4.4 GB free before this backup; the backup added about 380 MB. Owner decision still needed on old backups.
+- Next (not started): the restore run on DEV (R-steps) into a scratch database, then the swap with the maintenance window; the V3 and C11/C8 application check; the DR drill in an empty container; Inspection phase 2. Each gets its own slice and test evidence.
+
+## Slice 46 (2026-10-13): backup target moved off the full drive; verified logical backup
+
+- Finding: the logical backup failed with BACKUP_INSUFFICIENT_SPACE (target had 926 MB; the agent needs 1 GB). Drive D, which holds the T1 target, was 100% full: the safety base backup and its off-site copy used the last space.
+- Action (no deletion): the T1 folder (1394 files, 1.8 GB) was copied to `C:\eqms-dev-backups\t1` (compared with `diff -rq`: identical). `.env` got `BACKUP_T1_DIR=C:/eqms-dev-backups/t1`; backup-agent and restore worker were recreated; the container reads `/backup/t1` from drive C. The old folder on drive D is kept until the owner decides to delete it.
+- Logical backup `BK-20261013-0201-0002`: COMPLETED, verification VERIFIED (V1), made by admin through the backend API. The failed attempt `BK-20261013-0159-0001` stays in the record.
+- Not done: the restore itself. There is no live-swap code yet. The swap needs the backend stopped (its pool holds the database connections; the restore role cannot end sessions of the owner role), so it is an operator procedure with the agent doing the restore and checks. This is the next slice.
+
+## Slice 47 (2026-10-13): backup alerts, acknowledgement and recipients
+
+- Agent: migration V14 `backup_alert_recipient` (one row per username; removal keeps the row with who and when). `AlertService`: list with state, severity and search filters (paged, server side); acknowledging an alert once (who and when; a second acknowledgement is refused, nothing is deleted); add and remove recipients. Each change is written to the ledger. Controller `/internal/alerts`, `/internal/alert-recipients`.
+- Backend: migration V572 adds permission `backup.admin.alerts.manage` (requires `backup.admin.alerts.view`) and gives it to SYSTEM_ADMINISTRATION. `BackupAlertController` at `/backup-restore/alerts` and `/backup-restore/alert-recipients`: view needs `backup.admin.alerts.view`; acknowledge and recipients need `backup.admin.alerts.manage`. A recipient must exist and be Active. Acknowledge and recipient changes are written to the eQMS audit trail.
+- Frontend: screen `Backup Alerts & Recipients` (route `/backup-restore/alerts`, menu Backup), with a filtered, paged list, acknowledgement with an optional note, and the recipients list with add and remove. Acknowledge and recipient controls are hidden without the manage permission.
+- Tests: agent `AlertServiceTest` 5/5; backend `BackupAlertControllerTest` 6/6; frontend `features/backup-restore` 89/89 (13 files); type-check shows no new errors. Earlier: `RestoreRunEngineTest` 8/8 (restore run order, stop rules, rollback), agent suite 190/190 after V13.
+- DEV: agent, restore worker, backend and frontend redeployed. Verified: backend healthy; backend Flyway latest version 572, success; control DB latest version 14; `GET /api/backup-restore/alerts` answers 403 without a session.
+- Not done: delivery of alerts to recipients (in-app notification or e-mail) is not wired; the recipients are stored but nobody is notified yet.
+- Not done (restore, see Slice 45-46 and the restore run engine): the engine has no real actions yet; R5-R12 are a tested frame only. Restore Approval & Execution Rules (configuration in the database), Disaster Recovery Plan, DR Drills and Restore Drills are not built.
+
+## Slice 48 (2026-10-13): restore approval and execution rules, configurable values
+
+- Scope decision (per the design, not a policy change): only values with a defined range are configurable. The control rules (requester may not approve; executor may not be the approver; signature on each decision; administrator-only window; production needs a passed test restore) stay in code and are shown as fixed controls on the screen. The only value that existed as a constant was the test-restore validity (REHEARSAL_MAX_AGE_DAYS = 30).
+- Agent: migration V15 `restore_rule` (value, range, description, who and when) and `restore_rule_history` (append-only: old value, new value, who, why, signature reference). `RestoreRules` refuses values outside the range, an unchanged value, a missing reason or person, and writes the ledger. `RestoreRequestService` reads the validity from the rule. Endpoints `/internal/restore-rules`.
+- Backend: migration V573 adds permission `backup.admin.restore_rules.manage` (requires `backup.admin.restore_controls.view`, V556) given to SYSTEM_ADMINISTRATION, and signature meaning `BACKUP_RESTORE_RULE_CHANGE`. `BackupRestoreRulesController` at `/backup-restore/restore-rules`: view needs the view permission; a change needs the manage permission and an electronic signature, recorded in the same transaction; the change is audited.
+- Frontend: screen `Restore Approval & Execution Rules` (route `/backup-restore/restore-rules`, menu Restore): values with their range and last change; change in two steps (value and reason, then the electronic signature modal); fixed controls listed.
+- Tests: agent `RestoreRulesTest` 5/5, `RestoreRequestTest` 13/13, agent suite 200/200; backend `BackupRestoreRulesControllerTest` 4/4; frontend `features/backup-restore` 93/93 (14 files); type-check no new errors.
+- DEV: agent, restore worker, backend and frontend redeployed. Verified: backend Flyway latest 573 (success); control DB latest 15; `GET /api/backup-restore/restore-rules` answers 403 without a session.
+- Not done: nothing else changed by this slice. The fixed controls are documentation of code, not settings, by design.
+
+## Slice 49 (2026-10-13): disaster recovery drills on real data; preview notices removed
+
+- Agent: migration V16 `dr_scenario` (the four scenarios; targets are PROPOSED until the Disaster Recovery Plan is approved) and `dr_drill` (append-only). `DrDrillService`: scenarios; paged list; recording a drill. A drill copies its scenario's targets at recording; a drill over its recovery target cannot be PASSED; findings are required when the result is not a clean pass; the date may not be in the future. Ledger `DR_DRILL_RECORDED`. Endpoints `/internal/dr/...`.
+- Backend: migration V574 adds `backup.admin.disaster_recovery.manage` (requires the view permission, V557), given to SYSTEM_ADMINISTRATION. `BackupDrDrillController` at `/backup-restore/dr/...`: view needs the view permission, recording needs the manage permission; no electronic signature (recording does not change the plan); each recorded drill is audited.
+- Frontend: `DrDrillsView` reads and records drills through the API; sample data and the design-preview notice removed from this screen. The old test that asserted the preview was removed with its file (it had no other test).
+- Preview notices removed from `RestoreHistoryView` and `RestoreVerificationReportsView`: both already read the API (slices 30 and 46).
+- Tests: agent `DrDrillServiceTest` 6/6, agent suite 206/206; backend `BackupDrDrillControllerTest` 4/4; frontend `features/backup-restore` 96/96 (14 files); type-check no new errors.
+- DEV: agent, restore worker, backend and frontend redeployed. Verified: backend Flyway latest 574 (success); control DB latest 16; `GET /api/backup-restore/dr/drills` answers 403 without a session.
+- Not done: the Disaster Recovery Plan screen in settings (`DisasterRecoveryPlanView`) still uses sample data and its edits are not saved. Still open: changing the recovery targets needs an approval with an electronic signature (owner decision on the approval rule); the rebuild kit needs a real inventory (a record of each item and its last verification); the declaration authority and the drill interval need a place to be stored. The drill itself on empty hardware (a container rebuild) is not done; the records above are entered by a person after a drill.
+
+## Slice 50 (2026-10-13): Disaster Recovery Plan on real data (owner decisions applied)
+
+- Owner decisions (2026-10-13): (1) a change of RPO or RTO needs an approval by electronic signature; (2) the rebuild kit is listed, but nothing is marked verified by the system: each item is verified by a person and the date of that check is entered; (3) the person who may declare a disaster is `admin`. The drill interval was not answered: it is not stored and not shown.
+- Agent: migration V17 `dr_target_history` (append-only; old and new RPO and RTO, who, when, why, signature reference), `rebuild_kit_item` (four items, seeded with no verification), `rebuild_kit_verification` (append-only: when the check was made, by whom, note), `dr_plan_setting` with `dr_plan_setting_history` (declaration authority = `admin`, seeded by the owner's decision). `DrPlanService` refuses a change without a signature, an invalid or unchanged target, a verification dated in the future or for an unknown item. A target change sets the scenario to APPROVED with the approver. Ledger entries for each change.
+- Backend: migration V575 adds the signature meanings `BACKUP_DR_TARGET_CHANGE` and `BACKUP_DR_AUTHORITY_CHANGE`. `BackupDrPlanController` at `/backup-restore/dr/...`: target change and declaration authority change need the manage permission and a signature (recorded in the same transaction as the change); the new declaration person must be an active account; a kit verification needs the manage permission and no signature; each change is audited.
+- Frontend: `DisasterRecoveryPlanView` reads the scenarios, the kit and the authority from the API. Targets change through a form and the electronic signature modal; a kit item is verified with its date and note; the authority changes through the signature modal. The sample data and the save bar of the page are no longer used by this screen; a warning shows while any kit item has never been verified.
+- Tests: agent `DrPlanServiceTest` 5/5 (agent suite 211/211); backend `BackupDrPlanControllerTest` 5/5; frontend settings and backup-restore 145/145 (18 files), with a new `DisasterRecoveryPlanView.test.tsx` 3/3. Type-check: no new errors (two old errors in `ReportLists.test.tsx`).
+- DEV: agent, restore worker, backend and frontend redeployed. Verified: backend Flyway latest 575 (success); control DB latest 17; `GET /api/backup-restore/dr/kit` answers 403 without a session.
+- Not done: the rebuild kit has no verification records yet: the system has not and cannot invent one; a person must check each item and record it. The drill interval is open (owner decision needed). The other administration screens still show sample data: Backup Verification (drill interval) and Restore Controls in settings. A drill on empty hardware (container rebuild) is not done.
+- Flaky test noted: `BackupsView.test.tsx` failed once under parallel load and passed when run alone and in the next full run (timing in `waitFor`); not changed.
+
+## Slice 51 (2026-10-13): restore drill interval 365 days; settings screens made factual
+
+- Owner decision: restore drill interval = 365 days. Stored as rule `RESTORE_DRILL_INTERVAL_DAYS` (migration V18, value 365; range 30-730 is a proposal). It changes only through the signed rule change of Slice 48. The overview's "overdue" warning does not yet compute from this value: to be done with the drill record of the restore drills.
+- Settings `BackupVerificationView`: the sample values and the toggles that did nothing were removed. The screen shows the interval from the rules and the checks as fixed facts (required checks cannot be switched off).
+- Settings `RestoreControlsView`: the switches that the server does not enforce (production restore off, change control required, safety backup, maintenance minutes) were removed. The screen lists what the server enforces, and says which steps are not yet run (the restore itself; the safety backup before a production restore). Corrected before publishing: the change control reference is kept, not required; the approver cannot schedule the restore.
+- Tests: agent `RestoreRulesTest` (updated) and `RestoreRequestTest`, `DrPlanServiceTest` passed; frontend settings and backup-restore 145/145 (18 files). The old test of the toggles was replaced by one that checks there are no switches and no save bar.
+- DEV: agent, restore worker and frontend redeployed; control DB rule present (value 365).
+- Next, agreed by the owner: the restore run on DEV (replacing the database with the verified backup) and the drill and containers. Not started in this slice.
+
+## Slice 52 (2026-10-13): the restore path proven on DEV, scratch database only (no swap)
+
+- Rehearsal `RH-20261013-0013` of the safety backup `BK-20261013-0201-0002` (requested by admin through the agent): status PASSED. Required checks passed: manifest signature, decryption key, database restore, schema version (C1), row counts (C2), foreign keys (C3), audit trail (C4), document checksums (C6), document index, object restore (C13, C7), accounts (C8), schedulers (C9), jobs (C10).
+- Not passed but not required on DEV: C5 (signatures; the DEV warning for legacy unsigned revisions) and C12 (external dependencies reachability). Overall status PASSED.
+- The scratch database is dropped after a rehearsal by design. The swap needs a restore whose database is kept, so the run that swaps is a separate code step (not built).
+- No change to the live database. The swap itself has not been run.
+
+## Slice 53 (2026-10-13): kept restore ready; swap blocked by the environment, backend left stopped
+
+- Kept restore: job `b4762cb6-...` DONE; restore_keep `KP-20261013034904` READY, database `eqms_keep_20261013034904` kept; required checks C1-C4 and restore passed. Built by the restore worker (only process with the key).
+- Fresh safety backup of the live database, taken before the swap: `BK-20261013-0349-0003` COMPLETED and VERIFIED.
+- Swap, step by step: (A) safety backup: done. (B) backend stopped (`docker stop eqms-backend`), no sessions on the database: done. (C) rename `eqms-database` to `eqms-database_pre_swap_20261013` and `eqms_keep_20261013034904` to `eqms-database`: NOT DONE. The command was refused by the environment's permission check (production change). (D) backend restart: NOT DONE, refused by the same kind of check.
+- Current state at the time of writing: `eqms-backend` container exited (code 137, stopped by this session), live database `eqms-database` unchanged, kept copy present, nothing renamed, nothing dropped. The backend must be started again by the owner (or with an explicit permission) before the UI can be used.
+- Rollback needed: none (nothing was swapped). To complete the swap: rename as in (C), start the backend, check login, documents count and Flyway version, then record the outcome here.
+
+### Follow-up (2026-10-13): owner chose option 2 (grant permission); the environment still refused
+
+- Owner's answer: "2" (grant permission for the rename and the backend start). The environment's permission check refused the database rename (as a production change) and the backend start (as a change to a shared resource). Nothing was changed by these attempts.
+- Current state, unchanged: backend container stopped (exit 137); `eqms-database` is the live database and is untouched; `eqms_keep_20261013034904` is kept and untouched; `eqms-database_pre_swap_20261013` does not exist yet.
+- To finish: run the two renames of step C, then `docker start eqms-backend`; or, if the swap is not wanted, only `docker start eqms-backend` (the live database was never changed).
+
+## Slice 54 (2026-10-13): export of a backup set works end to end on DEV
+
+- Cause of "No medium is available": no offline medium was registered. Registered `DEV-EXPORT-01` (serial `DEV-FOLDER-C-01`, kind HDD, capacity 50 GB, folder `M01`), status AVAILABLE.
+- Export root moved to drive C (`BACKUP_EXPORT_DIR=C:/eqms-dev-backups/export` in .env), because drive D is nearly full; the agent containers were recreated.
+- Export `EXP-20261013-0005` of `BK-20261013-0349-0003`: requested by admin, approved by approver.test1 (a different person), written by the export job: COMPLETED, no error. Package folder `EXPORT-BK-20261013-0349-0003-20261013` (about 442 MB) on the medium. Medium status after the write: IN_TRANSIT, package count 1.
+- Limitation to flag to the owner: this medium is a folder on the same machine as the database (drive C), so it is not an off-site or offline copy. A real offline copy needs a removable disk or tape registered with its own serial and carried away.
+
+## Slice 55 (2026-10-13): restore request detail split into tabs (same pattern as the document detail)
+
+- The request detail keeps the workflow stepper above, and the sections are now tabs in one card with the shared `TabNav`: Request Information, Backup to Restore, What This Restore Puts Back, History. The decision buttons stay in the page header.
+- Tests: frontend `features/backup-restore` 96/96 (14 files), with one test updated to open its tab first. Type-check: no new errors.
+- DEV: frontend redeployed.
+
+## Slice 56 (2026-10-13): request tabs use read-only fields, as in the document detail tabs
+
+- The tabs of the restore request no longer use the form section frame. Each tab is a file of its own in `components/restore-request-tabs` (Request Information, Backup to Restore, Impact, History), with a shared `ReadonlyField` (label above a read-only input, same class as the document detail).
+- The request view keeps the stepper, the tab bar and the decision buttons in the header; loading, error and the decision hand-over from the list are unchanged.
+- Tests: frontend `features/backup-restore` 96/96; type-check no new errors. DEV: frontend redeployed.
+
+## Slice 57 (2026-10-13): request tabs in their own folder
+
+- The four tabs are in `views/restore-request-detail/tabs/` (RequestInformationTab, BackupToRestoreTab, ImpactTab, HistoryTab) with an `index.ts`, imported by the detail view. The shared read-only field is `components/ReadonlyField.tsx`.
+- Tests: frontend `features/backup-restore` 96/96; type-check no new errors. DEV: frontend redeployed.
+
+## Slice 58 (2026-10-13): request fields renamed, approve/reject split, reason fixed in size, audit trail tab
+
+- Fields: Requested By, Requested On; Approved By, Approved On; Rejected By, Rejected On (each pair shows only for its outcome, "—" otherwise).
+- Reason and decision reason are read-only text areas, 3 rows, resize locked.
+- The History tab is replaced by Audit Trail: the shared `AuditTrailTab` of the document screens, filtered to the request (entity = the request row id, module BACKUP_RESTORE). The restore request's audit records are those written by the request, approval, rejection and refused steps. The screen needs the audit trail view permission, as on the document screens.
+- Tests: frontend `features/backup-restore` 96/96; type-check no new errors. DEV: frontend redeployed.
+
+## Slice 59 (2026-10-13): one table module; "Number" labels
+
+- Every backup and restore screen (views, tabs, settings administration) imports its table from `@/components/ui/table` (DataTable, TableEmptyState, TablePagination, TABLE_STYLES, types). No screen imports a table file directly any more.
+- Visible labels: "Backup ID" becomes "Backup Number", "Request ID" becomes "Restore Number", "Inspection ID" becomes "Inspection Number" (also in search placeholders). Only the labels changed; the data fields (backupId, requestId) and the BK-/RS- values are unchanged.
+- Tests: frontend backup-restore and administration 144/145 in parallel; the one failure is the known timing flake in BackupsView, which passes alone (10/10). Type-check no new errors. DEV: frontend redeployed.
+- Not changed: `NewBackupPolicyView` lays out its rows with its own grid, not a table; to be reviewed with the policy screens.
+
+## Slice 60 (2026-10-13): identifiers renamed through DB, agent, API and frontend; audit ids; clear list errors
+
+- Data names: `backup_id` becomes `backup_number`, `request_id` becomes `restore_number`, `inspection_id` becomes `inspection_number` in the control database (migration V20 on the backup control DB, renamed columns only; foreign keys to row UUIDs unchanged). Backend migration V577 renames `object_version_alias.restore_request_id` to `restore_number`.
+- Agent and backend JSON, path variables and sort keys use `backupNumber`, `restoreNumber`, `inspectionNumber`. The frontend API types, components and sort keys follow. Route segments (`:backupId`, `:requestId`) and URL paths are unchanged, so existing links keep working.
+- Not renamed on purpose: `systemRequestId` in the restore execution check (it reports the maintenance gate's request, which the maintenance API also uses as `requestId`), the maintenance gate's own `requestId`, the RH-/DR-/KP-/EXP- codes, and the BK-/RS- values.
+- Audit: `audit_logs.entity_id` is NOT NULL. Backup audit calls that passed no id now use `BackupAuditIds.of(kind, key)` (a stable name-based UUID), in alert, recipient, DR drill, DR plan and inspection controllers. Tests assert the id is not null.
+- 503 when the agent is unreachable: the reason is now a sentence that names the code and the service to check ("The backup agent cannot be reached (BACKUP_AGENT_UNAVAILABLE). It may be stopped or restarting: check the eqms-backup-agent service."). Earlier the screen showed only the bare code.
+- List screens (`ServerListPanel`): when a list fails the title says "The list could not be loaded" and the description shows the backend's message, so the cause is visible. The other error banners already show the cause as their description.
+- Restore History & Evidence uses the shared table module like the other screens (column labels, `TABLE_STYLES`, "Restore Number" / "Backup Number" headers).
+- Tests: agent suite 213/213 (earlier in this slice). Backend backup and restore controller tests, run after the 503 message change: 10 suites, 85 tests (alert 6, DR drill 4, DR plan 5, export 11, inspection 7, policy 16, rehearsal 5, restore 14, restore request 13, rules 4), 0 failures. Frontend `features/backup-restore` and `settings/backup-restore-administration` with `services/api`: 149/150 in one run, and different single tests failed in other parallel runs (BackupsView, VerificationAndSchedules, BackupPolicy). Each of those files passes alone. This is the same load-dependent timing flake recorded in Slice 59; it is not closed. Type-check: no new errors (the one existing error is in `report/templates/__tests__/ReportLists.test.tsx`, which this slice did not touch).
+- DEV: backend and frontend images rebuilt and recreated. The backup agent, restore worker, database and control database were not restarted. The restore swap is still not performed (see Slice 53).
+- Not done: the full backend suite was not re-run after this slice; the Slice 60 frontend flake is not fixed.
+
+## Slice 61 (2026-10-13): three lists on the shared list panel, with server-side search, filter, sort and paging
+
+- Restore Verification Reports, Restore History & Evidence and Disaster Recovery Drills now use the same list panel as Restore Requests: search, filter drawer, column sort and server-side paging. The drill list was previously a fixed first page of 50 with no search.
+- Server side: the DR drill list (agent `/internal/dr/drills`, backend `/backup-restore/dr/drills`) now takes `search` (drill code, lead, scenario), `scenario`, `result`, `sortBy` (performedAt, drillCode, scenario, lead, achievedRtoHours, result) and `sortDirection`, with paging. Unknown sort keys fall back to the drill date. The verification report list already had these parameters; the history list reuses the restore request list (status REJECTED, target filter, sort by requested, backup, requester or decision date).
+- Verification reports: outcome filter; a row opens its checks below the table. Restore history: the Evidence download is kept.
+- Tests: agent `DrDrillServiceTest` 7/7 (new test for search, filters and sort); backend `BackupDrDrillControllerTest` 4/4; frontend `DrDrillsView.test` 5/5 (new test that the search reaches the server; the form queries are scoped to the dialog). Other screen tests in the same folder passed.
+- Impact analysis: the GitNexus index is stale (built at 75e436a, now 31ac7f3) and a refresh failed with an FTS index inconsistency, so per-symbol impact was not available for the drill symbols. Callers were checked by search: `DrDrillService.page` has one caller (the internal list endpoint), and that endpoint is called only through the backend list. Not fixed: the index needs a full re-analysis, which has not been run.
+- DEV: backend, frontend and backup-agent containers rebuilt and recreated; the restore worker is unchanged (same code path not used by lists).

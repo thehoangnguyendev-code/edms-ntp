@@ -37,12 +37,12 @@ const localInputValue = (date: Date) => {
  * changes no data. Running the restore is not built yet, so the Execute control stays off.
  */
 export const RestoreExecutionView: React.FC = () => {
-  const { requestId = "" } = useParams();
+  const { requestId: restoreNumber = "" } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canExecute = hasPermission("backup.restore.execute");
-  const detail = ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(requestId);
+  const detail = ROUTES.BACKUP_RESTORE.RESTORE_DETAIL(restoreNumber);
 
   const [checks, setChecks] = useState<RestoreExecutionChecks>();
   const [loading, setLoading] = useState(true);
@@ -57,7 +57,7 @@ export const RestoreExecutionView: React.FC = () => {
     let live = true;
     setLoading(true);
     backupRestoreApi
-      .restoreExecution(requestId)
+      .restoreExecution(restoreNumber)
       .then((next) => {
         if (live) setChecks(next);
       })
@@ -70,23 +70,23 @@ export const RestoreExecutionView: React.FC = () => {
     return () => {
       live = false;
     };
-  }, [requestId]);
+  }, [restoreNumber]);
 
   // While a test restore is waiting or running, read the console again so the outcome appears without a reload.
   const testStatus = checks?.testRestore?.status;
   useEffect(() => {
     if (testStatus !== "QUEUED" && testStatus !== "RUNNING") return;
     const timer = window.setInterval(() => {
-      backupRestoreApi.restoreExecution(requestId).then(setChecks).catch(() => undefined);
+      backupRestoreApi.restoreExecution(restoreNumber).then(setChecks).catch(() => undefined);
     }, 10000);
     return () => window.clearInterval(timer);
-  }, [testStatus, requestId]);
+  }, [testStatus, restoreNumber]);
 
   const startTest = async () => {
     setBusyTest(true);
     try {
-      const out = await backupRestoreApi.startTestRestore(requestId);
-      setChecks(await backupRestoreApi.restoreExecution(requestId));
+      const out = await backupRestoreApi.startTestRestore(restoreNumber);
+      setChecks(await backupRestoreApi.restoreExecution(restoreNumber));
       showToast({ type: "success", title: "Test restore queued", message: `${out.rehearsalId} is waiting for the restore worker.` });
     } catch (e) {
       showToast({ type: "error", title: "The test restore did not start", message: getApiErrorMessage(e, "The request was refused.") });
@@ -98,9 +98,9 @@ export const RestoreExecutionView: React.FC = () => {
   const enterWindow = async () => {
     setBusyEnter(true);
     try {
-      const out = await backupRestoreApi.enterRestoreWindow(requestId, noUsers);
-      setChecks(await backupRestoreApi.restoreExecution(requestId));
-      showToast({ type: "success", title: "Restore window started", message: `${requestId}: the system is locked (${out.systemState}).` });
+      const out = await backupRestoreApi.enterRestoreWindow(restoreNumber, noUsers);
+      setChecks(await backupRestoreApi.restoreExecution(restoreNumber));
+      showToast({ type: "success", title: "Restore window started", message: `${restoreNumber}: the system is locked (${out.systemState}).` });
     } catch (e) {
       showToast({ type: "error", title: "The window was not started", message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
@@ -116,10 +116,10 @@ export const RestoreExecutionView: React.FC = () => {
     }
     setBusy(true);
     try {
-      const next = await backupRestoreApi.scheduleRestore(requestId, when.toISOString());
+      const next = await backupRestoreApi.scheduleRestore(restoreNumber, when.toISOString());
       setChecks(next);
       setWindowInput("");
-      showToast({ type: "success", title: "Restore scheduled", message: `${requestId} for ${formatDateTime(when.toISOString())}.` });
+      showToast({ type: "success", title: "Restore scheduled", message: `${restoreNumber} for ${formatDateTime(when.toISOString())}.` });
     } catch (e) {
       showToast({ type: "error", title: "The restore was not scheduled", message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
@@ -149,7 +149,7 @@ export const RestoreExecutionView: React.FC = () => {
   const windowReached = !!scheduled && new Date(scheduled.windowStart).getTime() <= Date.now();
   const canEnter = canExecute && !!scheduled && windowReached;
   // Read from the server, so the console is right after a reload too.
-  const lockedHere = checks.systemState === "LOCKED_RESTORING" && checks.systemRequestId === requestId;
+  const lockedHere = checks.systemState === "LOCKED_RESTORING" && checks.systemRequestId === restoreNumber;
   const test = checks.testRestore;
   const canTest = canExecute && lockedHere && !test;
 

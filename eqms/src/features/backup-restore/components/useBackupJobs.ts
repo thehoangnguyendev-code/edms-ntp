@@ -17,9 +17,9 @@ export const useBackupJobs = (onFinished: () => void) => {
       setWorking((n) => n + 1);
       try {
         const job = await waitForBackupJob(jobId);
-        const result = job.result_json ? (JSON.parse(job.result_json) as { backupId?: string; errorCode?: string; verification?: string }) : {};
+        const result = job.result_json ? (JSON.parse(job.result_json) as { backupNumber?: string; errorCode?: string; verification?: string }) : {};
         if (job.status === "DONE") {
-          showToast({ type: "success", title: label, message: `${result.backupId ?? "Done"}${result.verification ? `: integrity ${statusLabel(result.verification).toLowerCase()}` : ""}` });
+          showToast({ type: "success", title: label, message: `${result.backupNumber ?? "Done"}${result.verification ? `: integrity ${statusLabel(result.verification).toLowerCase()}` : ""}` });
         } else if (job.status === "FAILED") {
           showToast({ type: "error", title: `${label} failed`, message: result.errorCode ? statusLabel(result.errorCode) : "The agent reported a failure." });
         } else {

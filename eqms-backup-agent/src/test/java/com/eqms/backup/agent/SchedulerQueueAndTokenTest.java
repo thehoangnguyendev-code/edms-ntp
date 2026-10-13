@@ -64,7 +64,7 @@ class SchedulerQueueAndTokenTest {
 
     @Test
     void aBackupAlreadyStartedForThatMomentIsNotQueuedAgain() {
-        db.jdbc.update("insert into backup_run(backup_id, environment, type, trigger_kind, status, started_at, requested_by) "
+        db.jdbc.update("insert into backup_run(backup_number, environment, type, trigger_kind, status, started_at, requested_by) "
                 + "values ('BK-x', 'DEV', 'FULL', 'SCHEDULED', 'COMPLETED', ?, 'scheduler')", java.sql.Timestamp.from(at("2026-10-08T02:00:30+07:00")));
         scheduler.tick(at("2026-10-08T10:00:00+07:00"));
         assertThat(db.jdbc.queryForObject("select count(*) from backup_job", Integer.class)).isZero();
@@ -73,7 +73,7 @@ class SchedulerQueueAndTokenTest {
     @Test
     void aMissedBackupRunsOnceWhenTheAgentReturnsNotOncePerMissedDay() {
         // last scheduled run was three days ago; the agent has been down since
-        db.jdbc.update("insert into backup_run(backup_id, environment, type, trigger_kind, status, started_at, requested_by) "
+        db.jdbc.update("insert into backup_run(backup_number, environment, type, trigger_kind, status, started_at, requested_by) "
                 + "values ('BK-old', 'DEV', 'FULL', 'SCHEDULED', 'COMPLETED', ?, 'scheduler')", java.sql.Timestamp.from(at("2026-10-05T02:00:30+07:00")));
         scheduler.tick(at("2026-10-08T09:00:00+07:00"));
         scheduler.tick(at("2026-10-08T09:01:00+07:00"));
@@ -89,8 +89,8 @@ class SchedulerQueueAndTokenTest {
 
     @Test
     void jobsAreClaimedOldestFirstAndOnlyOnce() {
-        queue.enqueue("VERIFY", "{\"backupId\":\"a\"}", "u1");
-        queue.enqueue("VERIFY", "{\"backupId\":\"b\"}", "u2");
+        queue.enqueue("VERIFY", "{\"backupNumber\":\"a\"}", "u1");
+        queue.enqueue("VERIFY", "{\"backupNumber\":\"b\"}", "u2");
         Optional<JobQueue.Job> first = queue.claimNext(5);
         Optional<JobQueue.Job> second = queue.claimNext(5);
         assertThat(first).isPresent();
@@ -101,7 +101,7 @@ class SchedulerQueueAndTokenTest {
 
     @Test
     void aJobWhoseLeaseRanOutBecauseTheAgentDiedIsGivenToTheNextClaim() {
-        java.util.UUID id = queue.enqueue("VERIFY", "{\"backupId\":\"a\"}", "u1");
+        java.util.UUID id = queue.enqueue("VERIFY", "{\"backupNumber\":\"a\"}", "u1");
         assertThat(queue.claimNext(5)).isPresent();
         db.jdbc.update("update backup_job set lease_until = now() - interval '1 minute' where id = ?", id);
         Optional<JobQueue.Job> again = queue.claimNext(5);

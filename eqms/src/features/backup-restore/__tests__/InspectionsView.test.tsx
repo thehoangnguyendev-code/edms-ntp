@@ -35,8 +35,8 @@ vi.mock("@/components/ui/esign-modal/ESignatureModal", () => ({
 
 const row = (over: Partial<InspectionRecord> = {}): InspectionRecord => ({
   id: "row-1",
-  inspectionId: "IS-20261010-0002",
-  backupId: "BK-20261009-1900-0001",
+  inspectionNumber: "IS-20261010-0002",
+  backupNumber: "BK-20261009-1900-0001",
   status: "PENDING_APPROVAL",
   reason: "Look at revision 164",
   requestedBy: "admin",

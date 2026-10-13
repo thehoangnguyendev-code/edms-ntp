@@ -19,7 +19,7 @@ public class BackupQueryService {
     /** Sort keys the API accepts, mapped to fixed SQL. Anything else falls back to the start time; nothing user-typed reaches SQL. */
     private static final Map<String, String> SORT = Map.of(
             "startedAt", "r.started_at",
-            "backupId", "r.backup_id",
+            "backupNumber", "r.backup_number",
             "status", "r.status",
             "type", "r.type",
             "sizeBytes", "r.size_bytes",
@@ -45,7 +45,7 @@ public class BackupQueryService {
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
         if (hasText(q.search())) {
-            where.append(" and (lower(r.backup_id) like ? or lower(r.requested_by) like ? or lower(coalesce(r.reason,'')) like ?)");
+            where.append(" and (lower(r.backup_number) like ? or lower(r.requested_by) like ? or lower(coalesce(r.reason,'')) like ?)");
             String like = "%" + q.search().trim().toLowerCase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
             args.add(like);
             args.add(like);
@@ -88,7 +88,7 @@ public class BackupQueryService {
         pageArgs.add(limit);
         pageArgs.add((long) (page - 1) * limit);
         List<Map<String, Object>> rows = jdbc.query(
-                "select r.id, r.backup_id, r.type, r.trigger_kind, r.status, r.started_at, r.finished_at, r.size_bytes, r.requested_by, r.reason, r.error_code, r.error_detail, "
+                "select r.id, r.backup_number, r.type, r.trigger_kind, r.status, r.started_at, r.finished_at, r.size_bytes, r.requested_by, r.reason, r.error_code, r.error_detail, "
                         + "r.change_control_ref, coalesce(v.result, 'NOT_VERIFIED') as verification, v.verified_at, (m.manifest_text::jsonb->'app'->>'flywayLatest') as schema_version"
                         + from + where + " order by " + order + " limit ? offset ?",
                 (rs, i) -> view(rs), pageArgs.toArray());
@@ -97,13 +97,13 @@ public class BackupQueryService {
         return new Page(rows, page, limit, total == null ? 0 : total);
     }
 
-    public Optional<Map<String, Object>> get(String backupId) {
+    public Optional<Map<String, Object>> get(String backupNumber) {
         List<Map<String, Object>> rows = jdbc.query(
-                "select r.id, r.backup_id, r.type, r.trigger_kind, r.status, r.started_at, r.finished_at, r.size_bytes, r.requested_by, r.reason, r.error_code, r.error_detail, "
+                "select r.id, r.backup_number, r.type, r.trigger_kind, r.status, r.started_at, r.finished_at, r.size_bytes, r.requested_by, r.reason, r.error_code, r.error_detail, "
                         + "r.change_control_ref, coalesce(v.result, 'NOT_VERIFIED') as verification, v.verified_at, (m.manifest_text::jsonb->'app'->>'flywayLatest') as schema_version "
                         + "from backup_run r left join lateral (select result, verified_at from backup_verification where run_id = r.id and tier = 'V1' order by verified_at desc limit 1) v on true "
-                        + "left join backup_manifest m on m.run_id = r.id where r.backup_id = ?",
-                (rs, i) -> view(rs), backupId);
+                        + "left join backup_manifest m on m.run_id = r.id where r.backup_number = ?",
+                (rs, i) -> view(rs), backupNumber);
         attachComponents(rows);
         if (rows.isEmpty()) return Optional.empty();
         Map<String, Object> view = rows.get(0);
@@ -122,10 +122,10 @@ public class BackupQueryService {
         out.put("completed", counts.get("completed"));
         out.put("failed", counts.get("failed"));
         out.put("running", counts.get("running"));
-        out.put("lastCompleted", jdbc.query("select backup_id, finished_at, size_bytes from backup_run where status='COMPLETED' order by started_at desc limit 1",
+        out.put("lastCompleted", jdbc.query("select backup_number, finished_at, size_bytes from backup_run where status='COMPLETED' order by started_at desc limit 1",
                 (rs, i) -> {
                     Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("backupId", rs.getString(1));
+                    m.put("backupNumber", rs.getString(1));
                     m.put("finishedAt", rs.getTimestamp(2).toInstant().toString());
                     m.put("sizeBytes", rs.getLong(3));
                     return m;
@@ -147,6 +147,32 @@ public class BackupQueryService {
         return out;
     }
 
+    /**
+     * One row per day for the last {@code days} days, today included, oldest first. A day with no runs is still a row,
+     * with zeros, so the chart keeps its spacing. Days follow the database session's time zone.
+     */
+    public List<Map<String, Object>> dailySummary(int days) {
+        return jdbc.query("with runs as (select r.started_at, r.status, (r.status='COMPLETED' and not exists "
+                + "(select 1 from backup_verification v where v.run_id = r.id and v.tier='V1' and v.result='VERIFIED' and v.verified_at = "
+                + "(select max(verified_at) from backup_verification where run_id = r.id and tier='V1'))) as unverified "
+                + "from backup_run r where r.started_at >= current_date - (? - 1) * interval '1 day') "
+                + "select d::date as day, count(runs.status) filter (where runs.status='COMPLETED') as completed, "
+                + "count(runs.status) filter (where runs.status='FAILED') as failed, "
+                + "count(runs.status) filter (where runs.unverified) as not_verified "
+                + "from generate_series(current_date - (? - 1) * interval '1 day', current_date, interval '1 day') d "
+                + "left join runs on cast(runs.started_at as date) = d::date "
+                + "group by d order by d",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("date", rs.getDate("day").toLocalDate().toString());
+                    m.put("completed", rs.getLong("completed"));
+                    m.put("failed", rs.getLong("failed"));
+                    m.put("notVerified", rs.getLong("not_verified"));
+                    return m;
+                },
+                days, days);
+    }
+
     public Map<String, Object> activePolicy() {
         return jdbc.queryForList("select version, status, scope_json::text as scope, schedule_json::text as schedule, retention_json::text as retention, targets_json::text as targets, created_at from backup_policy where status='ACTIVE'")
                 .stream().findFirst().orElse(null);
@@ -157,7 +183,7 @@ public class BackupQueryService {
         Timestamp started = rs.getTimestamp("started_at");
         Timestamp finished = rs.getTimestamp("finished_at");
         m.put("_runId", rs.getString("id"));
-        m.put("id", rs.getString("backup_id"));
+        m.put("id", rs.getString("backup_number"));
         m.put("type", rs.getString("type"));
         m.put("trigger", rs.getString("trigger_kind"));
         m.put("status", rs.getString("status"));

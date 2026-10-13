@@ -110,7 +110,7 @@ class RestoreRehearsalTest {
         DatabaseBackupService.Outcome o = backups.run(new DatabaseBackupService.Request("FULL", "MANUAL", "operator.one", "test run", null));
         assertThat(o.ok()).as(String.valueOf(o.errorDetail())).isTrue();
         assertThat(o.verification().verified()).isTrue();
-        return o.backupId();
+        return o.backupNumber();
     }
 
     private Path envRoot() {
@@ -121,8 +121,8 @@ class RestoreRehearsalTest {
         return db.jdbc.queryForObject("select count(*) from pg_database where datname = ?", Integer.class, name) > 0;
     }
 
-    private Map<String, Object> rehearse(String backupId) {
-        Map<String, Object> queued = rehearsals.request(backupId, "tester.one", "Annual restore test");
+    private Map<String, Object> rehearse(String backupNumber) {
+        Map<String, Object> queued = rehearsals.request(backupNumber, "tester.one", "Annual restore test");
         assertThat(queued).containsEntry("status", "QUEUED");
         return rehearsals.run((String) queued.get("rehearsalId"));
     }
@@ -142,8 +142,8 @@ class RestoreRehearsalTest {
 
     @Test
     void aVerifiedBackupIsRestoredIntoAScratchDatabaseChecked_and_dropped() {
-        String backupId = backup();
-        Map<String, Object> done = rehearse(backupId);
+        String backupNumber = backup();
+        Map<String, Object> done = rehearse(backupNumber);
 
         assertThat(done).containsEntry("status", "PASSED");
         assertThat(done.get("errorCode")).isNull();
@@ -161,30 +161,30 @@ class RestoreRehearsalTest {
 
     @Test
     void theRequestIsRefusedForABackupThatIsNotCompletedOrNotVerified() {
-        String backupId = backup();
+        String backupNumber = backup();
         db.jdbc.update("insert into backup_verification(run_id, tier, result, detail_json, verified_at, verified_by) "
-                + "select id, 'V1', 'FAILED', '{}'::jsonb, now() + interval '1 second', 'x' from backup_run where backup_id = ?", backupId);
-        assertThatThrownBy(() -> rehearsals.request(backupId, "tester.one", "why")).isInstanceOfSatisfying(ExportException.class,
+                + "select id, 'V1', 'FAILED', '{}'::jsonb, now() + interval '1 second', 'x' from backup_run where backup_number = ?", backupNumber);
+        assertThatThrownBy(() -> rehearsals.request(backupNumber, "tester.one", "why")).isInstanceOfSatisfying(ExportException.class,
                 e -> assertThat(e.code).isEqualTo("REHEARSAL_BACKUP_NOT_VERIFIED"));
         assertThatThrownBy(() -> rehearsals.request("BK-20200101-0000-0001", "tester.one", "why")).isInstanceOfSatisfying(ExportException.class,
                 e -> assertThat(e.code).isEqualTo("BACKUP_NOT_FOUND"));
-        assertThatThrownBy(() -> rehearsals.request(backupId, "tester.one", " ")).isInstanceOfSatisfying(ExportException.class,
+        assertThatThrownBy(() -> rehearsals.request(backupNumber, "tester.one", " ")).isInstanceOfSatisfying(ExportException.class,
                 e -> assertThat(e.code).isEqualTo("REHEARSAL_REASON_REQUIRED"));
     }
 
     @Test
     void onlyOneRehearsalCanBeOpenAtATime() {
-        String backupId = backup();
-        rehearsals.request(backupId, "tester.one", "first");
-        assertThatThrownBy(() -> rehearsals.request(backupId, "tester.two", "second")).isInstanceOfSatisfying(ExportException.class,
+        String backupNumber = backup();
+        rehearsals.request(backupNumber, "tester.one", "first");
+        assertThatThrownBy(() -> rehearsals.request(backupNumber, "tester.two", "second")).isInstanceOfSatisfying(ExportException.class,
                 e -> assertThat(e.code).isEqualTo("REHEARSAL_BUSY"));
     }
 
     @Test
     void aRestoreThatFailsIsRecordedWithACodeAlertedAndTheScratchDatabaseStillDropped() {
-        String backupId = backup();
+        String backupNumber = backup();
         rehearsalRunner.restoreFails = true;
-        Map<String, Object> done = rehearse(backupId);
+        Map<String, Object> done = rehearse(backupNumber);
 
         assertThat(done).containsEntry("status", "FAILED").containsEntry("errorCode", "RESTORE_DATABASE_FAILED");
         assertThat(scratchExists((String) done.get("scratchDb"))).isFalse();
@@ -194,16 +194,16 @@ class RestoreRehearsalTest {
 
     @Test
     void aBackupWhoseKeyIsNotInTheRestoreRingIsNotAttempted() {
-        String backupId = backup();
+        String backupNumber = backup();
         rehearsalRunner.secretKeys = List.of();
-        Map<String, Object> done = rehearse(backupId);
+        Map<String, Object> done = rehearse(backupNumber);
         assertThat(done).containsEntry("status", "FAILED").containsEntry("errorCode", "RESTORE_KEY_UNAVAILABLE");
         assertThat(rehearsalRunner.restoredInto).as("nothing was restored").isNull();
     }
 
     @Test
     void aRestoredDatabaseWithTheWrongRowCountFailsTheCheckAndTheRehearsal() {
-        String backupId = backup();
+        String backupNumber = backup();
         rehearsalRunner.afterRestore = s -> {
             try {
                 s.execute("insert into documents(id, title) values (999, 'extra, not in the backup')");
@@ -211,7 +211,7 @@ class RestoreRehearsalTest {
                 throw new IllegalStateException(e);
             }
         };
-        Map<String, Object> done = rehearse(backupId);
+        Map<String, Object> done = rehearse(backupNumber);
         assertThat(done).containsEntry("status", "FAILED").containsEntry("errorCode", "REHEARSAL_CHECK_FAILED");
         assertThat(checks(done)).containsEntry("C2", false);
         assertThat(String.valueOf(done.get("errorDetail"))).contains("C2").contains("documents has 26 rows");
@@ -219,7 +219,7 @@ class RestoreRehearsalTest {
 
     @Test
     void aSchemaVersionThatDiffersFromTheBackupFailsC1() {
-        String backupId = backup();
+        String backupNumber = backup();
         rehearsalRunner.afterRestore = s -> {
             try {
                 s.execute("insert into flyway_schema_history values ('561')");
@@ -227,16 +227,16 @@ class RestoreRehearsalTest {
                 throw new IllegalStateException(e);
             }
         };
-        Map<String, Object> done = rehearse(backupId);
+        Map<String, Object> done = rehearse(backupNumber);
         assertThat(checks(done)).containsEntry("C1", false).containsEntry("C2", false);
     }
 
     @Test
     void aStoredDocumentThatNoLongerMatchesIsFoundByTheRehearsal() throws Exception {
-        String backupId = backup();
+        String backupNumber = backup();
         String blob = db.jdbc.queryForList("select blob_path from backup_object_blob order by id", String.class).get(0);
         Files.writeString(envRoot().resolve(blob), "FAKE-ENC|tampered content");
-        Map<String, Object> done = rehearse(backupId);
+        Map<String, Object> done = rehearse(backupNumber);
         assertThat(done).containsEntry("status", "FAILED");
         assertThat(checks(done)).containsEntry("C6", false);
         assertThat(String.valueOf(done.get("errorDetail"))).contains("decrypts to different content");
@@ -271,22 +271,22 @@ class RestoreRehearsalTest {
 
     @Test
     void theWorkerOnlyTakesRehearsalJobsAndTheApiOnlyTheOthers() {
-        String backupId = backup();
+        String backupNumber = backup();
         JobQueue queue = new JobQueue(db.jdbc);
         queue.enqueue("REHEARSAL", "{\"rehearsalId\":\"x\"}", "tester");
         queue.enqueue("BACKUP_DB", "{}", "tester");
         assertThat(queue.claimNext(5)).get().extracting(JobQueue.Job::type).isEqualTo("BACKUP_DB");
         assertThat(queue.claimNext(5, List.of("REHEARSAL"))).get().extracting(JobQueue.Job::type).isEqualTo("REHEARSAL");
-        assertThat(backupId).startsWith("BK-");
+        assertThat(backupNumber).startsWith("BK-");
     }
 
     @Test
     void aNewRehearsalIsListedWithItsChecksAndCanBeFiltered() {
-        String backupId = backup();
-        rehearse(backupId);
+        String backupNumber = backup();
+        rehearse(backupNumber);
         assertThat(rehearsals.page(null, "PASSED", null, "requestedAt", false, 1, 10).total()).isEqualTo(1);
         assertThat(rehearsals.page(null, "FAILED", null, "requestedAt", false, 1, 10).total()).isZero();
-        assertThat(rehearsals.page(null, null, backupId, "requestedAt", false, 1, 10).data()).hasSize(1);
+        assertThat(rehearsals.page(null, null, backupNumber, "requestedAt", false, 1, 10).data()).hasSize(1);
         assertThat(rehearsals.page("tester.one", null, null, "requestedAt", false, 1, 10).total()).isEqualTo(1);
     }
 }

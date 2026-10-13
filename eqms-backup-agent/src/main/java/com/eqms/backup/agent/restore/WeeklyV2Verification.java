@@ -90,26 +90,26 @@ public class WeeklyV2Verification {
 
     /** Queues one V2 check of the latest backup that passed its last verification. Returns the rehearsal id, or empty when skipped. */
     public Optional<String> runOnce() {
-        Optional<String> backupId = jdbc.query("select r.backup_id from backup_run r where r.status = 'COMPLETED' "
+        Optional<String> backupNumber = jdbc.query("select r.backup_number from backup_run r where r.status = 'COMPLETED' "
                 + "and (select v.result from backup_verification v where v.run_id = r.id order by v.verified_at desc limit 1) = 'VERIFIED' "
                 + "order by r.started_at desc limit 1", (rs, i) -> rs.getString(1)).stream().findFirst();
-        if (backupId.isEmpty()) {
+        if (backupNumber.isEmpty()) {
             ledger.append("restore-worker", "V2_NO_CANDIDATE", "maintenance", Map.of());
             return Optional.empty();
         }
         Integer open = jdbc.queryForObject("select count(*) from restore_rehearsal where requested_by = ? and status in ('QUEUED', 'RUNNING')",
                 Integer.class, REQUESTER);
         if (open != null && open > 0) {
-            ledger.append("restore-worker", "SKIPPED_OVERLAP", backupId.get(), Map.of("check", "V2"));
+            ledger.append("restore-worker", "SKIPPED_OVERLAP", backupNumber.get(), Map.of("check", "V2"));
             return Optional.empty();
         }
         try {
-            String rehearsalId = String.valueOf(rehearsals.request(backupId.get(), REQUESTER, "Weekly V2 verification (SDS 14.1)").get("rehearsalId"));
-            ledger.append("restore-worker", "V2_REQUESTED", backupId.get(), Map.of("rehearsalId", rehearsalId));
+            String rehearsalId = String.valueOf(rehearsals.request(backupNumber.get(), REQUESTER, "Weekly V2 verification (SDS 14.1)").get("rehearsalId"));
+            ledger.append("restore-worker", "V2_REQUESTED", backupNumber.get(), Map.of("rehearsalId", rehearsalId));
             return Optional.of(rehearsalId);
         } catch (ExportException e) {
             // another rehearsal is already waiting: the overlap rule applies
-            ledger.append("restore-worker", "SKIPPED_OVERLAP", backupId.get(), Map.of("check", "V2", "reason", e.code));
+            ledger.append("restore-worker", "SKIPPED_OVERLAP", backupNumber.get(), Map.of("check", "V2", "reason", e.code));
             return Optional.empty();
         }
     }

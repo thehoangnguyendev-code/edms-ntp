@@ -27,16 +27,16 @@ export const RestoreDecisionDialogs: React.FC<{
     if (!decision) setReason(undefined);
   }, [decision]);
 
-  const decide = async (mode: RestoreDecision["mode"], requestId: string, token: string, why?: string) => {
+  const decide = async (mode: RestoreDecision["mode"], restoreNumber: string, token: string, why?: string) => {
     setBusy(true);
     try {
       const updated = mode === "approve"
-        ? await backupRestoreApi.approveRestoreRequest(requestId, token)
-        : await backupRestoreApi.rejectRestoreRequest(requestId, why ?? "", token);
+        ? await backupRestoreApi.approveRestoreRequest(restoreNumber, token)
+        : await backupRestoreApi.rejectRestoreRequest(restoreNumber, why ?? "", token);
       showToast({
         type: "success",
         title: mode === "approve" ? "Restore approved" : "Restore rejected",
-        message: mode === "approve" ? `${updated.requestId}. The administrators who can run it have been notified.` : updated.requestId,
+        message: mode === "approve" ? `${updated.restoreNumber}. The administrators who can run it have been notified.` : updated.restoreNumber,
       });
       onDecided(updated, mode);
     } catch (e) {
@@ -59,7 +59,7 @@ export const RestoreDecisionDialogs: React.FC<{
       showToast({ type: "error", title: "The signature could not be confirmed", message: "Try again." });
       return;
     }
-    return decide(mode, request.requestId, data.signatureToken, why);
+    return decide(mode, request.restoreNumber, data.signatureToken, why);
   };
 
   const rejectingReason = decision?.mode === "reject" && reason === undefined;
@@ -72,7 +72,7 @@ export const RestoreDecisionDialogs: React.FC<{
         onClose={onClose}
         deferConfirm
         onConfirm={signed("approve")}
-        actionTitle={`Approve restore ${decision?.request.requestId ?? ""}`}
+        actionTitle={`Approve restore ${decision?.request.restoreNumber ?? ""}`}
         meaningDisplayName="Backup Restore Approval"
         meaningCode="BACKUP_RESTORE_APPROVAL"
       />
@@ -87,7 +87,7 @@ export const RestoreDecisionDialogs: React.FC<{
         onClose={onClose}
         deferConfirm
         onConfirm={signed("reject")}
-        actionTitle={`Reject restore ${decision?.request.requestId ?? ""}`}
+        actionTitle={`Reject restore ${decision?.request.restoreNumber ?? ""}`}
         meaningDisplayName="Backup Restore Rejection"
         meaningCode="BACKUP_RESTORE_REJECTION"
       />

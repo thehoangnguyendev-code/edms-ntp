@@ -55,20 +55,20 @@ public class InternalRestoreController {
     public record TestRestoreRequest(String by) {
     }
 
-    @GetMapping("/restores/{requestId}/execution")
-    public Map<String, Object> executionChecks(@PathVariable String requestId) {
-        return execution.preflight(requestId);
+    @GetMapping("/restores/{restoreNumber}/execution")
+    public Map<String, Object> executionChecks(@PathVariable String restoreNumber) {
+        return execution.preflight(restoreNumber);
     }
 
-    @PostMapping("/restores/{requestId}/schedule")
-    public Map<String, Object> schedule(@PathVariable String requestId, @RequestBody ScheduleRequest r) {
+    @PostMapping("/restores/{restoreNumber}/schedule")
+    public Map<String, Object> schedule(@PathVariable String restoreNumber, @RequestBody ScheduleRequest r) {
         Instant window;
         try {
             window = Instant.parse(r.windowStart() == null ? "" : r.windowStart());
         } catch (java.time.format.DateTimeParseException e) {
             throw ExportException.invalid("RESTORE_WINDOW_FORMAT", "The maintenance window must be an instant such as 2026-10-10T02:00:00Z");
         }
-        return execution.schedule(requestId, r.by(), window);
+        return execution.schedule(restoreNumber, r.by(), window);
     }
 
     @GetMapping("/restores")
@@ -87,41 +87,41 @@ public class InternalRestoreController {
         return out;
     }
 
-    @GetMapping("/restores/{requestId}")
-    public Map<String, Object> get(@PathVariable String requestId) {
-        return requests.get(requestId);
+    @GetMapping("/restores/{restoreNumber}")
+    public Map<String, Object> get(@PathVariable String restoreNumber) {
+        return requests.get(restoreNumber);
     }
 
-    @GetMapping("/backups/{backupId}/restore-readiness")
-    public Map<String, Object> readiness(@PathVariable String backupId) {
-        return requests.readiness(backupId);
+    @GetMapping("/backups/{backupNumber}/restore-readiness")
+    public Map<String, Object> readiness(@PathVariable String backupNumber) {
+        return requests.readiness(backupNumber);
     }
 
-    @PostMapping("/backups/{backupId}/restores")
-    public ResponseEntity<Map<String, Object>> request(@PathVariable String backupId, @RequestBody RequestBodyDto r) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(requests.request(backupId, r.type(), r.target(), r.reason(), r.changeControlRef(), r.by()));
+    @PostMapping("/backups/{backupNumber}/restores")
+    public ResponseEntity<Map<String, Object>> request(@PathVariable String backupNumber, @RequestBody RequestBodyDto r) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(requests.request(backupNumber, r.type(), r.target(), r.reason(), r.changeControlRef(), r.by()));
     }
 
-    @PostMapping("/restores/{requestId}/approve")
-    public Map<String, Object> approve(@PathVariable String requestId, @RequestBody ByRequest r) {
-        return requests.approve(requestId, r.by(), r.signatureRef());
+    @PostMapping("/restores/{restoreNumber}/approve")
+    public Map<String, Object> approve(@PathVariable String restoreNumber, @RequestBody ByRequest r) {
+        return requests.approve(restoreNumber, r.by(), r.signatureRef());
     }
 
-    @PostMapping("/restores/{requestId}/reject")
-    public Map<String, Object> reject(@PathVariable String requestId, @RequestBody ReasonRequest r) {
-        return requests.reject(requestId, r.by(), r.reason());
+    @PostMapping("/restores/{restoreNumber}/reject")
+    public Map<String, Object> reject(@PathVariable String restoreNumber, @RequestBody ReasonRequest r) {
+        return requests.reject(restoreNumber, r.by(), r.reason());
     }
 
     /** Starts the restore window: the system goes to LOCKED_RESTORING for this request (SDS 11.5.1, WP3.1 slice 2). */
-    @PostMapping("/restores/{requestId}/enter-window")
-    public Map<String, Object> enterWindow(@PathVariable String requestId, @RequestBody EnterWindowRequest r) {
-        return execution.enterWindow(requestId, r.by(), r.noUserConfirmed());
+    @PostMapping("/restores/{restoreNumber}/enter-window")
+    public Map<String, Object> enterWindow(@PathVariable String restoreNumber, @RequestBody EnterWindowRequest r) {
+        return execution.enterWindow(restoreNumber, r.by(), r.noUserConfirmed());
     }
 
     /** The signed evidence pack of one restore request (SDS 16). */
-    @GetMapping("/restores/{requestId}/evidence")
-    public Map<String, Object> evidencePack(@PathVariable String requestId) {
-        return evidence.pack(requestId);
+    @GetMapping("/restores/{restoreNumber}/evidence")
+    public Map<String, Object> evidencePack(@PathVariable String restoreNumber) {
+        return evidence.pack(restoreNumber);
     }
 
     /** Runs the weekly V2 check now, the same as the Monday schedule does (SDS 14.1). Worker only; returns the rehearsal id or none. */
@@ -134,9 +134,9 @@ public class InternalRestoreController {
     }
 
     /** Starts the test restore of the backup inside the restore window (SDS 14.1, WP3.1 slice 3). */
-    @PostMapping("/restores/{requestId}/test-restore")
-    public Map<String, Object> testRestore(@PathVariable String requestId, @RequestBody TestRestoreRequest r) {
-        return execution.startTestRestore(requestId, r.by());
+    @PostMapping("/restores/{restoreNumber}/test-restore")
+    public Map<String, Object> testRestore(@PathVariable String restoreNumber, @RequestBody TestRestoreRequest r) {
+        return execution.startTestRestore(restoreNumber, r.by());
     }
 
     @ExceptionHandler(MaintenanceService.MaintenanceException.class)

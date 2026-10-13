@@ -115,10 +115,10 @@ public class InternalExportController {
     // ------------------------------------------------------------------ exports
 
     @GetMapping("/exports")
-    public Map<String, Object> exportList(@RequestParam(required = false) String search, @RequestParam(required = false) String status, @RequestParam(required = false) String backupId,
+    public Map<String, Object> exportList(@RequestParam(required = false) String search, @RequestParam(required = false) String status, @RequestParam(required = false) String backupNumber,
                                           @RequestParam(defaultValue = "requestedAt") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
                                           @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        ExportService.Page result = exports.page(search, status, backupId, sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit);
+        ExportService.Page result = exports.page(search, status, backupNumber, sortBy, "asc".equalsIgnoreCase(sortDirection), page, limit);
         return paged(result.data(), result.page(), result.limit(), result.total());
     }
 
@@ -127,14 +127,14 @@ public class InternalExportController {
         return exports.get(exportId);
     }
 
-    @GetMapping("/backups/{backupId}/export-estimate")
-    public Map<String, Object> estimate(@PathVariable String backupId) {
-        return exports.estimate(backupId);
+    @GetMapping("/backups/{backupNumber}/export-estimate")
+    public Map<String, Object> estimate(@PathVariable String backupNumber) {
+        return exports.estimate(backupNumber);
     }
 
-    @PostMapping("/backups/{backupId}/exports")
-    public ResponseEntity<Map<String, Object>> request(@PathVariable String backupId, @RequestBody ExportRequest r) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(exports.request(backupId, r.mediaId(), r.reason(), r.by()));
+    @PostMapping("/backups/{backupNumber}/exports")
+    public ResponseEntity<Map<String, Object>> request(@PathVariable String backupNumber, @RequestBody ExportRequest r) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(exports.request(backupNumber, r.mediaId(), r.reason(), r.by()));
     }
 
     @PostMapping("/exports/{exportId}/approve")

@@ -219,7 +219,7 @@ export const OfflineMediumDetailView: React.FC = () => {
           getRowKey={(row) => row.exportId}
           columns={[
             { id: "export", header: "Export", cell: (row) => <span className="font-medium">{row.exportId}</span> },
-            { id: "backup", header: "Backup", cell: (row) => row.backupId },
+            { id: "backup", header: "Backup Number", cell: (row) => row.backupNumber },
             { id: "at", header: "Written", cell: (row) => formatDateTime(row.finishedAt) },
             { id: "size", header: "Size", cell: (row) => formatBytes(row.sizeBytes) },
             { id: "receipt", header: "Receipt SHA-256", cell: (row) => <span className="break-all font-mono text-2xs text-slate-500">{row.receiptSha256 ?? "—"}</span> },

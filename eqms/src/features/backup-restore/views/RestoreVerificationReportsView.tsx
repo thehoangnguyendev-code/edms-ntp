@@ -1,46 +1,87 @@
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge/Badge";
-import { DataTable } from "@/components/ui/table";
-import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
+import { TABLE_STYLES, type DataTableColumn } from "@/components/ui/table";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
-import { SectionLoading } from "@/components/ui/loading/Loading";
-import { useTableDragScroll } from "@/hooks/useTableDragScroll";
+import { useDebounce } from "@/hooks";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { backupRestoreApi, type RestoreRehearsal } from "@/services/api/backupRestore";
 import { BackupRestorePage } from "../components/BackupRestorePage";
+import { ServerListPanel } from "../components/ServerListPanel";
 import { formatDateTime } from "../format";
 
+const ALL = "ALL";
 const STATUS_COLOR: Record<RestoreRehearsal["status"], "emerald" | "red" | "amber" | "slate"> = {
   PASSED: "emerald",
   FAILED: "red",
   RUNNING: "amber",
   QUEUED: "amber",
 };
+const STATUS_LABEL: Record<RestoreRehearsal["status"], string> = { PASSED: "Passed", FAILED: "Failed", RUNNING: "Running", QUEUED: "Queued" };
+const STATUS_OPTIONS = [{ label: "All Outcomes", value: ALL }, ...(Object.keys(STATUS_COLOR) as RestoreRehearsal["status"][]).map((value) => ({ label: STATUS_LABEL[value], value }))];
+
+type SortKey = "requestedAt" | "status" | "backupNumber" | "requestedBy" | "finishedAt";
 
 /** The automatic checks after each test restore: schema, row counts, documents against records, aliases, signatures, state. */
 export const RestoreVerificationReportsView: React.FC = () => {
-  const drag = useTableDragScroll();
-  const [rows, setRows] = useState<RestoreRehearsal[]>();
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
+  const [status, setStatus] = useState(ALL);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "requestedAt", direction: "desc" });
+  const [rows, setRows] = useState<RestoreRehearsal[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<RestoreRehearsal>();
 
   useEffect(() => {
     let live = true;
+    setLoading(true);
+    setError("");
     backupRestoreApi
-      .rehearsals({ page: 1, limit: 50, sortBy: "requestedAt", sortDirection: "desc" })
-      .then((page) => {
+      .rehearsals({
+        search: debouncedSearch.trim() || undefined,
+        status: status === ALL ? undefined : status,
+        sortBy: sort.key,
+        sortDirection: sort.direction,
+        page,
+        limit: pageSize,
+      })
+      .then((data) => {
         if (!live) return;
-        setRows(page.data);
-        setTotal(page.pagination.total);
+        setRows(data.data);
+        setTotal(data.pagination.total);
+        setTotalPages(data.pagination.totalPages || 1);
+        if (data.pagination.page !== page) setPage(data.pagination.page);
       })
       .catch((e) => {
-        if (live) setError(getApiErrorMessage(e, "The verification reports could not be loaded."));
+        if (!live) return;
+        setRows([]);
+        setTotal(0);
+        setError(getApiErrorMessage(e, "The verification reports could not be loaded."));
+      })
+      .finally(() => {
+        if (!live) return;
+        setLoading(false);
+        setHasLoaded(true);
       });
     return () => {
       live = false;
     };
-  }, []);
+  }, [debouncedSearch, status, sort, page, pageSize]);
+
+  useEffect(() => setPage(1), [debouncedSearch, status, pageSize]);
+
+  const sortFor = (key: SortKey) => ({
+    direction: sort.key === key ? sort.direction : undefined,
+    onSort: () => {
+      setSort((prev) => ({ key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc" }));
+      setPage(1);
+    },
+  });
 
   const open = async (row: RestoreRehearsal) => {
     setSelected(row);
@@ -51,46 +92,51 @@ export const RestoreVerificationReportsView: React.FC = () => {
     }
   };
 
+  const columns: DataTableColumn<RestoreRehearsal>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
+    { id: "rehearsalId", header: "Test restore", label: "Test restore", headerClassName: TABLE_STYLES.headerCell35, cell: (row) => (
+      <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => void open(row)}>{row.rehearsalId}</button>
+    ) },
+    { id: "backupNumber", header: "Backup Number", label: "Backup Number", sort: sortFor("backupNumber"), cell: (row) => row.backupNumber },
+    { id: "status", header: "Outcome", label: "Outcome", sort: sortFor("status"), cell: (row) => <Badge color={STATUS_COLOR[row.status]}>{STATUS_LABEL[row.status]}</Badge> },
+    { id: "checkCount", header: "Checks", label: "Checks", cell: (row) => row.checkCount },
+    { id: "failedCount", header: "Failed", label: "Failed", cell: (row) => <Badge color={row.failedCount ? "red" : "slate"}>{row.failedCount}</Badge> },
+    { id: "requestedBy", header: "Requested by", label: "Requested by", sort: sortFor("requestedBy"), cell: (row) => row.requestedBy },
+    { id: "requestedAt", header: "Requested", label: "Requested", sort: sortFor("requestedAt"), cell: (row) => formatDateTime(row.requestedAt ?? "") },
+    { id: "finishedAt", header: "Finished", label: "Finished", sort: sortFor("finishedAt"), cell: (row) => formatDateTime(row.finishedAt ?? "") },
+  ];
+
   return (
-    <BackupRestorePage title="Restore Verification Reports" group="Restore">
+    <BackupRestorePage title="Restore Verification Reports" group="Restore" preview={false}>
       <WarningBanner variant="info" description="A test restore is only complete when every required check has passed. Open a row to see each check and its detail." />
-      {error && <WarningBanner variant="error" title="Unable to load" description={error} />}
-      {!rows && !error && <SectionLoading minHeight="30vh" />}
-      {rows && (
-        <div className="flex min-w-0 w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-1 flex-col p-4 md:p-5">
-            <p className="mb-3 text-xs text-slate-500">
-              {total > rows.length ? `Showing the latest ${rows.length} of ${total} reports.` : `${total} report(s).`}
-            </p>
-            <DataTable
-              rows={rows}
-              getRowKey={(row) => row.rehearsalId}
-              emptyState={<TableEmptyState title="No Verification Reports" description="Reports appear after a test restore has run." />}
-              scrollerRef={drag.scrollerRef}
-              scrollProps={drag.dragEvents}
-              isDragging={drag.isDragging}
-              columns={[
-                { id: "no", header: "No.", cell: (_row, index) => index + 1 },
-                {
-                  id: "id",
-                  header: "Test restore",
-                  cell: (row) => (
-                    <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => void open(row)}>
-                      {row.rehearsalId}
-                    </button>
-                  ),
-                },
-                { id: "backup", header: "Backup", cell: (row) => row.backupId },
-                { id: "status", header: "Outcome", cell: (row) => <Badge color={STATUS_COLOR[row.status]}>{row.status}</Badge> },
-                { id: "checks", header: "Checks", cell: (row) => row.checkCount },
-                { id: "failed", header: "Failed", cell: (row) => <Badge color={row.failedCount ? "red" : "slate"}>{row.failedCount}</Badge> },
-                { id: "by", header: "Requested by", cell: (row) => row.requestedBy },
-                { id: "at", header: "Requested", cell: (row) => formatDateTime(row.requestedAt ?? "") },
-              ]}
-            />
-          </div>
-        </div>
-      )}
+      <ServerListPanel
+        tableKey="backup-restore.verification-reports.v1"
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.rehearsalId}
+        loading={loading}
+        hasLoaded={hasLoaded}
+        error={error}
+        emptyTitle="No Verification Reports"
+        emptyDescription="Reports appear after a test restore has run. Try changing your search or filters."
+        search={search}
+        onSearch={setSearch}
+        searchLabel="Search verification reports"
+        searchPlaceholder="Test restore, backup or person…"
+        filters={[{ id: "status", label: "Outcome", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Outcomes", onChange: setStatus }]}
+        onClear={() => {
+          setSearch("");
+          setStatus(ALL);
+          setPage(1);
+        }}
+        page={page}
+        totalPages={totalPages}
+        totalItems={total}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        onRowClick={(row) => void open(row)}
+      />
       {selected && (
         <div className="mt-4 min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{selected.rehearsalId}</p>

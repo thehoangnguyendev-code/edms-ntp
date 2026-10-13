@@ -28,6 +28,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
 const MARGIN = 12;
 const GAP = 8;
+const POPOVER_WIDTH = 288;
 
 const parseTime = (value: string): Draft => {
   const match = /^(\d{1,2}):(\d{2})$/.exec(value ?? '');
@@ -144,7 +145,8 @@ export const TimePicker: React.FC<TimePickerProps> = ({
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
       const { innerWidth: screenWidth, innerHeight: screenHeight } = window;
-      const width = popoverRef.current?.offsetWidth || 288;
+      // A fixed width: a measured one grows with the viewport, because the grids inside fill the space they are given.
+      const width = Math.min(POPOVER_WIDTH, screenWidth - MARGIN * 2);
       const height = popoverRef.current?.offsetHeight || 360;
       const left = Math.min(Math.max(rect.left, MARGIN), screenWidth - width - MARGIN);
       const spaceBelow = screenHeight - rect.bottom - GAP;

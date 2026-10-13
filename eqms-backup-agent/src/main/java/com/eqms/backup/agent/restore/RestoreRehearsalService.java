@@ -81,12 +81,12 @@ public class RestoreRehearsalService {
 
     // ------------------------------------------------------------------ reading
 
-    private static final String SELECT = "select h.id, h.rehearsal_id, r.backup_id, h.status, h.requested_by, h.reason, h.requested_at, h.started_at, h.finished_at, h.scratch_db, "
+    private static final String SELECT = "select h.id, h.rehearsal_id, r.backup_number, h.status, h.requested_by, h.reason, h.requested_at, h.started_at, h.finished_at, h.scratch_db, "
             + "h.restore_seconds, h.error_code, h.error_detail, (select count(*) from restore_rehearsal_check k where k.rehearsal_id = h.id) as check_count, "
             + "(select count(*) from restore_rehearsal_check k where k.rehearsal_id = h.id and not k.ok) as failed_count "
             + "from restore_rehearsal h join backup_run r on r.id = h.run_id";
 
-    public Page page(String search, String status, String backupId, String sortBy, boolean ascending, int page, int limit) {
+    public Page page(String search, String status, String backupNumber, String sortBy, boolean ascending, int page, int limit) {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
         List<Object> args = new ArrayList<>();
@@ -95,18 +95,18 @@ public class RestoreRehearsalService {
             where.append(" and h.status = ?");
             args.add(status.trim().toUpperCase(Locale.ROOT));
         }
-        if (backupId != null && !backupId.isBlank()) {
-            where.append(" and r.backup_id = ?");
-            args.add(backupId.trim());
+        if (backupNumber != null && !backupNumber.isBlank()) {
+            where.append(" and r.backup_number = ?");
+            args.add(backupNumber.trim());
         }
         if (search != null && !search.isBlank()) {
-            where.append(" and (lower(h.rehearsal_id) like ? or lower(r.backup_id) like ? or lower(h.requested_by) like ?)");
+            where.append(" and (lower(h.rehearsal_id) like ? or lower(r.backup_number) like ? or lower(h.requested_by) like ?)");
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
             for (int i = 0; i < 3; i++) args.add(like);
         }
         String column = switch (sortBy == null ? "" : sortBy) {
             case "status" -> "h.status";
-            case "backupId" -> "r.backup_id";
+            case "backupNumber" -> "r.backup_number";
             case "requestedBy" -> "h.requested_by";
             case "finishedAt" -> "h.finished_at";
             default -> "h.requested_at";
@@ -141,7 +141,7 @@ public class RestoreRehearsalService {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", String.valueOf(row.get("id")));
         m.put("rehearsalId", row.get("rehearsal_id"));
-        m.put("backupId", row.get("backup_id"));
+        m.put("backupNumber", row.get("backup_number"));
         m.put("status", row.get("status"));
         m.put("requestedBy", row.get("requested_by"));
         m.put("reason", row.get("reason"));
@@ -163,11 +163,11 @@ public class RestoreRehearsalService {
 
     // ------------------------------------------------------------------ asking for one (API process)
 
-    public Map<String, Object> request(String backupId, String by, String reason) {
+    public Map<String, Object> request(String backupNumber, String by, String reason) {
         if (by == null || by.isBlank()) throw ExportException.invalid("PERSON_REQUIRED", "Who is asking must be known");
         String why = reason == null ? "" : reason.trim();
         if (why.isEmpty() || why.length() > 500) throw ExportException.invalid("REHEARSAL_REASON_REQUIRED", "A reason is required (at most 500 characters)");
-        Map<String, Object> run = repository.runByBackupId(backupId).orElseThrow(() -> ExportException.notFound("BACKUP_NOT_FOUND", "There is no backup " + backupId));
+        Map<String, Object> run = repository.runByBackupNumber(backupNumber).orElseThrow(() -> ExportException.notFound("BACKUP_NOT_FOUND", "There is no backup " + backupNumber));
         if (!"COMPLETED".equals(run.get("status"))) throw ExportException.conflict("REHEARSAL_BACKUP_NOT_COMPLETED", "Only a completed backup can be test-restored");
         String latest = jdbc.queryForList("select result from backup_verification where run_id = ? order by verified_at desc limit 1", String.class, run.get("id")).stream().findFirst().orElse("NOT_VERIFIED");
         if (!"VERIFIED".equals(latest)) throw ExportException.conflict("REHEARSAL_BACKUP_NOT_VERIFIED", "Only a backup whose latest integrity check passed can be test-restored");
@@ -180,7 +180,7 @@ public class RestoreRehearsalService {
                 queue.enqueue("REHEARSAL", CanonicalJson.of(Map.of("rehearsalId", rehearsalId, "id", row.toString())), by.trim());
                 return rehearsalId;
             });
-            ledger.append(by.trim(), "RESTORE_REHEARSAL_REQUESTED", backupId, Map.of("rehearsalId", id));
+            ledger.append(by.trim(), "RESTORE_REHEARSAL_REQUESTED", backupNumber, Map.of("rehearsalId", id));
             return get(id);
         } catch (DuplicateKeyException e) {
             throw ExportException.conflict("REHEARSAL_BUSY", "Another restore test is already waiting or running");
@@ -192,9 +192,9 @@ public class RestoreRehearsalService {
     public Map<String, Object> run(String rehearsalId) {
         Map<String, Object> rehearsal = get(rehearsalId);
         UUID id = UUID.fromString((String) rehearsal.get("id"));
-        String backupId = (String) rehearsal.get("backupId");
+        String backupNumber = (String) rehearsal.get("backupNumber");
         jdbc.update("update restore_rehearsal set status = 'RUNNING', started_at = now() where id = ? and status = 'QUEUED'", id);
-        ledger.append("restore-worker", "RESTORE_REHEARSAL_STARTED", backupId, Map.of("rehearsalId", rehearsalId));
+        ledger.append("restore-worker", "RESTORE_REHEARSAL_STARTED", backupNumber, Map.of("rehearsalId", rehearsalId));
         List<PostRestoreChecks.Result> checks = new ArrayList<>();
         String scratch = scratchName(rehearsalId);
         boolean created = false;
@@ -203,7 +203,7 @@ public class RestoreRehearsalService {
         String errorDetail = null;
         long restoreSeconds = 0;
         try (RestoreKeyring.Session ring = openRing()) {
-            Map<String, Object> run = repository.runByBackupId(backupId).orElseThrow(() -> new Failure("REHEARSAL_BACKUP_MISSING", "The backup is no longer recorded"));
+            Map<String, Object> run = repository.runByBackupNumber(backupNumber).orElseThrow(() -> new Failure("REHEARSAL_BACKUP_MISSING", "The backup is no longer recorded"));
             UUID runId = (UUID) run.get("id");
             Map<String, Object> manifestRow = jdbc.queryForList("select manifest_text, manifest_sha256, signature_base64 from backup_manifest where run_id = ?", runId).stream().findFirst()
                     .orElseThrow(() -> new Failure("REHEARSAL_MANIFEST_MISSING", "The manifest is not recorded"));
@@ -296,19 +296,19 @@ public class RestoreRehearsalService {
         done.put("rehearsalId", rehearsalId);
         done.put("checks", checks.size());
         done.put("failed", checks.stream().filter(c -> !c.ok()).map(PostRestoreChecks.Result::code).toList());
-        ledger.append("restore-worker", passed ? "RESTORE_REHEARSAL_PASSED" : "RESTORE_REHEARSAL_FAILED", backupId, done);
+        ledger.append("restore-worker", passed ? "RESTORE_REHEARSAL_PASSED" : "RESTORE_REHEARSAL_FAILED", backupNumber, done);
         if (!passed) {
-            repository.insertAlert("HIGH", "RESTORE_REHEARSAL_FAILED", "The test restore " + rehearsalId + " of " + backupId + " failed: " + code, backupId);
+            repository.insertAlert("HIGH", "RESTORE_REHEARSAL_FAILED", "The test restore " + rehearsalId + " of " + backupNumber + " failed: " + code, backupNumber);
         }
         if (WeeklyV2Verification.REQUESTER.equals(rehearsal.get("requestedBy"))) {
-            recordV2(backupId, rehearsalId, passed, code);
+            recordV2(backupNumber, rehearsalId, passed, code);
         }
         return get(rehearsalId);
     }
 
     /** The outcome of a scheduled test restore is the V2 verification of its backup (SDS 14.1); a failure is recorded, never hidden. */
-    private void recordV2(String backupId, String rehearsalId, boolean passed, String errorCode) {
-        UUID runId = (UUID) repository.runByBackupId(backupId).orElseThrow().get("id");
+    private void recordV2(String backupNumber, String rehearsalId, boolean passed, String errorCode) {
+        UUID runId = (UUID) repository.runByBackupNumber(backupNumber).orElseThrow().get("id");
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("rehearsalId", rehearsalId);
         detail.put("errorCode", errorCode == null ? "" : errorCode);

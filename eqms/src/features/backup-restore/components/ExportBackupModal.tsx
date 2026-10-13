@@ -15,12 +15,12 @@ const MAX_REASON = 500;
  * the browser.
  */
 export const ExportBackupModal: React.FC<{
-  backupId: string;
+  backupNumber: string;
   isOpen: boolean;
   busy?: boolean;
   onClose: () => void;
   onConfirm: (mediaId: string, reason: string) => void;
-}> = ({ backupId, isOpen, busy = false, onClose, onConfirm }) => {
+}> = ({ backupNumber, isOpen, busy = false, onClose, onConfirm }) => {
   const [media, setMedia] = useState<OfflineMedium[] | undefined>();
   const [estimate, setEstimate] = useState<number | undefined>();
   const [error, setError] = useState("");
@@ -32,7 +32,7 @@ export const ExportBackupModal: React.FC<{
     let live = true;
     setError("");
     setMedia(undefined);
-    Promise.all([backupRestoreApi.media({ status: "AVAILABLE", limit: 100, sortBy: "label", sortDirection: "asc" }), backupRestoreApi.exportEstimate(backupId)])
+    Promise.all([backupRestoreApi.media({ status: "AVAILABLE", limit: 100, sortBy: "label", sortDirection: "asc" }), backupRestoreApi.exportEstimate(backupNumber)])
       .then(([list, size]) => {
         if (!live) return;
         setMedia(list.data);
@@ -44,7 +44,7 @@ export const ExportBackupModal: React.FC<{
     return () => {
       live = false;
     };
-  }, [isOpen, backupId]);
+  }, [isOpen, backupNumber]);
 
   const fits = (medium: OfflineMedium) => estimate === undefined || medium.capacityBytes >= estimate * 1.1;
   const usable = (media ?? []).filter(fits);
@@ -55,7 +55,7 @@ export const ExportBackupModal: React.FC<{
       isOpen={isOpen}
       onClose={onClose}
       title="Export Backup Set"
-      description={`Write ${backupId}, with every stored document it depends on, to an offline medium. Another person must approve before anything is written.`}
+      description={`Write ${backupNumber}, with every stored document it depends on, to an offline medium. Another person must approve before anything is written.`}
       confirmText={busy ? "Requesting…" : "Request Export"}
       confirmDisabled={!valid || busy}
       onConfirm={() => {

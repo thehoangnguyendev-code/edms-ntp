@@ -112,17 +112,17 @@ public class BackupRestoreRequestController {
         return reply(agent.exchange(HttpMethod.GET, uri.buildAndExpand(vars).encode().toUriString(), null));
     }
 
-    @GetMapping("/restores/{requestId}")
-    public ResponseEntity<JsonNode> get(@PathVariable String requestId) {
+    @GetMapping("/restores/{restoreNumber}")
+    public ResponseEntity<JsonNode> get(@PathVariable String restoreNumber) {
         require(currentUserService.requireCurrentUser(), VIEW);
-        return reply(agent.exchange(HttpMethod.GET, "/internal/restores/" + validRequestId(requestId), null));
+        return reply(agent.exchange(HttpMethod.GET, "/internal/restores/" + validRequestId(restoreNumber), null));
     }
 
-    @PostMapping("/backups/{backupId}/restores")
-    public ResponseEntity<JsonNode> request(@PathVariable String backupId, @RequestBody CreateRestoreBody body) {
+    @PostMapping("/backups/{backupNumber}/restores")
+    public ResponseEntity<JsonNode> request(@PathVariable String backupNumber, @RequestBody CreateRestoreBody body) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, REQUEST);
-        String id = validBackupId(backupId);
+        String id = validBackupId(backupNumber);
         String reason = body == null || body.reason() == null ? "" : body.reason().trim();
         if (reason.isEmpty() || reason.length() > MAX_TEXT) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "RESTORE_REASON_REQUIRED");
         Map<String, Object> out = new LinkedHashMap<>();
@@ -133,7 +133,7 @@ public class BackupRestoreRequestController {
         out.put("changeControlRef", body.changeControlRef());
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/backups/" + id + "/restores", out);
         if (reply.ok()) {
-            audit.logAs(actor, "BACKUP_RESTORE", reply.body().path("requestId").asText(), uuidOf(reply), "RESTORE_REQUESTED", null, "PENDING_APPROVAL",
+            audit.logAs(actor, "BACKUP_RESTORE", reply.body().path("restoreNumber").asText(), uuidOf(reply), "RESTORE_REQUESTED", null, "PENDING_APPROVAL",
                     "Requested a " + body.type() + " restore of " + id + " to " + body.target() + ". Reason: " + reason);
         }
         return reply(reply);
@@ -141,20 +141,20 @@ public class BackupRestoreRequestController {
 
     /** Approval needs the approver's electronic signature; the signature is recorded in the same transaction as the approval. */
     /** The checks before a run and the schedule that exists (SDS 11.3, R4); read on the agent. */
-    @GetMapping("/restores/{requestId}/execution")
-    public ResponseEntity<JsonNode> execution(@PathVariable String requestId) {
+    @GetMapping("/restores/{restoreNumber}/execution")
+    public ResponseEntity<JsonNode> execution(@PathVariable String restoreNumber) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, VIEW);
-        String id = validRequestId(requestId);
+        String id = validRequestId(restoreNumber);
         return reply(agent.exchange(HttpMethod.GET, "/internal/restores/" + id + "/execution", null));
     }
 
     /** Schedules an approved request for a maintenance window. Changes no data; the run itself is not built yet. */
-    @PostMapping("/restores/{requestId}/schedule")
-    public ResponseEntity<JsonNode> schedule(@PathVariable String requestId, @RequestBody ScheduleBody body) {
+    @PostMapping("/restores/{restoreNumber}/schedule")
+    public ResponseEntity<JsonNode> schedule(@PathVariable String restoreNumber, @RequestBody ScheduleBody body) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, EXECUTE);
-        String id = validRequestId(requestId);
+        String id = validRequestId(restoreNumber);
         UUID requestUuid = requestUuid(id);
         if (requestUuid == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "RESTORE_REQUEST_NOT_FOUND");
         String window = body == null || body.windowStart() == null ? "" : body.windowStart().trim();
@@ -170,11 +170,11 @@ public class BackupRestoreRequestController {
      * Starts the restore window: the system goes from DRAINED to LOCKED_RESTORING for this request (SDS 11.5.1, WP3.1 slice 2). Only a
      * person with the execute permission may do it; the agent checks the schedule, the time and the notice.
      */
-    @PostMapping("/restores/{requestId}/enter-window")
-    public ResponseEntity<JsonNode> enterWindow(@PathVariable String requestId, @RequestBody EnterWindowBody body) {
+    @PostMapping("/restores/{restoreNumber}/enter-window")
+    public ResponseEntity<JsonNode> enterWindow(@PathVariable String restoreNumber, @RequestBody EnterWindowBody body) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, EXECUTE);
-        String id = validRequestId(requestId);
+        String id = validRequestId(restoreNumber);
         UUID requestUuid = requestUuid(id);
         if (requestUuid == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "RESTORE_REQUEST_NOT_FOUND");
         boolean confirmed = body != null && body.noUserConfirmed();
@@ -190,11 +190,11 @@ public class BackupRestoreRequestController {
      * Starts the test restore of the backup inside the restore window (SDS 14.1, WP3.1 slice 3). The restore runs in a scratch database
      * on the restore worker; production data is not changed.
      */
-    @PostMapping("/restores/{requestId}/test-restore")
-    public ResponseEntity<JsonNode> testRestore(@PathVariable String requestId) {
+    @PostMapping("/restores/{restoreNumber}/test-restore")
+    public ResponseEntity<JsonNode> testRestore(@PathVariable String restoreNumber) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, EXECUTE);
-        String id = validRequestId(requestId);
+        String id = validRequestId(restoreNumber);
         UUID requestUuid = requestUuid(id);
         if (requestUuid == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "RESTORE_REQUEST_NOT_FOUND");
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/restores/" + id + "/test-restore", Map.of("by", actor.getUsername()));
@@ -205,28 +205,28 @@ public class BackupRestoreRequestController {
     }
 
     /** The signed evidence pack of one restore request (SDS 16): what happened, who decided, the checks and the ledger chain. */
-    @GetMapping("/restores/{requestId}/evidence")
-    public ResponseEntity<JsonNode> evidence(@PathVariable String requestId) {
+    @GetMapping("/restores/{restoreNumber}/evidence")
+    public ResponseEntity<JsonNode> evidence(@PathVariable String restoreNumber) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, VIEW);
-        String id = validRequestId(requestId);
+        String id = validRequestId(restoreNumber);
         return reply(agent.exchange(HttpMethod.GET, "/internal/restores/" + id + "/evidence", null));
     }
 
     /** Whether a production restore of this backup may be asked for: the test restore that decides it, read on the agent. */
-    @GetMapping("/backups/{backupId}/restore-readiness")
-    public ResponseEntity<JsonNode> readiness(@PathVariable String backupId) {
+    @GetMapping("/backups/{backupNumber}/restore-readiness")
+    public ResponseEntity<JsonNode> readiness(@PathVariable String backupNumber) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, VIEW);
-        String id = validBackupId(backupId);
+        String id = validBackupId(backupNumber);
         return reply(agent.exchange(HttpMethod.GET, "/internal/backups/" + id + "/restore-readiness", null));
     }
 
-    @PostMapping("/restores/{requestId}/approve")
-    public ResponseEntity<JsonNode> approve(@PathVariable String requestId, @RequestBody ApproveBody body) {
+    @PostMapping("/restores/{restoreNumber}/approve")
+    public ResponseEntity<JsonNode> approve(@PathVariable String restoreNumber, @RequestBody ApproveBody body) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, APPROVE);
-        String id = validRequestId(requestId);
+        String id = validRequestId(restoreNumber);
         String token = body == null ? null : body.signatureToken();
         signatures.requireValidToken(actor, token);
         UUID requestUuid = requestUuid(id);
@@ -245,7 +245,7 @@ public class BackupRestoreRequestController {
         if (reply.ok()) {
             audit.logAs(actor, "BACKUP_RESTORE", id, requestUuid, "RESTORE_APPROVED", "PENDING_APPROVAL", "APPROVED",
                     "Approved restore " + id + " with an electronic signature");
-            approvalNotifier.approved(id, reply.body().path("backupId").asText(""), actor.getUsername());
+            approvalNotifier.approved(id, reply.body().path("backupNumber").asText(""), actor.getUsername());
         } else if (requestUuid != null) {
             audit.logAs(actor, "BACKUP_RESTORE", id, requestUuid, "RESTORE_APPROVAL_REFUSED", "PENDING_APPROVAL", "PENDING_APPROVAL",
                     "Approval refused: " + reply.body().path("code").asText("UNKNOWN"));
@@ -253,11 +253,11 @@ public class BackupRestoreRequestController {
         return reply(reply);
     }
 
-    @PostMapping("/restores/{requestId}/reject")
-    public ResponseEntity<JsonNode> reject(@PathVariable String requestId, @RequestBody ReasonBody body) {
+    @PostMapping("/restores/{restoreNumber}/reject")
+    public ResponseEntity<JsonNode> reject(@PathVariable String restoreNumber, @RequestBody ReasonBody body) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, APPROVE);
-        String id = validRequestId(requestId);
+        String id = validRequestId(restoreNumber);
         String reason = body == null || body.reason() == null ? "" : body.reason().trim();
         if (reason.isEmpty() || reason.length() > MAX_TEXT) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "RESTORE_REASON_REQUIRED");
         String token = body.signatureToken();

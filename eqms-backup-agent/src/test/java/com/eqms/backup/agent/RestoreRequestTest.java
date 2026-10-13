@@ -90,7 +90,7 @@ class RestoreRequestTest {
         PolicyView policy = new PolicyView(1, java.util.Set.of("DATABASE", "OBJECT_STORE"), java.util.Set.of("T1"));
         backups = new DatabaseBackupService(properties, repository, ledger, manifests, runner, keyring, verification,
                 new ReplicationService(new TargetRegistry(List.of()), repository, ledger), objects, () -> Optional.of(policy));
-        requests = new RestoreRequestService(db.jdbc, db.tx, ledger, repository, properties);
+        requests = new RestoreRequestService(db.jdbc, db.tx, ledger, repository, properties, new com.eqms.backup.agent.restore.RestoreRules(db.jdbc, ledger));
         maintenance = new com.eqms.backup.agent.maintenance.MaintenanceService(db.jdbc, db.tx, ledger, properties);
         rehearsals = mock(RestoreRehearsalService.class);
         when(rehearsals.request(anyString(), anyString(), anyString())).thenReturn(Map.of("rehearsalId", "RH-TEST-1"));
@@ -108,7 +108,7 @@ class RestoreRequestTest {
         DatabaseBackupService.Outcome o = backups.run(new DatabaseBackupService.Request("FULL", "MANUAL", "operator.one", "test run", null));
         assertThat(o.ok()).as(String.valueOf(o.errorDetail())).isTrue();
         assertThat(o.verification().verified()).isTrue();
-        return o.backupId();
+        return o.backupNumber();
     }
 
     private List<String> ledgerEvents() {
@@ -125,8 +125,8 @@ class RestoreRequestTest {
 
     @Test
     void aValidationRestoreRequestCarriesAMeasuredImpactReportAndWaitsForApproval() {
-        String backupId = backup();
-        Map<String, Object> asked = requests.request(backupId, "R-FULL", "VALIDATION", "Annual restore test", "CC-2026-0150", "requester.one");
+        String backupNumber = backup();
+        Map<String, Object> asked = requests.request(backupNumber, "R-FULL", "VALIDATION", "Annual restore test", "CC-2026-0150", "requester.one");
 
         assertThat(asked).containsEntry("status", "PENDING_APPROVAL").containsEntry("type", "R-FULL").containsEntry("target", "VALIDATION")
                 .containsEntry("changeControlRef", "CC-2026-0150").containsEntry("requestedBy", "requester.one");
@@ -142,44 +142,44 @@ class RestoreRequestTest {
 
     @Test
     void theRequestIsRefusedWithAStableCodeWhenTheInputOrTheBackupIsWrong() {
-        String backupId = backup();
-        refused(() -> requests.request(backupId, "R-EVERYTHING", "VALIDATION", "why", null, "requester.one"), "RESTORE_TYPE");
-        refused(() -> requests.request(backupId, "R-FULL", "LAPTOP", "why", null, "requester.one"), "RESTORE_TARGET");
-        refused(() -> requests.request(backupId, "R-FULL", "VALIDATION", " ", null, "requester.one"), "RESTORE_REASON_REQUIRED");
+        String backupNumber = backup();
+        refused(() -> requests.request(backupNumber, "R-EVERYTHING", "VALIDATION", "why", null, "requester.one"), "RESTORE_TYPE");
+        refused(() -> requests.request(backupNumber, "R-FULL", "LAPTOP", "why", null, "requester.one"), "RESTORE_TARGET");
+        refused(() -> requests.request(backupNumber, "R-FULL", "VALIDATION", " ", null, "requester.one"), "RESTORE_REASON_REQUIRED");
         refused(() -> requests.request("BK-20200101-0000-0001", "R-FULL", "VALIDATION", "why", null, "requester.one"), "BACKUP_NOT_FOUND");
         db.jdbc.update("insert into backup_verification(run_id, tier, result, detail_json, verified_at, verified_by) "
-                + "select id, 'V1', 'FAILED', '{}'::jsonb, now() + interval '1 second', 'x' from backup_run where backup_id = ?", backupId);
-        refused(() -> requests.request(backupId, "R-FULL", "VALIDATION", "why", null, "requester.one"), "RESTORE_BACKUP_NOT_VERIFIED");
+                + "select id, 'V1', 'FAILED', '{}'::jsonb, now() + interval '1 second', 'x' from backup_run where backup_number = ?", backupNumber);
+        refused(() -> requests.request(backupNumber, "R-FULL", "VALIDATION", "why", null, "requester.one"), "RESTORE_BACKUP_NOT_VERIFIED");
     }
 
     @Test
     void aProductionRestoreNeedsARecentPassingTestRestoreOfThatBackup() {
-        String backupId = backup();
-        refused(() -> requests.request(backupId, "R-FULL", "PRODUCTION", "why", null, "requester.one"), "RESTORE_REHEARSAL_REQUIRED");
-        assertThat(requests.readiness(backupId)).containsEntry("testRestore", null);
+        String backupNumber = backup();
+        refused(() -> requests.request(backupNumber, "R-FULL", "PRODUCTION", "why", null, "requester.one"), "RESTORE_REHEARSAL_REQUIRED");
+        assertThat(requests.readiness(backupNumber)).containsEntry("testRestore", null);
 
         db.jdbc.update("insert into restore_rehearsal(rehearsal_id, run_id, status, requested_by, reason, finished_at) "
-                + "select 'RH-TEST-0001', id, 'PASSED', 'tester', 'test', now() from backup_run where backup_id = ?", backupId);
-        Map<String, Object> asked = requests.request(backupId, "R-FULL", "PRODUCTION", "Restore after incident", null, "requester.one");
+                + "select 'RH-TEST-0001', id, 'PASSED', 'tester', 'test', now() from backup_run where backup_number = ?", backupNumber);
+        Map<String, Object> asked = requests.request(backupNumber, "R-FULL", "PRODUCTION", "Restore after incident", null, "requester.one");
         assertThat(asked).containsEntry("target", "PRODUCTION").containsKey("rehearsalId");
-        assertThat(requests.readiness(backupId).get("testRestore")).isNotNull();
+        assertThat(requests.readiness(backupNumber).get("testRestore")).isNotNull();
         db.jdbc.update("update restore_rehearsal set finished_at = now() - interval '31 days' where rehearsal_id = 'RH-TEST-0001'");
-        assertThat(requests.readiness(backupId)).containsEntry("testRestore", null);
+        assertThat(requests.readiness(backupNumber)).containsEntry("testRestore", null);
         db.jdbc.update("update restore_rehearsal set finished_at = now() where rehearsal_id = 'RH-TEST-0001'");
         assertThat(asked.get("rehearsalId")).isNotNull();
     }
 
     @Test
     void onlyOneRequestCanWaitForAGivenBackup() {
-        String backupId = backup();
-        requests.request(backupId, "R-FULL", "VALIDATION", "first", null, "requester.one");
-        refused(() -> requests.request(backupId, "R-DB", "VALIDATION", "second", null, "requester.two"), "RESTORE_ALREADY_OPEN");
+        String backupNumber = backup();
+        requests.request(backupNumber, "R-FULL", "VALIDATION", "first", null, "requester.one");
+        refused(() -> requests.request(backupNumber, "R-DB", "VALIDATION", "second", null, "requester.two"), "RESTORE_ALREADY_OPEN");
     }
 
     @Test
     void theRequesterCannotApproveAndTheApprovalNeedsASignature() {
-        String backupId = backup();
-        String id = (String) requests.request(backupId, "R-FULL", "VALIDATION", "why", null, "requester.one").get("requestId");
+        String backupNumber = backup();
+        String id = (String) requests.request(backupNumber, "R-FULL", "VALIDATION", "why", null, "requester.one").get("restoreNumber");
         refused(() -> requests.approve(id, "Requester.One", "SIG-1"), "RESTORE_SAME_PERSON");
         refused(() -> requests.approve(id, "approver.two", " "), "RESTORE_SIGNATURE_REQUIRED");
         assertThat(requests.get(id)).containsEntry("status", "PENDING_APPROVAL");
@@ -188,9 +188,9 @@ class RestoreRequestTest {
 
     @Test
     void anotherPersonApprovesAndTheImpactIsMeasuredAgainAtThatMoment() {
-        String backupId = backup();
-        Map<String, Object> asked = requests.request(backupId, "R-FULL", "VALIDATION", "why", null, "requester.one");
-        String id = (String) asked.get("requestId");
+        String backupNumber = backup();
+        Map<String, Object> asked = requests.request(backupNumber, "R-FULL", "VALIDATION", "why", null, "requester.one");
+        String id = (String) asked.get("restoreNumber");
 
         Map<String, Object> approved = requests.approve(id, "approver.two", "SIG-123");
         assertThat(approved).containsEntry("status", "APPROVED").containsEntry("approvedBy", "approver.two").containsEntry("approvalSignatureRef", "SIG-123");
@@ -205,8 +205,8 @@ class RestoreRequestTest {
 
     @Test
     void aRejectionNeedsAReasonAndTheRequesterCannotRejectTheirOwn() {
-        String backupId = backup();
-        String id = (String) requests.request(backupId, "R-FULL", "VALIDATION", "why", null, "requester.one").get("requestId");
+        String backupNumber = backup();
+        String id = (String) requests.request(backupNumber, "R-FULL", "VALIDATION", "why", null, "requester.one").get("restoreNumber");
         refused(() -> requests.reject(id, "requester.one", "mine"), "RESTORE_SAME_PERSON");
         refused(() -> requests.reject(id, "approver.two", " "), "RESTORE_REASON_REQUIRED");
         Map<String, Object> rejected = requests.reject(id, "approver.two", "The change control is not approved yet");
@@ -216,8 +216,8 @@ class RestoreRequestTest {
 
     @Test
     void theListFiltersAndPagesOnTheServer() {
-        String backupId = backup();
-        requests.request(backupId, "R-FULL", "VALIDATION", "why", null, "requester.one");
+        String backupNumber = backup();
+        requests.request(backupNumber, "R-FULL", "VALIDATION", "why", null, "requester.one");
         assertThat(requests.page(null, "PENDING_APPROVAL", null, "requestedAt", false, 1, 10).total()).isEqualTo(1);
         assertThat(requests.page(null, "APPROVED", null, "requestedAt", false, 1, 10).total()).isZero();
         assertThat(requests.page("requester", null, "VALIDATION", "requestedAt", false, 1, 10).total()).isEqualTo(1);
@@ -226,8 +226,8 @@ class RestoreRequestTest {
 
     @Test
     void anApprovedRequestIsScheduledForAWindowOnlyByAPersonOtherThanTheApprover() {
-        String backupId = backup();
-        String id = (String) requests.request(backupId, "R-FULL", "VALIDATION", "Scheduling test", null, "requester.one").get("requestId");
+        String backupNumber = backup();
+        String id = (String) requests.request(backupNumber, "R-FULL", "VALIDATION", "Scheduling test", null, "requester.one").get("restoreNumber");
         refused(() -> execution.schedule(id, "executor.one", java.time.Instant.now().plusSeconds(3600)), "RESTORE_STATE");
 
         requests.approve(id, "approver.two", "SIG-SCHED-1");
@@ -247,8 +247,8 @@ class RestoreRequestTest {
 
     @Test
     void theChecksOfAPendingRequestSayNotReadyAndTheRunIsNeverStarted() {
-        String backupId = backup();
-        String id = (String) requests.request(backupId, "R-FULL", "VALIDATION", "Not yet approved", null, "requester.one").get("requestId");
+        String backupNumber = backup();
+        String id = (String) requests.request(backupNumber, "R-FULL", "VALIDATION", "Not yet approved", null, "requester.one").get("restoreNumber");
         Map<String, Object> checks = execution.preflight(id);
         assertThat(checks).containsEntry("readyToSchedule", false).containsEntry("status", "PENDING_APPROVAL");
         assertThat(checks.get("checks").toString()).contains("REQUEST_APPROVED");
@@ -256,8 +256,8 @@ class RestoreRequestTest {
 
     @Test
     void theRestoreWindowLocksTheSystemOnlyWhenTheWindowHasComeAndTheNoticeIsForThisRequest() throws Exception {
-        String backupId = backup();
-        String id = (String) requests.request(backupId, "R-FULL", "VALIDATION", "Window test", null, "requester.one").get("requestId");
+        String backupNumber = backup();
+        String id = (String) requests.request(backupNumber, "R-FULL", "VALIDATION", "Window test", null, "requester.one").get("restoreNumber");
         requests.approve(id, "approver.two", "SIG-WIN-1");
         refused(() -> execution.enterWindow(id, "executor.one", true), "RESTORE_NOT_SCHEDULED");
 
@@ -292,8 +292,8 @@ class RestoreRequestTest {
 
     @Test
     void theTestRestoreStartsOnceInsideTheLockedWindowAndTouchesOnlyTheScratchCopy() throws Exception {
-        String backupId = backup();
-        String id = (String) requests.request(backupId, "R-FULL", "VALIDATION", "Test restore in window", null, "requester.one").get("requestId");
+        String backupNumber = backup();
+        String id = (String) requests.request(backupNumber, "R-FULL", "VALIDATION", "Test restore in window", null, "requester.one").get("restoreNumber");
         requests.approve(id, "approver.two", "SIG-TEST-1");
         execution.schedule(id, "executor.one", java.time.Instant.now().plusSeconds(3600));
         refused(() -> execution.startTestRestore(id, "executor.one"), "RESTORE_NOT_LOCKED");
@@ -306,7 +306,7 @@ class RestoreRequestTest {
 
         Map<String, Object> out = execution.startTestRestore(id, "executor.one");
         assertThat(out).containsEntry("rehearsalId", "RH-TEST-1").containsEntry("status", "QUEUED");
-        verify(rehearsals).request(eq(backupId), eq("executor.one"), anyString());
+        verify(rehearsals).request(eq(backupNumber), eq("executor.one"), anyString());
         assertThat(ledgerEvents()).contains("RESTORE_TEST_QUEUED");
         refused(() -> execution.startTestRestore(id, "executor.one"), "RESTORE_TEST_ALREADY_REQUESTED");
         verify(rehearsals, times(1)).request(anyString(), anyString(), anyString());
@@ -317,8 +317,8 @@ class RestoreRequestTest {
 
     @Test
     void theEvidencePackIsSignedCarriesTheDecisionsAndChangedTextDoesNotVerify() throws Exception {
-        String backupId = backup();
-        String id = (String) requests.request(backupId, "R-FULL", "VALIDATION", "Evidence test", null, "requester.one").get("requestId");
+        String backupNumber = backup();
+        String id = (String) requests.request(backupNumber, "R-FULL", "VALIDATION", "Evidence test", null, "requester.one").get("restoreNumber");
         requests.approve(id, "approver.two", "SIG-EV-1");
         execution.schedule(id, "executor.one", java.time.Instant.now().plusSeconds(3600));
         var manifests = new com.eqms.backup.agent.manifest.ManifestService(new com.eqms.backup.agent.manifest.SigningKeys(properties));
@@ -327,7 +327,7 @@ class RestoreRequestTest {
         String text = (String) out.get("pack");
         String signature = (String) out.get("signature");
         assertThat(manifests.signatureValid(text, signature)).isTrue();
-        assertThat(text).contains("\"requestId\":\"" + id + "\"").contains("\"approvedBy\"").contains("RESTORE_SCHEDULED").contains("\"ok\":true");
+        assertThat(text).contains("\"restoreNumber\":\"" + id + "\"").contains("\"approvedBy\"").contains("RESTORE_SCHEDULED").contains("\"ok\":true");
         assertThat(manifests.signatureValid(text.replace("approver.two", "someone.else"), signature)).as("changed evidence does not verify").isFalse();
     }
 }

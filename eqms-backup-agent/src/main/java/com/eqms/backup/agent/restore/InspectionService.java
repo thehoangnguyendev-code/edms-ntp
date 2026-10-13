@@ -62,7 +62,7 @@ public class InspectionService {
      * though that account owns the copy. The agent's account has no CREATEROLE, so it cannot create the role for each copy.
      */
     static final String READER_ROLE = "eqms_inspect_reader";
-    private static final String SELECT = "select i.id, i.inspection_id, b.backup_id, i.status, i.reason, i.requested_by, i.requested_at, i.approved_by, "
+    private static final String SELECT = "select i.id, i.inspection_number, b.backup_number, i.status, i.reason, i.requested_by, i.requested_at, i.approved_by, "
             + "i.approval_signature_ref, i.decided_at, i.decision_reason, i.scratch_db, i.opened_at, i.expires_at, i.closed_at, i.closed_by, i.close_reason, "
             + "i.error_code, i.error_detail from backup_inspection i join backup_run b on b.id = i.run_id";
 
@@ -102,7 +102,7 @@ public class InspectionService {
             args.add(status.trim().toUpperCase(Locale.ROOT));
         }
         if (search != null && !search.isBlank()) {
-            where.append(" and (lower(i.inspection_id) like ? or lower(b.backup_id) like ? or lower(i.requested_by) like ?)");
+            where.append(" and (lower(i.inspection_number) like ? or lower(b.backup_number) like ? or lower(i.requested_by) like ?)");
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
             for (int i = 0; i < 3; i++) args.add(like);
         }
@@ -110,7 +110,7 @@ public class InspectionService {
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(safeLimit);
         pageArgs.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = jdbc.queryForList(SELECT + where + " order by i.requested_at desc, i.inspection_id desc limit ? offset ?", pageArgs.toArray())
+        List<Map<String, Object>> rows = jdbc.queryForList(SELECT + where + " order by i.requested_at desc, i.inspection_number desc limit ? offset ?", pageArgs.toArray())
                 .stream().map(InspectionService::view).toList();
         long count = total == null ? 0 : total;
         Map<String, Object> pagination = new LinkedHashMap<>();
@@ -124,9 +124,9 @@ public class InspectionService {
         return out;
     }
 
-    public Map<String, Object> get(String inspectionId) {
-        Map<String, Object> out = jdbc.queryForList(SELECT + " where i.inspection_id = ?", inspectionId).stream().findFirst().map(InspectionService::view)
-                .orElseThrow(() -> ExportException.notFound("INSPECTION_NOT_FOUND", "There is no inspection " + inspectionId));
+    public Map<String, Object> get(String inspectionNumber) {
+        Map<String, Object> out = jdbc.queryForList(SELECT + " where i.inspection_number = ?", inspectionNumber).stream().findFirst().map(InspectionService::view)
+                .orElseThrow(() -> ExportException.notFound("INSPECTION_NOT_FOUND", "There is no inspection " + inspectionNumber));
         UUID id = UUID.fromString(String.valueOf(out.get("id")));
         out.put("events", jdbc.queryForList("select event, by_user, at from backup_inspection_event where inspection_id = ? order by id", id).stream().map(e -> {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -150,8 +150,8 @@ public class InspectionService {
     private static Map<String, Object> view(Map<String, Object> row) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", String.valueOf(row.get("id")));
-        m.put("inspectionId", row.get("inspection_id"));
-        m.put("backupId", row.get("backup_id"));
+        m.put("inspectionNumber", row.get("inspection_number"));
+        m.put("backupNumber", row.get("backup_number"));
         m.put("status", row.get("status"));
         m.put("reason", row.get("reason"));
         m.put("requestedBy", row.get("requested_by"));
@@ -177,23 +177,23 @@ public class InspectionService {
 
     // ------------------------------------------------------------------ asking and deciding (API process)
 
-    public Map<String, Object> request(String backupId, String by, String reason) {
+    public Map<String, Object> request(String backupNumber, String by, String reason) {
         String who = person(by);
         String why = required(reason, 500, "INSPECTION_REASON_REQUIRED", "A reason is required (at most 500 characters)");
-        Map<String, Object> run = repository.runByBackupId(backupId).orElseThrow(() -> ExportException.notFound("BACKUP_NOT_FOUND", "There is no backup " + backupId));
+        Map<String, Object> run = repository.runByBackupNumber(backupNumber).orElseThrow(() -> ExportException.notFound("BACKUP_NOT_FOUND", "There is no backup " + backupNumber));
         if (!"COMPLETED".equals(run.get("status"))) throw ExportException.conflict("INSPECTION_BACKUP_NOT_COMPLETED", "Only a completed backup can be inspected");
         String latest = jdbc.queryForList("select result from backup_verification where run_id = ? order by verified_at desc limit 1", String.class, run.get("id")).stream().findFirst().orElse("NOT_VERIFIED");
         if (!"VERIFIED".equals(latest)) throw ExportException.conflict("INSPECTION_BACKUP_NOT_VERIFIED", "Only a backup whose latest integrity check passed can be inspected");
         try {
             String id = tx.execute(s -> {
                 Long seq = jdbc.queryForObject("select nextval('backup_inspection_seq')", Long.class);
-                String inspectionId = "IS-" + DAY.format(Instant.now()) + "-" + String.format("%04d", seq);
-                UUID row = jdbc.queryForObject("insert into backup_inspection(inspection_id, run_id, status, reason, requested_by) values (?,?,'PENDING_APPROVAL',?,?) returning id",
-                        UUID.class, inspectionId, run.get("id"), why, who);
+                String inspectionNumber = "IS-" + DAY.format(Instant.now()) + "-" + String.format("%04d", seq);
+                UUID row = jdbc.queryForObject("insert into backup_inspection(inspection_number, run_id, status, reason, requested_by) values (?,?,'PENDING_APPROVAL',?,?) returning id",
+                        UUID.class, inspectionNumber, run.get("id"), why, who);
                 event(row, "REQUESTED", who, Map.of("reason", why));
-                return inspectionId;
+                return inspectionNumber;
             });
-            ledger.append(who, "INSPECTION_REQUESTED", backupId, Map.of("inspectionId", id, "reason", why));
+            ledger.append(who, "INSPECTION_REQUESTED", backupNumber, Map.of("inspectionNumber", id, "reason", why));
             return get(id);
         } catch (DuplicateKeyException e) {
             throw ExportException.conflict("INSPECTION_BUSY", "Another inspection is already waiting for approval or open");
@@ -201,68 +201,68 @@ public class InspectionService {
     }
 
     /** Approval by a different person with an electronic signature; the approval queues the copy for the restore worker. */
-    public Map<String, Object> approve(String inspectionId, String by, String signatureRef) {
+    public Map<String, Object> approve(String inspectionNumber, String by, String signatureRef) {
         String approver = person(by);
         String ref = required(signatureRef, 120, "INSPECTION_SIGNATURE_REQUIRED", "An electronic signature is required to approve an inspection");
-        Map<String, Object> row = get(inspectionId);
+        Map<String, Object> row = get(inspectionNumber);
         requirePending(row);
-        String backupId = (String) row.get("backupId");
+        String backupNumber = (String) row.get("backupNumber");
         if (approver.equalsIgnoreCase((String) row.get("requestedBy"))) {
-            ledger.append(approver, "INSPECTION_APPROVAL_REFUSED", backupId, Map.of("inspectionId", inspectionId, "reason", "SAME_PERSON"));
+            ledger.append(approver, "INSPECTION_APPROVAL_REFUSED", backupNumber, Map.of("inspectionNumber", inspectionNumber, "reason", "SAME_PERSON"));
             throw new ExportException(ExportException.Kind.SEPARATION, "INSPECTION_SAME_PERSON", "The person who asked for an inspection cannot approve it");
         }
         tx.executeWithoutResult(s -> {
             int changed = jdbc.update("update backup_inspection set status = 'APPROVED', approved_by = ?, approval_signature_ref = ?, decided_at = now() "
-                    + "where inspection_id = ? and status = 'PENDING_APPROVAL'", approver, ref, inspectionId);
+                    + "where inspection_number = ? and status = 'PENDING_APPROVAL'", approver, ref, inspectionNumber);
             if (changed != 1) throw ExportException.conflict("INSPECTION_STATE", "The inspection changed while it was approved; reload and try again");
-            UUID id = jdbc.queryForObject("select id from backup_inspection where inspection_id = ?", UUID.class, inspectionId);
+            UUID id = jdbc.queryForObject("select id from backup_inspection where inspection_number = ?", UUID.class, inspectionNumber);
             event(id, "APPROVED", approver, Map.of("signatureRef", ref));
-            queue.enqueue("INSPECTION", CanonicalJson.of(Map.of("inspectionId", inspectionId)), approver);
+            queue.enqueue("INSPECTION", CanonicalJson.of(Map.of("inspectionNumber", inspectionNumber)), approver);
         });
-        ledger.append(approver, "INSPECTION_APPROVED", backupId, Map.of("inspectionId", inspectionId, "signatureRef", ref));
-        return get(inspectionId);
+        ledger.append(approver, "INSPECTION_APPROVED", backupNumber, Map.of("inspectionNumber", inspectionNumber, "signatureRef", ref));
+        return get(inspectionNumber);
     }
 
-    public Map<String, Object> reject(String inspectionId, String by, String reason) {
+    public Map<String, Object> reject(String inspectionNumber, String by, String reason) {
         String rejecter = person(by);
         String why = required(reason, 500, "INSPECTION_REASON_REQUIRED", "A reason is required");
-        Map<String, Object> row = get(inspectionId);
+        Map<String, Object> row = get(inspectionNumber);
         requirePending(row);
         if (rejecter.equalsIgnoreCase((String) row.get("requestedBy"))) {
             throw new ExportException(ExportException.Kind.SEPARATION, "INSPECTION_SAME_PERSON", "The person who asked for an inspection cannot decide on it");
         }
         tx.executeWithoutResult(s -> {
             int changed = jdbc.update("update backup_inspection set status = 'REJECTED', decided_at = now(), decision_reason = ? "
-                    + "where inspection_id = ? and status = 'PENDING_APPROVAL'", why, inspectionId);
+                    + "where inspection_number = ? and status = 'PENDING_APPROVAL'", why, inspectionNumber);
             if (changed != 1) throw ExportException.conflict("INSPECTION_STATE", "The inspection is no longer waiting for a decision");
-            UUID id = jdbc.queryForObject("select id from backup_inspection where inspection_id = ?", UUID.class, inspectionId);
+            UUID id = jdbc.queryForObject("select id from backup_inspection where inspection_number = ?", UUID.class, inspectionNumber);
             event(id, "REJECTED", rejecter, Map.of("reason", why));
         });
-        ledger.append(rejecter, "INSPECTION_REJECTED", (String) row.get("backupId"), Map.of("inspectionId", inspectionId, "reason", why));
-        return get(inspectionId);
+        ledger.append(rejecter, "INSPECTION_REJECTED", (String) row.get("backupNumber"), Map.of("inspectionNumber", inspectionNumber, "reason", why));
+        return get(inspectionNumber);
     }
 
     // ------------------------------------------------------------------ opening (restore worker)
 
     /** Restores the approved backup into {@code inspect_{id}}, makes it read-only, runs the checks and leaves it open for five minutes. */
-    public Map<String, Object> open(String inspectionId) {
-        Map<String, Object> row = get(inspectionId);
+    public Map<String, Object> open(String inspectionNumber) {
+        Map<String, Object> row = get(inspectionNumber);
         if (!"APPROVED".equals(row.get("status"))) {
             throw ExportException.conflict("INSPECTION_STATE", "The inspection is " + row.get("status") + ", not approved for opening");
         }
-        String backupId = (String) row.get("backupId");
-        UUID id = UUID.fromString(String.valueOf(jdbc.queryForObject("select id from backup_inspection where inspection_id = ?", UUID.class, inspectionId)));
+        String backupNumber = (String) row.get("backupNumber");
+        UUID id = UUID.fromString(String.valueOf(jdbc.queryForObject("select id from backup_inspection where inspection_number = ?", UUID.class, inspectionNumber)));
         jdbc.update("update backup_inspection set status = 'OPENING' where id = ? and status = 'APPROVED'", id);
-        ledger.append("inspection-worker", "INSPECTION_OPENING", backupId, Map.of("inspectionId", inspectionId));
+        ledger.append("inspection-worker", "INSPECTION_OPENING", backupNumber, Map.of("inspectionNumber", inspectionNumber));
 
-        String scratch = scratchName(inspectionId);
+        String scratch = scratchName(inspectionNumber);
         List<PostRestoreChecks.Result> checks = new ArrayList<>();
         boolean created = false;
         String errorCode = null;
         String errorDetail = null;
         try (RestoreKeyring.Session ring = openRing()) {
             requireReaderRole();
-            Map<String, Object> run = repository.runByBackupId(backupId).orElseThrow(() -> new Failure("INSPECTION_BACKUP_MISSING", "The backup is no longer recorded"));
+            Map<String, Object> run = repository.runByBackupNumber(backupNumber).orElseThrow(() -> new Failure("INSPECTION_BACKUP_MISSING", "The backup is no longer recorded"));
             UUID runId = (UUID) run.get("id");
             Map<String, Object> manifestRow = jdbc.queryForList("select manifest_text, signature_base64 from backup_manifest where run_id = ?", runId).stream().findFirst()
                     .orElseThrow(() -> new Failure("INSPECTION_MANIFEST_MISSING", "The manifest is not recorded"));
@@ -299,7 +299,7 @@ public class InspectionService {
             errorCode = f.code;
             errorDetail = f.getMessage();
         } catch (IOException | SQLException | RuntimeException e) {
-            log.error("Inspection {} failed to open", inspectionId, e);
+            log.error("Inspection {} failed to open", inspectionNumber, e);
             errorCode = "INSPECTION_ERROR";
             errorDetail = e.getClass().getSimpleName() + ": " + e.getMessage();
         } catch (InterruptedException e) {
@@ -320,11 +320,11 @@ public class InspectionService {
             // a copy that could not be dropped stays recorded as such, so that the restore worker retries it (retryUndropped)
             jdbc.update("update backup_inspection set status = 'FAILED', scratch_db = ?, closed_at = now(), close_reason = ?, error_code = ?, error_detail = ? where id = ?",
                     scratch, dropped ? "OPEN_FAILED" : NOT_DROPPED, errorCode, detail, id);
-            ledger.append("inspection-worker", "INSPECTION_FAILED", backupId, Map.of("inspectionId", inspectionId, "code", errorCode, "scratchDropped", dropped));
+            ledger.append("inspection-worker", "INSPECTION_FAILED", backupNumber, Map.of("inspectionNumber", inspectionNumber, "code", errorCode, "scratchDropped", dropped));
             if (!dropped) {
                 repository.insertAlert("HIGH", "INSPECTION_NOT_DROPPED", "The inspection copy " + scratch + " is still on the server and must be dropped", scratch);
             }
-            return get(inspectionId);
+            return get(inspectionNumber);
         }
 
         Instant openedAt = Instant.now();
@@ -332,10 +332,10 @@ public class InspectionService {
         recordChecks(id, checks);
         jdbc.update("update backup_inspection set status = 'OPEN', scratch_db = ?, opened_at = ?, expires_at = ? where id = ? and status = 'OPENING'",
                 scratch, Timestamp.from(openedAt), Timestamp.from(expiresAt), id);
-        ledger.append("inspection-worker", "INSPECTION_OPENED", backupId, Map.of("inspectionId", inspectionId, "scratchDb", scratch,
+        ledger.append("inspection-worker", "INSPECTION_OPENED", backupNumber, Map.of("inspectionNumber", inspectionNumber, "scratchDb", scratch,
                 "requestedBy", String.valueOf(row.get("requestedBy")), "approvedBy", String.valueOf(row.get("approvedBy")),
                 "reason", String.valueOf(row.get("reason")), "expiresAt", expiresAt.toString()));
-        return get(inspectionId);
+        return get(inspectionNumber);
     }
 
     /** The copy is read-only when the account that reads it cannot write: a write probe must be refused, and that is itself a check. */
@@ -351,32 +351,32 @@ public class InspectionService {
     // ------------------------------------------------------------------ closing (restore worker, API for the requester)
 
     /** Drops the copy and records why. A failed drop is an alert and stays open, so the next sweep tries again. */
-    public Map<String, Object> close(String inspectionId, String by, String reason) {
+    public Map<String, Object> close(String inspectionNumber, String by, String reason) {
         String who = person(by);
         String why = reason == null || reason.isBlank() ? "CLOSED_BY_USER" : reason.trim();
-        Map<String, Object> row = get(inspectionId);
+        Map<String, Object> row = get(inspectionNumber);
         if (!"OPEN".equals(row.get("status"))) {
             throw ExportException.conflict("INSPECTION_STATE", "The inspection is " + row.get("status") + ", not open");
         }
         String scratch = (String) row.get("scratchDb");
         boolean dropped = teardown(scratch, true);
-        UUID id = UUID.fromString(String.valueOf(jdbc.queryForObject("select id from backup_inspection where inspection_id = ?", UUID.class, inspectionId)));
+        UUID id = UUID.fromString(String.valueOf(jdbc.queryForObject("select id from backup_inspection where inspection_number = ?", UUID.class, inspectionNumber)));
         if (dropped) {
             jdbc.update("update backup_inspection set status = 'CLOSED', closed_at = now(), closed_by = ?, close_reason = ? where id = ? and status = 'OPEN'", who, why, id);
-            ledger.append(who, "INSPECTION_CLOSED", (String) row.get("backupId"), Map.of("inspectionId", inspectionId, "reason", why, "scratchDb", scratch));
+            ledger.append(who, "INSPECTION_CLOSED", (String) row.get("backupNumber"), Map.of("inspectionNumber", inspectionNumber, "reason", why, "scratchDb", scratch));
         } else {
             repository.insertAlert("HIGH", "INSPECTION_NOT_DROPPED", "The inspection copy " + scratch + " could not be dropped and stays open for the next sweep", scratch);
-            ledger.append(who, "INSPECTION_DROP_FAILED", (String) row.get("backupId"), Map.of("inspectionId", inspectionId, "reason", why, "scratchDb", scratch));
+            ledger.append(who, "INSPECTION_DROP_FAILED", (String) row.get("backupNumber"), Map.of("inspectionNumber", inspectionNumber, "reason", why, "scratchDb", scratch));
         }
-        return get(inspectionId);
+        return get(inspectionNumber);
     }
 
     /** Called by the restore worker: every open copy whose five minutes are over is dropped. Returns how many were closed. */
     public int expireDue() {
-        List<String> due = jdbc.queryForList("select inspection_id from backup_inspection where status = 'OPEN' and expires_at <= now()", String.class);
+        List<String> due = jdbc.queryForList("select inspection_number from backup_inspection where status = 'OPEN' and expires_at <= now()", String.class);
         int closed = 0;
-        for (String inspectionId : due) {
-            Map<String, Object> out = close(inspectionId, "system:inspection-expiry", "EXPIRED");
+        for (String inspectionNumber : due) {
+            Map<String, Object> out = close(inspectionNumber, "system:inspection-expiry", "EXPIRED");
             if ("CLOSED".equals(out.get("status"))) closed++;
         }
         return closed;
@@ -387,14 +387,14 @@ public class InspectionService {
      * still cannot be dropped stays on the list and the alert stays open.
      */
     public int retryUndropped() {
-        List<Map<String, Object>> left = jdbc.queryForList("select id, inspection_id, scratch_db from backup_inspection where close_reason = ?", NOT_DROPPED);
+        List<Map<String, Object>> left = jdbc.queryForList("select id, inspection_number, scratch_db from backup_inspection where close_reason = ?", NOT_DROPPED);
         int dropped = 0;
         for (Map<String, Object> row : left) {
             String scratch = (String) row.get("scratch_db");
             if (!teardown(scratch, true)) continue;
             UUID id = (UUID) row.get("id");
             jdbc.update("update backup_inspection set close_reason = 'OPEN_FAILED' where id = ? and close_reason = ?", id, NOT_DROPPED);
-            ledger.append("inspection-worker", "INSPECTION_DROP_RETRIED", null, Map.of("inspectionId", String.valueOf(row.get("inspection_id")), "scratchDb", String.valueOf(scratch)));
+            ledger.append("inspection-worker", "INSPECTION_DROP_RETRIED", null, Map.of("inspectionNumber", String.valueOf(row.get("inspection_number")), "scratchDb", String.valueOf(scratch)));
             dropped++;
         }
         return dropped;
@@ -402,9 +402,9 @@ public class InspectionService {
 
     /** On the agent that is not the restore worker: an open copy whose time is long over means the restore worker is not running. */
     public void alertOverdue() {
-        List<Map<String, Object>> overdue = jdbc.queryForList("select inspection_id, scratch_db from backup_inspection where status = 'OPEN' and expires_at < now() - interval '2 minutes'");
+        List<Map<String, Object>> overdue = jdbc.queryForList("select inspection_number, scratch_db from backup_inspection where status = 'OPEN' and expires_at < now() - interval '2 minutes'");
         for (Map<String, Object> row : overdue) {
-            String ref = String.valueOf(row.get("inspection_id"));
+            String ref = String.valueOf(row.get("inspection_number"));
             Integer recent = jdbc.queryForObject("select count(*) from backup_alert where code = 'INSPECTION_OVERDUE' and ref = ? and at > now() - interval '30 minutes'", Integer.class, ref);
             if (recent != null && recent > 0) continue;
             repository.insertAlert("HIGH", "INSPECTION_OVERDUE", "The inspection copy " + row.get("scratch_db") + " is past its five minutes and has not been dropped: the restore worker may be down", ref);
@@ -428,14 +428,14 @@ public class InspectionService {
     // ------------------------------------------------------------------ the copy
 
     /** The database name of an inspection: {@code inspect_} and the id, never the live database name. */
-    String scratchName(String inspectionId) {
-        String name = DB_PREFIX + suffix(inspectionId);
+    String scratchName(String inspectionNumber) {
+        String name = DB_PREFIX + suffix(inspectionNumber);
         requireInspectName(name);
         return name;
     }
 
-    private static String suffix(String inspectionId) {
-        return inspectionId.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "_");
+    private static String suffix(String inspectionNumber) {
+        return inspectionNumber.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "_");
     }
 
     private void requireInspectName(String name) {

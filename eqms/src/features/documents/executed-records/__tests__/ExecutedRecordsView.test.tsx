@@ -61,7 +61,7 @@ describe("ExecutedRecordsView", () => {
     renderView();
     await waitFor(() => expect(getExecutedRecords).toHaveBeenCalled());
     for (const [name, key] of [
-      ["Record Number", "number"], ["Document", "document"], ["Controlled Copy Number", "copy"], ["Recipient", "recipient"],
+      ["Record Number", "number"], ["Document Number", "document"], ["Controlled Copy Number", "copy"], ["Recipient", "recipient"],
       ["Received Date", "filled"], ["Recorded Date", "created"],
     ] as const) {
       fireEvent.click(await screen.findByRole("columnheader", { name: new RegExp(`^${name}`) }));

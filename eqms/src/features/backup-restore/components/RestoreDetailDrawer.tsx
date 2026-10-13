@@ -53,7 +53,7 @@ export const RestoreDetailDrawer: React.FC<Props> = ({ request, onClose, onDecis
         <FormSection title="Request">
           <dl className="divide-y divide-slate-100">
             <Row label="Status"><Badge color={RESTORE_STATUS_COLOR[request.status]}>{statusLabel(request.status)}</Badge></Row>
-            <Row label="Backup">{request.backupId}</Row>
+            <Row label="Backup Number">{request.backupNumber}</Row>
             <Row label="Type">{request.kind === "DISASTER_RECOVERY" ? <Badge color="rose">Disaster recovery</Badge> : <Badge color="slate">Restore</Badge>}</Row>
             <Row label="Target">
               {request.target === "PRODUCTION" ? (

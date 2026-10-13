@@ -30,22 +30,22 @@ public class RestoreApprovalNotifier {
     }
 
     /** @return how many people were told. */
-    public int approved(String requestId, String backupId, String approver) {
+    public int approved(String restoreNumber, String backupNumber, String approver) {
         try {
             List<UserAccount> executors = users.findAll().stream()
                     .filter(u -> u.getStatus() == UserStatus.Active)
                     .filter(u -> permissions.hasPermission(u, EXECUTE_PERMISSION))
                     .toList();
-            String title = "Restore approved: " + requestId;
-            String message = "Restore " + requestId + " of backup " + backupId + " was approved by " + approver
+            String title = "Restore approved: " + restoreNumber;
+            String message = "Restore " + restoreNumber + " of backup " + backupNumber + " was approved by " + approver
                     + ". It can now be executed in a maintenance window.";
             for (UserAccount executor : executors) {
                 notifications.recordNotification(executor, null, "personal", "backup", "BACKUP_RESTORE_APPROVED", title, message,
-                        "/backup-restore/restores/" + requestId, null, null, requestId, null, "high", null);
+                        "/backup-restore/restores/" + restoreNumber, null, null, restoreNumber, null, "high", null);
             }
             return executors.size();
         } catch (RuntimeException e) {
-            log.warn("The approval notice for {} could not be recorded", requestId, e);
+            log.warn("The approval notice for {} could not be recorded", restoreNumber, e);
             return 0;
         }
     }

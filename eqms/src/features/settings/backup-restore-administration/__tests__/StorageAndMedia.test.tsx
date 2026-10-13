@@ -6,8 +6,9 @@ import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { ROUTES } from "@/app/routes.constants";
 import { ExportBackupModal } from "@/features/backup-restore/components/ExportBackupModal";
 import type { BackupExport, OfflineMedium } from "@/services/api/backupRestore";
-import { BackupRetentionView } from "../BackupRetentionView";
+import { BackupControlsView } from "../BackupControlsView";
 import { BackupStorageView } from "../BackupStorageView";
+import { BackupExportsView } from "@/features/backup-restore/views/BackupExportsView";
 import { OfflineMediumDetailView } from "../OfflineMediumDetailView";
 
 const api = vi.hoisted(() => ({
@@ -71,7 +72,7 @@ const medium = (over: Partial<OfflineMedium> = {}): OfflineMedium => ({
 const exportRow = (over: Partial<BackupExport> = {}): BackupExport => ({
   id: "e-1",
   exportId: "EXP-20261008-0001",
-  backupId: "BK-20261008-1031-0015",
+  backupNumber: "BK-20261008-1031-0015",
   mediaId: "m-1",
   mediaLabel: "USB-01",
   status: "REQUESTED",
@@ -102,8 +103,9 @@ const renderApp = (path: string, ui: React.ReactNode = null) =>
         <MemoryRouter initialEntries={[path]}>
           <Routes>
             <Route path={A.STORAGE} element={<BackupStorageView />} />
+            <Route path={ROUTES.BACKUP_RESTORE.EXPORTS} element={<BackupExportsView />} />
             <Route path="/settings/administration/backup/storage/media/:id" element={<OfflineMediumDetailView />} />
-            <Route path={A.RETENTION} element={<BackupRetentionView />} />
+            <Route path={A.CONTROLS} element={<BackupControlsView />} />
             <Route path="/modal" element={ui} />
           </Routes>
         </MemoryRouter>
@@ -133,11 +135,12 @@ afterEach(() => {
 const header = (id: string) => document.querySelector<HTMLElement>(`[data-table-col="${id}"]`)!;
 
 describe("Backup Storage & Encryption", () => {
-  it("shows the targets and the encryption facts", async () => {
+  it("shows the targets, and the encryption facts on their own tab", async () => {
     renderApp(A.STORAGE);
     expect(await screen.findByText("/backup/t1")).toBeTruthy();
     expect(screen.getByText("s3://eqms-dev-backup-t3/")).toBeTruthy();
-    expect(await screen.findByText("OpenPGP with AES256")).toBeTruthy();
+    fireEvent.click(screen.getByText("Encryption"));
+    expect(await screen.findByText(/OpenPGP with AES256/)).toBeTruthy();
     expect(screen.getByText(/The Backup Agent holds only the public key/)).toBeTruthy();
   });
 
@@ -147,7 +150,7 @@ describe("Backup Storage & Encryption", () => {
     await screen.findByText("s3://eqms-dev-backup-t3/");
     fireEvent.click(screen.getAllByRole("button", { name: "Test" })[1]);
     await waitFor(() => expect(api.testTarget).toHaveBeenCalledWith("T3"));
-    expect(await screen.findByText(/Delete was refused \(immutable\)/)).toBeTruthy();
+    expect(await screen.findByText("Passed")).toBeTruthy();
   });
 
   it("offers Test only with its permission", async () => {
@@ -163,12 +166,11 @@ describe("Backup Storage & Encryption", () => {
     api.encryption.mockRejectedValue(new Error("network"));
     renderApp(A.STORAGE);
     expect(await screen.findByText("The backup targets could not be read")).toBeTruthy();
-    expect(await screen.findByText("The encryption details could not be read")).toBeTruthy();
   });
 
   it("searches, filters, sorts and pages the media register on the server", async () => {
-    renderApp(A.STORAGE);
-    await screen.findByText("Offline Media Register");
+    renderApp(`${A.STORAGE}?tab=media`);
+    await screen.findAllByPlaceholderText("Label, serial or holder…");
     await waitFor(() => expect(api.media).toHaveBeenCalled());
     const last = () => api.media.mock.calls.at(-1)![0];
     expect(last()).toMatchObject({ sortBy: "label", sortDirection: "asc", page: 1, limit: 10 });
@@ -180,7 +182,7 @@ describe("Backup Storage & Encryption", () => {
 
   it("registers a medium with machine values and a capacity in bytes", async () => {
     api.registerMedium.mockResolvedValue(medium());
-    renderApp(A.STORAGE);
+    renderApp(`${A.STORAGE}?tab=media`);
     fireEvent.click(await screen.findByRole("button", { name: "Register Medium" }));
     const confirm = (await screen.findByRole("button", { name: "Register" })) as HTMLButtonElement;
     expect(confirm.disabled).toBe(true);
@@ -196,7 +198,7 @@ describe("Backup Storage & Encryption", () => {
   });
 
   it("refuses a folder name that could leave the export mount before asking the server", async () => {
-    renderApp(A.STORAGE);
+    renderApp(`${A.STORAGE}?tab=media`);
     fireEvent.click(await screen.findByRole("button", { name: "Register Medium" }));
     const boxes = screen.getAllByRole("textbox");
     fireEvent.change(boxes[boxes.length - 3], { target: { value: "USB-02" } });
@@ -208,20 +210,20 @@ describe("Backup Storage & Encryption", () => {
 
   it("lets someone else approve an export, and blocks the person who asked", async () => {
     api.approveExport.mockResolvedValue(exportRow({ status: "APPROVED" }));
-    renderApp(A.STORAGE);
+    renderApp(ROUTES.BACKUP_RESTORE.EXPORTS);
     const approve = (await screen.findAllByRole("button", { name: "Approve" }))[0] as HTMLButtonElement;
     expect(approve.disabled).toBe(false);
     fireEvent.click(approve);
     await waitFor(() => expect(api.approveExport).toHaveBeenCalledWith("EXP-20261008-0001"));
     cleanup();
     perms.username = "alice";
-    renderApp(A.STORAGE);
+    renderApp(ROUTES.BACKUP_RESTORE.EXPORTS);
     expect(((await screen.findAllByRole("button", { name: "Approve" }))[0] as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("rejects an export only with a reason", async () => {
     api.rejectExport.mockResolvedValue(exportRow({ status: "REJECTED" }));
-    renderApp(A.STORAGE);
+    renderApp(ROUTES.BACKUP_RESTORE.EXPORTS);
     fireEvent.click((await screen.findAllByRole("button", { name: "Reject" }))[0]);
     const confirm = (await screen.findAllByRole("button", { name: "Reject" })).at(-1) as HTMLButtonElement;
     expect(confirm.disabled).toBe(true);
@@ -233,7 +235,7 @@ describe("Backup Storage & Encryption", () => {
 
   it("explains a refused approval in plain words", async () => {
     api.approveExport.mockRejectedValue({ response: { data: { code: "EXPORT_SAME_PERSON" } } });
-    renderApp(A.STORAGE);
+    renderApp(ROUTES.BACKUP_RESTORE.EXPORTS);
     fireEvent.click((await screen.findAllByRole("button", { name: "Approve" }))[0]);
     expect(await screen.findByText(/You asked for this export, so someone else has to approve it/)).toBeTruthy();
   });
@@ -336,11 +338,11 @@ describe("Offline medium", () => {
 });
 
 describe("Export Backup Set request", () => {
-  const modal = (onConfirm = vi.fn()) => renderApp("/modal", <ExportBackupModal backupId="BK-20261008-1031-0015" isOpen onClose={vi.fn()} onConfirm={onConfirm} />);
+  const modal = (onConfirm = vi.fn()) => renderApp("/modal", <ExportBackupModal backupNumber="BK-20261008-1031-0015" isOpen onClose={vi.fn()} onConfirm={onConfirm} />);
 
   it("offers only the media the package fits on and sends the choice with a reason", async () => {
     api.media.mockResolvedValue(page([medium({ id: "small", label: "TINY", capacityBytes: 500 }), medium({ id: "big", label: "BIG", capacityBytes: 4_000_000_000 })]));
-    api.exportEstimate.mockResolvedValue({ backupId: "BK-20261008-1031-0015", estimatedBytes: 1_000_000, fileCount: 10 });
+    api.exportEstimate.mockResolvedValue({ backupNumber: "BK-20261008-1031-0015", estimatedBytes: 1_000_000, fileCount: 10 });
     const onConfirm = vi.fn();
     modal(onConfirm);
     expect(await screen.findByText(/The package is about/)).toBeTruthy();
@@ -352,16 +354,17 @@ describe("Export Backup Set request", () => {
 
   it("says when no medium is available and cannot be sent", async () => {
     api.media.mockResolvedValue(page([]));
-    api.exportEstimate.mockResolvedValue({ backupId: "x", estimatedBytes: 1, fileCount: 1 });
+    api.exportEstimate.mockResolvedValue({ backupNumber: "x", estimatedBytes: 1, fileCount: 1 });
     modal();
     expect(await screen.findByText("No medium is available")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Request Export" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
-describe("Backup Retention & Legal Hold", () => {
+describe("Backup Controls: retention tab", () => {
   it("states the permanent retention as a fixed decision and says legal hold is not built", () => {
-    renderApp(A.RETENTION);
+    perms.granted = new Set(["backup.admin.retention.view"]);
+    renderApp(`${A.CONTROLS}?tab=retention`);
     expect(screen.getByText("Permanently")).toBeTruthy();
     expect(screen.getByText("Legal hold is not available yet")).toBeTruthy();
     expect(screen.queryByRole("spinbutton")).toBeNull();

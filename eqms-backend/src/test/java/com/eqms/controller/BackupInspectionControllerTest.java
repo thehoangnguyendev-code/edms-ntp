@@ -82,7 +82,7 @@ class BackupInspectionControllerTest {
         when(actor.getUsername()).thenReturn("approver.test1");
         allow("backup.module.view", "backup.restore.request", "backup.restore.approve");
         when(agent.exchange(eq(HttpMethod.GET), eq("/internal/inspections/" + INSPECTION), isNull()))
-                .thenReturn(reply(200, "{\"id\":\"" + ROW + "\",\"inspectionId\":\"" + INSPECTION + "\",\"requestedBy\":\"admin\",\"status\":\"PENDING_APPROVAL\"}"));
+                .thenReturn(reply(200, "{\"id\":\"" + ROW + "\",\"inspectionNumber\":\"" + INSPECTION + "\",\"requestedBy\":\"admin\",\"status\":\"PENDING_APPROVAL\"}"));
     }
 
     @Test
@@ -109,7 +109,7 @@ class BackupInspectionControllerTest {
     @Test
     void anAcceptedAskIsAuditedWithTheInspectionIdentifier() {
         when(agent.exchange(eq(HttpMethod.POST), eq("/internal/backups/" + BACKUP + "/inspections"), any()))
-                .thenReturn(reply(201, "{\"id\":\"" + ROW + "\",\"inspectionId\":\"" + INSPECTION + "\",\"status\":\"PENDING_APPROVAL\"}"));
+                .thenReturn(reply(201, "{\"id\":\"" + ROW + "\",\"inspectionNumber\":\"" + INSPECTION + "\",\"status\":\"PENDING_APPROVAL\"}"));
         controller.ask(BACKUP, new BackupInspectionController.AskBody("Look at revision 164"));
         verify(audit).logAs(eq(actor), eq("BACKUP_INSPECTION"), eq(INSPECTION), eq(ROW), eq("INSPECTION_REQUESTED"), isNull(), eq("PENDING_APPROVAL"), anyString());
     }

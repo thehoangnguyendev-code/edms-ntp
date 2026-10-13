@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
+import { IconCalendarTime } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
-import type { DataTableColumn } from "@/components/ui/table/DataTable";
-import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { FormSection } from "@/components/ui/form";
+import type { DataTableColumn } from "@/components/ui/table";
+import { TABLE_STYLES } from "@/components/ui/table";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useDebounce } from "@/hooks";
 import { backupRestoreApi, type BackupSchedulePolicy, type ScheduleRowRecord } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupRestorePage } from "../components/BackupRestorePage";
+import { Fact } from "../components/Fact";
 import { ServerListPanel } from "../components/ServerListPanel";
 import { BACKUP_STATUS_COLOR, COMPONENT_LABEL, statusLabel, type BackupComponentKey } from "../types";
 import { formatDateTime } from "../format";
@@ -145,34 +148,34 @@ export const BackupSchedulesView: React.FC = () => {
       <WarningBanner variant="info" description="This list is read only. Change a schedule in System Administration > Backup & Restore Administration > Backup Policy." />
       {policyError && <WarningBanner variant="error" title="Unable to read the backup schedule" description={policyError} />}
       {policy && (
-        <dl className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm md:grid-cols-3 md:p-5">
-          <div>
-            <dt className="text-xs text-slate-500">Policy</dt>
-            <dd className="mt-0.5 font-medium text-slate-900">
-              Version {policy.version} ({statusLabel(policy.status)})
-            </dd>
+        <FormSection title="Schedule" icon={<IconCalendarTime className="h-4 w-4" />}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            <div className="space-y-3">
+              <Fact label="Policy">
+                Version {policy.version} ({statusLabel(policy.status)})
+              </Fact>
+            </div>
+            <div className="space-y-3">
+              <Fact label="Next scheduled backup">
+                {policy.nextDue ? formatDateTime(policy.nextDue) : "Not scheduled"}{" "}
+                <span className="text-xs font-normal text-slate-500">({policy.zone})</span>
+              </Fact>
+            </div>
+            <div className="space-y-3">
+              <Fact label="Last scheduled run">
+                {last ? (
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    {last.backupNumber}
+                    <Badge color={BACKUP_STATUS_COLOR[last.status as keyof typeof BACKUP_STATUS_COLOR] ?? "slate"}>{statusLabel(last.status)}</Badge>
+                    <span className="text-xs font-normal text-slate-500">{formatDateTime(last.startedAt)}</span>
+                  </span>
+                ) : (
+                  "None yet"
+                )}
+              </Fact>
+            </div>
           </div>
-          <div>
-            <dt className="text-xs text-slate-500">Next scheduled backup</dt>
-            <dd className="mt-0.5 font-medium text-slate-900">
-              {policy.nextDue ? formatDateTime(policy.nextDue) : "Not scheduled"} <span className="text-xs font-normal text-slate-500">({policy.zone})</span>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Last scheduled run</dt>
-            <dd className="mt-0.5 font-medium text-slate-900">
-              {last ? (
-                <span className="inline-flex flex-wrap items-center gap-2">
-                  {last.backupId}
-                  <Badge color={BACKUP_STATUS_COLOR[last.status as keyof typeof BACKUP_STATUS_COLOR] ?? "slate"}>{statusLabel(last.status)}</Badge>
-                  <span className="text-xs font-normal text-slate-500">{formatDateTime(last.startedAt)}</span>
-                </span>
-              ) : (
-                "None yet"
-              )}
-            </dd>
-          </div>
-        </dl>
+        </FormSection>
       )}
       <ServerListPanel
         tableKey="backup-restore.schedules"

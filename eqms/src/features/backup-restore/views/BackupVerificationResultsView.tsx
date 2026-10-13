@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
-import type { DataTableAction, DataTableColumn } from "@/components/ui/table/DataTable";
-import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import type { DataTableAction, DataTableColumn } from "@/components/ui/table";
+import { TABLE_STYLES } from "@/components/ui/table";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { useToast } from "@/components/ui/toast/Toast";
 import { useDebounce } from "@/hooks";
@@ -18,7 +18,7 @@ import { useBackupJobs } from "../components/useBackupJobs";
 import { VERIFICATION_COLOR, statusLabel, type BackupRecord } from "../types";
 import { formatDateTime } from "../format";
 
-type SortKey = "backupId" | "startedAt" | "verification" | "verifiedAt";
+type SortKey = "backupNumber" | "startedAt" | "verification" | "verifiedAt";
 
 const ALL = "ALL";
 const RESULT_OPTIONS = [{ label: "All Results", value: ALL }, ...["FAILED", "NOT_VERIFIED", "VERIFIED"].map((value) => ({ label: statusLabel(value), value }))];
@@ -116,10 +116,10 @@ export const BackupVerificationResultsView: React.FC = () => {
     },
   });
 
-  const verify = async (backupId: string) => {
+  const verify = async (backupNumber: string) => {
     try {
-      const { jobId } = await backupRestoreApi.verify(backupId);
-      showToast({ type: "info", title: "Integrity check requested", message: backupId });
+      const { jobId } = await backupRestoreApi.verify(backupNumber);
+      showToast({ type: "info", title: "Integrity check requested", message: backupNumber });
       void follow(jobId, "Integrity check");
     } catch (e) {
       showToast({ type: "error", title: "Unable to start the check", message: getApiErrorMessage(e, "The request was refused.") });
@@ -130,9 +130,9 @@ export const BackupVerificationResultsView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
     {
       id: "id",
-      header: "Backup",
-      label: "Backup",
-      sort: sortFor("backupId"),
+      header: "Backup Number",
+      label: "Backup Number",
+      sort: sortFor("backupNumber"),
       cell: (row) => (
         <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(row.id))}>
           {row.id}
@@ -176,7 +176,7 @@ export const BackupVerificationResultsView: React.FC = () => {
         search={search}
         onSearch={setSearch}
         searchLabel="Search backups"
-        searchPlaceholder="Backup ID or person…"
+        searchPlaceholder="Backup Number or person…"
         filters={[{ id: "result", label: "Integrity", value: result, options: RESULT_OPTIONS, defaultValue: ALL, placeholder: "All Results", onChange: setResult }]}
         dates={[
           { id: "taken", label: "Backup Taken Date Range", from: takenFrom, to: takenTo, onFromChange: setTakenFrom, onToChange: setTakenTo, includeTime: true },

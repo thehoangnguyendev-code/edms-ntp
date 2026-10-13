@@ -15,10 +15,8 @@ export { BackupPolicyView } from './backup-restore-administration/BackupPolicyVi
 export { OfflineMediumDetailView } from './backup-restore-administration/OfflineMediumDetailView';
 export { BackupPolicyDetailView } from './backup-restore-administration/BackupPolicyDetailView';
 export { NewBackupPolicyView } from './backup-restore-administration/NewBackupPolicyView';
-export { BackupRetentionView } from './backup-restore-administration/BackupRetentionView';
+export { BackupControlsView } from './backup-restore-administration/BackupControlsView';
 export { BackupStorageView } from './backup-restore-administration/BackupStorageView';
-export { BackupVerificationView } from './backup-restore-administration/BackupVerificationView';
-export { RestoreControlsView } from './backup-restore-administration/RestoreControlsView';
 export { BackupAlertsView } from './backup-restore-administration/BackupAlertsView';
 export { AnnouncementsView } from './announcements/AnnouncementsView';
 export { AnnouncementEditorView } from './announcements/AnnouncementEditorView';

@@ -15,10 +15,13 @@ const BackupsView = lazy(() => import('@/features/backup-restore').then(m => ({ 
 const RestoreRequestsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreRequestsView })));
 const DrDrillsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.DrDrillsView })));
 const BackupSchedulesView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupSchedulesView })));
+const BackupExportsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupExportsView })));
 const BackupVerificationResultsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupVerificationResultsView })));
 const RestoreVerificationReportsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreVerificationReportsView })));
 const RestoreHistoryView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreHistoryView })));
 const InspectionsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.InspectionsView })));
+const BackupAlertsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupAlertsView })));
+const RestoreRulesView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreRulesView })));
 const BackupDetailView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupDetailView })));
 const RestoreRequestView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreRequestView })));
 const RestoreRequestDetailView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.RestoreRequestDetailView })));
@@ -52,14 +55,17 @@ export function qualityRoutes() {
       <Route path="backup-restore/restores" element={protectedElement("backup.module.view", <RestoreRequestsView />)} />
       <Route path="backup-restore/restores/new" element={protectedElement("backup.module.view", <RestoreRequestView />)} />
       <Route path="backup-restore/backups/schedules" element={protectedElement("backup.module.view", <BackupSchedulesView />)} />
+      <Route path="backup-restore/backups/exports" element={protectedElement("backup.module.view", <BackupExportsView />)} />
       <Route path="backup-restore/backups/verifications" element={protectedElement("backup.module.view", <BackupVerificationResultsView />)} />
       <Route path="backup-restore/restores/:requestId" element={protectedElement("backup.module.view", <RestoreRequestDetailView />)} />
       <Route path="backup-restore/restores/:requestId/execution" element={protectedElement("backup.module.view", <RestoreExecutionView />)} />
       <Route path="backup-restore/restores/verification-reports" element={protectedElement("backup.module.view", <RestoreVerificationReportsView />)} />
       <Route path="backup-restore/restores/history" element={protectedElement("backup.module.view", <RestoreHistoryView />)} />
       <Route path="backup-restore/restores/inspections" element={protectedElement("backup.module.view", <InspectionsView />)} />
+      <Route path="backup-restore/alerts" element={protectedElement("backup.admin.alerts.view", <BackupAlertsView />)} />
+      <Route path="backup-restore/restore-rules" element={protectedElement("backup.admin.restore_controls.view", <RestoreRulesView />)} />
       <Route path="backup-restore/backups/:backupId" element={protectedElement("backup.module.view", <BackupDetailView />)} />
-      <Route path="backup-restore/dr-drills" element={protectedElement("backup.module.view", <DrDrillsView />)} />
+      <Route path="backup-restore/dr-drills" element={protectedElement("backup.admin.disaster_recovery.view", <DrDrillsView />)} />
       <Route path="backup-restore/*" element={<Navigate to="/backup-restore/overview" replace />} />
       <Route path="audit-trail" element={protectedElement("audittrail.module.view", <AuditTrailView />)} />
       <Route path="audit-trail/:recordId" element={protectedElement("audittrail.module.view", <AuditTrailDetailView />)} />

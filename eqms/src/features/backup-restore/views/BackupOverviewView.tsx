@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { AlertOctagon, AlertTriangle, CheckCircle2, ChevronDown, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { cn } from "@/components/ui/utils";
 import { Card, CardHeader, KpiStrip, type KpiCellData } from "@/features/self-service/dashboard/shared/dashboardUi";
-import { backupRestoreApi, type BackupOverview } from "@/services/api/backupRestore";
+import { backupRestoreApi, type BackupDailyPoint, type BackupOverview } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupRestorePage } from "../components/BackupRestorePage";
 import { statusLabel } from "../types";
@@ -17,6 +19,17 @@ const BAD = "#ef4444";
 
 /** How many kinds of problem are shown before "Show more"; the rest stay one click away, never hidden. */
 const GROUPS_SHOWN = 4;
+
+/** The status is read again this often while the page is open and visible. */
+const REFRESH_MS = 30_000;
+const DAYS = 30;
+const AXIS_TICK = { fontSize: 12 } as const;
+
+const chartConfig: ChartConfig = {
+  verified: { label: "Verified", color: OK },
+  unverified: { label: "Completed, not verified", color: WARN },
+  failed: { label: "Failed", color: BAD },
+};
 
 export interface Alert {
   id: string;
@@ -196,24 +209,128 @@ const Fact: React.FC<{ label: string; children: React.ReactNode }> = ({ label, c
   </div>
 );
 
+type DailyRow = { label: string; verified: number; unverified: number; failed: number; total: number };
+
+/** Stacked so each day's height is its real run count: verified, then completed-but-unverified, then failed. */
+const toRows = (points: BackupDailyPoint[]): DailyRow[] =>
+  points.map((p) => ({
+    label: `${p.date.slice(8, 10)}/${p.date.slice(5, 7)}`,
+    verified: p.completed - p.notVerified,
+    unverified: p.notVerified,
+    failed: p.failed,
+    total: p.completed + p.failed,
+  }));
+
+const LEGEND: { key: keyof typeof chartConfig; color: string }[] = [
+  { key: "verified", color: OK },
+  { key: "unverified", color: WARN },
+  { key: "failed", color: BAD },
+];
+
+/** The last 30 days, one column per day. Shows a failed load as a failure, never as zeros. */
+const DailyChart: React.FC<{ points: BackupDailyPoint[] | null; failed: boolean }> = ({ points, failed }) => {
+  const rows = useMemo(() => (points ? toRows(points) : []), [points]);
+  const runs = rows.reduce((sum, row) => sum + row.total, 0);
+  return (
+    <Card aria-label="Last 30 days" role="region">
+      <CardHeader
+        title="Last 30 days"
+        subtitle="Backup runs per day, by result"
+        badge={points && !failed ? <Badge color="slate" size="sm">{runs} runs</Badge> : undefined}
+      />
+      <div className="px-4 pb-4 pt-3">
+        {failed ? (
+          <WarningBanner variant="error" title="Could not load the 30-day history." description="No chart is drawn rather than one built on guessed numbers." />
+        ) : !points ? (
+          <div className="h-64 animate-pulse rounded-lg bg-slate-50" aria-hidden="true" />
+        ) : (
+          <>
+            <ChartContainer config={chartConfig} className="h-64 w-full">
+              <BarChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="28%">
+                <XAxis dataKey="label" tickLine={false} axisLine={false} interval={3} tick={AXIS_TICK} />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={28} tick={AXIS_TICK} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="verified" stackId="runs" fill={OK} />
+                <Bar dataKey="unverified" stackId="runs" fill={WARN} />
+                <Bar dataKey="failed" stackId="runs" fill={BAD} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+            <ul className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600" aria-label="Chart legend">
+              {LEGEND.map(({ key, color }) => (
+                <li key={key} className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} aria-hidden="true" />
+                  {chartConfig[key].label}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </Card>
+  );
+};
+
+const RunningCard: React.FC<{ running: number }> = ({ running }) => (
+  <Card aria-label="Running now" role="region">
+    <CardHeader
+      title="Running now"
+      subtitle="Backups in progress on the Backup Agent"
+      badge={<Badge color={running > 0 ? "emerald" : "slate"} size="sm">{running > 0 ? "In progress" : "Idle"}</Badge>}
+    />
+    <p className="px-4 pb-4 pt-2 text-sm text-slate-700">
+      {running === 0 ? "No backup is running." : `${running} backup${running === 1 ? " is" : "s are"} running.`}
+    </p>
+  </Card>
+);
+
 export const BackupOverviewView: React.FC = () => {
   const [overview, setOverview] = useState<BackupOverview>();
+  const [daily, setDaily] = useState<BackupDailyPoint[] | null>(null);
+  const [dailyFailed, setDailyFailed] = useState(false);
   const [error, setError] = useState("");
+  const [updatedAt, setUpdatedAt] = useState<Date>();
+  const mounted = useRef(false);
 
-  useEffect(() => {
-    let active = true;
+  // Each request fails on its own: a broken chart does not hide the status, and a failed refresh keeps the last values on screen.
+  const load = useCallback(() => {
     backupRestoreApi
       .overview()
-      .then((data) => active && setOverview(data))
-      .catch((e) => active && setError(getApiErrorMessage(e, "Unable to read the backup status.")));
-    return () => {
-      active = false;
-    };
+      .then((data) => {
+        if (!mounted.current) return;
+        setOverview(data);
+        setError("");
+        setUpdatedAt(new Date());
+      })
+      .catch((e) => {
+        if (mounted.current) setError(getApiErrorMessage(e, "Unable to read the backup status."));
+      });
+    backupRestoreApi
+      .overviewDaily(DAYS)
+      .then((points) => {
+        if (!mounted.current) return;
+        setDaily(points);
+        setDailyFailed(false);
+      })
+      .catch(() => {
+        if (mounted.current) setDailyFailed(true);
+      });
   }, []);
+
+  useEffect(() => {
+    mounted.current = true;
+    load();
+    const timer = window.setInterval(() => {
+      if (!document.hidden) load();
+    }, REFRESH_MS);
+    return () => {
+      mounted.current = false;
+      window.clearInterval(timer);
+    };
+  }, [load]);
 
   const alerts = useMemo(() => (overview ? toAlerts(overview) : []), [overview]);
 
-  if (error) {
+  if (error && !overview) {
     return (
       <BackupRestorePage title="Backup Status Overview" preview={false}>
         <WarningBanner variant="error" title="Unable to read the backup status" description={error} />
@@ -235,7 +352,7 @@ export const BackupOverviewView: React.FC = () => {
       accent: last ? OK : BAD,
       value: last ? formatDateTime(last.finishedAt) : "None yet",
       footValue: last ? formatBytes(last.sizeBytes) : "—",
-      footLabel: last ? `backup ${last.backupId}` : "no backup has completed",
+      footLabel: last ? `backup ${last.backupNumber}` : "no backup has completed",
     },
     {
       title: "Completed backups",
@@ -262,14 +379,21 @@ export const BackupOverviewView: React.FC = () => {
 
   return (
     <BackupRestorePage title="Backup Status Overview" preview={false}>
+      <p className="text-xs text-slate-500">
+        Refreshes every 30 seconds{updatedAt ? ` · updated ${updatedAt.toLocaleTimeString()}` : ""}
+      </p>
+      {error && <WarningBanner variant="warning" title="Showing the last values read" description={error} />}
+
       <KpiStrip cells={cells} label="Backup protection" />
 
       <div className="grid grid-cols-1 items-start gap-4 md:gap-6 xl:grid-cols-3">
         <div className="min-w-0 xl:col-span-2">
-          <AttentionCard alerts={alerts} />
+          <DailyChart points={daily} failed={dailyFailed} />
         </div>
 
         <div className="min-w-0 space-y-4 md:space-y-6">
+          <RunningCard running={overview.running} />
+
           <Card aria-label="Backup ledger" role="region">
             <CardHeader
               title="Backup ledger"
@@ -287,7 +411,13 @@ export const BackupOverviewView: React.FC = () => {
               <Fact label="Compared with the copy outside the database">{overview.ledger.fileCopyCompared ? "Yes" : "No copy found"}</Fact>
             </dl>
           </Card>
+        </div>
 
+        <div className="min-w-0 xl:col-span-2">
+          <AttentionCard alerts={alerts} />
+        </div>
+
+        <div className="min-w-0">
           <Card aria-label="Not covered yet" role="region">
             <CardHeader title="Not covered yet" subtitle="This page reports only what the Backup Agent has actually done." />
             <ul className="space-y-2 px-4 pb-4 pt-3 text-sm text-slate-600">

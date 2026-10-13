@@ -133,7 +133,7 @@ export const SAMPLE_RESTORES: RestoreRequest[] = [
   {
     id: "RS-20261008-001",
     kind: "RESTORE",
-    backupId: "BK-20261007-0200",
+    backupNumber: "BK-20261007-0200",
     components: ["DATABASE", "OBJECT_STORE"],
     target: "PRODUCTION",
     status: "PENDING_APPROVAL",
@@ -148,7 +148,7 @@ export const SAMPLE_RESTORES: RestoreRequest[] = [
   {
     id: "RS-20260928-001",
     kind: "RESTORE",
-    backupId: "BK-20260930-1015",
+    backupNumber: "BK-20260930-1015",
     components: ["DATABASE", "OBJECT_STORE", "FILE_STORAGE", "CONFIGURATION"],
     target: "VALIDATION_ENV",
     status: "COMPLETED",
@@ -176,7 +176,7 @@ export const SAMPLE_RESTORES: RestoreRequest[] = [
   {
     id: "RS-20260815-001",
     kind: "RESTORE",
-    backupId: "BK-20260701-0200",
+    backupNumber: "BK-20260701-0200",
     components: ["DATABASE"],
     target: "PRODUCTION",
     status: "REJECTED",

@@ -41,7 +41,7 @@ public class RestoreObjectRestore {
     public static final String ALIAS_DDL ="create table if not exists object_version_alias ("
             + "id bigserial primary key, bucket varchar(255) not null, object_key varchar(1024) not null, "
             + "original_version_id varchar(255) not null, current_version_id varchar(255) not null, "
-            + "sha256 varchar(64) not null check (sha256 ~ '^[0-9a-f]{64}$'), restore_request_id varchar(60), "
+            + "sha256 varchar(64) not null check (sha256 ~ '^[0-9a-f]{64}$'), restore_number varchar(60), "
             + "created_at timestamptz not null default now(), current_bucket varchar(255), "
             + "constraint object_version_alias_original_uk unique (bucket, object_key, original_version_id))";
 

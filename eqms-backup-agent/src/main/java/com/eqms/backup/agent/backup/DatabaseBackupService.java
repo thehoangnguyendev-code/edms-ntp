@@ -51,7 +51,7 @@ public class DatabaseBackupService {
     public record Request(String type, String trigger, String requestedBy, String reason, String changeControlRef) {
     }
 
-    public record Outcome(String backupId, boolean ok, String errorCode, String errorDetail, VerificationService.Outcome verification) {
+    public record Outcome(String backupNumber, boolean ok, String errorCode, String errorDetail, VerificationService.Outcome verification) {
     }
 
     /** A failure with a stable code; the code, not the message, is what screens and alerts key on. */
@@ -91,21 +91,21 @@ public class DatabaseBackupService {
 
     public Outcome run(Request request) {
         Instant started = Instant.now();
-        String backupId = repository.nextBackupId(started);
+        String backupNumber = repository.nextBackupId(started);
         UUID runId;
         try {
-            runId = repository.insertRun(backupId, properties.getEnvironment().toUpperCase(), request.type(), request.trigger(),
+            runId = repository.insertRun(backupNumber, properties.getEnvironment().toUpperCase(), request.type(), request.trigger(),
                     repository.activePolicyVersion().orElse(null), started, request.requestedBy(), request.reason(), request.changeControlRef());
         } catch (org.springframework.dao.DuplicateKeyException e) {
             // the unique index allows one RUNNING backup per environment
-            return new Outcome(backupId, false, "BACKUP_ALREADY_RUNNING", "Another backup is still running", null);
+            return new Outcome(backupNumber, false, "BACKUP_ALREADY_RUNNING", "Another backup is still running", null);
         }
         Map<String, Object> startedData = new LinkedHashMap<>();
         startedData.put("type", request.type());
         startedData.put("trigger", request.trigger());
         startedData.put("environment", properties.getEnvironment().toUpperCase());
         startedData.put("reason", request.reason() == null ? "" : request.reason());
-        ledger.append(request.requestedBy(), "BACKUP_STARTED", backupId, startedData);
+        ledger.append(request.requestedBy(), "BACKUP_STARTED", backupNumber, startedData);
 
         // The active policy decides what is backed up and where it is copied. With no policy only the database is written, to T1.
         PolicyView policy = policies.active().orElse(null);
@@ -115,7 +115,7 @@ public class DatabaseBackupService {
         try {
             Path envRoot = properties.getTargets().getT1().resolve(properties.getEnvironment().toUpperCase());
             Path setRoot = envRoot.resolve(YEAR.format(started)).resolve(MONTH.format(started));
-            partial = setRoot.resolve(backupId + ".partial");
+            partial = setRoot.resolve(backupNumber + ".partial");
             preChecks(setRoot);
             Files.createDirectories(partial.resolve("database"));
 
@@ -163,7 +163,7 @@ public class DatabaseBackupService {
 
             Map<String, Object> manifest = new LinkedHashMap<>();
             manifest.put("schema", "eqms-backup-manifest/1");
-            manifest.put("backupId", backupId);
+            manifest.put("backupNumber", backupNumber);
             manifest.put("type", request.type());
             manifest.put("trigger", request.trigger());
             manifest.put("environment", properties.getEnvironment().toUpperCase());
@@ -184,7 +184,7 @@ public class DatabaseBackupService {
             Files.writeString(partial.resolve("manifest.sig"), signed.signatureBase64() + "\n", StandardCharsets.US_ASCII);
             Files.writeString(partial.resolve("SHA256SUMS"), sums + signed.sha256() + "  manifest.json\n", StandardCharsets.UTF_8);
 
-            Path finalDir = setRoot.resolve(backupId);
+            Path finalDir = setRoot.resolve(backupNumber);
             Files.move(partial, finalDir, StandardCopyOption.ATOMIC_MOVE);
             partial = null;
 
@@ -206,38 +206,38 @@ public class DatabaseBackupService {
                 done.put("newObjectVersions", stored.newVersions());
                 done.put("objectListedAt", ISO.format(stored.listedAt()));
             }
-            ledger.append("agent", "BACKUP_COMPLETED", backupId, done);
+            ledger.append("agent", "BACKUP_COMPLETED", backupNumber, done);
             if (stored != null) {
                 for (String gone : stored.missingInSource()) {
-                    repository.insertAlert("HIGH", "OBJECT_MISSING_IN_SOURCE", "Backup " + backupId + ": " + gone + " was stored earlier but is no longer in the document store", backupId);
-                    ledger.append("agent", "OBJECT_MISSING_IN_SOURCE", backupId, Map.of("object", gone));
+                    repository.insertAlert("HIGH", "OBJECT_MISSING_IN_SOURCE", "Backup " + backupNumber + ": " + gone + " was stored earlier but is no longer in the document store", backupNumber);
+                    ledger.append("agent", "OBJECT_MISSING_IN_SOURCE", backupNumber, Map.of("object", gone));
                 }
             }
 
-            VerificationService.Outcome v1 = verification.verifyV1(backupId, "agent");
+            VerificationService.Outcome v1 = verification.verifyV1(backupNumber, "agent");
             // Other targets get a copy only after T1 has proved sound; a failed copy is recorded and alerted, never silent.
-            if (v1.verified()) replication.replicate(runId, backupId, finalDir, properties.getEnvironment().toUpperCase() + "/" + YEAR.format(started) + "/" + MONTH.format(started), envRoot, copyTo);
-            return new Outcome(backupId, true, null, null, v1);
+            if (v1.verified()) replication.replicate(runId, backupNumber, finalDir, properties.getEnvironment().toUpperCase() + "/" + YEAR.format(started) + "/" + MONTH.format(started), envRoot, copyTo);
+            return new Outcome(backupNumber, true, null, null, v1);
         } catch (BackupException e) {
-            return fail(runId, backupId, partial, e.code, e.getMessage());
+            return fail(runId, backupNumber, partial, e.code, e.getMessage());
         } catch (Exception e) {
-            log.error("Backup {} failed", backupId, e);
-            return fail(runId, backupId, partial, "BACKUP_UNEXPECTED_ERROR", e.getClass().getSimpleName() + ": " + e.getMessage());
+            log.error("Backup {} failed", backupNumber, e);
+            return fail(runId, backupNumber, partial, "BACKUP_UNEXPECTED_ERROR", e.getClass().getSimpleName() + ": " + e.getMessage());
         }
     }
 
-    private Outcome fail(UUID runId, String backupId, Path partial, String code, String detail) {
+    private Outcome fail(UUID runId, String backupNumber, Path partial, String code, String detail) {
         if (partial != null && Files.exists(partial)) {
             try {
-                Files.move(partial, partial.resolveSibling(backupId + ".failed"), StandardCopyOption.ATOMIC_MOVE);
+                Files.move(partial, partial.resolveSibling(backupNumber + ".failed"), StandardCopyOption.ATOMIC_MOVE);
             } catch (IOException ignored) {
                 // the partial folder is kept as it is; it is never listed as a valid backup
             }
         }
         repository.markFailed(runId, Instant.now(), code, detail);
-        ledger.append("agent", "BACKUP_FAILED", backupId, Map.of("code", code));
-        repository.insertAlert("HIGH", code, "Backup " + backupId + " failed: " + detail, backupId);
-        return new Outcome(backupId, false, code, detail, null);
+        ledger.append("agent", "BACKUP_FAILED", backupNumber, Map.of("code", code));
+        repository.insertAlert("HIGH", code, "Backup " + backupNumber + " failed: " + detail, backupNumber);
+        return new Outcome(backupNumber, false, code, detail, null);
     }
 
     /** Fails early and clearly, before any data is read (SDS section 10.1). */

@@ -21,7 +21,7 @@ export const RejectRestoreDialog: React.FC<{
     <FormModal
       isOpen={!!request}
       onClose={onClose}
-      title={`Reject ${request?.requestId ?? "restore"}`}
+      title={`Reject ${request?.restoreNumber ?? "restore"}`}
       description="The request is kept in the history as rejected. Say why, then sign to confirm."
       confirmText="Continue to sign"
       confirmDisabled={!reason.trim() || busy}

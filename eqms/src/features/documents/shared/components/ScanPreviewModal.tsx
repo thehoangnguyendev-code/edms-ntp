@@ -68,7 +68,7 @@ export const ScanPreviewModal: React.FC<ScanPreviewModalProps> = ({ isOpen, onCl
       showCancel={false}
       className="h-[92vh] max-w-6xl"
     >
-      <div className="h-full min-h-[60vh]" onContextMenu={(event) => event.preventDefault()}>
+      <div className="h-full min-h-[60vh] overflow-hidden rounded-xl border border-slate-200 bg-white" onContextMenu={(event) => event.preventDefault()}>
         {loading && <SectionLoading text="Loading scan..." minHeight="320px" />}
         {!loading && error && (
           <div className="flex h-full min-h-[240px] items-center justify-center px-4 text-center text-sm text-slate-600">{error}</div>

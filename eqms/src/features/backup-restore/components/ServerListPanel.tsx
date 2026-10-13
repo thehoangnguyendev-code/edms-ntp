@@ -4,9 +4,9 @@ import { IconFilter2 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
-import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn, type DataTableSelection } from "@/components/ui/table/DataTable";
-import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
-import { TablePagination } from "@/components/ui/table/TablePagination";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn, type DataTableSelection } from "@/components/ui/table";
+import { TableEmptyState } from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/FilterDrawer";
 import { FilterOptionButton } from "@/components/ui/filter/FilterOptionButton";
@@ -65,6 +65,8 @@ interface Props<T> {
   selection?: DataTableSelection<T>;
   onRowClick?: (row: T, index: number) => void;
   rowClassName?: string | ((row: T, index: number) => string);
+  /** False when the list sits inside a card that already has a frame (a tab, a section): no second border, no padding of its own. */
+  framed?: boolean;
 }
 
 /**
@@ -76,7 +78,7 @@ export function ServerListPanel<T>({
   tableKey, columns, action, rows, getRowKey, loading, hasLoaded, error, emptyTitle, emptyDescription,
   search, onSearch, searchLabel, searchPlaceholder, filters, dates = [], onClear,
   page, totalPages, totalItems, pageSize, onPageChange, onPageSizeChange, pageSizeOptions = [10, 20, 50],
-  selection, onRowClick, rowClassName,
+  selection, onRowClick, rowClassName, framed = true,
 }: Props<T>) {
   const { layout, control } = useCustomColumnLayout(tableKey, columns, action);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -94,8 +96,8 @@ export function ServerListPanel<T>({
   const searchInput = <FilterSearchInput aria-label={searchLabel} placeholder={searchPlaceholder} value={search} onChange={onSearch} />;
 
   return (
-    <div className="flex w-full min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-1 flex-col p-4 md:p-5">
+    <div className={framed ? "flex w-full min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" : "flex w-full min-w-0 flex-col"}>
+      <div className={framed ? "flex flex-1 flex-col p-4 md:p-5" : "flex flex-1 flex-col"}>
         <div className="flex w-full flex-col">
           <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
             <label className="block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
@@ -207,7 +209,7 @@ export function ServerListPanel<T>({
               <SectionLoading text="Searching..." minHeight="150px" />
             </div>
           )}
-          <div className="relative flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-all duration-300">
+          <div className={framed ? "relative flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-all duration-300" : "relative flex flex-1 flex-col overflow-hidden transition-all duration-300"}>
             <DataTable
               rows={rows}
               getRowKey={getRowKey}
@@ -218,7 +220,7 @@ export function ServerListPanel<T>({
               onRowClick={onRowClick}
               rowClassName={rowClassName}
               isLoading={loading}
-              emptyState={<TableEmptyState title={error ? `Unable to load: ${emptyTitle.toLowerCase()}` : emptyTitle} description={error || emptyDescription} />}
+              emptyState={<TableEmptyState title={error ? "The list could not be loaded" : emptyTitle} description={error || emptyDescription} />}
               pagination={
                 totalItems > 0 ? (
                   <div className="border-t border-slate-200">

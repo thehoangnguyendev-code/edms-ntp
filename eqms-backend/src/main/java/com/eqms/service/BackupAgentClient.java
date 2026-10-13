@@ -24,6 +24,9 @@ import java.util.Map;
 @Service
 public class BackupAgentClient {
 
+    /** Shown to the person when the backup agent cannot answer: says what is wrong and what to check. */
+    static final String AGENT_UNAVAILABLE_REASON = "The backup agent cannot be reached (BACKUP_AGENT_UNAVAILABLE). It may be stopped or restarting: check the eqms-backup-agent service.";
+
     private final RestClient client;
 
     public BackupAgentClient(@Value("${app.backup-agent.url:http://backup-agent:5600}") String baseUrl,
@@ -72,7 +75,7 @@ public class BackupAgentClient {
             return spec
                     .exchange((request, response) -> {
                         int status = response.getStatusCode().value();
-                        if (status >= 500) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "BACKUP_AGENT_UNAVAILABLE");
+                        if (status >= 500) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, AGENT_UNAVAILABLE_REASON);
                         byte[] bytes = response.getBody().readAllBytes();
                         JsonNode node = bytes.length == 0 ? new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode()
                                 : new com.fasterxml.jackson.databind.ObjectMapper().readTree(bytes);
@@ -81,7 +84,7 @@ public class BackupAgentClient {
         } catch (ResponseStatusException e) {
             throw e;
         } catch (RestClientException e) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "BACKUP_AGENT_UNAVAILABLE");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, AGENT_UNAVAILABLE_REASON);
         }
     }
 
@@ -94,9 +97,9 @@ public class BackupAgentClient {
             if (status == HttpStatus.NOT_FOUND || status == HttpStatus.BAD_REQUEST) {
                 throw new ResponseStatusException(status, e.getResponseBodyAsString());
             }
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "BACKUP_AGENT_UNAVAILABLE");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, AGENT_UNAVAILABLE_REASON);
         } catch (RestClientException e) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "BACKUP_AGENT_UNAVAILABLE");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, AGENT_UNAVAILABLE_REASON);
         }
     }
 }

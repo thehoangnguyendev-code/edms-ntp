@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -55,6 +56,12 @@ public class InternalBackupController {
         this.properties = properties;
     }
 
+    /** Per-day counts for the overview chart. {@code days} is clamped to 1..90. */
+    @GetMapping("/overview/daily")
+    public List<Map<String, Object>> overviewDaily(@RequestParam(defaultValue = "30") int days) {
+        return queries.dailySummary(Math.min(Math.max(days, 1), 90));
+    }
+
     @GetMapping("/overview")
     public Map<String, Object> overview() {
         Map<String, Object> out = queries.overview(properties.getEnvironment().toUpperCase());
@@ -87,9 +94,9 @@ public class InternalBackupController {
         return out;
     }
 
-    @GetMapping("/backups/{backupId}")
-    public ResponseEntity<Map<String, Object>> get(@PathVariable String backupId) {
-        return queries.get(backupId).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    @GetMapping("/backups/{backupNumber}")
+    public ResponseEntity<Map<String, Object>> get(@PathVariable String backupNumber) {
+        return queries.get(backupNumber).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
     @PostMapping("/backups")
@@ -107,11 +114,11 @@ public class InternalBackupController {
         return ResponseEntity.accepted().body(Map.of("jobId", job.toString()));
     }
 
-    @PostMapping("/backups/{backupId}/verify")
-    public ResponseEntity<Map<String, Object>> verify(@PathVariable String backupId, @RequestBody VerifyRequest request) {
+    @PostMapping("/backups/{backupNumber}/verify")
+    public ResponseEntity<Map<String, Object>> verify(@PathVariable String backupNumber, @RequestBody VerifyRequest request) {
         if (blank(request.requestedBy())) return ResponseEntity.badRequest().body(Map.of("code", "REQUESTER_REQUIRED"));
-        if (repository.runByBackupId(backupId).isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        UUID job = queue.enqueue("VERIFY", CanonicalJson.of(Map.of("backupId", backupId)), request.requestedBy());
+        if (repository.runByBackupNumber(backupNumber).isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        UUID job = queue.enqueue("VERIFY", CanonicalJson.of(Map.of("backupNumber", backupNumber)), request.requestedBy());
         return ResponseEntity.accepted().body(Map.of("jobId", job.toString()));
     }
 
@@ -129,8 +136,8 @@ public class InternalBackupController {
         // the next moment is one day after the most recent due moment (the schedule is daily)
         out.put("nextDue", scheduler.lastDue(now).map(due -> due.plus(java.time.Duration.ofDays(1)).toString()).orElse(null));
         out.put("zone", properties.getZone());
-        out.put("lastScheduledRun", jdbc.query("select backup_id, status, started_at from backup_run where trigger_kind = 'SCHEDULED' order by started_at desc limit 1",
-                (rs, i) -> Map.of("backupId", rs.getString(1), "status", rs.getString(2), "startedAt", rs.getTimestamp(3).toInstant().toString())).stream().findFirst().orElse(null));
+        out.put("lastScheduledRun", jdbc.query("select backup_number, status, started_at from backup_run where trigger_kind = 'SCHEDULED' order by started_at desc limit 1",
+                (rs, i) -> Map.of("backupNumber", rs.getString(1), "status", rs.getString(2), "startedAt", rs.getTimestamp(3).toInstant().toString())).stream().findFirst().orElse(null));
         return out;
     }
 

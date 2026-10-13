@@ -17,7 +17,7 @@ vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermissio
 vi.mock("@/components/branding/BrandLogo", () => ({ useBranding: () => ({ compactDesktopFilters: false }) }));
 
 const checks = (over: Partial<RestoreExecutionChecks> = {}): RestoreExecutionChecks => ({
-  requestId: "RS-1",
+  restoreNumber: "RS-1",
   status: "APPROVED",
   checks: [
     { code: "REQUEST_APPROVED", ok: true, detail: "The request is APPROVED" },
@@ -97,7 +97,7 @@ describe("Restore Execution Console", () => {
     const past = new Date(Date.now() - 60_000).toISOString();
     const scheduled = checks({ schedule: { id: "1", status: "SCHEDULED", windowStart: past, scheduledBy: "executor.one", scheduledAt: past } });
     api.restoreExecution.mockResolvedValueOnce(scheduled).mockResolvedValue(checks({ ...scheduled, systemState: "LOCKED_RESTORING", systemRequestId: "RS-1" }));
-    api.enterRestoreWindow.mockResolvedValue({ requestId: "RS-1", systemState: "LOCKED_RESTORING" });
+    api.enterRestoreWindow.mockResolvedValue({ restoreNumber: "RS-1", systemState: "LOCKED_RESTORING" });
     renderAt();
     const button = (await screen.findByRole("button", { name: "Enter Restore Window" })) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
@@ -126,8 +126,8 @@ describe("Restore Execution Console", () => {
       testRestore: { rehearsalId: "RH-20261009-0007", status: "QUEUED", requestedBy: "admin", errorCode: null, errorDetail: null, checks: [] },
     });
     api.restoreExecution.mockResolvedValueOnce(scheduled).mockResolvedValueOnce(locked).mockResolvedValue(queued);
-    api.enterRestoreWindow.mockResolvedValue({ requestId: "RS-1", systemState: "LOCKED_RESTORING" });
-    api.startTestRestore.mockResolvedValue({ requestId: "RS-1", rehearsalId: "RH-20261009-0007", status: "QUEUED" });
+    api.enterRestoreWindow.mockResolvedValue({ restoreNumber: "RS-1", systemState: "LOCKED_RESTORING" });
+    api.startTestRestore.mockResolvedValue({ restoreNumber: "RS-1", rehearsalId: "RH-20261009-0007", status: "QUEUED" });
     renderAt();
     const start = (await screen.findByRole("button", { name: "Start Test Restore" })) as HTMLButtonElement;
     expect(start.disabled).toBe(true);

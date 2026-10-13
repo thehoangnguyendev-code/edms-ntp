@@ -15,3 +15,24 @@ export const formatDuration = (seconds?: number | null) => {
   const minutes = Math.floor(seconds / 60);
   return minutes < 60 ? `${minutes}m ${seconds % 60}s` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 };
+
+/** The date picker gives local time as dd/MM/yyyy HH:mm (or dd/MM/yyyy); the server takes an instant. */
+export const pickerToInstant = (value: string): string => {
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/);
+  if (!match) return new Date(value).toISOString();
+  const [, day, month, year, hours = "0", minutes = "0"] = match;
+  return new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes)).toISOString();
+};
+
+/** The current local time in the picker's dd/MM/yyyy HH:mm format. */
+export const nowForPicker = (): string => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+};
+
+/** The date picker's dd/MM/yyyy as the yyyy-MM-dd date the server takes; undefined when it is empty. */
+export const pickerDateToIsoDate = (value: string): string | undefined => {
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : undefined;
+};

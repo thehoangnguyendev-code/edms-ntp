@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarClock, FileText, ListChecks, ShieldCheck } from "lucide-react";
+import { CalendarClock, FileText, ListChecks, ShieldCheck, Warehouse } from "lucide-react";
 import { IconServer2 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { FormSection } from "@/components/ui/form";
 import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { TimePicker } from "@/components/ui/datetime-picker/TimePicker";
 import { ReadOnlyField } from "@/components/ui/form/ReadOnlyField";
 import { Select } from "@/components/ui/select/Select";
@@ -17,7 +18,6 @@ import { ROUTES } from "@/app/routes.constants";
 import { backupRestoreApi, type BackupTargetInfo, type PolicyGate, type PolicyMedium, type PolicyTarget } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
-import { SwitchRow } from "./BackupAdminPage";
 import { GateTable } from "./BackupPolicyDetailView";
 import { COMPONENT_LABEL, MEDIUM_LABEL, policyErrorMessage } from "./policyLabels";
 
@@ -61,6 +61,25 @@ export const previewGate = (choices: TargetChoice[]): PolicyGate => {
   return { passed: conditions.every((c) => c.ok || c.pending), enforced: true, conditions };
 };
 
+/** A bordered box with a small uppercase title, the same grouping as the Document Properties screen. */
+const Group: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <div className="min-w-0 space-y-3 rounded-lg border border-slate-200 p-3.5">
+    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{title}</p>
+    {children}
+  </div>
+);
+
+/** A switch with its title and a short note, in its own bordered row. */
+const ScopeRow: React.FC<{ title: string; note: string; checked: boolean; disabled?: boolean; onChange?: (checked: boolean) => void }> = ({ title, note, checked, disabled, onChange }) => (
+  <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-3.5">
+    <div className="min-w-0">
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <p className="mt-1 text-xs text-slate-500">{note}</p>
+    </div>
+    <Switch checked={checked} disabled={disabled} aria-label={title} onChange={onChange ?? (() => undefined)} />
+  </div>
+);
+
 /** Propose a new policy version. Nothing changes until another person approves it with an electronic signature. */
 export const NewBackupPolicyView: React.FC = () => {
   const navigate = useNavigate();
@@ -72,6 +91,7 @@ export const NewBackupPolicyView: React.FC = () => {
   const [time, setTime] = useState("02:00");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -111,6 +131,7 @@ export const NewBackupPolicyView: React.FC = () => {
 
   const submit = async () => {
     if (!choices) return;
+    setConfirming(false);
     setSaving(true);
     try {
       const created = await backupRestoreApi.proposePolicy({
@@ -138,7 +159,7 @@ export const NewBackupPolicyView: React.FC = () => {
       <Button variant="outline-emerald" size="sm" onClick={() => navigate(parent.path)} className="whitespace-nowrap touch-manipulation">
         Cancel
       </Button>
-      <Button size="sm" disabled={saving || !choices || !reason.trim() || !timeOk} onClick={() => void submit()} className="whitespace-nowrap touch-manipulation">
+      <Button variant="outline-emerald" size="sm" disabled={saving || !choices || !reason.trim() || !timeOk} onClick={() => setConfirming(true)} className="whitespace-nowrap touch-manipulation">
         {saving ? "Proposing…" : "Propose Version"}
       </Button>
     </>
@@ -168,27 +189,33 @@ export const NewBackupPolicyView: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-4 md:gap-6 xl:grid-cols-2">
         <FormSection title="What Is Backed Up" icon={<ListChecks className="h-4 w-4" />} description="The data each backup copies.">
-          <div className="-my-2 divide-y divide-slate-100">
-            <SwitchRow label={COMPONENT_LABEL.DATABASE} checked disabled onChange={() => undefined} note="Required: every backup contains the database." />
-            <SwitchRow label={COMPONENT_LABEL.OBJECT_STORE} checked={documents} onChange={setDocuments} note="Every stored version of every document is copied once, encrypted." />
+          <div className="space-y-3">
+            <ScopeRow title={COMPONENT_LABEL.DATABASE} note="Required: every backup contains the database." checked disabled />
+            <ScopeRow
+              title={COMPONENT_LABEL.OBJECT_STORE}
+              note="Every stored version of every document is copied once, encrypted."
+              checked={documents}
+              onChange={setDocuments}
+            />
           </div>
         </FormSection>
 
         <FormSection title="Schedule and Retention" icon={<CalendarClock className="h-4 w-4" />} description="When the database is backed up, and for how long it is kept.">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <span className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Database backup</span>
-              <div className="flex h-9 items-center gap-3">
-                <Switch checked={dbEnabled} size="sm" onChange={setDbEnabled} />
-                <span className="text-xs text-slate-600 sm:text-sm">{dbEnabled ? "Daily" : "Switched off"}</span>
+            <Group title="Database backup">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-slate-700">{dbEnabled ? "Daily" : "Switched off"}</span>
+                <Switch checked={dbEnabled} size="sm" aria-label="Database backup" onChange={setDbEnabled} />
               </div>
-            </div>
-            <TimePicker label="Time of day" value={time} onChange={setTime} disabled={!dbEnabled} />
-            <div>
-              <span className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Kept</span>
+            </Group>
+            <Group title="Time of day">
+              <TimePicker value={time} onChange={setTime} disabled={!dbEnabled} />
+              <p className="text-xs text-slate-500">Used when the database backup is switched on.</p>
+            </Group>
+            <Group title="Retention">
               <ReadOnlyField value="Permanently" />
-              <p className="mt-1 text-2xs text-slate-500 sm:text-xs">Fixed by decision BR-2.</p>
-            </div>
+              <p className="text-xs text-slate-500">Fixed by decision BR-2.</p>
+            </Group>
           </div>
         </FormSection>
       </div>
@@ -199,40 +226,41 @@ export const NewBackupPolicyView: React.FC = () => {
         description="T1 is where every backup is written first. Declare which of the others are in another location or cannot be changed."
         headerRight={<Badge color="slate" size="sm">{included} of {choices.length} used</Badge>}
       >
-        <div className="hidden grid-cols-[minmax(0,1fr)_14rem_7rem_7rem] gap-3 border-b border-slate-100 pb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
-          <span>Target</span>
-          <span>Medium</span>
-          <span>Off-site</span>
-          <span>Immutable</span>
-        </div>
-        <div className="divide-y divide-slate-100">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {choices.map((c) => {
             const media = mediaFor(c.info);
             const locked = !c.included || c.info.code === "T1";
             return (
-              <div key={c.info.code} className="grid grid-cols-1 gap-3 py-3 first:pt-3 last:pb-0 md:grid-cols-[minmax(0,1fr)_14rem_7rem_7rem] md:items-center">
-                <div className="flex items-start gap-3">
-                  <Switch checked={c.included} size="sm" disabled={c.info.code === "T1"} onChange={(included) => change(c.info.code, { included })} />
+              <div key={c.info.code} className="min-w-0 space-y-3 rounded-lg border border-slate-200 p-3.5">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs font-medium text-slate-900 sm:text-sm">{c.info.code}</p>
-                    <p className="break-all font-mono text-2xs text-slate-500 sm:text-xs">{c.info.location}</p>
+                    <p className="text-sm font-semibold text-slate-900">{c.info.code}</p>
+                    <p className="break-all font-mono text-xs text-slate-500">{c.info.location}</p>
                     {c.info.immutable && <Badge color="slate" size="sm" className="mt-1">Configured as immutable</Badge>}
                   </div>
+                  <Switch
+                    checked={c.included}
+                    size="sm"
+                    disabled={c.info.code === "T1"}
+                    aria-label={`Use ${c.info.code}`}
+                    onChange={(included) => change(c.info.code, { included })}
+                  />
                 </div>
                 <Select
+                  label="Medium"
                   value={c.medium}
                   onChange={(medium) => change(c.info.code, { medium: medium as PolicyMedium })}
                   options={media.map((m) => ({ label: MEDIUM_LABEL[m], value: m }))}
                   disabled={!c.included || media.length === 1}
                 />
-                <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
-                  <Switch checked={c.offsite} size="sm" disabled={locked} onChange={(offsite) => change(c.info.code, { offsite })} />
-                  <span className="md:sr-only">Off-site</span>
-                </label>
-                <label className="flex items-center gap-2 text-xs text-slate-700 sm:text-sm">
-                  <Switch checked={c.immutable} size="sm" disabled={locked} onChange={(immutable) => change(c.info.code, { immutable })} />
-                  <span className="md:sr-only">Immutable</span>
-                </label>
+                <div className="flex items-center justify-between gap-3 text-sm text-slate-700">
+                  <span>Off-site</span>
+                  <Switch checked={c.offsite} size="sm" disabled={locked} aria-label={`${c.info.code} off-site`} onChange={(offsite) => change(c.info.code, { offsite })} />
+                </div>
+                <div className="flex items-center justify-between gap-3 text-sm text-slate-700">
+                  <span>Immutable</span>
+                  <Switch checked={c.immutable} size="sm" disabled={locked} aria-label={`${c.info.code} immutable`} onChange={(immutable) => change(c.info.code, { immutable })} />
+                </div>
               </div>
             );
           })}
@@ -241,10 +269,9 @@ export const NewBackupPolicyView: React.FC = () => {
 
       <FormSection
         title="3-2-1-1 Rule"
-        icon={<ShieldCheck className="h-4 w-4" />}
+        icon={<Warehouse className="h-4 w-4" />}
         description="What the choices above would give. The Backup Agent decides when the version is proposed and again when it is activated."
         headerRight={<Badge color={failing > 0 ? "red" : "emerald"} size="sm">{failing > 0 ? `${failing} not met` : "No condition failing"}</Badge>}
-        contentClassName="p-2 md:p-3"
       >
         <GateTable gate={gate} />
       </FormSection>
@@ -254,6 +281,22 @@ export const NewBackupPolicyView: React.FC = () => {
           <Textarea rows={3} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Why is this change needed?" />
         </FormField>
       </FormSection>
+
+      <AlertModal
+        isOpen={confirming}
+        onClose={() => setConfirming(false)}
+        onConfirm={submit}
+        type="confirm"
+        title="Propose this policy version?"
+        description={
+          <p className="text-sm text-slate-600">
+            The version is saved as a draft and waits for another person to approve it with an electronic signature. The running policy does not change. This action will be recorded in the Audit Trail.
+          </p>
+        }
+        confirmText="Propose Version"
+        cancelText="Cancel"
+        isLoading={saving}
+      />
     </BackupAdminLivePage>
   );
 };

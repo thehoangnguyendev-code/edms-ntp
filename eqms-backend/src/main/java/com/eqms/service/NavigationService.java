@@ -181,13 +181,23 @@ public class NavigationService {
             backupGroupChildren.add(new NavigationItemResponse("backup-backups", "Backup History", null, "/backup-restore/backups", false, null));
             backupGroupChildren.add(new NavigationItemResponse("backup-verifications", "Backup Verification Results", null, "/backup-restore/backups/verifications", false, null));
             backupGroupChildren.add(new NavigationItemResponse("backup-schedules", "Backup Schedules", null, "/backup-restore/backups/schedules", false, null));
+            backupGroupChildren.add(new NavigationItemResponse("backup-exports", "Export Requests", null, "/backup-restore/backups/exports", false, null));
+            // Each screen is listed only when the person may open it, the same permission its route checks.
+            if (hasPermission(normalizedPermissions, "backup.admin.alerts.view")) {
+                backupGroupChildren.add(new NavigationItemResponse("backup-alerts", "Backup Alerts & Recipients", null, "/backup-restore/alerts", false, null));
+            }
             backupChildren.add(new NavigationItemResponse("backup-group", "Backup", null, null, false, backupGroupChildren));
             List<NavigationItemResponse> restoreGroupChildren = new ArrayList<>();
             restoreGroupChildren.add(new NavigationItemResponse("backup-restores", "Restore Requests", null, "/backup-restore/restores", false, null));
-            restoreGroupChildren.add(new NavigationItemResponse("restore-approvals", "Restore Approval Queue", null, "/backup-restore/restores/approvals", false, null));
             restoreGroupChildren.add(new NavigationItemResponse("restore-verifications", "Restore Verification Reports", null, "/backup-restore/restores/verification-reports", false, null));
             restoreGroupChildren.add(new NavigationItemResponse("restore-history", "Restore History & Evidence", null, "/backup-restore/restores/history", false, null));
-            restoreGroupChildren.add(new NavigationItemResponse("backup-dr-drills", "Disaster Recovery Drills", null, "/backup-restore/dr-drills", false, null));
+            restoreGroupChildren.add(new NavigationItemResponse("backup-inspections", "Backup Inspections", null, "/backup-restore/restores/inspections", false, null));
+            if (hasPermission(normalizedPermissions, "backup.admin.restore_controls.view")) {
+                restoreGroupChildren.add(new NavigationItemResponse("restore-rules", "Restore Approval & Execution Rules", null, "/backup-restore/restore-rules", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "backup.admin.disaster_recovery.view")) {
+                restoreGroupChildren.add(new NavigationItemResponse("backup-dr-drills", "Disaster Recovery Drills", null, "/backup-restore/dr-drills", false, null));
+            }
             backupChildren.add(new NavigationItemResponse("restore-group", "Restore", null, null, false, restoreGroupChildren));
             menu.add(new NavigationItemResponse("backup-restore", "Backup & Restore", "DatabaseBackup", null, true, backupChildren));
         }
@@ -360,17 +370,14 @@ public class NavigationService {
             if (hasPermission(normalizedPermissions, "backup.admin.policy.view")) {
                 backupAdminChildren.add(new NavigationItemResponse("backup-admin-policy", "Backup Policy", null, "/settings/administration/backup/policy", false, null));
             }
-            if (hasPermission(normalizedPermissions, "backup.admin.retention.view")) {
-                backupAdminChildren.add(new NavigationItemResponse("backup-admin-retention", "Backup Retention & Legal Hold", null, "/settings/administration/backup/retention", false, null));
-            }
             if (hasPermission(normalizedPermissions, "backup.admin.storage.view")) {
                 backupAdminChildren.add(new NavigationItemResponse("backup-admin-storage", "Backup Storage & Encryption", null, "/settings/administration/backup/storage", false, null));
             }
-            if (hasPermission(normalizedPermissions, "backup.admin.verification.view")) {
-                backupAdminChildren.add(new NavigationItemResponse("backup-admin-verification", "Backup Verification & Restore Drills", null, "/settings/administration/backup/verification", false, null));
-            }
-            if (hasPermission(normalizedPermissions, "backup.admin.restore_controls.view")) {
-                backupAdminChildren.add(new NavigationItemResponse("backup-admin-restore-controls", "Restore Approval & Execution Rules", null, "/settings/administration/backup/restore-controls", false, null));
+            // One screen with a tab for each of these three views; it is listed when the person may open any of them.
+            if (hasPermission(normalizedPermissions, "backup.admin.restore_controls.view")
+                    || hasPermission(normalizedPermissions, "backup.admin.verification.view")
+                    || hasPermission(normalizedPermissions, "backup.admin.retention.view")) {
+                backupAdminChildren.add(new NavigationItemResponse("backup-admin-controls", "Backup Controls", null, "/settings/administration/backup/controls", false, null));
             }
             if (hasPermission(normalizedPermissions, "backup.admin.alerts.view")) {
                 backupAdminChildren.add(new NavigationItemResponse("backup-admin-alerts", "Backup Alerts & Recipients", null, "/settings/administration/backup/alerts", false, null));

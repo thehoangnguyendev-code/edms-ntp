@@ -42,29 +42,29 @@ public class InternalInspectionController {
         return inspections.page(search, status, page, limit);
     }
 
-    @GetMapping("/inspections/{inspectionId}")
-    public Map<String, Object> get(@PathVariable String inspectionId) {
-        return inspections.get(inspectionId);
+    @GetMapping("/inspections/{inspectionNumber}")
+    public Map<String, Object> get(@PathVariable String inspectionNumber) {
+        return inspections.get(inspectionNumber);
     }
 
-    @PostMapping("/backups/{backupId}/inspections")
-    public ResponseEntity<Map<String, Object>> ask(@PathVariable String backupId, @RequestBody AskRequest r) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(inspections.request(backupId, r.by(), r.reason()));
+    @PostMapping("/backups/{backupNumber}/inspections")
+    public ResponseEntity<Map<String, Object>> ask(@PathVariable String backupNumber, @RequestBody AskRequest r) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(inspections.request(backupNumber, r.by(), r.reason()));
     }
 
-    @PostMapping("/inspections/{inspectionId}/approve")
-    public Map<String, Object> approve(@PathVariable String inspectionId, @RequestBody ApproveRequest r) {
-        return inspections.approve(inspectionId, r.by(), r.signatureRef());
+    @PostMapping("/inspections/{inspectionNumber}/approve")
+    public Map<String, Object> approve(@PathVariable String inspectionNumber, @RequestBody ApproveRequest r) {
+        return inspections.approve(inspectionNumber, r.by(), r.signatureRef());
     }
 
-    @PostMapping("/inspections/{inspectionId}/reject")
-    public Map<String, Object> reject(@PathVariable String inspectionId, @RequestBody ReasonRequest r) {
-        return inspections.reject(inspectionId, r.by(), r.reason());
+    @PostMapping("/inspections/{inspectionNumber}/reject")
+    public Map<String, Object> reject(@PathVariable String inspectionNumber, @RequestBody ReasonRequest r) {
+        return inspections.reject(inspectionNumber, r.by(), r.reason());
     }
 
-    @PostMapping("/inspections/{inspectionId}/close")
-    public Map<String, Object> close(@PathVariable String inspectionId, @RequestBody ReasonRequest r) {
-        return inspections.close(inspectionId, r.by(), r.reason());
+    @PostMapping("/inspections/{inspectionNumber}/close")
+    public Map<String, Object> close(@PathVariable String inspectionNumber, @RequestBody ReasonRequest r) {
+        return inspections.close(inspectionNumber, r.by(), r.reason());
     }
 
     @ExceptionHandler(ExportException.class)

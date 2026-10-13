@@ -100,14 +100,14 @@ class ObjectBackupTest {
         return properties.getTargets().getT1().resolve("DEV");
     }
 
-    private Path setDir(String backupId) throws Exception {
+    private Path setDir(String backupNumber) throws Exception {
         try (Stream<Path> files = Files.walk(properties.getTargets().getT1())) {
-            return files.filter(p -> p.getFileName().toString().equals(backupId)).findFirst().orElseThrow();
+            return files.filter(p -> p.getFileName().toString().equals(backupNumber)).findFirst().orElseThrow();
         }
     }
 
-    private JsonNode manifest(String backupId) throws Exception {
-        return new ObjectMapper().readTree(Files.readString(setDir(backupId).resolve("manifest.json"), StandardCharsets.UTF_8));
+    private JsonNode manifest(String backupNumber) throws Exception {
+        return new ObjectMapper().readTree(Files.readString(setDir(backupNumber).resolve("manifest.json"), StandardCharsets.UTF_8));
     }
 
     private List<String> blobPaths() {
@@ -130,16 +130,16 @@ class ObjectBackupTest {
         assertThat(blobPaths()).hasSize(2);
         for (String blob : blobPaths()) assertThat(Files.readString(envRoot().resolve(blob))).startsWith("FAKE-ENC|");
 
-        JsonNode manifest = manifest(outcome.backupId());
+        JsonNode manifest = manifest(outcome.backupNumber());
         JsonNode store = manifest.path("components").get(1);
         assertThat(store.path("key").asText()).isEqualTo("OBJECT_STORE");
         assertThat(store.path("versionCount").asLong()).isEqualTo(2);
         assertThat(store.path("newVersionCount").asLong()).isEqualTo(2);
         assertThat(manifest.path("objectListedAt").asText()).isNotEmpty();
         assertThat(manifest.path("components").get(0).path("file").asText()).isEqualTo("database/eqms.dump.gpg");
-        assertThat(Files.readString(setDir(outcome.backupId()).resolve("SHA256SUMS"))).contains("objects/index.json.gpg");
-        assertThat(db.jdbc.queryForObject("select object_count from backup_component_result r join backup_run u on u.id = r.run_id where u.backup_id = ? and component = 'OBJECT_STORE'",
-                Long.class, outcome.backupId())).isEqualTo(2L);
+        assertThat(Files.readString(setDir(outcome.backupNumber()).resolve("SHA256SUMS"))).contains("objects/index.json.gpg");
+        assertThat(db.jdbc.queryForObject("select object_count from backup_component_result r join backup_run u on u.id = r.run_id where u.backup_number = ? and component = 'OBJECT_STORE'",
+                Long.class, outcome.backupNumber())).isEqualTo(2L);
     }
 
     @Test
@@ -153,7 +153,7 @@ class ObjectBackupTest {
         assertThat(second.ok()).isTrue();
         assertThat(docs.opened).as("only the new version is read").isEqualTo(2);
         assertThat(blobPaths()).hasSize(2);
-        JsonNode store = manifest(second.backupId()).path("components").get(1);
+        JsonNode store = manifest(second.backupNumber()).path("components").get(1);
         assertThat(store.path("versionCount").asLong()).isEqualTo(2);
         assertThat(store.path("newVersionCount").asLong()).isEqualTo(1);
     }
@@ -165,7 +165,7 @@ class ObjectBackupTest {
         DatabaseBackupService.Outcome outcome = service.run(request());
         assertThat(outcome.ok()).isTrue();
         assertThat(blobPaths()).hasSize(1);
-        JsonNode store = manifest(outcome.backupId()).path("components").get(1);
+        JsonNode store = manifest(outcome.backupNumber()).path("components").get(1);
         assertThat(store.path("deleteMarkerCount").asLong()).isEqualTo(1);
         assertThat(store.path("versionCount").asLong()).isEqualTo(2);
     }
@@ -181,7 +181,7 @@ class ObjectBackupTest {
         assertThat(db.jdbc.queryForObject("select count(*) from backup_alert where code = 'OBJECT_MISSING_IN_SOURCE'", Integer.class)).isEqualTo(1);
         assertThat(ledgerEvents()).contains("OBJECT_MISSING_IN_SOURCE");
         assertThat(blobPaths()).hasSize(1);
-        assertThat(manifest(second.backupId()).path("components").get(1).path("versionCount").asLong()).as("the full view keeps it").isEqualTo(1);
+        assertThat(manifest(second.backupNumber()).path("components").get(1).path("versionCount").asLong()).as("the full view keeps it").isEqualTo(1);
     }
 
     @Test
@@ -199,7 +199,7 @@ class ObjectBackupTest {
         DatabaseBackupService.Outcome outcome = service.run(request());
         assertThat(outcome.ok()).isFalse();
         assertThat(outcome.errorCode()).isEqualTo("BACKUP_OBJECT_READ_FAILED");
-        assertThat(db.jdbc.queryForObject("select status from backup_run where backup_id = ?", String.class, outcome.backupId())).isEqualTo("FAILED");
+        assertThat(db.jdbc.queryForObject("select status from backup_run where backup_number = ?", String.class, outcome.backupNumber())).isEqualTo("FAILED");
         assertThat(blobPaths()).isEmpty();
         assertThat(db.jdbc.queryForObject("select count(*) from backup_alert where code = 'BACKUP_OBJECT_READ_FAILED'", Integer.class)).isEqualTo(1);
     }
@@ -244,7 +244,7 @@ class ObjectBackupTest {
         Files.delete(envRoot().resolve(blobPaths().get(0)));
         Files.writeString(envRoot().resolve(blobPaths().get(1)), "tampered!");
 
-        VerificationService.Outcome again = verification.verifyV1(first.backupId(), "inspector");
+        VerificationService.Outcome again = verification.verifyV1(first.backupNumber(), "inspector");
         assertThat(again.verified()).isFalse();
         assertThat(again.checks()).anyMatch(c -> c.code().equals("OBJECTS_PRESENT") && !c.ok());
     }
@@ -257,8 +257,8 @@ class ObjectBackupTest {
         DatabaseBackupService.Outcome second = service.run(request());
         Files.delete(envRoot().resolve(blobPaths().get(0)));
 
-        assertThat(verification.verifyV1(second.backupId(), "inspector").verified()).isFalse();
-        assertThat(verification.verifyV1(first.backupId(), "inspector").verified()).isFalse();
+        assertThat(verification.verifyV1(second.backupNumber(), "inspector").verified()).isFalse();
+        assertThat(verification.verifyV1(first.backupNumber(), "inspector").verified()).isFalse();
     }
 
     @Test
@@ -295,8 +295,8 @@ class ObjectBackupTest {
         assertThat(outcome.ok()).isTrue();
         assertThat(docs.opened).isZero();
         assertThat(blobPaths()).isEmpty();
-        assertThat(manifest(outcome.backupId()).path("components")).hasSize(1);
-        assertThat(manifest(outcome.backupId()).path("policyVersion").asInt()).isEqualTo(1);
+        assertThat(manifest(outcome.backupNumber()).path("components")).hasSize(1);
+        assertThat(manifest(outcome.backupNumber()).path("policyVersion").asInt()).isEqualTo(1);
     }
 
     @Test
@@ -308,7 +308,7 @@ class ObjectBackupTest {
         assertThat(outcome.ok()).isTrue();
         assertThat(docs.opened).isZero();
         assertThat(t2.list("DEV")).isEmpty();
-        assertThat(manifest(outcome.backupId()).path("policyVersion").isNull()).isTrue();
+        assertThat(manifest(outcome.backupNumber()).path("policyVersion").isNull()).isTrue();
     }
 
     @Test

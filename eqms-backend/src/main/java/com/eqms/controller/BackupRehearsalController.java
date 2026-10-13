@@ -58,7 +58,7 @@ public class BackupRehearsalController {
 
     @GetMapping("/rehearsals")
     public ResponseEntity<JsonNode> list(@RequestParam(required = false) String search, @RequestParam(required = false) String status,
-                                         @RequestParam(required = false) String backupId,
+                                         @RequestParam(required = false) String backupNumber,
                                          @RequestParam(defaultValue = "requestedAt") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
                                          @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
         require(currentUserService.requireCurrentUser(), VIEW);
@@ -72,9 +72,9 @@ public class BackupRehearsalController {
             uri.queryParam("status", "{status}");
             vars.put("status", cut(status, 20));
         }
-        if (backupId != null && !backupId.isBlank()) {
-            uri.queryParam("backupId", "{backupId}");
-            vars.put("backupId", validBackupId(backupId));
+        if (backupNumber != null && !backupNumber.isBlank()) {
+            uri.queryParam("backupNumber", "{backupNumber}");
+            vars.put("backupNumber", validBackupId(backupNumber));
         }
         uri.queryParam("sortBy", "{sortBy}").queryParam("sortDirection", "{dir}")
                 .queryParam("page", Math.max(page, 1)).queryParam("limit", Math.min(Math.max(limit, 1), 100));
@@ -89,11 +89,11 @@ public class BackupRehearsalController {
         return reply(agent.exchange(HttpMethod.GET, "/internal/rehearsals/" + validRehearsalId(rehearsalId), null));
     }
 
-    @PostMapping("/backups/{backupId}/rehearsals")
-    public ResponseEntity<JsonNode> request(@PathVariable String backupId, @RequestBody RehearsalRequest request) {
+    @PostMapping("/backups/{backupNumber}/rehearsals")
+    public ResponseEntity<JsonNode> request(@PathVariable String backupNumber, @RequestBody RehearsalRequest request) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, REQUEST);
-        String id = validBackupId(backupId);
+        String id = validBackupId(backupNumber);
         String reason = request == null || request.reason() == null ? "" : request.reason().trim();
         if (reason.isEmpty() || reason.length() > MAX_REASON) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "REHEARSAL_REASON_REQUIRED");
         Map<String, Object> body = new LinkedHashMap<>();

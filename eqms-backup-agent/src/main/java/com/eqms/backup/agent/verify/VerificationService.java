@@ -36,7 +36,7 @@ public class VerificationService {
     public record Check(String code, boolean ok, String detail) {
     }
 
-    public record Outcome(String backupId, String result, List<Check> checks) {
+    public record Outcome(String backupNumber, String result, List<Check> checks) {
         public boolean verified() {
             return "VERIFIED".equals(result);
         }
@@ -61,13 +61,13 @@ public class VerificationService {
         this.runner = runner;
     }
 
-    public Outcome verifyV1(String backupId, String actor) {
+    public Outcome verifyV1(String backupNumber, String actor) {
         List<Check> checks = new ArrayList<>();
-        Map<String, Object> run = repository.runByBackupId(backupId).orElseThrow(() -> new IllegalArgumentException("Unknown backup " + backupId));
+        Map<String, Object> run = repository.runByBackupNumber(backupNumber).orElseThrow(() -> new IllegalArgumentException("Unknown backup " + backupNumber));
         java.util.UUID runId = (java.util.UUID) run.get("id");
         checks.add(new Check("RUN_COMPLETED", "COMPLETED".equals(run.get("status")), "status " + run.get("status")));
         if ("COMPLETED".equals(run.get("status"))) {
-            runChecks(backupId, runId, checks);
+            runChecks(backupNumber, runId, checks);
         }
         boolean ok = checks.stream().allMatch(Check::ok);
         String result = ok ? "VERIFIED" : "FAILED";
@@ -75,16 +75,16 @@ public class VerificationService {
         List<Map<String, Object>> detail = new ArrayList<>();
         for (Check c : checks) detail.add(Map.of("code", c.code(), "ok", c.ok(), "detail", c.detail() == null ? "" : c.detail()));
         repository.insertVerification(runId, "V1", result, CanonicalJson.of(Map.of("checks", detail)), now, actor);
-        ledger.append(actor, ok ? "BACKUP_VERIFIED" : "BACKUP_VERIFY_FAILED", backupId, Map.of("tier", "V1", "result", result,
+        ledger.append(actor, ok ? "BACKUP_VERIFIED" : "BACKUP_VERIFY_FAILED", backupNumber, Map.of("tier", "V1", "result", result,
                 "failedChecks", checks.stream().filter(c -> !c.ok()).map(Check::code).toList()));
         if (!ok) {
-            repository.insertAlert("HIGH", "BACKUP_VERIFY_FAILED", "Verification failed for " + backupId + ": "
-                    + checks.stream().filter(c -> !c.ok()).map(Check::code).toList(), backupId);
+            repository.insertAlert("HIGH", "BACKUP_VERIFY_FAILED", "Verification failed for " + backupNumber + ": "
+                    + checks.stream().filter(c -> !c.ok()).map(Check::code).toList(), backupNumber);
         }
-        return new Outcome(backupId, result, checks);
+        return new Outcome(backupNumber, result, checks);
     }
 
-    private void runChecks(String backupId, java.util.UUID runId, List<Check> checks) {
+    private void runChecks(String backupNumber, java.util.UUID runId, List<Check> checks) {
         Optional<Map<String, Object>> location = jdbc.queryForList("select path from backup_set_location where run_id = ? order by target_code limit 1", runId).stream().findFirst();
         Optional<Map<String, Object>> manifestRow = jdbc.queryForList(
                 "select manifest_text, manifest_sha256, signature_base64, previous_manifest_sha256 from backup_manifest where run_id = ?", runId).stream().findFirst();
@@ -153,7 +153,7 @@ public class VerificationService {
             if ("OBJECT_STORE".equals(component.path("key").asText())) hasObjects = true;
         }
         if (hasObjects) {
-            // <T1>/<ENV>/<yyyy>/<MM>/<backupId>: the document pool sits beside the year folders
+            // <T1>/<ENV>/<yyyy>/<MM>/<backupNumber>: the document pool sits beside the year folders
             Path envRoot = dir.getParent().getParent().getParent();
             int checked = 0;
             String problem = null;
@@ -212,7 +212,7 @@ public class VerificationService {
         checks.add(new Check("ENCRYPTED_FOR_KEY", encrypted, encDetail));
 
         // 7. the ledger recorded this exact manifest
-        boolean ledgerOk = ledger.all().stream().anyMatch(e -> "BACKUP_COMPLETED".equals(e.event()) && backupId.equals(e.ref())
+        boolean ledgerOk = ledger.all().stream().anyMatch(e -> "BACKUP_COMPLETED".equals(e.event()) && backupNumber.equals(e.ref())
                 && e.dataJson().contains("\"manifestSha256\":\"" + manifestSha + "\""));
         checks.add(new Check("LEDGER_RECORDS_MANIFEST", ledgerOk, ledgerOk ? "recorded" : "the ledger has no matching completion event"));
     }
@@ -240,7 +240,7 @@ public class VerificationService {
     /** Used by the API to show the latest result per backup. */
     public Map<String, Object> toMap(Outcome outcome) {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("backupId", outcome.backupId());
+        map.put("backupNumber", outcome.backupNumber());
         map.put("result", outcome.result());
         map.put("checks", outcome.checks());
         return map;

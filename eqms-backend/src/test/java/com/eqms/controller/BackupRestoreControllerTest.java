@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.util.MultiValueMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.util.MultiValueMap;
@@ -193,8 +194,21 @@ class BackupRestoreControllerTest {
         assertThatThrownBy(() -> real.get("/internal/overview"))
                 .isInstanceOfSatisfying(ResponseStatusException.class, e -> {
                     assertThat(e.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-                    assertThat(e.getReason()).isEqualTo("BACKUP_AGENT_UNAVAILABLE");
+                    assertThat(e.getReason()).contains("BACKUP_AGENT_UNAVAILABLE");
                 });
+    }
+
+    @Test
+    void theDailyChartNeedsTheViewPermissionAndAsksTheAgentForAClampedWindow() throws Exception {
+        allow();
+        assertThatThrownBy(() -> controller.overviewDaily(30)).isInstanceOf(AccessDeniedException.class);
+        verifyNoInteractions(agent);
+
+        allow("backup.module.view");
+        controller.overviewDaily(500);
+        org.mockito.ArgumentCaptor<MultiValueMap<String, String>> query = org.mockito.ArgumentCaptor.forClass(MultiValueMap.class);
+        verify(agent).get(org.mockito.ArgumentMatchers.eq("/internal/overview/daily"), query.capture());
+        assertThat(query.getValue().getFirst("days")).isEqualTo("90");
     }
 
     @Test

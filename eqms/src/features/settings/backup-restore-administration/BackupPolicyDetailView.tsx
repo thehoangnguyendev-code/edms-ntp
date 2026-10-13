@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Info, ListChecks, ShieldCheck } from "lucide-react";
+import { Info, ListChecks, ShieldCheck, Warehouse } from "lucide-react";
 import { IconServer2 } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
+import { Fact } from "@/features/backup-restore/components/Fact";
 import { formatDateTime } from "@/features/backup-restore/format";
 import { statusLabel } from "@/features/backup-restore/types";
 import {
@@ -28,14 +29,6 @@ import {
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { COMPONENT_LABEL, GATE_LABEL, MEDIUM_LABEL, POLICY_STATUS_COLOR, policyErrorMessage } from "./policyLabels";
-
-/** One label and its value, laid out like the other detail screens. */
-const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="flex flex-col gap-1.5 border-b border-slate-200 pb-3 last:border-b-0 last:pb-0 lg:flex-row lg:items-center lg:gap-2 lg:pb-4 last:lg:pb-0">
-    <label className="w-full flex-shrink-0 text-xs font-medium text-slate-700 sm:text-sm lg:w-40">{label}</label>
-    <div className="min-w-0 flex-1 break-words text-xs text-slate-900 lg:text-sm">{children}</div>
-  </div>
-);
 
 const conditionState = (c: PolicyGateCondition) => {
   if (c.ok) return { label: "Met", color: "emerald" as const };
@@ -103,7 +96,7 @@ export const BackupPolicyDetailView: React.FC = () => {
 
   if (error) {
     return (
-      <BackupAdminLivePage title="Policy Version" parent={parent}>
+      <BackupAdminLivePage title="Backup Policy Detail" parent={parent}>
         <WarningBanner variant="error" title="Unable to open the policy version" description={error} />
         <div>
           <Button size="sm" variant="outline-emerald" onClick={back}>
@@ -115,7 +108,7 @@ export const BackupPolicyDetailView: React.FC = () => {
   }
   if (!policy) {
     return (
-      <BackupAdminLivePage title="Policy Version" parent={parent}>
+      <BackupAdminLivePage title="Backup Policy Detail" parent={parent}>
         <SectionLoading minHeight="40vh" />
       </BackupAdminLivePage>
     );
@@ -176,7 +169,7 @@ export const BackupPolicyDetailView: React.FC = () => {
   );
 
   return (
-    <BackupAdminLivePage title={`Policy Version ${policy.version}`} parent={parent} actions={actions}>
+    <BackupAdminLivePage title="Backup Policy Detail" parent={parent} actions={actions}>
       {draft && mine && (
         <WarningBanner variant="info" title="Waiting for another person" description="You proposed this version, so someone else with the approval permission has to activate it." />
       )}
@@ -188,25 +181,25 @@ export const BackupPolicyDetailView: React.FC = () => {
       )}
 
       <FormSection title="Policy Information" icon={<Info className="h-4 w-4" />}>
-        <div className="grid grid-cols-1 gap-x-10 gap-y-3 lg:gap-y-4 xl:grid-cols-2">
-          <div className="space-y-3 lg:space-y-4">
-            <Field label="Version">
-              <span className="font-medium">{policy.version}</span>
-            </Field>
-            <Field label="Status">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
+          <div className="space-y-3">
+            <Fact label="Version">{policy.version}</Fact>
+            <Fact label="Status">
               <Badge color={POLICY_STATUS_COLOR[policy.status]}>{statusLabel(policy.status)}</Badge>
-            </Field>
-            <Field label="Reason">{policy.reason || "—"}</Field>
+            </Fact>
+            <Fact label="Reason">{policy.reason || "—"}</Fact>
           </div>
-          <div className="space-y-3 lg:space-y-4">
-            <Field label="Proposed by">{policy.proposedBy ?? "System (installed with the Backup Agent)"}</Field>
-            <Field label="Proposed">{formatDateTime(policy.createdAt)}</Field>
-            <Field label="Approved by">{policy.approvedBy ?? "—"}</Field>
-            <Field label="Activated">{formatDateTime(policy.activatedAt)}</Field>
+          <div className="space-y-3">
+            <Fact label="Proposed by">{policy.proposedBy ?? "System (installed with the Backup Agent)"}</Fact>
+            <Fact label="Proposed">{formatDateTime(policy.createdAt)}</Fact>
+            <Fact label="Approved by">{policy.approvedBy ?? "—"}</Fact>
+          </div>
+          <div className="space-y-3">
+            <Fact label="Activated">{formatDateTime(policy.activatedAt)}</Fact>
             {policy.signatureRef && (
-              <Field label="E-signature">
+              <Fact label="E-signature">
                 <span className="font-mono text-xs">{policy.signatureRef}</span>
-              </Field>
+              </Fact>
             )}
           </div>
         </div>
@@ -214,10 +207,10 @@ export const BackupPolicyDetailView: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <FormSection title="What Is Backed Up" icon={<ListChecks className="h-4 w-4" />}>
-          <div className="space-y-3 lg:space-y-4">
-            <Field label="Components">{body.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ") || "—"}</Field>
-            <Field label="Database backup">{body.enabled ? `Daily at ${body.time}` : "Switched off"}</Field>
-            <Field label="Kept">Permanently. Backups are never deleted by age.</Field>
+          <div className="space-y-3">
+            <Fact label="Components">{body.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ") || "—"}</Fact>
+            <Fact label="Database backup">{body.enabled ? `Daily at ${body.time}` : "Switched off"}</Fact>
+            <Fact label="Kept">Permanently. Backups are never deleted by age.</Fact>
           </div>
         </FormSection>
 
@@ -238,7 +231,7 @@ export const BackupPolicyDetailView: React.FC = () => {
       {gate && (
         <FormSection
           title="3-2-1-1 Rule"
-          icon={<ShieldCheck className="h-4 w-4" />}
+          icon={<Warehouse className="h-4 w-4" />}
           description={draft ? "As it stands now. The targets are also tested when the policy is activated." : "The result recorded when this version was activated."}
         >
           {!gate.enforced && (

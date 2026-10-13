@@ -96,34 +96,34 @@ public class BackupInspectionController {
         return reply(agent.exchange(HttpMethod.GET, uri.buildAndExpand(vars).encode().toUriString(), null));
     }
 
-    @GetMapping("/inspections/{inspectionId}")
-    public ResponseEntity<JsonNode> get(@PathVariable String inspectionId) {
+    @GetMapping("/inspections/{inspectionNumber}")
+    public ResponseEntity<JsonNode> get(@PathVariable String inspectionNumber) {
         require(currentUserService.requireCurrentUser(), VIEW);
-        return reply(agent.exchange(HttpMethod.GET, "/internal/inspections/" + validInspectionId(inspectionId), null));
+        return reply(agent.exchange(HttpMethod.GET, "/internal/inspections/" + validInspectionId(inspectionNumber), null));
     }
 
-    @PostMapping("/backups/{backupId}/inspections")
-    public ResponseEntity<JsonNode> ask(@PathVariable String backupId, @RequestBody AskBody body) {
+    @PostMapping("/backups/{backupNumber}/inspections")
+    public ResponseEntity<JsonNode> ask(@PathVariable String backupNumber, @RequestBody AskBody body) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, REQUEST);
-        String id = validBackupId(backupId);
+        String id = validBackupId(backupNumber);
         String reason = body == null || body.reason() == null ? "" : body.reason().trim();
         if (reason.isEmpty() || reason.length() > MAX_TEXT) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INSPECTION_REASON_REQUIRED");
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/backups/" + id + "/inspections",
                 Map.of("by", actor.getUsername(), "reason", reason));
         if (reply.ok()) {
-            audit.logAs(actor, "BACKUP_INSPECTION", reply.body().path("inspectionId").asText(), uuidText(reply.body().path("id").asText()),
+            audit.logAs(actor, "BACKUP_INSPECTION", reply.body().path("inspectionNumber").asText(), auditIdFromReply(reply, reply.body().path("inspectionNumber").asText()),
                     "INSPECTION_REQUESTED", null, "PENDING_APPROVAL", "Asked to inspect " + id + " read-only for five minutes. Reason: " + reason);
         }
         return reply(reply);
     }
 
     /** Approval needs the approver's electronic signature; it is recorded in the same transaction as the approval. */
-    @PostMapping("/inspections/{inspectionId}/approve")
-    public ResponseEntity<JsonNode> approve(@PathVariable String inspectionId, @RequestBody ApproveBody body) {
+    @PostMapping("/inspections/{inspectionNumber}/approve")
+    public ResponseEntity<JsonNode> approve(@PathVariable String inspectionNumber, @RequestBody ApproveBody body) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, APPROVE);
-        String id = validInspectionId(inspectionId);
+        String id = validInspectionId(inspectionNumber);
         String token = body == null ? null : body.signatureToken();
         signatures.requireValidToken(actor, token);
         UUID rowId = rowId(id);
@@ -147,11 +147,11 @@ public class BackupInspectionController {
         return reply(reply);
     }
 
-    @PostMapping("/inspections/{inspectionId}/reject")
-    public ResponseEntity<JsonNode> reject(@PathVariable String inspectionId, @RequestBody ReasonBody body) {
+    @PostMapping("/inspections/{inspectionNumber}/reject")
+    public ResponseEntity<JsonNode> reject(@PathVariable String inspectionNumber, @RequestBody ReasonBody body) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, APPROVE);
-        String id = validInspectionId(inspectionId);
+        String id = validInspectionId(inspectionNumber);
         String reason = body == null || body.reason() == null ? "" : body.reason().trim();
         if (reason.isEmpty() || reason.length() > MAX_TEXT) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INSPECTION_REASON_REQUIRED");
         String token = body == null ? null : body.signatureToken();
@@ -172,22 +172,33 @@ public class BackupInspectionController {
     }
 
     /** Closing before the five minutes are over. Any person who may ask may close; the agent records who closed it and why. */
-    @PostMapping("/inspections/{inspectionId}/close")
-    public ResponseEntity<JsonNode> close(@PathVariable String inspectionId, @RequestBody(required = false) ReasonBody body) {
+    @PostMapping("/inspections/{inspectionNumber}/close")
+    public ResponseEntity<JsonNode> close(@PathVariable String inspectionNumber, @RequestBody(required = false) ReasonBody body) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, REQUEST);
-        String id = validInspectionId(inspectionId);
+        String id = validInspectionId(inspectionNumber);
         String reason = body == null || body.reason() == null || body.reason().isBlank() ? "CLOSED_BY_USER" : body.reason().trim();
         if (reason.length() > MAX_TEXT) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INSPECTION_REASON_REQUIRED");
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/inspections/" + id + "/close",
                 Map.of("by", actor.getUsername(), "reason", reason));
         if (reply.ok()) {
-            audit.logAs(actor, "BACKUP_INSPECTION", id, rowId(id), "INSPECTION_CLOSED", "OPEN", "CLOSED", "Closed inspection " + id + ". Reason: " + reason);
+            audit.logAs(actor, "BACKUP_INSPECTION", id, auditId(id), "INSPECTION_CLOSED", "OPEN", "CLOSED", "Closed inspection " + id + ". Reason: " + reason);
         }
         return reply(reply);
     }
 
     /** The audit row needs the inspection's own id; it is read from the agent first. */
+    /** The id an audit record of this inspection is stored against: the row's id, or a stable id when the row cannot be read. */
+    private UUID auditId(String id) {
+        UUID row = rowId(id);
+        return row != null ? row : BackupAuditIds.of("inspection", id);
+    }
+
+    private static UUID auditIdFromReply(BackupAgentClient.Reply reply, String id) {
+        UUID row = uuidText(reply.body().path("id").asText());
+        return row != null ? row : BackupAuditIds.of("inspection", id);
+    }
+
     private UUID rowId(String id) {
         BackupAgentClient.Reply current = agent.exchange(HttpMethod.GET, "/internal/inspections/" + id, null);
         return current.ok() ? uuidText(current.body().path("id").asText()) : null;

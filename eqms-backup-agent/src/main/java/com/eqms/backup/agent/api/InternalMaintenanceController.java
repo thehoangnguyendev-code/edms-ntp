@@ -24,7 +24,7 @@ import java.util.Map;
 @RequestMapping("/internal")
 public class InternalMaintenanceController {
 
-    public record NoticeRequest(int minutes, String requestId, String by) {
+    public record NoticeRequest(int minutes, String restoreNumber, String by) {
     }
 
     public record ByRequest(String by) {
@@ -36,7 +36,7 @@ public class InternalMaintenanceController {
     public record CredentialRequest(String username, String password) {
     }
 
-    public record EventRequest(String event, String requestId, String by, Map<String, Object> detail) {
+    public record EventRequest(String event, String restoreNumber, String by, Map<String, Object> detail) {
     }
 
     private final MaintenanceService maintenance;
@@ -58,7 +58,7 @@ public class InternalMaintenanceController {
         if (r.event() == null || !ALLOWED_EVENTS.contains(r.event())) {
             return ResponseEntity.badRequest().body(Map.of("code", "MAINTENANCE_EVENT_NOT_ALLOWED"));
         }
-        ledger.append(r.by() == null || r.by().isBlank() ? "system" : r.by(), r.event(), r.requestId() == null ? "maintenance" : r.requestId(),
+        ledger.append(r.by() == null || r.by().isBlank() ? "system" : r.by(), r.event(), r.restoreNumber() == null ? "maintenance" : r.restoreNumber(),
                 r.detail() == null ? Map.of() : r.detail());
         return ResponseEntity.ok(Map.of("recorded", true));
     }
@@ -72,7 +72,7 @@ public class InternalMaintenanceController {
 
     @PostMapping("/maintenance/notice")
     public Map<String, Object> notice(@RequestBody NoticeRequest r) {
-        return view(maintenance.notice(r.minutes(), r.requestId(), r.by()));
+        return view(maintenance.notice(r.minutes(), r.restoreNumber(), r.by()));
     }
 
     @PostMapping("/maintenance/cancel")
@@ -100,7 +100,7 @@ public class InternalMaintenanceController {
     private static Map<String, Object> view(MaintenanceService.Status s) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("state", s.state().name());
-        m.put("requestId", s.requestId());
+        m.put("restoreNumber", s.restoreNumber());
         m.put("endsAt", s.endsAt() == null ? null : s.endsAt().toString());
         m.put("changedBy", s.changedBy());
         m.put("changedAt", s.changedAt().toString());

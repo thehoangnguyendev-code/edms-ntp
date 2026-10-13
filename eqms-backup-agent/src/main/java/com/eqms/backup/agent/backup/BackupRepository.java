@@ -34,12 +34,12 @@ public class BackupRepository {
         return "BK-" + ID_DAY.format(now) + "-" + ID_TIME.format(now) + "-" + String.format("%04d", seq);
     }
 
-    public UUID insertRun(String backupId, String environment, String type, String trigger, Integer policyVersion, Instant startedAt,
+    public UUID insertRun(String backupNumber, String environment, String type, String trigger, Integer policyVersion, Instant startedAt,
                           String requestedBy, String reason, String changeControlRef) {
         return jdbc.queryForObject(
-                "insert into backup_run(backup_id, environment, type, trigger_kind, status, policy_version, started_at, requested_by, reason, change_control_ref) "
+                "insert into backup_run(backup_number, environment, type, trigger_kind, status, policy_version, started_at, requested_by, reason, change_control_ref) "
                         + "values (?,?,?,?, 'RUNNING', ?,?,?,?,?) returning id",
-                UUID.class, backupId, environment, type, trigger, policyVersion, Timestamp.from(startedAt), requestedBy, reason, changeControlRef);
+                UUID.class, backupNumber, environment, type, trigger, policyVersion, Timestamp.from(startedAt), requestedBy, reason, changeControlRef);
     }
 
     public void markCompleted(UUID runId, Instant finishedAt, Instant dbSnapshotAt, long sizeBytes) {
@@ -55,7 +55,7 @@ public class BackupRepository {
     /** A run left RUNNING by an agent that died is closed as failed, so it cannot block the next backup for ever. */
     public List<Map<String, Object>> failStaleRunning(Instant now) {
         return jdbc.queryForList("update backup_run set status='FAILED', finished_at=?, error_code='AGENT_RESTARTED', "
-                + "error_detail='The agent stopped while this backup was running' where status='RUNNING' returning backup_id, id", Timestamp.from(now));
+                + "error_detail='The agent stopped while this backup was running' where status='RUNNING' returning backup_number, id", Timestamp.from(now));
     }
 
     public void insertComponent(UUID runId, String component, String status, Long sizeBytes, Long objectCount, String sha256, String rowCountsJson) {
@@ -87,8 +87,8 @@ public class BackupRepository {
         return jdbc.queryForList("select version from backup_policy where status='ACTIVE'", Integer.class).stream().findFirst();
     }
 
-    public Optional<Map<String, Object>> runByBackupId(String backupId) {
-        return jdbc.queryForList("select * from backup_run where backup_id = ?", backupId).stream().findFirst();
+    public Optional<Map<String, Object>> runByBackupNumber(String backupNumber) {
+        return jdbc.queryForList("select * from backup_run where backup_number = ?", backupNumber).stream().findFirst();
     }
 
     public void insertVerification(UUID runId, String tier, String result, String detailJson, Instant at, String by) {

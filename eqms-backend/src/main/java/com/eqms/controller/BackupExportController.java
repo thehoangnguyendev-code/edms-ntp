@@ -83,7 +83,7 @@ public class BackupExportController {
 
     @GetMapping("/exports")
     public ResponseEntity<JsonNode> exportList(@RequestParam(required = false) String search, @RequestParam(required = false) String status,
-                                               @RequestParam(required = false) String backupId,
+                                               @RequestParam(required = false) String backupNumber,
                                                @RequestParam(defaultValue = "requestedAt") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
                                                @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
         require(currentUserService.requireCurrentUser(), VIEW);
@@ -91,7 +91,7 @@ public class BackupExportController {
         Map<String, Object> vars = new LinkedHashMap<>();
         text(uri, vars, "search", search, 200);
         text(uri, vars, "status", status, 20);
-        if (backupId != null && !backupId.isBlank()) text(uri, vars, "backupId", validBackupId(backupId), 30);
+        if (backupNumber != null && !backupNumber.isBlank()) text(uri, vars, "backupNumber", validBackupId(backupNumber), 30);
         paging(uri, vars, sortBy, sortDirection, page, limit);
         return reply(agent.exchange(HttpMethod.GET, uri.buildAndExpand(vars).encode().toUriString(), null));
     }
@@ -102,17 +102,17 @@ public class BackupExportController {
         return reply(agent.exchange(HttpMethod.GET, "/internal/exports/" + validExportId(exportId), null));
     }
 
-    @GetMapping("/backups/{backupId}/export-estimate")
-    public ResponseEntity<JsonNode> estimate(@PathVariable String backupId) {
+    @GetMapping("/backups/{backupNumber}/export-estimate")
+    public ResponseEntity<JsonNode> estimate(@PathVariable String backupNumber) {
         require(currentUserService.requireCurrentUser(), EXPORT);
-        return reply(agent.exchange(HttpMethod.GET, "/internal/backups/" + validBackupId(backupId) + "/export-estimate", null));
+        return reply(agent.exchange(HttpMethod.GET, "/internal/backups/" + validBackupId(backupNumber) + "/export-estimate", null));
     }
 
-    @PostMapping("/backups/{backupId}/exports")
-    public ResponseEntity<JsonNode> request(@PathVariable String backupId, @RequestBody ExportRequest request) {
+    @PostMapping("/backups/{backupNumber}/exports")
+    public ResponseEntity<JsonNode> request(@PathVariable String backupNumber, @RequestBody ExportRequest request) {
         UserAccount actor = currentUserService.requireCurrentUser();
         require(actor, EXPORT);
-        String id = validBackupId(backupId);
+        String id = validBackupId(backupNumber);
         if (request == null || request.mediaId() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "EXPORT_MEDIA_REQUIRED");
         String reason = reason(request.reason(), "EXPORT_REASON_REQUIRED");
         BackupAgentClient.Reply reply = agent.exchange(HttpMethod.POST, "/internal/backups/" + id + "/exports",

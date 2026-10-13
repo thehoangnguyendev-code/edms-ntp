@@ -66,12 +66,12 @@ describe("Backup Verification Results", () => {
     api.list.mockResolvedValue(one([backup("BK-1", "FAILED")]));
     renderView(<BackupVerificationResultsView />);
     await screen.findByText("BK-1");
-    fireEvent.change(screen.getAllByPlaceholderText("Backup ID or person…")[0], { target: { value: "sched" } });
+    fireEvent.change(screen.getAllByPlaceholderText("Backup Number or person…")[0], { target: { value: "sched" } });
     await waitFor(() => expect(lastList().search).toBe("sched"), { timeout: 2000 });
     fireEvent.click(header("started"));
     await waitFor(() => expect(lastList()).toMatchObject({ sortBy: "startedAt", sortDirection: "asc" }));
     fireEvent.click(header("id"));
-    await waitFor(() => expect(lastList().sortBy).toBe("backupId"));
+    await waitFor(() => expect(lastList().sortBy).toBe("backupNumber"));
   });
 
   it("lets the person limit by when the backup was taken and when it was checked, as date ranges with a time", async () => {
@@ -121,7 +121,7 @@ describe("Backup Verification Results", () => {
   it("reports an unreachable agent instead of an empty list", async () => {
     api.list.mockRejectedValue(new Error("network"));
     renderView(<BackupVerificationResultsView />);
-    expect((await screen.findAllByText(/Unable to load/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/could not be loaded/)).length).toBeGreaterThan(0);
   });
 });
 
@@ -129,7 +129,7 @@ describe("Backup Schedules", () => {
   const policy = {
     version: 1, status: "ACTIVE", scope: "{}", retention: "{}", targets: "{}", zone: "Asia/Ho_Chi_Minh",
     schedule: "{}", nextDue: "2026-10-09T19:00:00Z",
-    lastScheduledRun: { backupId: "BK-20261008-0822-0001", status: "FAILED", startedAt: "2026-10-08T08:22:00Z" },
+    lastScheduledRun: { backupNumber: "BK-20261008-0822-0001", status: "FAILED", startedAt: "2026-10-08T08:22:00Z" },
   };
   const rowsPage = (data: unknown[]) => ({ data, pagination: { page: 1, limit: 10, total: data.length, totalPages: 1 } });
   const lastRows = () => api.scheduleRows.mock.calls.at(-1)![0];
