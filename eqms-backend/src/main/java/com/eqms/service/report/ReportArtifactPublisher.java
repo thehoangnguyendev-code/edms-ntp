@@ -42,8 +42,10 @@ public class ReportArtifactPublisher {
         boolean denied=failure instanceof SecurityException;
         boolean invalid=failure instanceof IllegalArgumentException || failure instanceof org.springframework.web.server.ResponseStatusException;
         boolean retry=!denied&&!invalid&&attempt<3;
-        String reason=denied?"REPORT_AUTHORIZATION_CHANGED":invalid?"REPORT_INVALID_CRITERIA":"REPORT_GENERATION_FAILED";
-        String message=denied?"Current metadata authorization no longer permits this report.":invalid?"Report criteria or template policy is no longer valid. Start a new report request.":"Report generation failed. Check service availability.";
+        // A row limit is a known, correctable condition (decision-time limit of 10,000 rows, no silent truncation): it gets its own code and text.
+        boolean rowLimit="REPORT_ROW_LIMIT_EXCEEDED".equals(failure.getMessage());
+        String reason=denied?"REPORT_AUTHORIZATION_CHANGED":rowLimit?"REPORT_ROW_LIMIT_EXCEEDED":invalid?"REPORT_INVALID_CRITERIA":"REPORT_GENERATION_FAILED";
+        String message=denied?"Current metadata authorization no longer permits this report.":rowLimit?"The result has more than 10,000 rows. Add a filter to narrow it and start a new request.":invalid?"Report criteria or template policy is no longer valid. Start a new report request.":"Report generation failed. Check service availability.";
         long delay=Math.min(300L,15L*(1L<<Math.max(0,attempt-1)));
         jdbc.update("update report_runs set status=?,reason_code=?,error_message=?,next_attempt_at=now()+(?*interval '1 second'),lease_until=null where id=?",retry?"RETRY_SCHEDULED":"FAILED",reason,message,delay,runId);
         jdbc.update("insert into report_run_events(run_id,event_type,reason_code,detail) values(?,?,?,jsonb_build_object('attempt',cast(? as integer),'delaySeconds',cast(? as bigint)))",runId,retry?"RETRY_SCHEDULED":"DEAD_LETTERED",reason,attempt,delay);

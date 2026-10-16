@@ -23,6 +23,7 @@ import { dictionaryApi } from "@/services/api/dictionary";
 import { settingsApi } from "@/services/api/settings";
 import { securityApi, type ResourceCapabilities } from "@/services/api/security";
 import { auditTrailApi } from "@/services/api/auditTrail";
+import { trainingLinksApi, type TrainingLink } from "@/services/api/trainingLinks";
 import { secureStorage } from "@/utils/security";
 import { collectExcludedWorkflowParticipantIds } from "@/features/documents/shared/workflowParticipantFilters";
 import {
@@ -552,6 +553,8 @@ export const NewDocumentView: React.FC = () => {
   );
   const [documentStatus, setDocumentStatus] = useState<DocumentStatus>(initialData?.status || "Draft");
   const [documentId, setDocumentId] = useState<string | null>(initialData?.id || null);
+  // The Training Number and training state of the document, read from Training Management after each save.
+  const [trainingLink, setTrainingLink] = useState<TrainingLink | null>(null);
   // Only the total is needed for the tab badge (limit 1); the tab itself loads and pages its own list.
   const { pagination: controlledCopiesPagination } = useDocumentControlledCopies(documentId ?? undefined, {
     limit: 1,
@@ -711,6 +714,21 @@ export const NewDocumentView: React.FC = () => {
   );
   const isContributorReadOnly = !canAdministerDocumentWorkspace && isWorkflowContributor;
   const [lastSavedPayload, setLastSavedPayload] = useState<any>(null);
+
+  useEffect(() => {
+    if (!documentId) {
+      setTrainingLink(null);
+      return;
+    }
+    let active = true;
+    trainingLinksApi
+      .forDocument(documentId)
+      .then((link) => active && setTrainingLink(link))
+      .catch(() => active && setTrainingLink(null));
+    return () => {
+      active = false;
+    };
+  }, [documentId, lastSavedPayload]);
   const [auditTrailRows, setAuditTrailRows] = useState<any[]>([]);
 
   const getPayload = () => {
@@ -2090,6 +2108,7 @@ export const NewDocumentView: React.FC = () => {
             <TrainingTab
               data={trainingConfig}
               onChange={setTrainingConfig}
+              trainingLink={trainingLink}
               isReadOnly={
                 documentStatus === "Obsoleted" ||
                 documentStatus === "Closed - Cancelled" ||

@@ -5,6 +5,7 @@ import EmbedPDF from '@/assets/images/logo-app/PDF_file_icon.svg.webp'
 import { FormSection } from '@/components/ui/form/FormSection';
 import { Select } from '@/components/ui/select/Select';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
+import { ColorPickerInput } from '@/components/ui/color-picker/ColorPickerInput';
 import { DocumentConfig, PdfPreviewConfig, OnlyOfficeStorageConfig, OnlyOfficeViewerConfig } from '../types';
 import { IconFileTypePdf } from '@tabler/icons-react';
 
@@ -112,23 +113,108 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
             checked={!!documentsConfig.enableWatermark}
             onChange={(checked) => onDocumentsChange({ ...documentsConfig, enableWatermark: checked })}
           />
-          {documentsConfig.enableWatermark && (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Watermark text</label>
-                <input
-                  value={documentsConfig.pdfPreview?.watermarkText ?? 'FOR PREVIEW ONLY'}
-                  onChange={(event) => setPdf({ watermarkText: event.target.value.slice(0, 120) })}
-                  maxLength={120}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-emerald-500"
-                  placeholder="FOR PREVIEW ONLY"
-                />
-                <p className="mt-1 text-xs text-slate-500">The stored PDF is never modified.</p>
+          {documentsConfig.enableWatermark && (() => {
+            const pdf = documentsConfig.pdfPreview;
+            const text = (pdf?.watermarkText ?? 'FOR PREVIEW ONLY').trim() || 'FOR PREVIEW ONLY';
+            const colour = pdf?.watermarkColor ?? '#B3B3F5';
+            const strength = pdf?.watermarkStrength ?? 'standard';
+            const tiled = pdf?.watermarkTiled ?? false;
+            // The viewer line: code and name together, as the server prints them.
+            const viewer = [pdf?.watermarkShowEmployeeCode ? 'NTP.0005' : null, pdf?.watermarkShowViewerName ? 'Nguyen The Hoang' : null]
+              .filter(Boolean).join(' - ') || null;
+            const sample = [
+              text,
+              viewer,
+              pdf?.watermarkShowOpenedAt ? '16/10/2026 10:00:00' : null,
+            ].filter((line): line is string => !!line);
+            // The same opacity the server uses for each strength, so the sample is as faint or as strong as the real preview.
+            const alpha = strength === 'light' ? 0.10 : strength === 'strong' ? 0.30 : 0.18;
+            const mark = (
+              <div className="flex -rotate-45 flex-col items-center gap-1 whitespace-nowrap text-center font-bold" style={{ color: colour, opacity: alpha }}>
+                {sample.map((line, index) => (
+                  <span key={index} className={index === 0 ? 'text-2xl' : 'text-sm font-semibold'}>{line}</span>
+                ))}
               </div>
-              <Checkbox id="pdf-preview-watermark-viewer" label="Show viewer name" checked={documentsConfig.pdfPreview?.watermarkShowViewerName ?? false} onChange={(checked) => setPdf({ watermarkShowViewerName: checked })} />
-              <Checkbox id="pdf-preview-watermark-opened-at" label="Show preview opened time" checked={documentsConfig.pdfPreview?.watermarkShowOpenedAt ?? false} onChange={(checked) => setPdf({ watermarkShowOpenedAt: checked })} />
-            </div>
-          )}
+            );
+            return (
+              <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Watermark text</label>
+                    <input
+                      value={pdf?.watermarkText ?? 'FOR PREVIEW ONLY'}
+                      onChange={(event) => setPdf({ watermarkText: event.target.value.slice(0, 120) })}
+                      maxLength={120}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-emerald-500"
+                      placeholder="FOR PREVIEW ONLY"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">Shown as an overlay on every page of the preview only. The stored PDF is never modified.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <Select
+                        label="Strength"
+                        value={strength}
+                        onChange={(value) => setPdf({ watermarkStrength: value as 'light' | 'standard' | 'strong' })}
+                        enableSearch={false}
+                        options={[
+                          { label: 'Light', value: 'light' },
+                          { label: 'Standard', value: 'standard' },
+                          { label: 'Strong', value: 'strong' },
+                        ]}
+                      />
+                      <p className="mt-1 text-xs text-slate-500">Strong is harder to read through, and harder to photograph cleanly.</p>
+                    </div>
+                    <div>
+                      <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Colour</p>
+                      <ColorPickerInput value={colour} onChange={(value) => setPdf({ watermarkColor: value })} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Shown on each page of the preview</p>
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                      <Checkbox id="pdf-preview-watermark-employee" label="Viewer employee code" checked={pdf?.watermarkShowEmployeeCode ?? false} onChange={(checked) => setPdf({ watermarkShowEmployeeCode: checked })} />
+                      <Checkbox id="pdf-preview-watermark-viewer" label="Viewer name" checked={pdf?.watermarkShowViewerName ?? false} onChange={(checked) => setPdf({ watermarkShowViewerName: checked })} />
+                      <Checkbox id="pdf-preview-watermark-opened-at" label="Time the preview was opened" checked={pdf?.watermarkShowOpenedAt ?? false} onChange={(checked) => setPdf({ watermarkShowOpenedAt: checked })} />
+                    </div>
+                    <p className="mt-1.5 text-xs text-slate-500">When both code and name are on, they show on one line: code - name.</p>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Layout</p>
+                    <Checkbox id="pdf-preview-watermark-tiled" label="Repeat the watermark as a grid" checked={tiled} onChange={(checked) => setPdf({ watermarkTiled: checked })} />
+                    <p className="ml-7 mt-0.5 text-xs text-slate-500">Off shows one large mark in the centre. On repeats it covers the page so a photograph cannot avoid it.</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Sample</p>
+                  <div className="relative grid h-[260px] place-items-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white">
+                    {tiled ? (
+                      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                        {/* The same lattice as the server: copies on rows that run along the text, scaled to the box. */}
+                        {[-2, -1, 0, 1, 2].flatMap((i) => [-2, -1, 0, 1, 2].map((j) => {
+                          const k = 0.7071 * 0.67;
+                          const x = i * 420 * k + j * 240 * k * -1;
+                          const y = i * 420 * k * -1 + j * 240 * k * -1;
+                          return (
+                            <div key={`${i}-${j}`} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ transform: `translate(${x}px, ${y}px) translate(-50%, -50%)` }}>
+                              {mark}
+                            </div>
+                          );
+                        }))}
+                      </div>
+                    ) : (
+                      <div className="pointer-events-none">{mark}</div>
+                    )}
+                    <p className="absolute bottom-2 left-0 right-0 text-center text-2xs text-slate-400">Example values. The viewer is filled in at preview time.</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         <section className="rounded-xl border border-slate-200 p-4">

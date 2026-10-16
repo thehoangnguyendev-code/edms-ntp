@@ -17,7 +17,7 @@ public class ReportPlatformController {
     @GetMapping("/catalog") public ResponseEntity<?> catalog() { return ResponseEntity.ok(reports.catalog(currentUser.requireCurrentUser())); }
     @PostMapping("/runs") public ResponseEntity<?> run(@RequestBody ReportPlatformService.RunRequest request, @RequestHeader(value="Idempotency-Key", required=false) String key) { UUID id=reports.queueRun(currentUser.requireCurrentUser(), request, key); return ResponseEntity.accepted().body(Map.of("id",id,"status","QUEUED")); }
     @PostMapping("/runs/{runId}/retry") public ResponseEntity<Void> retry(@PathVariable UUID runId) { reports.retryRun(currentUser.requireCurrentUser(), runId); return ResponseEntity.accepted().build(); }
-    @GetMapping("/runs") public ResponseEntity<?> runs(@RequestParam(required=false) String search, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int limit, @RequestParam(defaultValue="queuedAt") String sortBy, @RequestParam(defaultValue="desc") String sortDirection) { return ResponseEntity.ok(reports.runs(currentUser.requireCurrentUser(),search,page,limit,sortBy,sortDirection)); }
+    @GetMapping("/runs") public ResponseEntity<?> runs(@RequestParam(required=false) String search, @RequestParam(required=false) String status, @RequestParam(required=false) String definitionCode, @RequestParam(required=false) String queuedFrom, @RequestParam(required=false) String queuedTo, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int limit, @RequestParam(defaultValue="queuedAt") String sortBy, @RequestParam(defaultValue="desc") String sortDirection) { return ResponseEntity.ok(reports.runs(currentUser.requireCurrentUser(), search, status, definitionCode, queuedFrom, queuedTo, page, limit, sortBy, sortDirection)); }
     @GetMapping("/runs/{runId}") public ResponseEntity<?> runDetail(@PathVariable UUID runId) { return ResponseEntity.ok(reports.runDetail(currentUser.requireCurrentUser(), runId)); }
     @GetMapping("/definitions/{code}/preview") public ResponseEntity<?> preview(@PathVariable String code, @RequestParam(required=false) List<String> fields) { return ResponseEntity.ok(reports.preview(currentUser.requireCurrentUser(), code, fields)); }
     @PostMapping("/runs/{runId}/artifacts/{artifactId}/download") public ResponseEntity<byte[]> download(@PathVariable UUID runId, @PathVariable UUID artifactId) {
@@ -25,7 +25,9 @@ public class ReportPlatformController {
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=\""+artifact.filename().replace("\"", "")+"\"").contentType(MediaType.parseMediaType(artifact.mimeType())).body(artifact.bytes());
     }
     @PostMapping("/runs/{runId}/artifacts/{artifactId}/legal-hold") public ResponseEntity<Void> legalHold(@PathVariable UUID runId, @PathVariable UUID artifactId, @RequestBody Map<String,Object> request) {
-        reports.setArtifactLegalHold(currentUser.requireCurrentUser(), runId, artifactId, Boolean.TRUE.equals(request.get("legalHold")), String.valueOf(request.getOrDefault("reason", "")));
+        Object token = request.get("signatureToken");
+        reports.setArtifactLegalHold(currentUser.requireCurrentUser(), runId, artifactId, Boolean.TRUE.equals(request.get("legalHold")),
+                String.valueOf(request.getOrDefault("reason", "")), token == null ? null : String.valueOf(token));
         return ResponseEntity.noContent().build();
     }
     @GetMapping("/schedules") public ResponseEntity<?> schedules() { return ResponseEntity.ok(reports.schedules(currentUser.requireCurrentUser())); }
@@ -37,4 +39,13 @@ public class ReportPlatformController {
     @PostMapping("/schedules/{id}/pause") public ResponseEntity<Void> pauseSchedule(@PathVariable UUID id) { reports.pauseSchedule(currentUser.requireCurrentUser(), id); return ResponseEntity.noContent().build(); }
     @PostMapping("/schedules/{id}/resume") public ResponseEntity<Void> resumeSchedule(@PathVariable UUID id) { reports.resumeSchedule(currentUser.requireCurrentUser(), id); return ResponseEntity.noContent().build(); }
     @DeleteMapping("/schedules/{id}") public ResponseEntity<Void> deleteSchedule(@PathVariable UUID id) { reports.deleteSchedule(currentUser.requireCurrentUser(), id); return ResponseEntity.noContent().build(); }
+    /** REPORT-SCHEDULE-OWNER-2026-10-14: hands a schedule to a named owner; the reason is required and audited. */
+    @PutMapping("/schedules/{id}/owner") public ResponseEntity<Void> changeScheduleOwner(@PathVariable UUID id, @RequestBody ScheduleOwnerChange request) { reports.changeScheduleOwner(currentUser.requireCurrentUser(), id, request.ownerUserId(), request.reason()); return ResponseEntity.noContent().build(); }
+    public record ScheduleOwnerChange(UUID ownerUserId, String reason) {}
+    /** Delivery log for Report Administration: every notice attempt, paged on the server (REPORT-NOTIFICATION-CHANNEL-2026-10-14). */
+    /** Role scopes of the templates, for Report Access & Data Scope (REPORT-LIST-STANDARD-2026-10-14). */
+    @GetMapping("/access-scopes") public ResponseEntity<?> accessScopes(@RequestParam(defaultValue="") String search, @RequestParam(required=false) String scope, @RequestParam(defaultValue="templateName") String sortBy, @RequestParam(defaultValue="asc") String sortDirection, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="10") int limit) { return ResponseEntity.ok(reports.accessScopes(currentUser.requireCurrentUser(), search, scope, sortBy, sortDirection, page, limit)); }
+    /** Legal holds in force, for the Report Retention & Legal Hold register (REPORT-LIST-STANDARD-2026-10-14). */
+    @GetMapping("/legal-holds") public ResponseEntity<?> legalHolds(@RequestParam(defaultValue="") String search, @RequestParam(defaultValue="heldAt") String sortBy, @RequestParam(defaultValue="desc") String sortDirection, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="10") int limit) { return ResponseEntity.ok(reports.legalHolds(currentUser.requireCurrentUser(), search, sortBy, sortDirection, page, limit)); }
+    @GetMapping("/deliveries") public ResponseEntity<?> deliveries(@RequestParam(defaultValue="") String search, @RequestParam(required=false) String channel, @RequestParam(required=false) String status, @RequestParam(defaultValue="createdAt") String sortBy, @RequestParam(defaultValue="desc") String sortDirection, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="10") int limit) { return ResponseEntity.ok(reports.deliveries(currentUser.requireCurrentUser(), search, channel, status, sortBy, sortDirection, page, limit)); }
 }

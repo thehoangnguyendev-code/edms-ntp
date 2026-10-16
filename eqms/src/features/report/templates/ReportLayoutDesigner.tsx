@@ -12,14 +12,15 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Select } from "@/components/ui/select";
 import { Popover } from "@/components/ui/popover";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
-import { MarkCard } from "@/features/settings/document-administration/controlled-copies-policy/MarkingEditors";
+import { WatermarkFields } from "@/features/settings/document-administration/controlled-copies-policy/MarkingEditors";
+import { ReportMarkCard, ReportStampFields } from "./ReportStampEditor";
 import {
   defaultReportMark,
+  defaultReportStamp,
   reportTemplatesApi,
   reportError,
   type ReportLayout,
   type ReportMark,
-  type ReportChart,
 } from "@/services/api/reportTemplates";
 
 const input =
@@ -30,8 +31,10 @@ const tokens = [
     name: "Report name",
     example: "Document Status Report",
   },
-  { code: "report.code", name: "Template code", example: "DOCUMENT_STATUS" },
-  { code: "template.version", name: "Template version", example: "2" },
+  { code: "report.code", name: "Template number", example: "RPT.0001" },
+  { code: "template.version", name: "Template revision", example: "2" },
+  { code: "template.name", name: "Template name", example: "EQMS - Document status register" },
+  { code: "report.runId", name: "Run ID", example: "Identifier of the run, to trace a printout to its record" },
   {
     code: "report.executor",
     name: "Prepared by",
@@ -65,9 +68,28 @@ const pageOptions = [
 const fonts = [
   { value: "NOTO_SANS", label: "Noto Sans" },
   { value: "NOTO_SERIF", label: "Noto Serif" },
+  { value: "TIMES_NEW_ROMAN", label: "Times New Roman" },
   { value: "ROBOTO_MONO", label: "Roboto Mono" },
   { value: "OSWALD", label: "Oswald" },
 ];
+/** Where the watermark sits and how it is turned and sized until it is dragged on the preview. */
+const markHome = () => {
+  const home = defaultReportMark();
+  return { x: home.x, y: home.y, width: home.width, rotation: home.rotation };
+};
+const markMoved = (mark: ReportMark) => {
+  const home = markHome();
+  return mark.x !== home.x || mark.y !== home.y || mark.width !== home.width || mark.rotation !== home.rotation;
+};
+function ResetPosition({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <div className="mt-4 flex justify-end border-t border-slate-200 pt-3">
+      <Button size="sm" variant="outline-emerald" aria-label={`Reset ${label} Position`} onClick={onClick}>
+        Reset Position
+      </Button>
+    </div>
+  );
+}
 function NumberField({
   label,
   value,
@@ -98,101 +120,82 @@ function NumberField({
     </label>
   );
 }
-function MarkEditor({
-  value,
-  onChange,
-}: {
-  value: ReportMark;
-  onChange: (value: ReportMark) => void;
-}) {
-  const patch = (p: Partial<ReportMark>) => onChange({ ...value, ...p });
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <label className="space-y-1.5 text-sm text-slate-700">
-        <span>Color</span>
-        <ColorPickerInput
-          value={value.color}
-          onChange={(color) => patch({ color })}
-        />
-      </label>
-      <Select
-        label="Font"
-        value={value.font}
-        options={fonts}
-        enableSearch={false}
-        onChange={(font) => patch({ font: font as ReportMark["font"] })}
-      />
-      <NumberField
-        label="Opacity (%)"
-        value={value.opacity}
-        min={1}
-        onChange={(opacity) => patch({ opacity })}
-      />
-      <NumberField
-        label="Font size (pt)"
-        value={value.fontSize}
-        min={6}
-        max={96}
-        onChange={(fontSize) => patch({ fontSize })}
-      />
-      <NumberField
-        label="Rotation (degrees)"
-        value={value.rotation}
-        min={-180}
-        max={180}
-        onChange={(rotation) => patch({ rotation })}
-      />
-      <NumberField
-        label="Width (%)"
-        value={value.width}
-        min={5}
-        max={100 - value.x}
-        onChange={(width) => patch({ width })}
-      />
-      <NumberField
-        label="Left position (%)"
-        value={value.x}
-        max={95}
-        onChange={(x) => patch({ x, width: Math.min(value.width, 100 - x) })}
-      />
-      <NumberField
-        label="Top position (%)"
-        value={value.y}
-        max={98}
-        onChange={(y) => patch({ y })}
-      />
-      <Select
-        label="Pages"
-        value={value.pages}
-        options={pageOptions}
-        enableSearch={false}
-        onChange={(pages) => patch({ pages: pages as ReportMark["pages"] })}
-      />
-      <Select
-        label="Layer"
-        value={value.layer}
-        options={[
-          { value: "ABOVE", label: "Above content" },
-          { value: "BEHIND", label: "Behind content" },
-        ]}
-        enableSearch={false}
-        onChange={(layer) => patch({ layer: layer as ReportMark["layer"] })}
-      />
-    </div>
-  );
+/** The biggest picture that may be chosen; it is reduced before it goes into the layout. */
+const LOGO_MAX_UPLOAD = 10 * 1024 * 1024;
+/** What the layout keeps: the server takes a picture of up to 1 MB and 4 megapixels, and a report needs far less than that. */
+const LOGO_MAX_SIDE = 1600;
+const LOGO_MAX_PIXELS = 3_000_000;
+const LOGO_MAX_DATA_URL = 1_300_000;
+
+/**
+ * Reads a logo as a data URL that the layout can keep. A picture that is too big in pixels or in bytes is reduced step by step (the sides by a fifth each time,
+ * a photograph in JPEG when the PNG stays too heavy) until it fits; its proportions and transparency are kept. Where the picture cannot be measured
+ * (no canvas) it is used as it is when it is small enough, otherwise refused.
+ */
+function readLogo(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read"));
+    reader.onload = () => {
+      const source = String(reader.result);
+      const image = new Image();
+      image.onerror = () => reject(new Error("image"));
+      image.onload = () => {
+        const width = image.naturalWidth;
+        const height = image.naturalHeight;
+        const fits = (data: string) => data.length <= LOGO_MAX_DATA_URL;
+        if (!width || !height || (width * height <= LOGO_MAX_PIXELS && Math.max(width, height) <= 4096 && fits(source))) {
+          if (fits(source)) resolve(source);
+          else reject(new Error("size"));
+          return;
+        }
+        let scale = Math.min(1, LOGO_MAX_SIDE / Math.max(width, height), Math.sqrt(LOGO_MAX_PIXELS / (width * height)));
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(width * scale));
+          canvas.height = Math.max(1, Math.round(height * scale));
+          const context = canvas.getContext("2d");
+          if (!context) {
+            reject(new Error("canvas"));
+            return;
+          }
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          const png = canvas.toDataURL("image/png");
+          if (fits(png)) {
+            resolve(png);
+            return;
+          }
+          // A heavy PNG is usually a photograph: JPEG is much smaller (transparency becomes white).
+          if (file.type === "image/jpeg" || attempt >= 2) {
+            context.globalCompositeOperation = "destination-over";
+            context.fillStyle = "#ffffff";
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            const jpeg = canvas.toDataURL("image/jpeg", 0.85);
+            if (fits(jpeg)) {
+              resolve(jpeg);
+              return;
+            }
+          }
+          scale *= 0.8;
+        }
+        reject(new Error("size"));
+      };
+      image.src = source;
+    };
+    reader.readAsDataURL(file);
+  });
 }
+
 export function ReportLayoutDesigner({
   value,
   onChange,
   title,
   disabled,
-  fields = [],
 }: {
   value: ReportLayout;
   onChange: (value: ReportLayout) => void;
   title: string;
   disabled: boolean;
-  fields?: Array<{ code: string; name: string; type?: string }>;
 }) {
   const [uploadError, setUploadError] = useState("");
   const [section, setSection] = useState("markings");
@@ -212,7 +215,7 @@ export function ReportLayoutDesigner({
     const component = value.wordComponents?.[type];
     return (
       <div className="space-y-3">
-        <label className="block cursor-pointer rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600">
+        <label className="relative block cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600">
           <span>
             {uploadingPart === type
               ? "Inspecting on server…"
@@ -292,12 +295,10 @@ export function ReportLayoutDesigner({
     | "coverTitle"
     | "subtitle"
     | "header"
-    | "footer"
-    | "watermark"
-    | "stamp";
+    | "footer";
   const patch = (p: Partial<ReportLayout>) => onChange({ ...value, ...p });
   const watermark = value.watermarkStyle ?? defaultReportMark(),
-    stamp = value.stampStyle ?? defaultReportMark(true);
+    stamp = value.stampStyle ?? defaultReportStamp();
   const logo = value.logo ?? {
     enabled: false,
     data: "",
@@ -340,12 +341,6 @@ export function ReportLayoutDesigner({
         ))}
     </div>
   );
-  const chartChange = (index: number, p: Partial<ReportChart>) =>
-    patch({
-      charts: (value.charts ?? []).map((c, i) =>
-        i === index ? { ...c, ...p } : c,
-      ),
-    });
   return (
     <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-12">
       <fieldset disabled={disabled} className="min-w-0 space-y-4 lg:col-span-4">
@@ -353,7 +348,6 @@ export function ReportLayoutDesigner({
           tabs={[
             { id: "markings", label: "PDF Markings" },
             { id: "paper", label: "Page Templates" },
-            { id: "charts", label: "Charts" },
           ]}
           activeTab={section}
           onChange={setSection}
@@ -367,20 +361,35 @@ export function ReportLayoutDesigner({
         )}
         <div hidden={section !== "paper"} className="space-y-4">
           <FormSection title="Page Layout">
-            <Select
-              label="Orientation"
-              value={value.orientation ?? "LANDSCAPE"}
-              enableSearch={false}
-              options={[
-                { value: "PORTRAIT", label: "Portrait" },
-                { value: "LANDSCAPE", label: "Landscape" },
-              ]}
-              onChange={(orientation) =>
-                patch({
-                  orientation: orientation as ReportLayout["orientation"],
-                })
-              }
-            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Select
+                label="Orientation"
+                value={value.orientation ?? "LANDSCAPE"}
+                enableSearch={false}
+                options={[
+                  { value: "PORTRAIT", label: "Portrait" },
+                  { value: "LANDSCAPE", label: "Landscape" },
+                ]}
+                onChange={(orientation) =>
+                  patch({
+                    orientation: orientation as ReportLayout["orientation"],
+                  })
+                }
+              />
+              <div>
+                <Select
+                  label="Report font"
+                  value={value.fontFamily ?? "NOTO_SANS"}
+                  enableSearch={false}
+                  options={fonts}
+                  onChange={(fontFamily) => patch({ fontFamily: fontFamily as ReportLayout["fontFamily"] })}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  The font of the cover, header, footer, table and charts of the PDF. Times New Roman is printed in Tinos, a font with the same letter widths. A cover, header or
+                  footer made from a Word file keeps the fonts of that file. Stamp and watermark have their own font.
+                </p>
+              </div>
+            </div>
           </FormSection>
           <FormSection title="Report Placeholders">
             <p className="mb-3 text-xs text-slate-500">
@@ -470,72 +479,69 @@ export function ReportLayoutDesigner({
           </FormSection>
         </div>
         <div hidden={section !== "markings"} className="space-y-4">
-          {([true, false] as const).map((isStamp) => (
-            <MarkCard
-              key={String(isStamp)}
-              title={isStamp ? "Stamp" : "Watermark"}
-              enabled={isStamp ? value.stampEnabled : value.watermarkEnabled}
+          <ReportMarkCard
+            title="Stamp"
+            enabled={value.stampEnabled}
+            disabled={disabled}
+            onToggle={(stampEnabled) => patch({ stampEnabled })}
+          >
+            <ReportStampFields
+              text={value.stamp}
+              stamp={stamp}
               disabled={disabled}
-              onToggle={(enabled) =>
-                patch(
-                  isStamp
-                    ? { stampEnabled: enabled }
-                    : { watermarkEnabled: enabled },
-                )
-              }
-            >
-              {text(
-                isStamp ? "stamp" : "watermark",
-                isStamp ? "Stamp text" : "Watermark text",
-                isStamp ? 60 : 80,
-              )}
-              <MarkEditor
-                value={isStamp ? stamp : watermark}
-                onChange={(style) =>
-                  patch(
-                    isStamp ? { stampStyle: style } : { watermarkStyle: style },
-                  )
+              onText={(text) => patch({ stamp: text })}
+              onChange={(change) => patch({ stampStyle: { ...stamp, ...change } })}
+            />
+          </ReportMarkCard>
+          <ReportMarkCard
+            title="Watermark"
+            enabled={value.watermarkEnabled}
+            disabled={disabled}
+            onToggle={(watermarkEnabled) => patch({ watermarkEnabled })}
+          >
+            <WatermarkFields
+              disabled={disabled}
+              textHint="Letters, digits and . , : ; / ( ) -"
+              opacityRange={[5, 50]}
+              layerOptions={[
+                { label: "Behind the content (text stays crisp)", value: "BEHIND" },
+                { label: "Above the content (always visible)", value: "ABOVE" },
+              ]}
+              value={{
+                watermarkText: value.watermark,
+                watermarkColor: watermark.color,
+                watermarkOpacityPercent: watermark.opacity,
+                watermarkLayer: watermark.layer,
+                watermarkPages: watermark.pages,
+                watermarkFontFamily: watermark.font,
+              }}
+              onChange={(key, next) => {
+                if (key === "watermarkText") patch({ watermark: String(next) });
+                else {
+                  const style: Partial<ReportMark> = {};
+                  if (key === "watermarkColor") style.color = String(next);
+                  if (key === "watermarkOpacityPercent") style.opacity = Number(next);
+                  if (key === "watermarkPages") style.pages = next as ReportMark["pages"];
+                  if (key === "watermarkFontFamily") style.font = next as ReportMark["font"];
+                  if (key === "watermarkLayer") style.layer = next as ReportMark["layer"];
+                  patch({ watermarkStyle: { ...watermark, ...style } });
                 }
+              }}
+            />
+            {markMoved(watermark) && (
+              <ResetPosition
+                label="Watermark"
+                onClick={() => patch({ watermarkStyle: { ...watermark, ...markHome() } })}
               />
-              <Button
-                variant="outline-emerald"
-                size="sm"
-                onClick={() => {
-                  const style = defaultReportMark(isStamp);
-                  patch(
-                    isStamp
-                      ? {
-                          stampStyle: {
-                            ...stamp,
-                            x: style.x,
-                            y: style.y,
-                            width: style.width,
-                            rotation: style.rotation,
-                          },
-                        }
-                      : {
-                          watermarkStyle: {
-                            ...watermark,
-                            x: style.x,
-                            y: style.y,
-                            width: style.width,
-                            rotation: style.rotation,
-                          },
-                        },
-                  );
-                }}
-              >
-                Reset Position
-              </Button>
-            </MarkCard>
-          ))}
-          <MarkCard
+            )}
+          </ReportMarkCard>
+          <ReportMarkCard
             title="Logo"
             enabled={logo.enabled}
             disabled={disabled}
             onToggle={(enabled) => patch({ logo: { ...logo, enabled } })}
           >
-            <label className="block cursor-pointer rounded-lg border-2 border-dashed border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
+            <label className="relative block cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
               {logo.data ? (
                 <img
                   src={logo.data}
@@ -543,7 +549,8 @@ export function ReportLayoutDesigner({
                   className="mx-auto mb-3 max-h-16 max-w-full"
                 />
               ) : null}
-              <span>Upload PNG or JPEG · max 1 MB</span>
+              <span>Upload PNG or JPEG · up to 10 MB</span>
+              <span className="mt-1 block text-xs text-slate-500">A large picture is reduced to a size that suits the report when it is inserted.</span>
               <input
                 aria-label="Upload report logo"
                 type="file"
@@ -553,23 +560,17 @@ export function ReportLayoutDesigner({
                   const file = e.target.files?.[0];
                   if (!file) return;
                   if (
-                    file.size > 1048576 ||
+                    file.size > LOGO_MAX_UPLOAD ||
                     !["image/png", "image/jpeg"].includes(file.type)
                   ) {
-                    setUploadError("Use PNG/JPEG up to 1 MB.");
+                    setUploadError("Use a PNG or JPEG up to 10 MB.");
                     return;
                   }
                   setUploadError("");
-                  const reader = new FileReader();
-                  reader.onload = () =>
-                    patch({
-                      logo: {
-                        ...logo,
-                        data: String(reader.result),
-                        enabled: true,
-                      },
-                    });
-                  reader.readAsDataURL(file);
+                  // A large picture is reduced here: the server accepts up to 4 megapixels and a report needs far less.
+                  void readLogo(file)
+                    .then((data) => patch({ logo: { ...logo, data, enabled: true } }))
+                    .catch(() => setUploadError("The image could not be read or reduced. Use another PNG or JPEG."));
                   e.target.value = "";
                 }}
               />
@@ -616,135 +617,7 @@ export function ReportLayoutDesigner({
             >
               Reset Position
             </Button>
-          </MarkCard>
-        </div>
-        <div
-          hidden={section !== "charts"}
-          className="space-y-4 rounded-xl border border-slate-200 p-4"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-800">
-              Analysis charts
-            </h3>
-            <Button
-              size="sm"
-              variant="outline-emerald"
-              disabled={!fields.length || (value.charts?.length ?? 0) >= 6}
-              onClick={() =>
-                patch({
-                  charts: [
-                    ...(value.charts ?? []),
-                    {
-                      title: `Records by ${fields.find((f) => f.code === "status")?.name ?? fields[0].name}`,
-                      type: "BAR",
-                      field:
-                        fields.find((f) => f.code === "status")?.code ??
-                        fields[0].code,
-                      metric: "COUNT",
-                    },
-                  ],
-                })
-              }
-            >
-              Add chart
-            </Button>
-          </div>
-          <p className="text-xs text-slate-500">
-            1. Choose a chart type. 2. Choose what to group records by. 3.
-            Choose counts or percentages. Each chart appears on its own PDF
-            page. This configuration preview uses demonstration data; generated
-            reports calculate actual authorized records on the server.
-          </p>
-          {(value.charts ?? []).map((chart, index) => (
-            <div
-              key={index}
-              className="space-y-3 border-t border-slate-100 pt-4"
-            >
-              <label className="block space-y-1.5 text-sm text-slate-700">
-                <span>Chart title</span>
-                <Input
-                  className={input}
-                  maxLength={100}
-                  value={chart.title}
-                  onChange={(e) =>
-                    chartChange(index, { title: e.target.value })
-                  }
-                />
-              </label>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Select
-                  label="Chart type"
-                  value={chart.type}
-                  options={[
-                    { value: "BAR", label: "Column" },
-                    { value: "PIE", label: "Pie" },
-                    ...(fields.some((f) => f.type === "DATE")
-                      ? [{ value: "LINE", label: "Monthly trend" }]
-                      : []),
-                  ]}
-                  enableSearch={false}
-                  onChange={(type) =>
-                    chartChange(index, {
-                      type: type as ReportChart["type"],
-                      ...(type === "LINE" &&
-                      !fields.some(
-                        (f) => f.code === chart.field && f.type === "DATE",
-                      ) &&
-                      fields.some((f) => f.type === "DATE")
-                        ? {
-                            field: fields.find((f) => f.type === "DATE")!.code,
-                          }
-                        : {}),
-                    })
-                  }
-                />
-                <Select
-                  label="Group by"
-                  value={chart.field}
-                  options={fields
-                    .filter((f) => chart.type !== "LINE" || f.type === "DATE")
-                    .map((f) => ({
-                      value: f.code,
-                      label: f.name,
-                    }))}
-                  onChange={(field) =>
-                    chartChange(index, { field: String(field) })
-                  }
-                />
-                <Select
-                  label="Metric"
-                  value={chart.metric}
-                  options={[
-                    { value: "COUNT", label: "Number of records" },
-                    { value: "PERCENT", label: "Share of all records (%)" },
-                  ]}
-                  enableSearch={false}
-                  onChange={(metric) =>
-                    chartChange(index, {
-                      metric: metric as ReportChart["metric"],
-                    })
-                  }
-                />
-              </div>
-              <p className="text-xs text-slate-500">
-                {chart.type === "LINE"
-                  ? "Dates are grouped by month. Choose a date field."
-                  : `Count records with the same ${fields.find((f) => f.code === chart.field)?.name ?? "field value"}.`}{" "}
-                {chart.metric === "PERCENT"
-                  ? "All categories total 100%."
-                  : "No sums or user formulas are required."}
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  patch({ charts: value.charts?.filter((_, i) => i !== index) })
-                }
-              >
-                Remove chart
-              </Button>
-            </div>
-          ))}
+          </ReportMarkCard>
         </div>
         <p className="text-xs text-slate-500">
           Automatic fields use a server placeholder internally; choose a named

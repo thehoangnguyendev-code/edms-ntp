@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button/Button';
 import { Badge, type BadgeColor } from '@/components/ui/badge';
 import { DocumentFilters } from "@/features/documents/shared/components";
 import { cn } from '@/components/ui/utils';
-import { IconInfoCircle, IconChecks, IconCheck, IconChalkboardTeacher, IconPencilMinus, IconArrowBarToRight, IconBrandTelegram, IconShare2 } from "@tabler/icons-react";
+import { IconInfoCircle, IconChecks, IconCheck, IconChalkboardTeacher, IconPencilMinus, IconArrowBarToRight, IconBrandTelegram, IconShare2, IconChecklist } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { revisionList } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
@@ -60,7 +60,8 @@ const DEFAULT_COLUMNS: TableColumn[] = [
   { id: "author", label: "Author", visible: true, order: 14 },
   { id: "effectiveDate", label: "Effective Date", visible: true, order: 15 },
   { id: "validUntil", label: "Valid Until", visible: true, order: 16 },
-  { id: "action", label: "Action", visible: true, order: 17, locked: true },
+  { id: "trainingNumber", label: "Training Number", visible: true, order: 17 },
+  { id: "action", label: "Action", visible: true, order: 18, locked: true },
 ];
 
 // --- Main Component ---
@@ -457,6 +458,8 @@ export const RevisionListView: React.FC = () => {
         return revision.effectiveDate;
       case "validUntil":
         return revision.validUntil;
+      case "trainingNumber":
+        return revision.trainingNumber ?? "";
       default:
         return null;
     }
@@ -738,7 +741,7 @@ export const RevisionListView: React.FC = () => {
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
                 >
-                  <IconChalkboardTeacher className="h-4 w-4 text-slate-500" />
+                  <IconChecklist className="h-4 w-4 text-slate-500" />
                   <span>Training Revision</span>
                 </button>
               )}

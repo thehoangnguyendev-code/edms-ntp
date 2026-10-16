@@ -96,6 +96,14 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                     templateVersionRepository.save(buildVersion(policy, NotificationTemplateVersion.CHANNEL_IN_APP,
                             seed.inAppTitle(), seed.inAppSummary(), seed.variables()));
                 }
+                if (seed.channels().contains(NotificationTemplateVersion.CHANNEL_EMAIL) && EMAIL_CONTENT.containsKey(seed.code())) {
+                    String[] content = EMAIL_CONTENT.get(seed.code());
+                    NotificationTemplateVersion email = buildVersion(policy, NotificationTemplateVersion.CHANNEL_EMAIL,
+                            seed.inAppTitle(), seed.inAppSummary(), seed.variables());
+                    email.setSubject(content[0]);
+                    email.setBody(content[1]);
+                    templateVersionRepository.save(email);
+                }
             }
         }
     }
@@ -123,6 +131,21 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
         }
         return array;
     }
+
+    /** Email subject and body (HTML) per event code. Index 0 = subject, 1 = body. English only. */
+    private static final java.util.Map<String, String[]> EMAIL_CONTENT = java.util.Map.of(
+            "document.expired", new String[]{
+                    "[EQMS] Document expired: {{documentNumber}}",
+                    "<p><b>Document {{documentNumber}} — {{documentTitle}} has passed its Valid Until date and is no longer valid.</b></p>"
+                    + "<p>Its electronic copies have been voided. Do not use this document, including any printed copy, and do not request new copies until the document has been reviewed and extended or replaced by a newer version.</p>"
+                    + "<p>Link: {{actionUrl}}</p>"
+            },
+            "document.expired_copy_holder", new String[]{
+                    "[EQMS] Your copy is void: {{documentNumber}}",
+                    "<p><b>The controlled copy you hold of {{documentNumber}} — {{documentTitle}} is void because the document has expired.</b></p>"
+                    + "<p>Do not use the electronic copy or the printed copy issued to you. Document Control (DCO) will recall your printed copy.</p>"
+                    + "<p>Link: {{actionUrl}}</p>"
+            });
 
     private static final String STD_VARS = "recipientName,documentNumber,documentTitle,revisionNumber,actionUrl,systemName";
 
@@ -242,6 +265,27 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "GMP requires the document's author, the document coordinator, and recipients of controlled copies that were distributed and became obsoleted by this action to be notified when a document is obsoleted.",
                         new String[]{"AUTHOR", "OWNER"},
                         "Document obsoleted", "{{documentNumber}} — {{documentTitle}} has been obsoleted."
+                ),
+                new EventSeed(
+                        // Owner decision DOCUMENT-EXPIRY-2026-10-16: every Active user is told when a document passes its
+                        // Valid Until day. Mandatory so it bypasses preferences; sent by DocumentExpiryNotifier, not by a
+                        // recipient rule (the audience is every Active account).
+                        "document.expired", "Document Expired",
+                        "An Active document has reached its Valid Until date. Its controlled copies are voided and no copy can be requested.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
+                        "EXPIRE", "DOCUMENT", "IN_APP,EMAIL", STD_VARS, true,
+                        "GMP requires every user to be told that a document has expired and must no longer be used.",
+                        new String[]{},
+                        "Document expired", "{{documentNumber}} — {{documentTitle}} has passed its Valid Until date. Do not use it."
+                ),
+                new EventSeed(
+                        "document.expired_copy_holder", "Document Expired (Copy Holder)",
+                        "Sent to the holders of controlled copies that were voided because the document expired.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH, NotificationEventDefinition.COMPLIANCE_GMP_MANDATORY,
+                        "EXPIRE", "DOCUMENT", "IN_APP,EMAIL", STD_VARS, true,
+                        "GMP requires a copy holder to be told that the copy is void and that the paper copy will be recalled.",
+                        new String[]{},
+                        "Your copy is void", "{{documentNumber}} — {{documentTitle}} has expired. Your copy is void. Do not use it; the DCO will recall the paper copy."
                 ),
                 new EventSeed(
                         "document.periodic_review_due", "Document Periodic Review Due",

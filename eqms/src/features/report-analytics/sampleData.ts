@@ -84,19 +84,6 @@ export const SAMPLE_DELIVERIES: SampleDelivery[] = [
   { id: "d2", schedule: "Weekly Document Status", at: "2026-09-28 06:00", recipients: 4, status: "FAILED", detail: "The mail server refused the message (timeout)" },
 ];
 
-export interface SampleValidation {
-  report: string;
-  classification: "Official" | "Informational";
-  version: string;
-  status: "VALIDATED" | "PENDING" | "NOT_REQUIRED";
-}
-export const SAMPLE_VALIDATION: SampleValidation[] = [
-  { report: "Document Status", classification: "Official", version: "v3", status: "VALIDATED" },
-  { report: "Revision Lifecycle", classification: "Official", version: "v2", status: "PENDING" },
-  { report: "Audit Trail Extract", classification: "Official", version: "v1", status: "PENDING" },
-  { report: "Platform usage summary", classification: "Informational", version: "v1", status: "NOT_REQUIRED" },
-];
-
 export interface SampleRun {
   id: string;
   report: string;

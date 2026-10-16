@@ -18,6 +18,7 @@ public class DocumentReportMetadataProvider implements ReportMetadataProvider {
 
     public String code() { return "DOCUMENT_STATUS"; }
     public String name() { return "Document Register"; }
+    public String description() { return "Controlled documents with their number, name, status, type, department, business unit and dates."; }
     public Map<String, String> columns() { return COLUMNS; }
     public Map<String, String> labels() { return LABELS; }
     public String identityColumn() { return "d.id"; }

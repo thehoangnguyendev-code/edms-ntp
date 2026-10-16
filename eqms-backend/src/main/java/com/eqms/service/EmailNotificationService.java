@@ -521,7 +521,8 @@ public class EmailNotificationService {
         }
     }
 
-    private String resolvePublicAppBaseUrl() {
+    /** Public for report notices (REPORT-NOTIFICATION-CHANNEL-2026-10-14); the same base URL as the other links. */
+    public String resolvePublicAppBaseUrl() {
         String configured = null;
         SystemConfigurationService systemConfigurationService = systemConfigurationServiceProvider.getIfAvailable();
         if (systemConfigurationService != null) {

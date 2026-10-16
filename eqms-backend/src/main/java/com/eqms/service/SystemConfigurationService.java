@@ -845,6 +845,7 @@ public class SystemConfigurationService {
 
     private boolean isRetiredModuleFeature(String id) {
         return "feat-my-tasks".equals(id)
+                || id.startsWith("feat-tms-")
                 || "feat-edms-archive".equals(id)
                 || id.startsWith("feat-quality")
                 || id.startsWith("feat-operations")
@@ -941,46 +942,6 @@ public class SystemConfigurationService {
                 "description": "Manage employee training records, curriculum, and compliance tracking.",
                 "enabled": true,
                 "category": "Core"
-              },
-              {
-                "id": "feat-tms-my",
-                "name": "My Training",
-                "description": "View and complete assigned training courses.",
-                "enabled": true,
-                "category": "Core",
-                "parentId": "feat-tms"
-              },
-              {
-                "id": "feat-tms-materials",
-                "name": "Training Materials",
-                "description": "Access training materials, slides, and documents.",
-                "enabled": true,
-                "category": "Core",
-                "parentId": "feat-tms"
-              },
-              {
-                "id": "feat-tms-courses",
-                "name": "Course Inventory",
-                "description": "Manage training courses and approval workflows.",
-                "enabled": true,
-                "category": "Core",
-                "parentId": "feat-tms"
-              },
-              {
-                "id": "feat-tms-compliance",
-                "name": "Compliance Tracking",
-                "description": "Training matrix, rules, and course statuses.",
-                "enabled": true,
-                "category": "Core",
-                "parentId": "feat-tms"
-              },
-              {
-                "id": "feat-tms-records",
-                "name": "Records & Archive",
-                "description": "Employee files and exportable compliance logs.",
-                "enabled": true,
-                "category": "Core",
-                "parentId": "feat-tms"
               },
               {
                 "id": "feat-quality",
@@ -1514,13 +1475,22 @@ public class SystemConfigurationService {
                 throw new IllegalArgumentException("PDF preview watermark text must be at most 120 characters");
             }
             for (String flag : java.util.List.of(
-                    "watermarkShowViewerName", "watermarkShowOpenedAt",
+                    "watermarkShowViewerName", "watermarkShowOpenedAt", "watermarkShowEmployeeCode", "watermarkTiled",
                     "showThumbnailSidebar", "showSearch", "showPageNavigation",
                     "showZoomControls", "showFullScreen", "showInsertTools", "allowAnnotations",
                     "showOpenDocumentAction", "showCloseDocumentAction", "showSecurityAction",
                     "showScreenshotAction", "allowTextSelection")) {
                 JsonNode value = pdfPreview.get(flag);
                 if (value != null && !value.isNull() && !value.isBoolean()) throw new IllegalArgumentException(flag + " must be true or false");
+            }
+            JsonNode strength = pdfPreview.get("watermarkStrength");
+            if (strength != null && !strength.isNull()
+                    && (!strength.isTextual() || !java.util.Set.of("light", "standard", "strong").contains(strength.asText()))) {
+                throw new IllegalArgumentException("PDF preview watermark strength must be light, standard, or strong");
+            }
+            JsonNode color = pdfPreview.get("watermarkColor");
+            if (color != null && !color.isNull() && (!color.isTextual() || !color.asText().matches("^#[0-9A-Fa-f]{6}$"))) {
+                throw new IllegalArgumentException("PDF preview watermark colour must be a hex colour such as #B3B3F5");
             }
             JsonNode defaultZoom = pdfPreview.get("defaultZoom");
             if (defaultZoom != null && !defaultZoom.isNull()

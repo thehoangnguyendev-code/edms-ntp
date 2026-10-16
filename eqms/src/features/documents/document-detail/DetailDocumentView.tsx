@@ -808,6 +808,10 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   };
 
   const handleRequestControlledCopy = () => {
+    if (controlledCopyExpired) {
+      setExpiredCopyModalKind("controlled");
+      return;
+    }
     if (!canRequestControlledCopy) {
       showToast({
         type: "error",
@@ -843,17 +847,21 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   );
 
   // Request Uncontrolled Copy: the permission check only avoids a pointless call; the server's request-context is
-  // authoritative (permission + document type "Allow Uncontrolled Copy" + current Effective revision + Active
-  // document + not a template), the same "server decides, view renders" rule as the Controlled Copy capability.
+  // authoritative (permission + eligibility matrix default + current Effective revision + Active document +
+  // not a template + validity window), the same "server decides, view renders" rule as the Controlled Copy capability.
   const { hasPermission } = usePermissions();
   const hasUncontrolledCopyRequestPermission = hasPermission("documents.uncontrolled_copy.request");
   const latestEffectiveRevisionId = latestEffectiveRevision?.id ? String(latestEffectiveRevision.id) : "";
   const [canRequestUncontrolledCopy, setCanRequestUncontrolledCopy] = useState(false);
   const [uncontrolledCopyContextMessage, setUncontrolledCopyContextMessage] = useState<string | null>(null);
+  const [uncontrolledCopyExpired, setUncontrolledCopyExpired] = useState(false);
+  // Which Request Copy button was pressed on an expired document (owner decision DOCUMENT-EXPIRY-2026-10-16).
+  const [expiredCopyModalKind, setExpiredCopyModalKind] = useState<"controlled" | "uncontrolled" | null>(null);
   const [isUncontrolledCopyModalOpen, setIsUncontrolledCopyModalOpen] = useState(false);
   useEffect(() => {
     setCanRequestUncontrolledCopy(false);
     setUncontrolledCopyContextMessage(null);
+    setUncontrolledCopyExpired(false);
     if (!documentId || !hasUncontrolledCopyRequestPermission || !latestEffectiveRevisionId || document.isTemplate) {
       return;
     }
@@ -864,6 +872,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         if (!alive) return;
         setCanRequestUncontrolledCopy(Boolean(context.canRequest));
         setUncontrolledCopyContextMessage(context.message ?? null);
+        setUncontrolledCopyExpired(Boolean(context.documentExpired));
       })
       .catch(() => {
         if (alive) setCanRequestUncontrolledCopy(false);
@@ -897,6 +906,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   const canRequestControlledCopy = Boolean(
     documentMasterCapabilities?.actions.requestControlledCopy?.allowed,
   );
+  // The server keeps the button for a user who may request, and marks it DOCUMENT_EXPIRED once Valid Until has passed.
+  const controlledCopyExpired =
+    documentMasterCapabilities?.actions.requestControlledCopy?.reasonCode === "DOCUMENT_EXPIRED";
   const canConfigureNextRevisionReviewers = Boolean(
     documentMasterCapabilities?.actions.configureNextReviewers?.allowed,
   );
@@ -1986,7 +1998,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             Obsolete
           </Button>
         )}
-        {canRequestControlledCopy && (
+        {(canRequestControlledCopy || controlledCopyExpired) && (
           <Button
             size="sm"
             variant="outline-emerald"
@@ -1996,12 +2008,18 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             Request Controlled Copy
           </Button>
         )}
-        {canRequestUncontrolledCopy && (
+        {(canRequestUncontrolledCopy || uncontrolledCopyExpired) && (
           <Button
             size="sm"
             variant="outline-emerald"
             className="whitespace-nowrap gap-2"
-            onClick={() => setIsUncontrolledCopyModalOpen(true)}
+            onClick={() => {
+              if (uncontrolledCopyExpired) {
+                setExpiredCopyModalKind("uncontrolled");
+                return;
+              }
+              setIsUncontrolledCopyModalOpen(true);
+            }}
             title={uncontrolledCopyContextMessage || undefined}
           >
             Request Uncontrolled Copy
@@ -2304,6 +2322,17 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         documentSubType={document.subType ?? undefined}
         canUseTemplate={canUseDocumentTemplate}
         isSubmitting={isRevisionUploadLoading}
+      />
+
+      <AlertModal
+        isOpen={expiredCopyModalKind !== null}
+        onClose={() => setExpiredCopyModalKind(null)}
+        onConfirm={() => setExpiredCopyModalKind(null)}
+        type="warning"
+        showCancel={false}
+        confirmText="OK"
+        title="Document expired"
+        description="This document has passed its Valid Until date, so no copy can be requested. Electronic copies are voided automatically when a document expires. Do not use this document."
       />
 
       {canRequestUncontrolledCopy && (

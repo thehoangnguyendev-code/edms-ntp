@@ -5,33 +5,22 @@ import { LoadingFallback } from './LoadingFallback';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
 
 // ==================== LAZY LOADED ====================
-const CourseListView = lazy(() => import('@/features/training/course-inventory/courses').then(m => ({ default: m.CourseListView })));
-const MaterialsView = lazy(() => import('@/features/training').then(m => ({ default: m.MaterialsView })));
-const MaterialDetailView = lazy(() => import('@/features/training/materials/views/MaterialDetailView').then(m => ({ default: m.MaterialDetailView })));
-const MaterialReviewView = lazy(() => import('@/features/training/materials/views/MaterialReviewView').then(m => ({ default: m.MaterialReviewView })));
-const MaterialApprovalView = lazy(() => import('@/features/training/materials/views/MaterialApprovalView').then(m => ({ default: m.MaterialApprovalView })));
-const UploadMaterialView = lazy(() => import('@/features/training/materials/views/MaterialEditorView').then(m => ({ default: m.UploadMaterialView })));
-const EditMaterialView = lazy(() => import('@/features/training/materials/views/MaterialEditorView').then(m => ({ default: m.EditMaterialView })));
-const MaterialNewRevisionView = lazy(() => import('@/features/training/materials/views/MaterialRevisionView').then(m => ({ default: m.NewRevisionView })));
-const UsageReportView = lazy(() => import('@/features/training/materials/views/UsageReportView').then(m => ({ default: m.UsageReportView })));
-const TrainingMatrixView = lazy(() => import('@/features/training').then(m => ({ default: m.TrainingMatrixView })));
-const CourseStatusView = lazy(() => import('@/features/training').then(m => ({ default: m.CourseStatusView })));
-const AssignTrainingView = lazy(() => import('@/features/training').then(m => ({ default: m.AssignTrainingView })));
-const AssignmentRulesView = lazy(() => import('@/features/training').then(m => ({ default: m.AssignmentRulesView })));
-const EmployeeTrainingFilesView = lazy(() => import('@/features/training').then(m => ({ default: m.EmployeeTrainingFilesView })));
-const EmployeeDossierView = lazy(() => import('@/features/training').then(m => ({ default: m.EmployeeDossierView })));
-const ExportRecordsView = lazy(() => import('@/features/training').then(m => ({ default: m.ExportTrainingRecordsView })));
-const CreateCourseView = lazy(() => import('@/features/training').then(m => ({ default: m.CreateCourseView })));
-const PendingReviewView = lazy(() => import('@/features/training/course-inventory/courses').then(m => ({ default: m.PendingReviewView })));
-const PendingApprovalView = lazy(() => import('@/features/training/course-inventory/courses').then(m => ({ default: m.PendingApprovalView })));
-const ReviewCourseView = lazy(() => import('@/features/training/course-inventory/courses').then(m => ({ default: m.ReviewCourseView })));
-const ApproveCourseView = lazy(() => import('@/features/training/course-inventory/courses').then(m => ({ default: m.ApproveCourseView })));
-const ResultEntryView = lazy(() => import('@/features/training').then(m => ({ default: m.ResultEntryView })));
-const CourseDetailView = lazy(() => import('@/features/training/course-inventory/courses').then(m => ({ default: m.CourseDetailView })));
-const EditCourseView = lazy(() => import('@/features/training/course-inventory/courses').then(m => ({ default: m.EditCourseView })));
-const ObsoleteImpactAssessmentView = lazy(() => import('@/features/training/course-inventory/courses').then(m => ({ default: m.ObsoleteImpactAssessmentView })));
-const CourseProgressView = lazy(() => import('@/features/training').then(m => ({ default: m.CourseProgressView })));
-const MyTrainingView = lazy(() => import('@/features/training').then(m => ({ default: m.MyTrainingView })));
+const TrainingActivityListView = lazy(() => import('@/features/training-activities/TrainingActivityListView').then(m => ({ default: m.TrainingActivityListView })));
+const TrainingActivityDetailPage = lazy(() => import('@/features/training-activities/TrainingActivityDetailPage').then(m => ({ default: m.TrainingActivityDetailPage })));
+const TrainingMatrixListView = lazy(() => import('@/features/training-activities/TrainingMatrixListView').then(m => ({ default: m.TrainingMatrixListView })));
+const TrainingMatrixVersionPage = lazy(() => import('@/features/training-activities/TrainingMatrixVersionPage').then(m => ({ default: m.TrainingMatrixVersionPage })));
+const TrainingMatrixHistoryView = lazy(() => import('@/features/training-activities/TrainingMatrixHistoryView').then(m => ({ default: m.TrainingMatrixHistoryView })));
+const TrainingRecordsView = lazy(() => import('@/features/training-activities/TrainingRecordsView').then(m => ({ default: m.TrainingRecordsView })));
+const TrainingNumberLogView = lazy(() => import('@/features/training-activities/TrainingNumberLogView').then(m => ({ default: m.TrainingNumberLogView })));
+const TrainingComplianceView = lazy(() => import('@/features/training-activities/TrainingComplianceView').then(m => ({ default: m.TrainingComplianceView })));
+const TrainingJobListView = lazy(() => import('@/features/training-activities/TrainingJobListView').then(m => ({ default: m.TrainingJobListView })));
+const TrainingJobDetailPage = lazy(() => import('@/features/training-activities/TrainingJobDetailPage').then(m => ({ default: m.TrainingJobDetailPage })));
+const TrainingSpecimenView = lazy(() => import('@/features/training-activities/TrainingSpecimenView').then(m => ({ default: m.TrainingSpecimenView })));
+const TrainingRecordExportsView = lazy(() => import('@/features/training-activities/TrainingRecordExportsView').then(m => ({ default: m.TrainingRecordExportsView })));
+const TrainingRequirementListView = lazy(() => import('@/features/training-activities/TrainingRequirementListView').then(m => ({ default: m.TrainingRequirementListView })));
+const TrainingRequirementDetailPage = lazy(() => import('@/features/training-activities/TrainingRequirementDetailPage').then(m => ({ default: m.TrainingRequirementDetailPage })));
+const TrainingLegacyEvidenceView = lazy(() => import('@/features/training-activities/TrainingLegacyEvidenceView').then(m => ({ default: m.TrainingLegacyEvidenceView })));
+const MyTrainingView = lazy(() => import('@/features/training-activities/TrainingMyTrainingView').then(m => ({ default: m.TrainingMyTrainingView })));
 
 const guardedTrainingElement = (permission: string, element: React.ReactNode) => (
   <ProtectedRoute requiredPermissions={[permission]}>
@@ -50,48 +39,25 @@ export function trainingRoutes() {
         </ProtectedRoute>
       }
     >
-      {/* My Training */}
-      <Route path="my-training" element={<Suspense fallback={<LoadingFallback />}><MyTrainingView /></Suspense>} />
-
-      {/* Materials */}
-      <Route path="materials">
-        <Route index element={<Suspense fallback={<LoadingFallback />}><MaterialsView /></Suspense>} />
-        <Route path="create" element={guardedTrainingElement("training.material.manage", <UploadMaterialView />)} />
-        <Route path=":materialId" element={<Suspense fallback={<LoadingFallback />}><MaterialDetailView /></Suspense>} />
-        <Route path=":materialId/edit" element={guardedTrainingElement("training.material.manage", <EditMaterialView />)} />
-        <Route path="review/:materialId" element={guardedTrainingElement("training.material.manage", <MaterialReviewView />)} />
-        <Route path="approval/:materialId" element={guardedTrainingElement("training.material.manage", <MaterialApprovalView />)} />
-        <Route path="new-revision/:materialId" element={guardedTrainingElement("training.material.manage", <MaterialNewRevisionView />)} />
-        <Route path="usage-report/:materialId" element={guardedTrainingElement("training.material.manage", <UsageReportView />)} />
-      </Route>
-
-      {/* Course Inventory */}
-      <Route path="courses-list" element={<Suspense fallback={<LoadingFallback />}><CourseListView /></Suspense>} />
-      <Route path="courses/create" element={guardedTrainingElement("training.material.manage", <CreateCourseView />)} />
-      <Route path="pending-review" element={<Suspense fallback={<LoadingFallback />}><PendingReviewView /></Suspense>} />
-      <Route path="pending-review/:courseId" element={guardedTrainingElement("training.material.manage", <ReviewCourseView />)} />
-      <Route path="pending-approval" element={<Suspense fallback={<LoadingFallback />}><PendingApprovalView /></Suspense>} />
-      <Route path="pending-approval/:courseId" element={guardedTrainingElement("training.material.manage", <ApproveCourseView />)} />
-      <Route path="courses/:courseId" element={<Suspense fallback={<LoadingFallback />}><CourseDetailView /></Suspense>} />
-      <Route path="courses/:courseId/edit" element={guardedTrainingElement("training.material.manage", <EditCourseView />)} />
-      <Route path="courses/:courseId/impact-assessment" element={guardedTrainingElement("training.material.manage", <ObsoleteImpactAssessmentView />)} />
-      <Route path="courses/:courseId/progress" element={guardedTrainingElement("training.session.manage", <CourseProgressView />)} />
-      <Route path="courses/:courseId/result-entry" element={guardedTrainingElement("training.session.manage", <ResultEntryView />)} />
-
-      {/* Compliance Tracking */}
-      <Route path="training-matrix" element={<Suspense fallback={<LoadingFallback />}><TrainingMatrixView /></Suspense>} />
-      <Route path="course-status" element={<Suspense fallback={<LoadingFallback />}><CourseStatusView /></Suspense>} />
-      <Route path="assignments" element={<Suspense fallback={<LoadingFallback />}><CourseStatusView /></Suspense>} />
-      <Route path="assignments/new" element={guardedTrainingElement("training.assignment.manage", <AssignTrainingView />)} />
-      <Route path="assignment-rules" element={guardedTrainingElement("training.assignment.manage", <AssignmentRulesView />)} />
-
-      {/* Records & Archive */}
-      <Route path="employee-training-files" element={<Suspense fallback={<LoadingFallback />}><EmployeeTrainingFilesView /></Suspense>} />
-      <Route path="employee-training-files/:id" element={<Suspense fallback={<LoadingFallback />}><EmployeeDossierView /></Suspense>} />
-      <Route path="export-records" element={guardedTrainingElement("training.session.manage", <ExportRecordsView />)} />
+      <Route path="activities" element={guardedTrainingElement("training.activity.view", <TrainingActivityListView />)} />
+      <Route path="activities/:activityId" element={guardedTrainingElement("training.activity.view", <TrainingActivityDetailPage />)} />
+      <Route path="matrices" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixListView />)} />
+      <Route path="matrices/:matrixId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixHistoryView />)} />
+      <Route path="matrix-versions/:versionId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixVersionPage />)} />
+      <Route path="records" element={guardedTrainingElement("training.record.view", <TrainingRecordsView />)} />
+      <Route path="job-assignments" element={guardedTrainingElement("training.job_assignment.view", <TrainingJobListView />)} />
+      <Route path="job-assignments/:jobId" element={<Suspense fallback={<LoadingFallback />}><TrainingJobDetailPage /></Suspense>} />
+      <Route path="specimen-signatures" element={<Suspense fallback={<LoadingFallback />}><TrainingSpecimenView /></Suspense>} />
+      <Route path="record-exports" element={guardedTrainingElement("training.record.export", <TrainingRecordExportsView />)} />
+      <Route path="requirements" element={guardedTrainingElement("training.requirement.view", <TrainingRequirementListView />)} />
+      <Route path="requirements/:requirementId" element={<Suspense fallback={<LoadingFallback />}><TrainingRequirementDetailPage /></Suspense>} />
+      <Route path="legacy-evidence" element={guardedTrainingElement("training.activity.view", <TrainingLegacyEvidenceView />)} />
+      <Route path="compliance" element={guardedTrainingElement("training.compliance.view", <TrainingComplianceView />)} />
+      <Route path="number-log" element={guardedTrainingElement("training.compliance.view", <TrainingNumberLogView />)} />
+      <Route path="my-training" element={guardedTrainingElement("training.self.view", <MyTrainingView />)} />
 
       {/* Default redirect */}
-      <Route index element={<Navigate to={ROUTES.TRAINING.COURSES_LIST} replace />} />
+      <Route index element={<Navigate to={ROUTES.TRAINING.ACTIVITIES} replace />} />
     </Route>
   );
 }

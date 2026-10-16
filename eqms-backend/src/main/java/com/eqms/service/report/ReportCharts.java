@@ -15,7 +15,7 @@ public final class ReportCharts {
         for(var chart:charts) {
             chart.validated();int column=fields.indexOf(chart.field());
             if(column<0)throw new IllegalArgumentException("REPORT_CHART_FIELD_NOT_SELECTED");
-            var counts=new TreeMap<String,Long>();
+            Map<String,Long> counts=new TreeMap<>();
             for(var row:rows.subList(1,rows.size())) {
                 String key=row.get(column);if(key==null||key.isBlank())key="Unspecified";
                 if("LINE".equals(chart.type())&&!key.equals("Unspecified")) {
@@ -24,8 +24,18 @@ public final class ReportCharts {
                 }
                 counts.merge(key,1L,Long::sum);
             }
-            // Never silently omit categories or trend months.
-            if(counts.size()>20)throw new IllegalArgumentException("REPORT_CHART_GROUP_LIMIT");
+            // Never silently omit categories or trend months. A trend with more than 20 months is refused; the groups of a bar or pie chart beyond the chosen number
+            // are added together as one bar that says how many groups it holds.
+            int cap=chart.effectiveMaxGroups();
+            if("LINE".equals(chart.type())&&counts.size()>20)throw new IllegalArgumentException("REPORT_CHART_GROUP_LIMIT");
+            if(!"LINE".equals(chart.type())&&counts.size()>cap) {
+                var keep=new TreeSet<String>();
+                counts.entrySet().stream().sorted(Map.Entry.<String,Long>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey())).limit(cap-1).forEach(e->keep.add(e.getKey()));
+                long rest=0;int restGroups=0;Map<String,Long> grouped=new LinkedHashMap<>();
+                for(var e:counts.entrySet()) { if(keep.contains(e.getKey()))grouped.put(e.getKey(),e.getValue()); else {rest+=e.getValue();restGroups++;} }
+                grouped.put("Other ("+restGroups+" groups)",rest);
+                counts=grouped;
+            }
             long total=rows.size()-1;
             var points=counts.entrySet().stream().map(e->new Point(e.getKey(),e.getValue(),"PERCENT".equals(chart.metric())?(total==0?0:Math.round(e.getValue()*10000.0/total)/100.0):e.getValue())).toList();
             results.add(new Result(chart.title(),chart.type(),chart.metric(),total,points));
@@ -33,8 +43,12 @@ public final class ReportCharts {
         return results;
     }
     public static BufferedImage image(Result chart) throws Exception {
+        return image(chart,null);
+    }
+    /** The chart as a picture, with the text in the font of the report (see ReportFonts). */
+    public static BufferedImage image(Result chart,String fontKey) throws Exception {
         var image=new BufferedImage(1400,850,BufferedImage.TYPE_INT_RGB);var g=image.createGraphics();
-        try(var stream=ReportCharts.class.getResourceAsStream("/fonts/NotoSans-Bold.ttf")) {
+        try(var stream=ReportCharts.class.getResourceAsStream(ReportFonts.bodyResource(fontKey))) {
             Font font=Font.createFont(Font.TRUETYPE_FONT,stream);g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
             g.setColor(Color.WHITE);g.fillRect(0,0,1400,850);g.setFont(font.deriveFont(Font.BOLD,26));g.setColor(new Color(15,23,42));g.drawString(chart.title(),40,45);
             g.setFont(font.deriveFont(18f));g.drawString("Records: "+chart.total()+" · "+chart.metric(),40,78);

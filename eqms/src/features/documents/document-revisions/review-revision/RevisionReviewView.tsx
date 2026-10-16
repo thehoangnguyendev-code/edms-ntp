@@ -698,6 +698,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
           <TrainingInformationTab
             isReadOnly
             isTemplate={Boolean(currentRevision?.isTemplate)}
+            revisionId={currentRevision?.id}
             data={{
               trainingPlannedDate: currentRevision?.trainingPlannedDate,
               trainingPeriodEndDate: currentRevision?.trainingPeriodEndDate,

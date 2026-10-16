@@ -132,6 +132,21 @@ public class DocumentRevisionRecord {
     @Column(name = "reason_for_skipping_training", length = 1024)
     private String reasonForSkippingTraining;
 
+    /** Training Management link (V594): the activity that carries this revision's training, its number, and how the training is completed. */
+    @Column(name = "training_activity_id")
+    private UUID trainingActivityId;
+
+    @Column(name = "training_number", length = 40)
+    private String trainingNumber;
+
+    /** INTEGRATED (completed through Training Management) or MANUAL (dates typed in Document Control); fixed at the first save that requires training. */
+    @Column(name = "training_mode", length = 12)
+    private String trainingMode;
+
+    /** NATIVE, or LEGACY_IMPORT for a revision imported from historical records (no training number is issued for it). */
+    @Column(name = "training_origin", nullable = false, length = 20)
+    private String trainingOrigin = "NATIVE";
+
     /**
      * Legacy Import (see RevisionService#createLegacyImportRevisionsBatch): who reviewed/approved
      * the paper original, as plain reference text -- never a {@code RevisionWorkflowParticipant}
@@ -623,6 +638,38 @@ public class DocumentRevisionRecord {
 
     public Integer getTrainingPeriodDays() {
         return trainingPeriodDays;
+    }
+
+    public UUID getTrainingActivityId() {
+        return trainingActivityId;
+    }
+
+    public void setTrainingActivityId(UUID trainingActivityId) {
+        this.trainingActivityId = trainingActivityId;
+    }
+
+    public String getTrainingNumber() {
+        return trainingNumber;
+    }
+
+    public void setTrainingNumber(String trainingNumber) {
+        this.trainingNumber = trainingNumber;
+    }
+
+    public String getTrainingMode() {
+        return trainingMode;
+    }
+
+    public void setTrainingMode(String trainingMode) {
+        this.trainingMode = trainingMode;
+    }
+
+    public String getTrainingOrigin() {
+        return trainingOrigin == null ? "NATIVE" : trainingOrigin;
+    }
+
+    public void setTrainingOrigin(String trainingOrigin) {
+        this.trainingOrigin = trainingOrigin == null ? "NATIVE" : trainingOrigin;
     }
 
     public void setTrainingPeriodDays(Integer trainingPeriodDays) {

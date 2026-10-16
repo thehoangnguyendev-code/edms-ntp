@@ -46,6 +46,8 @@ export interface Revision {
     hasRelatedDocuments?: boolean;
     hasCorrelatedDocuments?: boolean;
     isTemplate?: boolean;
+    trainingNumber?: string | null;
+    trainingStatus?: string | null;
     reviewers?: RevisionParticipant[];
     approvers?: RevisionParticipant[];
     canReviewRevision?: boolean;

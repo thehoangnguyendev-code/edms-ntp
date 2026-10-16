@@ -1852,6 +1852,7 @@ const RevisionCreateViewContent: React.FC = () => {
           {activeTab === "training" && (
             <TrainingInformationTab
               isReadOnly={true}
+              revisionId={revisionRecord?.id}
               data={trainingInfo}
               onChange={setTrainingInfo}
             />
@@ -1876,6 +1877,13 @@ const RevisionCreateViewContent: React.FC = () => {
                 </div>
               )}
               <DocumentTab
+                // A replacement keeps the revision id, but must discard the old OnlyOffice session.
+                key={[
+                  revisionDisplay?.id,
+                  revisionDisplay?.sourceFileChecksum,
+                  revisionDisplay?.sourceStorageVersionId,
+                  revisionDisplay?.sourceUploadedAt,
+                ].join("|")}
                 documentFile={revisionFile}
                 liveViewRevisionId={hasRevisionSource && revisionDisplay?.id && isLiveViewStage(revisionDisplay) ? revisionDisplay.id : null}
                 previewStatus={previewStatus}

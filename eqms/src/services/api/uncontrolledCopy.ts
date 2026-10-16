@@ -94,6 +94,8 @@ export interface UncontrolledCopyRequestContext {
   documentValidUntil?: string | null;
   /** The exact date and time the copy would be valid until, worked out by the server (document basis only). */
   computedValidUntil?: string | null;
+  /** True when the document's Valid Until date has passed: the button stays visible and explains why. */
+  documentExpired?: boolean;
   allowRedownload: boolean;
   marking: UncontrolledCopyPolicyMarking;
   mandatoryWatermarkText: string;

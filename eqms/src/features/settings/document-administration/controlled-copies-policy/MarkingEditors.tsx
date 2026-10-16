@@ -25,6 +25,7 @@ export interface StampValue {
 const FONT_OPTIONS = [
   { label: "Noto Sans (default)", value: "NOTO_SANS" },
   { label: "Noto Serif", value: "NOTO_SERIF" },
+  { label: "Times New Roman", value: "TIMES_NEW_ROMAN" },
   { label: "Roboto Mono", value: "ROBOTO_MONO" },
   { label: "Oswald (condensed)", value: "OSWALD" },
 ];

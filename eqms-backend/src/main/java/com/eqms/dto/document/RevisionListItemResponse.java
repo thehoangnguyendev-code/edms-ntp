@@ -24,6 +24,8 @@ public record RevisionListItemResponse(
         boolean hasRelatedDocuments,
         boolean hasCorrelatedDocuments,
         boolean isTemplate,
+        String trainingNumber,
+        String trainingStatus,
         boolean canEditRevision,
         boolean canReviewRevision,
         boolean canApproveRevision,

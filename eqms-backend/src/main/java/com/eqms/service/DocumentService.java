@@ -997,8 +997,18 @@ public class DocumentService {
         return !documentRepository.existsByDocumentNumber(documentNumber.trim());
     }
 
+    /** Training Management (optional): sees a document draft that requires training so that its first revision gets a Training Number. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TrainingRevisionHooks trainingHooks;
+
     @Transactional
     public DocumentListItemResponse createDocumentDraft(DocumentDraftCreateRequest request) {
+        return createDocumentDraft(request, true);
+    }
+
+    /** {@code trainingNumber = false} for a document imported from historical records: it never gets a Training Number (D-27). */
+    @Transactional
+    public DocumentListItemResponse createDocumentDraft(DocumentDraftCreateRequest request, boolean trainingNumber) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         documentAuthorizationService.requireCanCreateDocument(currentUser);
         // Marking a document as a Template rides on the same create permission -- a Template is a
@@ -1013,6 +1023,9 @@ public class DocumentService {
         // instead, now that the id is assigned (idempotent -- a no-op if already recorded).
         recordStakeholderHistory(document, document.getAuthor(), "AUTHOR");
         saveDraftAssignments(document, request);
+        if (trainingNumber && trainingHooks != null) {
+            trainingHooks.onDocumentSaved(document, currentUser);
+        }
         auditTrailService.logAs(
                 currentUser,
                 "DOCUMENT",
@@ -1059,7 +1072,7 @@ public class DocumentService {
                     "Migration Justification must be the same on the document and the signed import request."
             );
         }
-        DocumentListItemResponse created = createDocumentDraft(documentRequest);
+        DocumentListItemResponse created = createDocumentDraft(documentRequest, false);
         return revisionService.createLegacyImportRevisionsBatch(
                 UUID.fromString(created.id()), revisionsJson, files, legacyJustification, signatureToken
         );
@@ -1097,6 +1110,9 @@ public class DocumentService {
         // Participant writes remain validated by saveDraftAssignments below.
         documentRepository.save(document);
         saveDraftAssignments(document, request);
+        if (trainingHooks != null) {
+            trainingHooks.onDocumentSaved(document, currentUser);
+        }
         auditTrailService.logAs(
                 currentUser,
                 "DOCUMENT",
@@ -4146,64 +4162,9 @@ public class DocumentService {
         JsonNode previewPolicy = documentsConfig == null
                 ? MissingNode.getInstance()
                 : documentsConfig.path("pdfPreview");
-        String mainText = previewPolicy.path("watermarkText").asText("FOR PREVIEW ONLY").trim();
-        if (!StringUtils.hasText(mainText)) {
-            mainText = "FOR PREVIEW ONLY";
-        }
-        List<String> watermarkLines = new ArrayList<>();
-        watermarkLines.add(mainText);
-        if (previewPolicy.path("watermarkShowViewerName").asBoolean(false)) {
-            String viewerName = firstNonBlank(currentUser.getFullName(), currentUser.getUsername());
-            if (StringUtils.hasText(viewerName)) {
-                watermarkLines.add(viewerName);
-            }
-        }
-        if (previewPolicy.path("watermarkShowOpenedAt").asBoolean(false)) {
-            watermarkLines.add(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
-                    .withZone(SYSTEM_ZONE)
-                    .format(Instant.now()));
-        }
-
-        try (PDDocument pdf = Loader.loadPDF(pdfBytes); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            PDType1Font mainFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-            for (PDPage page : pdf.getPages()) {
-                PDRectangle pageSize = page.getMediaBox();
-                float textX = pageSize.getWidth() / 2f;
-                float textY = pageSize.getHeight() / 2f;
-                float mainTextWidth = (mainFont.getStringWidth(mainText) / 1000f) * 76f;
-
-                try (PDPageContentStream contentStream = new PDPageContentStream(
-                        pdf,
-                        page,
-                        PDPageContentStream.AppendMode.APPEND,
-                        true,
-                        true
-                )) {
-                    PDExtendedGraphicsState graphicsState = new PDExtendedGraphicsState();
-                    graphicsState.setNonStrokingAlphaConstant(0.18f);
-                    graphicsState.setStrokingAlphaConstant(0.18f);
-                    contentStream.setGraphicsStateParameters(graphicsState);
-                    contentStream.beginText();
-                    contentStream.setNonStrokingColor(0.70f, 0.70f, 0.96f);
-                    contentStream.setFont(mainFont, 76);
-                    contentStream.setTextMatrix(Matrix.getRotateInstance(Math.toRadians(45), textX, textY));
-                    contentStream.newLineAtOffset(-mainTextWidth / 2f, (watermarkLines.size() - 1) * 12f);
-                    for (int line = 0; line < watermarkLines.size(); line++) {
-                        if (line == 0) {
-                            contentStream.setFont(mainFont, 76);
-                        } else {
-                            contentStream.setFont(mainFont, 18);
-                            float lineWidth = (mainFont.getStringWidth(watermarkLines.get(line)) / 1000f) * 18f;
-                            contentStream.newLineAtOffset((mainTextWidth - lineWidth) / 2f, -26f);
-                        }
-                        contentStream.showText(watermarkLines.get(line));
-                    }
-                    contentStream.endText();
-                }
-            }
-            pdf.save(output);
-            return output.toByteArray();
-        }
+        String viewerName = firstNonBlank(currentUser.getFullName(), currentUser.getUsername());
+        return PreviewWatermark.apply(pdfBytes, previewPolicy, new PreviewWatermark.Context(
+                viewerName, currentUser.getEmployeeCode(), Instant.now()));
     }
 
     @Transactional(readOnly = true)

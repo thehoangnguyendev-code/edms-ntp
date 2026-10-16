@@ -52,6 +52,7 @@ const SKIPPED_STEPS = [
   "Ready for Publishing",
 ];
 
+const LEGACY_TRAINING_NUMBER = /^[A-Za-z0-9/._-]{1,40}$/;
 const FIELD_LABEL = "text-xs sm:text-sm font-medium text-slate-700";
 const FIELD_INPUT =
   "w-full h-9 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500";
@@ -136,6 +137,8 @@ export interface RevisionSection {
   // Maps directly onto DocumentRevisionRecord#trainingCompletionDate -- the same field the
   // ordinary Pending Training workflow step sets for any other revision, not a legacy-only field.
   trainingCompletionDate: string;
+  // The number on the paper training record of this revision, typed by the person importing it (optional); never issued by the system.
+  trainingNumber: string;
   file: File | null;
   fileError: string;
   noFileJustification: string;
@@ -157,6 +160,7 @@ export const emptySection = (revisionNumber: string): RevisionSection => ({
   changeDescription: "",
   effectiveDate: "",
   trainingCompletionDate: "",
+  trainingNumber: "",
   file: null,
   fileError: "",
   noFileJustification: "",
@@ -1002,6 +1006,12 @@ export const LegacyImportView: React.FC = () => {
           message: `Source file for the most recent revision (${section.revisionNumber}) -- required`,
           tab: "revisions",
         };
+      if (trainingConfig.isRequired && section.trainingNumber.trim() && !LEGACY_TRAINING_NUMBER.test(section.trainingNumber.trim())) {
+        return {
+          message: `Training Number for revision ${section.revisionNumber} (letters, digits, / . _ - only, up to 40 characters)`,
+          tab: "revisions",
+        };
+      }
       if (trainingConfig.isRequired && !section.trainingCompletionDate) {
         return {
           message: `Historical Training Completion Date for revision ${section.revisionNumber}`,
@@ -1114,6 +1124,7 @@ export const LegacyImportView: React.FC = () => {
           effectiveDate: section.effectiveDate,
           trainingCompletionDate:
             section.trainingCompletionDate || undefined,
+          trainingNumber: section.trainingNumber.trim() || undefined,
           file: section.file,
           noFileJustification: section.noFileJustification.trim() || undefined,
         })),
@@ -1845,6 +1856,23 @@ export const LegacyImportView: React.FC = () => {
                               Apply to all revisions
                             </Button>
                           </div>
+                        )}
+                        {trainingConfig.isRequired && (
+                          <Field
+                            label="Training Number (if any)"
+                            hint="The number written on the paper training record of this revision, if there is one. It is kept as typed so the paper record can be found from the system later."
+                          >
+                            <input
+                              type="text"
+                              maxLength={40}
+                              className={FIELD_INPUT}
+                              value={section.trainingNumber}
+                              placeholder="e.g. TRN/QA/19-012"
+                              onChange={(e) =>
+                                updateSection(section.key, "trainingNumber", e.target.value)
+                              }
+                            />
+                          </Field>
                         )}
                         {trainingConfig.isRequired && (
                           <Field

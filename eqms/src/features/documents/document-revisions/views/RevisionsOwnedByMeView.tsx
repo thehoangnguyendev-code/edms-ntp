@@ -15,7 +15,7 @@ import { useRevisionServerTable } from "@/features/documents/hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/components/ui/utils";
 import { Badge, type BadgeColor } from '@/components/ui/badge';
-import { IconInfoCircle, IconChecks, IconCheck, IconPencilMinus } from "@tabler/icons-react";
+import { IconInfoCircle, IconChecks, IconCheck, IconPencilMinus, IconChecklist } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { revisionsOwnedByMe } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
@@ -56,7 +56,8 @@ export const RevisionsOwnedByMeView: React.FC = () => {
     { id: "author", label: "Author", visible: true, order: 14 },
     { id: "effectiveDate", label: "Effective Date", visible: true, order: 15 },
     { id: "validUntil", label: "Valid Until", visible: true, order: 16 },
-    { id: "action", label: "Action", visible: true, order: 17, locked: true },
+    { id: "trainingNumber", label: "Training Number", visible: true, order: 17 },
+    { id: "action", label: "Action", visible: true, order: 18, locked: true },
   ]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
@@ -326,6 +327,8 @@ export const RevisionsOwnedByMeView: React.FC = () => {
         return revision.effectiveDate;
       case "validUntil":
         return revision.validUntil;
+      case "trainingNumber":
+        return revision.trainingNumber ?? "";
       default:
         return null;
     }
@@ -504,7 +507,7 @@ export const RevisionsOwnedByMeView: React.FC = () => {
                   actions.push({ icon: <IconChecks className="h-4 w-4" />, label: "Approve Revision", action: "approve" });
                 }
                 if (revision.state === "Pending Training" && canCompleteTraining) {
-                  actions.push({ icon: <IconChecks className="h-4 w-4" />, label: "Training Revision", action: "training" });
+                  actions.push({ icon: <IconChecklist className="h-4 w-4" />, label: "Training Revision", action: "training" });
                 }
                 if (revision.state === "Effective" && Boolean(revision.canRequestControlledCopy)) {
                   actions.push({ icon: <FileStack className="h-4 w-4" />, label: "Request Controlled Copy", action: "print" });

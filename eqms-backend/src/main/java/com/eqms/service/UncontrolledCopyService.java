@@ -311,8 +311,9 @@ public class UncontrolledCopyService {
         boolean documentActive = "ACTIVE".equalsIgnoreCase(documentStatus == null ? null : documentStatus.trim());
         UncontrolledCopyPolicySetting policy = policyService.loadOrDefault();
         String validityProblem = effective == null ? null : validityProblem(policy, effective, document, Instant.now());
+        boolean documentExpired = DocumentExpiryRules.isExpired(document, Instant.now());
         boolean canRequest = hasPermission && typeEligible && effective != null && revisionMatches && documentActive && !document.isTemplate()
-                && validityProblem == null;
+                && validityProblem == null && !documentExpired;
 
         String message = null;
         if (!canRequest) {
@@ -320,6 +321,8 @@ public class UncontrolledCopyService {
                 message = "You do not have permission to request an uncontrolled copy.";
             } else if (document.isTemplate()) {
                 message = "Template documents cannot have an uncontrolled copy requested.";
+            } else if (documentExpired) {
+                message = "This document's Valid Until date has passed, so no copy can be requested.";
             } else if (!typeEligible) {
                 message = eligibility.reason() != null ? eligibility.reason() : "Uncontrolled copies are not enabled for this document.";
             } else if (effective == null || !revisionMatches) {
@@ -355,7 +358,8 @@ public class UncontrolledCopyService {
                 normalize(policyService.markingFor(policy).watermarkText()),
                 policy.getValidityBasis(),
                 documentValidUntil == null ? null : DateTimeFormatUtils.formatDate(documentValidUntil),
-                computedValidUntil
+                computedValidUntil,
+                documentExpired
         );
     }
 
@@ -411,6 +415,9 @@ public class UncontrolledCopyService {
         String documentStatus = document.getStatus() == null ? null : document.getStatus().getCode();
         if (!"ACTIVE".equalsIgnoreCase(documentStatus == null ? null : documentStatus.trim())) {
             throw new IllegalArgumentException("Uncontrolled copies are available only when the document is Active.");
+        }
+        if (DocumentExpiryRules.isExpired(document, Instant.now())) {
+            throw new IllegalArgumentException("This document's Valid Until date has passed, so no copy can be requested.");
         }
         EligibilityResult eligibility = resolveEligibility(document);
         if (!eligibility.allowed()) {

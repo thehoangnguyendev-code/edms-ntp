@@ -16,8 +16,12 @@ public final class ReportPdfRenderer {
         return render(rows,pageWidth,pageHeight,30,30);
     }
     public static byte[] render(List<List<String>> rows,float pageWidth,float pageHeight,float topMargin,float bottomMargin) throws Exception {
+        return render(rows,pageWidth,pageHeight,topMargin,bottomMargin,null);
+    }
+    /** As above, in the font of the report (see ReportFonts); Noto Sans when none is given. */
+    public static byte[] render(List<List<String>> rows,float pageWidth,float pageHeight,float topMargin,float bottomMargin,String fontKey) throws Exception {
         if (rows.isEmpty() || rows.getFirst().isEmpty()) throw new IllegalArgumentException("REPORT_EMPTY_COLUMNS");
-        try (PDDocument pdf = new PDDocument(); var input = ReportPdfRenderer.class.getResourceAsStream("/fonts/NotoSans-Bold.ttf"); var out = new ByteArrayOutputStream()) {
+        try (PDDocument pdf = new PDDocument(); var input = ReportPdfRenderer.class.getResourceAsStream(ReportFonts.bodyResource(fontKey)); var out = new ByteArrayOutputStream()) {
             if (input == null) throw new IllegalStateException("REPORT_FONT_UNAVAILABLE");
             var font = PDType0Font.load(pdf,input);
             float width = pageWidth, height = pageHeight, margin = 30, size = 8, lineHeight = 12;

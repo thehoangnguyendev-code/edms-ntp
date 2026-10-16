@@ -9,7 +9,7 @@ import java.util.Map;
 
 /** Scoped to reporting: domain scope denials are HTTP 403, not generic server errors. */
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes={ReportTemplateController.class,ReportPlatformController.class,ReportConfigurationController.class,ReportLayoutController.class})
+@RestControllerAdvice(assignableTypes={ReportTemplateController.class,ReportPlatformController.class,ReportConfigurationController.class,ReportLayoutController.class,ReportNameFormatController.class,ReportPropertiesController.class,ReportTypeController.class})
 public class ReportAccessExceptionHandler {
     @ExceptionHandler(SecurityException.class)
     public ResponseEntity<?> denied(SecurityException exception) {

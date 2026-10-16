@@ -442,7 +442,7 @@ public class ControlledCopyPolicyService {
     }
 
     /** Must match the families bundled by {@link ControlledCopyPdfMarkingService}. */
-    private static final String[] FONT_FAMILIES = {"NOTO_SANS", "NOTO_SERIF", "ROBOTO_MONO", "OSWALD"};
+    private static final String[] FONT_FAMILIES = {"NOTO_SANS", "NOTO_SERIF", "ROBOTO_MONO", "OSWALD", "TIMES_NEW_ROMAN"};
 
     private static final java.util.regex.Pattern COLOR = java.util.regex.Pattern.compile("^#[0-9A-Fa-f]{6}$");
     /** Letters (any script), digits and a few separators (including an em dash, used by the mandatory

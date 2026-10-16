@@ -20,6 +20,10 @@ export interface PdfPreviewSettings {
   watermarkText?: string;
   watermarkShowViewerName?: boolean;
   watermarkShowOpenedAt?: boolean;
+  watermarkShowEmployeeCode?: boolean;
+  watermarkTiled?: boolean;
+  watermarkColor?: string;
+  watermarkStrength?: "light" | "standard" | "strong";
 }
 
 const readPdfPreviewSettings = (): PdfPreviewSettings => {

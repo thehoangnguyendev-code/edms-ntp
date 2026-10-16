@@ -2,6 +2,8 @@ import React from "react";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Input, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { cn } from "@/components/ui/utils";
+import { AlertModal } from "@/components/ui/modal/AlertModal";
+import type { TrainingLink } from "@/services/api/trainingLinks";
 
 interface TrainingConfig {
     isRequired: boolean;
@@ -17,14 +19,19 @@ interface TrainingTabProps {
         trainingPeriodDays?: boolean;
         reasonForSkippingTraining?: boolean;
     };
+    /** Read from Training Management. The Training Number belongs to the revision and is shown on the revision screens; here it only backs the untick warning. */
+    trainingLink?: TrainingLink | null;
 }
 
 export const TrainingTab: React.FC<TrainingTabProps> = ({
     isReadOnly = false,
     data,
     onChange,
-    validationError
+    validationError,
+    trainingLink
 }) => {
+    const [confirmRemove, setConfirmRemove] = React.useState(false);
+    const hasNumber = Boolean(trainingLink?.trainingNumber) && trainingLink?.status !== "CANCELLED";
     const [config, setConfig] = React.useState<TrainingConfig>({
         isRequired: data?.isRequired ?? false,
         trainingPeriodDays: data?.trainingPeriodDays ?? null,
@@ -49,6 +56,15 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
     };
 
     const handleCheckboxChange = (checked: boolean) => {
+        // A revision that already has a Training Number: ask before it is given up (the number is cancelled when the document is saved).
+        if (!checked && config.isRequired && hasNumber) {
+            setConfirmRemove(true);
+            return;
+        }
+        applyCheckbox(checked);
+    };
+
+    const applyCheckbox = (checked: boolean) => {
         updateConfig({
             ...config,
             isRequired: checked,
@@ -145,6 +161,25 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                     )}
                 </div>
             )}
+            <AlertModal
+                isOpen={confirmRemove}
+                onClose={() => setConfirmRemove(false)}
+                onConfirm={() => {
+                    setConfirmRemove(false);
+                    applyCheckbox(false);
+                }}
+                type="warning"
+                title="Remove training from this revision?"
+                description={
+                    <p className="text-sm text-slate-600">
+                        Training Number <strong>{trainingLink?.trainingNumber}</strong> will be cancelled when you save the document. A cancelled number is never used again. If you
+                        tick Requires Training later, a new Training Number is issued.
+                    </p>
+                }
+                confirmText="Remove training"
+                cancelText="Keep training"
+                showCancel
+            />
         </div>
     );
 };

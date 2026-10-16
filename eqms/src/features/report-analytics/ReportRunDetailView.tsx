@@ -34,6 +34,9 @@ export const ReportRunDetailView: React.FC = () => {
       ]}
       actions={
         <>
+          <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.REPORT.HISTORY)} className="whitespace-nowrap">
+            Back
+          </Button>
           <Button size="sm" variant="outline" onClick={preview("Run again")} className="gap-2 whitespace-nowrap">
             <RotateCcw className="h-4 w-4" /> Run again
           </Button>

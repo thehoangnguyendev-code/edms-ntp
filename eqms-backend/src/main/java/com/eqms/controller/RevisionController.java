@@ -82,6 +82,7 @@ public class RevisionController {
             @RequestParam(required = false) String relatedDocument,
             @RequestParam(required = false) String correlatedDocument,
             @RequestParam(required = false) String isTemplate,
+            @RequestParam(required = false) String trainingNumber,
             @RequestParam(required = false) String createdFrom,
             @RequestParam(required = false) String createdTo,
             @RequestParam(required = false) String effectiveFrom,
@@ -97,7 +98,7 @@ public class RevisionController {
     ) {
         return ResponseEntity.ok(revisionService.listRevisions(
                 search, ids, status, documentType, businessUnit, department, authorId, author,
-                relatedDocument, correlatedDocument, isTemplate,
+                relatedDocument, correlatedDocument, isTemplate, trainingNumber,
                 createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
                 ownedByMe, pending, sortBy, sortDirection, page, limit
         ));
@@ -116,6 +117,7 @@ public class RevisionController {
             @RequestParam(required = false) String relatedDocument,
             @RequestParam(required = false) String correlatedDocument,
             @RequestParam(required = false) String isTemplate,
+            @RequestParam(required = false) String trainingNumber,
             @RequestParam(required = false) String createdFrom,
             @RequestParam(required = false) String createdTo,
             @RequestParam(required = false) String effectiveFrom,
@@ -129,7 +131,7 @@ public class RevisionController {
     ) {
         StreamingResponseBody csv = outputStream -> revisionService.writeRevisionsExport(
                 search, ids, status, documentType, businessUnit, department, authorId, author,
-                relatedDocument, correlatedDocument, isTemplate,
+                relatedDocument, correlatedDocument, isTemplate, trainingNumber,
                 createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
                 ownedByMe, pending, sortBy, sortDirection, outputStream
         );

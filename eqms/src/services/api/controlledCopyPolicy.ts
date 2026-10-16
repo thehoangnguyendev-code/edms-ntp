@@ -109,7 +109,7 @@ export interface ControlledCopyMarkingPreview {
  * like "3,5-7,LAST". Missing position fields fall back to the marking's ordinary corner/centre defaults.
  */
 /** Bundled fonts a stamp/watermark may use; must match the families the server can render (ControlledCopyPdfMarkingService). */
-export type MarkingFontFamily = 'NOTO_SANS' | 'NOTO_SERIF' | 'ROBOTO_MONO' | 'OSWALD';
+export type MarkingFontFamily = 'NOTO_SANS' | 'NOTO_SERIF' | 'ROBOTO_MONO' | 'OSWALD' | 'TIMES_NEW_ROMAN';
 
 export interface MarkingPlacementRule {
   pages: 'ALL' | 'FIRST' | 'OTHERS' | string;

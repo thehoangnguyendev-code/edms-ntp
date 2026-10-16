@@ -26,11 +26,18 @@ class ReportAnalyticsTest {
         assertEquals("Unspecified",ReportCharts.calculate(List.of(chart("BAR","status","COUNT")),List.of("status"),List.of(List.of("Status"),List.of(""))).getFirst().points().getFirst().label());
         assertTrue(ReportCharts.calculate(List.of(chart("PIE","status","PERCENT")),List.of("status"),List.of(List.of("Status"))).getFirst().points().isEmpty());
     }
-    @Test void rejectsHiddenFieldsInvalidDatesAndSilentTruncation() {
+    @Test void rejectsHiddenFieldsAndInvalidDatesAndNeverDropsRecords() {
         assertThrows(IllegalArgumentException.class,()->ReportCharts.calculate(List.of(chart("BAR","secret","COUNT")),List.of("status"),List.of(List.of("Status"))));
         assertThrows(IllegalArgumentException.class,()->ReportCharts.calculate(List.of(chart("LINE","status","COUNT")),List.of("status"),List.of(List.of("Status"),List.of("Active"))));
         var rows=new ArrayList<List<String>>();rows.add(List.of("Status"));for(int i=0;i<21;i++)rows.add(List.of("Category "+i));
-        assertThrows(IllegalArgumentException.class,()->ReportCharts.calculate(List.of(chart("BAR","status","COUNT")),List.of("status"),rows));
+        // More groups than a chart shows are added together in the open, as one "Other" bar; no record is dropped and the report does not fail.
+        var grouped=ReportCharts.calculate(List.of(chart("BAR","status","COUNT")),List.of("status"),rows).getFirst();
+        org.junit.jupiter.api.Assertions.assertEquals(20,grouped.points().size());
+        org.junit.jupiter.api.Assertions.assertEquals("Other (2 groups)",grouped.points().getLast().label());
+        org.junit.jupiter.api.Assertions.assertEquals(21L,grouped.points().stream().mapToLong(ReportCharts.Point::count).sum());
+        // A monthly trend of more than 20 months is still refused.
+        var months=new ArrayList<List<String>>();months.add(List.of("Date"));for(int i=0;i<21;i++)months.add(List.of(java.time.LocalDate.of(2024,1,1).plusMonths(i).toString()));
+        assertThrows(IllegalArgumentException.class,()->ReportCharts.calculate(List.of(chart("LINE","date","COUNT")),List.of("date"),months));
     }
     String logo() throws Exception {
         var image=new BufferedImage(30,15,BufferedImage.TYPE_INT_RGB);var g=image.createGraphics();g.setColor(java.awt.Color.GREEN);g.fillRect(0,0,30,15);g.dispose();

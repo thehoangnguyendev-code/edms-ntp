@@ -9,59 +9,49 @@ import {
   FilePlus2,
   MoreVertical,
 } from "lucide-react";
-import { IconFilter2, IconInfoCircle, IconPencilMinus } from "@tabler/icons-react";
+import { IconFileSettings, IconFilter2, IconInfoCircle, IconPencilMinus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { PageHeader } from "@/components/ui/page/PageHeader";
-import { SearchInput } from "@/components/ui/form/SearchInput";
-import { Select, type SelectOption } from "@/components/ui/select/Select";
+import { type SelectOption } from "@/components/ui/select/Select";
+import { ReportListToolbar } from "../shared/ReportListToolbar";
+import { humanize } from "../shared/reportLabels";
 import { Textarea } from "@/components/ui/form/ResponsiveForm";
-import { Drawer } from "@/components/ui/drawer/Drawer";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
-import { DesktopFilterPanel } from "@/components/ui/filter/DesktopFilterPanel";
-import { FilterOptionList } from "@/components/ui/filter/FilterOptionList";
-import {
-  FilterDrawer,
-  FilterAccordionItem,
-} from "@/components/ui/filter/FilterDrawer";
-import { FilterOptionButton } from "@/components/ui/filter/FilterOptionButton";
-import { DataTable, type DataTableColumn } from "@/components/ui/table";
+import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useBranding } from "@/components/branding/BrandLogo";
 import {
   reportTemplatesApi,
   reportError,
   type ReportTemplate,
+  type ReportTemplateCapabilities,
   type TemplatePage,
 } from "@/services/api/reportTemplates";
-import { ReportTemplateRun } from "./ReportTemplateRun";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 
+const LIFECYCLE_TEXT: Record<string, string> = { ACTIVE: "Active", INACTIVE: "Disabled", DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval" };
 const defaults = { status: "", sourceCode: "", format: "", orientation: "" };
 type Filters = typeof defaults;
 const date = (value?: string) =>
   value ? new Date(value).toLocaleString() : "—";
 
-export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
+export function ReportTemplateCatalog({ inAdministration = false }: { inAdministration?: boolean }) {
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermissions();
-  const { compactDesktopFilters } = useBranding();
+  // Authoring a new template is a permission of the person; what may be done to a given template comes from the server (see the row menu).
   const canManage = hasAnyPermission([
     "reports.definition.manage",
     "settings.configuration.manage",
   ]);
-  const canRun = hasAnyPermission([
-    "reports.run.create",
-    "report.module.export",
-  ]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [filters, setFilters] = useState<Filters>(defaults);
   const [mobileDraft, setMobileDraft] = useState<Filters>(defaults);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -70,8 +60,6 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
     direction: "asc" as "asc" | "desc",
   });
   const [result, setResult] = useState<TemplatePage>();
-  const [selected, setSelected] = useState<ReportTemplate>();
-  const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -86,6 +74,22 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
       openId ? result?.data?.find((item) => item.code === openId) : undefined,
     [openId, result?.data],
   );
+  // The actions of the row menu come from the server's decision for the template that was opened.
+  const [rowCaps, setRowCaps] = useState<ReportTemplateCapabilities>();
+  const openCode = openTemplate?.code;
+  useEffect(() => {
+    setRowCaps(undefined);
+    if (!openCode) return;
+    let alive = true;
+    reportTemplatesApi
+      .capabilities(openCode)
+      .then((value) => alive && setRowCaps(value))
+      .catch(() => alive && setRowCaps(undefined));
+    return () => {
+      alive = false;
+    };
+  }, [openCode]);
+  const rowCan = (action: string) => rowCaps?.actions?.[action]?.allowed === true;
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     () => new Set(["status", "sourceCode", "format", "orientation"]),
   );
@@ -107,6 +111,7 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
           {
             search,
             page,
+            limit: pageSize,
             sortBy: sort.field,
             direction: sort.direction,
             status: filters.status || undefined,
@@ -114,7 +119,7 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
             format: filters.format || undefined,
             orientation: filters.orientation || undefined,
           },
-          admin,
+          inAdministration,
         )
         .then((data) => {
           if (alive) setResult(data);
@@ -133,7 +138,7 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
       alive = false;
       window.clearTimeout(timer);
     };
-  }, [search, page, sort.field, sort.direction, filters, admin, refresh]);
+  }, [search, page, pageSize, sort.field, sort.direction, filters, inAdministration, refresh]);
   const apply = (next: Filters) => {
     setPage(1);
     setFilters(next);
@@ -160,7 +165,13 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
       options: [
         { value: "", label: "All" },
         { value: "ACTIVE", label: "Active" },
-        ...(admin ? [{ value: "DISABLED", label: "Disabled" }] : []),
+        ...(inAdministration
+          ? [
+              { value: "DISABLED", label: "Disabled" },
+              { value: "DRAFT", label: "Draft" },
+              { value: "PENDING_APPROVAL", label: "Pending Approval" },
+            ]
+          : []),
       ],
     },
     {
@@ -186,40 +197,36 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
       ],
     },
   ];
-  const searchInput = (
-    <SearchInput
-      value={search}
-      onChange={(value) => {
-        setSearch(value);
-        setPage(1);
-      }}
-      placeholder="Search report templates..."
-    />
-  );
+  /** A template opens on a page of its own: the library page, or the details page of Report Definitions. */
+  const detailPath = (row: ReportTemplate) =>
+    inAdministration ? `/settings/report-configuration/${encodeURIComponent(row.code)}/details` : `/report/templates/${encodeURIComponent(row.code)}`;
   const edit = (row: ReportTemplate) =>
     navigate(`/settings/report-configuration/${encodeURIComponent(row.code)}`);
   const columns: DataTableColumn<ReportTemplate>[] = [
     {
       id: "no",
       header: "No.",
-      cell: (_row, index) => (page - 1) * 10 + index + 1,
+      cell: (_row, index) => (page - 1) * pageSize + index + 1,
+    },
+    {
+      id: "code",
+      header: "Template Number",
+      sort: sortable("code"),
+      cell: (row) => (
+        <button
+          type="button"
+          className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left whitespace-nowrap"
+          onClick={() => navigate(detailPath(row))}
+        >
+          {row.code}
+        </button>
+      ),
     },
     {
       id: "name",
       header: "Template Name",
       sort: sortable("displayName"),
-      cell: (row) => (
-        <div className="min-w-48 space-y-1">
-          <button
-            type="button"
-            className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left block"
-            onClick={() => setSelected(row)}
-          >
-            {row.displayName}
-          </button>
-          <p className="text-xs text-slate-500">{row.code}</p>
-        </div>
-      ),
+      cell: (row) => <div className="min-w-48 whitespace-normal">{row.displayName}</div>,
     },
     {
       id: "source",
@@ -233,14 +240,31 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
       id: "category",
       header: "Category",
       sort: sortable("category"),
-      cell: (row) => row.category,
+      cell: (row) => humanize(row.category),
     },
     {
-      id: "version",
-      header: "Version",
-      sort: sortable("definitionVersion"),
-      cell: (row) => `v${row.definitionVersion}`,
+      id: "revision",
+      header: "Revision",
+      sort: sortable("revision"),
+      cell: (row) => (row.effectiveRevision != null ? `Rev ${row.effectiveRevision}` : "—"),
     },
+    // The revision being written is for people who maintain templates; someone who only runs reports sees the effective revision.
+    ...(inAdministration
+      ? [
+        {
+          id: "inProgress",
+          header: "Revision in progress",
+          cell: (row) =>
+            row.openRevision != null ? (
+              <span className="whitespace-nowrap">
+                Rev {row.openRevision} · {row.openRevisionStatus === "PENDING_APPROVAL" ? "Pending Approval" : "Draft"}
+              </span>
+            ) : (
+              "—"
+            ),
+        },
+      ]
+      : []),
     {
       id: "formats",
       header: "Output Formats",
@@ -257,8 +281,8 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
       header: "Status",
       sort: sortable("active"),
       cell: (row) => (
-        <Badge semantic={row.active ? "success" : "neutral"}>
-          {row.active ? "Active" : "Disabled"}
+        <Badge semantic={row.lifecycleStatus === "ACTIVE" ? "success" : row.lifecycleStatus === "PENDING_APPROVAL" ? "warning" : "neutral"}>
+          {LIFECYCLE_TEXT[row.lifecycleStatus ?? (row.active ? "ACTIVE" : "INACTIVE")]}
         </Badge>
       ),
     },
@@ -281,7 +305,6 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
         deleting.definitionVersion,
         reason.trim(),
       );
-      if (selected?.code === deleting.code) setSelected(undefined);
       setDeleting(undefined);
       setPage(1);
       setRefresh((value) => value + 1);
@@ -291,25 +314,30 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
       setSaving(false);
     }
   };
-  if (running && selected)
-    return (
-      <ReportTemplateRun
-        template={selected}
-        onBack={() => {
-          setRunning(false);
-          setSelected(undefined);
-          setRefresh((value) => value + 1);
-        }}
-      />
-    );
-  const title = admin ? "Report Definitions" : "Report Library";
+  const rowAction: DataTableAction<ReportTemplate> = {
+                cell: (row) => (
+                  <button
+                    ref={getRef(row.code)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggle(row.code, e);
+                    }}
+                    className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
+                    aria-label="More actions"
+                  >
+                    <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                  </button>
+                ),
+  };
+  const { layout, control } = useCustomColumnLayout("reportDefinitions", columns, rowAction);
+  const title = inAdministration ? "Report Definitions" : "Report Library";
   return (
     <div className="flex min-w-0 flex-col h-full gap-4 md:gap-6 w-full flex-1">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(navigate, title, admin)}
+        breadcrumbItems={reportBreadcrumbs(navigate, title, inAdministration)}
         actions={
-          admin && canManage ? (
+          inAdministration && canManage ? (
             <Button
               size="sm"
               onClick={() => navigate("/settings/report-configuration/new")}
@@ -317,13 +345,13 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
               <Plus className="mr-2 h-4 w-4" />
               New Report Template
             </Button>
-          ) : !admin && canManage ? (
+          ) : !inAdministration && canManage ? (
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => navigate("/settings/report-configuration")}
             >
-              <Settings2 className="mr-2 h-4 w-4" />
+              <IconFileSettings className="mr-2 h-4 w-4" />
               Configure Templates
             </Button>
           ) : undefined
@@ -344,86 +372,27 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
           </Button>
         </div>
       )}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm min-w-0 w-full overflow-hidden flex flex-col">
-        <div className="p-4 md:p-5 flex-1 flex flex-col">
-          <div className="hidden md:block">
-            {compactDesktopFilters ? (
-              <DesktopFilterPanel
-                search={searchInput}
-                values={filters}
-                defaults={defaults}
-                onApply={(next) => apply(next as Filters)}
-                fields={groups.map((group) => ({
-                  id: group.id,
-                  label: group.label,
-                  render: (draft, change, active) => (
-                    <FilterOptionList
-                      label={group.label}
-                      value={draft[group.id] ?? ""}
-                      options={group.options}
-                      active={active}
-                      onChange={(value) => change(group.id, value)}
-                    />
-                  ),
-                }))}
-              />
-            ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
-                <div>
-                  <label className="mb-1.5 block text-xs sm:text-sm font-medium text-slate-700">
-                    Search
-                  </label>
-                  {searchInput}
-                </div>
-                {groups.map((group) => (
-                  <div key={group.id}>
-                    <Select
-                      label={group.label}
-                      value={filters[group.id]}
-                      options={group.options}
-                      onChange={(value) =>
-                        apply({ ...filters, [group.id]: String(value) })
-                      }
-                      placeholder={`All ${group.label}`}
-                    />
-                  </div>
-                ))}
-                <div className="flex items-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearch("");
-                      apply(defaults);
-                    }}
-                    className="h-9 px-4 gap-2 font-medium hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block">
-              Search
-            </label>
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">{searchInput}</div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setMobileDraft(filters);
-                  setFilterOpen(true);
-                }}
-                className="h-10 gap-2 whitespace-nowrap"
-              >
-                <IconFilter2 className="h-4 w-4" />
-                Filters
-              </Button>
-            </div>
-          </div>
+      <ReportListToolbar
+            searchPlaceholder="Search report templates..."
+            search={search}
+            onSearch={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            filters={groups.map((group) => ({
+              id: group.id,
+              label: group.label,
+              value: filters[group.id],
+              options: group.options.map((option) => ({ label: option.label, value: String(option.value) })),
+              onChange: (value) => apply({ ...filters, [group.id]: value }),
+            }))}
+            hasActiveFilters={Boolean(search || Object.values(filters).some(Boolean))}
+            onClear={() => {
+              setSearch("");
+              apply(defaults);
+            }}
+            customControl={control}
+          >
           <div className="flex-1 flex flex-col relative">
             <DataTable
               rows={result?.data ?? []}
@@ -442,7 +411,7 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
                   }
                   description={
                     error ||
-                    (admin
+                    (inAdministration
                       ? "No templates match these filters."
                       : "No templates are available for your active roles and filters.")
                   }
@@ -451,37 +420,26 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
               scrollerRef={drag.scrollerRef}
               scrollProps={drag.dragEvents}
               isDragging={drag.isDragging}
-              action={{
-                cell: (row) => (
-                  <button
-                    ref={getRef(row.code)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggle(row.code, e);
-                    }}
-                    className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-                    aria-label="More actions"
-                  >
-                    <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                  </button>
-                ),
-              }}
+              columnLayout={layout}
+              action={rowAction}
               pagination={
                 result && (
                   <TablePagination
                     currentPage={page}
                     totalPages={result.pagination.totalPages}
                     totalItems={result.pagination.total}
-                    itemsPerPage={10}
+                    itemsPerPage={pageSize}
                     onPageChange={setPage}
-                    showItemsPerPageSelector={false}
+                    onItemsPerPageChange={(size) => {
+                      setPage(1);
+                      setPageSize(size);
+                    }}
                   />
                 )
               }
             />
           </div>
-        </div>
-      </div>
+      </ReportListToolbar>
       {openTemplate && (
         <PortalDropdownMenu
           isOpen={openId !== null}
@@ -493,151 +451,59 @@ export function ReportTemplateCatalog({ admin = false }: { admin?: boolean }) {
             <DropdownMenuItem
               icon={<IconInfoCircle className="h-4 w-4" />}
               onClick={() => {
-                setSelected(openTemplate);
+                navigate(detailPath(openTemplate));
                 close();
               }}
             >
               View Detail
             </DropdownMenuItem>
-            {!admin && canRun && (
+            {!inAdministration && rowCan("createReport") && (
               <DropdownMenuItem
                 icon={<FilePlus2 className="h-4 w-4" />}
                 onClick={() => {
-                  setSelected(openTemplate);
-                  setRunning(true);
+                  navigate(`/report/templates/${encodeURIComponent(openTemplate.code)}/run`);
                   close();
                 }}
               >
                 Create Report
               </DropdownMenuItem>
             )}
-            {canManage && (
+            {/* Changing a template belongs to Report Definitions; an effective revision is changed by Upgrade, on its details page. */}
+            {inAdministration && (rowCan("edit") || rowCan("delete")) && (
               <>
-                <DropdownMenuItem
-                  icon={<IconPencilMinus className="h-4 w-4" />}
-                  onClick={() => {
-                    edit(openTemplate);
-                    close();
-                  }}
-                >
-                  Edit Report Template
-                </DropdownMenuItem>
-                <div className="my-1 border-t border-slate-100" />
-                <DropdownMenuItem
-                  icon={<Trash2 className="h-4 w-4" />}
-                  variant="danger"
-                  onClick={() => {
-                    setDeleting(openTemplate);
-                    setReason("");
-                    setDeleteError("");
-                    close();
-                  }}
-                >
-                  Delete Report Template
-                </DropdownMenuItem>
+                {rowCan("edit") && (
+                  <DropdownMenuItem
+                    icon={<IconPencilMinus className="h-4 w-4" />}
+                    onClick={() => {
+                      edit(openTemplate);
+                      close();
+                    }}
+                  >
+                    Edit Report Template
+                  </DropdownMenuItem>
+                )}
+                {/* A GMP template is disabled, never deleted (REPORT-GMP-USE-APPROVAL-2026-10-14). */}
+                {rowCan("delete") && (
+                  <>
+                    <div className="my-1 border-t border-slate-100" />
+                    <DropdownMenuItem
+                      icon={<Trash2 className="h-4 w-4" />}
+                      variant="danger"
+                      onClick={() => {
+                        setDeleting(openTemplate);
+                        setReason("");
+                        setDeleteError("");
+                        close();
+                      }}
+                    >
+                      Delete Report Template
+                    </DropdownMenuItem>
+                  </>
+                )}
               </>
             )}
           </div>
         </PortalDropdownMenu>
-      )}
-      <FilterDrawer
-        isOpen={filterOpen}
-        onClose={() => setFilterOpen(false)}
-        onClear={() => setMobileDraft(defaults)}
-        onApply={() => {
-          apply(mobileDraft);
-          setFilterOpen(false);
-        }}
-        applyLabel="Apply"
-      >
-        {groups.map((group) => (
-          <FilterAccordionItem
-            key={group.id}
-            label={group.label}
-            isExpanded={expandedSections.has(group.id)}
-            onToggle={() => toggleSection(group.id)}
-          >
-            <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-              {group.options.map((opt) => (
-                <FilterOptionButton
-                  key={String(opt.value)}
-                  label={opt.label}
-                  isSelected={
-                    (mobileDraft[group.id] ?? "") === String(opt.value)
-                  }
-                  onClick={() =>
-                    setMobileDraft((current) => ({
-                      ...current,
-                      [group.id]: String(opt.value),
-                    }))
-                  }
-                />
-              ))}
-            </div>
-          </FilterAccordionItem>
-        ))}
-      </FilterDrawer>
-      {selected && (
-        <Drawer
-          title="Template Details"
-          subtitle={selected.displayName}
-          onClose={() => setSelected(undefined)}
-          footer={
-            <>
-              {canManage && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => edit(selected)}
-                >
-                  Edit Report Template
-                </Button>
-              )}
-              {!admin && canRun && (
-                <Button size="sm" onClick={() => setRunning(true)}>
-                  Create Report
-                </Button>
-              )}
-            </>
-          }
-        >
-          <p className="mb-5 break-words text-sm text-slate-600">
-            {selected.description || "No description."}
-          </p>
-          <dl className="space-y-4 text-sm">
-            {[
-              ["Template Code", selected.code],
-              ["Data Source", selected.sourceCode],
-              ["Version", `v${selected.definitionVersion}`],
-              ["Status", selected.active ? "Active" : "Disabled"],
-              ["Classification", selected.classification],
-              ["Output Formats", selected.allowedFormats.join(" · ")],
-              [
-                "Orientation",
-                selected.layout?.orientation === "PORTRAIT"
-                  ? "Portrait"
-                  : "Landscape",
-              ],
-              ["Created", date(selected.createdAt)],
-              ["Last Updated", date(selected.updatedAt)],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="grid grid-cols-[8rem_minmax(0,1fr)] gap-3"
-              >
-                <dt className="text-slate-500">{label}</dt>
-                <dd className="break-words font-medium text-slate-900">
-                  {value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-          <p className="mt-6 text-xs leading-relaxed text-slate-500">
-            Report metadata access does not grant access to source-document
-            content. Current role scopes are checked on preview, generation and
-            download.
-          </p>
-        </Drawer>
       )}
       <FormModal
         isOpen={!!deleting}

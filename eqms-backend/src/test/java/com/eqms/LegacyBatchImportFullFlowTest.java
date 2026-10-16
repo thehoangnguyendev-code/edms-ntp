@@ -198,14 +198,18 @@ class LegacyBatchImportFullFlowTest {
     }
 
     private UUID createLegacyDraft(String documentNumber, String name) {
+        return createLegacyDraft(documentNumber, name, false);
+    }
+
+    private UUID createLegacyDraft(String documentNumber, String name, boolean requiresTraining) {
         DocumentDraftCreateRequest request = new DocumentDraftCreateRequest(
                 name, null, type.getId().toString(), batchImportActor.getId().toString(),
                 businessUnit.getId().toString(), department.getId().toString(),
-                null, null, null, null, "English", false, null, "Not applicable for legacy batch import", null, null,
+                null, null, null, null, "English", requiresTraining, requiresTraining ? 10 : null, requiresTraining ? null : "Not applicable for legacy batch import", null, null,
                 null, null, null, false, null, null, null, null, null,
                 documentNumber, "22/09/2020 14:30", "Migrated from paper archive, box #9"
         );
-        return UUID.fromString(documentService.createDocumentDraft(request).id());
+        return UUID.fromString(documentService.createDocumentDraft(request, false).id());
     }
 
     private static final java.time.format.DateTimeFormatter TEST_DATE_FORMAT = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -223,7 +227,7 @@ class LegacyBatchImportFullFlowTest {
                 "Jane Doe (Quality Assurance)", "Mary QM (Quality Management)",
                 effective.minusDays(60).format(TEST_DATE_FORMAT), effective.minusDays(30).format(TEST_DATE_FORMAT),
                 "Historical revision " + revisionNumber,
-                effectiveDate, null, hasFile, noFileJustification
+                effectiveDate, null, null, hasFile, noFileJustification
         );
     }
 
@@ -237,7 +241,7 @@ class LegacyBatchImportFullFlowTest {
                 "Jane Doe (Quality Assurance)", "Mary QM (Quality Management)",
                 "18/09/2020", "20/09/2020",
                 "Historical revision 1.0.0",
-                "22/09/2020", "21/09/2020", true, null
+                "22/09/2020", "21/09/2020", null, true, null
         );
         List<MultipartFile> files = List.of(buildMinimalValidDocx("training"));
 
@@ -250,6 +254,33 @@ class LegacyBatchImportFullFlowTest {
     }
 
     @Test
+    void batchImport_paperTrainingNumber_isKeptAsTypedAndMarkedLegacy() {
+        UUID documentId = createLegacyDraft(uniqueLegacyDocumentNumber(), "Legacy Paper Training Number Test", true);
+        LegacyBatchRevisionSectionRequest section = new LegacyBatchRevisionSectionRequest(
+                "1.0.0", batchImportActor.getId().toString(), "17/09/2020", "Jane Doe (Quality Assurance)", "Mary QM (Quality Management)",
+                "18/09/2020", "20/09/2020", "Historical revision 1.0.0", "22/09/2020", "21/09/2020", " pap/qa-19.012 ", true, null);
+        String token = tokenService.createSignatureToken(batchImportActor);
+        revisionService.createLegacyImportRevisionsBatch(documentId, toJson(List.of(section)),
+                List.of(buildMinimalValidDocx("paper-number")), "Migrated from paper archive, box #9", token);
+
+        DocumentRevisionRecord revision = revisionRepository.findAllByDocument_IdOrderByCreatedAtDesc(documentId).get(0);
+        assertEquals("pap/qa-19.012", revision.getTrainingNumber());
+        assertEquals("LEGACY_IMPORT", revision.getTrainingOrigin());
+        assertEquals("MANUAL", revision.getTrainingMode());
+    }
+
+    @Test
+    void batchImport_paperTrainingNumber_isRejectedWhenDocumentDoesNotRequireTraining() {
+        UUID documentId = createLegacyDraft(uniqueLegacyDocumentNumber(), "Legacy Paper Number Without Training", false);
+        LegacyBatchRevisionSectionRequest section = new LegacyBatchRevisionSectionRequest(
+                "1.0.0", batchImportActor.getId().toString(), "17/09/2020", "Jane Doe (Quality Assurance)", "Mary QM (Quality Management)",
+                "18/09/2020", "20/09/2020", "Historical revision 1.0.0", "22/09/2020", null, "PAP-1", true, null);
+        String token = tokenService.createSignatureToken(batchImportActor);
+        assertThrows(IllegalArgumentException.class, () -> revisionService.createLegacyImportRevisionsBatch(documentId,
+                toJson(List.of(section)), List.of(buildMinimalValidDocx("paper-number-no")), "test", token));
+    }
+
+    @Test
     void batchImport_trainingCompletionDateAfterEffectiveDate_isRejected() {
         String documentNumber = uniqueLegacyDocumentNumber();
         UUID documentId = createLegacyDraft(documentNumber, "Legacy Training After Effective Date Test");
@@ -259,7 +290,7 @@ class LegacyBatchImportFullFlowTest {
                 "Jane Doe (Quality Assurance)", "Mary QM (Quality Management)",
                 "18/09/2020", "20/09/2020",
                 "Historical revision 1.0.0",
-                "22/09/2020", "23/09/2020", true, null
+                "22/09/2020", "23/09/2020", null, true, null
         );
         List<MultipartFile> files = List.of(buildMinimalValidDocx("training-after"));
 

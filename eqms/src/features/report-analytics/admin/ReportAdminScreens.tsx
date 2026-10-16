@@ -1,71 +1,49 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { reportsApi, type ReportAccessScopeRow, type ReportDeliveryRow, type ReportLegalHoldRow } from "@/services/api/reports";
+import { TablePagination } from "@/components/ui/table/TablePagination";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
+import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
+import { ReportListToolbar } from "../../report/shared/ReportListToolbar";
+import { codeLabel } from "../../report/shared/reportLabels";
 import { useNavigate } from "react-router-dom";
-import { Clock, Gavel, Mail, ShieldCheck, Stamp, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
-import { Button } from "@/components/ui/button/Button";
-import { FormSection } from "@/components/ui/form/FormSection";
-import { FormField, Input, Textarea } from "@/components/ui/form/ResponsiveForm";
-import { FormModal } from "@/components/ui/modal/FormModal";
 import { PageHeader } from "@/components/ui/page/PageHeader";
-import { Switch } from "@/components/ui/switch/Switch";
-import { DataTable } from "@/components/ui/table";
-import { useToast } from "@/components/ui/toast/Toast";
-import { reportAdministration } from "@/components/ui/breadcrumb/breadcrumbs/settings";
-import { PreviewBanner } from "../ReportAnalyticsPage";
-import { SAMPLE_ACCESS, SAMPLE_DELIVERIES, SAMPLE_HOLDS, SAMPLE_VALIDATION } from "../sampleData";
-import { IconGavel } from "@tabler/icons-react";
+import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
+import { reportBreadcrumbs } from "../../report/shared/reportBreadcrumbs";
 
-const SwitchRow: React.FC<{ label: string; note?: string; checked: boolean; onChange: (value: boolean) => void }> = ({ label, note, checked, onChange }) => (
-  <div className="flex items-center justify-between gap-3 py-2.5">
-    <div className="min-w-0">
-      <span className="text-xs sm:text-sm font-medium text-slate-900 break-words">{label}</span>
-      {note && <p className="text-2xs sm:text-xs text-slate-400 mt-0.5 break-words">{note}</p>}
-    </div>
-    <Switch checked={checked} onChange={onChange} size="sm" />
-  </div>
-);
-
-/** Frame of every Report Administration screen: header with Save Changes (asks for a reason), one card with the sections. */
-const ReportAdminPage: React.FC<{ title: string; dirty?: boolean; readOnly?: boolean; children: React.ReactNode }> = ({ title, dirty = false, readOnly = false, children }) => {
+/**
+ * Frame of the Report Administration list screens: the header, an optional note, then the list in its own card, as the other report lists
+ * (Run History, Report Definitions). The table is not wrapped in another section.
+ */
+const ReportAdminListPage: React.FC<{ title: string; note?: React.ReactNode; children: React.ReactNode }> = ({ title, note, children }) => {
   const navigate = useNavigate();
-  const { showToast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const [reason, setReason] = useState("");
   return (
     <div className="flex flex-col gap-4 md:gap-5">
-      <PageHeader
-        title={title}
-        breadcrumbItems={reportAdministration(navigate, title)}
-        actions={
-          readOnly ? undefined : (
-            <Button size="sm" variant="outline-emerald" onClick={() => setSaving(true)} disabled={!dirty} className="gap-2 whitespace-nowrap">
-              Save Changes
-            </Button>
-          )
-        }
-      />
-      <PreviewBanner />
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 md:p-5 space-y-4">{children}</div>
-      </div>
-      <FormModal
-        isOpen={saving}
-        onClose={() => setSaving(false)}
-        title={`Save ${title}`}
-        description="Explain why this configuration is changing. It is recorded with your name and the time."
-        confirmText="Save"
-        confirmDisabled={!reason.trim()}
-        onConfirm={() => {
-          setSaving(false);
-          setReason("");
-          showToast({ type: "info", title: "Save Changes", message: "Design preview: nothing was sent to a server." });
-        }}
-      >
-        <FormField label="Reason for change" required>
-          <Textarea rows={3} value={reason} onChange={(event) => setReason(event.target.value)} />
-        </FormField>
-      </FormModal>
+      <PageHeader title={title} breadcrumbItems={reportBreadcrumbs(navigate, title, true)} />
+      {note && <div className="text-xs sm:text-sm text-slate-600">{note}</div>}
+      {children}
     </div>
+  );
+};
+
+/** Retention of report files, said once above the register (decision REPORT-FILE-RETENTION-PERMANENT-2026-10-14). */
+const RetentionNote: React.FC = () => (
+  <p>
+    Report output files are kept permanently; no file expires by age. A legal hold still blocks any removal. Holds are placed and released on each run's page; the files held now are listed below.
+  </p>
+);
+
+/** The limit of recipients is a setting of Report Properties; the log below records every notice. */
+const DeliveryNote: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <p>
+      Every notice sent about a scheduled report, including the ones skipped or failed. The most people one schedule can notify is set in{" "}
+      <button type="button" onClick={() => navigate("/settings/report-properties")} className="font-medium text-emerald-700 underline underline-offset-2">
+        Report Properties
+      </button>
+      .
+    </p>
   );
 };
 
@@ -75,149 +53,307 @@ const Yes: React.FC<{ on: boolean }> = ({ on }) => (
   </Badge>
 );
 
-export const ReportAccessScopeView: React.FC = () => (
-  <ReportAdminPage title="Report Access & Data Scope" readOnly>
-    <FormSection title="Role Matrix" icon={<Users className="h-4 w-4" />} description="What each role can do with reports and how far its data reaches. Roles and permissions are still edited in Roles & Permissions.">
-      <DataTable
-        rows={SAMPLE_ACCESS}
-        getRowKey={(row) => row.role}
-        columns={[
-          { id: "role", header: "Role", cell: (row) => <span className="font-medium text-slate-900">{row.role}</span> },
-          { id: "library", header: "Reports in library", cell: (row) => row.library },
-          { id: "runOwn", header: "Run", cell: (row) => <Yes on={row.runOwn} /> },
-          { id: "viewAll", header: "See everyone's runs", cell: (row) => <Yes on={row.viewAll} /> },
-          { id: "download", header: "Download", cell: (row) => <Yes on={row.download} /> },
-          { id: "schedule", header: "Schedule", cell: (row) => <Yes on={row.schedule} /> },
-          { id: "scope", header: "Data scope", cell: (row) => row.scope },
-        ]}
-      />
-    </FormSection>
-  </ReportAdminPage>
-);
+const SCOPE_LABEL = { PERSONAL: "Personal", DEPARTMENT: "Department", BUSINESS_UNIT: "Business Unit", SYSTEM: "Entire system" } as const;
 
-export const ReportOutputControlsView: React.FC = () => {
-  const [state, setState] = useState({ footer: true, watermark: true, sizeCap: "25", hashOnPage: true });
-  const [dirty, setDirty] = useState(false);
-  const set = <K extends keyof typeof state>(key: K, value: (typeof state)[K]) => {
-    setState((prev) => ({ ...prev, [key]: value }));
-    setDirty(true);
-  };
-  return (
-    <ReportAdminPage title="Report Output Controls" dirty={dirty}>
-      <FormSection title="Every Output File" icon={<Stamp className="h-4 w-4" />} description="Applies to every report file, so a printout can be traced back to its run.">
-        <SwitchRow label="Controlled footer" note="Run ID, definition version, data as-of time, who ran it and page number." checked={state.footer} onChange={(v) => set("footer", v)} />
-        <SwitchRow label="Show the checksum on the last page" note="Lets a reader compare a printout with the stored file." checked={state.hashOnPage} onChange={(v) => set("hashOnPage", v)} />
-        <SwitchRow label="Watermark informational reports and previews" note="Marks them as not a GMP record." checked={state.watermark} onChange={(v) => set("watermark", v)} />
-        <div className="max-w-xs pt-2">
-          <label className="mb-1.5 block text-xs sm:text-sm font-medium text-slate-700">Largest output file (MB)</label>
-          <Input type="number" min={1} value={state.sizeCap} onChange={(event) => set("sizeCap", event.target.value)} />
-        </div>
-      </FormSection>
-    </ReportAdminPage>
+/** Role scopes of every report template, from the server. Search, filter, sort and paging are applied by the server. Read-only here: scopes are set on each template. */
+export const ReportAccessScopeView: React.FC = () => {
+  const [scope, setScope] = useState("");
+  const fetcher = useCallback(
+    (params: Record<string, string | number | boolean | undefined>) =>
+      reportsApi.listAccessScopes({
+        search: params.search as string | undefined,
+        scope: params.scope as string | undefined,
+        sortBy: params.sortBy as string,
+        sortDirection: params.sortDirection as "asc" | "desc",
+        page: params.page as number,
+        limit: params.limit as number,
+      }),
+    [],
   );
-};
-
-export const ReportRetentionView: React.FC = () => {
-  const { showToast } = useToast();
-  return (
-    <ReportAdminPage title="Report Retention & Legal Hold" readOnly>
-      <FormSection title="Retention" icon={<Clock className="h-4 w-4" />} description="How long an output file is kept. The run record itself stays after the file expires. No period has been approved in the Decision Log, so none is shown.">
-        <p className="text-xs text-slate-500">Retention is set per report definition once QA approves a period.</p>
-      </FormSection>
-      <FormSection
-        title="Legal Hold Register"
-        icon={<IconGavel className="h-4 w-4" />}
-        description="Files that will not be purged until the hold is released."
-        headerRight={
-          <Button size="sm" variant="default" onClick={() => showToast({ type: "info", title: "Legal hold", message: "Design preview: nothing was sent to a server." })}>
-            Place Hold
-          </Button>
-        }
-      >
-        <DataTable
-          rows={SAMPLE_HOLDS}
-          getRowKey={(row) => row.runId}
-          columns={[
-            { id: "run", header: "Run", cell: (row) => <span className="font-medium text-slate-900">{row.runId}</span> },
-            { id: "report", header: "Report", cell: (row) => row.report },
-            { id: "by", header: "Applied by", cell: (row) => row.appliedBy },
-            { id: "at", header: "Applied", cell: (row) => row.appliedAt },
-            { id: "reason", header: "Reason", cell: (row) => <span className="block max-w-96 whitespace-normal">{row.reason}</span> },
-          ]}
-        />
-      </FormSection>
-    </ReportAdminPage>
-  );
-};
-
-export const ReportDeliveryView: React.FC = () => {
-  const [maxRecipients, setMaxRecipients] = useState("20");
-  const [dirty, setDirty] = useState(false);
-  return (
-    <ReportAdminPage title="Scheduled Report Delivery" dirty={dirty}>
-      <FormSection title="Recipients" icon={<Mail className="h-4 w-4" />} description="Rules for who a scheduled report can be sent to.">
-        <div className="max-w-xs">
-          <label className="mb-1.5 block text-xs sm:text-sm font-medium text-slate-700">Most recipients per schedule</label>
-          <Input
-            type="number"
-            min={1}
-            value={maxRecipients}
-            onChange={(event) => {
-              setMaxRecipients(event.target.value);
-              setDirty(true);
-            }}
-          />
+  const extraParams = useMemo(() => ({ scope }), [scope]);
+  const table = useServerTable<ReportAccessScopeRow>({ fetcher, defaultSortBy: "templateName", defaultSortDirection: "asc", extraParams });
+  const sortOf = (key: string) => ({
+    direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined,
+    onSort: () => table.handleSort(key),
+  });
+  const columns: DataTableColumn<ReportAccessScopeRow>[] = [
+    {
+      id: "template",
+      header: "Template",
+      sort: sortOf("templateName"),
+      cell: (row) => (
+        <div>
+          <span className="font-medium text-slate-900">{row.templateName}</span>
+          <span className="block text-xs text-slate-500">{row.templateCode}</span>
         </div>
-      </FormSection>
-      <FormSection title="Delivery Log" icon={<Mail className="h-4 w-4" />} description="Every attempt to send a scheduled report, including the ones that failed.">
-        <DataTable
-          rows={SAMPLE_DELIVERIES}
-          getRowKey={(row) => row.id}
-          columns={[
-            { id: "schedule", header: "Schedule", cell: (row) => <span className="font-medium text-slate-900">{row.schedule}</span> },
-            { id: "at", header: "Attempted", cell: (row) => row.at },
-            { id: "recipients", header: "Recipients", cell: (row) => row.recipients },
+      ),
+    },
+    { id: "role", header: "Role", sort: sortOf("roleName"), cell: (row) => row.roleName },
+    { id: "scope", header: "Data scope", sort: sortOf("scope"), cell: (row) => SCOPE_LABEL[row.scope] ?? row.scope },
+    {
+      id: "status",
+      header: "Template status",
+      sort: sortOf("active"),
+      cell: (row) => (
+        <Badge color={row.active ? "emerald" : "slate"} size="sm">
+          {row.active ? "Enabled" : "Disabled"}
+        </Badge>
+      ),
+    },
+  ];
+  const { layout, control } = useCustomColumnLayout("reportAccessScopes", columns);
+  return (
+    <ReportAdminListPage
+      title="Report Access & Data Scope"
+      note="How far each role's data reaches, template by template. Scopes are changed on the template (Access & Scope tab); roles and permissions are edited in Access Profiles and Permission Sets."
+    >
+        <ReportListToolbar
+          searchPlaceholder="Search template or role…"
+          search={table.searchQuery}
+          onSearch={(value) => {
+            table.setSearchQuery(value);
+            table.setCurrentPage(1);
+          }}
+          filters={[
             {
-              id: "status",
-              header: "Result",
-              cell: (row) => (
-                <Badge color={row.status === "SENT" ? "emerald" : "red"} size="sm">
-                  {row.status === "SENT" ? "Sent" : "Failed"}
-                </Badge>
-              ),
+              id: "scope",
+              label: "Data scope",
+              value: scope,
+              options: [{ label: "All scopes", value: "" }, ...Object.entries(SCOPE_LABEL).map(([value, label]) => ({ label, value }))],
+              onChange: (value) => {
+                setScope(value);
+                table.setCurrentPage(1);
+              },
             },
-            { id: "detail", header: "Detail", cell: (row) => row.detail },
           ]}
-        />
-      </FormSection>
-    </ReportAdminPage>
+          hasActiveFilters={!!scope}
+          onClear={() => {
+            setScope("");
+            table.setCurrentPage(1);
+          }}
+          customControl={control}
+        >
+          <DataTable
+            rows={table.items}
+            getRowKey={(row) => row.templateCode + row.roleName}
+            isLoading={table.isLoading}
+            columns={columns}
+            columnLayout={layout}
+            emptyState={<TableEmptyState title="No role scopes" description="No template has a role scope that matches the search or filter." />}
+            pagination={
+              table.totalItems > 0 ? (
+                <TablePagination
+                  currentPage={table.currentPage}
+                  totalPages={table.totalPages}
+                  totalItems={table.totalItems}
+                  itemsPerPage={table.itemsPerPage}
+                  onPageChange={table.setCurrentPage}
+                  onItemsPerPageChange={table.setItemsPerPage}
+                />
+              ) : undefined
+            }
+          />
+        </ReportListToolbar>
+    </ReportAdminListPage>
   );
 };
 
-const VALIDATION_LABEL = { VALIDATED: "Validated", PENDING: "Pending", NOT_REQUIRED: "Not required" } as const;
-const VALIDATION_COLOR = { VALIDATED: "emerald", PENDING: "amber", NOT_REQUIRED: "slate" } as const;
+/** Legal Hold Register: the files held now, from the server. Placing and releasing holds is done on each run's page. */
+export const ReportRetentionView: React.FC = () => {
+  const navigate = useNavigate();
+  const fetcher = useCallback(
+    (params: Record<string, string | number | boolean | undefined>) =>
+      reportsApi.listLegalHolds({
+        search: params.search as string | undefined,
+        sortBy: params.sortBy as string,
+        sortDirection: params.sortDirection as "asc" | "desc",
+        page: params.page as number,
+        limit: params.limit as number,
+      }),
+    [],
+  );
+  const table = useServerTable<ReportLegalHoldRow>({ fetcher, defaultSortBy: "heldAt", defaultSortDirection: "desc" });
+  const sortOf = (key: string) => ({
+    direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined,
+    onSort: () => table.handleSort(key),
+  });
+  const columns: DataTableColumn<ReportLegalHoldRow>[] = [
+    {
+      id: "report",
+      header: "Report",
+      sort: sortOf("report"),
+      cell: (row) => (
+        <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/report/runs/${row.runId}`)}>
+          {row.report}
+        </button>
+      ),
+    },
+    { id: "file", header: "File", sort: sortOf("fileName"), cell: (row) => <span className="break-all text-xs">{row.fileName}</span> },
+    { id: "requester", header: "Requested by", sort: sortOf("requester"), cell: (row) => row.requester ?? "—" },
+    { id: "heldBy", header: "Hold placed by", cell: (row) => row.heldBy ?? "—" },
+    { id: "heldAt", header: "Hold placed", sort: sortOf("heldAt"), cell: (row) => (row.heldAt ? new Date(row.heldAt).toLocaleString() : "—") },
+    { id: "reason", header: "Reason", cell: (row) => <span className="block max-w-96 whitespace-normal">{row.reason ?? "—"}</span> },
+  ];
+  const { layout, control } = useCustomColumnLayout("reportLegalHolds", columns);
+  return (
+    <ReportAdminListPage title="Report Retention & Legal Hold" note={<RetentionNote />}>
+              <ReportListToolbar
+          searchPlaceholder="Search report or file name…"
+          search={table.searchQuery}
+          onSearch={(value) => {
+            table.setSearchQuery(value);
+            table.setCurrentPage(1);
+          }}
+          hasActiveFilters={false}
+          onClear={() => table.setSearchQuery("")}
+          customControl={control}
+        >
+          <DataTable
+            rows={table.items}
+            getRowKey={(row) => row.artifactId}
+            isLoading={table.isLoading}
+            columns={columns}
+            columnLayout={layout}
+            emptyState={<TableEmptyState title="No legal holds" description="No file is held now." />}
+            pagination={
+              table.totalItems > 0 ? (
+                <TablePagination
+                  currentPage={table.currentPage}
+                  totalPages={table.totalPages}
+                  totalItems={table.totalItems}
+                  itemsPerPage={table.itemsPerPage}
+                  onPageChange={table.setCurrentPage}
+                  onItemsPerPageChange={table.setItemsPerPage}
+                />
+              ) : undefined
+            }
+          />
+        </ReportListToolbar>
+    </ReportAdminListPage>
+  );
+};
 
-export const ReportValidationView: React.FC = () => (
-  <ReportAdminPage title="Report Change History & Validation" readOnly>
-    <FormSection title="Validation Status" icon={<ShieldCheck className="h-4 w-4" />} description="An Official report is expected to be validated before it can be run. Each definition change creates a new version with a reason; open a definition in Report Definitions to see its history.">
-      <DataTable
-        rows={SAMPLE_VALIDATION}
-        getRowKey={(row) => row.report}
-        columns={[
-          { id: "report", header: "Report", cell: (row) => <span className="font-medium text-slate-900">{row.report}</span> },
-          { id: "class", header: "Classification", cell: (row) => row.classification },
-          { id: "version", header: "Definition version", cell: (row) => row.version },
-          {
-            id: "status",
-            header: "Validation",
-            cell: (row) => (
-              <Badge color={VALIDATION_COLOR[row.status]} size="sm">
-                {VALIDATION_LABEL[row.status]}
-              </Badge>
-            ),
-          },
-        ]}
-      />
-    </FormSection>
-  </ReportAdminPage>
-);
+const DELIVERY_STATUS = {
+  SENT: { label: "Sent", color: "emerald" },
+  FAILED: { label: "Failed", color: "red" },
+  SKIPPED_NOT_AUTHORIZED: { label: "Skipped: not authorized", color: "amber" },
+} as const;
+const DELIVERY_EVENT = { REPORT_READY: "Report ready", REPORT_SCHEDULE_SUSPENDED: "Schedule suspended" } as const;
+
+/** Real delivery log (REPORT-NOTIFICATION-CHANNEL-2026-10-14). Search, filters, sort and paging are applied by the server. Read-only. */
+export const ReportDeliveryView: React.FC = () => {
+  const [channel, setChannel] = useState("");
+  const [deliveryStatus, setDeliveryStatus] = useState("");
+  const fetcher = useCallback(
+    (params: Record<string, string | number | boolean | undefined>) =>
+      reportsApi.listDeliveries({
+        search: params.search as string | undefined,
+        channel: params.channel as string | undefined,
+        status: params.status as string | undefined,
+        sortBy: params.sortBy as string,
+        sortDirection: params.sortDirection as "asc" | "desc",
+        page: params.page as number,
+        limit: params.limit as number,
+      }),
+    [],
+  );
+  const extraParams = useMemo(() => ({ channel, status: deliveryStatus }), [channel, deliveryStatus]);
+  const table = useServerTable<ReportDeliveryRow>({ fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams });
+  const sortOf = (key: string) => ({
+    direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined,
+    onSort: () => table.handleSort(key),
+  });
+  const columns: DataTableColumn<ReportDeliveryRow>[] = [
+    { id: "at", header: "When", sort: sortOf("createdAt"), cell: (row) => new Date(row.createdAt).toLocaleString() },
+    { id: "schedule", header: "Schedule", sort: sortOf("scheduleName"), cell: (row) => <span className="font-medium text-slate-900">{row.scheduleName ?? "—"}</span> },
+    { id: "recipient", header: "Recipient", sort: sortOf("recipientName"), cell: (row) => row.recipientName ?? "—" },
+    { id: "channel", header: "Channel", sort: sortOf("channel"), cell: (row) => (row.channel === "EMAIL" ? "E-mail" : "In app") },
+    { id: "event", header: "Notice", cell: (row) => DELIVERY_EVENT[row.eventCode as keyof typeof DELIVERY_EVENT] ?? row.eventCode },
+    {
+      id: "status",
+      header: "Result",
+      sort: sortOf("status"),
+      cell: (row) => {
+        const s = DELIVERY_STATUS[row.status];
+        return (
+          <Badge color={s.color} size="sm">
+            {s.label}
+          </Badge>
+        );
+      },
+    },
+    { id: "reason", header: "Reason", cell: (row) => codeLabel(row.reasonCode) },
+  ];
+  const { layout, control } = useCustomColumnLayout("reportDeliveryLog", columns);
+  return (
+    <ReportAdminListPage title="Scheduled Report Delivery" note={<DeliveryNote />}>
+        <ReportListToolbar
+          searchPlaceholder="Search recipient or schedule…"
+          search={table.searchQuery}
+          onSearch={(value) => {
+            table.setSearchQuery(value);
+            table.setCurrentPage(1);
+          }}
+          filters={[
+            {
+              id: "channel",
+              label: "Channel",
+              value: channel,
+              options: [
+                { label: "All channels", value: "" },
+                { label: "In app", value: "IN_APP" },
+                { label: "E-mail", value: "EMAIL" },
+              ],
+              onChange: (value) => {
+                setChannel(value);
+                table.setCurrentPage(1);
+              },
+            },
+            {
+              id: "result",
+              label: "Result",
+              value: deliveryStatus,
+              options: [
+                { label: "All results", value: "" },
+                { label: "Sent", value: "SENT" },
+                { label: "Failed", value: "FAILED" },
+                { label: "Skipped: not authorized", value: "SKIPPED_NOT_AUTHORIZED" },
+              ],
+              onChange: (value) => {
+                setDeliveryStatus(value);
+                table.setCurrentPage(1);
+              },
+            },
+          ]}
+          hasActiveFilters={!!channel || !!deliveryStatus}
+          onClear={() => {
+            setChannel("");
+            setDeliveryStatus("");
+            table.setCurrentPage(1);
+          }}
+          customControl={control}
+        >
+          <DataTable
+            rows={table.items}
+            getRowKey={(row) => row.id}
+            isLoading={table.isLoading}
+            columns={columns}
+            columnLayout={layout}
+            emptyState={<TableEmptyState title="No notices" description="No notice matches the search or filter." />}
+            pagination={
+              table.totalItems > 0 ? (
+                <TablePagination
+                  currentPage={table.currentPage}
+                  totalPages={table.totalPages}
+                  totalItems={table.totalItems}
+                  itemsPerPage={table.itemsPerPage}
+                  onPageChange={table.setCurrentPage}
+                  onItemsPerPageChange={table.setItemsPerPage}
+                />
+              ) : undefined
+            }
+          />
+        </ReportListToolbar>
+    </ReportAdminListPage>
+  );
+};

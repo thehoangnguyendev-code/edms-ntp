@@ -148,6 +148,14 @@ export interface PdfPreviewConfig {
   watermarkShowViewerName?: boolean;
   /** Include the local time at which the preview was opened. */
   watermarkShowOpenedAt?: boolean;
+  /** Include the viewer's employee code, so a copy can be traced to a person. */
+  watermarkShowEmployeeCode?: boolean;
+  /** Print the watermark as a repeated grid across the page instead of one large mark. */
+  watermarkTiled?: boolean;
+  /** Colour of the watermark, as a hex value such as #B3B3F5. */
+  watermarkColor?: string;
+  /** How visible the watermark is: light, standard (the original), or strong. */
+  watermarkStrength?: 'light' | 'standard' | 'strong';
 }
 
 export interface DocumentConfig {

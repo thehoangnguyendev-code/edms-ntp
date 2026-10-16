@@ -75,7 +75,7 @@ public class DocumentMasterActionCapabilityService {
                 ? simple(false, "CONTROLLED_COPY_NOT_FOR_TEMPLATE",
                         "A controlled document template is used directly; controlled copies are not requested for templates.",
                         "documents.controlled_copy.request", false)
-                : activeEffectivePermission(
+                : requestCopyCapability(
                         user, document, "documents.controlled_copy.request", "CONTROLLED_COPY_REQUEST_NOT_ALLOWED",
                         "A controlled copy can be requested only for an active document with an Effective revision."));
         actions.put("configureNextReviewers", nextRevisionConfigurablePermission(
@@ -167,6 +167,24 @@ public class DocumentMasterActionCapabilityService {
         boolean allowed = isActiveWithEffectiveRevision(document)
                 && permissionEvaluationService.hasPermission(user, permissionCode);
         return simple(allowed, reasonCode, reasonMessage, permissionCode, false);
+    }
+
+    /**
+     * Request Copy capability. An expired document (Valid Until passed, owner decision
+     * DOCUMENT-EXPIRY-2026-10-16) still shows the button to users who hold the permission, but is not
+     * allowed; the stable reason code DOCUMENT_EXPIRED tells the view to explain why in a modal.
+     */
+    private ResourceActionCapabilityResponse requestCopyCapability(
+            UserAccount user, DocumentRecord document, String permissionCode, String reasonCode, String reasonMessage
+    ) {
+        if (isActiveWithEffectiveRevision(document)
+                && permissionEvaluationService.hasPermission(user, permissionCode)
+                && DocumentExpiryRules.isExpired(document, Instant.now())) {
+            return simple(false, "DOCUMENT_EXPIRED",
+                    "This document's Valid Until date has passed, so no copy can be requested.",
+                    permissionCode, false);
+        }
+        return activeEffectivePermission(user, document, permissionCode, reasonCode, reasonMessage);
     }
 
     /**

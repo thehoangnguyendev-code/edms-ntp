@@ -4,7 +4,7 @@
  * Modules:
  *   breadcrumbs/core.ts      — system-wide (audit, report, deviations, tasks…)
  *   breadcrumbs/documents.ts — Document Control module
- *   breadcrumbs/training.ts  — Training Management module
+ *   breadcrumbs/settings.ts  — System Administration pages (Training Administration included)
  *   breadcrumbs/settings.ts  — Settings / System Administration module
  */
 export * from './breadcrumbs/index';

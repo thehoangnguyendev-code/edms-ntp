@@ -32,7 +32,7 @@ export const DocumentNameFormatsView: React.FC = () => {
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" />
-              New
+              New Document Name Format
             </Button>
           ) : undefined
         }

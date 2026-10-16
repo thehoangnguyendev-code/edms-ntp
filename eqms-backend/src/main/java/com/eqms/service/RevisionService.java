@@ -382,6 +382,7 @@ public class RevisionService {
             String relatedDocument,
             String correlatedDocument,
             String isTemplate,
+            String trainingNumber,
             String createdFrom,
             String createdTo,
             String effectiveFrom,
@@ -404,7 +405,7 @@ public class RevisionService {
         PageRequest pageable = PageRequest.of(safePage - 1, safeLimit, Sort.by(direction, sortProperty));
         Page<DocumentRevisionRecord> result = revisionRepository.findAll(buildSpecification(
                 search, ids, status, documentType, businessUnit, department, authorId, author,
-                relatedDocument, correlatedDocument, isTemplate,
+                relatedDocument, correlatedDocument, isTemplate, trainingNumber,
                 createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
                 ownedByMe, pending, currentUser
         ), pageable);
@@ -448,6 +449,7 @@ public class RevisionService {
             String relatedDocument,
             String correlatedDocument,
             String isTemplate,
+            String trainingNumber,
             String createdFrom,
             String createdTo,
             String effectiveFrom,
@@ -467,7 +469,7 @@ public class RevisionService {
             writer.println("Document Number,Revision Number,Created,Opened By,Revision Name,Status,Document Name,Document Type,Department,Business Unit,Author,Effective Date,Valid Until,Has Related Documents,Has Correlated Documents,Is Template");
             Specification<DocumentRevisionRecord> specification = buildSpecification(
                     search, ids, status, documentType, businessUnit, department, authorId, author,
-                    relatedDocument, correlatedDocument, isTemplate,
+                    relatedDocument, correlatedDocument, isTemplate, trainingNumber,
                     createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
                     ownedByMe, pending, currentUser
             );
@@ -696,6 +698,9 @@ public class RevisionService {
         revision.setDocumentNumber(document.getDocumentNumber());
         revision.setParentRevision(latestRevision);
         revisionRepository.save(revision);
+        if (trainingHooks != null) {
+            trainingHooks.onRevisionCreated(revision, currentUser);
+        }
 
         if (templateRevision != null) {
             cloneRevisionFile(templateRevision, revision);
@@ -935,6 +940,7 @@ public class RevisionService {
         // mistake anywhere in the batch fails the whole transaction cleanly.
         List<String> normalizedNumbers = new ArrayList<>();
         List<LocalDate> effectiveDates = new ArrayList<>();
+        java.util.Set<String> legacyTrainingNumbers = new java.util.HashSet<>();
         for (int i = 0; i < sections.size(); i++) {
             LegacyBatchRevisionSectionRequest section = sections.get(i);
             String normalized = requireLegacyRevisionNumberFormat(section.revisionNumber());
@@ -967,6 +973,25 @@ public class RevisionService {
                     throw new IllegalArgumentException("Historical Training Completion Date for revision "
                             + section.revisionNumber() + " must be on or before this revision's Effective Date ("
                             + section.effectiveDate() + ").");
+                }
+            }
+
+            if (StringUtils.hasText(section.trainingNumber())) {
+                String legacyTrainingNumber = section.trainingNumber().trim();
+                if (document.isTemplate() || !document.isRequiresTraining()) {
+                    throw new IllegalArgumentException("Training Number can only be entered when the document requires training (revision "
+                            + section.revisionNumber() + ").");
+                }
+                if (!LEGACY_TRAINING_NUMBER.matcher(legacyTrainingNumber).matches()) {
+                    throw new IllegalArgumentException("Training Number for revision " + section.revisionNumber()
+                            + " must be 1 to 40 characters: letters, digits, '/', '.', '_' or '-'.");
+                }
+                String key = legacyTrainingNumber.toUpperCase(java.util.Locale.ROOT);
+                if (!legacyTrainingNumbers.add(key)) {
+                    throw new IllegalArgumentException("Training Number " + legacyTrainingNumber + " is used twice in this import.");
+                }
+                if (trainingHooks != null && trainingHooks.trainingNumberExists(legacyTrainingNumber)) {
+                    throw new IllegalArgumentException("Training Number " + legacyTrainingNumber + " is already used by another training record.");
                 }
             }
 
@@ -1123,6 +1148,15 @@ public class RevisionService {
             if (!document.isTemplate() && StringUtils.hasText(section.trainingCompletionDate())) {
                 revision.setTrainingCompletionDate(parseDate(section.trainingCompletionDate()));
             }
+            // Training of a historical revision was done on paper: it has no activity in Training Management. The number typed from the paper record is kept
+            // so that the record can be found later; it is marked as legacy so that it is never taken for a number issued by the system.
+            if (!document.isTemplate() && document.isRequiresTraining()) {
+                revision.setTrainingMode("MANUAL");
+                revision.setTrainingOrigin("LEGACY_IMPORT");
+                if (StringUtils.hasText(section.trainingNumber())) {
+                    revision.setTrainingNumber(section.trainingNumber().trim());
+                }
+            }
             // Reassign to the returned (managed/merged) instance on every save -- this entity has
             // a manually-assigned id, so Spring Data JPA's isNew() falls back to "id != null" (a
             // primitive @Version field can't distinguish new from persisted) and therefore always
@@ -1162,6 +1196,9 @@ public class RevisionService {
                             + (i + 1) + " of " + sections.size() + ")."
                     : "Revision imported as part of a Legacy Batch Import without a source file: "
                             + section.noFileJustification();
+            if (StringUtils.hasText(revision.getTrainingNumber())) {
+                createComment = createComment + " Paper Training Number: " + revision.getTrainingNumber() + ".";
+            }
             recordRevisionHistory(revision, "LEGACY_IMPORT", null,
                     revision.getStatus() == null ? null : revision.getStatus().getCode(),
                     createComment, currentUser, signature.getId());
@@ -1838,9 +1875,14 @@ public class RevisionService {
         if (!revision.isRequiresTraining()) {
             throw new IllegalStateException("Training is not required for this revision");
         }
+        // An integrated revision is completed through Training Management: its dates come from the training activity, never from the request.
+        TrainingRevisionHooks.CompletionGate trainingGate = trainingHooks == null ? null : trainingHooks.completionGate(revision);
+        if (trainingGate != null && !trainingGate.completed()) {
+            throw new IllegalStateException("TRAINING_ACTIVITY_NOT_COMPLETED");
+        }
         requireValidSignatureToken(request, currentUser, "training completion");
-        LocalDate plannedDate = revision.getTrainingPlannedDate();
-        if (request != null && StringUtils.hasText(request.trainingPlannedDate())) {
+        LocalDate plannedDate = trainingGate != null ? trainingGate.plannedOn() : revision.getTrainingPlannedDate();
+        if (trainingGate == null && request != null && StringUtils.hasText(request.trainingPlannedDate())) {
             plannedDate = parseDate(request.trainingPlannedDate());
         }
         if (plannedDate == null) {
@@ -1857,8 +1899,8 @@ public class RevisionService {
             periodEndDate = plannedDate.plusDays(trainingPeriodDays.longValue());
         }
 
-        LocalDate completionDate = revision.getTrainingCompletionDate();
-        if (request != null && StringUtils.hasText(request.trainingCompletionDate())) {
+        LocalDate completionDate = trainingGate != null ? trainingGate.completedOn() : revision.getTrainingCompletionDate();
+        if (trainingGate == null && request != null && StringUtils.hasText(request.trainingCompletionDate())) {
             completionDate = parseDate(request.trainingCompletionDate());
         }
         if (completionDate == null) {
@@ -2012,6 +2054,9 @@ public class RevisionService {
         revision.setCancelledAt(Instant.now());
         revision.setOpenedBy(currentUser);
         revisionRepository.save(revision);
+        if (trainingHooks != null) {
+            trainingHooks.onRevisionStatusChanged(revision, "CANCELLING", "CLOSED_CANCELLED", currentUser);
+        }
 
         recordRevisionHistory(
                 revision,
@@ -2099,6 +2144,9 @@ public class RevisionService {
         revision.setDocumentNumber(lockedDocument.getDocumentNumber());
         revision.setParentRevision(source);
         revisionRepository.save(revision);
+        if (trainingHooks != null) {
+            trainingHooks.onRevisionCreated(revision, currentUser);
+        }
 
         copyWorkflowParticipantsFromDocument(lockedDocument, revision);
         // Upgrade creates a NEW, independent revision -- it does not transition an existing one.
@@ -2172,6 +2220,9 @@ public class RevisionService {
         revision.setImpactAnalysisId(impactAnalysisId);
         revision.setParentRevision(lockedSource);
         revisionRepository.save(revision);
+        if (trainingHooks != null) {
+            trainingHooks.onRevisionCreated(revision, currentUser);
+        }
 
         copyWorkflowParticipantsFromDocument(lockedDocument, revision);
         // See upgradeDocumentRevision(): one audit row on the NEW revision, no from-status (it is a
@@ -2912,6 +2963,9 @@ public class RevisionService {
             documentRepository.save(document);
         }
         revisionRepository.save(revision);
+        if (trainingHooks != null) {
+            trainingHooks.onRevisionStatusChanged(revision, fromStatus, targetStatus, currentUser);
+        }
         UUID signatureSessionId = resolveSignatureSessionId(request, currentUser);
         if ("OBSOLETED".equalsIgnoreCase(targetStatus)) {
             controlledCopyLifecycleObsolescenceService.obsoleteControlledCopiesForRevision(
@@ -2935,6 +2989,12 @@ public class RevisionService {
         dispatchRevisionNotification(revision, actionType, targetStatus, request, currentUser);
         return toDetailResponse(revision);
     }
+
+    private static final java.util.regex.Pattern LEGACY_TRAINING_NUMBER = java.util.regex.Pattern.compile("[A-Za-z0-9/._-]{1,40}");
+
+    /** Training Management (optional): numbers the training of a revision and tells when it is complete (SDS-TR-001 section 6). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TrainingRevisionHooks trainingHooks;
 
     // Optional: never blocks a publish, and keeps constructors used by unit tests valid.
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -3427,6 +3487,7 @@ public class RevisionService {
             String relatedDocument,
             String correlatedDocument,
             String isTemplate,
+            String trainingNumber,
             String createdFrom,
             String createdTo,
             String effectiveFrom,
@@ -3511,6 +3572,9 @@ public class RevisionService {
             addBooleanPredicate(predicates, cb, root.get("hasRelatedDocuments"), relatedDocument);
             addBooleanPredicate(predicates, cb, root.get("hasCorrelatedDocuments"), correlatedDocument);
             addBooleanPredicate(predicates, cb, root.get("template"), isTemplate);
+            if (StringUtils.hasText(trainingNumber)) {
+                predicates.add(cb.like(cb.lower(root.get("trainingNumber")), "%" + trainingNumber.trim().toLowerCase(java.util.Locale.ROOT) + "%"));
+            }
             if (StringUtils.hasText(search)) {
                 String pattern = "%" + normalize(search) + "%";
                 predicates.add(cb.or(
@@ -3518,6 +3582,7 @@ public class RevisionService {
                         cb.like(cb.lower(root.get("documentName")), pattern),
                         cb.like(cb.lower(root.get("revisionName")), pattern),
                         cb.like(cb.lower(root.get("revisionNumber")), pattern),
+                        cb.like(cb.lower(root.get("trainingNumber")), pattern),
                         cb.like(cb.lower(typeJoin.get("name")), pattern),
                         cb.like(cb.lower(typeJoin.get("shortCode")), pattern),
                         cb.like(cb.lower(businessUnitJoin.get("name")), pattern),
@@ -3992,6 +4057,7 @@ public class RevisionService {
     }
 
     private RevisionListItemResponse toListItem(DocumentRevisionRecord revision) {
+          String trainingStatus = trainingHooks == null ? null : trainingHooks.activityStatus(revision);
           DocumentRecord sourceDocument = revision.getDocument();
           String sourceDocumentTitle = sourceDocument == null ? null : sourceDocument.getDocumentName();
           String resolvedRevisionName = buildRevisionName(sourceDocumentTitle, revision.getRevisionNumber());
@@ -4041,6 +4107,8 @@ public class RevisionService {
                 revision.isHasRelatedDocuments(),
                 revision.isHasCorrelatedDocuments(),
                 revision.isTemplate(),
+                "CANCELLED".equals(trainingStatus) ? null : revision.getTrainingNumber(),
+                trainingStatus,
                 canEditRevision,
                 canReviewRevision,
                 canApproveRevision,
@@ -4165,6 +4233,9 @@ public class RevisionService {
         draft.setHasRelatedDocuments(document.isHasRelatedDocuments());
         draft.setHasCorrelatedDocuments(document.isHasCorrelatedDocuments());
         revisionRepository.save(draft);
+        if (trainingHooks != null) {
+            trainingHooks.onRevisionSynced(draft, currentUserService.requireCurrentUser());
+        }
         copyWorkflowParticipantsFromDocument(document, draft);
     }
 
@@ -4641,6 +4712,9 @@ public class RevisionService {
         revision.setDocumentNumber(document.getDocumentNumber());
         revision.setParentRevision(latestRevision);
         revisionRepository.save(revision);
+        if (trainingHooks != null) {
+            trainingHooks.onRevisionCreated(revision, currentUser);
+        }
 
         try {
             if (templateRevision != null) {
@@ -5033,65 +5107,9 @@ public class RevisionService {
         JsonNode previewPolicy = documentsConfig == null
                 ? MissingNode.getInstance()
                 : documentsConfig.path("pdfPreview");
-        String mainText = previewPolicy.path("watermarkText").asText("FOR PREVIEW ONLY").trim();
-        if (!StringUtils.hasText(mainText)) {
-            mainText = "FOR PREVIEW ONLY";
-        }
-        List<String> watermarkLines = new ArrayList<>();
-        watermarkLines.add(mainText);
-        if (previewPolicy.path("watermarkShowViewerName").asBoolean(false)) {
-            String viewerName = firstNonBlank(currentUser.getFullName(), currentUser.getUsername());
-            if (StringUtils.hasText(viewerName)) {
-                watermarkLines.add(viewerName);
-            }
-        }
-        if (previewPolicy.path("watermarkShowOpenedAt").asBoolean(false)) {
-            watermarkLines.add(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
-                    .withZone(SYSTEM_ZONE)
-                    .format(Instant.now()));
-        }
-
-        try (PDDocument pdf = Loader.loadPDF(pdfBytes); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            PDType1Font mainFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-            for (PDPage page : pdf.getPages()) {
-                PDRectangle pageSize = page.getMediaBox();
-                float textX = pageSize.getWidth() / 2f;
-                float textY = pageSize.getHeight() / 2f;
-                float mainTextWidth = (mainFont.getStringWidth(mainText) / 1000f) * 76f;
-
-                try (PDPageContentStream contentStream = new PDPageContentStream(
-                        pdf,
-                        page,
-                        PDPageContentStream.AppendMode.APPEND,
-                        true,
-                        true
-                )) {
-                    PDExtendedGraphicsState graphicsState = new PDExtendedGraphicsState();
-                    graphicsState.setNonStrokingAlphaConstant(0.18f);
-                    graphicsState.setStrokingAlphaConstant(0.18f);
-                    contentStream.setGraphicsStateParameters(graphicsState);
-                    contentStream.beginText();
-                    contentStream.setNonStrokingColor(0.70f, 0.70f, 0.96f);
-                    contentStream.setFont(mainFont, 76);
-                    contentStream.setTextMatrix(Matrix.getRotateInstance(Math.toRadians(45), textX, textY));
-                    contentStream.newLineAtOffset(-mainTextWidth / 2f, (watermarkLines.size() - 1) * 12f);
-                    for (int line = 0; line < watermarkLines.size(); line++) {
-                        if (line == 0) {
-                            contentStream.setFont(mainFont, 76);
-                        } else {
-                            contentStream.setFont(mainFont, 18);
-                            float lineWidth = (mainFont.getStringWidth(watermarkLines.get(line)) / 1000f) * 18f;
-                            contentStream.newLineAtOffset((mainTextWidth - lineWidth) / 2f, -26f);
-                        }
-                        contentStream.showText(watermarkLines.get(line));
-                    }
-                    contentStream.endText();
-                }
-            }
-
-            pdf.save(output);
-            return output.toByteArray();
-        }
+        String viewerName = firstNonBlank(currentUser.getFullName(), currentUser.getUsername());
+        return PreviewWatermark.apply(pdfBytes, previewPolicy, new PreviewWatermark.Context(
+                viewerName, currentUser.getEmployeeCode(), Instant.now()));
     }
 
     private boolean isPdfBytes(byte[] bytes) {
@@ -5928,6 +5946,7 @@ public class RevisionService {
             case "author" -> "author.fullName";
             case "effectiveDate" -> "effectiveDate";
             case "validUntil" -> "validUntil";
+            case "trainingNumber" -> "trainingNumber";
             default -> "revisionName";
         };
     }

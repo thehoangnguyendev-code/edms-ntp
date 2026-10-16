@@ -18,11 +18,11 @@ public class ReportLayoutController {
     public ReportLayoutController(ReportTemplateService templates,CurrentUserService users) {this.templates=templates;this.users=users;}
     @PostMapping("/preview")
     public ResponseEntity<byte[]> preview(@RequestBody Preview request) throws Exception {
-        var actor=users.requireCurrentUser();templates.require(actor,"reports.definition.manage","settings.configuration.manage");
+        var actor=users.requireCurrentUser();templates.require(actor,"reports.definition.manage","reports.properties.manage","settings.configuration.manage");
         if(request==null||request.layout()==null||request.title()==null||request.title().length()>255)throw new IllegalArgumentException("REPORT_LAYOUT_INVALID");
         var now=Instant.now().toString();
         var context=Map.of("report.title",request.title(),"report.code","LAYOUT_PREVIEW","template.version","draft",
-                "report.executor",Objects.toString(actor.getFullName(),Objects.toString(actor.getUsername(),actor.getId().toString())),"report.generatedAt",now,"report.asOfAt",now);
+                "report.executor",Objects.toString(actor.getFullName(),Objects.toString(actor.getUsername(),actor.getId().toString())),"report.generatedAt",now,"report.asOfAt",now,"template.name",request.title(),"report.runId","LAYOUT_PREVIEW");
         request.layout().validated();
         var charts=request.layout().effectiveCharts().stream().map(c->new ReportCharts.Result(c.title()+" (demonstration)",c.type(),c.metric(),10,
             List.of(new ReportCharts.Point("LINE".equals(c.type())?"2026-01":"Category A",5,"PERCENT".equals(c.metric())?50:5),
@@ -32,22 +32,36 @@ public class ReportLayoutController {
         byte[] pdf=words==null?ReportPresentationRenderer.render("PDF",rows,request.layout(),context,charts):words.render("PDF",rows,request.layout(),context,charts);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore()).body(pdf);
     }
-    /** Read-only raster of a server-rendered draft page for the existing Konva editor library. */
+    /**
+     * Read-only raster of a server-rendered draft page for the Konva editor, with where the server put the stamp (PDF points, from the bottom left of the page),
+     * as the preview of a Controlled Copy marking does: the editor draws its frame over the stamp the server drew, so the frame is always where the stamp is.
+     */
     @PostMapping("/preview-page")
-    public ResponseEntity<byte[]> previewPage(@RequestBody PreviewPage request) throws Exception {
+    public PagePreview previewPage(@RequestBody PreviewPage request) throws Exception {
         if(request==null||request.page()<1||request.page()>8)throw new IllegalArgumentException("REPORT_PREVIEW_PAGE_INVALID");
         byte[] bytes=preview(new Preview(request.title(),request.layout())).getBody();
         try(var document=org.apache.pdfbox.Loader.loadPDF(bytes);var output=new java.io.ByteArrayOutputStream()) {
             if(request.page()>document.getNumberOfPages())throw new IllegalArgumentException("REPORT_PREVIEW_PAGE_INVALID");
+            var page=document.getPage(request.page()-1);
             var image=new org.apache.pdfbox.rendering.PDFRenderer(document).renderImageWithDPI(request.page()-1,96);
             javax.imageio.ImageIO.write(image,"png",output);
-            return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).cacheControl(CacheControl.noStore()).body(output.toByteArray());
+            var layout=request.layout();var marks=new java.util.ArrayList<StampMark>();
+            if(layout.stampEnabled()&&(request.page()==1||"ALL".equals(layout.effectiveStamp().pages()))) {
+                var style=layout.effectiveStamp();
+                try(var input=ReportLayoutController.class.getResourceAsStream(ReportFonts.markResource(style.font()))) {
+                    var box=ReportStampBox.layout(org.apache.pdfbox.pdmodel.font.PDType0Font.load(document,input),layout.stamp().replaceAll("[\\p{Cc}]"," "),style,page.getMediaBox().getWidth(),page.getMediaBox().getHeight());
+                    marks.add(new StampMark("STAMP",box.x(),box.y(),box.width(),box.height()));
+                }
+            }
+            return new PagePreview(java.util.Base64.getEncoder().encodeToString(output.toByteArray()),page.getMediaBox().getWidth(),page.getMediaBox().getHeight(),marks);
         }
     }
+    public record StampMark(String kind,float x,float y,float width,float height) {}
+    public record PagePreview(String imageBase64,float pageWidthPt,float pageHeightPt,java.util.List<StampMark> marks) {}
     public record Preview(String title,ReportLayout layout) {}
     @PostMapping(value="/components/{type}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public ReportLayout.WordComponent upload(@PathVariable String type,@RequestParam("file") org.springframework.web.multipart.MultipartFile file) throws Exception {
-        var actor=users.requireCurrentUser();templates.require(actor,"reports.definition.manage","settings.configuration.manage");
+        var actor=users.requireCurrentUser();templates.require(actor,"reports.definition.manage","reports.properties.manage","settings.configuration.manage");
         if(file.getSize()>2097152)throw new IllegalArgumentException("REPORT_WORD_SIZE_LIMIT");
         return words.upload(actor,type,file.getOriginalFilename(),file.getBytes());
     }

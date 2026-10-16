@@ -69,6 +69,8 @@ export interface LegacyBatchRevisionSectionPayload {
   /** dd/MM/yyyy -- optional. Maps onto DocumentRevisionRecord#trainingCompletionDate, the same
    *  field the ordinary Pending Training workflow step sets on any other revision. */
   trainingCompletionDate?: string;
+  /** Optional: the number on the paper training record of this revision, kept as typed. */
+  trainingNumber?: string;
   file?: File | null;
   /** Required when file is not provided. */
   noFileJustification?: string;
@@ -891,6 +893,7 @@ export const documentApi = {
           changeDescription: section.changeDescription,
           effectiveDate: section.effectiveDate,
           trainingCompletionDate: section.trainingCompletionDate,
+          trainingNumber: section.trainingNumber,
           hasFile: Boolean(section.file),
           noFileJustification: section.noFileJustification,
         })),
@@ -941,6 +944,7 @@ export const documentApi = {
           changeDescription: section.changeDescription,
           effectiveDate: section.effectiveDate,
           trainingCompletionDate: section.trainingCompletionDate,
+          trainingNumber: section.trainingNumber,
           hasFile: Boolean(section.file),
           noFileJustification: section.noFileJustification,
         })),

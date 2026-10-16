@@ -52,7 +52,8 @@ public class ControlledCopyPdfMarkingService {
             "NOTO_SANS", "/fonts/NotoSans-Bold.ttf",
             "NOTO_SERIF", "/fonts/NotoSerif-Bold.ttf",
             "ROBOTO_MONO", "/fonts/RobotoMono-Bold.ttf",
-            "OSWALD", "/fonts/Oswald-Bold.ttf");
+            "OSWALD", "/fonts/Oswald-Bold.ttf",
+            "TIMES_NEW_ROMAN", "/fonts/Tinos-Bold.ttf");
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final float POINTS_PER_MM = 72f / 25.4f;
     private static final ObjectMapper MAPPER = new ObjectMapper();

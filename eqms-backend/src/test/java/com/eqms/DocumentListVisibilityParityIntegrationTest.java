@@ -86,7 +86,7 @@ public class DocumentListVisibilityParityIntegrationTest {
         Set<String> ids = new HashSet<>();
         for (int page = 1; ; page++) {
             List<RevisionListItemResponse> data = revisionService.listRevisions(
-                    null, null, null, null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null, null, null, null, null,
                     null, null, null, null, null, false, false, null, null, page, PAGE_SIZE).data();
             if (data.isEmpty()) break;
             data.forEach(item -> ids.add(item.id()));

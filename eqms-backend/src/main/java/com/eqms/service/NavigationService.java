@@ -112,36 +112,51 @@ public class NavigationService {
         if (hasPermission(normalizedPermissions, "training.module.view")
                 && systemConfigurationService.isFeatureEnabled("feat-tms")) {
             List<NavigationItemResponse> trainingChildren = new ArrayList<>();
-            if (systemConfigurationService.isFeatureEnabled("feat-tms-my")) {
+            // My Training stands alone at the top: it is the page every person uses. The other pages are grouped by what they are for.
+            if (hasPermission(normalizedPermissions, "training.self.view")) {
                 trainingChildren.add(new NavigationItemResponse("my-training", "My Training", null, "/training-management/my-training", false, null));
             }
-            if (systemConfigurationService.isFeatureEnabled("feat-tms-materials")) {
-                trainingChildren.add(new NavigationItemResponse("training-materials", "Training Materials", null, "/training-management/materials", false, null));
+            List<NavigationItemResponse> planning = new ArrayList<>();
+            if (hasPermission(normalizedPermissions, "training.requirement.view")) {
+                planning.add(new NavigationItemResponse("training-requirements", "Training Requirements", null, "/training-management/requirements", false, null));
             }
-
-            if (systemConfigurationService.isFeatureEnabled("feat-tms-courses")) {
-                List<NavigationItemResponse> courseChildren = new ArrayList<>();
-                courseChildren.add(new NavigationItemResponse("courses-list", "Courses List", null, "/training-management/courses-list", false, null));
-                courseChildren.add(new NavigationItemResponse("training-pending-review", "Pending Review", null, "/training-management/pending-review", false, null));
-                courseChildren.add(new NavigationItemResponse("training-pending-approval", "Pending Approval", null, "/training-management/pending-approval", false, null));
-                trainingChildren.add(new NavigationItemResponse("course-inventory", "Course Inventory", null, null, false, courseChildren));
+            if (hasPermission(normalizedPermissions, "training.activity.view")) {
+                planning.add(new NavigationItemResponse("training-activities", "Training Activities", null, "/training-management/activities", false, null));
             }
-
-            if (systemConfigurationService.isFeatureEnabled("feat-tms-compliance")) {
-                List<NavigationItemResponse> complianceChildren = new ArrayList<>();
-                complianceChildren.add(new NavigationItemResponse("auto-assignment-rules", "Auto-Assignment Rules", null, "/training-management/assignment-rules", false, null));
-                complianceChildren.add(new NavigationItemResponse("training-matrix", "Training Matrix", null, "/training-management/training-matrix", false, null));
-                complianceChildren.add(new NavigationItemResponse("course-status", "Course Status", null, "/training-management/course-status", false, null));
-                trainingChildren.add(new NavigationItemResponse("compliance-tracking", "Compliance Tracking", null, null, false, complianceChildren));
+            if (hasPermission(normalizedPermissions, "training.matrix.view")) {
+                planning.add(new NavigationItemResponse("training-matrices", "Training Matrices", null, "/training-management/matrices", false, null));
             }
-
-            if (systemConfigurationService.isFeatureEnabled("feat-tms-records")) {
-                List<NavigationItemResponse> recordsChildren = new ArrayList<>();
-                recordsChildren.add(new NavigationItemResponse("employee-training-files", "Employee Training Files", null, "/training-management/employee-training-files", false, null));
-                recordsChildren.add(new NavigationItemResponse("export-records", "Export Records", null, "/training-management/export-records", false, null));
-                trainingChildren.add(new NavigationItemResponse("records-archive", "Records & Archive", null, null, false, recordsChildren));
+            if (!planning.isEmpty()) {
+                trainingChildren.add(new NavigationItemResponse("training-planning", "Planning & Delivery", null, null, false, planning));
             }
-
+            List<NavigationItemResponse> people = new ArrayList<>();
+            if (hasPermission(normalizedPermissions, "training.job_assignment.view")) {
+                people.add(new NavigationItemResponse("training-job-assignments", "Job Assignments", null, "/training-management/job-assignments", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "training.signature.view") || hasPermission(normalizedPermissions, "training.signature.manage")
+                    || hasPermission(normalizedPermissions, "training.signature.confirm") || hasPermission(normalizedPermissions, "training.self.view")) {
+                people.add(new NavigationItemResponse("training-specimen-signatures", "Specimen Signatures", null, "/training-management/specimen-signatures", false, null));
+            }
+            if (!people.isEmpty()) {
+                trainingChildren.add(new NavigationItemResponse("training-people", "People & Competence", null, null, false, people));
+            }
+            List<NavigationItemResponse> records = new ArrayList<>();
+            if (hasPermission(normalizedPermissions, "training.record.view")) {
+                records.add(new NavigationItemResponse("training-records", "Training Records", null, "/training-management/records", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "training.compliance.view")) {
+                records.add(new NavigationItemResponse("training-compliance", "Training Compliance", null, "/training-management/compliance", false, null));
+                records.add(new NavigationItemResponse("training-number-log", "Training Number Log", null, "/training-management/number-log", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "training.record.export")) {
+                records.add(new NavigationItemResponse("training-record-exports", "Record Exports", null, "/training-management/record-exports", false, null));
+            }
+            if (hasPermission(normalizedPermissions, "training.activity.view")) {
+                records.add(new NavigationItemResponse("training-legacy-evidence", "Legacy Evidence", null, "/training-management/legacy-evidence", false, null));
+            }
+            if (!records.isEmpty()) {
+                trainingChildren.add(new NavigationItemResponse("training-records-compliance", "Records & Compliance", null, null, false, records));
+            }
             if (!trainingChildren.isEmpty()) {
                 menu.add(new NavigationItemResponse("training-management", "Training Management", "GraduationCap", null, false, trainingChildren));
             }
@@ -150,10 +165,12 @@ public class NavigationService {
         if (hasPermission(normalizedPermissions, "report.module.view")
                 && systemConfigurationService.isFeatureEnabled("feat-system-reports")) {
             List<NavigationItemResponse> reportChildren = new ArrayList<>();
-            reportChildren.add(new NavigationItemResponse("report-overview", "Reports Overview", null, "/report/overview", false, null));
-            reportChildren.add(new NavigationItemResponse("report-analytics", "Quality Analytics", null, "/report/analytics", false, null));
+            // REPORT-ANALYTICS-PRODUCTION-2026-10-14: the analytics screens are sample-data previews, listed only when enabled.
+            if (systemConfigurationService.isFeatureEnabled("feat-report-analytics")) {
+                reportChildren.add(new NavigationItemResponse("report-overview", "Reports Overview", null, "/report/overview", false, null));
+                reportChildren.add(new NavigationItemResponse("report-analytics", "Quality Analytics", null, "/report/analytics", false, null));
+            }
             reportChildren.add(new NavigationItemResponse("report-templates", "Report Library", null, "/report/templates", false, null));
-            reportChildren.add(new NavigationItemResponse("report-compliance", "Compliance Reports", null, "/report/compliance", false, null));
             reportChildren.add(new NavigationItemResponse("report-history", "Report Run History", null, "/report/history", false, null));
             reportChildren.add(new NavigationItemResponse("report-scheduled", "Scheduled Reports", null, "/report/scheduled", false, null));
             menu.add(new NavigationItemResponse("report", "Reports & Analytics", "IconChartBar", null, false, reportChildren));
@@ -348,17 +365,12 @@ public class NavigationService {
             // them yet. Each screen keeps its own granular training.admin.<screen>.view
             // permission, mirroring the Document Administration per-screen permission split.
             List<NavigationItemResponse> trainingAdminChildren = new ArrayList<>();
-            if (hasPermission(normalizedPermissions, "training.admin.properties.view")) {
+            if (hasPermission(normalizedPermissions, "training.admin.properties.view") || hasPermission(normalizedPermissions, "training.settings.view")) {
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-properties", "Training Properties", null, "/settings/administration/training/properties", false, null));
             }
-            if (hasPermission(normalizedPermissions, "training.admin.requirement_templates.view")) {
-                trainingAdminChildren.add(new NavigationItemResponse("training-admin-requirement-templates", "Requirement Templates", null, "/settings/administration/training/requirement-templates", false, null));
-            }
-            if (hasPermission(normalizedPermissions, "training.admin.quiz.view")) {
-                trainingAdminChildren.add(new NavigationItemResponse("training-admin-create-quiz", "Create a Quiz", null, "/settings/administration/training/create-quiz", false, null));
-            }
-            if (hasPermission(normalizedPermissions, "training.admin.curriculums.view")) {
-                trainingAdminChildren.add(new NavigationItemResponse("training-admin-curriculums", "Curriculums", null, "/settings/administration/training/curriculums", false, null));
+            if (hasPermission(normalizedPermissions, "training.admin.manage")) {
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-topics", "Training Topics", null, "/settings/administration/training/topics", false, null));
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-person-positions", "Person Positions", null, "/settings/administration/training/person-positions", false, null));
             }
             if (!trainingAdminChildren.isEmpty()) {
                 sysAdminChildren.add(new NavigationItemResponse("training-administration", "Training Administration", "GraduationCap", null, false, trainingAdminChildren));
@@ -391,10 +403,16 @@ public class NavigationService {
 
             // "Report Administration" -- definitions are real; the other screens are previews. Gated by existing report permissions.
             List<NavigationItemResponse> reportAdminChildren = new ArrayList<>();
+            if (hasAnyPermission(normalizedPermissions, "reports.properties.view", "reports.properties.manage")) {
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-properties", "Report Properties", null, "/settings/report-properties", false, null));
+            }
+            if (hasAnyPermission(normalizedPermissions, "reports.types.view", "reports.types.manage")) {
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-types", "Report Types", null, "/settings/report-types", false, null));
+            }
             if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
                 reportAdminChildren.add(new NavigationItemResponse("report-admin-definitions", "Report Definitions", null, "/settings/report-configuration", false, null));
+                reportAdminChildren.add(new NavigationItemResponse("report-admin-name-formats", "Report Name Formats", null, "/settings/report-name-formats", false, null));
                 reportAdminChildren.add(new NavigationItemResponse("report-admin-access", "Report Access & Data Scope", null, "/settings/administration/report/access", false, null));
-                reportAdminChildren.add(new NavigationItemResponse("report-admin-output", "Report Output Controls", null, "/settings/administration/report/output", false, null));
             }
             if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
                 reportAdminChildren.add(new NavigationItemResponse("report-admin-retention", "Report Retention & Legal Hold", null, "/settings/administration/report/retention", false, null));
@@ -403,7 +421,6 @@ public class NavigationService {
                 reportAdminChildren.add(new NavigationItemResponse("report-admin-delivery", "Scheduled Report Delivery", null, "/settings/administration/report/delivery", false, null));
             }
             if (hasAnyPermission(normalizedPermissions, "reports.definition.view", "settings.configuration.view")) {
-                reportAdminChildren.add(new NavigationItemResponse("report-admin-validation", "Report Change History & Validation", null, "/settings/administration/report/validation", false, null));
             }
             if (!reportAdminChildren.isEmpty()) {
                 sysAdminChildren.add(new NavigationItemResponse("report-administration", "Report Administration", "IconChartBar", null, false, reportAdminChildren));

@@ -1,4 +1,4 @@
-import { IconInfoCircle } from "@tabler/icons-react";
+import { IconInfoCircle, IconUserShield } from "@tabler/icons-react";
 /**
  * Navigation Configuration
  * Defines the application navigation structure
@@ -268,68 +268,42 @@ const FOUNDATION_MODULES: NavItem[] = [
         id: "my-training",
         label: "My Training",
         path: ROUTES.TRAINING.MY_TRAINING,
+        allowedPermissions: ["training.self.view"],
       },
       {
-        id: "training-materials",
-        label: "Training Materials",
-        path: ROUTES.TRAINING.MATERIALS,
-      },
-      {
-        id: "course-inventory",
-        label: "Course Inventory",
+        id: "training-planning",
+        label: "Planning & Delivery",
+        allowedPermissions: ["training.requirement.view", "training.activity.view", "training.matrix.view"],
         children: [
+          { id: "training-requirements", label: "Training Requirements", path: ROUTES.TRAINING.REQUIREMENTS, allowedPermissions: ["training.requirement.view"] },
+          { id: "training-activities", label: "Training Activities", path: ROUTES.TRAINING.ACTIVITIES, allowedPermissions: ["training.activity.view"] },
+          { id: "training-matrices", label: "Training Matrices", path: ROUTES.TRAINING.MATRICES, allowedPermissions: ["training.matrix.view"] },
+        ],
+      },
+      {
+        id: "training-people",
+        label: "People & Competence",
+        allowedPermissions: ["training.job_assignment.view", "training.signature.view", "training.signature.manage", "training.signature.confirm", "training.self.view"],
+        children: [
+          { id: "training-job-assignments", label: "Job Assignments", path: ROUTES.TRAINING.JOB_ASSIGNMENTS, allowedPermissions: ["training.job_assignment.view"] },
           {
-            id: "courses-list",
-            label: "Courses List",
-            path: ROUTES.TRAINING.COURSES_LIST,
-          },
-          {
-            id: "training-pending-review",
-            label: "Pending Review",
-            path: ROUTES.TRAINING.PENDING_REVIEW,
-          },
-          {
-            id: "training-pending-approval",
-            label: "Pending Approval",
-            path: ROUTES.TRAINING.PENDING_APPROVAL,
+            id: "training-specimen-signatures",
+            label: "Specimen Signatures",
+            path: ROUTES.TRAINING.SPECIMEN_SIGNATURES,
+            allowedPermissions: ["training.signature.view", "training.signature.manage", "training.signature.confirm", "training.self.view"],
           },
         ],
       },
       {
-        id: "compliance-tracking",
-        label: "Compliance Tracking",
+        id: "training-records-compliance",
+        label: "Records & Compliance",
+        allowedPermissions: ["training.record.view", "training.compliance.view", "training.record.export", "training.activity.view"],
         children: [
-          {
-            id: "auto-assignment-rules",
-            label: "Auto-Assignment Rules",
-            path: ROUTES.TRAINING.ASSIGNMENT_RULES,
-          },
-          {
-            id: "training-matrix",
-            label: "Training Matrix",
-            path: ROUTES.TRAINING.TRAINING_MATRIX,
-          },
-          {
-            id: "course-status",
-            label: "Course Status",
-            path: ROUTES.TRAINING.COURSE_STATUS,
-          },
-        ],
-      },
-      {
-        id: "records-archive",
-        label: "Records & Archive",
-        children: [
-          {
-            id: "employee-training-files",
-            label: "Employee Training Files",
-            path: ROUTES.TRAINING.EMPLOYEE_TRAINING_FILES,
-          },
-          {
-            id: "export-records",
-            label: "Export Records",
-            path: ROUTES.TRAINING.EXPORT_RECORDS,
-          },
+          { id: "training-records", label: "Training Records", path: ROUTES.TRAINING.RECORDS, allowedPermissions: ["training.record.view"] },
+          { id: "training-compliance", label: "Training Compliance", path: ROUTES.TRAINING.COMPLIANCE, allowedPermissions: ["training.compliance.view"] },
+          { id: "training-number-log", label: "Training Number Log", path: ROUTES.TRAINING.NUMBER_LOG, allowedPermissions: ["training.compliance.view"] },
+          { id: "training-record-exports", label: "Record Exports", path: ROUTES.TRAINING.RECORD_EXPORTS, allowedPermissions: ["training.record.export"] },
+          { id: "training-legacy-evidence", label: "Legacy Evidence", path: ROUTES.TRAINING.LEGACY_EVIDENCE, allowedPermissions: ["training.activity.view"] },
         ],
       },
     ],
@@ -435,7 +409,7 @@ const SYSTEM_MODULES: NavItem[] = [
   {
     id: "security-authorization",
     label: "Security & Authorization",
-    icon: UserLock,
+    icon: IconUserShield,
     allowedPermissions: [
       "settings.user.view",
       "security.access_profiles.view",
@@ -692,7 +666,7 @@ const SYSTEM_MODULES: NavItem[] = [
   {
     id: "system-administration",
     label: "System Administration",
-    icon: UserStar,
+    icon: IconDeviceDesktopCog,
     allowedPermissions: [
       "settings.configuration.view",
       "documents.admin.view",
@@ -846,34 +820,27 @@ const SYSTEM_MODULES: NavItem[] = [
         label: "Training Administration",
         allowedPermissions: [
           "training.admin.properties.view",
-          "training.admin.requirement_templates.view",
-          "training.admin.quiz.view",
-          "training.admin.curriculums.view",
+          "training.settings.view",
+          "training.admin.manage",
         ],
         children: [
           {
             id: "training-admin-properties",
             label: "Training Properties",
             path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.PROPERTIES,
-            allowedPermissions: ["training.admin.properties.view"],
+            allowedPermissions: ["training.admin.properties.view", "training.settings.view"],
           },
           {
-            id: "training-admin-requirement-templates",
-            label: "Requirement Templates",
-            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.REQUIREMENT_TEMPLATES,
-            allowedPermissions: ["training.admin.requirement_templates.view"],
+            id: "training-admin-topics",
+            label: "Training Topics",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.TOPICS,
+            allowedPermissions: ["training.admin.manage"],
           },
           {
-            id: "training-admin-create-quiz",
-            label: "Create a Quiz",
-            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.CREATE_QUIZ,
-            allowedPermissions: ["training.admin.quiz.view"],
-          },
-          {
-            id: "training-admin-curriculums",
-            label: "Curriculums",
-            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.CURRICULUMS,
-            allowedPermissions: ["training.admin.curriculums.view"],
+            id: "training-admin-person-positions",
+            label: "Person Positions",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.PERSON_POSITIONS,
+            allowedPermissions: ["training.admin.manage"],
           },
         ],
       },
@@ -895,18 +862,31 @@ const SYSTEM_MODULES: NavItem[] = [
             ],
           },
           {
-            id: "report-admin-access",
-            label: "Report Access & Data Scope",
-            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.ACCESS,
+            id: "report-admin-properties",
+            label: "Report Properties",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.PROPERTIES,
+            allowedPermissions: ["reports.properties.view", "reports.properties.manage"],
+          },
+          {
+            id: "report-admin-types",
+            label: "Report Types",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.TYPES,
+            allowedPermissions: ["reports.types.view", "reports.types.manage"],
+          },
+          {
+            id: "report-admin-name-formats",
+            label: "Report Name Formats",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.NAME_FORMATS,
             allowedPermissions: [
               "reports.definition.view",
+              "reports.name_format.manage",
               "settings.configuration.view",
             ],
           },
           {
-            id: "report-admin-output",
-            label: "Report Output Controls",
-            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.OUTPUT,
+            id: "report-admin-access",
+            label: "Report Access & Data Scope",
+            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.ACCESS,
             allowedPermissions: [
               "reports.definition.view",
               "settings.configuration.view",
@@ -925,15 +905,6 @@ const SYSTEM_MODULES: NavItem[] = [
             id: "report-admin-delivery",
             label: "Scheduled Report Delivery",
             path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.DELIVERY,
-            allowedPermissions: [
-              "reports.definition.view",
-              "settings.configuration.view",
-            ],
-          },
-          {
-            id: "report-admin-validation",
-            label: "Report Change History & Validation",
-            path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.VALIDATION,
             allowedPermissions: [
               "reports.definition.view",
               "settings.configuration.view",

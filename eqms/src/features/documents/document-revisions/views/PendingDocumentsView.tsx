@@ -49,7 +49,8 @@ const DEFAULT_COLUMNS: TableColumn[] = [
   { id: "author", label: "Author", visible: true, order: 14 },
   { id: "effectiveDate", label: "Effective Date", visible: true, order: 15 },
   { id: "validUntil", label: "Valid Until", visible: true, order: 16 },
-  { id: "action", label: "Action", visible: true, order: 17, locked: true },
+  { id: "trainingNumber", label: "Training Number", visible: true, order: 17 },
+  { id: "action", label: "Action", visible: true, order: 18, locked: true },
 ];
 
 const DropdownMenu: React.FC<{
@@ -289,6 +290,8 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
         return revision.effectiveDate;
       case "validUntil":
         return revision.validUntil;
+      case "trainingNumber":
+        return revision.trainingNumber ?? "";
       default:
         return null;
     }

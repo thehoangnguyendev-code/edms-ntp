@@ -9,6 +9,11 @@ const ReportOverviewView = lazy(() => import('@/features/report-analytics').then
 const ReportRunDetailView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportRunDetailView })));
 const ReportAnalyticsView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportAnalyticsView })));
 const ReportHistoryView = lazy(() => import('@/features/report').then(m => ({ default: m.ReportHistoryView })));
+const ReportTemplateRevisionPage = lazy(() => import('@/features/report/templates/ReportTemplateRevisionPage').then(m => ({ default: m.ReportTemplateRevisionPage })));
+const ReportTemplateDetailPage = lazy(() => import('@/features/report/templates/ReportTemplateDetailPage').then(m => ({ default: m.ReportTemplateDetailPage })));
+const ReportTemplateRunPage = lazy(() => import('@/features/report/templates/ReportTemplateRunPage').then(m => ({ default: m.ReportTemplateRunPage })));
+const ScheduleEditorPage = lazy(() => import('@/features/report/scheduled/ScheduleEditorPage').then(m => ({ default: m.ScheduleEditorPage })));
+const ReportRunDetailPage = lazy(() => import('@/features/report/history/ReportRunDetailPage').then(m => ({ default: m.ReportRunDetailPage })));
 const ScheduledReportsView = lazy(() => import('@/features/report').then(m => ({ default: m.ScheduledReportsView })));
 const BackupOverviewView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupOverviewView })));
 const BackupsView = lazy(() => import('@/features/backup-restore').then(m => ({ default: m.BackupsView })));
@@ -46,8 +51,14 @@ export function qualityRoutes() {
       <Route path="report/runs/preview" element={protectedElement("report.module.view", <ReportRunDetailView />)} />
       <Route path="report/analytics" element={protectedElement("report.module.view", <ReportAnalyticsView />)} />
       <Route path="report/templates" element={protectedElement("report.module.view", <ReportTemplatesView />)} />
+      <Route path="report/templates/:code/revisions/:revision" element={protectedElement("report.module.view", <ReportTemplateRevisionPage />)} />
+      <Route path="report/templates/:code" element={protectedElement("report.module.view", <ReportTemplateDetailPage />)} />
+      <Route path="report/templates/:code/run" element={protectedElement("report.module.view", <ReportTemplateRunPage />)} />
       <Route path="report/history" element={protectedElement("report.module.view", <ReportHistoryView />)} />
+      <Route path="report/runs/:runId" element={protectedElement("report.module.view", <ReportRunDetailPage />)} />
       <Route path="report/scheduled" element={protectedElement("report.module.view", <ScheduledReportsView />)} />
+      <Route path="report/scheduled/new" element={protectedElement("report.module.view", <ScheduleEditorPage />)} />
+      <Route path="report/scheduled/:id" element={protectedElement("report.module.view", <ScheduleEditorPage />)} />
       <Route path="report/*" element={<Navigate to="/report/templates" replace />} />
       <Route path="backup-restore" element={<Navigate to="/backup-restore/overview" replace />} />
       <Route path="backup-restore/overview" element={protectedElement("backup.module.view", <BackupOverviewView />)} />

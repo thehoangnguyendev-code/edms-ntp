@@ -346,6 +346,8 @@ public class AuditTrailService {
                 String likePattern = "%" + search.toLowerCase(Locale.ROOT) + "%";
                 List<Predicate> searchPredicates = new ArrayList<>();
                 searchPredicates.add(builder.like(builder.lower(root.get("entityType")), likePattern));
+                // The name of the record too (a template number, a document number), so a record can be found by what people call it.
+                searchPredicates.add(builder.like(builder.lower(root.get("entityName")), likePattern));
                 searchPredicates.add(builder.like(builder.lower(root.get("actionType")), likePattern));
                 searchPredicates.add(builder.like(builder.lower(root.get("comment")), likePattern));
                 searchPredicates.add(builder.like(builder.lower(root.get("fromStatus")), likePattern));

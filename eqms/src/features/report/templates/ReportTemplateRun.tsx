@@ -9,7 +9,7 @@ import { SearchInput } from "@/components/ui/form/SearchInput";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { Input } from "@/components/ui/form/ResponsiveForm";
-import { DataTable } from "@/components/ui/table/DataTable";
+import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { reportsApi, type ReportFormat } from "@/services/api/reports";
@@ -68,12 +68,13 @@ export function ReportTemplateRun({
     setPreview(undefined);
     key.current = undefined;
   };
-  const loadPreview = async (page = 1) => {
+  const loadPreview = async (page = 1, next: TemplateCriteria = criteria) => {
     setBusy(true);
     setError("");
     try {
+      if (next !== criteria) setCriteria(next);
       setPreview(
-        await reportTemplatesApi.preview(template.code, criteria, page),
+        await reportTemplatesApi.preview(template.code, next, page),
       );
       setStage(1);
     } catch (error) {
@@ -82,6 +83,24 @@ export function ReportTemplateRun({
       setBusy(false);
     }
   };
+  /** Column sort on the preview runs on the server: it reloads the preview with the new sort (REPORT-LIST-STANDARD-2026-10-14). */
+  const previewSort = (index: number) => {
+    const field = criteria.fields[index];
+    const direction: "asc" | "desc" = criteria.sortBy === field && criteria.direction === "asc" ? "desc" : "asc";
+    return {
+      direction: criteria.sortBy === field ? criteria.direction : undefined,
+      onSort: (): void => {
+        void loadPreview(1, { ...criteria, sortBy: field, direction });
+      },
+    };
+  };
+  const previewColumns: DataTableColumn<string[]>[] = (preview?.rows[0] ?? []).map((name, index) => ({
+    id: String(index),
+    header: name,
+    sort: previewSort(index),
+    cell: (row: string[]) => row[index],
+  }));
+  const { layout: previewLayout, control: previewControl } = useCustomColumnLayout("reportRunPreview", previewColumns);
   const generate = async () => {
     setBusy(true);
     setError("");
@@ -123,7 +142,7 @@ export function ReportTemplateRun({
         })}
         actions={
           <Button variant="outline" size="sm" disabled={busy} onClick={onBack}>
-            Back to Templates
+            Back
           </Button>
         }
       />
@@ -253,13 +272,11 @@ export function ReportTemplateRun({
               {preview.pagination.total} matching records · Previewed{" "}
               {new Date(preview.asOfAt).toLocaleString()}
             </p>
+            <div className="flex justify-end">{previewControl}</div>
             <DataTable
               rows={preview.rows.slice(1)}
-              columns={(preview.rows[0] ?? []).map((name, index) => ({
-                id: String(index),
-                header: name,
-                cell: (row: string[]) => row[index],
-              }))}
+              columns={previewColumns}
+              columnLayout={previewLayout}
               getRowKey={(_row, index) => index}
               scrollerRef={drag.scrollerRef}
               scrollProps={drag.dragEvents}

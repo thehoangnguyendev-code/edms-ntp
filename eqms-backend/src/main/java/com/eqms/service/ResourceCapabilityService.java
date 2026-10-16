@@ -22,17 +22,23 @@ public class ResourceCapabilityService {
     private final ControlledCopyAuthorizationService controlledCopyCapabilities;
     private final DocumentParticipantEligibilityService documentEligibility;
     private final DocumentMasterActionCapabilityService documentMasterCapabilities;
+    private final com.eqms.service.report.ReportTemplateService reportTemplates;
+    private final com.eqms.auth.CurrentUserService currentUsers;
 
     public ResourceCapabilityService(
             RevisionActionCapabilityService revisionCapabilities,
             ControlledCopyAuthorizationService controlledCopyCapabilities,
             DocumentParticipantEligibilityService documentEligibility,
-            DocumentMasterActionCapabilityService documentMasterCapabilities
+            DocumentMasterActionCapabilityService documentMasterCapabilities,
+            com.eqms.service.report.ReportTemplateService reportTemplates,
+            com.eqms.auth.CurrentUserService currentUsers
     ) {
         this.revisionCapabilities = revisionCapabilities;
         this.controlledCopyCapabilities = controlledCopyCapabilities;
         this.documentEligibility = documentEligibility;
         this.documentMasterCapabilities = documentMasterCapabilities;
+        this.reportTemplates = reportTemplates;
+        this.currentUsers = currentUsers;
     }
 
     @Transactional(readOnly = true)
@@ -43,6 +49,7 @@ public class ResourceCapabilityService {
             case "DOCUMENT_REVISION" -> fromRevision(revisionCapabilities.getCapabilities(uuid(resourceId)));
             case "CONTROLLED_COPY" -> fromControlledCopy(controlledCopyCapabilities.getCopyCapabilities(uuid(resourceId)), normalized, resourceId);
             case "CONTROLLED_COPY_BATCH" -> fromControlledCopy(controlledCopyCapabilities.getBatchCapabilities(uuid(resourceId)), normalized, resourceId);
+            case "REPORT_TEMPLATE" -> reportTemplates.capabilities(currentUsers.requireCurrentUser(), resourceId);
             default -> throw new IllegalArgumentException("Unsupported resource type: " + resourceType);
         };
     }

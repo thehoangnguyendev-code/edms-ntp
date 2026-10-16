@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button/Button';
 import { useToast } from '@/components/ui/toast/Toast';
 import { settingsApi } from '@/services/api/settings';
 import { OnlyOfficeStorageConfig } from '../types';
+import onlyOfficeLogo from '@/assets/images/logo-app/onlyoffice.webp';
 
 interface OnlyOfficeTabProps {
   onlyOfficeConfig: OnlyOfficeStorageConfig;
@@ -104,7 +105,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
 
   return (
     <div className={embedded ? 'px-4 pb-4 md:px-5 md:pb-5' : 'p-4 md:p-5 space-y-4'}>
-      <FormSection title="OnlyOffice Server" icon={<Server className="h-4 w-4" />}>
+      <FormSection title="OnlyOffice Server" icon={<img src={onlyOfficeLogo} alt="OnlyOffice" className="h-4 w-4 object-contain" />}>
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>

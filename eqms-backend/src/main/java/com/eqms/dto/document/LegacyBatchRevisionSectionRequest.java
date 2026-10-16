@@ -29,6 +29,9 @@ public record LegacyBatchRevisionSectionRequest(
         // it is already compatible with whatever the Training module currently reads from a
         // revision (and with any future Training module changes built on that same field).
         String trainingCompletionDate,
+        // Optional. The number written on the paper training record of this revision (training done before the system existed), typed by the person who
+        // imports it, so that the paper record can be found from the system later. Kept as typed; never issued by Training Management.
+        String trainingNumber,
         boolean hasFile,
         // Required when hasFile is false -- e.g. "original scan not located in the paper archive".
         String noFileJustification

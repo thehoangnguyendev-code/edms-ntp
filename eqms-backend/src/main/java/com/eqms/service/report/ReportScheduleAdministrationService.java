@@ -20,7 +20,7 @@ public class ReportScheduleAdministrationService {
     public ReportScheduleAdministrationService(JdbcTemplate jdbc,ReportTemplateService templates,PermissionEvaluationService permissions,UserAccountRepository users,AuditTrailService audit,ObjectMapper json){this.jdbc=jdbc;this.templates=templates;this.permissions=permissions;this.users=users;this.audit=audit;this.json=json;}
     public Map<String,Object> list(UserAccount actor,String search,String status,int page,String sort,String direction) {
         templates.require(actor,"reports.schedule.view","report.module.view");
-        if(search.length()>200||!Set.of("","ACTIVE","PAUSED","SUSPENDED_AUTHORIZATION_CHANGED","SUSPENDED_INVALID_SCHEDULE").contains(status)||!Set.of("asc","desc").contains(direction))throw new IllegalArgumentException("REPORT_SCHEDULE_FILTER_INVALID");
+        if(search.length()>200||!Set.of("","ACTIVE","PAUSED","SUSPENDED_AUTHORIZATION_CHANGED","SUSPENDED_INVALID_SCHEDULE","SUSPENDED_TEMPLATE_NOT_APPROVED","SUSPENDED_TEMPLATE_DISABLED").contains(status)||!Set.of("asc","desc").contains(direction))throw new IllegalArgumentException("REPORT_SCHEDULE_FILTER_INVALID");
         String order=switch(sort){case "name"->"s.name";case "nextRunAt"->"s.next_run_at";case "status"->"s.status";default->throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");};
         boolean all=permissions.hasPermission(actor,"reports.schedule.manage");
         String where=" from report_schedules s where s.name ilike ? and (?='' or s.status=?)"+(all?"":" and s.creator_user_id=?");

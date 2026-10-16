@@ -120,6 +120,18 @@ const hasESignature = (record: AuditTrailRecord) =>
     record.metadata?.signature_id,
   );
 
+/** The record types of the Reports module, as people read them (the stored value is a machine code). */
+const REPORT_MODULE_LABEL: Record<string, string> = {
+  REPORT_DEFINITION: "Report Template",
+  REPORT_NAME_FORMAT: "Report Name Format",
+  REPORT_PROPERTIES: "Report Properties",
+  REPORT_TEMPLATE_NUMBER_RULE: "Report Properties",
+  REPORT_RUN: "Report Run",
+  REPORT_ARTIFACT: "Report File",
+  REPORT_SCHEDULE: "Report Schedule",
+  REPORT_TEMPLATE: "Report Template",
+};
+
 const mapModuleLabel = (module: string) => {
   switch (module) {
     case "Document":
@@ -129,7 +141,7 @@ const mapModuleLabel = (module: string) => {
     case "Controlled Copy":
       return "Controlled Copy";
     default:
-      return module || "-";
+      return REPORT_MODULE_LABEL[module] ?? (module || "-");
   }
 };
 
@@ -837,7 +849,7 @@ export const AuditTrailView: React.FC = () => {
                         const objectType =
                           record.metadata?.entityType ||
                           record.metadata?.objectType ||
-                          record.module ||
+                          mapModuleLabel(record.module) ||
                           "-";
                         const objectCode = buildObjectCode(record);
                         const statusChange = buildStatusChange(record);

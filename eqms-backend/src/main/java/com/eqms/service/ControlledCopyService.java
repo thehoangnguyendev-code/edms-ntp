@@ -864,6 +864,11 @@ public class ControlledCopyService {
             throw new IllegalArgumentException("Controlled copies cannot be requested for controlled document templates");
         }
         DocumentRevisionRecord revision = requireEffectiveRevision(document);
+        // Owner decision DOCUMENT-EXPIRY-2026-10-16: an expired document cannot be copied, even though its
+        // Effective revision is still in place until the expiry job voids the electronic copies.
+        if (DocumentExpiryRules.isExpired(document, java.time.Instant.now())) {
+            throw new IllegalArgumentException("This document's Valid Until date has passed, so no copy can be requested.");
+        }
         // Uses the exact evaluator behind the capability API.  Do not add a
         // second flat permission or scope check here: that would allow the UI
         // and mutation endpoint to drift when workflow policy is changed.

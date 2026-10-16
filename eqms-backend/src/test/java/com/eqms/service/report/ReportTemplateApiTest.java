@@ -18,7 +18,7 @@ class ReportTemplateApiTest {
         var templates=mock(ReportTemplateService.class);var users=mock(CurrentUserService.class);var actor=new UserAccount();when(users.requireCurrentUser()).thenReturn(actor);
         var mvc=MockMvcBuilders.standaloneSetup(new ReportTemplateController(templates,users)).setControllerAdvice(new ReportAccessExceptionHandler(),new GlobalExceptionHandler()).build();
         mvc.perform(get("/reports/templates/configuration").param("status","ACTIVE").param("sourceCode","DOCUMENT_STATUS").param("format","PDF").param("orientation","PORTRAIT")).andExpect(status().isOk());
-        verify(templates).adminCatalog(actor,"",1,"displayName","asc",java.util.Map.of("status","ACTIVE","sourceCode","DOCUMENT_STATUS","format","PDF","orientation","PORTRAIT"));
+        verify(templates).adminCatalog(actor,"",1,"displayName","asc",java.util.Map.of("status","ACTIVE","sourceCode","DOCUMENT_STATUS","format","PDF","orientation","PORTRAIT","limit","10"));
         mvc.perform(delete("/reports/templates/QA_REGISTER").contentType("application/json").content("{\"version\":3,\"reason\":\"Retire TEST template\"}")).andExpect(status().isNoContent());
         verify(templates).delete(actor,"QA_REGISTER",3,"Retire TEST template");
         doThrow(new SecurityException("private scope")).when(templates).delete(actor,"QA_REGISTER",3,"Denied");

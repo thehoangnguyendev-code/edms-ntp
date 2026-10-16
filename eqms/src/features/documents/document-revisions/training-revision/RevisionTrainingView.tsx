@@ -27,6 +27,7 @@ import {
 import type { DocumentStatus } from "@/features/documents/types";
 import { documentApi } from "@/services/api/documents";
 import { auditTrailApi } from "@/services/api/auditTrail";
+import { trainingLinksApi, type TrainingLink } from "@/services/api/trainingLinks";
 import type { RevisionDetailResponse } from "@/features/documents/document-revisions/detail-revision/types";
 import { buildRevisionSignatureRecords, type SignatureTabRecord } from "@/features/documents/document-revisions/shared/signatureRecords";
 import { hasWorkingNotesEditAccess } from "@/features/documents/document-revisions/shared/workingNotesPermissions";
@@ -83,6 +84,12 @@ const validateTrainingInfo = (value: TrainingInformationValue, canEditTrainingDa
   return errors;
 };
 
+/** yyyy-mm-dd from the server to the dd/mm/yyyy the tab shows. */
+const isoToDisplay = (value?: string | null) => {
+  const match = value ? /^(\d{4})-(\d{2})-(\d{2})/.exec(value) : null;
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+};
+
 interface RevisionTrainingViewProps {
   revisionId: string;
   onBack: () => void;
@@ -120,6 +127,19 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     resolveInitialTab(locationState?.workspaceState?.activeTab),
   );
   const [showESignModal, setShowESignModal] = useState(false);
+  const [trainingLink, setTrainingLink] = useState<TrainingLink | null>(null);
+  useEffect(() => {
+    let active = true;
+    trainingLinksApi
+      .forRevision(revisionId)
+      .then((link) => active && setTrainingLink(link))
+      .catch(() => active && setTrainingLink(null));
+    return () => {
+      active = false;
+    };
+  }, [revisionId]);
+  // Integrated: the dates and the completion come from Training Management; this screen only signs once the activity is completed.
+  const integrated = trainingLink?.mode === "INTEGRATED";
   const [isNavigating, setIsNavigating] = useState(false);
   const [trainingSubmitValidationToken, setTrainingSubmitValidationToken] = useState(0);
   const revisionActionCapabilities = useRevisionActionCapabilities(document?.id ?? revisionId ?? null);
@@ -328,6 +348,20 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
   };
 
   const handleCompleteTraining = () => {
+    if (!canCompleteTraining) return;
+    if (integrated) {
+      if (trainingLink?.status !== "COMPLETED") {
+        showToast({
+          type: "error",
+          title: "Training is not completed",
+          message: "Training " + (trainingLink?.trainingNumber ?? "") + " must be confirmed as completed in Training Management first.",
+          duration: 3000,
+        });
+        return;
+      }
+      setShowESignModal(true);
+      return;
+    }
     if (!canEditTrainingDates) return;
     const errs = validateTrainingInfo(trainingInfo, canEditTrainingDates);
     if (Object.keys(errs).length > 0) {
@@ -609,18 +643,20 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
         )}
         {activeTab === "training" && (
           <TrainingInformationTab
-            isReadOnly={!canEditTrainingDates}
+            isReadOnly={!canEditTrainingDates || integrated}
+            trainingNumber={integrated ? trainingLink?.trainingNumber : null}
+            trainingStatusLabel={integrated ? trainingLink?.status?.replace(/_/g, " ").toLowerCase() : null}
             data={{
-              trainingPlannedDate: document?.trainingPlannedDate,
-              trainingPeriodEndDate: document?.trainingPeriodEndDate,
-              trainingCompletionDate: document?.trainingCompletionDate,
+              trainingPlannedDate: integrated ? isoToDisplay(trainingLink?.approvedOn) : document?.trainingPlannedDate,
+              trainingPeriodEndDate: integrated ? isoToDisplay(trainingLink?.dueDate) : document?.trainingPeriodEndDate,
+              trainingCompletionDate: integrated ? isoToDisplay(trainingLink?.completedOn) : document?.trainingCompletionDate,
               trainingPeriodDays: document?.trainingPeriodDays ?? null,
             }}
             onChange={(val) => {
               setTrainingInfo(val);
             }}
-            canEditPlannedDate={canEditTrainingDates}
-            canEditCompletionDate={canEditTrainingDates}
+            canEditPlannedDate={canEditTrainingDates && !integrated}
+            canEditCompletionDate={canEditTrainingDates && !integrated}
             submitValidationToken={trainingSubmitValidationToken}
           />
         )}

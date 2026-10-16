@@ -1,3 +1,4 @@
+import "../../testing/browserStubs";
 import { act,render,screen } from "@testing-library/react";
 import { beforeEach,afterEach,it,expect,vi } from "vitest";
 import { RealtimeReportPreview } from "../../shared/RealtimeReportPreview";

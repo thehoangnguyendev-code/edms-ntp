@@ -1,5 +1,177 @@
 # Approved decisions
 
+## REPORT-TEMPLATE-APPROVAL-2026-10-14 — Every report template version is approved before it runs; names follow a rule
+
+Owner decision, given in this conversation (2026-10-14):
+
+- **Creation flow:** a template is created as a draft. The author submits it for approval. A person who holds the approval permission
+  approves it (electronic signature) or returns it to draft with a reason. Only an approved current version runs (manual runs, schedules,
+  previews).
+- **Separation:** the approver is not the author of the version and not the person who submitted it.
+- **Changes:** every saved change returns the template to draft and needs approval again.
+- **Retirement:** a template that is no longer used is disabled, never deleted. A template marked for GMP decisions cannot be deleted.
+- **Name rule:** Report Administration keeps the rules that give template names (fixed parts and parts typed per template, with a
+  separator). A template chooses a rule when it is created and its name is built from the rule.
+- **Existing templates** return to draft and must pass the flow again before they run.
+
+Owner answers (2026-10-14), on the assistant choices below:
+
+- 1 (names): accepted.
+- 2 (lifecycle): Draft -> Pending approval -> Active -> Inactive. Disabling is a change; enabling again goes back through Draft and approval.
+- 3 (rejection): a rejection is signed electronically (meaning `REPORT_TEMPLATE_REJECTION`) and returns the version to Draft with its reason.
+- 4 (rule changes): **option A**. A template keeps the name it has. A change to a rule applies only to templates created after it, and to a
+  template whose typed values are changed later. A rule change does not rename existing templates and does not need re-approval.
+- 5 (example rule): removed by V583 (it was not in use).
+- 6 (schedules): to be tested by the administrator.
+
+Assistant choices (the owner's answers above are recorded against them):
+
+1. Permission `reports.definition.approve` ("Approve Report Template", renamed from `reports.definition.approve_gmp`); name-rule permission
+   `reports.name_format.manage` ("Manage Report Name Formats").
+2. Electronic signature meaning `REPORT_TEMPLATE_APPROVAL` ("Report Template Approved"), renamed from `REPORT_GMP_APPROVAL`.
+3. The flow applies to every template, not only those marked for GMP decisions.
+4. Rejection needs a reason and no signature; a rejected version returns to draft with its reason kept.
+5. Changing a name rule does not rename existing templates; a rule change needs a reason and an audit record, not an electronic signature.
+6. The seeded rule "EQMS report title" (fixed "EQMS", typed topic) is an example for testing, to be replaced or removed by the owner.
+7. A schedule whose template is not approved is suspended with its own reason, `SUSPENDED_TEMPLATE_NOT_APPROVED`.
+
+## REPORT-GMP-USE-APPROVAL-2026-10-14 — A report template for GMP decisions runs only after QA approval
+
+Owner decision, given in this conversation (2026-10-14), confirming SDS-RP-001 section 18, item 4 (REPORT-OFFICIAL-VALIDATION-2026-10-14):
+
+- **Choice at creation:** when a template is created (and at any later change, under the e-signature rule of REPORT-DEFINITION-SIGNATURE) the
+  author can tick **"Use for GMP decisions"**.
+- **Effect:** a template marked for GMP use **cannot run** (manual run, schedule, preview) until QA approves its **current** version. Any
+  later change to the template makes the approval stale.
+- **Approval:** by a user who holds the permission to approve GMP use; the approver must not be the author of the current version; the
+  approval is signed electronically.
+- **Retirement:** a GMP template that is no longer used is **disabled, never deleted**.
+
+Assistant choices to confirm (not stated by the owner):
+
+1. Permission code `reports.definition.approve_gmp`, name "Approve Report for GMP Use" (the owner asked for a name suited to the purpose; the
+   code is the assistant's proposal). The admin ticks it for QA users when creating them.
+2. Electronic signature meaning `REPORT_GMP_APPROVAL`, "Report Approved for GMP Use".
+3. Approval does not change the definition version, so it cannot be used to hide a change.
+4. The approver is the person who wrote the current version (recorded per version); a version with no recorded author cannot be approved.
+5. Existing templates are **not** marked for GMP; no template was chosen for GMP use by the owner.
+
+Still open: the text of the notice on each file ("Not confirmed for GMP decisions") is for QA to set (PLAN item 3.2). Schedules whose template
+is not approved are suspended with the existing reason "authorization changed", which is imprecise; a separate reason is to be decided.
+
+## REPORT-FILE-RETENTION-PERMANENT-2026-10-14 — Report files are kept permanently
+
+Owner decision, given in this conversation (2026-10-14). It completes REPORT-FILE-RETENTION-2026-10-14, whose open item (the number of years) is closed by this entry:
+
+- **What:** report output files are kept **permanently**. No report file expires by age. The legal hold rule still applies on top of this.
+- **Consequence:** the expiry and purge path is not used for report files. The storage needed grows with every run and must be sized and backed up as part of the storage plan.
+- **Why:** the owner's decision, consistent with the permanent retention already decided for backups (BR-2).
+
+Follow-up (not built): the retention policy of the report definitions is set to permanent, and the "No period has been approved" text on the retention screen is updated. Storage sizing for permanent report files is a follow-up item.
+
+## REPORT-NOTIFICATION-CHANNEL-2026-10-14 — Scheduled report notices go by in-app and email
+
+Owner decision, given in this conversation (2026-10-14). It completes the open item of REPORT-DELIVERY-CHANNEL-2026-10-14:
+
+- **Channels:** a recipient of a scheduled report is told in two places, **in the application** and **by email**.
+- **Content of the email:** a notice and a link only. The file is never attached. Opening the link needs a login and the permission check described in REPORT-DELIVERY-CHANNEL-2026-10-14.
+- **Record:** each notice is recorded in `report_delivery_attempts`, including failures.
+
+Follow-up (not built): the in-app notice, the email template, the sending job and the attempt record are not built yet. Mail-server approval by IT and security is still needed before the email channel is switched on.
+
+## REPORT-DELIVERY-CHANNEL-2026-10-14 — Scheduled reports reach recipients by notice and login, never by file attachment
+
+Owner decision, given in this conversation (2026-10-14), confirming the recommendation in SDS-RP-001 section 18, item 1:
+
+- **What:** a scheduled report is **not** sent as an email attachment. Recipients receive a notice inside the application; an email, if
+  used, carries only a link. Opening the link needs a login and a fresh permission check, the same as downloading a file today. Each
+  send is recorded in `report_delivery_attempts`.
+- **Why:** an emailed file is an uncontrolled copy outside the system; access cannot be revoked and the copy cannot be recalled
+  (EU GMP Annex 11, section 12). Where a file must leave the system, it goes through the Controlled Copy process.
+
+Still open (not decided here): the e-mail channel and its content need IT and security approval. Nothing is built yet.
+
+## REPORT-LEGAL-HOLD-2026-10-14 — Legal hold: applied by one person, released only by another, with an e-signature
+
+Owner decision, given in this conversation (2026-10-14), confirming SDS-RP-001 section 18, item 2:
+
+- **Apply:** a person with `reports.retention.manage`, with a mandatory reason.
+- **Release:** must be a different person from the one who applied it, with an electronic signature whose meaning is "Legal hold released".
+- **Status:** the hold is shown on the run history. It keeps blocking the purge of the file, as it does now.
+- **Why:** releasing a hold allows the file to be deleted, and deletion cannot be undone (EU GMP Annex 11, sections 14 and 12).
+
+Built 2026-10-14 (phase 2.1): a hold is placed or released from the run history, with the reason. Assistant choices to confirm (not stated by the owner): placing a hold needs no signature; a release needs the reason, a signature with meaning REPORT_LEGAL_HOLD_RELEASE (V579), and a person other than the one who placed it. Who placed a hold is read from the run events of the file; a release is refused when that person is unknown. Placing or releasing a hold that is already in that state is refused.
+
+## REPORT-DEFINITION-SIGNATURE-2026-10-14 — Electronic signature for changes that alter report results or access
+
+Owner decision, given in this conversation (2026-10-14), confirming SDS-RP-001 section 18, item 3:
+
+- **Signature required** for changes to a report definition that alter its results or who may see data: adding or removing fields,
+  filters, role data scopes, formats, the retention policy, and switching a definition on or off.
+- **Signature not required** for display name and description.
+- **Meaning of the signature:** "Report definition change".
+- **Why:** these are changes to the change control of a computerised system and to data access (EU GMP Annex 11, sections 10 and 14). This
+  matches the Backup Policy, which already requires a signature.
+
+Built 2026-10-14 (phase 2.2): a save that changes formats, fields, role scopes or activation needs a signature with meaning REPORT_DEFINITION_CHANGE (V579), checked before any write and recorded after the save. Assistant choices to confirm (not stated by the owner): creating a new definition also counts as a change that needs a signature; name, description and layout do not; a save without a service for signatures is refused rather than allowed.
+
+## REPORT-OFFICIAL-VALIDATION-2026-10-14 — "Official" reports: scope first, then validation before use for GMP decisions
+
+Owner decision, given in this conversation (2026-10-14), confirming SDS-RP-001 section 18, item 4:
+
+- **Not built now.** The first step is to list which reports are used for GMP decisions. That scope is not yet defined.
+- **For those reports, when built:** a definition carries a "Confirmed" status tied to one version; the confirmer must differ from the
+  author; only the confirmed version can be run; a change to the definition removes the confirmation. Runs already record
+  `definition_version`.
+- **Until then:** every report file states "Not confirmed for GMP decisions" so nobody mistakes it for a validated output.
+  This notice is a follow-up item and is not yet in the output.
+
+## REPORT-TEST-TEMPLATES-2026-10-14 — Test report templates are removed from production; DEV only
+
+Owner decision, given in this conversation (2026-10-14), confirming SDS-RP-001 section 18, item 5:
+
+- **What:** the three `TEST_` templates seeded by V533 are removed from the production path. V533 is not edited; a new migration marks them
+  soft-deleted (`deleted_at`), which keeps the history.
+- **DEV:** the test templates are loaded on DEV only, through a separate configuration, not through the shared migration path.
+- **Why:** test output in the real catalogue could be run and look like an official record (EU GMP Annex 11, section 4: validation and
+  production environments kept apart).
+
+Follow-up: the new migration and the DEV-only loader are not written yet.
+
+## REPORT-FILE-RETENTION-2026-10-14 — Report files follow the retention of the records they summarise
+
+Owner decision, given in this conversation (2026-10-14), confirming SDS-RP-001 section 18, item 6:
+
+- **Principle:** no separate number of days for report files. A file is a derived copy, so it is kept at least as long as the source
+  records it summarises, under the record retention schedule approved by QA. A legal hold always overrides expiry.
+- **Format:** archive copies use PDF/A. CSV and XLSX are not used for long-term storage.
+- **Why:** EU GMP Annex 11, section 17 (archiving: data stays readable for the whole retention period).
+
+Update 2026-10-14: the number of years is closed by REPORT-FILE-RETENTION-PERMANENT-2026-10-14 (permanent). Earlier open point: a check that the
+current PDF renderer produces PDF/A is a follow-up item.
+
+## REPORT-ANALYTICS-PRODUCTION-2026-10-14 — Analytics screens hidden from production until real data exists
+
+Owner decision, given in this conversation (2026-10-14), confirming SDS-RP-001 section 18, item 7:
+
+- **What:** the three analytics screens (Reports Overview, Quality Analytics, Run detail) are hidden from the menu in production behind
+  a feature flag that is off by default. They stay available on DEV.
+- **Data later:** when built, figures are aggregated on the server from the same Document Register source, and must be reproducible.
+- **Why:** sample figures could be read as real figures (EU GMP Annex 11, section 6: accuracy of data).
+
+Still open: when real analytics are built is a business priority, set by the project owner. Not decided here.
+
+## REPORT-SCHEDULE-OWNER-2026-10-14 — Schedules keep the creator's authority, with a named owner and a notice on suspension
+
+Owner decision, given in this conversation (2026-10-14), confirming SDS-RP-001 section 18, item 8:
+
+- **Kept:** the schedule runs with the creator's permissions at run time, and suspends itself when those permissions are lost.
+- **Added:** each schedule has a named owner. Handing it to someone else needs a reason and an audit record.
+- **Added:** when a schedule is suspended, its owner and the report administrator are told. No notice exists today.
+- **Why:** this is the least-privilege model and it is traceable. A silent stop is not acceptable (EU GMP Annex 11, sections 9 and 16).
+
+Follow-up: the owner field, the handover, and the suspension notice are not built yet.
+
 ## DASHBOARD-HEADER-TITLE-2026-10-07 — A configurable title in the top bar of the Dashboard
 
 Owner decisions, given in this conversation (2026-10-07):
@@ -158,6 +330,38 @@ Owner decisions, given in this conversation (2026-10-06), replacing the environm
 - Training is out of scope; Knowledge Base department scoping is unchanged.
 
 Open risks and evidence: ../validation/DOC_VISIBILITY_2026_10_06_CHANGE_RECORD.md.
+
+## UNCONTROLLED-COPY-REQUEST-DCO-2026-10-16 — Request Uncontrolled Copy granted to DCO
+
+Reported in conversation (2026-10-16): the "Request Uncontrolled Copy" button on a Document's
+detail page did not show for the `dco.test1` test account. Root cause confirmed by reading
+`DetailDocumentView.tsx` (the button requires `documents.uncontrolled_copy.request`, an EFFECTIVE
+revision, and a non-template document, then a server-side context check) and every migration that
+ever referenced the permission: `documents.uncontrolled_copy.request` was created in V499 with a
+SoD constraint (V502) and dependency rows (V511), but had never been granted to any permission
+set, including the real (non-test) DCO set.
+
+- Owner (2026-10-16): "cấp cho DCO trước đi" (grant to DCO first).
+- V600 grants it to the three sets read as "DCO" by code, the same reading used in
+  DOC-VISIBILITY-2026-10-06/V542: `PS_DCO_TEST`, `PS_DOCUMENT_DCO`, `PS_UAT_DOCUMENT_DCO`.
+  Administrator/`SYSTEM_ADMINISTRATION` and the legacy `ROLE_*` sets are intentionally left out.
+- **Open:** whether Author (or another role) should also get this permission was not asked; only
+  DCO was granted. The 8 sets noted as "Open" in DOC-VISIBILITY-2026-10-06 (Approver, Quality,
+  Contributor and DCO-named sets holding `documents.uncontrolled_copy.view_all` alone) are
+  unaffected by this change.
+
+## UNCONTROLLED-COPY-ALL-TYPES-2026-10-16 — Uncontrolled copies for every document type
+
+Owner (2026-10-16): the "Allow Uncontrolled Copy" rule per document type no longer applies; any
+document can be requested, the same as a Controlled Copy. The per-type flag had already been removed
+(V503), but the eligibility rule matrix remained and the live database had only the default rule.
+
+- Owner chose option 2: keep the eligibility matrix as the single default switch, default allows every
+  document type, and no per-document-type rule is kept (V603). The matrix's rule editing is not removed
+  by this change.
+- Requesting still needs `documents.uncontrolled_copy.request`, an Active document with an Effective
+  revision, a non-template document and a valid validity window (unchanged).
+- **Open:** whether the matrix editing screen should be removed entirely (option 1) was not decided.
 
 ## REPORT-TEMPLATE-UI-DELETE-2026-10-04 — Shared UI and reversible removal
 
@@ -393,3 +597,120 @@ Plan for the customer: ../../../docs/plans/KE_HOACH_MUC_DICH_SU_DUNG_BAN_SAO_KIE
 
 ### CC-PURPOSE-2026-10-07 amendment (owner, 2026-10-07)
 Recall by Scan: read-only (READ_AND_COMPLY) copies found in a scan are set apart and removed by the DCO with one click; they are not recalled by scan and make no Record. Their recall stays a manual action from Controlled Copies.
+
+## REPORT-TEMPLATE-NUMBER-2026-10-14 — A report template's number is issued by the system
+
+- Owner request (2026-10-14): rename "Template Code" to "Template Number"; users must not type it; build a rule that numbers templates, following the Document Number mechanism.
+- Assistant choice, **confirmed by the owner on 2026-10-14**: format `<prefix>.<serial>` (default `RPT.0001`), prefix and serial digits configurable in Report Administration, serial only moves forward, one rule for all templates, existing numbers unchanged.
+- Closed by the owner's confirmation: the format stays `<prefix>.<serial>` and a number is never re-used.
+- Change record: `validation/REPORT_GMP_DECISIONS_2026_10_14_CHANGE_RECORD.md`, section "Template Number issued by the system".
+
+## REPORT-TEMPLATE-REVISION-2026-10-14 — Report templates are managed in revisions
+
+- Owner request (2026-10-14): report templates lack version management; do as Document does (Revision).
+- Assistant choices, **to confirm** by QA/owner: numbered revisions (Draft, Pending Approval, Effective, Superseded); the effective revision keeps running while a newer one is drafted and approved; approval stays signed and independent of the author; disabling is immediate, enabling goes through approval; released revisions keep their whole content and can be compared.
+- Owner decision (2026-10-14): a new revision is started explicitly with "Upgrade Report Template"; the replaced revision is Obsoleted and stays viewable. Closed: explicit start.
+- Open: whether runs of an obsoleted revision should be flagged on the report; retention of draft revisions that are never approved.
+- Change record: `validation/REPORT_GMP_DECISIONS_2026_10_14_CHANGE_RECORD.md`, section "Revisions of a report template".
+
+- Owner decision (2026-10-14, REPORT-TEMPLATE-REVISION): Disable needs only a confirmation modal and the audit trail. Assistant reading, **to confirm**: Enable works the same way. Revision function completed: Discard Revision, compare with any revision, SDS-RP-001 section 5.5.
+
+## REPORT-COMPANY-APPEARANCE-2026-10-15 — One company appearance for every report
+
+- Owner direction (2026-10-15): every report uses one company appearance. The look of a report (cover, header, footer, page numbers, font, stamp, watermark, logo, paper layout, Word page templates) is set once in Report Properties > Report Appearance; a report template keeps only its charts.
+- Built (DEV): `report_properties.appearance` (V592); the run snapshot pins the company appearance with the template's charts, so a report already made keeps the look it was made with; saving needs `reports.properties.manage`, checks the version, and the Audit Trail names the parts changed.
+- Assistant-proposed, **to confirm**: templates that held their own appearance now use the company one from their next run (their stored layout is ignored, not deleted); a stamp opacity below 30 is refused as in the Controlled Copies Policy; the stamp is a framed box laid out as the Controlled Copy stamp (REPORT-STAMP).
+- Open: change record not yet written; no real run checked in a browser.
+
+## REPORT-PLATFORM-2026-10-15 — Report Types, more sources, permission-based authoring (design, not built)
+
+- Owner (2026-10-15): sources in this order: Document Control, Audit Trail, Backup & Restore; a user may create report templates when the Access Profile allows it, not only an administrator.
+- Assistant-proposed, **to confirm** by QA/owner: code-defined Report Types enabled/disabled in administration; source permission required in addition to the template scope; Audit Trail source SYSTEM-scoped and export gated by `audit.export`; new permission `reports.template.create`.
+- Owner answers (2026-10-15): non-GMP templates are approved by signature too; a person with `reports.definition.manage` sees and edits others' templates; Backup & Restore data location not known yet (Phase 3); the Audit Trail report has a mandatory, bounded date range. Assistant correction, **to confirm**: authoring is already by permission, so no new authoring permission is built.
+- Open questions Q1 to Q4 are in the design: `../validation/REPORT_PLATFORM_2026_10_15_DESIGN.md`.
+
+### REPORT-PLATFORM-2026-10-15 — phase 1 built on DEV (Report Types)
+
+- Built (DEV, not committed): Report Types registry (`ReportTypeService`, `/reports/types`, V593 `report_types`); the provider contract gained category, description and the permissions a type needs; a disabled or not permitted type is refused when a template is created or changed and when a run starts, and a schedule of such a template is suspended as "template disabled"; screen **Report Types** (list with server-side search, filter, sort and paging, expandable row, detail page, Enable/Disable with reason and Audit Trail); permissions `reports.types.view` and `reports.types.manage`, granted to nobody by the migration (DEV test set updated by `validation/DEV_TEST_REPORT_TYPES_2026_10_15.sql`).
+- Not yet built in phase 1: the simplified create stepper (Report Type, columns and filters, name and charts, access). Phases 2 to 4 not started. Change record not yet written.
+
+### REPORT-PLATFORM-2026-10-15 — phase 2 built on DEV (Audit Trail as a Report Type)
+
+- Built (DEV, not committed): Report Type `AUDIT_TRAIL` (`AuditTrailReportMetadataProvider`): the columns the Audit Trail screen shows (timestamp, module, action, record, from/to status, description, reason, user, employee code, department, IP address, electronic signature); old/new values, user agent and device are not columns. A person needs **both** `audit.view` and `audit.export` (checked when a template is created or changed, when a run starts, when it is rendered and when its file is downloaded again). The type can be given only the **SYSTEM** scope (refused when a template is saved, and again by the query). A run must name **From and To dates, in order, at most 92 days** (counted with both days). The contract gained `requiredPermissions`, `allowedScopes` and `validateRun`.
+- Assistant-proposed, **to confirm** (QA/owner): the 92-day limit; that both audit.view and audit.export are needed; SYSTEM scope only.
+- Open: the Audit Trail screen's own export needs an electronic signature and a reason at the time of export; a report run does not, and relies on the signed approval of the template and the audit entry of the run. QA to decide whether that is acceptable or a run of this type must also be signed. A schedule keeps the dates it was given, so a scheduled Audit Trail report repeats the same range until a relative range (for example "last 30 days") is built. Change record not yet written.
+
+## TRAINING-PLAN-2026-10-15 — Training Management and its link with Document Control (plan, nothing built)
+
+Plan: `../../../docs/to-be-sds/training/PLAN-TR-001-training-management.md` (0.3), written from SOP.0003.02 and its nine forms (`docs/training_docs/`). The Training screens now in `eqms/src/features/training/` and `.../settings/training-administration/` are the owner's trial UI and are not a basis for the design.
+
+Owner decisions (2026-10-15):
+- A Training Number is issued **to a revision**, not to a document (an upgrade may mean new training). In the Training Information tab it is read-only and appears only after a successful save.
+- Un-ticking Requires Training on a revision that already has a number shows a confirmation; the number is cancelled when the user saves again. A cancelled number is never reused.
+- An upgraded revision keeps Requires Training; how the training is given is set in the Training module.
+- Not needing training = the user does not tick Requires Training; no reason categories.
+- Completing training still needs the electronic signature of the present flow; it does not advance the revision by itself.
+- The effective date of a document follows the settings already in Document Properties (separate rules for documents with and without Required Training).
+
+Assistant proposals, **to confirm**: legacy-imported documents get no training number or activity (marked LEGACY_IMPORT, listed as read-only evidence; "Training not evidenced" when the date is missing); a failed save rolls back and never falls back to manual dates; a deliberate switch-off of the integration is a controlled setting and each revision records `INTEGRATED` or `MANUAL` at its first save; the training completion date of a revision is the date QA confirms the original activity, absentees (codes a, b, c) do not hold up publishing but are shown as untrained.
+Open: the 22 questions of the plan, section 13 (D-01 to D-22, D-31).
+
+### TRAINING-PLAN-2026-10-15 — owner agreement and detailed design
+
+- Owner (2026-10-15): agreed the three assistant proposals — legacy-imported documents get no training number or activity (marked LEGACY_IMPORT, listed as read-only evidence); a failed save rolls back and never falls back to manual dates, a deliberate switch-off is a controlled setting and each revision records INTEGRATED or MANUAL at its first save; the training completion date of a revision is the date QA confirms the original activity (absentees, codes a, b, c, do not hold up publishing but are shown as untrained). These three are now owner decisions, not "to confirm".
+- Detailed design written, not built: `../../../docs/to-be-sds/training/SDS-TR-001-training-management-design.md` (database, API, permissions, signatures, audit, front end, security, validation, work packages WP-0 to WP-10). Security, data integrity and EU-GMP come before convenience and speed (design section 1.4).
+- Correction of an earlier statement: the `positions` table exists (V3); what is missing is the link from a user to a position. The `departments.code` column exists and is used as the DC part of the training number.
+- Assistant choices in the design, **to confirm**: permission catalogue `training.*`; electronic-signature meanings `TRAINING_*`; immutability triggers on training records; paper evidence kept as scans with a receiver's confirmation; open questions D-01 to D-22 are listed in design section 16.
+
+### TRAINING-PLAN-2026-10-16 — flow chart read, four open questions closed
+
+- Owner (2026-10-16): D-01 the flow chart of SOP.0003 section 5.2 is the attached image (kept at `docs/training_docs/SOP.0003.02 Flowchart (muc 5.2).png`, read in PLAN-TR-001 section 5.0). D-02 the training matrix is **Training data**, not a Document Control document, because many trainings do not come from a document. D-05 a matrix is approved by **a person holding the matching permission**, no fixed role or number of levels; the approver is not the preparer; same for the QA matrix. D-20 **both** electronic signature and paper signature with a scanned original are supported.
+- Assistant, **to confirm**: two differences between the flow chart and the text of the SOP — content approval (chart: "Departments, QM"; text 5.3.5: head of the department and head of QA) is built as two steps, department review then approval by whoever holds `training.content.approve` (D-32); a transfer (chart: transfer leads to initial training) creates an INITIAL training activity with reason TRANSFER after a person with permission confirms the topic list (D-33). The personal training record is still created when an activity is completed, not after the job assignment (chart puts "Training record" last).
+
+### TRAINING-PLAN-2026-10-16 (b) — owner delegates the open questions; approvals are permission-based
+
+- Owner (2026-10-16): "propose them yourself"; **every step that reviews, approves or confirms must be designed as permission-based, so that the owner can designate any user for it.**
+- Built into the design (not built in code): each such step needs a permission granted through an Access Profile; the person who submits **designates** the handler among the users who are eligible (active, hold the permission on the department, not the preparer); a step can be set to "designated required" (default) or "any eligible"; the handler must still hold the permission when signing; a handler can be re-assigned with a reason; nothing is tied to a role name or an account. Tables `training_approval_assignments`, `training_default_approvers`; permissions `training.approval.designate` and `.reassign`, `training.content.review`, `training.trainer.exception.approve`, `training.job_assignment.exception.approve`. Design: SDS-TR-001 section 8.5.
+- Assistant proposals accepted by that delegation, **QA to confirm**: D-03 optional Document Level attribute used only as a hint; D-04 name match with an "unmapped" report, never guessed; D-06 hybrid assessed like classroom; D-07 suffix aa, ab after z; D-08 organising is a department-scoped permission; D-09 absent with a reason category, not counted as trained; D-10 unqualified trainer blocked, exception approved by a designated holder of a permission; D-11 10 days is a warning; D-12 failed assessment raises a flag only; D-13 no on-screen tests; D-14 own non-working-day table; D-15 job assignment blocked until the matrix is complete, exception by designated approver; D-16 specimen signature kept as a scan; D-17 no automatic destruction; D-18 only a signed copy of the record for a site transfer; D-19 old permissions kept and mapped; D-21 visitors without account, no personal record; D-22 English labels, bilingual printed forms; D-32 content review then approve, both by designated permission holders (QA should align the SOP and the flow chart); D-33 a permitted person confirms the topic list, then creates the INITIAL activity for a transfer.
+
+### TRAINING-PLAN-2026-10-16 (c) — plan and design accepted for implementation
+
+- Owner (2026-10-16): accepted the assistant's proposals; PLAN-TR-001 and SDS-TR-001 are now version 1.0, "accepted by the owner to start implementation; QA to confirm the decisions". No question blocks WP-0.
+- Next step defined: WP-0 (SDS-TR-001 section 15.1): URS, risk and data-integrity assessment, test strategy, a read-only baseline data report on DEV, infrastructure check, plan to remove the trial UI, GitNexus impact for the Document Control symbols to be changed. WP-0 changes no schema and no function. Work packages WP-1 onward need the owner's go after WP-0 is reviewed.
+- QA tasks recorded in PLAN-TR-001 section 13.2 (confirm the delegated decisions by name, align SOP.0003 with its flow chart on content approval, check the EU-GMP/Annex 11 clause numbers, sign URS and risk assessment, update SOP and forms for use with the software, supply UAT people and the release approver).
+
+### TRAINING-WP0-2026-10-16 — work package WP-0 delivered (documents and read-only data only)
+
+- Owner (2026-10-16): "go ahead". WP-0 produced the URS, the risk and data-integrity assessment, the test strategy with traceability, a read-only DEV data baseline, an infrastructure check with the plan to remove the trial UI, and the GitNexus impact analysis. No code, schema or configuration changed. Evidence: `../validation/TRAINING_WP0_2026_10_16_CHANGE_RECORD.md`.
+- New assistant proposals from the data baseline, **to confirm by QA**: D-35 (a number may be issued by the department of the document even if that department is inactive; an inactive department cannot be chosen as organizer of a new activity); D-36 (only Active users with an employee code can be trained or listed; 432 of 465 Active DEV accounts have none and are test or load accounts); D-37 (revisions already past Pending Training get no retroactive number; SOP.0017, now in Pending Training, stays MANUAL).
+- Warning recorded for the owner: `DocumentRevisionRecord` (107 affected) and the screens `NewDocumentView`, `TrainingTab`, `RevisionTrainingView` are CRITICAL in the impact analysis; WP-5 will be done as small, additive, conditional slices with the full Document Control regression run before and after each.
+- Pending: QA review and signature of the URS, risk assessment and test strategy; the owner's go for WP-1.
+
+## DOCUMENT-EXPIRY-2026-10-16 — Expired documents: block requests, notify, void electronic copies
+
+Owner decisions (2026-10-16), replying to the gap "an Active, Effective document past its Valid Until
+can still be copied":
+
+- Request Controlled Copy and Request Uncontrolled Copy stay visible for users who can see the document.
+  When the document's Valid Until has passed, clicking either button shows a modal that explains why
+  and does not submit the request. The server must also refuse the request (defence in depth).
+- Notify **all users** of the system by **both** email and in-app notification. The email may give a
+  longer description than the in-app message.
+- Expired document: its electronic copies are voided and the holders of those copies are notified.
+  Paper copies are not voided electronically; the DCO recalls them physically.
+
+Assistant findings that the owner should know (not decided here):
+
+- Current behaviour, before this change: Controlled Copy request buttons show when the user holds
+  `documents.controlled_copy.request` and the document is Active with an Effective revision. Validity is
+  **not** checked at request time; `ControlledCopyService` refuses only at distribution. Uncontrolled
+  Copy checks validity at request time and hides the button.
+- Open for QA: how "all users" is defined (every active account, or only accounts with some document
+  permission), and whether the daily job or the moment of expiry triggers the notification.
+
+### DOCUMENT-EXPIRY-2026-10-16 (b) — owner choices for implementation
+
+- Owner (2026-10-16): **option B**: the expiry processing applies only to documents that expire from go-live onward. Documents already past their Valid Until at go-live are not processed automatically; they are listed to the DCO for review.
+- Expiry instant: **start of the Valid Until day** (matches how controlled copy expiry is already computed).
+- Notification language: **both Vietnamese and English**; the email may be longer than the in-app message.
+- Recipients: every Active user account (email and in-app), plus the recipients of electronic copies of the document, who are also told to expect physical recall.

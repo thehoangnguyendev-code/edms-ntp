@@ -33,6 +33,13 @@ const NotificationPolicyCreateView = lazy(() => import('@/features/settings').th
 const SystemInformationView = lazy(() => import('@/features/settings').then(m => ({ default: m.SystemInformationView })));
 const ReportConfigurationView = lazy(() => import('@/features/settings').then(m => ({ default: m.ReportConfigurationView })));
 const ReportDefinitionEditView = lazy(() => import('@/features/settings').then(m => ({ default: m.ReportDefinitionEditView })));
+const ReportTemplateRevisionAdminPage = lazy(() => import('@/features/report/templates/ReportTemplateRevisionPage').then(m => ({ default: () => <m.ReportTemplateRevisionPage inAdministration /> })));
+const ReportTemplateDetailAdminPage = lazy(() => import('@/features/report/templates/ReportTemplateDetailPage').then(m => ({ default: () => <m.ReportTemplateDetailPage inAdministration /> })));
+const ReportTypesView = lazy(() => import('@/features/report/types/ReportTypesView').then(m => ({ default: m.ReportTypesView })));
+const ReportTypeDetailView = lazy(() => import('@/features/report/types/ReportTypeDetailView').then(m => ({ default: m.ReportTypeDetailView })));
+const ReportNameFormatsView = lazy(() => import('@/features/report/name-formats/ReportNameFormatsView').then(m => ({ default: m.ReportNameFormatsView })));
+const ReportPropertiesView = lazy(() => import('@/features/report/properties/ReportPropertiesView').then(m => ({ default: m.ReportPropertiesView })));
+const ReportNameFormatEditView = lazy(() => import('@/features/report/name-formats/ReportNameFormatEditView').then(m => ({ default: m.ReportNameFormatEditView })));
 const PreferencesView = lazy(() => import('@/features/preferences').then(m => ({ default: m.PreferencesView })));
 
 // Document Administration (moved here from Document Control -- now under System Administration;
@@ -56,10 +63,8 @@ const UncontrolledCopyPolicyView = lazy(() => import('@/features/settings').then
 // Training Administration -- coming soon placeholders, one per sub-screen
 // Backup & Restore Administration -- one screen per sub-menu (UI preview)
 const ReportAccessScopeView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportAccessScopeView })));
-const ReportOutputControlsView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportOutputControlsView })));
 const ReportRetentionView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportRetentionView })));
 const ReportDeliveryView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportDeliveryView })));
-const ReportValidationView = lazy(() => import('@/features/report-analytics').then(m => ({ default: m.ReportValidationView })));
 const BackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupPolicyView })));
 const BackupPolicyDetailView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupPolicyDetailView })));
 const NewBackupPolicyView = lazy(() => import('@/features/settings').then(m => ({ default: m.NewBackupPolicyView })));
@@ -70,10 +75,9 @@ const DisasterRecoveryPlanView = lazy(() => import('@/features/settings').then(m
 const AnnouncementsView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementsView })));
 const AnnouncementEditorView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementEditorView })));
 const BackupAlertsView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupAlertsView })));
+const TrainingTopicsView = lazy(() => import('@/features/settings/training-administration/TrainingTopicsView').then(m => ({ default: m.TrainingTopicsView })));
+const TrainingPersonPositionsView = lazy(() => import('@/features/settings/training-administration/TrainingPersonPositionsView').then(m => ({ default: m.TrainingPersonPositionsView })));
 const TrainingPropertiesView = lazy(() => import('@/features/settings').then(m => ({ default: m.TrainingPropertiesView })));
-const RequirementTemplatesView = lazy(() => import('@/features/settings').then(m => ({ default: m.RequirementTemplatesView })));
-const CreateQuizView = lazy(() => import('@/features/settings').then(m => ({ default: m.CreateQuizView })));
-const CurriculumsView = lazy(() => import('@/features/settings').then(m => ({ default: m.CurriculumsView })));
 
 const ProfileViewWrapper = ({ navigate }: { navigate: NavigateFunction }) => {
   const location = useLocation();
@@ -143,6 +147,14 @@ export function settingsRoutes(navigate: NavigateFunction) {
         </Route>
         <Route path="configuration" element={<ProtectedRoute requiredPermissions={["settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ConfigurationView /></Suspense></ProtectedRoute>} />
         <Route path="report-configuration" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportConfigurationView /></Suspense></ProtectedRoute>} />
+        <Route path="report-name-formats" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "reports.name_format.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatsView /></Suspense></ProtectedRoute>} />
+        <Route path="report-types" element={<ProtectedRoute requiredPermissions={["reports.types.view", "reports.types.manage"]}><Suspense fallback={<LoadingFallback />}><ReportTypesView /></Suspense></ProtectedRoute>} />
+        <Route path="report-types/:code" element={<ProtectedRoute requiredPermissions={["reports.types.view", "reports.types.manage"]}><Suspense fallback={<LoadingFallback />}><ReportTypeDetailView /></Suspense></ProtectedRoute>} />
+        <Route path="report-properties" element={<ProtectedRoute requiredPermissions={["reports.properties.view", "reports.properties.manage"]}><Suspense fallback={<LoadingFallback />}><ReportPropertiesView /></Suspense></ProtectedRoute>} />
+        <Route path="report-name-formats/new" element={<ProtectedRoute requiredPermissions={["reports.name_format.manage"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatEditView /></Suspense></ProtectedRoute>} />
+        <Route path="report-name-formats/:id" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "reports.name_format.manage", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportNameFormatEditView /></Suspense></ProtectedRoute>} />
+        <Route path="report-configuration/:code/revisions/:revision" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportTemplateRevisionAdminPage /></Suspense></ProtectedRoute>} />
+        <Route path="report-configuration/:code/details" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportTemplateDetailAdminPage /></Suspense></ProtectedRoute>} />
         <Route path="report-configuration/:code" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportDefinitionEditView /></Suspense></ProtectedRoute>} />
         <Route path="electronic-signature" element={<ProtectedRoute requiredPermissions={["settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ElectronicSignatureSettingsView /></Suspense></ProtectedRoute>} />
         <Route path="email-templates">
@@ -199,10 +211,8 @@ export function settingsRoutes(navigate: NavigateFunction) {
       {/* ===== REPORT ADMINISTRATION (UI preview, one screen per sub-menu) ===== */}
       <Route path="settings/administration/report">
         <Route path="access" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportAccessScopeView /></Suspense></ProtectedRoute>} />
-        <Route path="output" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportOutputControlsView /></Suspense></ProtectedRoute>} />
         <Route path="retention" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportRetentionView /></Suspense></ProtectedRoute>} />
         <Route path="delivery" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportDeliveryView /></Suspense></ProtectedRoute>} />
-        <Route path="validation" element={<ProtectedRoute requiredPermissions={["reports.definition.view", "settings.configuration.view"]}><Suspense fallback={<LoadingFallback />}><ReportValidationView /></Suspense></ProtectedRoute>} />
       </Route>
 
       {/* ===== BACKUP & RESTORE ADMINISTRATION (UI preview, one screen per sub-menu) ===== */}
@@ -224,10 +234,9 @@ export function settingsRoutes(navigate: NavigateFunction) {
       {/* ===== TRAINING ADMINISTRATION (coming soon sub-screens) ===== */}
       <Route path="settings/administration/training">
         <Route index element={<Navigate to={ROUTES.SETTINGS.TRAINING_ADMINISTRATION.PROPERTIES} replace />} />
-        <Route path="properties" element={<ProtectedRoute requiredPermissions={["training.admin.properties.view"]}><Suspense fallback={<LoadingFallback />}><TrainingPropertiesView /></Suspense></ProtectedRoute>} />
-        <Route path="requirement-templates" element={<ProtectedRoute requiredPermissions={["training.admin.requirement_templates.view"]}><Suspense fallback={<LoadingFallback />}><RequirementTemplatesView /></Suspense></ProtectedRoute>} />
-        <Route path="create-quiz" element={<ProtectedRoute requiredPermissions={["training.admin.quiz.view"]}><Suspense fallback={<LoadingFallback />}><CreateQuizView /></Suspense></ProtectedRoute>} />
-        <Route path="curriculums" element={<ProtectedRoute requiredPermissions={["training.admin.curriculums.view"]}><Suspense fallback={<LoadingFallback />}><CurriculumsView /></Suspense></ProtectedRoute>} />
+        <Route path="properties" element={<ProtectedRoute requiredPermissions={["training.admin.properties.view", "training.settings.view"]}><Suspense fallback={<LoadingFallback />}><TrainingPropertiesView /></Suspense></ProtectedRoute>} />
+        <Route path="topics" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingTopicsView /></Suspense></ProtectedRoute>} />
+        <Route path="person-positions" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingPersonPositionsView /></Suspense></ProtectedRoute>} />
       </Route>
 
       {/* ===== PREFERENCES ===== */}

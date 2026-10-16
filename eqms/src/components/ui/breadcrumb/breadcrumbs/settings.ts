@@ -435,7 +435,7 @@ export const reportAdministration = (navigate?: NavigateFn, title = ""): Breadcr
 
 /** Base breadcrumb path for the "Training Administration" nested group (coming soon
  *  sub-screens: Training Properties, Requirement Templates, Create a Quiz, Curriculums). */
-const trainingAdministrationBase = (navigate?: NavigateFn): BreadcrumbItem[] => [
+export const trainingAdministrationBase = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...systemAdminBase(navigate),
   { label: "Training Administration" },
 ];
@@ -443,21 +443,6 @@ const trainingAdministrationBase = (navigate?: NavigateFn): BreadcrumbItem[] => 
 export const trainingProperties = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...trainingAdministrationBase(navigate),
   { label: "Training Properties", isActive: true },
-];
-
-export const requirementTemplates = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...trainingAdministrationBase(navigate),
-  { label: "Requirement Templates", isActive: true },
-];
-
-export const createQuiz = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...trainingAdministrationBase(navigate),
-  { label: "Create a Quiz", isActive: true },
-];
-
-export const curriculums = (navigate?: NavigateFn): BreadcrumbItem[] => [
-  ...trainingAdministrationBase(navigate),
-  { label: "Curriculums", isActive: true },
 ];
 
 export const electronicSignatureSettings = (navigate?: NavigateFn): BreadcrumbItem[] => [

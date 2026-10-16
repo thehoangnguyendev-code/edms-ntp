@@ -121,40 +121,18 @@ export const ROUTES = {
   // Training
   TRAINING: {
     BASE: '/training-management',
-    // Course Inventory
-    COURSES_LIST: '/training-management/courses-list',
-    COURSES_CREATE: '/training-management/courses/create',
-    COURSE_DETAIL: (courseId: string) => `/training-management/courses/${courseId}`,
-    COURSE_EDIT: (courseId: string) => `/training-management/courses/${courseId}/edit`,
-    COURSE_IMPACT_ASSESSMENT: (courseId: string) => `/training-management/courses/${courseId}/impact-assessment`,
-    COURSE_PROGRESS: (courseId: string) => `/training-management/courses/${courseId}/progress`,
-    COURSE_RESULT_ENTRY: (courseId: string) => `/training-management/courses/${courseId}/result-entry`,
-    MY_TRAINING: "/training-management/my-training",
-    // Approval
-    PENDING_REVIEW: '/training-management/pending-review',
-    PENDING_APPROVAL: '/training-management/pending-approval',
-    APPROVAL_DETAIL: (id: string) => `/training-management/pending-review/${id}`,
-    APPROVE_DETAIL: (id: string) => `/training-management/pending-approval/${id}`,
-    // Compliance Tracking
-    TRAINING_MATRIX: '/training-management/training-matrix',
-    COURSE_STATUS: '/training-management/course-status',
-    // Assignment
-    ASSIGNMENTS: '/training-management/assignments',
-    ASSIGNMENT_NEW: '/training-management/assignments/new',
-    ASSIGNMENT_RULES: '/training-management/assignment-rules',
-    // Records & Archive
-    EMPLOYEE_TRAINING_FILES: '/training-management/employee-training-files',
-    EMPLOYEE_DOSSIER: (id: string) => `/training-management/employee-training-files/${id}`,
-    EXPORT_RECORDS: '/training-management/export-records',
-    // Materials
-    MATERIALS: '/training-management/materials',
-    MATERIAL_DETAIL: (materialId: string) => `/training-management/materials/${materialId}`,
-    MATERIAL_EDIT: (materialId: string) => `/training-management/materials/${materialId}/edit`,
-    MATERIAL_REVIEW: (materialId: string) => `/training-management/materials/review/${materialId}`,
-    MATERIAL_APPROVAL: (materialId: string) => `/training-management/materials/approval/${materialId}`,
-    MATERIAL_NEW_REVISION: (materialId: string) => `/training-management/materials/new-revision/${materialId}`,
-    MATERIAL_USAGE_REPORT: (materialId: string) => `/training-management/materials/usage-report/${materialId}`,
-    UPLOAD_MATERIAL: '/training-management/materials/create',
+    ACTIVITIES: '/training-management/activities',
+    ACTIVITY_DETAIL: (activityId: string) => `/training-management/activities/${activityId}`,
+    MATRICES: '/training-management/matrices',
+    RECORDS: '/training-management/records',
+    NUMBER_LOG: '/training-management/number-log',
+    COMPLIANCE: '/training-management/compliance',
+    LEGACY_EVIDENCE: '/training-management/legacy-evidence',
+    REQUIREMENTS: '/training-management/requirements',
+    RECORD_EXPORTS: '/training-management/record-exports',
+    SPECIMEN_SIGNATURES: '/training-management/specimen-signatures',
+    JOB_ASSIGNMENTS: '/training-management/job-assignments',
+    MY_TRAINING: '/training-management/my-training',
   },
 
   // Report
@@ -223,10 +201,11 @@ export const ROUTES = {
     REPORT_ADMINISTRATION: {
       DEFINITIONS: '/settings/report-configuration',
       ACCESS: '/settings/administration/report/access',
-      OUTPUT: '/settings/administration/report/output',
       RETENTION: '/settings/administration/report/retention',
       DELIVERY: '/settings/administration/report/delivery',
-      VALIDATION: '/settings/administration/report/validation',
+      NAME_FORMATS: '/settings/report-name-formats',
+      TYPES: '/settings/report-types',
+      PROPERTIES: '/settings/report-properties',
     },
     BACKUP_ADMINISTRATION: {
       POLICY: '/settings/administration/backup/policy',
@@ -241,9 +220,8 @@ export const ROUTES = {
     },
     TRAINING_ADMINISTRATION: {
       PROPERTIES: '/settings/administration/training/properties',
-      REQUIREMENT_TEMPLATES: '/settings/administration/training/requirement-templates',
-      CREATE_QUIZ: '/settings/administration/training/create-quiz',
-      CURRICULUMS: '/settings/administration/training/curriculums',
+      TOPICS: '/settings/administration/training/topics',
+      PERSON_POSITIONS: '/settings/administration/training/person-positions',
     },
   },
 

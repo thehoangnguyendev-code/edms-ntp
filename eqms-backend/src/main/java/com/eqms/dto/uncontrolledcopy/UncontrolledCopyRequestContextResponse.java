@@ -29,6 +29,8 @@ public record UncontrolledCopyRequestContextResponse(
         /** The document's Valid Until date (dd/MM/yyyy), when it has one. */
         String documentValidUntil,
         /** The exact date and time the copy would be valid until, worked out now (only when the policy follows the document's Valid Until). */
-        String computedValidUntil
+        String computedValidUntil,
+        /** True when the document's Valid Until date has passed: the buttons stay visible and explain why. */
+        boolean documentExpired
 ) {
 }

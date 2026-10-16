@@ -17,7 +17,6 @@ export { localizationApi } from './localization';
 // Document Management
 export { documentApi } from './documents';
 
-export { trainingApi } from './training';
 export { auditTrailApi } from './auditTrail';
 
 // Platform

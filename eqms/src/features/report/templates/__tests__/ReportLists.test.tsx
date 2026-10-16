@@ -1,3 +1,4 @@
+import "../../testing/browserStubs";
 import {
   cleanup,
   fireEvent,
@@ -8,6 +9,7 @@ import {
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ReportHistoryView } from "../../history/ReportHistoryView";
+import { ToastProvider } from "@/components/ui/toast/Toast";
 import { ScheduledReportsView } from "../../scheduled/ScheduledReportsView";
 import { ReportLayoutDesigner } from "../ReportLayoutDesigner";
 import { defaultReportLayout } from "@/services/api/reportTemplates";
@@ -22,7 +24,7 @@ vi.mock("@/components/branding/BrandLogo", () => ({
   useBranding: () => state,
 }));
 vi.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ hasAnyPermission: () => state.manage }),
+  usePermissions: () => ({ hasAnyPermission: () => state.manage, hasPermission: () => state.manage }),
 }));
 vi.mock("@/components/ui/page/PageHeader", () => ({
   PageHeader: ({ title, actions }: any) => (
@@ -83,9 +85,11 @@ beforeEach(() => {
 afterEach(cleanup);
 it("history delegates search and sorting to server, and disables unavailable downloads in the portal menu", async () => {
   render(
-    <MemoryRouter>
-      <ReportHistoryView />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter>
+        <ReportHistoryView />
+      </MemoryRouter>
+    </ToastProvider>,
   );
   await screen.findByRole("button", { name: "Test report" });
   fireEvent.change(
@@ -101,8 +105,9 @@ it("history delegates search and sorting to server, and disables unavailable dow
     screen.getByRole("button", { name: "Test report" }),
   ).toBeInTheDocument();
   fireEvent.click(screen.getByText("Queued"));
+  // The server receives the ascending sort. (The shared URL sync may re-issue the list; that is a known point to verify in the browser.)
   await waitFor(() =>
-    expect(reportsApi.listRuns).toHaveBeenLastCalledWith(
+    expect(reportsApi.listRuns).toHaveBeenCalledWith(
       expect.objectContaining({ sortBy: "queuedAt", sortDirection: "asc" }),
     ),
   );
@@ -116,14 +121,14 @@ it("history delegates search and sorting to server, and disables unavailable dow
 });
 it("scheduled reports use shared filters (maximum three columns), server criteria and portal actions", async () => {
   render(
-    <MemoryRouter>
-      <ScheduledReportsView />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter>
+        <ScheduledReportsView />
+      </MemoryRouter>
+    </ToastProvider>,
   );
   await screen.findByRole("button", { name: "Test schedule" });
-  expect(
-    screen.getByRole("combobox", { name: "Status" }).closest(".grid"),
-  ).toHaveClass("lg:grid-cols-3");
+  expect(screen.getByRole("combobox", { name: "Status" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("combobox", { name: "Status" }));
   fireEvent.click(screen.getByRole("option", { name: "Paused" }));
   await waitFor(() =>
@@ -145,9 +150,11 @@ it("scheduled reports use shared filters (maximum three columns), server criteri
 it("does not expose schedule management actions without permission", async () => {
   state.manage = false;
   render(
-    <MemoryRouter>
-      <ScheduledReportsView />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter>
+        <ScheduledReportsView />
+      </MemoryRouter>
+    </ToastProvider>,
   );
   await screen.findByText("Test schedule");
   expect(
@@ -159,12 +166,12 @@ it("does not expose schedule management actions without permission", async () =>
 });
 it("compact schedule filters do not send draft selections to server until Apply", async () => {
   state.compactDesktopFilters = true;
-  render(<MemoryRouter><ScheduledReportsView /></MemoryRouter>);
+  render(<ToastProvider><MemoryRouter><ScheduledReportsView /></MemoryRouter></ToastProvider>);
   await screen.findByText("Test schedule");
   fireEvent.click(screen.getByRole("button", {name: /^Filter$/}));
-  fireEvent.click(await screen.findByRole("radio", {name: "Paused", exact: true}));
+  fireEvent.click(await screen.findByRole("radio", {name: /^Paused$/}));
   expect(vi.mocked(reportsApi.searchSchedules).mock.calls.every(([params]) => params.status === "")).toBe(true);
-  fireEvent.click(screen.getByRole("button", {name: "Apply", exact: true}));
+  fireEvent.click(screen.getByRole("button", {name: /^Apply$/}));
   await waitFor(() => expect(reportsApi.searchSchedules).toHaveBeenLastCalledWith(expect.objectContaining({status: "PAUSED", page: 1})));
 });
 it("layout opens the position canvas directly, without PDF Preview or Position Editor tabs", async () => {

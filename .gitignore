@@ -45,6 +45,9 @@
 # Build artifacts
 /HashGen.class
 
+# Temporary lock files created by Microsoft Office.
+~$*
+
 # Graphify architecture graph output (regenerated locally, not shared with the team)
 /graphify-out/
 

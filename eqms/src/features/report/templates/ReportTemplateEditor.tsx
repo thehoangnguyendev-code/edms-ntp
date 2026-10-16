@@ -1,17 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
-import { FormSection } from "@/components/ui/form/FormSection";
-import { Input, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { FormModal } from "@/components/ui/modal/FormModal";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Select } from "@/components/ui/select/Select";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { cn } from "@/components/ui/utils";
 import { DataTable } from "@/components/ui/table/DataTable";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { usePermissions } from "@/hooks/usePermissions";
+import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { reportsApi, type ReportFormat } from "@/services/api/reports";
-import { ReportLayoutDesigner } from "./ReportLayoutDesigner";
+import { ReportChartsEditor } from "./ReportChartsEditor";
+import { ReportTemplateUpgradeModal } from "./ReportTemplateUpgradeModal";
+import { useReportTemplateCapabilities } from "./useReportTemplateCapabilities";
+import { ReportRevisionStepper, latestRevisionStatus } from "../shared/ReportRevisionStepper";
+import { ReportTemplateAccessScope } from "./ReportTemplateAccessScope";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { defaultReportLayout } from "@/services/api/reportTemplates";
 import {
@@ -19,41 +26,141 @@ import {
   reportError,
   type ReportTemplate,
   type ReportSource,
-  type ReportRole,
   type TemplateWrite,
   type MetadataScope,
+  type ReportLifecycleStatus,
 } from "@/services/api/reportTemplates";
+import {
+  reportNameFormatsApi,
+  type ReportNameFormat,
+  type ReportNameFormatListItem,
+} from "@/services/api/reportNameFormats";
 
+type RoleGrant = NonNullable<ReportTemplate["roleScopes"]>[number];
 const tabs = [
   { id: "general", label: "General" },
   { id: "fields", label: "Fields & Defaults" },
-  { id: "layout", label: "Layout Designer" },
+  { id: "charts", label: "Charts" },
   { id: "scope", label: "Access & Scope" },
   { id: "history", label: "History" },
 ];
-const scopes = [
-  { value: "", label: "No access" },
-  { value: "PERSONAL", label: "Personal" },
-  { value: "DEPARTMENT", label: "Department" },
-  { value: "BUSINESS_UNIT", label: "Business Unit" },
-  { value: "SYSTEM", label: "Entire system" },
-];
 const inputClass =
   "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-50";
+/** The name as the server will build it (it builds it again on save). Empty until every input part has a value. */
+function composeName(format: ReportNameFormat, values: Record<string, string>): string {
+  const pieces: string[] = [];
+  for (const part of format.parts) {
+    if (part.type === "FIXED") {
+      pieces.push(part.fixedText ?? "");
+      continue;
+    }
+    const text = (values[String(part.order)] ?? "").trim();
+    if (!text) return "";
+    pieces.push(text);
+  }
+  return pieces.join(format.separator);
+}
+
+const LIFECYCLE_LABEL: Record<ReportLifecycleStatus, string> = {
+  DRAFT: "Draft. Not approved, cannot run.",
+  ACTIVE: "Active. Can run.",
+  INACTIVE: "Inactive. Cannot run.",
+  PENDING_APPROVAL: "Pending Approval. Cannot run yet.",
+};
+
+/** Where the current version stands in the approval flow, and the steps the user may take (REPORT-TEMPLATE-APPROVAL-2026-10-14). */
+function ApprovalPanel({
+  stored,
+  gmpUse,
+  dirty,
+  busy,
+  canSubmit,
+  canDecide,
+  onSubmit,
+  onApprove,
+  onReject,
+}: {
+  stored: ReportTemplate;
+  gmpUse: boolean;
+  dirty: boolean;
+  busy: boolean;
+  canSubmit: boolean;
+  canDecide: boolean;
+  onSubmit: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  const status = stored.lifecycleStatus ?? "DRAFT";
+  return (
+    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium">
+            Revision {stored.revision ?? stored.definitionVersion}: {LIFECYCLE_LABEL[status]}
+            {gmpUse ? " Used for GMP decisions." : ""}
+          </p>
+          {(status === "ACTIVE" || status === "INACTIVE") && stored.approvedAt && (
+            <p className="mt-1 text-xs">
+              Approved version {stored.approvedVersion} on {new Date(stored.approvedAt).toLocaleString()}.
+            </p>
+          )}
+          {status === "DRAFT" && stored.approvalComment && (
+            <p className="mt-1 text-xs">Returned for changes: {stored.approvalComment}</p>
+          )}
+          {dirty && (
+            <p className="mt-1 text-xs">Save your changes first. A saved change returns the template to draft.</p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {status === "DRAFT" && canSubmit && (
+            <Button size="sm" variant="outline-emerald" disabled={busy || dirty} onClick={onSubmit}>
+              Submit for approval
+            </Button>
+          )}
+          {status === "PENDING_APPROVAL" && canDecide && (
+            <Button size="sm" variant="outline" disabled={busy} onClick={onReject}>
+              Return to draft
+            </Button>
+          )}
+          {status === "PENDING_APPROVAL" && canDecide && (
+            <Button size="sm" variant="outline-emerald" disabled={busy} onClick={onApprove}>
+              Approve
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ReportTemplateEditor() {
   const { code = "new" } = useParams();
   const create = code === "new";
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermissions();
-  const editable = hasAnyPermission([
+  // A permission of the person: used to load the lists a template is written from, and to author a new template (there is no template yet to ask about).
+  const canAuthor = hasAnyPermission([
     "reports.definition.manage",
     "settings.configuration.manage",
   ]);
   const [tab, setTab] = useState("general");
   const [sources, setSources] = useState<ReportSource[]>([]);
-  const [roles, setRoles] = useState<ReportRole[]>([]);
   const [value, setValue] = useState<TemplateWrite>();
-  const [newCode, setNewCode] = useState("");
+  /** The template as stored, to tell a change of meaning from a change of name (REPORT-DEFINITION-SIGNATURE-2026-10-14). */
+  const [baseline, setBaseline] = useState<TemplateWrite>();
+  const [signing, setSigning] = useState(false);
+  /** The template as the server last returned it: approval state and version (REPORT-TEMPLATE-APPROVAL-2026-10-14). */
+  const [stored, setStored] = useState<ReportTemplate | null>(null);
+  // For an existing template, what may be done comes from the server: the permission of the person, the state of the template and the actor of the revision.
+  const capabilityKey = stored ? `${stored.definitionVersion}|${stored.approvalStatus}|${stored.effectiveRevision}|${stored.openRevision}|${stored.active}` : "";
+  const { can, reason: reasonOf, loaded: capabilitiesLoaded } = useReportTemplateCapabilities(create ? "" : code, capabilityKey);
+  const editable = create ? canAuthor : can("edit");
+  /** A revision that is effective is not edited; Upgrade starts the next revision (REPORT-TEMPLATE-REVISION-2026-10-14). */
+  const locked = !create && capabilitiesLoaded && !editable && reasonOf("edit") === "REPORT_UPGRADE_REQUIRED";
+  const [upgrading, setUpgrading] = useState(false);
+  const [nameFormat, setNameFormat] = useState<ReportNameFormat>();
+  const [approving, setApproving] = useState<{ reason: string; step: "form" | "sign" }>();
+  const [rejecting, setRejecting] = useState<{ reason: string; step: "form" | "sign" }>();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
@@ -66,7 +173,6 @@ export function ReportTemplateEditor() {
       createdAt: string;
     }>
   >([]);
-  const [retention, setRetention] = useState<string | null>(null);
   const drag = useTableDragScroll();
   useEffect(() => {
     let alive = true;
@@ -74,30 +180,18 @@ export function ReportTemplateEditor() {
     setError("");
     Promise.all([
       create ? Promise.resolve(null) : reportTemplatesApi.detail(code),
-      editable ? reportTemplatesApi.sources() : Promise.resolve([]),
-      editable ? reportTemplatesApi.roles() : Promise.resolve([]),
+      canAuthor ? reportTemplatesApi.sources() : Promise.resolve([]),
     ])
-      .then(([definition, sources, roles]) => {
+      .then(([definition, sources]) => {
         if (!alive) return;
         setSources(sources);
-        setRoles([
-          ...roles,
-          ...(definition?.roleScopes ?? [])
-            .filter((grant) => !roles.some((role) => role.id === grant.roleId))
-            .map((grant) => ({
-              id: grant.roleId,
-              name: `${grant.roleName ?? grant.roleId} (inactive — remove assignment)`,
-              code: "",
-            })),
-        ]);
-        setRetention(definition?.retentionPolicyId ?? null);
         const source =
           sources.find((item) => item.code === definition?.sourceCode) ??
           sources[0];
         const fields = source
           ? Object.entries(source.fields).map(([field]) => {
               const existing = definition?.fields.find(
-                (item) => item.code === field,
+                (item: ReportTemplate["fields"][number]) => item.code === field,
               );
               const required = source.requiredFields.includes(field);
               return {
@@ -108,7 +202,7 @@ export function ReportTemplateEditor() {
               };
             })
           : (definition?.fields ?? []);
-        setValue({
+        const loaded: TemplateWrite = {
           version: definition?.definitionVersion,
           sourceCode: definition?.sourceCode ?? source?.code ?? "",
           displayName: definition?.displayName ?? "",
@@ -118,8 +212,14 @@ export function ReportTemplateEditor() {
           fields,
           roleScopes: definition?.roleScopes ?? [],
           layout: definition?.layout ?? defaultReportLayout(),
+          gmpUse: definition?.gmpUse ?? false,
+          nameFormatId: definition?.nameFormatId ?? null,
+          nameValues: definition?.nameValues ?? {},
           reason: "",
-        });
+        };
+        setValue(loaded);
+        setBaseline(loaded);
+        setStored(definition);
       })
       .catch((error) => {
         if (alive) setError(reportError(error));
@@ -130,7 +230,35 @@ export function ReportTemplateEditor() {
     return () => {
       alive = false;
     };
-  }, [code, create, editable]);
+  }, [code, create, canAuthor]);
+  // A new template is named by the one active Report Name Format; the author does not choose a rule. The server applies it again when the template is saved.
+  const activeFormatLoaded = useRef(false);
+  useEffect(() => {
+    if (!create || !value || activeFormatLoaded.current || value.nameFormatId) return;
+    activeFormatLoaded.current = true;
+    reportNameFormatsApi
+      .list({ status: "ENABLED", limit: 1 })
+      .then((page) => {
+        const active = page.data[0];
+        if (active) setValue((current) => (current && !current.nameFormatId ? { ...current, nameFormatId: active.id, nameValues: {}, displayName: "" } : current));
+      })
+      .catch(() => undefined);
+  }, [create, value]);
+  const selectedFormatId = value?.nameFormatId ?? null;
+  useEffect(() => {
+    if (!selectedFormatId) {
+      setNameFormat(undefined);
+      return;
+    }
+    let alive = true;
+    reportNameFormatsApi
+      .detail(selectedFormatId)
+      .then((format) => alive && setNameFormat(format))
+      .catch((error) => alive && setError(reportError(error)));
+    return () => {
+      alive = false;
+    };
+  }, [selectedFormatId]);
   useEffect(() => {
     if (tab !== "history" || create) return;
     let alive = true;
@@ -149,15 +277,32 @@ export function ReportTemplateEditor() {
   const change = (update: Partial<TemplateWrite>) =>
     setValue((current) => (current ? { ...current, ...update } : current));
   const source = sources.find((item) => item.code === value?.sourceCode);
-  const save = async () => {
+  /** Formats, fields and role scopes decide what a report contains and who may see it; name, description and layout do not. */
+  const meaningOf = (template: TemplateWrite) =>
+    JSON.stringify({
+      active: template.active,
+      formats: [...template.formats].sort(),
+      fields: template.fields
+        .map((f) => `${f.code}:${f.allowed}:${f.allowed && (f.defaultSelected || f.required)}:${f.required}`)
+        .sort(),
+      scopes: template.roleScopes.map((s) => `${s.roleId}:${s.scope}`).sort(),
+      gmp: template.gmpUse ?? false,
+    });
+  const changesMeaning = create || !baseline || !value || meaningOf(baseline) !== meaningOf(value);
+  const requestSave = () => {
+    if (changesMeaning) setSigning(true);
+    else void save();
+  };
+  const save = async (signatureToken?: string) => {
     if (!value) return;
     setSaving(true);
     setError("");
     setNotice("");
     try {
       const saved = await reportTemplatesApi.save(
-        create ? newCode : code,
-        value,
+        code,
+        // No separate change reason: the server keeps the description as the reason of the change.
+        { ...value, reason: "", signatureToken },
         create,
       );
       if (create) {
@@ -166,15 +311,65 @@ export function ReportTemplateEditor() {
         });
         return;
       }
-      setValue({ ...value, version: saved.definitionVersion, reason: "" });
+      const next = { ...value, version: saved.definitionVersion, reason: "" };
+      setValue(next);
+      setBaseline(next);
+      setStored(saved);
       setNotice(
-        `Changes saved. Template version ${saved.definitionVersion} is now active for subsequent report requests.`,
+        saved.effectiveRevision != null && saved.openRevision != null
+          ? `Changes saved to Revision ${saved.openRevision}. Revision ${saved.effectiveRevision} stays in use until Revision ${saved.openRevision} is approved.`
+          : "Changes saved.",
       );
     } catch (error) {
       setError(reportError(error));
     } finally {
       setSaving(false);
     }
+  };
+  /** Runs one approval-flow step on the stored version and shows the server's answer (REPORT-TEMPLATE-APPROVAL-2026-10-14). */
+  const flowStep = async (
+    step: () => Promise<ReportTemplate>,
+    done: string,
+  ) => {
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const updated = await step();
+      setStored(updated);
+      setNotice(done);
+    } catch (error) {
+      setError(reportError(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const submitVersion = () => {
+    if (!stored) return;
+    void flowStep(
+      () => reportTemplatesApi.submitForApproval(code, stored.definitionVersion, ""),
+      `Revision ${stored.revision ?? stored.definitionVersion} is pending approval.`,
+    );
+  };
+  /** Only reached after the reason and the e-signature. */
+  const approveVersion = (signatureToken?: string) => {
+    if (!stored || !approving || !signatureToken) return;
+    const reason = approving.reason.trim();
+    setApproving(undefined);
+    void flowStep(
+      () => reportTemplatesApi.approveTemplate(code, stored.definitionVersion, reason, signatureToken),
+      `Revision ${stored.revision ?? stored.definitionVersion} is approved and can run.`,
+    );
+  };
+  /** Only reached after the reason and the e-signature (REPORT-TEMPLATE-APPROVAL-2026-10-14). */
+  const rejectVersion = (signatureToken?: string) => {
+    if (!stored || !rejecting || !signatureToken) return;
+    const reason = rejecting.reason.trim();
+    setRejecting(undefined);
+    void flowStep(
+      () => reportTemplatesApi.rejectTemplate(code, stored.definitionVersion, reason, signatureToken),
+      `Revision ${stored.revision ?? stored.definitionVersion} was returned to draft.`,
+    );
   };
   const fieldChange = (
     field: string,
@@ -214,18 +409,100 @@ export function ReportTemplateEditor() {
                 size="sm"
                 loading={saving}
                 disabled={
-                  !value?.reason.trim() ||
+                  !value?.description.trim() ||
                   !value.displayName.trim() ||
-                  !value.sourceCode ||
-                  (create && !newCode.trim())
+                  !value.sourceCode
                 }
-                onClick={() => void save()}
+                onClick={requestSave}
               >
                 Save Changes
               </Button>
             )}
           </>
         }
+      />
+      <FormModal
+        isOpen={rejecting?.step === "form"}
+        onClose={() => setRejecting(undefined)}
+        title="Return to draft"
+        description="The author sees this reason and must change the template and submit it again."
+        confirmText="Return to draft"
+        confirmDisabled={!rejecting?.reason.trim() || saving}
+        onConfirm={() => rejecting && setRejecting({ ...rejecting, step: "sign" })}
+      >
+        <FormField label="Reason" required>
+          <Textarea
+            rows={3}
+            maxLength={1000}
+            value={rejecting?.reason ?? ""}
+            onChange={(event) =>
+              setRejecting((current) => current && { ...current, reason: event.target.value })
+            }
+          />
+        </FormField>
+      </FormModal>
+      {stored && (
+        <ReportTemplateUpgradeModal
+          template={stored}
+          isOpen={upgrading}
+          onClose={() => setUpgrading(false)}
+          onUpgraded={(upgraded) => {
+            setUpgrading(false);
+            setStored(upgraded);
+            setNotice(`Rev ${upgraded.openRevision} started from Rev ${upgraded.effectiveRevision}. Edit it, then submit it for approval.`);
+            navigate(0);
+          }}
+        />
+      )}
+      <ESignatureModal
+        isOpen={rejecting?.step === "sign"}
+        onClose={() => setRejecting(undefined)}
+        deferConfirm
+        onConfirm={(data) => rejectVersion(data.signatureToken)}
+        actionTitle={`Return report template ${code}, version ${stored?.definitionVersion ?? ""}, to draft`}
+        meaningDisplayName="Report Template Returned to Draft"
+        meaningCode="REPORT_TEMPLATE_REJECTION"
+      />
+      <FormModal
+        isOpen={approving?.step === "form"}
+        onClose={() => setApproving(undefined)}
+        title="Approve report template"
+        description="You approve this exact saved version. You must not be its author or the person who submitted it. Say what you checked."
+        confirmText="Continue to sign"
+        confirmDisabled={!approving?.reason.trim()}
+        onConfirm={() => approving && setApproving({ ...approving, step: "sign" })}
+      >
+        <FormField label="Reason" required>
+          <Textarea
+            rows={3}
+            maxLength={1000}
+            value={approving?.reason ?? ""}
+            onChange={(event) =>
+              setApproving((current) => current && { ...current, reason: event.target.value })
+            }
+          />
+        </FormField>
+      </FormModal>
+      <ESignatureModal
+        isOpen={approving?.step === "sign"}
+        onClose={() => setApproving(undefined)}
+        deferConfirm
+        onConfirm={(data) => approveVersion(data.signatureToken)}
+        actionTitle={`Approve report template ${code}, version ${stored?.definitionVersion ?? ""}`}
+        meaningDisplayName="Report Template Approved"
+        meaningCode="REPORT_TEMPLATE_APPROVAL"
+      />
+      <ESignatureModal
+        isOpen={signing}
+        onClose={() => setSigning(false)}
+        deferConfirm
+        onConfirm={(data) => {
+          setSigning(false);
+          void save(data.signatureToken);
+        }}
+        actionTitle={`Save report definition ${create ? "(new)" : code}`}
+        meaningDisplayName="Report Definition Change"
+        meaningCode="REPORT_DEFINITION_CHANGE"
       />
       {error && (
         <p
@@ -249,6 +526,37 @@ export function ReportTemplateEditor() {
         </p>
       ) : (
         value && (
+          <>
+          {/* The same stepper as a document revision: where this revision of the template stands. */}
+          <ReportRevisionStepper status={create || !stored ? "DRAFT" : latestRevisionStatus(stored)} />
+          {locked && stored && (
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p>
+                  Rev {stored.effectiveRevision} is effective and cannot be edited. To change this template, upgrade it: the new revision is written and approved
+                  while Rev {stored.effectiveRevision} stays in use, then Rev {stored.effectiveRevision} becomes Obsoleted.
+                </p>
+                {can("upgrade") && (
+                  <Button size="sm" onClick={() => setUpgrading(true)}>
+                    Upgrade Report Template
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          {!create && stored && (
+            <ApprovalPanel
+              stored={stored}
+              gmpUse={value.gmpUse ?? false}
+              dirty={!!baseline && JSON.stringify(baseline) !== JSON.stringify(value)}
+              busy={saving}
+              canSubmit={can("submitForApproval")}
+              canDecide={can("approve")}
+              onSubmit={submitVersion}
+              onApprove={() => setApproving({ reason: "", step: "form" })}
+              onReject={() => setRejecting({ reason: "", step: "form" })}
+            />
+          )}
           <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <TabNav
               tabs={tabs.filter((item) => !create || item.id !== "history")}
@@ -261,141 +569,210 @@ export function ReportTemplateEditor() {
               disabled={!editable || saving}
               className="min-w-0 p-4 md:p-5"
             >
-              {tab === "layout" && (
-                <ReportLayoutDesigner
-                  value={value.layout ?? defaultReportLayout()}
-                  title={value.displayName}
+              {tab === "charts" && (
+                <ReportChartsEditor
+                  charts={value.layout?.charts ?? []}
                   disabled={!editable || saving}
                   fields={value.fields
                     .filter((f) => f.allowed)
                     .map((f) => ({
                       code: f.code,
                       name: source?.fields[f.code] ?? f.code,
-                      type: source?.dateFields?.includes(f.code)
-                        ? "DATE"
-                        : "TEXT",
+                      type: source?.dateFields?.includes(f.code) ? "DATE" : "TEXT",
                     }))}
-                  onChange={(layout) => change({ layout })}
+                  onChange={(charts) => change({ layout: { ...(value.layout ?? defaultReportLayout()), charts } })}
                 />
               )}
               {tab === "general" && (
-                <FormSection
-                  title="Template Information"
-                  description="Choose the data source and name used to identify this report template."
-                >
-                  <div className="grid gap-5 md:grid-cols-2">
-                    <label className="text-sm font-medium text-slate-700">
-                      Template code
-                      <Input
-                        className={inputClass}
-                        disabled={!create}
-                        value={create ? newCode : code}
-                        maxLength={80}
-                        onChange={(event) =>
-                          setNewCode(event.target.value.toUpperCase())
-                        }
-                        placeholder="DOCUMENT_REGISTER_QA"
-                      />
-                      <span className="mt-1 block text-xs font-normal text-slate-500">
-                        Stable identifier: uppercase letters, numbers and
-                        underscores.
-                      </span>
-                    </label>
-                    <Select
-                      label="Metadata source"
-                      value={value.sourceCode}
-                      disabled={!create}
-                      options={
-                        sources.length
-                          ? sources.map((item) => ({
-                              value: item.code,
-                              label: item.name,
-                            }))
-                          : [
-                              {
-                                value: value.sourceCode,
-                                label: value.sourceCode,
-                              },
-                            ]
-                      }
-                      onChange={(id) => {
-                        const source = sources.find(
-                          (item) => item.code === String(id),
-                        );
-                        if (source)
-                          change({
-                            sourceCode: source.code,
-                            fields: Object.keys(source.fields).map((field) => ({
-                              code: field,
-                              allowed: true,
-                              defaultSelected: true,
-                              required: source.requiredFields.includes(field),
-                            })),
-                          });
-                      }}
-                    />
-                    <label className="text-sm font-medium text-slate-700">
-                      Display name
-                      <Input
-                        className={inputClass}
-                        value={value.displayName}
-                        maxLength={255}
-                        onChange={(event) =>
-                          change({ displayName: event.target.value })
-                        }
-                      />
-                    </label>
-                    <Checkbox
-                      label="Template active"
-                      checked={value.active}
-                      onChange={(active) => change({ active })}
-                    />
-                    <label className="text-sm font-medium text-slate-700 md:col-span-2">
-                      Description
-                      <Textarea
-                        rows={3}
-                        className={inputClass}
-                        maxLength={2000}
-                        value={value.description}
-                        onChange={(event) =>
-                          change({ description: event.target.value })
-                        }
-                      />
-                    </label>
-                    <div className="md:col-span-2">
-                      <p className="mb-3 text-sm font-medium text-slate-700">
-                        Allowed output formats
-                      </p>
-                      <div className="flex flex-wrap gap-5">
-                        {(["PDF", "XLSX", "CSV"] as ReportFormat[]).map(
-                          (format) => (
-                            <Checkbox
-                              key={format}
-                              label={format}
-                              checked={value.formats.includes(format)}
-                              onChange={(checked) =>
-                                change({
-                                  formats: checked
-                                    ? [...value.formats, format]
-                                    : value.formats.filter(
-                                        (item) => item !== format,
-                                      ),
-                                })
-                              }
-                            />
-                          ),
-                        )}
-                      </div>
+                /* Laid out like the General tab of a new document: a plain two-column grid of labelled fields, no section cards. */
+                <div className="space-y-4 md:space-y-5">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                    {/* Template Number (read-only, issued by the system) */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Template Number</label>
+                      <input type="text" readOnly value={create ? "" : code} className={CONTROL_STATE_CLASSES.readonlyField} placeholder="Assigned automatically when saved" />
                     </div>
-                    {!create && (
-                      <p className="text-xs text-slate-500 md:col-span-2">
-                        Existing retention policy is preserved:{" "}
-                        {retention ?? "permanent retention"}. Template changes
-                        never delete historical report files or audit records.
+
+                    {/* Revision (read-only) */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Revision</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={create || !stored ? "" : `Rev ${stored.revision ?? stored.openRevision ?? stored.effectiveRevision ?? ""}`}
+                        className={CONTROL_STATE_CLASSES.readonlyField}
+                        placeholder="Rev 1 when saved"
+                      />
+                    </div>
+
+                    {/* Created Time (read-only) */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Created Time</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={stored?.createdAt ? new Date(stored.createdAt).toLocaleString() : ""}
+                        className={CONTROL_STATE_CLASSES.readonlyField}
+                        placeholder="Set when saved"
+                      />
+                    </div>
+
+                    {/* Last Updated (read-only) */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Last Updated</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={stored?.updatedAt ? new Date(stored.updatedAt).toLocaleString() : ""}
+                        className={CONTROL_STATE_CLASSES.readonlyField}
+                        placeholder="Set when saved"
+                      />
+                    </div>
+
+                    {/* Metadata source (Select) */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                        Report Type<span className="ml-1 text-red-500">*</span>
+                      </label>
+                      <Select
+                        value={value.sourceCode}
+                        disabled={!create}
+                        options={
+                          sources.length
+                            ? sources.map((item) => ({ value: item.code, label: item.name }))
+                            : [{ value: value.sourceCode, label: value.sourceCode }]
+                        }
+                        placeholder="Select a report type..."
+                        onChange={(id) => {
+                          const source = sources.find((item) => item.code === String(id));
+                          if (source)
+                            change({
+                              sourceCode: source.code,
+                              // A scope the new type cannot be given is dropped; the author sets the rest again.
+                              roleScopes: value.roleScopes.filter((grant) => !source.allowedScopes?.length || source.allowedScopes.includes(grant.scope)),
+                              fields: Object.keys(source.fields).map((field) => ({
+                                code: field,
+                                allowed: true,
+                                defaultSelected: true,
+                                required: source.requiredFields.includes(field),
+                              })),
+                            });
+                        }}
+                      />
+                    </div>
+
+                    {/* What the chosen Report Type reports on */}
+                    {sources.find((item) => item.code === value.sourceCode)?.description && (
+                      <p className="text-xs text-slate-500 md:col-span-2 -mt-2">
+                        {sources.find((item) => item.code === value.sourceCode)?.description}
                       </p>
                     )}
+
+                    {/* Name format (read-only): the active Report Name Format names a new template; a template keeps the format that named it */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm">Name Format</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={nameFormat ? `${nameFormat.name}${create ? " (active)" : ""}` : ""}
+                        className={CONTROL_STATE_CLASSES.readonlyField}
+                        placeholder={create ? "No active format: type the name" : "No format: the name was typed"}
+                      />
+                    </div>
+
+                    {/* The parts of the name that are typed, when a name rule is chosen */}
+                    {nameFormat &&
+                      nameFormat.parts
+                        .filter((part) => part.type === "INPUT")
+                        .map((part) => (
+                          <div key={part.order} className="flex flex-col gap-1.5">
+                            <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                              {part.inputLabel}
+                              <span className="ml-1 text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              maxLength={part.maxLength ?? 100}
+                              value={value.nameValues?.[String(part.order)] ?? ""}
+                              onChange={(event) => {
+                                const nameValues = { ...(value.nameValues ?? {}), [String(part.order)]: event.target.value };
+                                change({ nameValues, displayName: composeName(nameFormat, nameValues) });
+                              }}
+                              className="h-9 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                          </div>
+                        ))}
+
+                    {/* Template Name - full width */}
+                    <div className="flex flex-col gap-1.5 md:col-span-2">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                        Template Name<span className="ml-1 text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={value.displayName}
+                        maxLength={255}
+                        readOnly={!!nameFormat}
+                        onChange={(event) => change({ displayName: event.target.value })}
+                        placeholder="Enter template name"
+                        className={cn(
+                          "h-9 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 read-only:focus:ring-0",
+                          !!nameFormat && CONTROL_STATE_CLASSES.readonly,
+                        )}
+                      />
+                    </div>
+
+                    {/* Use for GMP decisions */}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-3">
+                        <label htmlFor="gmpUse" className="cursor-pointer text-xs font-medium text-slate-700 sm:text-sm">
+                          Use for GMP Decisions?
+                        </label>
+                        <Checkbox id="gmpUse" checked={value.gmpUse ?? false} onChange={(gmpUse) => change({ gmpUse })} />
+                      </div>
+                      <p className="text-xs text-slate-500">A template for GMP decisions cannot be deleted; disable it instead.</p>
+                    </div>
+
+                    {/* Allowed output formats */}
+                    <div className="flex flex-col gap-1.5 md:col-span-2">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                        Allowed Output Formats<span className="ml-1 text-red-500">*</span>
+                      </label>
+                      <div className="flex flex-wrap gap-5">
+                        {(["PDF", "XLSX", "CSV"] as ReportFormat[]).map((format) => (
+                          <Checkbox
+                            key={format}
+                            label={format}
+                            checked={value.formats.includes(format)}
+                            onChange={(checked) =>
+                              change({ formats: checked ? [...value.formats, format] : value.formats.filter((item) => item !== format) })
+                            }
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="flex flex-col gap-1.5 md:col-span-2">
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm">
+                        Description<span className="ml-1 text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={value.description}
+                        maxLength={2000}
+                        rows={4}
+                        onChange={(event) => change({ description: event.target.value })}
+                        placeholder="Enter template description"
+                        className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
                   </div>
-                </FormSection>
+                  {!create && (
+                    <p className="text-xs text-slate-500">
+                      Report files are kept permanently and never expire by age. Template changes never delete historical report files or audit records.
+                    </p>
+                  )}
+                </div>
               )}
               {tab === "fields" && (
                 <DataTable
@@ -476,68 +853,7 @@ export function ReportTemplateEditor() {
                 />
               )}
               {tab === "scope" && (
-                <div className="space-y-5">
-                  <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-relaxed text-blue-800">
-                    Report metadata scope is independent of source-document
-                    access. A role without an assignment has no access to this
-                    template. Active role grants are combined; the broadest
-                    applicable scope wins. Entire system includes metadata
-                    outside the user's department, but never file content.
-                  </div>
-                  <DataTable
-                    rows={
-                      editable
-                        ? roles
-                        : value.roleScopes.map((grant) => ({
-                            id: grant.roleId,
-                            name: grant.roleName ?? grant.roleId,
-                            code: "",
-                          }))
-                    }
-                    getRowKey={(row) => row.id}
-                    columns={[
-                      {
-                        id: "role",
-                        header: "Active role / Access Profile",
-                        cell: (row) => row.name,
-                      },
-                      {
-                        id: "scope",
-                        header: "Metadata scope",
-                        cell: (row) => (
-                          <div className="min-w-48">
-                            <Select
-                              value={
-                                value.roleScopes.find(
-                                  (grant) => grant.roleId === row.id,
-                                )?.scope ?? ""
-                              }
-                              enableSearch={false}
-                              options={scopes}
-                              onChange={(scope) =>
-                                change({
-                                  roleScopes: [
-                                    ...value.roleScopes.filter(
-                                      (grant) => grant.roleId !== row.id,
-                                    ),
-                                    ...(scope
-                                      ? [
-                                          {
-                                            roleId: row.id,
-                                            scope: scope as MetadataScope,
-                                          },
-                                        ]
-                                      : []),
-                                  ],
-                                })
-                              }
-                            />
-                          </div>
-                        ),
-                      },
-                    ]}
-                  />
-                </div>
+                <ReportTemplateAccessScope assignments={value.roleScopes} editable={editable && !saving} onChange={(roleScopes) => change({ roleScopes })} allowedScopes={source?.allowedScopes} />
               )}
             </fieldset>
             {tab === "history" && (
@@ -571,21 +887,8 @@ export function ReportTemplateEditor() {
                 />
               </div>
             )}
-            {editable && tab === "general" && (
-              <label className="block border-t border-slate-100 p-4 text-sm font-medium text-slate-700 md:p-5">
-                Change reason <span className="text-red-600">*</span>
-                <Textarea
-                  className={inputClass}
-                  rows={2}
-                  maxLength={1000}
-                  disabled={saving}
-                  value={value.reason}
-                  onChange={(event) => change({ reason: event.target.value })}
-                  placeholder="Explain why this configuration is changing"
-                />
-              </label>
-            )}
           </div>
+          </>
         )
       )}
     </div>

@@ -1,3 +1,4 @@
+import "../../testing/browserStubs";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { useState } from "react";
@@ -5,7 +6,6 @@ import { ReportLayoutDesigner } from "../ReportLayoutDesigner";
 import {
   defaultReportLayout,
   reportTemplatesApi,
-  type ReportLayout,
 } from "@/services/api/reportTemplates";
 
 vi.mock("@/services/api/reportTemplates", async (original) => ({
@@ -66,39 +66,6 @@ it("previews a new layout even before the template name is entered", async () =>
     "Report preview",
   );
 });
-it("offers monthly trends only for server-declared date fields", () => {
-  function DateCharts() {
-    const [layout, setLayout] = useState<ReportLayout>({
-      ...defaultReportLayout(),
-      charts: [
-        { title: "Timeline", type: "BAR", field: "status", metric: "COUNT" },
-      ],
-    });
-    return (
-      <ReportLayoutDesigner
-        title="TEST"
-        value={layout}
-        onChange={setLayout}
-        disabled={false}
-        fields={[
-          { code: "status", name: "Status", type: "TEXT" },
-          { code: "createdAt", name: "Created", type: "DATE" },
-        ]}
-      />
-    );
-  }
-  render(<DateCharts />);
-  fireEvent.click(screen.getByRole("tab", { name: "Charts" }));
-  fireEvent.click(screen.getByRole("combobox", { name: "Chart type" }));
-  fireEvent.click(screen.getByRole("option", { name: "Monthly trend" }));
-  expect(screen.getByRole("combobox", { name: "Group by" })).toHaveTextContent(
-    "Created",
-  );
-  fireEvent.click(screen.getByRole("combobox", { name: "Group by" }));
-  expect(
-    screen.queryByRole("option", { name: "Status" }),
-  ).not.toBeInTheDocument();
-});
 it("disables draft generation without configuration edit capability", () => {
   render(
     <ReportLayoutDesigner
@@ -126,33 +93,6 @@ it("inserts a named automatic field into the explicit header target without reme
   expect(
     screen.queryByLabelText("Insert server field"),
   ).not.toBeInTheDocument();
-});
-it("creates a sensible count chart and tells the user where to preview it", () => {
-  function Charts() {
-    const [layout, setLayout] = useState(defaultReportLayout());
-    return (
-      <ReportLayoutDesigner
-        title="TEST"
-        value={layout}
-        onChange={setLayout}
-        disabled={false}
-        fields={[
-          { code: "status", name: "Status" },
-          { code: "effectiveDate", name: "Effective Date" },
-        ]}
-      />
-    );
-  }
-  render(<Charts />);
-  fireEvent.click(screen.getByRole("tab", { name: "Charts" }));
-  fireEvent.click(screen.getByRole("button", { name: "Add chart" }));
-  expect(screen.getByLabelText("Chart title")).toHaveValue("Records by Status");
-  expect(screen.getByRole("combobox", { name: "Group by" })).toHaveTextContent(
-    "Status",
-  );
-  expect(
-    screen.getByText(/Each chart appears on its own PDF/),
-  ).toBeInTheDocument();
 });
 it("shows every placeholder with a copy action and an explanation, without signature terminology", () => {
   render(<Draft />);

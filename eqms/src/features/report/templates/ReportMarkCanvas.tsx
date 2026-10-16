@@ -8,11 +8,14 @@ import {
   Transformer,
 } from "react-konva";
 import { Select } from "@/components/ui/select";
+import { ReportStampBox, type StampBoxState } from "./ReportStampBox";
 import { Button } from "@/components/ui/button";
 import {
   reportTemplatesApi,
   reportError,
   defaultReportMark,
+  defaultReportStamp,
+  type ReportPagePreview,
   type ReportLayout,
   type ReportMark,
 } from "@/services/api/reportTemplates";
@@ -29,7 +32,7 @@ export function ReportMarkCanvas({
   disabled: boolean;
   onChange: (value: ReportLayout) => void;
 }) {
-  const [kind, setKind] = useState<"stamp" | "watermark" | "logo">("watermark");
+  const [kind, setKind] = useState<"watermark" | "logo">("watermark");
   const [logoImage, setLogoImage] = useState<HTMLImageElement>();
   const logoNode = useRef<Konva.Image>(null);
   const logo = layout.logo;
@@ -51,37 +54,35 @@ export function ReportMarkCanvas({
   const [image, setImage] = useState<HTMLImageElement>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [stampBox, setStampBox] = useState<StampBoxState | null>(null);
   const [width, setWidth] = useState(0);
   const box = useRef<HTMLDivElement>(null),
     node = useRef<Konva.Text>(null),
     transformer = useRef<Konva.Transformer>(null);
-  const style =
-    kind === "stamp"
-      ? (layout.stampStyle ?? defaultReportMark(true))
-      : (layout.watermarkStyle ?? defaultReportMark());
+  const style = layout.watermarkStyle ?? defaultReportMark();
+  // The server draws the stamp into the page and says where it put it, so the frame is always over the stamp, whichever mark is being edited; the
+  // logo and the watermark are drawn here, so the one being edited is left out of the page.
   const background = {
     ...layout,
     ...(kind === "logo"
       ? { logo: undefined }
-      : kind === "stamp"
-        ? { stampEnabled: false, stampStyle: undefined, stamp: "" }
-        : {
-            watermarkEnabled: false,
-            watermarkStyle: undefined,
-            watermark: "",
-          }),
+      : {
+          watermarkEnabled: false,
+          watermarkStyle: undefined,
+          watermark: "",
+        }),
   };
   const pages = 1 + (layout.cover ? 1 : 0) + (layout.charts?.length ?? 0);
   const selectedPage = Math.min(page, pages);
   const visible =
     (kind === "logo"
       ? !!logo?.enabled
-      : kind === "stamp"
-        ? layout.stampEnabled
-        : layout.watermarkEnabled) &&
+      : layout.watermarkEnabled) &&
     (selectedPage === 1 ||
       (kind === "logo" ? logo?.pages : style.pages) === "ALL");
   const key = JSON.stringify([title, background, selectedPage]);
+  // A stamp that is not shown (off, or not on this page) has no frame: the server reports where it put the stamp only when it drew it.
+  const stampFrame = layout.stampEnabled ? stampBox : null;
   useEffect(() => {
     if (!box.current) return;
     const observer = new ResizeObserver((entries) =>
@@ -91,8 +92,7 @@ export function ReportMarkCanvas({
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    let alive = true,
-      url = "";
+    let alive = true;
     const abort = new AbortController();
     setError("");
     setBusy(true);
@@ -104,12 +104,15 @@ export function ReportMarkCanvas({
     const timer = window.setTimeout(() => {
       reportTemplatesApi
         .previewPage(title, background, selectedPage, abort.signal)
-        .then((blob) => {
+        .then((preview: ReportPagePreview) => {
           if (!alive) return;
-          url = URL.createObjectURL(blob);
           const next = new Image();
           next.onload = () => {
             if (alive) {
+              const mark = preview.marks.find((m) => m.kind === "STAMP");
+              const pw = preview.pageWidthPt;
+              const ph = preview.pageHeightPt;
+              setStampBox(mark ? { left: mark.x / pw, top: (ph - mark.y - mark.height) / ph, width: mark.width / pw, height: mark.height / ph } : null);
               setImage(next);
               setBusy(false);
             }
@@ -120,7 +123,7 @@ export function ReportMarkCanvas({
               setBusy(false);
             }
           };
-          next.src = url;
+          next.src = `data:image/png;base64,${preview.imageBase64}`;
         })
         .catch((err) => {
           if (alive) {
@@ -133,13 +136,12 @@ export function ReportMarkCanvas({
       alive = false;
       window.clearTimeout(timer);
       abort.abort();
-      if (url) URL.revokeObjectURL(url);
     };
     // The selected overlay is excluded from the key, so dragging never reruns Word conversion.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, disabled]);
   useEffect(() => {
-    const selected = kind === "logo" ? logoNode.current : node.current;
+    const selected = kind === "logo" ? logoNode.current : kind === "watermark" ? node.current : null;
     transformer.current?.nodes(visible && selected ? [selected] : []);
     transformer.current?.getLayer()?.batchDraw();
   }, [visible, image, kind, width, logoImage]);
@@ -150,11 +152,13 @@ export function ReportMarkCanvas({
   const patch = (update: Partial<ReportMark>) =>
     onChange({
       ...layout,
-      [kind === "stamp" ? "stampStyle" : "watermarkStyle"]: {
+      watermarkStyle: {
         ...style,
         ...update,
       },
     });
+  const placeStamp = (placement: { x: number; y: number; width?: number }) =>
+    onChange({ ...layout, stampStyle: { ...(layout.stampStyle ?? defaultReportStamp()), ...placement } });
   const commit = () => {
     const shape = kind === "logo" ? logoNode.current : node.current;
     if (!shape) return;
@@ -191,7 +195,6 @@ export function ReportMarkCanvas({
           options={[
             { value: "logo", label: "Logo" },
             { value: "watermark", label: "Watermark" },
-            { value: "stamp", label: "Stamp" },
           ]}
           onChange={(value) => setKind(value as typeof kind)}
         />
@@ -227,12 +230,12 @@ export function ReportMarkCanvas({
         }
       />
       <p className="text-xs text-slate-500">
-        Drag to move. Use corner handles to resize and the upper handle to
-        rotate. The page background is rendered by the server.
+        Drag to move. Use corner handles to resize and the upper handle to rotate. The stamp has its own blue frame: drag it to move the stamp and use its
+        corner handles to resize it. The page background is rendered by the server.
       </p>
       {!visible && (
         <p role="status" className="text-sm text-slate-500">
-          Enable this mark in its settings and select a page where it applies.
+          {kind === "logo" ? "The logo" : "The watermark"} is not shown: enable it in its settings and select a page where it applies.
         </p>
       )}
       {error && (
@@ -283,20 +286,21 @@ export function ReportMarkCanvas({
                   onTransformEnd={commit}
                 />
               )}
-              {visible && kind !== "logo" && (
+              {visible && kind === "watermark" && (
                 <Text
                   ref={node}
                   x={(style.x * width) / 100}
                   y={(style.y * height) / 100}
                   offsetY={style.fontSize * scale}
                   width={(style.width * width) / 100}
-                  text={layout[kind]}
+                  text={layout.watermark}
                   fontFamily={
                     {
                       NOTO_SANS: "Noto Sans",
                       NOTO_SERIF: "Noto Serif",
                       ROBOTO_MONO: "Roboto Mono",
                       OSWALD: "Oswald",
+                      TIMES_NEW_ROMAN: '"Times New Roman", Tinos, serif',
                     }[style.font] ?? "Noto Sans"
                   }
                   wrap="none"
@@ -309,12 +313,22 @@ export function ReportMarkCanvas({
                   onTransformEnd={commit}
                 />
               )}
+              {stampFrame && !disabled && (
+                <ReportStampBox
+                  box={stampFrame}
+                  stageWidth={width}
+                  stageHeight={height}
+                  onBox={setStampBox}
+                  onChange={placeStamp}
+                />
+              )}
               {visible && !disabled && (
                 <Transformer
                   ref={transformer}
                   rotateEnabled={kind !== "logo"}
                   keepRatio={kind === "logo"}
                   flipEnabled={false}
+                  padding={6}
                   enabledAnchors={[
                     "top-left",
                     "top-right",
@@ -325,7 +339,7 @@ export function ReportMarkCanvas({
                   anchorStroke="#059669"
                   anchorFill="#ffffff"
                   boundBoxFunc={(oldBox, next) =>
-                    next.width < 20 || next.height < 6 ? oldBox : next
+                    next.width < 20 || next.height < 2 ? oldBox : next
                   }
                 />
               )}
@@ -346,7 +360,7 @@ export function ReportMarkCanvas({
             onChange({ ...layout, logo: { ...logo, x: 5, y: 8, width: 18 } });
             return;
           }
-          const defaults = defaultReportMark(kind === "stamp");
+          const defaults = defaultReportMark();
           patch({
             x: defaults.x,
             y: defaults.y,
