@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
-import { FormField, Input, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { FormField } from "@/components/ui/form/ResponsiveForm";
+import { Input, Textarea } from "./TrainingFields";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { Select } from "@/components/ui/select/Select";
@@ -16,7 +17,7 @@ import { documentApi } from "@/services/api/documents";
 import {
   trainingError, trainingMatrixApi, trainingRequirementsApi, type TrainingPerson, type TrainingRequirementDetail, type TrainingRequirementLine, type TrainingSuggestion, type TrainingTopic,
 } from "@/services/api/trainingActivities";
-import { day, trainingBreadcrumbs } from "./trainingLabels";
+import { day, saveBlob, trainingBreadcrumbs } from "./trainingLabels";
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "./TrainingDetailLayout";
 import { REQUIREMENT_STATUS_LABEL } from "./TrainingRequirementListView";
 
@@ -119,6 +120,9 @@ export function TrainingRequirementDetailPage() {
       {caps.submit && <Button size="sm" variant="default" className="whitespace-nowrap" disabled={dirty || lines.length === 0} onClick={() => setDialog("submit")}>Send for review</Button>}
       {caps.review && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setDialog("review")}>Review</Button>}
       {caps.approve && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Approve requirement", code: "TRAINING_REQUIREMENT_APPROVED", name: "Training Requirement Approved", run: (t) => trainingRequirementsApi.approve(req.id, req.version, t) })}>Approve</Button>}
+      {req.status === "APPROVED" && (
+        <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => void trainingRequirementsApi.print(req.id).then((b) => saveBlob(b, `${req.requestNo.replace(/\//g, "-")}.pdf`)).catch((e) => showToast({ type: "error", title: "The PDF could not be printed", message: trainingError(e) }))}>Print PDF</Button>
+      )}
       {caps.reject && <Button size="sm" variant="destructive" className="whitespace-nowrap" onClick={() => setDialog("reject")}>Reject</Button>}
     </>
   );

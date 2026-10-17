@@ -30,8 +30,25 @@ public class TrainingFileController {
     public ResponseEntity<?> list(@PathVariable UUID id) { return ResponseEntity.ok(fileService.list(users.requireCurrentUser(), id)); }
 
     @PostMapping(value = "/activities/{id}/materials", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadMaterial(@PathVariable UUID id, @RequestPart("file") MultipartFile file, @RequestParam(required = false) String title) {
-        return ResponseEntity.ok(fileService.uploadMaterial(users.requireCurrentUser(), id, file, title));
+    public ResponseEntity<?> uploadMaterial(@PathVariable UUID id, @RequestPart("file") MultipartFile file, @RequestParam(required = false) String title, @RequestParam(required = false) String purpose) {
+        return ResponseEntity.ok(fileService.uploadMaterial(users.requireCurrentUser(), id, file, title, purpose));
+    }
+
+    public record LinkRequest(String title, String url) {}
+
+    @PostMapping("/activities/{id}/material-links")
+    public ResponseEntity<?> addLink(@PathVariable UUID id, @RequestBody LinkRequest request) { return ResponseEntity.ok(fileService.addLink(users.requireCurrentUser(), id, request.title(), request.url())); }
+
+    @GetMapping("/materials/{id}/view-config")
+    public ResponseEntity<?> viewConfig(@PathVariable UUID id) { return ResponseEntity.ok(fileService.viewConfigOfMaterial(users.requireCurrentUser(), id)); }
+
+    @GetMapping("/materials/{id}/preview")
+    public ResponseEntity<byte[]> previewMaterial(@PathVariable UUID id) {
+        Map<String, Object> file = fileService.previewMaterial(users.requireCurrentUser(), id);
+        String type = String.valueOf(file.get("contentType"));
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(type)).cacheControl(org.springframework.http.CacheControl.noStore())
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, org.springframework.http.ContentDisposition.inline().filename(String.valueOf(file.get("name"))).build().toString())
+                .body((byte[]) file.get("bytes"));
     }
 
     @PostMapping("/materials/{id}/remove")

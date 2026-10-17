@@ -44,7 +44,7 @@ const CONTROLLED_COPIES_ENDPOINT = '/controlled-copies';
 // API calls can use a same-origin relative path when the Docker frontend proxies
 // `/api`. OnlyOffice, however, fetches this logo from a separate server process
 // and therefore needs an absolute browser-reachable URL.
-const getBrowserReachableApiBaseUrl = () => {
+export const getBrowserReachableApiBaseUrl = () => {
   const baseUrl = config.api.baseURL.replace(/\/$/, '');
   if (/^https?:\/\//i.test(baseUrl) || typeof window === 'undefined') {
     return baseUrl;

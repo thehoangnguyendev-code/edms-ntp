@@ -5,7 +5,8 @@ import { IconBan, IconCheck, IconFileDownload, IconPaperclip, IconFileOff } from
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
-import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { FormField } from "@/components/ui/form/ResponsiveForm";
+import { Textarea } from "./TrainingFields";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { Select } from "@/components/ui/select/Select";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
@@ -18,6 +19,7 @@ import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingError, trainingLegacyApi, type TrainingLegacyRow, type TrainingPerson } from "@/services/api/trainingActivities";
+import { TrainingFileDropzone } from "./TrainingFileDropzone";
 import { day, trainingBreadcrumbs, TRAINING_PAGES } from "./trainingLabels";
 
 const STATE_LABEL: Record<string, string> = { MISSING: "No evidence yet", SUBMITTED: "Waiting for verification", VERIFIED: "Verified" };
@@ -159,7 +161,7 @@ export function TrainingLegacyEvidenceView() {
             {submitting.none ? (
               <FormField label="Why there is no evidence" required><Textarea rows={3} value={submitting.reason} onChange={(e) => setSubmitting({ ...submitting, reason: e.target.value })} /></FormField>
             ) : (
-              <FormField label="Scan (PDF, PNG or JPEG, up to 20 MB)" required><input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setSubmitting({ ...submitting, file: e.target.files?.[0] ?? null })} /></FormField>
+              <TrainingFileDropzone label="Scan" required accept=".pdf,.png,.jpg,.jpeg" maxMb={20} hint="PDF, PNG or JPEG (max 20 MB)" file={submitting.file} onChange={(f) => setSubmitting({ ...submitting, file: f })} />
             )}
             <FormField label="Who verifies" required>
               {verifiers.length === 0 ? <p className="text-sm text-amber-700">No eligible person was found.</p> : <Select value={submitting.verifierId} onChange={(v) => setSubmitting({ ...submitting, verifierId: v })} options={verifiers.map((p) => ({ label: `${p.fullName}${p.position ? ` — ${p.position}` : ""}`, value: p.id }))} placeholder="Choose" />}

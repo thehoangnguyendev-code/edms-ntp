@@ -127,7 +127,7 @@ public class NavigationService {
                 planning.add(new NavigationItemResponse("training-matrices", "Training Matrices", null, "/training-management/matrices", false, null));
             }
             if (!planning.isEmpty()) {
-                trainingChildren.add(new NavigationItemResponse("training-planning", "Planning & Delivery", null, null, false, planning));
+                trainingChildren.add(new NavigationItemResponse("training-planning", "Training Programme", null, null, false, planning));
             }
             List<NavigationItemResponse> people = new ArrayList<>();
             if (hasPermission(normalizedPermissions, "training.job_assignment.view")) {
@@ -138,7 +138,7 @@ public class NavigationService {
                 people.add(new NavigationItemResponse("training-specimen-signatures", "Specimen Signatures", null, "/training-management/specimen-signatures", false, null));
             }
             if (!people.isEmpty()) {
-                trainingChildren.add(new NavigationItemResponse("training-people", "People & Competence", null, null, false, people));
+                trainingChildren.add(new NavigationItemResponse("training-people", "Personnel Qualification", null, null, false, people));
             }
             List<NavigationItemResponse> records = new ArrayList<>();
             if (hasPermission(normalizedPermissions, "training.record.view")) {
@@ -146,16 +146,16 @@ public class NavigationService {
             }
             if (hasPermission(normalizedPermissions, "training.compliance.view")) {
                 records.add(new NavigationItemResponse("training-compliance", "Training Compliance", null, "/training-management/compliance", false, null));
-                records.add(new NavigationItemResponse("training-number-log", "Training Number Log", null, "/training-management/number-log", false, null));
+                records.add(new NavigationItemResponse("training-number-log", "Training Number Register", null, "/training-management/number-log", false, null));
             }
             if (hasPermission(normalizedPermissions, "training.record.export")) {
-                records.add(new NavigationItemResponse("training-record-exports", "Record Exports", null, "/training-management/record-exports", false, null));
+                records.add(new NavigationItemResponse("training-record-exports", "Training Record Exports", null, "/training-management/record-exports", false, null));
             }
             if (hasPermission(normalizedPermissions, "training.activity.view")) {
-                records.add(new NavigationItemResponse("training-legacy-evidence", "Legacy Evidence", null, "/training-management/legacy-evidence", false, null));
+                records.add(new NavigationItemResponse("training-legacy-evidence", "Legacy Training Evidence", null, "/training-management/legacy-evidence", false, null));
             }
             if (!records.isEmpty()) {
-                trainingChildren.add(new NavigationItemResponse("training-records-compliance", "Records & Compliance", null, null, false, records));
+                trainingChildren.add(new NavigationItemResponse("training-records-compliance", "Training Records & Compliance", null, null, false, records));
             }
             if (!trainingChildren.isEmpty()) {
                 menu.add(new NavigationItemResponse("training-management", "Training Management", "GraduationCap", null, false, trainingChildren));

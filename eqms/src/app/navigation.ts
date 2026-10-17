@@ -272,7 +272,7 @@ const FOUNDATION_MODULES: NavItem[] = [
       },
       {
         id: "training-planning",
-        label: "Planning & Delivery",
+        label: "Training Programme",
         allowedPermissions: ["training.requirement.view", "training.activity.view", "training.matrix.view"],
         children: [
           { id: "training-requirements", label: "Training Requirements", path: ROUTES.TRAINING.REQUIREMENTS, allowedPermissions: ["training.requirement.view"] },
@@ -282,7 +282,7 @@ const FOUNDATION_MODULES: NavItem[] = [
       },
       {
         id: "training-people",
-        label: "People & Competence",
+        label: "Personnel Qualification",
         allowedPermissions: ["training.job_assignment.view", "training.signature.view", "training.signature.manage", "training.signature.confirm", "training.self.view"],
         children: [
           { id: "training-job-assignments", label: "Job Assignments", path: ROUTES.TRAINING.JOB_ASSIGNMENTS, allowedPermissions: ["training.job_assignment.view"] },
@@ -296,14 +296,14 @@ const FOUNDATION_MODULES: NavItem[] = [
       },
       {
         id: "training-records-compliance",
-        label: "Records & Compliance",
+        label: "Training Records & Compliance",
         allowedPermissions: ["training.record.view", "training.compliance.view", "training.record.export", "training.activity.view"],
         children: [
           { id: "training-records", label: "Training Records", path: ROUTES.TRAINING.RECORDS, allowedPermissions: ["training.record.view"] },
           { id: "training-compliance", label: "Training Compliance", path: ROUTES.TRAINING.COMPLIANCE, allowedPermissions: ["training.compliance.view"] },
-          { id: "training-number-log", label: "Training Number Log", path: ROUTES.TRAINING.NUMBER_LOG, allowedPermissions: ["training.compliance.view"] },
-          { id: "training-record-exports", label: "Record Exports", path: ROUTES.TRAINING.RECORD_EXPORTS, allowedPermissions: ["training.record.export"] },
-          { id: "training-legacy-evidence", label: "Legacy Evidence", path: ROUTES.TRAINING.LEGACY_EVIDENCE, allowedPermissions: ["training.activity.view"] },
+          { id: "training-number-log", label: "Training Number Register", path: ROUTES.TRAINING.NUMBER_LOG, allowedPermissions: ["training.compliance.view"] },
+          { id: "training-record-exports", label: "Training Record Exports", path: ROUTES.TRAINING.RECORD_EXPORTS, allowedPermissions: ["training.record.export"] },
+          { id: "training-legacy-evidence", label: "Legacy Training Evidence", path: ROUTES.TRAINING.LEGACY_EVIDENCE, allowedPermissions: ["training.activity.view"] },
         ],
       },
     ],

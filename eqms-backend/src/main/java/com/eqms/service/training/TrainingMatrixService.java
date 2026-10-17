@@ -64,23 +64,43 @@ public class TrainingMatrixService {
     // ----------------------------------------------------------------------------------------------------------------------------- reading
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> matrices(UserAccount actor) {
+    public Map<String, Object> matrices(UserAccount actor, String search, String state, int page, int limit) {
         access.require(actor, "training.matrix.view", "training.matrix.manage");
         List<Object> args = new ArrayList<>();
-        String scope = "";
+        StringBuilder where = new StringBuilder(" where 1=1");
         if (!access.allDepartments(actor)) {
-            scope = " where m.department_id = ?";
+            where.append(" and m.department_id = ?");
             UUID own = access.departmentOf(actor);
             args.add(own == null ? new UUID(0, 0) : own);
         }
-        return TrainingRows.camel(jdbc.queryForList("""
-            select m.id, m.code, m.department_id, d.name as department_name,
-                   ev.id as effective_version_id, ev.version_no as effective_version_no, ev.effective_at,
-                   ov.id as open_version_id, ov.version_no as open_version_no, ov.status as open_status
+        if (search != null && !search.isBlank()) {
+        String like = "%" + search.trim().toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+            where.append(" and (lower(m.code) like ? escape '\\' or lower(d.name) like ? escape '\\')");
+            args.add(like); args.add(like);
+        }
+        if ("EFFECTIVE".equals(state)) where.append(" and ev.id is not null");
+        else if ("NO_EFFECTIVE".equals(state)) where.append(" and ev.id is null");
+        else if ("IN_PREPARATION".equals(state)) where.append(" and ov.id is not null");
+        String from = """
               from training_matrices m join departments d on d.id = m.department_id
               left join training_matrix_versions ev on ev.matrix_id = m.id and ev.status = 'EFFECTIVE'
               left join training_matrix_versions ov on ov.matrix_id = m.id and ov.status in ('DRAFT','PENDING_APPROVAL')
-            """ + scope + " order by d.name", args.toArray()));
+            """;
+        int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
+        Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add(safeLimit);
+        pageArgs.add((safePage - 1) * safeLimit);
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+            select m.id, m.code, m.department_id, d.name as department_name,
+                   ev.id as effective_version_id, ev.version_no as effective_version_no, ev.effective_at,
+                   ov.id as open_version_id, ov.version_no as open_version_no, ov.status as open_status
+            """ + from + where + " order by d.name limit ? offset ?", pageArgs.toArray());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("data", TrainingRows.camel(rows));
+        long count = total == null ? 0 : total;
+        result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
+        return result;
     }
 
     @Transactional(readOnly = true)

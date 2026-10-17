@@ -109,7 +109,7 @@ public class TrainingRecordService {
 
     /** The Training Number log of a department and year: every number issued, including cancelled ones, and the session count (FRM.0044). */
     @Transactional(readOnly = true)
-    public Map<String, Object> numberLog(UserAccount actor, UUID departmentId, Integer year, int page, int limit) {
+    public Map<String, Object> numberLog(UserAccount actor, UUID departmentId, Integer year, String search, int page, int limit) {
         access.require(actor, "training.compliance.view", "training.activity.view");
         UUID department = departmentId != null ? departmentId : access.departmentOf(actor);
         if (department == null) throw new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED");
@@ -117,13 +117,21 @@ public class TrainingRecordService {
         int y = year != null ? year : java.time.LocalDate.now(TrainingNumberService.ZONE).getYear();
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
-        Long total = jdbc.queryForObject("select count(*) from training_activities where organizer_department_id=? and year=?", Long.class, department, y);
+        String like = search == null || search.isBlank() ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        String filter = like == null ? "" : " and (lower(a.training_number) like ? escape '\\' or lower(a.title) like ? escape '\\' or lower(coalesce(a.document_number,'')) like ? escape '\\')";
+        List<Object> args = new ArrayList<>(List.of(department, y));
+        if (like != null) { args.add(like); args.add(like); args.add(like); }
+        Long total = jdbc.queryForObject("select count(*) from training_activities a where a.organizer_department_id=? and a.year=?" + filter, Long.class, args.toArray());
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add(safeLimit);
+        pageArgs.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
             select a.training_number, a.created_at, a.kind, a.status, a.title, a.document_number, a.revision_number, a.cancel_reason,
                    (select count(*) from training_sessions s where s.activity_id = a.id and s.status <> 'CANCELLED') as sessions,
                    (select count(*) from training_events e where e.activity_id = a.id and e.event_type = 'SESSION_POSTPONED') as postponements
-              from training_activities a where a.organizer_department_id=? and a.year=? order by a.serial, a.suffix nulls first limit ? offset ?
-            """, department, y, safeLimit, (safePage - 1) * safeLimit);
+              from training_activities a where a.organizer_department_id=? and a.year=?""" + filter + """
+             order by a.serial, a.suffix nulls first limit ? offset ?
+            """, pageArgs.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;

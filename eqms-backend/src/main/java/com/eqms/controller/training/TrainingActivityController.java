@@ -8,6 +8,7 @@ import com.eqms.service.training.TrainingRows;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -105,6 +106,12 @@ public class TrainingActivityController {
     @PostMapping("/sessions/{id}/postpone")
     public ResponseEntity<?> postpone(@PathVariable UUID id, @RequestBody PostponeRequest request) { return ResponseEntity.ok(activities.postponeSession(users.requireCurrentUser(), id, request)); }
 
+    @PostMapping("/participants/{id}/remove")
+    public ResponseEntity<?> removeParticipant(@PathVariable UUID id, @RequestBody ReasonRequest request) { return ResponseEntity.ok(activities.removeParticipant(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/participants/{id}/planned-absence")
+    public ResponseEntity<?> plannedAbsence(@PathVariable UUID id, @RequestBody ReasonRequest request) { return ResponseEntity.ok(activities.setPlannedAbsence(users.requireCurrentUser(), id, request)); }
+
     @PostMapping("/participants/{id}/attendance")
     public ResponseEntity<?> attendance(@PathVariable UUID id, @RequestBody AttendanceRequest request) { return ResponseEntity.ok(activities.recordAttendance(users.requireCurrentUser(), id, request)); }
 
@@ -113,6 +120,16 @@ public class TrainingActivityController {
 
     @PostMapping("/me/participations/{id}/confirm-read")
     public ResponseEntity<?> confirmRead(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.confirmRead(users.requireCurrentUser(), id, request)); }
+
+    @GetMapping("/people/groups")
+    public ResponseEntity<?> peopleGroups(@RequestParam String by) {
+        return ResponseEntity.ok(Map.of("data", activities.peopleGroups(users.requireCurrentUser(), by)));
+    }
+
+    @GetMapping("/people/in-groups")
+    public ResponseEntity<?> peopleInGroups(@RequestParam String by, @RequestParam List<String> names) {
+        return ResponseEntity.ok(Map.of("data", activities.peopleInGroups(users.requireCurrentUser(), by, names)));
+    }
 
     @GetMapping("/people")
     public ResponseEntity<?> people(@RequestParam(required = false) String search, @RequestParam(defaultValue = "20") int limit) {

@@ -1,3 +1,4 @@
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { IconPlus } from "@tabler/icons-react";
@@ -5,7 +6,8 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
-import { FormField, Input } from "@/components/ui/form/ResponsiveForm";
+import { FormField } from "@/components/ui/form/ResponsiveForm";
+import { Input } from "@/features/training-activities/TrainingFields";
 import { Select } from "@/components/ui/select/Select";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -78,7 +80,7 @@ export function TrainingTopicsView() {
               <Select value={edit.scope} enableSearch={false} onChange={(v) => setEdit({ ...edit, scope: v })} options={Object.entries(SCOPE_LABEL).map(([value, label]) => ({ label, value }))} />
             </FormField>
             {edit.scope === "DEPARTMENT_GENERAL" && <FormField label="Department" required><Select value={edit.departmentId} onChange={(v) => setEdit({ ...edit, departmentId: v })} options={departments} /></FormField>}
-            {edit.id && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> Active</label>}
+            {edit.id && <Checkbox checked={edit.active} onChange={(c) => setEdit({ ...edit, active: c })} label="Active" />}
           </div>
         )}
       </FormModal>

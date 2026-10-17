@@ -2,12 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Badge } from "@/components/ui/badge/Badge";
-import { Select } from "@/components/ui/select/Select";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { SectionLoading } from "@/components/ui/loading/Loading";
-import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { dictionaryApi } from "@/services/api/dictionary";
@@ -66,6 +64,7 @@ export function TrainingComplianceView() {
   ];
   const { layout, control } = useCustomColumnLayout("training.compliance.coverage", columns);
   const filters: ReportSelectFilter[] = [
+    { id: "department", label: "Department", value: departmentId, options: [{ label: "My department", value: "" }, ...departments], onChange: (v) => { setDepartmentId(v); table.setCurrentPage(1); } },
     {
       id: "status",
       label: "Status",
@@ -78,11 +77,6 @@ export function TrainingComplianceView() {
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
       <PageHeader title={TRAINING_PAGES.compliance.title} breadcrumbItems={trainingBreadcrumbs(navigate, "compliance")} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <div className="max-w-sm">
-        <FormField label="Department">
-          <Select value={departmentId} onChange={(v) => { setDepartmentId(v); table.setCurrentPage(1); }} options={[{ label: "My department", value: "" }, ...departments]} />
-        </FormField>
-      </div>
       {!summary ? (
         <SectionLoading text="Loading…" />
       ) : !summary.hasEffectiveMatrix ? (
@@ -103,8 +97,8 @@ export function TrainingComplianceView() {
         onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters}
         dates={[]}
-        hasActiveFilters={Boolean(status)}
-        onClear={() => { setStatus(""); table.setCurrentPage(1); }}
+        hasActiveFilters={Boolean(status || departmentId || table.searchQuery)}
+        onClear={() => { setStatus(""); setDepartmentId(""); table.setSearchQuery(""); table.setCurrentPage(1); }}
         customControl={control}
       >
         <DataTable

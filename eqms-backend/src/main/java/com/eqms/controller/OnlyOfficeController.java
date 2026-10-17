@@ -40,10 +40,19 @@ public class OnlyOfficeController {
 
     private final RevisionService revisionService;
     private final OnlyOfficeDocumentEditService onlyOfficeDocumentEditService;
+    private final com.eqms.service.training.TrainingFileService trainingFiles;
 
-    public OnlyOfficeController(RevisionService revisionService, OnlyOfficeDocumentEditService onlyOfficeDocumentEditService) {
+    public OnlyOfficeController(RevisionService revisionService, OnlyOfficeDocumentEditService onlyOfficeDocumentEditService, com.eqms.service.training.TrainingFileService trainingFiles) {
         this.revisionService = revisionService;
         this.onlyOfficeDocumentEditService = onlyOfficeDocumentEditService;
+        this.trainingFiles = trainingFiles;
+    }
+
+    /** The document server's fetch of a stored training file (a Word file) to show in the read-only viewer. */
+    @GetMapping("/stored-file/training-material/{id}")
+    public ResponseEntity<byte[]> trainingMaterial(@PathVariable UUID id, @RequestParam String token) throws Exception {
+        onlyOfficeDocumentEditService.verifyStoredFileToken("training-material", id, token);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(trainingFiles.materialBytesForViewer(id));
     }
 
     /** OnlyOffice's initial fetch of the document to edit. */

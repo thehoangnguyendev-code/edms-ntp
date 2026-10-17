@@ -1,8 +1,13 @@
 package com.eqms.controller.training;
 
 import com.eqms.auth.CurrentUserService;
+import com.eqms.service.training.TrainingPrintService;
 import com.eqms.service.training.TrainingRequirementService;
 import com.eqms.service.training.TrainingRequirementService.*;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,8 +20,10 @@ import java.util.UUID;
 public class TrainingRequirementController {
     private final TrainingRequirementService requirements;
     private final CurrentUserService users;
+    private final TrainingPrintService prints;
 
-    public TrainingRequirementController(TrainingRequirementService requirements, CurrentUserService users) {
+    public TrainingRequirementController(TrainingRequirementService requirements, CurrentUserService users, TrainingPrintService prints) {
+        this.prints = prints;
         this.requirements = requirements;
         this.users = users;
     }
@@ -45,6 +52,14 @@ public class TrainingRequirementController {
     public ResponseEntity<?> eligible(@PathVariable UUID id, @RequestParam String step, @RequestParam(required = false) String search,
                                       @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
         return ResponseEntity.ok(requirements.eligibleApprovers(users.requireCurrentUser(), id, step, search, page, limit));
+    }
+
+    @GetMapping("/{id}/print")
+    public ResponseEntity<byte[]> print(@PathVariable UUID id) { return pdf(prints.requirement(users.requireCurrentUser(), id)); }
+
+    private static ResponseEntity<byte[]> pdf(Map<String, Object> file) {
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
     }
 
     @PostMapping("/{id}/submit")

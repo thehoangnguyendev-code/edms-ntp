@@ -6,6 +6,8 @@ import { ProtectedRoute } from '@/middleware/ProtectedRoute';
 
 // ==================== LAZY LOADED ====================
 const TrainingActivityListView = lazy(() => import('@/features/training-activities/TrainingActivityListView').then(m => ({ default: m.TrainingActivityListView })));
+const TrainingMaterialPreviewPage = lazy(() => import('@/features/training-activities/TrainingMaterialPreviewPage').then(m => ({ default: m.TrainingMaterialPreviewPage })));
+const TrainingActivityCreatePage = lazy(() => import('@/features/training-activities/TrainingActivityCreatePage').then(m => ({ default: m.TrainingActivityCreatePage })));
 const TrainingActivityDetailPage = lazy(() => import('@/features/training-activities/TrainingActivityDetailPage').then(m => ({ default: m.TrainingActivityDetailPage })));
 const TrainingMatrixListView = lazy(() => import('@/features/training-activities/TrainingMatrixListView').then(m => ({ default: m.TrainingMatrixListView })));
 const TrainingMatrixVersionPage = lazy(() => import('@/features/training-activities/TrainingMatrixVersionPage').then(m => ({ default: m.TrainingMatrixVersionPage })));
@@ -20,7 +22,7 @@ const TrainingRecordExportsView = lazy(() => import('@/features/training-activit
 const TrainingRequirementListView = lazy(() => import('@/features/training-activities/TrainingRequirementListView').then(m => ({ default: m.TrainingRequirementListView })));
 const TrainingRequirementDetailPage = lazy(() => import('@/features/training-activities/TrainingRequirementDetailPage').then(m => ({ default: m.TrainingRequirementDetailPage })));
 const TrainingLegacyEvidenceView = lazy(() => import('@/features/training-activities/TrainingLegacyEvidenceView').then(m => ({ default: m.TrainingLegacyEvidenceView })));
-const MyTrainingView = lazy(() => import('@/features/training-activities/TrainingMyTrainingView').then(m => ({ default: m.TrainingMyTrainingView })));
+const MyTrainingView = lazy(() => import('@/features/training-activities/MyTrainingView').then(m => ({ default: m.MyTrainingView })));
 
 const guardedTrainingElement = (permission: string, element: React.ReactNode) => (
   <ProtectedRoute requiredPermissions={[permission]}>
@@ -40,7 +42,15 @@ export function trainingRoutes() {
       }
     >
       <Route path="activities" element={guardedTrainingElement("training.activity.view", <TrainingActivityListView />)} />
+      <Route path="materials/:materialId/preview" element={guardedTrainingElement("training.module.view", <TrainingMaterialPreviewPage />)} />
+      <Route path="activities/new" element={guardedTrainingElement("training.activity.organize", <TrainingActivityCreatePage />)} />
       <Route path="activities/:activityId" element={guardedTrainingElement("training.activity.view", <TrainingActivityDetailPage />)} />
+      <Route path="activities/:activityId/edit" element={guardedTrainingElement("training.activity.organize", <TrainingActivityDetailPage mode="edit" />)} />
+      <Route path="activities/:activityId/conduct" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="conduct" />)} />
+      <Route path="activities/:activityId/review" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="review" />)} />
+      <Route path="activities/:activityId/approve" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="approve" />)} />
+      <Route path="activities/:activityId/confirm" element={guardedTrainingElement("training.activity.close", <TrainingActivityDetailPage mode="confirm" />)} />
+      <Route path="activities/:activityId/participate" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="participate" />)} />
       <Route path="matrices" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixListView />)} />
       <Route path="matrices/:matrixId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixHistoryView />)} />
       <Route path="matrix-versions/:versionId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixVersionPage />)} />

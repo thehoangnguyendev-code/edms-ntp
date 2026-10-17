@@ -13,6 +13,8 @@ interface OnlyOfficeDocumentViewerProps {
   height?: string;
   /** Poll the revision and reload when its source changes (default). Turn off for an immutable Effective revision. */
   watchForChanges?: boolean;
+  /** Loads the viewer config of something other than a revision (for example a stored training file). `revisionId` then only names the viewer. */
+  loadConfig?: () => Promise<Record<string, unknown>>;
 }
 
 const CONTAINER_PREFIX = "onlyoffice-viewer-";
@@ -24,7 +26,7 @@ const CONTAINER_PREFIX = "onlyoffice-viewer-";
  * polls the revision and reloads itself when the stored source changes, so saves show up without a
  * manual refresh.
  */
-export const OnlyOfficeDocumentViewer = ({ revisionId, versionToken, height = "calc(100vh - 260px)", watchForChanges = true }: OnlyOfficeDocumentViewerProps) => {
+export const OnlyOfficeDocumentViewer = ({ revisionId, versionToken, height = "calc(100vh - 260px)", watchForChanges = true, loadConfig }: OnlyOfficeDocumentViewerProps) => {
   const containerId = `${CONTAINER_PREFIX}${revisionId}`;
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState<string | null>(null);
@@ -91,7 +93,7 @@ export const OnlyOfficeDocumentViewer = ({ revisionId, versionToken, height = "c
 
     const init = async () => {
       try {
-        const viewConfig = await documentApi.getRevisionOnlyOfficeViewConfig(revisionId);
+        const viewConfig = loadConfig ? await loadConfig() : await documentApi.getRevisionOnlyOfficeViewConfig(revisionId);
         await loadScript();
         if (cancelled) return;
         if (!window.DocsAPI) throw new Error("OnlyOffice viewer script did not load correctly.");

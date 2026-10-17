@@ -1,8 +1,13 @@
 package com.eqms.controller.training;
 
 import com.eqms.auth.CurrentUserService;
+import com.eqms.service.training.TrainingPrintService;
 import com.eqms.service.training.TrainingMatrixService;
 import com.eqms.service.training.TrainingMatrixService.*;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,14 +23,19 @@ public class TrainingMatrixController {
 
     private final TrainingMatrixService matrices;
     private final CurrentUserService users;
+    private final TrainingPrintService prints;
 
-    public TrainingMatrixController(TrainingMatrixService matrices, CurrentUserService users) {
+    public TrainingMatrixController(TrainingMatrixService matrices, CurrentUserService users, TrainingPrintService prints) {
+        this.prints = prints;
         this.matrices = matrices;
         this.users = users;
     }
 
     @GetMapping("/matrices")
-    public ResponseEntity<?> list() { return ResponseEntity.ok(Map.of("data", matrices.matrices(users.requireCurrentUser()))); }
+    public ResponseEntity<?> list(@RequestParam(required = false) String search, @RequestParam(required = false) String state,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(matrices.matrices(users.requireCurrentUser(), search, state, page, limit));
+    }
 
     @PostMapping("/matrices")
     public ResponseEntity<?> create(@RequestBody CreateMatrixRequest request) { return ResponseEntity.ok(matrices.createMatrix(users.requireCurrentUser(), request.departmentId())); }
@@ -60,6 +70,14 @@ public class TrainingMatrixController {
 
     @PostMapping("/matrix-versions/{id}/reject")
     public ResponseEntity<?> reject(@PathVariable UUID id, @RequestBody RejectRequest request) { return ResponseEntity.ok(matrices.reject(users.requireCurrentUser(), id, request)); }
+
+    @GetMapping("/matrix-versions/{id}/print")
+    public ResponseEntity<byte[]> print(@PathVariable UUID id) { return pdf(prints.matrixVersion(users.requireCurrentUser(), id)); }
+
+    private static ResponseEntity<byte[]> pdf(Map<String, Object> file) {
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
+    }
 
     @GetMapping("/matrix-versions/{a}/compare/{b}")
     public ResponseEntity<?> compare(@PathVariable UUID a, @PathVariable UUID b) { return ResponseEntity.ok(matrices.compare(users.requireCurrentUser(), a, b)); }

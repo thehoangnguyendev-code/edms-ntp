@@ -8,16 +8,18 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { FormModal } from "@/components/ui/modal/FormModal";
-import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { FormField } from "@/components/ui/form/ResponsiveForm";
+import { Textarea } from "./TrainingFields";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
-import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
+import { ReportListToolbar, pickerDateToIso, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
+import { myTrainingApi } from "@/services/api/myTraining";
 import { trainingError, trainingRecordsApi, type TrainingRecord } from "@/services/api/trainingActivities";
-import { day } from "./trainingLabels";
+import { METHOD_LABEL, day } from "./trainingLabels";
 
 /**
  * Personal training records. `mine` shows only the records of the person who is logged in; otherwise the person sees the records of the own department (or all
@@ -30,33 +32,42 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
   const menu = usePortalDropdown();
   const drag = useTableDragScroll();
   const [voided, setVoided] = useState("");
+  const [method, setMethod] = useState("");
+  const [result, setResult] = useState("");
+  const [recordState, setRecordState] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [error, setError] = useState("");
   const [voiding, setVoiding] = useState<{ record: TrainingRecord; reason: string; step: "reason" | "sign" }>();
   const [busy, setBusy] = useState(false);
 
   const fetcher = useCallback(
     (params: Record<string, string | number | boolean | undefined>) =>
-      (mine ? trainingRecordsApi.mine(params) : trainingRecordsApi.list(params)).catch((e) => {
+      (mine ? myTrainingApi.records(params) : trainingRecordsApi.list(params)).catch((e) => {
         setError(trainingError(e));
         throw e;
       }),
     [mine],
   );
-  const extraParams = useMemo(() => (mine ? {} : { includeVoided: voided === "yes" ? true : undefined }), [mine, voided]);
-  const table = useServerTable<TrainingRecord>({ fetcher, defaultSortBy: "completedOn", defaultSortDirection: "desc", extraParams, initialItemsPerPage: 10 });
+  const extraParams = useMemo(() => (mine ? {
+    method: method || undefined, result: result || undefined, recordState: recordState || undefined,
+    fromDate: pickerDateToIso(from) || undefined, toDate: pickerDateToIso(to) || undefined,
+  } : { includeVoided: voided === "yes" ? true : undefined }), [mine, voided, method, result, recordState, from, to]);
+  const table = useServerTable<TrainingRecord>({ fetcher, defaultSortBy: "completedOn", defaultSortDirection: "desc", extraParams, initialItemsPerPage: 10, syncToUrl: !mine });
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   const columns: DataTableColumn<TrainingRecord>[] = [
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     ...(mine ? [] : [{ id: "person", header: "Employee", sort: sorted("fullName"), cell: (r: TrainingRecord) => <div><div className="font-medium">{r.fullName}</div><div className="text-xs text-slate-500">{r.employeeCode ?? ""}</div></div> }]),
     { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (r) => r.trainingNumber },
-    { id: "topic", header: "Topic", cell: (r) => <div className="max-w-80 whitespace-normal">{r.topicText}</div> },
+    { id: "topic", header: "Topic", sort: mine ? sorted("topicText") : undefined, cell: (r) => <div className="max-w-80 whitespace-normal">{r.topicText}</div> },
     { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentNumber ? `${r.documentNumber}${r.documentRevision ? ` Rev ${r.documentRevision}` : ""}` : "—") },
     { id: "completed", header: "Completed", sort: sorted("completedOn"), cell: (r) => day(r.completedOn) },
-    { id: "result", header: "Result", cell: (r) => (r.result === "READ" ? "Read and understood" : "Passed") },
+    { id: "result", header: "Result", sort: mine ? sorted("result") : undefined, cell: (r) => (r.result === "READ" ? "Read and understood" : "Passed") },
     {
       id: "state",
       header: "Record",
+      sort: mine ? sorted("recordState") : undefined,
       cell: (r) => (r.voidedAt ? <Badge color="red">Voided</Badge> : <Badge color="emerald">Valid</Badge>),
     },
     { id: "void", header: "Void reason", cell: (r) => (r.voidedAt ? <div className="max-w-60 whitespace-normal">{r.voidReason}</div> : "—") },
@@ -74,7 +85,11 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
   const { layout, control } = useCustomColumnLayout(mine ? "training.records.mine" : "training.records.all", columns, action);
   const actionRow = table.items.find((row) => row.id === menu.openId);
   const filters: ReportSelectFilter[] = mine
-    ? []
+    ? [
+        { id: "method", label: "Method", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setMethod(v); table.setCurrentPage(1); } },
+        { id: "result", label: "Result", value: result, options: [{ label: "All", value: "" }, { label: "Read and understood", value: "READ" }, { label: "Passed", value: "PASSED" }], onChange: (v) => { setResult(v); table.setCurrentPage(1); } },
+        { id: "recordState", label: "Record", value: recordState, options: [{ label: "All", value: "" }, { label: "Valid", value: "VALID" }, { label: "Voided", value: "VOIDED" }], onChange: (v) => { setRecordState(v); table.setCurrentPage(1); } },
+      ]
     : [{ id: "voided", label: "Voided records", value: voided, options: [{ label: "Hide voided", value: "" }, { label: "Show voided", value: "yes" }], onChange: (v) => { setVoided(v); table.setCurrentPage(1); } }];
 
   const doVoid = async (signatureToken: string) => {
@@ -100,11 +115,12 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
         search={table.searchQuery}
         onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
         filters={filters}
-        dates={[]}
-        hasActiveFilters={Boolean(voided)}
-        onClear={() => { setVoided(""); table.setCurrentPage(1); }}
+        dates={mine ? [{ id: "completed", label: "Completed date", from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }] : []}
+        hasActiveFilters={Boolean(voided || method || result || recordState || from || to || table.searchQuery)}
+        onClear={() => { setVoided(""); setMethod(""); setResult(""); setRecordState(""); setFrom(""); setTo(""); table.setSearchQuery(""); table.setCurrentPage(1); }}
         customControl={control}
-        framed={false}
+        framed={!mine}
+        flush={mine}
       >
         <DataTable
           rows={table.items}

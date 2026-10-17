@@ -39,8 +39,19 @@ export const KIND_REASON_LABEL: Record<string, string> = {
   FAILED_ASSESSMENT: "Failed assessment",
   OTHER: "Other",
 };
-export const METHOD_LABEL: Record<string, string> = { SELF_READING: "Self-reading", CLASSROOM: "Classroom", HYBRID: "Hybrid", PRACTICAL: "Practical" };
-export const ASSESSMENT_LABEL: Record<string, string> = { TEST: "Test", CHECKLIST: "Checklist", SELF_READING_CONFIRMATION: "Self-reading confirmation" };
+export const METHOD_LABEL: Record<string, string> = { SELF_READING: "Self-reading", CLASSROOM: "Classroom training", HYBRID: "Hybrid training", PRACTICAL: "Practical training" };
+export const ASSESSMENT_LABEL: Record<string, string> = {
+  TEST: "Essay or multiple-choice test (APD.0009)",
+  CHECKLIST: "Checklist test (APD.0009)",
+  SELF_READING_CONFIRMATION: "Confirmation by Head of Department (APD.0108)",
+};
+/** SOP.0003 5.1.2: the way of assessment of each training method. Hybrid shares the cell of Classroom. */
+export const ASSESSMENT_BY_METHOD: Record<string, string[]> = {
+  SELF_READING: ["SELF_READING_CONFIRMATION"],
+  CLASSROOM: ["TEST"],
+  HYBRID: ["TEST"],
+  PRACTICAL: ["CHECKLIST"],
+};
 export const PARTICIPANT_STATE_LABEL: Record<string, string> = {
   INVITED: "Invited", ATTENDED: "Attended", ONLINE: "Attended online", ABSENT: "Absent", READ_CONFIRMED: "Read and confirmed",
 };
@@ -74,16 +85,16 @@ export type TrainingPageKey = "myTraining" | "activities" | "matrices" | "requir
  */
 export const TRAINING_PAGES: Record<TrainingPageKey, { title: string; group?: string; path: string }> = {
   myTraining: { title: "My Training", path: "/training-management/my-training" },
-  requirements: { title: "Training Requirements", group: "Planning & Delivery", path: "/training-management/requirements" },
-  activities: { title: "Training Activities", group: "Planning & Delivery", path: "/training-management/activities" },
-  matrices: { title: "Training Matrices", group: "Planning & Delivery", path: "/training-management/matrices" },
-  jobs: { title: "Job Assignments", group: "People & Competence", path: "/training-management/job-assignments" },
-  specimen: { title: "Specimen Signatures", group: "People & Competence", path: "/training-management/specimen-signatures" },
-  records: { title: "Training Records", group: "Records & Compliance", path: "/training-management/records" },
-  compliance: { title: "Training Compliance", group: "Records & Compliance", path: "/training-management/compliance" },
-  numberLog: { title: "Training Number Log", group: "Records & Compliance", path: "/training-management/number-log" },
-  exports: { title: "Record Exports", group: "Records & Compliance", path: "/training-management/record-exports" },
-  legacy: { title: "Legacy Evidence", group: "Records & Compliance", path: "/training-management/legacy-evidence" },
+  requirements: { title: "Training Requirements", group: "Training Programme", path: "/training-management/requirements" },
+  activities: { title: "Training Activities", group: "Training Programme", path: "/training-management/activities" },
+  matrices: { title: "Training Matrices", group: "Training Programme", path: "/training-management/matrices" },
+  jobs: { title: "Job Assignments", group: "Personnel Qualification", path: "/training-management/job-assignments" },
+  specimen: { title: "Specimen Signatures", group: "Personnel Qualification", path: "/training-management/specimen-signatures" },
+  records: { title: "Training Records", group: "Training Records & Compliance", path: "/training-management/records" },
+  compliance: { title: "Training Compliance", group: "Training Records & Compliance", path: "/training-management/compliance" },
+  numberLog: { title: "Training Number Register", group: "Training Records & Compliance", path: "/training-management/number-log" },
+  exports: { title: "Training Record Exports", group: "Training Records & Compliance", path: "/training-management/record-exports" },
+  legacy: { title: "Legacy Training Evidence", group: "Training Records & Compliance", path: "/training-management/legacy-evidence" },
 };
 
 /**
@@ -100,4 +111,14 @@ export function trainingBreadcrumbs(navigate: (path: string) => void, page: Trai
       ? [{ label: entry.title, onClick: () => navigate(entry.path) }, { label: detailTitle, isActive: true }]
       : [{ label: entry.title, isActive: true }]),
   ];
+}
+
+/** Hands a downloaded file to the browser. */
+export function saveBlob(blob: Blob, fileName: string) {
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(href), 1000);
 }

@@ -151,6 +151,72 @@ public class OnlyOfficeDocumentEditService {
     }
 
     /**
+     * The read-only OnlyOffice viewer config of one stored training file (a Word file). The document server fetches the bytes with a token that names the file; the
+     * viewer cannot edit, comment, download or print, and has no callback because nothing is saved back. The key follows the file's SHA-256, so a different file never
+     * shows a cached one.
+     */
+    public ObjectNode buildStoredFileViewConfig(String purpose, UUID fileId, String sha256, String fileName, UserAccount currentUser) {
+        OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
+        if (!config.enabled() || !StringUtils.hasText(config.jwtSecret())) {
+            throw new IllegalStateException("OnlyOffice Document Server is not configured");
+        }
+        SecretKey secret = Keys.hmacShaKeyFor(config.jwtSecret().getBytes(StandardCharsets.UTF_8));
+        Instant now = Instant.now();
+        String accessToken = Jwts.builder().subject(currentUser.getId().toString()).claim("purpose", purpose).claim("file", fileId.toString())
+                .issuedAt(Date.from(now)).expiration(Date.from(now.plus(Duration.ofHours(2)))).signWith(secret).compact();
+
+        ObjectNode documentNode = objectMapper.createObjectNode();
+        documentNode.put("fileType", fileExtension(fileName));
+        documentNode.put("key", (purpose + "-" + fileId + "-" + (sha256 == null ? "0" : sha256.substring(0, Math.min(12, sha256.length())))).replace("_", "-"));
+        documentNode.put("title", fileName);
+        documentNode.put("url", config.callbackBaseUrl() + "/onlyoffice/stored-file/" + purpose + "/" + fileId + "?token=" + accessToken);
+        ObjectNode permissions = objectMapper.createObjectNode();
+        permissions.put("edit", false);
+        permissions.put("review", false);
+        permissions.put("comment", false);
+        permissions.put("download", false);
+        permissions.put("print", false);
+        documentNode.set("permissions", permissions);
+
+        ObjectNode editorConfigNode = objectMapper.createObjectNode();
+        editorConfigNode.put("mode", "view");
+        ObjectNode user = objectMapper.createObjectNode();
+        user.put("id", currentUser.getId().toString());
+        user.put("name", currentUser.getFullName());
+        editorConfigNode.set("user", user);
+        ObjectNode customization = objectMapper.createObjectNode();
+        applyViewerOptions(customization, configurationService.getViewerOptions());
+        String logoUrl = requestedLogoUrl();
+        if (StringUtils.hasText(logoUrl) && systemConfigurationService.getPublicBranding().systemLogo() != null) {
+            ObjectNode logo = objectMapper.createObjectNode();
+            logo.put("image", logoUrl);
+            logo.put("imageEmbedded", logoUrl);
+            customization.set("logo", logo);
+        }
+        editorConfigNode.set("customization", customization);
+
+        ObjectNode rootConfig = objectMapper.createObjectNode();
+        rootConfig.put("documentType", "word");
+        rootConfig.set("document", documentNode);
+        rootConfig.set("editorConfig", editorConfigNode);
+        rootConfig.put("token", signConfig(rootConfig, config.jwtSecret()));
+        return rootConfig;
+    }
+
+    /** Checks the token the document server presents when it fetches a stored file for the viewer. */
+    public void verifyStoredFileToken(String purpose, UUID fileId, String token) {
+        OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
+        if (!StringUtils.hasText(token) || !StringUtils.hasText(config.jwtSecret())) {
+            throw new IllegalStateException("OnlyOffice access token missing or provider not configured");
+        }
+        SecretKey key = Keys.hmacShaKeyFor(config.jwtSecret().getBytes(StandardCharsets.UTF_8));
+        var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        if (!purpose.equals(claims.get("purpose", String.class)) || !fileId.toString().equals(claims.get("file", String.class))) {
+            throw new IllegalStateException("OnlyOffice access token does not match this file");
+        }
+    }
+
+    /**
      * Maps only the settings supported by the bundled OnlyOffice Community Edition. The per-tab/panel
      * {@code layout} controls require a White Label license, so sending them gives an administrator a
      * misleading configuration that the Document Server silently ignores.

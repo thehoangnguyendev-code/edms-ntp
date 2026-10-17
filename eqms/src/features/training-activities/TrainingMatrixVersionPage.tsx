@@ -1,3 +1,4 @@
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -5,7 +6,8 @@ import { Button } from "@/components/ui/button/Button";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
-import { FormField, Input, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { FormField } from "@/components/ui/form/ResponsiveForm";
+import { Input, Textarea } from "./TrainingFields";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { Select } from "@/components/ui/select/Select";
@@ -13,7 +15,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { documentApi } from "@/services/api/documents";
 import { trainingError, trainingMatrixApi, type TrainingMatrixRow, type TrainingMatrixVersion, type TrainingPerson, type TrainingTopic } from "@/services/api/trainingActivities";
-import { day, trainingBreadcrumbs } from "./trainingLabels";
+import { day, saveBlob, trainingBreadcrumbs } from "./trainingLabels";
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "./TrainingDetailLayout";
 
 const GROUP_LABEL: Record<string, string> = { FACTORY_GENERAL: "General (factory)", DEPARTMENT_GENERAL: "General (department)", SOP: "SOP" };
@@ -103,12 +105,12 @@ export function TrainingMatrixVersionPage() {
     {
       id: "annual",
       header: "Annual",
-      cell: (x) => <input type="checkbox" aria-label="Annual training" checked={x.row.annualRequired} disabled={!editing} onChange={(e) => { setRows(rows.map((r, k) => (k === x.index ? { ...r, annualRequired: e.target.checked } : r))); setDirty(true); }} />,
+      cell: (x) => <Checkbox checked={x.row.annualRequired} disabled={!editing} onChange={(c) => { setRows(rows.map((r, k) => (k === x.index ? { ...r, annualRequired: c } : r))); setDirty(true); }} />,
     },
     ...positions.map<DataTableColumn<Line>>((p) => ({
       id: `pos-${p.id}`,
       header: p.name,
-      cell: (x) => <input type="checkbox" aria-label={p.name} checked={x.row.positionIds.includes(p.id)} disabled={!editing} onChange={() => toggle(x.index, p.id)} />,
+      cell: (x) => <Checkbox checked={x.row.positionIds.includes(p.id)} disabled={!editing} onChange={() => toggle(x.index, p.id)} />,
     })),
     ...(editing
       ? [{ id: "remove", header: "", cell: (x: Line) => <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => { setRows(rows.filter((_r, k) => k !== x.index)); setDirty(true); }}>Remove</button> }]
@@ -122,6 +124,9 @@ export function TrainingMatrixVersionPage() {
       {caps.submit && <Button size="sm" variant="default" className="whitespace-nowrap" disabled={busy || rows.length === 0} onClick={() => (dirty ? showToast({ type: "info", title: "Save the draft first", message: "" }) : setDialog("submit"))}>Send for approval</Button>}
       {caps.approve && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Approve matrix", code: "TRAINING_MATRIX_APPROVED", name: "Training Matrix Approved", run: (t) => trainingMatrixApi.approve(version.id, version.version, t) })}>Approve</Button>}
       {caps.reject && <Button size="sm" variant="destructive" className="whitespace-nowrap" onClick={() => setDialog("reject")}>Reject</Button>}
+      {(version.status === "EFFECTIVE" || version.status === "OBSOLETE") && (
+        <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => void trainingMatrixApi.print(version.id).then((b) => saveBlob(b, `${version.matrixCode}-v${version.versionNo}.pdf`)).catch((e) => showToast({ type: "error", title: "The PDF could not be printed", message: trainingError(e) }))}>Print PDF</Button>
+      )}
       {caps.upgrade && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setDialog("upgrade")}>New version</Button>}
     </>
   );

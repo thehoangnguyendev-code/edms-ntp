@@ -26,12 +26,11 @@ import {
 
 import type { DocumentStatus } from "@/features/documents/types";
 import { documentApi } from "@/services/api/documents";
-import { auditTrailApi } from "@/services/api/auditTrail";
 import { trainingLinksApi, type TrainingLink } from "@/services/api/trainingLinks";
 import type { RevisionDetailResponse } from "@/features/documents/document-revisions/detail-revision/types";
 import { buildRevisionSignatureRecords, type SignatureTabRecord } from "@/features/documents/document-revisions/shared/signatureRecords";
 import { hasWorkingNotesEditAccess } from "@/features/documents/document-revisions/shared/workingNotesPermissions";
-import { buildRevisionDetailSnapshotState, isRevisionDetailSnapshotPreload, refreshDetailAfterSnapshot, isSnapshotGenerating, pollSnapshotInBackground } from "@/features/documents/shared/detailSnapshotHelpers";
+import { isRevisionDetailSnapshotPreload, refreshDetailAfterSnapshot, isSnapshotGenerating, pollSnapshotInBackground } from "@/features/documents/shared/detailSnapshotHelpers";
 import type { TrainingInformationValue } from "@/features/documents/document-revisions/shared/components/TrainingInformationTab";
 import { resolveTerminalProgressStep } from "@/features/documents/shared/statusMapping";
 import type { RevisionWorkspaceState } from "@/features/documents/shared/navigationContext";
@@ -111,7 +110,6 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
   const [document, setDocument] = useState<any>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(true);
   const [signatureRows, setSignatureRows] = useState<SignatureTabRecord[]>([]);
-  const [auditTrailRows, setAuditTrailRows] = useState<any[]>([]);
   const [revisionFile, setRevisionFile] = useState<File | null>(null);
   const [previewStatus, setPreviewStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
@@ -314,33 +312,6 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
   useEffect(() => {
     setActiveTab(resolveInitialTab(locationState?.workspaceState?.activeTab));
   }, [locationState?.workspaceState?.activeTab]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadAuditTrail = async () => {
-      if (!document?.id) {
-        setAuditTrailRows([]);
-        return;
-      }
-
-      try {
-        const response = await auditTrailApi.getByEntity("Revision", document.id);
-        if (!mounted) return;
-        const rows = Array.isArray(response) ? response : (response as any)?.data || [];
-        setAuditTrailRows(rows);
-      } catch {
-        if (!mounted) return;
-        setAuditTrailRows([]);
-      }
-    };
-
-    void loadAuditTrail();
-
-    return () => {
-      mounted = false;
-    };
-  }, [document?.id]);
 
   const handleBack = () => {
     setIsNavigating(true);

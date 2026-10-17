@@ -1,5 +1,4 @@
 import React from "react";
-import { Info } from "lucide-react";
 
 /**
  * Shown in place of the Training tab's fields for a controlled-document template. A template is never a
