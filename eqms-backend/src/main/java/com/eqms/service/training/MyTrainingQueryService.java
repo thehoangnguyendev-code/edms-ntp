@@ -22,7 +22,7 @@ public class MyTrainingQueryService {
     }
 
     private static final String TASKS = """
-        select p.id as participant_id, a.id as activity_id, a.training_number, a.title, a.status, a.due_date,
+        select p.id as participant_id, a.id as activity_id, a.training_number, a.training_title, a.status, a.due_date,
                s.method, s.scheduled_on, p.state,
                (select string_agg(t.topic_text, '; ' order by t.topic_text) from training_session_topics t where t.session_id = s.id) as topics
           from training_participants p join training_activities a on a.id = p.activity_id join training_sessions s on s.id = p.session_id
@@ -39,17 +39,18 @@ public class MyTrainingQueryService {
     private static final String APPROVALS = """
         select a.id::text, a.step_code, a.object_type, a.object_id,
                case a.object_type when 'TRAINING_ACTIVITY' then t.training_number when 'TRAINING_JOB_ASSIGNMENT' then 'JA #' || ja.issue_no
-                 when 'TRAINING_SPECIMEN_SIGNATURE' then 'Specimen #' || sp.version_no when 'TRAINING_RECORD_EXPORT' then 'Export'
+                 when 'TRAINING_SPECIMEN_SIGNATURE' then 'Specimen #' || sp.version_no when 'TRAINING_RECORD_EXPORT' then 'Export' when 'TRAINING_RECORD_EXPORT_BATCH' then 'Batch export'
                  when 'TRAINING_REQUIREMENT' then rq.request_no when 'TRAINING_LEGACY_EVIDENCE' then 'Legacy evidence'
                  when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception' else m.code || ' v' || mv.version_no end as training_number,
-               case a.object_type when 'TRAINING_ACTIVITY' then t.title when 'TRAINING_JOB_ASSIGNMENT' then 'Job assignment of ' || jau.full_name
+               case a.object_type when 'TRAINING_ACTIVITY' then t.training_title when 'TRAINING_JOB_ASSIGNMENT' then 'Job assignment of ' || jau.full_name
                  when 'TRAINING_SPECIMEN_SIGNATURE' then 'Specimen signature of ' || spu.full_name
                  when 'TRAINING_RECORD_EXPORT' then 'Training record export of ' || exu.full_name
+                 when 'TRAINING_RECORD_EXPORT_BATCH' then 'Batch export of training records, ' || bxd.name || ' ' || bx.year
                  when 'TRAINING_REQUIREMENT' then 'Training requirement ' || rq.request_no
                  when 'TRAINING_LEGACY_EVIDENCE' then 'Legacy training evidence of ' || lev.document_number
-                 when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception for ' || tea.training_number else 'Training matrix' end as title,
+                 when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception for ' || tea.training_number else 'Training matrix' end as training_title,
                case a.object_type when 'TRAINING_ACTIVITY' then t.status when 'TRAINING_JOB_ASSIGNMENT' then ja.status
-                 when 'TRAINING_SPECIMEN_SIGNATURE' then sp.status when 'TRAINING_RECORD_EXPORT' then ex.status
+                 when 'TRAINING_SPECIMEN_SIGNATURE' then sp.status when 'TRAINING_RECORD_EXPORT' then ex.status when 'TRAINING_RECORD_EXPORT_BATCH' then bx.status
                  when 'TRAINING_REQUIREMENT' then rq.status when 'TRAINING_LEGACY_EVIDENCE' then lev.status
                  when 'TRAINING_TRAINER_EXCEPTION' then te.status else mv.status end as status,
                a.assigned_at, coalesce(t.id, te.activity_id) as activity_id
@@ -63,6 +64,8 @@ public class MyTrainingQueryService {
           left join app_users spu on spu.id = sp.person_user_id
           left join training_record_exports ex on a.object_type = 'TRAINING_RECORD_EXPORT' and ex.id = a.object_id
           left join app_users exu on exu.id = ex.person_user_id
+          left join training_record_export_batches bx on a.object_type = 'TRAINING_RECORD_EXPORT_BATCH' and bx.id = a.object_id
+          left join departments bxd on bxd.id = bx.department_id
           left join training_requirements rq on a.object_type = 'TRAINING_REQUIREMENT' and rq.id = a.object_id
           left join training_legacy_evidence lev on a.object_type = 'TRAINING_LEGACY_EVIDENCE' and lev.id = a.object_id
           left join training_trainer_exceptions te on a.object_type = 'TRAINING_TRAINER_EXCEPTION' and te.id = a.object_id
@@ -87,7 +90,7 @@ public class MyTrainingQueryService {
         String search = params.get("search");
         if (search != null && !search.isBlank()) {
             String[] columns = records ? new String[]{"training_number", "topic_text", "document_number"}
-                    : tasks ? new String[]{"training_number", "title", "topics"} : new String[]{"training_number", "title"};
+                    : tasks ? new String[]{"training_number", "training_title", "topics"} : new String[]{"training_number", "training_title"};
             where.append(" and (");
             for (int i = 0; i < columns.length; i++) {
                 if (i > 0) where.append(" or ");
@@ -111,8 +114,8 @@ public class MyTrainingQueryService {
         if (from != null) { where.append(" and ").append(dateColumn).append(" >= ?"); args.add(java.sql.Date.valueOf(from)); }
         if (to != null) { where.append(" and ").append(dateColumn).append(" <= ?"); args.add(java.sql.Date.valueOf(to)); }
         Map<String, String> sorts = records ? Map.of("trainingNumber", "training_number", "topicText", "topic_text", "documentNumber", "document_number", "completedOn", "completed_on", "result", "result", "recordState", "record_state")
-                : tasks ? Map.of("trainingNumber", "training_number", "title", "title", "topics", "topics", "method", "method", "scheduledOn", "scheduled_on", "dueDate", "due_date", "status", "status")
-                : Map.of("trainingNumber", "training_number", "title", "title", "stepCode", "step_code", "status", "status", "assignedAt", "assigned_at");
+                : tasks ? Map.of("trainingNumber", "training_number", "trainingTitle", "training_title", "topics", "topics", "method", "method", "scheduledOn", "scheduled_on", "dueDate", "due_date", "status", "status")
+                : Map.of("trainingNumber", "training_number", "trainingTitle", "training_title", "stepCode", "step_code", "status", "status", "assignedAt", "assigned_at");
         String sort = sorts.get(params.getOrDefault("sortBy", records ? "completedOn" : tasks ? "dueDate" : "assignedAt"));
         if (sort == null) throw new IllegalArgumentException("TRAINING_SORT_NOT_ALLOWED");
         String direction = params.getOrDefault("sortDirection", "asc");

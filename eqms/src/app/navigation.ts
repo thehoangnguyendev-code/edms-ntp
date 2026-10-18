@@ -286,6 +286,7 @@ const FOUNDATION_MODULES: NavItem[] = [
         allowedPermissions: ["training.job_assignment.view", "training.signature.view", "training.signature.manage", "training.signature.confirm", "training.self.view"],
         children: [
           { id: "training-job-assignments", label: "Job Assignments", path: ROUTES.TRAINING.JOB_ASSIGNMENTS, allowedPermissions: ["training.job_assignment.view"] },
+          { id: "training-personnel-reviews", label: "Training Reviews", path: ROUTES.TRAINING.PERSONNEL_REVIEWS, allowedPermissions: ["training.job_assignment.view"] },
           {
             id: "training-specimen-signatures",
             label: "Specimen Signatures",

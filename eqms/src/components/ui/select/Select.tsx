@@ -39,6 +39,8 @@ export interface SelectProps {
   debounceMs?: number;
   /** Minimum characters before triggering search */
   minSearchLength?: number;
+  /** Accessible name of the control when it has no visible `label`. */
+  'aria-label'?: string;
 }
 
 export const Select: React.FC<SelectProps> = ({
@@ -60,6 +62,7 @@ export const Select: React.FC<SelectProps> = ({
   onSearch,
   debounceMs = 300,
   minSearchLength = 0,
+  'aria-label': ariaLabel,
 }) => {
   const selectId = useId();
   const [isOpen, setIsOpen] = useState(false);
@@ -348,6 +351,7 @@ export const Select: React.FC<SelectProps> = ({
         id={`${selectId}-trigger`}
         type="button"
         role="combobox"
+        aria-label={label ? undefined : ariaLabel}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-controls={`${selectId}-listbox`}

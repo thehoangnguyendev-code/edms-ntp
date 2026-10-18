@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button/Button';
 import { Badge, type BadgeColor } from '@/components/ui/badge';
 import { DocumentFilters } from "@/features/documents/shared/components";
 import { cn } from '@/components/ui/utils';
-import { IconInfoCircle, IconChecks, IconCheck, IconChalkboardTeacher, IconPencilMinus, IconArrowBarToRight, IconBrandTelegram, IconShare2, IconChecklist } from "@tabler/icons-react";
+import { IconInfoCircle, IconChecks, IconCheck, IconChalkboardTeacher, IconPencilMinus, IconArrowBarToRight, IconBrandTelegram, IconShare2, IconChecklist, IconArrowBadgeRight, IconArrowUpRight } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { revisionList } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { SectionLoading, FullPageLoading } from "@/components/ui/loading/Loading";
@@ -765,7 +765,7 @@ export const RevisionListView: React.FC = () => {
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
                 >
-                  <IconShare2 className="h-4 w-4 text-slate-500" />
+                  <IconArrowUpRight className="h-4 w-4 text-slate-500" />
                   <span>Publish Revision</span>
                 </button>
               )}

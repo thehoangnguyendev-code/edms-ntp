@@ -21,7 +21,7 @@ export { BackupAlertsView } from './backup-restore-administration/BackupAlertsVi
 export { AnnouncementsView } from './announcements/AnnouncementsView';
 export { AnnouncementEditorView } from './announcements/AnnouncementEditorView';
 export { DisasterRecoveryPlanView } from './backup-restore-administration/DisasterRecoveryPlanView';
-export { TrainingPropertiesView } from './training-administration/TrainingPropertiesView';
+export { TrainingPropertiesView } from './training-administration/properties/TrainingPropertiesView';
 export { DictionariesView } from './dictionaries/DictionariesView';
 export { EducationDegreeLevelsView } from './education/EducationDegreeLevelsView';
 export { EducationSchoolsView } from './education/EducationSchoolsView';

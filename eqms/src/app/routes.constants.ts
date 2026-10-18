@@ -132,6 +132,7 @@ export const ROUTES = {
     RECORD_EXPORTS: '/training-management/record-exports',
     SPECIMEN_SIGNATURES: '/training-management/specimen-signatures',
     JOB_ASSIGNMENTS: '/training-management/job-assignments',
+    PERSONNEL_REVIEWS: '/training-management/personnel-reviews',
     MY_TRAINING: '/training-management/my-training',
   },
 

@@ -33,11 +33,54 @@ public class TrainingPrintService {
     private final TrainingMatrixService matrices;
     private final TrainingRequirementService requirements;
     private final AuditTrailService audit;
+    private final TrainingMatrixCompletionService completion;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-    public TrainingPrintService(TrainingMatrixService matrices, TrainingRequirementService requirements, AuditTrailService audit) {
+    public TrainingPrintService(TrainingMatrixService matrices, TrainingRequirementService requirements, AuditTrailService audit, TrainingMatrixCompletionService completion, org.springframework.jdbc.core.JdbcTemplate jdbc) {
+        this.completion = completion;
+        this.jdbc = jdbc;
         this.matrices = matrices;
         this.requirements = requirements;
         this.audit = audit;
+    }
+
+    private static final Map<String, String> STATE = Map.of("NOT_REQUIRED", "Not required", "REQUIRED", "Required", "IN_PROGRESS", "In progress", "QUALIFIED", "Qualified", "UPDATE_NEEDED", "Update needed", "DUE", "Annual training due");
+
+    /**
+     * The completion of one position as a list: each person, how many requirements are met, and what is still open. It is a working print, not an approved record, so it carries
+     * the date and the person who printed it; the state of every cell is the one the screen shows, calculated by the server at the moment of printing.
+     */
+    @SuppressWarnings("unchecked")
+    @Transactional(readOnly = true)
+    public Map<String, Object> completion(UserAccount actor, UUID departmentId, UUID positionId, String search, String status, boolean gapsOnly) {
+        List<String[]> body = new ArrayList<>();
+        Map<String, Object> first = null;
+        int n = 0;
+        for (int page = 1; ; page++) {
+            Map<String, Object> r = completion.completion(actor, departmentId, positionId, search, status, gapsOnly, page, 100, 1, 200);
+            if (first == null) first = r;
+            if (!Boolean.TRUE.equals(r.get("hasEffectiveMatrix"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PRINT_NOT_APPROVED");
+            List<Map<String, Object>> columns = (List<Map<String, Object>>) r.get("columns");
+            for (Map<String, Object> person : (List<Map<String, Object>>) r.get("data")) {
+                Map<String, Map<String, Object>> cells = (Map<String, Map<String, Object>>) person.get("cells");
+                List<String> open = new ArrayList<>();
+                for (Map<String, Object> c : columns) {
+                    String state = String.valueOf(cells.get(String.valueOf(c.get("rowId"))).get("status"));
+                    if (!"QUALIFIED".equals(state) && !"NOT_REQUIRED".equals(state)) open.add((c.get("code") == null ? "" : c.get("code") + " ") + c.get("title") + " [" + STATE.get(state) + "]");
+                }
+                body.add(new String[]{String.valueOf(++n), person.get("fullName") + (person.get("employeeCode") == null ? "" : " (" + person.get("employeeCode") + ")"), String.join("; ", open),
+                        person.get("done") + " / " + person.get("required")});
+            }
+            Map<String, Object> pg = (Map<String, Object>) r.get("pagination");
+            if (page >= ((Number) pg.get("totalPages")).intValue()) break;
+        }
+        String position = jdbc.queryForObject("select name from positions where id = ?", String.class, positionId);
+        String department = jdbc.queryForList("select d.name from departments d where d.id = coalesce(?, d.id) limit 1", String.class, departmentId).stream().findFirst().orElse("");
+        List<String> head = List.of("Position: " + position + (departmentId == null ? "" : "    Department: " + department) + "    Matrix version " + first.get("matrixVersionNo"),
+                "Printed " + LocalDateTime.now().withNano(0) + " by " + actor.getFullName() + (gapsOnly ? "    Only people with a gap" : "") + (status == null || status.isBlank() ? "" : "    State: " + STATE.get(status)));
+        UUID id = positionId;
+        audit.logAs(actor, "TRAINING_COMPLETION", String.valueOf(position), id, "TRAINING_COMPLETION_PRINTED", null, null, body.size() + " person(s)");
+        return file("Training matrix completion", head, List.of("No.", "Employee", "Open requirements", "Completed"), body, List.of(), 3, "training-matrix-completion-" + position.replaceAll("[^A-Za-z0-9]+", "-"), id);
     }
 
     @SuppressWarnings("unchecked")
@@ -76,15 +119,17 @@ public class TrainingPrintService {
     public Map<String, Object> requirement(UserAccount actor, UUID id) {
         Map<String, Object> r = requirements.get(actor, id);
         if (!"APPROVED".equals(r.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PRINT_NOT_APPROVED");
-        List<String> heads = List.of("No.", "Planned month", "Topic or SOP", "Training Number", "Status", "QA");
+        List<String> heads = List.of("No.", "Month", "Training topic", "Training code", "Execution date", "Sign by QA", "Comment from QA");
         List<String[]> body = new ArrayList<>();
         for (Map<String, Object> l : (List<Map<String, Object>>) r.get("lines")) {
             body.add(new String[]{String.valueOf(l.get("lineNo")), String.valueOf(l.get("plannedMonth")).substring(0, 7),
                     (l.get("code") == null ? "" : l.get("code") + " - ") + l.get("title"), l.get("trainingNumber") == null ? "" : String.valueOf(l.get("trainingNumber")),
-                    String.valueOf(l.get("lineStatus")).toLowerCase().replace('_', ' '), l.get("qaSignedByName") == null ? "" : String.valueOf(l.get("qaSignedByName"))});
+                    l.get("executedOn") == null ? "" : String.valueOf(l.get("executedOn")),
+                    l.get("qaSignedByName") == null ? "" : l.get("qaSignedByName") + (l.get("qaSignedAt") == null ? "" : ", " + String.valueOf(l.get("qaSignedAt")).substring(0, 10)),
+                    l.get("qaComment") == null ? "" : String.valueOf(l.get("qaComment"))});
         }
-        List<String> head = List.of("Training Requirement " + r.get("requestNo") + " (" + r.get("year") + ")", "Department: " + r.get("departmentName") + "    Due by: " + nvl(r.get("dueBy")));
-        List<String> signers = List.of("Prepared by: " + nvl(r.get("preparedByName")), "Reviewed by: " + nvl(r.get("reviewedByName")), "Approved by: " + nvl(r.get("approvedByName")));
+        List<String> head = List.of("Training Requirement " + r.get("requestNo") + "    Year: " + r.get("year"), "Type: " + ("SOP_PERIODIC".equals(r.get("kind")) ? "Periodic training SOP" : "Annual training") + "    Department: " + r.get("departmentName") + "    Due by: " + nvl(r.get("dueBy")));
+        List<String> signers = List.of("Prepared by (Training coordinator): " + nvl(r.get("preparedByName")), "Reviewed by (QA manager): " + nvl(r.get("reviewedByName")), "Approved by (QM): " + nvl(r.get("approvedByName")));
         audit.logAs(actor, "TRAINING_REQUIREMENT", String.valueOf(r.get("requestNo")), id, "TRAINING_REQUIREMENT_PRINTED", null, null, "PDF printed");
         return file("Training Requirement (APD.0118)", head, heads, body, signers, 3, String.valueOf(r.get("requestNo")).replace('/', '-'), id);
     }

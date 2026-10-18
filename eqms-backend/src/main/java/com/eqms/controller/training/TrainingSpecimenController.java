@@ -37,14 +37,14 @@ public class TrainingSpecimenController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> upload(@RequestPart("file") MultipartFile file, @RequestParam(required = false) UUID personId, @RequestParam UUID confirmerId,
+    public ResponseEntity<?> upload(@RequestPart("file") MultipartFile file, @RequestPart(value = "file2", required = false) MultipartFile file2, @RequestParam(required = false) UUID personId, @RequestParam UUID confirmerId,
                                     @RequestParam(required = false) String reason) {
-        return ResponseEntity.ok(specimens.upload(users.requireCurrentUser(), personId, file, confirmerId, reason));
+        return ResponseEntity.ok(specimens.upload(users.requireCurrentUser(), personId, file, file2, confirmerId, reason));
     }
 
     @GetMapping("/{id}/image")
-    public ResponseEntity<byte[]> image(@PathVariable UUID id) {
-        Map<String, Object> image = specimens.image(users.requireCurrentUser(), id);
+    public ResponseEntity<byte[]> image(@PathVariable UUID id, @RequestParam(defaultValue = "1") int which) {
+        Map<String, Object> image = specimens.image(users.requireCurrentUser(), id, which);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) image.get("contentType"))).cacheControl(CacheControl.noStore()).body((byte[]) image.get("bytes"));
     }
 

@@ -151,6 +151,7 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
                     int days = activity.get("training_period_days") == null ? settings.documentTrainingDaysDefault() : ((Number) activity.get("training_period_days")).intValue();
                     LocalDate approvedOn = LocalDate.now(TrainingNumberService.ZONE);
                     store.open(activity, approvedOn, approvedOn.plusDays(days), actor);
+                    recordSignatories(revision, (UUID) activity.get("id"), approvedOn);
                 }
             }
             case "DRAFT" -> {
@@ -168,6 +169,23 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
             }
             default -> { /* nothing to do */ }
         }
+    }
+
+    /**
+     * The people who signed the revision (prepared, reviewed, approved) are taken to have had the initial training on it (SOP.0003 5.1, D-45). One statement writes a record for each of
+     * them; a person who already has one for this activity is skipped, so approving the same revision again changes nothing.
+     */
+    private void recordSignatories(DocumentRevisionRecord revision, UUID activityId, LocalDate approvedOn) {
+        jdbc.update("""
+            insert into training_records(id, person_user_id, activity_id, training_number, topic_text, document_number, document_revision, completed_on, method, result, source,
+                                         employee_code, full_name, department, position, content_sha256)
+            select gen_random_uuid(), u.id, a.id, a.training_number, a.training_title, a.document_number, a.revision_number, ?, 'SIGNATORY', 'READ', 'SIGNATORY_INITIAL',
+                   u.employee_code, u.full_name, u.department, u.position,
+                   encode(sha256(convert_to(a.training_number || '|' || u.id || '|' || coalesce(a.document_number, '') || '|' || coalesce(a.revision_number, '') || '|' || ? || '|SIGNATORY_INITIAL', 'UTF8')), 'hex')
+              from (select distinct user_id from electronic_signatures where revision_id = ? and status = 'SIGNED' and meaning in ('PREPARED','SUBMITTED_FOR_REVIEW','REVIEWED','APPROVED')) s
+              join app_users u on u.id = s.user_id join training_activities a on a.id = ?
+            on conflict do nothing
+            """, java.sql.Date.valueOf(approvedOn), approvedOn.toString(), revision.getId(), activityId);
     }
 
     @Override
@@ -208,7 +226,7 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
                 : jdbc.queryForObject("select count(*) from document_revisions where document_id=? and id<>?", Integer.class, document.getId(), revision.getId()) == 0;
         String title = (document.getDocumentNumber() == null ? "" : document.getDocumentNumber() + " ") + (document.getDocumentName() == null ? "" : document.getDocumentName());
         jdbc.update("""
-            insert into training_activities(id, training_number, base_number, organizer_department_id, year, serial, kind, kind_reason, title, status,
+            insert into training_activities(id, training_number, base_number, organizer_department_id, year, serial, kind, kind_reason, training_title, status,
                                             document_id, revision_id, revision_number, document_number, document_name, training_period_days, created_by)
             values (?,?,?,?,?,?, 'UNPLANNED', ?, ?, 'RESERVED', ?,?,?,?,?,?,?)
             """,

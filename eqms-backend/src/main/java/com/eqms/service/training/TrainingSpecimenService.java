@@ -67,7 +67,7 @@ public class TrainingSpecimenService {
 
     private static final String SELECT = """
         select s.id, s.person_user_id, u.full_name, u.employee_code, u.department, s.version_no, s.status, s.effective_date, s.content_type, s.size_bytes, s.sha256,
-               s.change_reason, s.reject_reason, s.created_at, uu.full_name as uploaded_by_name, cu.full_name as confirmed_by_name
+               s.change_reason, s.reject_reason, s.created_at, (s.sha256_2 is not null) as has_second, uu.full_name as uploaded_by_name, cu.full_name as confirmed_by_name
           from training_specimen_signatures s join app_users u on u.id = s.person_user_id join app_users uu on uu.id = s.uploaded_by left join app_users cu on cu.id = s.confirmed_by
         """;
 
@@ -123,7 +123,7 @@ public class TrainingSpecimenService {
 
     /** The image: bytes and type. The person, or someone who may see specimen signatures of the department. Opening it is recorded in the Audit Trail. */
     @Transactional
-    public Map<String, Object> image(UserAccount actor, UUID id) {
+    public Map<String, Object> image(UserAccount actor, UUID id, int which) {
         Map<String, Object> s = row(id);
         UUID person = (UUID) s.get("person_user_id");
         if (!actor.getId().equals(person)) {
@@ -131,10 +131,13 @@ public class TrainingSpecimenService {
             UUID department = access.departmentOf(users.findById(person).orElseThrow());
             if (!(access.allDepartments(actor) || (department != null && access.inScope(actor, department)))) throw new SecurityException(TrainingAccess.DENIED);
         }
+        if (which != 1 && which != 2) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        String suffix = which == 2 ? "_2" : "";
+        if (which == 2 && s.get("stored_path_2") == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
         try {
-            byte[] bytes = files.readReportArtifact(String.valueOf(s.get("provider")), String.valueOf(s.get("stored_path")));
-            audit.logAs(actor, TYPE, "Specimen signature #" + s.get("version_no"), id, "TRAINING_SPECIMEN_VIEWED", null, null, "Image opened");
-            return Map.of("bytes", bytes, "contentType", String.valueOf(s.get("content_type")));
+            byte[] bytes = files.readReportArtifact(String.valueOf(s.get("provider" + suffix)), String.valueOf(s.get("stored_path" + suffix)));
+            audit.logAs(actor, TYPE, "Specimen signature #" + s.get("version_no"), id, "TRAINING_SPECIMEN_VIEWED", null, null, "Image " + which + " opened");
+            return Map.of("bytes", bytes, "contentType", String.valueOf(s.get("content_type" + suffix)));
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
         }
@@ -144,7 +147,7 @@ public class TrainingSpecimenService {
 
     /** A new specimen image for a person, waiting for the confirmation of the person chosen. */
     @Transactional
-    public Map<String, Object> upload(UserAccount actor, UUID personId, MultipartFile file, UUID confirmerId, String reason) {
+    public Map<String, Object> upload(UserAccount actor, UUID personId, MultipartFile file, MultipartFile file2, UUID confirmerId, String reason) {
         UUID person = personId == null ? actor.getId() : personId;
         boolean self = actor.getId().equals(person);
         if (self) access.require(actor, "training.self.view", "training.signature.manage");
@@ -155,6 +158,37 @@ public class TrainingSpecimenService {
         }
         UserAccount owner = users.findById(person).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE"));
         if (owner.getStatus() != UserStatus.Active) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
+        // FRM.0007: the 1st and the 2nd specimen signature; both are required and both are checked the same way.
+        if (file2 == null || file2.isEmpty()) throw new IllegalArgumentException("TRAINING_SPECIMEN_SECOND_REQUIRED");
+        Checked first = check(file), second = check(file2);
+        Integer pending = jdbc.queryForObject("select count(*) from training_specimen_signatures where person_user_id=? and status='PENDING'", Integer.class, person);
+        if (pending != null && pending > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SPECIMEN_PENDING_EXISTS");
+        Integer approved = jdbc.queryForObject("select count(*) from training_specimen_signatures where person_user_id=? and status='APPROVED'", Integer.class, person);
+        if (approved != null && approved > 0 && (reason == null || reason.isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        int versionNo = ((Number) jdbc.queryForObject("select coalesce(max(version_no),0)+1 from training_specimen_signatures where person_user_id=?", Number.class, person)).intValue();
+        UUID id = UUID.randomUUID();
+        FileStorageService.StorageWriteResult stored, stored2;
+        try {
+            stored = files.storeReportArtifact("training/specimen-signatures/" + person + "/" + id + ("image/png".equals(first.type()) ? ".png" : ".jpg"), new ByteArrayInputStream(first.bytes()), first.type());
+            stored2 = files.storeReportArtifact("training/specimen-signatures/" + person + "/" + id + "-2" + ("image/png".equals(second.type()) ? ".png" : ".jpg"), new ByteArrayInputStream(second.bytes()), second.type());
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "TRAINING_FILE_UNAVAILABLE");
+        }
+        jdbc.update("""
+            insert into training_specimen_signatures(id, person_user_id, version_no, provider, stored_path, object_key, content_type, size_bytes, sha256, uploaded_by, change_reason,
+                                                     provider_2, stored_path_2, object_key_2, content_type_2, size_bytes_2, sha256_2)
+            values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, id, person, versionNo, stored.provider(), stored.storedPath(), stored.objectKey(), first.type(), first.bytes().length, sha256(first.bytes()), actor.getId(), reason == null || reason.isBlank() ? null : reason.trim(),
+                stored2.provider(), stored2.storedPath(), stored2.objectKey(), second.type(), second.bytes().length, sha256(second.bytes()));
+        approvals.designate(actor, subjectFor(person, id), "SPECIMEN_CONFIRM", confirmerId, TrainingApprovalService.apart(person, actor.getId()));
+        audit.logAs(actor, TYPE, "Specimen signature of " + owner.getFullName() + " #" + versionNo, id, "TRAINING_SPECIMEN_UPLOADED", null, "PENDING", reason == null ? "Uploaded" : reason.trim());
+        return TrainingRows.camel(jdbc.queryForList(SELECT + " where s.id=?", id).getFirst());
+    }
+
+    private record Checked(byte[] bytes, String type) {}
+
+    /** One image of a specimen signature: size, real type, dimensions and a virus scan. */
+    private Checked check(MultipartFile file) {
         if (file == null || file.isEmpty() || file.getSize() > MAX_BYTES) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         byte[] bytes;
         try { bytes = file.getBytes(); } catch (IOException e) { throw new IllegalArgumentException("TRAINING_FILE_REJECTED"); }
@@ -168,25 +202,7 @@ public class TrainingSpecimenService {
         }
         ClamAvScanService.ScanResult scan = virusScan.scan(bytes);
         if (!scan.clean()) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
-        Integer pending = jdbc.queryForObject("select count(*) from training_specimen_signatures where person_user_id=? and status='PENDING'", Integer.class, person);
-        if (pending != null && pending > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SPECIMEN_PENDING_EXISTS");
-        Integer approved = jdbc.queryForObject("select count(*) from training_specimen_signatures where person_user_id=? and status='APPROVED'", Integer.class, person);
-        if (approved != null && approved > 0 && (reason == null || reason.isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
-        int versionNo = ((Number) jdbc.queryForObject("select coalesce(max(version_no),0)+1 from training_specimen_signatures where person_user_id=?", Number.class, person)).intValue();
-        UUID id = UUID.randomUUID();
-        FileStorageService.StorageWriteResult stored;
-        try {
-            stored = files.storeReportArtifact("training/specimen-signatures/" + person + "/" + id + ("image/png".equals(type) ? ".png" : ".jpg"), new ByteArrayInputStream(bytes), type);
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "TRAINING_FILE_UNAVAILABLE");
-        }
-        jdbc.update("""
-            insert into training_specimen_signatures(id, person_user_id, version_no, provider, stored_path, object_key, content_type, size_bytes, sha256, uploaded_by, change_reason)
-            values (?,?,?,?,?,?,?,?,?,?,?)
-            """, id, person, versionNo, stored.provider(), stored.storedPath(), stored.objectKey(), type, bytes.length, sha256(bytes), actor.getId(), reason == null || reason.isBlank() ? null : reason.trim());
-        approvals.designate(actor, subjectFor(person, id), "SPECIMEN_CONFIRM", confirmerId, TrainingApprovalService.apart(person, actor.getId()));
-        audit.logAs(actor, TYPE, "Specimen signature of " + owner.getFullName() + " #" + versionNo, id, "TRAINING_SPECIMEN_UPLOADED", null, "PENDING", reason == null ? "Uploaded" : reason.trim());
-        return TrainingRows.camel(jdbc.queryForList(SELECT + " where s.id=?", id).getFirst());
+        return new Checked(bytes, type);
     }
 
     @Transactional

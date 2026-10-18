@@ -238,7 +238,7 @@ public class TrainingFileService {
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!conductor(actor, activity)) throw new SecurityException(TrainingAccess.DENIED);
         if (!Set.of("NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
-        if (kind == null || !Set.of("ATTENDANCE_SHEET", "ASSESSMENT", "OTHER").contains(kind)) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        if (kind == null || !Set.of("ATTENDANCE_SHEET", "ASSESSMENT", "CERTIFICATE", "OTHER").contains(kind)) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         if (participantId != null) {
             Integer belongs = jdbc.queryForObject("select count(*) from training_participants where id=? and activity_id=?", Integer.class, participantId, activityId);
             if (belongs == null || belongs == 0) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");

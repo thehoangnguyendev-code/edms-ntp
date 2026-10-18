@@ -34,6 +34,7 @@ SDS-TR-001 · Thiết kế chi tiết module Training Management và phối hợ
 - 15 Kế hoạch triển khai theo gói công việc
 - 16 Quyết định và giả định
 - 17 Truy vết quy tắc đến thiết kế và kiểm thử
+- 18 Cập nhật 2026-10-17: vận hành giấy và điện tử, đào tạo bên ngoài
 
 ---
 
@@ -958,8 +959,169 @@ Ghi ở PLAN-TR-001 mục 14, thêm: (a) hồ sơ lịch sử giấy chưa số 
 
 ---
 
+## 18 Cập nhật 2026-10-17: vận hành giấy và điện tử, đào tạo bên ngoài (thiết kế chi tiết)
+
+**Trạng thái:** **ĐỀ XUẤT** (chủ dự án đã chốt nguyên tắc ở PLAN-TR-001 mục 17.1). Mục này thiết kế FE, BE, API, DB cho các hạng mục TR-32 đến TR-47 và D-38 đến D-51 của PLAN-TR-001 mục 17. Quy ước chung của mục 1, 2.3, 8, 9, 13 vẫn áp dụng; nếu mâu thuẫn thì mục 18 thắng cho phần nó nêu.
+
+### 18.1 Nguyên tắc thiết kế
+
+1. **Một nguồn sự thật cho mỗi dữ kiện.** Điểm danh và kết quả chỉ được ghi bằng hàm miền nghiệp vụ đã có (ghi điểm danh, ghi kết quả). Nhập hộ từ giấy **không** ghi tắt vào bảng người tham gia: nó giữ bản nhập làm bằng chứng và, khi được xác minh, gọi đúng các hàm đó trong **một giao dịch**.
+2. **SOP là mặc định, ghi lại khi lệch** (PLAN 17.1.2). Mọi lựa chọn khác mặc định có `*_reason` hoặc sự kiện Audit Trail, không bị chặn.
+3. **Giấy là đường hợp lệ, đủ ALCOA+.** Bản giấy gốc được giữ và có nơi lưu; bản scan có mã băm; người nhập và người xác minh khác nhau.
+4. **Giới hạn và bất biến ở máy chủ.** Mọi lệnh hàng loạt có trần; mọi bảng bằng chứng bất biến sau khi chốt.
+
+### 18.2 Cơ sở dữ liệu (Flyway, chỉ thêm, idempotent; số phiên bản gán khi làm, sau V614)
+
+| Đối tượng | Thay đổi | Ghi chú |
+|---|---|---|
+| `training_sessions` | thêm `delivery_mode VARCHAR(10) NOT NULL DEFAULT 'ELECTRONIC'` CHECK `ELECTRONIC`, `PAPER`, `MIXED`; `assessment_method` thêm giá trị `OBSERVATION`; cho phép `NULL` cho `method` và `assessment_method` khi hoạt động là `EXTERNAL` | Bảng đã có `location_type` (V613) |
+| `training_activities` | thêm `training_unit_name VARCHAR(255)`, `vendor_ref VARCHAR(120)` | Bắt buộc `training_unit_name` khi `kind = 'EXTERNAL'` (kiểm ở máy chủ khi Notify) |
+| `training_participants` | `sign_mode` thêm `TRAINER_ATTESTED` | Điểm danh nhanh do giảng viên xác nhận |
+| `training_paper_evidence` | `kind` thêm `CERTIFICATE` | Chứng chỉ của đào tạo bên ngoài |
+| `training_records` | `result` thêm `ATTENDED`; `source` thêm `SIGNATORY_INITIAL` | D-43, D-45 |
+| `training_paper_packs` (mới) | `id`, `activity_id`, `session_id` (null = cả hoạt động), `pack_code` (duy nhất), `kind` (`ATTENDANCE_LIST`, `SELF_READING_LIST`, `ASSESSMENT_FORMS`, `FULL`), `copy_no`, `page_count`, `sha256`, `provider`, `stored_path`, `printed_by`, `printed_at`, `reason` | **Bất biến** (trigger); `reason` bắt buộc khi `copy_no > 1`; chỉ mục `(activity_id, printed_at)` |
+| `training_transcriptions` (mới) | `id`, `activity_id`, `session_id`, `evidence_id` (bắt buộc, trỏ `training_paper_evidence`), `kind` (`ATTENDANCE`, `RESULT`, `SELF_READING`), `status` (`ENTERED`, `VERIFIED`, `RETURNED`, `SUPERSEDED`), `performed_on`, `late_reason`, `entered_by`, `entered_at`, `verified_by`, `verified_at`, `verify_signature_id`, `return_reason`, `supersedes_id`, `idempotency_key` | Duy nhất `(entered_by, idempotency_key)`; chỉ mục `(session_id, status)`; sau `VERIFIED` hoặc `SUPERSEDED` không sửa (trigger) |
+| `training_transcription_lines` (mới) | `transcription_id`, `participant_id`, `attendance` (`ATTENDED`, `ONLINE`, `ABSENT`), `score_obtained`, `score_max`, `remarks` | Duy nhất `(transcription_id, participant_id)`; bất biến cùng bản nhập |
+| `training_prep_tasks` (mới) | `id`, `activity_id`, `session_id`, `kind` (`VENUE_EQUIPMENT`, `PRACTICAL_EQUIPMENT`, `INFORM_PARTICIPANTS`), `department_id`, `status` (`OPEN`, `DONE`, `NOT_NEEDED`), `due_on`, `done_by`, `done_at`, `remark` | Duy nhất `(session_id, kind, department_id)` |
+| `training_copy_distributions` (mới) | `id`, `object_type`, `object_id`, `department_id`, `sent_by`, `sent_at`, `received_by`, `received_at`, `remark` | Chỉ thêm; việc nhận là một cập nhật có ghi người và giờ (trigger cho phép đúng một lần) |
+| `training_export_batches` (mới) | `id`, `department_id`, `year`, `person_count`, `status` (`PREPARED`, `APPROVED`, `GENERATING`, `READY`, `FAILED`), `prepared_by`, `approved_by`, `sha256`, `provider`, `stored_path`, `created_at` | Dựa trên mô hình `training_record_exports` (hai chữ ký, bản bất biến) |
+| `training_settings` | thêm `late_entry_working_days` (mặc định 1), `max_batch_people` (200), `pack_async_threshold_pages` (100) | Có lý do khi đổi, như các cài đặt hiện có |
+
+**Khóa bất biến:** `training_paper_packs`, `training_transcriptions` (sau chốt), `training_transcription_lines`, `training_copy_distributions` dùng cùng hàm trigger bất biến như các bảng bằng chứng hiện có.
+
+### 18.3 API (tiền tố `/training`; đều đi qua quy trình ghi lệnh mục 2.3)
+
+| Nhóm | Điểm cuối | Quyền | Ghi chú |
+|---|---|---|---|
+| Chế độ buổi | `POST /sessions/{id}/delivery-mode` `{mode, reason}` | `.organize` | Lý do bắt buộc khi đổi sau Notify |
+| Gói giấy | `GET /activities/{id}/paper-packs`; `POST /activities/{id}/paper-packs` `{sessionId?, kind, reason?}`; `GET /paper-packs/{id}/download` | `training.paper.print` | Tạo PDF; > ngưỡng trang thì chạy nền và trả `202` kèm `GET /jobs/{id}`; mỗi lần tải ghi Audit Trail |
+| Điểm danh nhanh | `POST /sessions/{id}/roll-call` `{lines:[{participantId,state}]}` | `training.activity.conduct` | Tối đa 500 dòng; ghi `TRAINER_ATTESTED` |
+| Nhập hộ | `POST /sessions/{id}/transcriptions` (`Idempotency-Key`); `GET /sessions/{id}/transcriptions`; `POST /transcriptions/{id}/return` `{reason}`; `POST /transcriptions/{id}/verify` `{signatureToken}` | `training.paper.transcribe`; `training.paper.verify` | `verify` áp dụng các dòng vào điểm danh và kết quả trong một giao dịch |
+| Việc chuẩn bị | `GET/POST /activities/{id}/prep-tasks`; `POST /prep-tasks/{id}/done` | `.organize` (tạo), người thuộc đơn vị nhận (xong) | Thông báo cho đơn vị nhận |
+| Phân phối bản sao | `POST /distributions`; `POST /distributions/{id}/receive` | `training.distribution.manage` | Người nhận thuộc đơn vị đích |
+| Xuất theo lô | `POST /export-batches`; `POST /export-batches/{id}/approve`; `GET /export-batches/{id}/download` | `training.record.export` (và duyệt) | Trần `max_batch_people`; hai người khác nhau |
+| Bên ngoài | các lệnh tạo và sửa hoạt động nhận `trainingUnitName`, `vendorRef` | `.organize` | |
+| Chuyển vị trí | `GET /persons/{id}/transfer-review?toPositionId=` | `training.activity.organize` | So hồ sơ với ma trận vị trí mới |
+
+**Mã lỗi ổn định mới:** `TRAINING_PACK_REASON_REQUIRED`, `TRAINING_PACK_TOO_LARGE`, `TRAINING_TRANSCRIPTION_EVIDENCE_REQUIRED`, `TRAINING_TRANSCRIPTION_LATE_REASON_REQUIRED`, `TRAINING_VERIFIER_SAME_AS_ENTERER`, `TRAINING_VERIFIER_IN_LINES`, `TRAINING_TRANSCRIPTION_INVALID_TRANSITION`, `TRAINING_BATCH_TOO_LARGE`, `TRAINING_DELIVERY_MODE_INVALID`, `TRAINING_UNIT_REQUIRED`, `TRAINING_ROLLCALL_TOO_LARGE`. Giao diện chỉ hiện câu đã dịch, không hiện mã.
+
+### 18.4 Phân quyền, tách nhiệm vụ, chữ ký điện tử
+
+| Quyền mới | Ý nghĩa | Gợi ý gán (không gán tự động khi migration) |
+|---|---|---|
+| `training.paper.print` | In gói hồ sơ giấy | Người tổ chức, thư ký đơn vị, HCNS |
+| `training.paper.transcribe` | Nhập hộ kết quả từ giấy | Thư ký đơn vị, HCNS, giảng viên |
+| `training.paper.verify` | Xác minh bản nhập | QA, trưởng đơn vị |
+| `training.distribution.manage` | Gửi và nhận bản sao | QA, trưởng đơn vị |
+
+- **Tách nhiệm vụ** (kiểm ở máy chủ): người xác minh khác người nhập; người xác minh không có tên trong các dòng của bản nhập; người chuẩn bị xuất theo lô khác người duyệt; giảng viên điểm danh nhanh không tự xác minh bản nhập của chính buổi đó.
+- **Chữ ký điện tử mới:** `TRAINING_TRANSCRIPTION_VERIFIED` (xác minh bản nhập), `TRAINING_EXPORT_BATCH_PREPARED`, `TRAINING_EXPORT_BATCH_APPROVED`. Việc nhận bản sao và hoàn thành việc chuẩn bị dùng xác thực phiên và Audit Trail, không bắt chữ ký (không phải điểm dữ liệu GMP).
+- **Không xung đột chức năng:** điểm danh và kết quả có hai đường vào (màn Conduct trực tiếp, nhập hộ đã xác minh) nhưng **cùng một hàm miền nghiệp vụ**; mọi cập nhật trực tiếp vào bảng người tham gia từ giao diện bị cấm. Một dòng đã có điểm danh không nhập hộ lần thứ hai; muốn sửa phải theo quy trình sửa sai ở mục 9.3 (bản mới thay thế, bản cũ giữ).
+
+### 18.5 Audit Trail (thêm vào mục 9.1)
+
+`TRAINING_PAPER_PACK_PRINTED` (kèm số bản và lý do in lại), `TRAINING_DELIVERY_MODE_CHANGED`, `TRAINING_ROLLCALL_RECORDED`, `TRAINING_TRANSCRIPTION_ENTERED`, `TRAINING_TRANSCRIPTION_RETURNED`, `TRAINING_TRANSCRIPTION_VERIFIED`, `TRAINING_PREP_TASK_DONE`, `TRAINING_COPY_SENT`, `TRAINING_COPY_RECEIVED`, `TRAINING_EXPORT_BATCH_PREPARED`, `TRAINING_EXPORT_BATCH_APPROVED`, `TRAINING_EXPORT_BATCH_DOWNLOADED`, `TRAINING_MATERIAL_PREVIEWED`, `TRAINING_PARTICIPANT_REMOVED`, `TRAINING_PLANNED_ABSENCE_SET`. Mỗi sự kiện ghi người thực hiện, thời điểm máy chủ, đối tượng, giá trị cũ và mới khi có, lý do khi có.
+
+### 18.6 Giao diện
+
+**Quy tắc chung** (PLAN 17.5): tái sử dụng `components/ui`; cùng khuôn danh sách (thẻ lọc + bảng, có `No.`); cùng class trường nhập với Document Control; mỗi việc một màn; tên chức năng làm tiêu đề và breadcrumb; **responsive**: dưới 1024px bảng thao tác chính chuyển sang thẻ, nút từ 36px trở lên, lưới nhập dùng được bằng cảm ứng; có kiểm tra ảnh chụp ở 375, 768 và 1280px.
+
+| Màn hoặc khu vực | Nội dung |
+|---|---|
+| Tab **Paper & Entry** (màn Conduct; chỉ xem ở màn Details) | (1) Chế độ buổi: radio Electronic, Paper, Mixed (RadioGroup) với giải thích ngắn. (2) **In gói hồ sơ giấy**: chọn session và loại, danh sách các gói đã in (số bản, người in, giờ), nút in và nút in lại (hỏi lý do). (3) **Điểm danh nhanh**: thẻ lớn một người một dòng, chạm để đổi Có mặt, Trực tuyến, Vắng mặt. (4) **Nhập hộ từ giấy**: chọn hoặc tải bản scan (có thanh tiến độ), lưới nhập điểm danh và điểm, ngày thực hiện, lý do nhập muộn khi cần, nút Gửi xác minh. (5) **Hàng chờ xác minh** cho người có quyền: xem bản nhập cạnh bản scan, Verify (chữ ký điện tử) hoặc Return (lý do). |
+| Màn Edit | Mục "Preparation" với danh sách việc chuẩn bị (đơn vị nhận, hạn, trạng thái); khối Training unit và Vendor khi Type = External; ẩn Method và Assessment khi External. |
+| Tab Participants | Bảng đổi cột theo hình thức: APD.0117 hoặc APD.0108 (tự đọc); cột "Ký tên" in và hiện đúng chữ Vắng mặt, Trực tuyến theo SOP 5.3.7. |
+| Màn Transfer review (mới) | So sánh hồ sơ hiện có của người với ma trận vị trí mới; chọn các chủ đề cần đào tạo; nút tạo hoạt động. |
+| Màn Distribution log (mới, nhóm Records & Compliance) | Danh sách bản sao đã gửi và đã nhận theo đơn vị; thao tác nhận. |
+| Màn Record Exports | Thêm tab hoặc lệnh "Batch export" theo bộ phận và năm. |
+| Màn Non-working days (Settings > Training Administration) | CRUD ngày nghỉ có lý do; chỉ thêm và vô hiệu, không xóa vật lý. |
+
+### 18.7 Bảo mật và hiệu năng (chịu tải, hạn chế lỗi, chống tấn công)
+
+1. **Trần mọi lệnh hàng loạt:** điểm danh nhanh và nhập hộ tối đa 500 dòng; người ngoài tối đa 100 mỗi lệnh; một gói in tối đa 300 người; một lô xuất tối đa `max_batch_people`. Vượt trần thì từ chối bằng mã ổn định, không cắt âm thầm.
+2. **Idempotency:** lệnh nhập hộ và tạo gói nhận `Idempotency-Key`; gửi lại cùng khóa trả cùng kết quả, không tạo bản nhập thứ hai (an toàn khi mạng chập chờn hoặc bấm đúp).
+3. **Giao dịch ngắn, khóa theo thứ tự:** xác minh khóa các dòng người tham gia theo thứ tự `id` để tránh deadlock; kiểm tra `version` (khóa lạc quan); hai người cùng xác minh một bản chỉ một người thành công, người kia nhận `TRAINING_TRANSCRIPTION_INVALID_TRANSITION`.
+4. **Tạo PDF nặng chạy nền:** quá ngưỡng trang thì tạo trong hàng đợi có giới hạn đồng thời; trả `202` và theo dõi bằng việc nền; giao diện hiện tiến độ; kết quả lưu bản bất biến có mã băm; không giữ tệp lớn trong bộ nhớ yêu cầu.
+5. **Tệp tải lên:** như hiện có (giới hạn kích thước theo loại, kiểm tra nội dung đúng đuôi, quét virus, SHA-256, kiểm tra lại mã băm khi tải); không bao giờ trả đường dẫn lưu trữ.
+6. **Truy cập đối tượng:** mọi điểm cuối kiểm quyền và phạm vi bộ phận ở máy chủ cho **từng** đối tượng được nêu theo id (chống IDOR); trả cùng một lỗi cho "không tồn tại" và "không có quyền" ở các điểm cuối bằng chứng; không liệt kê id.
+7. **Tốc độ và lạm dụng:** các điểm cuối nặng (in gói, xuất lô, nhập hộ, tìm người) đi qua bộ giới hạn tốc độ sẵn có theo người dùng; tìm kiếm có trần kết quả và độ dài từ khóa; mọi tham số lọc dùng truy vấn tham số hóa.
+8. **Hiệu năng truy vấn:** chỉ mục ở 18.2; danh sách phân trang ở máy chủ; không N+1 (khả năng theo dòng được tính theo lô như danh sách hoạt động); thống kê nặng tính theo yêu cầu có trần thời gian.
+9. **Nhật ký không chứa dữ liệu cá nhân thừa** (không ghi mật khẩu, mã chữ ký, nội dung scan); lỗi trả cho người dùng là câu đã dịch, không là dấu vết ngăn xếp.
+10. **Chữ ký:** mã chữ ký dùng một lần, gắn với hành động và đối tượng, hết hạn ngắn (như hiện có).
+
+### 18.8 Kiểm thử (thêm vào mục 14)
+
+| Lớp | Bắt buộc |
+|---|---|
+| Đơn vị và API | Cặp chế độ buổi; đủ điều kiện nhập hộ (có scan, lý do nhập muộn); người xác minh trùng người nhập hoặc có tên trong dòng; áp dụng dòng đúng một lần; sinh hồ sơ cá nhân đúng sau xác minh; trần mọi lệnh; idempotency; gói in có Training Number mỗi trang, số trang đúng, bộ đếm bản in, lý do in lại |
+| Đồng thời | Hai người xác minh cùng lúc; hai lần bấm gửi cùng khóa; đang xác minh thì có người ghi điểm danh trực tiếp cho cùng người |
+| Bảo mật | IDOR theo id bản nhập, gói, tệp; ngoài phạm vi bộ phận; thiếu quyền; tệp sai đuôi; quét virus; nội dung đáng ngờ trong tên tệp và lý do (XSS) |
+| Dữ liệu | Migration chạy hai lần; trigger bất biến chặn sửa và xóa; mã băm khớp khi tải |
+| Giao diện | Ảnh chụp 375, 768, 1280px cho Paper & Entry, Participants, Conduct; thao tác bằng cảm ứng; bàn phím và nhãn truy cập; tiêu đề và breadcrumb đúng tên chức năng |
+| UAT | Kịch bản phòng sạch: in gói, tiến hành bằng giấy, scan, nhập hộ, xác minh, hồ sơ cá nhân sinh đúng; kịch bản phòng họp: điểm danh nhanh bằng một thiết bị |
+
+### 18.9 Thứ tự làm và bằng chứng
+
+Theo PLAN-TR-001 mục 17.8: WP-EXT, WP-OBS, WP-PAPER (in gói rồi nhập hộ), WP-PREP, WP-DIST, WP-XFER, WP-DAYS. Mỗi gói dùng một bản ghi thay đổi theo `08_ONE_CHANGE_RECORD_TEMPLATE.md`, phân tích tác động GitNexus trước khi sửa ký hiệu mã, và bằng chứng âm tính, đồng thời, lỗi theo mức rủi ro. Mục này không phải phê duyệt GMP và không thay quyết định của QA ở PLAN-TR-001 mục 17.7.
+
+### 18.10 Bố cục bản in theo biểu mẫu gốc (từ PLAN-TR-001 mục 17.10)
+
+Mọi bản in giấy lấy bố cục từ **file Word gốc**, không từ bản Markdown (Markdown có thể mất ô gộp): APD.0117 sáu phần và Page x/y; APD.0009 với chân trang mỗi trang gồm số đào tạo và ô ký học viên, hai mẫu TH1 và TH2; APD.0108 theo từng tài liệu kèm phần xác nhận của trưởng phòng; FRM.0007 với hai chữ ký mẫu; APD.0024 với hai trường hợp; APD.0014 không có vị trí, có trình độ chuyên môn và ngày vào công ty; APD.0011 và APD.0118 như bản in hiện có (APD.0118 đã đủ loại, ngày thực hiện, chữ ký QA và nhận xét). Hai thay đổi dữ liệu kèm theo: `training_specimen_signatures` thêm ảnh chữ ký thứ hai (`second_object_key`, `second_sha256`); nơi lưu `qualification` và `joined_on` của nhân viên (D-53).
+
+### 18.11 Matrix: lưới mức hoàn thành theo vị trí (từ PLAN-TR-001 mục 17.11)
+
+**Cơ sở dữ liệu:** không thêm bảng. Trạng thái ô được **tính** từ `training_matrix_rows`, `training_matrix_cells`, `training_person_positions`, `training_records` (bỏ bản ghi có `training_record_voids`), `training_participants` và `training_activities`, cộng phiên bản tài liệu hiệu lực từ Document Control. Chỉ mục cần kiểm: `training_records(person_user_id, document_id, topic_text)`, `training_person_positions(position_id)` với `valid_to is null`, `training_participants(person_user_id, activity_id)`.
+
+**API**
+
+| Điểm cuối | Quyền | Ghi chú |
+|---|---|---|
+| `GET /training/matrix-completion?departmentId=&positionId=&search=&status=&page=&limit=&columnPage=&columnLimit=` | `training.compliance.view` | Trả hàng (nhân viên, phân trang tối đa 100), cột (hàng ma trận của vị trí, tối đa 30 mỗi trang cột), ô `{rowId, personId, status, lastDoneOn, activityId?}`, và tóm tắt mỗi người `{done, required, eligibleForAssignment}` |
+| `GET /training/matrix-completion/cell?personId=&rowId=` | như trên | Chi tiết một ô: lần đào tạo gần nhất, hạn, hoạt động đang mở, phiên bản tài liệu đã và cần đào tạo |
+| `GET /training/persons/{id}/transfer-review?toPositionId=` | `training.activity.organize` | Cùng bộ tính trạng thái, cho một người và một vị trí đích (TR-45) |
+| `GET /training/matrix-completion/print?...` | `training.record.export` | PDF có kiểm soát (mục 17.3): trạng thái bằng chữ, không chỉ màu; ghi Audit Trail |
+
+Phạm vi bộ phận kiểm ở máy chủ như các màn hiện có. Tham số lọc dùng truy vấn tham số hóa; `limit` và `columnLimit` bị chặn ở trần.
+
+**Quy tắc trạng thái (máy chủ)**, theo thứ tự ưu tiên: `NOT_REQUIRED` (ma trận không có ô cho vị trí hoặc tài liệu xác nhận không cần đào tạo) → `IN_PROGRESS` (có tên trong hoạt động mở cho chủ đề) → `QUALIFIED` (có hồ sơ hợp lệ cho phiên bản hiệu lực và chưa đến hạn hằng năm) → `UPDATE_NEEDED` (chỉ có hồ sơ cho phiên bản cũ) → `DUE` (cờ hằng năm hoặc định kỳ đã đến hạn) → `REQUIRED`. Sáu trạng thái có mã ổn định; nhãn hiển thị tách khỏi mã (D-58). Tính theo lô (tập hợp), không truy vấn từng ô, không N+1.
+
+**Giao diện**
+- Màn Training Compliance có hai tab: **Matrix completion** (lưới) và **Gap list** (danh sách hiện có). Lưới dùng `DataTable` có hai cột đầu cố định, cột chủ đề có tiêu đề ngắn (mã và tên rút gọn), chú giải ở dưới, dòng "x nhân viên, y chủ đề".
+- Ô có biểu tượng và chữ; bấm mở ngăn kéo (`drawer`) với chi tiết và liên kết tới hoạt động. Không có sửa trực tiếp trên lưới.
+- Bộ lọc: Department, **Position (bắt buộc để hiện lưới)**, Status, nút Gap analysis, Search; bố cục như các danh sách khác.
+- Điện thoại: dạng thẻ theo nhân viên; máy tính bảng: lưới cuộn ngang có cột cố định.
+- Màn **Matrix Version** (định nghĩa): thêm ba nhóm hàng, cột "Annual", nhóm vị trí "Management Personnel", cột cố định, tìm và lọc hàng.
+
+**Kiểm thử bắt buộc:** từng trạng thái ô với dữ liệu mẫu; hồ sơ bị void không tính; nâng phiên bản chuyển `QUALIFIED` sang `UPDATE_NEEDED`; người ngoài phạm vi bộ phận không thấy; trần số hàng và cột; hiệu năng với khoảng 500 nhân viên; bản in có chữ cho mọi trạng thái; ảnh chụp 375, 768, 1280px.
+
+---
+
 ## Trạng thái triển khai (cập nhật 2026-10-16)
 
 Đã làm trên DEV (chưa commit): V594 đến V598; số Training Number theo revision và tích hợp Document Control (đăng ký số khi lưu, mở hạn khi revision được duyệt, Complete Training lấy ngày từ Training); vòng đời hoạt động đầy đủ (phiên, người tham gia, điểm danh, chấm bài do máy chủ tính, tự đọc, xác nhận QA, hồ sơ cá nhân bất biến, đào tạo bù với hậu tố); chỉ định người xử lý theo quyền (chung cho hoạt động, phiên bản ma trận, bản giao việc); ma trận có phiên bản và khóa bất biến; bản giao việc có ngoại lệ do người được chỉ định duyệt; màn tuân thủ; sổ cấp mã; thiết lập; chủ đề; vị trí người dùng. UI thử cũ đã xóa.
 
 Đã làm thêm: bản giao việc (V598), chữ ký mẫu (V599), xuất PDF hồ sơ APD.0014 (V602), thông báo trong ứng dụng và e-mail cùng nhắc việc hằng ngày có khóa chống gửi trùng (V604). Đã làm thêm: phiếu yêu cầu đào tạo APD.0118 (V605, ba chữ ký, khóa sau duyệt, mở đào tạo từ dòng, dời tháng, QA ký dòng). Đã làm thêm: tải tài liệu đào tạo và bản scan giấy có quét virus, mã băm, người thứ hai đối chiếu (V606). Đã làm thêm: kiểm tra giảng viên đủ điều kiện TR-19 và ngoại lệ (V609), đề xuất người tham gia từ ma trận. Quy tắc giảng viên đang áp dụng là ĐỀ XUẤT chờ QA xác nhận (D-10): đã đào tạo GMP VÀ, với từng chủ đề, đã đào tạo chủ đề đó HOẶC tham gia tài liệu (người soạn, đồng soạn, kiểm tra, duyệt) HOẶC là trưởng bộ phận tổ chức; giảng viên bên ngoài không bị đánh giá ở đây. Đã làm thêm: bằng chứng đào tạo của tài liệu nhập cũ (V610). Chưa làm: màn ngày nghỉ; vô hiệu hồ sơ qua bước chỉ định; kiểm thử đơn vị (mới có kịch bản API). Mọi mục "Đề xuất" trong tài liệu này vẫn chờ QA xác nhận.
+
+---
+
+## Trạng thái triển khai (cập nhật 2026-10-17)
+
+Đã làm thêm trên DEV (chưa commit) kể từ bản 2026-10-16: V611 (mục đích tệp: nội dung, đề, đáp án), V612 (liên kết làm tài liệu), V613 (địa điểm buổi: tại chỗ hoặc trực tuyến), V614 (đánh dấu vắng trước buổi). Giao diện: màn Training Activity tách theo việc (Details chỉ xem; Edit, Conduct, Review, Approve, Confirm, Participate) kèm menu Action theo trạng thái do máy chủ tính; trang tạo mới có tab; vùng làm việc Participants năm nguồn (ma trận, Business Unit, Department, Individual, người ngoài nhiều dòng), đánh dấu vắng, bỏ người trước khi xác nhận danh sách; tab Training Materials (tệp hoặc liên kết, MP4 đến 100 MB), tab Assessment (đề và đáp án chỉ PDF hoặc DOCX; đáp án chỉ người tổ chức và người được chỉ định xem), xem trước PDF bằng thư viện PDF và DOCX bằng viewer OnlyOffice (không tự chuyển đổi), thanh tiến độ tải lên; form Session có Instructor (nội bộ hoặc bên ngoài) và Location Type; cách đánh giá theo hình thức là mặc định, chọn khác được (D-41); in PDF ma trận (APD.0011) và phiếu yêu cầu (APD.0118); danh sách Matrices và Number Register theo khuôn danh sách chung, phân trang ở máy chủ; menu nhóm lại với tên chức năng; tên hiển thị hình thức và cách đánh giá theo chữ của SOP.
+
+Lô làm thêm 2026-10-17 (V616, V617), DEV, chưa commit: (a) lưới mức hoàn thành ma trận theo vị trí: `TrainingMatrixCompletionService`, `GET /training/compliance/matrix-completion` và `/positions`; mỗi ô do máy chủ tính từ hồ sơ cá nhân không bị hủy, hoạt động đang mở và revision hiệu lực (Not required, Required, In progress, Qualified, Update needed, Annual training due); vượt 300 người hoặc 200 hàng thì trả `TRAINING_MATRIX_TOO_LARGE` thay vì cắt; tên nhãn trạng thái là đề xuất (D-58). (b) V616: `training_sessions.delivery_mode`, bảng bất biến `training_paper_packs`, quyền `training.paper.print`; `TrainingPaperService` in PDF bằng PDFBox, mỗi lần in được ghi (mã gói, số bản, số trang, SHA-256, người in) cùng Audit Trail. (c) V617: `training_transcriptions` và dòng, quyền `training.paper.transcribe` và `training.paper.verify`, ý nghĩa chữ ký `TRAINING_TRANSCRIPTION_VERIFIED`; người kiểm tra khác người nhập, dòng chỉ được áp dụng khi đã ký, và được áp dụng qua đúng luật điểm danh và chấm điểm của màn hình. Chưa kiểm chứng: chưa gọi API có đăng nhập (không có mật khẩu DEV trong phiên), chưa chạy GitNexus `detect_changes`, chưa có kiểm thử đơn vị cho ba dịch vụ mới; chưa cấp quyền mới cho vai trò nào.
+
+Lô làm thêm 2026-10-17 (V618), DEV, chưa commit: điểm danh nhanh (`TrainingRollCallService`, `POST /training/sessions/{id}/roll-call`; người đào tạo ký một lần với ý nghĩa `TRAINING_ATTENDANCE_CONFIRMED`, mỗi dòng đi qua đúng luật điểm danh của màn hình rồi mang `sign_mode = TRAINER_ATTESTED`; chỉ người còn ở trạng thái INVITED); gói in giấy có sáu phần APD.0117; bản in danh sách mức hoàn thành theo vị trí (`GET /training/compliance/matrix-completion/print`, ghi Audit Trail); thẻ cho màn hình hẹp ở lưới hoàn thành; ngày nghỉ của nhà máy (`training_non_working_days`, `TrainingCalendarService`, thêm hoặc xóa cần quyền `training.settings.manage` và lý do, vào Audit Trail) dùng cho quy tắc nhập trễ. Chưa kiểm chứng: như lô trước, chưa có kiểm thử có đăng nhập, chưa có kiểm thử đơn vị, chưa chạy GitNexus.
+
+Lô làm thêm 2026-10-17 (V619, V620), DEV, chưa commit: V619 đổi cột `training_activities.title` thành `training_title` (Training Title) và các trường API tương ứng thành `trainingTitle`. V620: `training_session_preparation` (việc chuẩn bị từng buổi, `TrainingPreparationService`, chỉ cảnh báo) và `training_copy_distributions` (nhật ký phân phối bản sao, `TrainingCopyService`, bản ghi gửi và nhận không sửa được; người nhận phải thuộc bộ phận nhận). Chưa kiểm chứng: như các lô trước, chưa có kiểm thử có đăng nhập và kiểm thử đơn vị.
+
+Lô làm thêm 2026-10-18 (V621), DEV, chưa commit: `training_record_export_batches` và `TrainingRecordExportBatchService` (xuất hồ sơ cá nhân theo bộ phận và năm; hai chữ ký của hai người khác nhau; ZIP lưu bất biến kèm SHA-256; chạy trong lúc duyệt, giới hạn 150 người; các bản chờ ký hiện trong tab "Waiting for my signature"); màn Record Exports có hai tab "One person" và "Department and year". APD.0014 nay in thêm Qualification (học vấn cao nhất trong hồ sơ người dùng) và Joined the company (ngày bắt đầu làm việc) lấy từ dữ liệu hiện có, không thêm cột. Chưa kiểm chứng: như các lô trước.
+
+Lô làm thêm 2026-10-18 (V622, V623) và kiểm thử có đăng nhập, DEV: (a) V622: chữ ký mẫu có hai ảnh, ảnh thứ hai bắt buộc với phiên bản mới (phiên bản cũ chỉ có ảnh thứ nhất); xem ảnh theo `?which=1|2`, mỗi lần mở ghi Audit Trail. (b) V623: khi revision tài liệu được duyệt, người đã ký (PREPARED, SUBMITTED_FOR_REVIEW, REVIEWED, APPROVED) được ghi hồ sơ nguồn `SIGNATORY_INITIAL`, mỗi người một lần cho mỗi hoạt động. (c) Sửa lỗi: câu lệnh thêm buổi đào tạo thiếu một dấu `?` sau khi thêm địa điểm (V613) nên không thêm được buổi; và bảng `training_non_working_days` đã có từ V594 với cột `reason`, dịch vụ nay dùng cột đó làm tên ngày nghỉ. **Đã chạy thử qua API bằng tài khoản `admin`, `approver.test1`, `user.a.test`, `dco.test1`** (mật khẩu không ghi vào tài liệu): tạo hoạt động, thêm buổi và người tham gia, chế độ giao Paper, danh sách chuẩn bị, xác nhận danh sách, duyệt nội dung bằng chữ ký, thông báo, in gói giấy (lần đầu và in lại có lý do; in lại không lý do bị từ chối), giữ buổi, điểm danh nhanh (ghi `TRAINER_ATTESTED`; điểm danh lại bị từ chối), tải bản quét, nhập từ giấy (lặp cùng khóa trả cùng bản ghi; bản thứ hai khi còn một bản chờ bị từ chối; người nhập tự xác minh bị từ chối; người khác ký thì điểm được áp dụng), chấm điểm, QA xác nhận hoàn thành và tạo hồ sơ, lưới hoàn thành và bản in theo vị trí, xuất theo lô (người chuẩn bị tự duyệt bị từ chối; người khác duyệt thì có ZIP gồm hai PDF), nhật ký bản sao (gửi, nhận đúng bộ phận, người bộ phận khác bị từ chối, nhận lần hai bị từ chối), ngày nghỉ (thêm, trùng bị từ chối, cuối tuần bị từ chối, xóa), chữ ký mẫu hai ảnh (một ảnh bị từ chối). **Chưa chạy thử:** hồ sơ người ký tài liệu (chỉ chạy thử câu lệnh SQL trong giao dịch rồi hủy), thao tác trên giao diện, kiểm thử đồng thời, kiểm thử đơn vị.
+
+Lô làm thêm 2026-10-18 (V624, V625), DEV, theo ủy quyền của chủ dự án ("phần mềm chỉ hỗ trợ, phải kết hợp quy trình thủ công"): (a) TR-52, APD.0009: `TrainingExamPackService` in bộ đề cho từng học viên, mỗi người một trang bìa và các trang của đề đã duyệt dạng PDF có chân trang Training Number, tên và chỗ ký; file đã duyệt không bị sửa; đề DOCX bị từ chối với hướng dẫn in từ Word (không chuyển đổi); mỗi lần in có số bản, lần in lại cần lý do, ghi SHA-256 của đề và của bản in (V624, `pack_kind`). (b) TR-36, SOP.0003 5.3.6: `qaList` trong chi tiết hoạt động và nhắc việc theo ngày; không chặn. (c) TR-32, TR-34, TR-45: phiếu "Training Reviews" (V625, `TrainingPersonnelReviewService`): nhân viên mới (ba phần đào tạo ban đầu, chữ ký mẫu, bản giao việc), trở lại sau vắng trên 6 tháng, chuyển bộ phận, chuyển cơ sở; danh mục việc theo SOP, mỗi việc Done hoặc Not needed (kèm lý do), liên kết với hoạt động đào tạo đã tổ chức (người đó phải có tên trong danh sách), đóng bằng chữ ký của người không phải nhân viên; hệ thống không có dữ liệu nghỉ phép nên không tự phát hiện, người dùng mở phiếu. (d) SOP.0025: không có danh sách nhà cung cấp trong hệ thống nên chỉ có cảnh báo trên màn hình đào tạo bên ngoài khi trống ô Vendor reference. Chưa kiểm chứng: như các lô trước.
+
+Bổ sung cùng ngày theo đề xuất được chủ dự án đồng ý: (e) nút "Create training" ở mỗi việc cần đào tạo trong phiếu Training Reviews: tạo hoạt động đào tạo đột xuất (lý do theo sự kiện của phiếu) cho bộ phận của người thao tác, đặt tên theo việc và nhân viên, và liên kết ngay vào việc; buổi và danh sách được làm ở màn hình hoạt động; mỗi việc chỉ liên kết một lần (409). (f) Training Compliance: ô "Open training reviews" ở tab Summary và nhãn "Review open" cạnh người có phiếu đang mở ở tab Matrix completion. (g) Gợi ý nhân viên mới: danh sách ở màn Training Reviews những người bắt đầu làm việc trong 60 ngày qua (`start_date` trong hồ sơ người dùng) chưa có phiếu nhân viên mới; chỉ là nhắc, không phải quy tắc.
+
+**Chưa làm (xem PLAN-TR-001 mục 17.2, 17.8 và 17.11):** chân trang APD.0009 theo từng học viên, đào tạo bên ngoài (trường đơn vị đào tạo, nhãn Active và Passive, chứng chỉ), `OBSERVATION`, cột APD.0108, việc chuẩn bị (5.3.6), phân phối bản sao, xuất hồ sơ theo lô, Transfer review, hồ sơ đào tạo ban đầu của người ký, màn ngày nghỉ, màn nhật ký thông báo; kiểm thử đơn vị (hiện chỉ có kịch bản API và chạy tay); các quyết định D-38 đến D-51 chờ QA xác nhận; mô hình "Course" chưa được chủ dự án quyết định.
+
+**Lô làm thêm 2026-10-17 (V615):** `OBSERVATION` cho đào tạo thực hành; hoạt động `EXTERNAL` có `training_unit_name` và `vendor_ref`, buổi không có method và assessment, giảng viên bên ngoài tùy chọn, không bước xem xét và duyệt nội dung, bằng chứng loại `CERTIFICATE`, người đã tham dự ghi nhận hoàn thành và hồ sơ cá nhân có kết quả `ATTENDED`; `training_participants.read_confirmed_at` cho cột "ngày đọc hiểu" của APD.0108 (bảng người tham gia đổi cột khi buổi là tự đọc); lưới ma trận định nghĩa (ba nhóm hàng, cột "Annual", hai cột đầu cố định, tìm kiếm). Bản in APD.0118 đã đủ loại, ngày thực hiện, chữ ký và nhận xét QA; bản xuất APD.0014 đã bỏ vị trí. Xem PLAN-TR-001 mục 17.8 cho phần còn lại.

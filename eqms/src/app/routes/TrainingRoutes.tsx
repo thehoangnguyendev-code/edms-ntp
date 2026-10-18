@@ -5,24 +5,26 @@ import { LoadingFallback } from './LoadingFallback';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
 
 // ==================== LAZY LOADED ====================
-const TrainingActivityListView = lazy(() => import('@/features/training-activities/TrainingActivityListView').then(m => ({ default: m.TrainingActivityListView })));
-const TrainingMaterialPreviewPage = lazy(() => import('@/features/training-activities/TrainingMaterialPreviewPage').then(m => ({ default: m.TrainingMaterialPreviewPage })));
-const TrainingActivityCreatePage = lazy(() => import('@/features/training-activities/TrainingActivityCreatePage').then(m => ({ default: m.TrainingActivityCreatePage })));
-const TrainingActivityDetailPage = lazy(() => import('@/features/training-activities/TrainingActivityDetailPage').then(m => ({ default: m.TrainingActivityDetailPage })));
-const TrainingMatrixListView = lazy(() => import('@/features/training-activities/TrainingMatrixListView').then(m => ({ default: m.TrainingMatrixListView })));
-const TrainingMatrixVersionPage = lazy(() => import('@/features/training-activities/TrainingMatrixVersionPage').then(m => ({ default: m.TrainingMatrixVersionPage })));
-const TrainingMatrixHistoryView = lazy(() => import('@/features/training-activities/TrainingMatrixHistoryView').then(m => ({ default: m.TrainingMatrixHistoryView })));
-const TrainingRecordsView = lazy(() => import('@/features/training-activities/TrainingRecordsView').then(m => ({ default: m.TrainingRecordsView })));
-const TrainingNumberLogView = lazy(() => import('@/features/training-activities/TrainingNumberLogView').then(m => ({ default: m.TrainingNumberLogView })));
-const TrainingComplianceView = lazy(() => import('@/features/training-activities/TrainingComplianceView').then(m => ({ default: m.TrainingComplianceView })));
-const TrainingJobListView = lazy(() => import('@/features/training-activities/TrainingJobListView').then(m => ({ default: m.TrainingJobListView })));
-const TrainingJobDetailPage = lazy(() => import('@/features/training-activities/TrainingJobDetailPage').then(m => ({ default: m.TrainingJobDetailPage })));
-const TrainingSpecimenView = lazy(() => import('@/features/training-activities/TrainingSpecimenView').then(m => ({ default: m.TrainingSpecimenView })));
-const TrainingRecordExportsView = lazy(() => import('@/features/training-activities/TrainingRecordExportsView').then(m => ({ default: m.TrainingRecordExportsView })));
-const TrainingRequirementListView = lazy(() => import('@/features/training-activities/TrainingRequirementListView').then(m => ({ default: m.TrainingRequirementListView })));
-const TrainingRequirementDetailPage = lazy(() => import('@/features/training-activities/TrainingRequirementDetailPage').then(m => ({ default: m.TrainingRequirementDetailPage })));
-const TrainingLegacyEvidenceView = lazy(() => import('@/features/training-activities/TrainingLegacyEvidenceView').then(m => ({ default: m.TrainingLegacyEvidenceView })));
-const MyTrainingView = lazy(() => import('@/features/training-activities/MyTrainingView').then(m => ({ default: m.MyTrainingView })));
+const TrainingActivityListView = lazy(() => import('@/features/training-activities/activities/TrainingActivityListView').then(m => ({ default: m.TrainingActivityListView })));
+const TrainingMaterialPreviewPage = lazy(() => import('@/features/training-activities/activities/TrainingMaterialPreviewPage').then(m => ({ default: m.TrainingMaterialPreviewPage })));
+const TrainingActivityCreatePage = lazy(() => import('@/features/training-activities/activities/TrainingActivityCreatePage').then(m => ({ default: m.TrainingActivityCreatePage })));
+const TrainingActivityDetailPage = lazy(() => import('@/features/training-activities/activities/TrainingActivityDetailPage').then(m => ({ default: m.TrainingActivityDetailPage })));
+const TrainingMatrixListView = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixListView').then(m => ({ default: m.TrainingMatrixListView })));
+const TrainingMatrixVersionPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixVersionPage').then(m => ({ default: m.TrainingMatrixVersionPage })));
+const TrainingMatrixHistoryView = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixHistoryView').then(m => ({ default: m.TrainingMatrixHistoryView })));
+const TrainingRecordsView = lazy(() => import('@/features/training-activities/records/TrainingRecordsView').then(m => ({ default: m.TrainingRecordsView })));
+const TrainingNumberLogView = lazy(() => import('@/features/training-activities/records/TrainingNumberLogView').then(m => ({ default: m.TrainingNumberLogView })));
+const TrainingComplianceView = lazy(() => import('@/features/training-activities/compliance/ComplianceView').then(m => ({ default: m.TrainingComplianceView })));
+const TrainingJobListView = lazy(() => import('@/features/training-activities/jobs/TrainingJobListView').then(m => ({ default: m.TrainingJobListView })));
+const TrainingJobDetailPage = lazy(() => import('@/features/training-activities/jobs/TrainingJobDetailPage').then(m => ({ default: m.TrainingJobDetailPage })));
+const PersonnelReviewListView = lazy(() => import('@/features/training-activities/personnel-reviews/PersonnelReviewListView').then(m => ({ default: m.PersonnelReviewListView })));
+const PersonnelReviewDetailPage = lazy(() => import('@/features/training-activities/personnel-reviews/PersonnelReviewDetailPage').then(m => ({ default: m.PersonnelReviewDetailPage })));
+const TrainingSpecimenView = lazy(() => import('@/features/training-activities/specimens/TrainingSpecimenView').then(m => ({ default: m.TrainingSpecimenView })));
+const TrainingRecordExportsView = lazy(() => import('@/features/training-activities/records/TrainingRecordExportsView').then(m => ({ default: m.TrainingRecordExportsView })));
+const TrainingRequirementListView = lazy(() => import('@/features/training-activities/requirements/TrainingRequirementListView').then(m => ({ default: m.TrainingRequirementListView })));
+const TrainingRequirementDetailPage = lazy(() => import('@/features/training-activities/requirements/TrainingRequirementDetailPage').then(m => ({ default: m.TrainingRequirementDetailPage })));
+const TrainingLegacyEvidenceView = lazy(() => import('@/features/training-activities/records/TrainingLegacyEvidenceView').then(m => ({ default: m.TrainingLegacyEvidenceView })));
+const MyTrainingView = lazy(() => import('@/features/training-activities/my-training/MyTrainingView').then(m => ({ default: m.MyTrainingView })));
 
 const guardedTrainingElement = (permission: string, element: React.ReactNode) => (
   <ProtectedRoute requiredPermissions={[permission]}>
@@ -57,10 +59,16 @@ export function trainingRoutes() {
       <Route path="records" element={guardedTrainingElement("training.record.view", <TrainingRecordsView />)} />
       <Route path="job-assignments" element={guardedTrainingElement("training.job_assignment.view", <TrainingJobListView />)} />
       <Route path="job-assignments/:jobId" element={<Suspense fallback={<LoadingFallback />}><TrainingJobDetailPage /></Suspense>} />
+      <Route path="personnel-reviews" element={guardedTrainingElement("training.job_assignment.view", <PersonnelReviewListView />)} />
+      <Route path="personnel-reviews/:reviewId" element={<Suspense fallback={<LoadingFallback />}><PersonnelReviewDetailPage /></Suspense>} />
       <Route path="specimen-signatures" element={<Suspense fallback={<LoadingFallback />}><TrainingSpecimenView /></Suspense>} />
       <Route path="record-exports" element={guardedTrainingElement("training.record.export", <TrainingRecordExportsView />)} />
       <Route path="requirements" element={guardedTrainingElement("training.requirement.view", <TrainingRequirementListView />)} />
       <Route path="requirements/:requirementId" element={<Suspense fallback={<LoadingFallback />}><TrainingRequirementDetailPage /></Suspense>} />
+      <Route path="requirements/:requirementId/edit" element={<Suspense fallback={<LoadingFallback />}><TrainingRequirementDetailPage mode="edit" /></Suspense>} />
+      <Route path="requirements/:requirementId/review" element={<Suspense fallback={<LoadingFallback />}><TrainingRequirementDetailPage mode="review" /></Suspense>} />
+      <Route path="requirements/:requirementId/approve" element={<Suspense fallback={<LoadingFallback />}><TrainingRequirementDetailPage mode="approve" /></Suspense>} />
+      <Route path="requirements/:requirementId/track" element={<Suspense fallback={<LoadingFallback />}><TrainingRequirementDetailPage mode="track" /></Suspense>} />
       <Route path="legacy-evidence" element={guardedTrainingElement("training.activity.view", <TrainingLegacyEvidenceView />)} />
       <Route path="compliance" element={guardedTrainingElement("training.compliance.view", <TrainingComplianceView />)} />
       <Route path="number-log" element={guardedTrainingElement("training.compliance.view", <TrainingNumberLogView />)} />

@@ -779,3 +779,195 @@ Mỗi giai đoạn là một thay đổi có kiểm soát: Decision Log, một h
 ## 16 Không nằm trong phạm vi kế hoạch này
 
 Chứng chỉ, học trực tuyến có video, ngân hàng câu hỏi và làm bài trên máy, năng lực (competency) ngoài ma trận, gamification; các thay đổi SOP.0003 và biểu mẫu; chặn công việc ở các module khác (khác với việc Training cấp mã và ghi ngày cho Document Control ở mục 8, vốn **nằm trong** phạm vi); báo cáo Training trong module Report (có thể làm sau khi module Report được làm tiếp); nguồn Backup & Restore.
+
+
+---
+
+## 17 Cập nhật 2026-10-17: vận hành linh hoạt (giấy và điện tử), đào tạo bên ngoài, đối chiếu SOP lần hai
+
+**Trạng thái:** **ĐỀ XUẤT**, trừ mục 17.1 là **QUYẾT ĐỊNH** của chủ dự án (2026-10-17). Mục này là kết quả đọc lại toàn bộ SOP.0003.02 và sáu phụ lục sau khi phần lớn module đã chạy trên DEV. Nó bổ sung chứ không thay mục 1 đến 16; chỗ nào mâu thuẫn thì mục 17 thắng, và các mục cũ sẽ được sửa ở lần soát tiếp theo.
+
+### 17.1 Nguyên tắc vận hành (QUYẾT ĐỊNH, chủ dự án 2026-10-17)
+
+1. **Phần mềm là công cụ hỗ trợ, không thay thế hoàn toàn quy trình.** Nhân viên ở xưởng và phòng sạch thường không có thiết bị điện tử; nhiều buổi đào tạo diễn ra bằng giấy hoặc tập trung ở một phòng họp. Mọi chức năng phải dùng được cả khi người học không chạm vào máy tính.
+2. **SOP là mặc định, không là rào cản.** Hệ thống gợi ý giá trị theo SOP (ví dụ cách đánh giá theo hình thức đào tạo) nhưng cho người có thẩm quyền chọn khác; thay vì chặn thì **ghi lại** (ai, khi nào, giá trị nào, vì sao). Việc đã làm: Assessment chọn tự do, giá trị SOP là mặc định (D-41).
+3. **Những điều không nới lỏng** (pháp lý và toàn vẹn dữ liệu, EU-GMP Annex 11, ALCOA+): chữ ký điện tử có ý nghĩa; Audit Trail đầy đủ; hồ sơ đã chốt không sửa, không xóa; tách nhiệm vụ (người nhập không tự xác minh); kiểm tra quyền và phạm vi ở máy chủ; ngưỡng đạt tính từ điểm ở máy chủ; bản scan gốc luôn được giữ khi hồ sơ lập từ giấy.
+4. **Mỗi buổi đào tạo có một chế độ làm việc:** `ELECTRONIC` (người dự dùng máy), `PAPER` (giấy rồi nhập hoặc scan), `MIXED` (một phần). Chế độ là gợi ý ban đầu theo hình thức đào tạo và địa điểm; người tổ chức đổi được, hệ thống ghi lại.
+
+### 17.2 Đối chiếu SOP lần hai: điều khoản, hiện trạng, việc cần làm
+
+Cột "Hiện trạng" dựa trên mã đang chạy trên DEV ngày 2026-10-17 (**KIỂM TRA MÃ**). Cột "Việc" là hạng mục mới.
+
+| Mã | SOP | Điều SOP yêu cầu | Hiện trạng | Việc cần làm |
+|---|---|---|---|---|
+| TR-32 | 5.1 (đào tạo ban đầu) | Gồm ba phần: nội quy, an toàn lao động (HCNS); nguyên tắc chung GMP (QA); chuyên môn công việc (đơn vị liên quan) | Có hoạt động INITIAL; chưa có "gói đào tạo ban đầu" ba phần | Cho mở **một lần ba hoạt động** (mã riêng của từng đơn vị tổ chức), cùng danh sách người mới; mỗi phần theo dõi riêng |
+| TR-33 | 5.1 | Người ký tài liệu được coi đã đào tạo ban đầu về tài liệu đó | Chưa tự tạo hồ sơ | Khi revision được duyệt, tạo hồ sơ `SIGNATORY_INITIAL` cho người soạn, kiểm tra, duyệt (nguồn: Document Control); xem D-45 |
+| TR-34 | 5.1 | Đào tạo lại khi cần hoặc nhân viên vắng trên 6 tháng | Có lý do `ABSENCE_RETURN` khi tạo tay; không có dữ liệu nghỉ phép để tự phát hiện | Không tự động; thêm thao tác "Retraining after long absence" cho trưởng đơn vị, mặc định đưa các chủ đề hết hạn vào danh sách |
+| TR-35 | 5.3.6 | Trước buổi đào tạo: báo HCNS chuẩn bị địa điểm, phương tiện, tài liệu; báo các bộ phận chuẩn bị thiết bị (đào tạo thực hành); báo giờ, nơi, nội dung cho học viên và giảng viên | Chỉ thông báo học viên khi Notify | **Danh sách việc chuẩn bị** theo buổi (địa điểm, thiết bị, thông báo), mỗi việc có đơn vị nhận, trạng thái và thông báo (D-46) |
+| TR-36 | 5.3.6 | Tài liệu mới hoặc nâng phiên bản: gửi danh sách tham dự cho QA ngay trong ngày | Có cột hạn; chưa kiểm chứng bộ đếm theo ngày | Hiện "Hạn nộp: hôm nay" trên màn Conduct; nhắc cuối ngày; quá hạn ghi dấu (không chặn) |
+| TR-37 | 5.3.4, 5.3.7, APD.0009 | APD.0117, APD.0108, APD.0009 là biểu mẫu giấy; số đào tạo in trên mỗi trang bài kiểm tra | Chưa có bản in; có bản xuất APD.0014, APD.0011, APD.0118 | **Gói hồ sơ giấy** (mục 17.3): in biểu mẫu có Training Number, số trang, mã gói, bộ đếm bản in |
+| TR-38 | 5.3.7, 5.3.10 | Kết quả đánh giá gửi QA trong 7 ngày làm việc; QA cập nhật hồ sơ cá nhân | Có tải bản scan và người nhận đối chiếu; chưa có nhập kết quả từ giấy theo lô | **Nhập hộ từ giấy** kèm xác minh lần hai (mục 17.3) |
+| TR-39 | 5.3.7 | Hybrid, học viên trực tuyến: ghi "Trực tuyến" ở cột Ký tên | Có trạng thái `ONLINE` | In chữ "Trực tuyến / Online" ở cột Ký tên của bản in; nhập hộ có lựa chọn Online |
+| TR-40 | 5.3.4, APD.0108 | Tự đọc: danh sách theo APD.0108 (mã đào tạo, ngày đọc hiểu, chữ ký, trưởng phòng xác nhận) | Bảng người tham gia dùng cột APD.0117 cho mọi hình thức | Với `SELF_READING`, bảng và bản in đổi sang cột APD.0108 |
+| TR-41 | 5.1.2 (thực hành) | Đánh giá thực hành: bài kiểm tra dạng checklist **hoặc quan sát thao tác thực tế** | Chỉ có `CHECKLIST` | Thêm giá trị `OBSERVATION`; ghi bằng checklist APD.0009 mẫu TH2 do người quan sát điền (D-42) |
+| TR-42 | 5.1.2 (bên ngoài), 5.3.3, APD.0117 | Hai loại: chủ động, bị động; chọn đơn vị theo SOP.0025; hồ sơ chỉ ghi tên đơn vị hoặc cá nhân đào tạo | Có Type External; nhãn chưa theo SOP; chưa có trường đơn vị đào tạo | Mục 17.4 (D-43) |
+| TR-43 | 5.3.2, 5.3.10 | Bản sao APD.0118 gửi các bộ phận liên quan; bản sao FRM.0007, APD.0024 lưu ở đơn vị quản lý | Có thông báo; chưa ghi nhận đã gửi và đã nhận | **Nhật ký phân phối bản sao** (D-47) |
+| TR-44 | 5.3.10 | QA in hồ sơ cá nhân định kỳ hằng năm hoặc khi có yêu cầu; gửi file mềm cho đơn vị quản lý | Có xuất từng người | **Xuất theo lô** theo bộ phận và năm, chạy nền, có duyệt (D-48) |
+| TR-45 | 5.3.11 | Chuyển bộ phận: trưởng bộ phận tiếp nhận và người được phân công rà soát hồ sơ để xác định đào tạo bổ sung; chuyển cơ sở: bàn giao bản sao, đào tạo như người mới | Có D-33 (điều chuyển sinh đào tạo ban đầu) | Màn **Transfer review** cho người nhận: so hồ sơ hiện có với ma trận vị trí mới, chọn các chủ đề cần đào tạo |
+| TR-46 | 5.3.7 | Hạn 7 ngày **làm việc** | Có cài đặt số ngày; chưa có màn quản lý ngày nghỉ | Màn **Non-working days** (D-14); đến khi có thì tính thứ Hai đến thứ Sáu |
+| TR-47 | 5.3.6 | Chủ đề không xong trong tháng đăng ký thì phải dời sang tháng sau | Thiết kế SDS mục 11 có việc nền; chưa kiểm chứng trên DEV | Kiểm bằng UAT; nếu thiếu thì làm |
+
+### 17.3 Thiết kế vận hành bằng giấy (chung cho mọi hình thức)
+
+**Vòng đời một buổi bằng giấy (ví dụ lớp học tại phòng họp, hoặc thực hành ở xưởng):**
+
+1. **Chuẩn bị (điện tử):** người tổ chức hoàn tất danh sách, nội dung, đề kiểm tra (đã duyệt) trên máy.
+2. **In gói hồ sơ giấy** (một thao tác, quyền `training.paper.print`): PDF gồm (a) danh sách tham dự APD.0117 theo từng session, hoặc APD.0108 nếu tự đọc; (b) phiếu APD.0009 cho từng học viên (đã điền tên và mã, in sẵn **Training Number ở đầu mỗi trang**); (c) trang bìa ghi mã gói, số trang, người in, thời điểm. Mỗi trang có "Trang x/y" và mã gói để phát hiện thiếu trang. Mỗi lần in tăng **bộ đếm bản in**; in lại phải có lý do (nguyên tắc bản có kiểm soát). Bản in song ngữ Việt và Anh (D-22).
+3. **Tiến hành tại chỗ (không cần thiết bị):** học viên ký tay vào danh sách; giảng viên ghi "Vắng mặt" hoặc "Trực tuyến" ở cột Ký tên đúng như SOP 5.3.7; học viên ký vào mọi trang bài kiểm tra; người chấm điền kết quả trên giấy.
+4. **Đưa dữ liệu vào hệ thống, chọn một hoặc cả hai đường:**
+   - **Tải bản scan:** đã có (bằng chứng giấy, người thứ hai đối chiếu với bản giấy rồi mới ghi chữ ký giấy của người đó).
+   - **Nhập hộ từ giấy (mới):** người được giao (HCNS, thư ký đơn vị, giảng viên) nhập điểm danh và điểm theo **lưới nhập nhanh** (mỗi dòng một người; thao tác bàn phím và màn hình cảm ứng), **bắt buộc đính kèm bản scan** của tờ giấy gốc. Ghi rõ **"Nhập bởi X từ bản giấy Y, người thực hiện thực tế là Z, ngày thực hiện D"** (ALCOA: Attributable, Contemporaneous, Original). Nhập sau hơn một ngày làm việc kể từ ngày thực hiện phải có **lý do nhập muộn**.
+   - **Xác minh lần hai:** người thứ hai (khác người nhập, và không là người có tên trong dòng được nhập) so bản nhập với bản scan rồi xác nhận bằng chữ ký điện tử. Chỉ sau bước này, dữ liệu mới thành điểm danh và kết quả chính thức (và sinh hồ sơ cá nhân). Sai khác thì trả lại có lý do; không sửa đè bản đã nhập, mà nhập bản mới (lịch sử giữ nguyên).
+5. **Giữ bản giấy gốc:** hệ thống ghi nơi lưu bản giấy (QA, theo bảng lưu trữ SOP 5.3.10) và người nhận; bản scan là bản sao có mã băm.
+
+**Phòng họp tập trung (một thiết bị của giảng viên):** màn Conduct có **chế độ điểm danh nhanh** (nút lớn, danh sách cuộn, chạm để đổi Có mặt, Trực tuyến, Vắng mặt). Người dùng đăng nhập là **giảng viên**; hệ thống ghi "điểm danh bởi giảng viên" (`sign_mode = TRAINER_ATTESTED`), không bắt học viên đăng nhập hay ký trên máy chung. Học viên vẫn ký giấy nếu SOP yêu cầu chữ ký.
+
+**Tự đọc (APD.0108):** hai cách như nhau: học viên ký giấy rồi người được giao nhập, hoặc học viên tự bấm "Đã đọc hiểu" bằng chữ ký điện tử nếu có máy; trưởng phòng xác nhận bằng chữ ký điện tử.
+
+**Không làm (giai đoạn này):** ứng dụng ngoại tuyến (PWA) và đồng bộ khi mất mạng. Giấy là đường dự phòng đã đủ cho xưởng và phòng sạch; ngoại tuyến thêm rủi ro dữ liệu trùng và xung đột đồng bộ (D-49).
+
+### 17.4 Đào tạo bên ngoài và người ngoài (TR-42, D-21, D-43, D-44)
+
+Theo SOP, "bên ngoài" nói về **ai tổ chức hoặc ai dạy**, còn học viên thường vẫn là nhân viên của mình:
+
+| Trường hợp | Người ngoài là | Học viên | Hồ sơ |
+|---|---|---|---|
+| Khách tham quan, nhà thầu tạm thời (đào tạo đột xuất, lý do Visitor) | Học viên | Họ, nhập **nhiều dòng** (tên, đơn vị) | Có trong danh sách APD.0117; **không** có hồ sơ cá nhân APD.0014 (D-21) |
+| Đào tạo bên ngoài **chủ động** (Active external training) | Đơn vị hoặc giảng viên | Nhân viên của mình | Hồ sơ cá nhân ghi **tên đơn vị đào tạo** (APD.0117) |
+| Đào tạo bên ngoài **bị động** (Passive external training: cơ quan quản lý yêu cầu hoặc được mời) | Đơn vị tổ chức | Nhân viên của mình | Như trên |
+
+Thiết kế (ĐỀ XUẤT, QA xác nhận): trường bắt buộc **Training unit / individual** ở hoạt động External; giảng viên chỉ chọn "External expert/consultant"; Method và Assessment **không áp dụng** (SOP 5.1.2 chỉ định cho đào tạo nội bộ); **bỏ** các bước xem xét và duyệt nội dung bài kiểm tra vì không có tài liệu hay đề của mình, **giữ** xác nhận hoàn thành của QA; tham chiếu nhà cung cấp theo SOP.0025 (trường tham chiếu, và cảnh báo nếu có danh mục nhà cung cấp mà đơn vị chưa được duyệt); **bằng chứng hoàn thành** (chứng chỉ, giấy chứng nhận) tải lên dạng bản scan loại `CERTIFICATE`; kết quả của hồ sơ là `ATTENDED` (đã tham dự) khi không có điểm. Nhãn: "Active external training", "Passive external training".
+
+### 17.5 Quy tắc giao diện bổ sung (mọi màn của module)
+
+1. **Tái sử dụng** `components/ui` (Table, Tabs, Select, Radio, Checkbox, DateTimePicker, Progress, Drawer, Dropdown, Esign-modal, Toast); không viết thẻ bảng thô; cùng class trường nhập với Document Control; có `No.` ở mọi bảng.
+2. **Responsive từ đầu:** điện thoại và máy tính bảng là thiết bị của giảng viên và trưởng ca; bảng chuyển sang dạng thẻ dưới 1024px, nút tối thiểu 36px, lưới nhập nhanh dùng được bằng cảm ứng, lưới không cuộn ngang trên điện thoại ở các màn thao tác chính.
+3. **Mỗi việc một màn** (Details chỉ xem; Edit, Conduct, Review, Approve, Confirm, Participate) với tên chức năng làm tiêu đề và breadcrumb (đã làm cho Activity; áp dụng cho Job Assignment, Requirement, Matrix, Specimen khi có chức năng mới).
+4. **Gợi ý, không chặn** (17.1.2): cảnh báo vàng kèm lý do lưu lại.
+5. **Server-side** tìm kiếm, lọc, phân trang cho mọi danh sách.
+
+### 17.6 Tham khảo phần mềm quản lý chất lượng trên thị trường (ý tưởng, không phải yêu cầu)
+
+Các hệ thống đào tạo trong QMS (như Veeva Vault Training, MasterControl Training, Qualio, ComplianceQuest) thường có: gán đào tạo theo vai trò và ma trận; bảng điểm danh in có mã vạch và quét lại; nhập điểm hàng loạt; quản lý buổi học do giảng viên điều hành (instructor-led) với roster; "đọc hiểu" bằng chữ ký điện tử; báo cáo thiếu đào tạo theo người và theo tài liệu; nhắc việc theo hạn; ngoại lệ và miễn có phê duyệt. Điểm lấy làm ý tưởng: bản in có mã gói và số trang (TR-37), nhập hàng loạt có xác minh (TR-38), roster do giảng viên điều hành (17.3). Điểm **không** theo: học trực tuyến video và ngân hàng câu hỏi (D-13), vì SOP.0003 mô tả quy trình lập hồ sơ đào tạo có kiểm soát, không phải hệ thống học tập. (Tên sản phẩm chỉ để chỉ nhóm tính năng; cần người dùng kiểm chứng trước khi dùng làm căn cứ.)
+
+### 17.7 Quyết định mới (ĐỀ XUẤT; QA xác nhận trừ khi ghi khác)
+
+| # | Vấn đề | Quyết định đề xuất |
+|---|---|---|
+| D-38 | Nguyên tắc linh hoạt | Mục 17.1 (đã chốt bởi chủ dự án) |
+| D-39 | Chế độ làm việc của buổi | `ELECTRONIC`, `PAPER`, `MIXED`; mặc định theo hình thức và địa điểm; đổi được, có ghi lại |
+| D-40 | Gói hồ sơ giấy | Có bộ đếm bản in, mã gói, số trang, Training Number mỗi trang; in lại có lý do |
+| D-41 | Cách đánh giá theo hình thức | SOP là mặc định, chọn khác được và ghi lại (**đã làm**) |
+| D-42 | Quan sát thao tác thực tế | Giá trị `OBSERVATION`; ghi bằng checklist APD.0009 TH2; điểm và ngưỡng 70% như bài kiểm tra |
+| D-43 | Đào tạo bên ngoài | Mục 17.4; kết quả `ATTENDED` khi không có điểm; bằng chứng bản scan loại `CERTIFICATE` |
+| D-44 | Người ngoài nhiều dòng | Một lần thêm được nhiều người; không hồ sơ cá nhân (mở rộng D-21) (**đã làm**) |
+| D-45 | Hồ sơ đào tạo ban đầu của người ký tài liệu | Tự tạo khi revision được duyệt, loại nguồn `SIGNATORY_INITIAL`; người ký không phải học lại về chính tài liệu |
+| D-46 | Danh sách việc chuẩn bị (5.3.6) | Việc theo buổi với đơn vị nhận (HCNS, đơn vị liên quan), trạng thái và thông báo; không chặn Notify, chỉ cảnh báo |
+| D-47 | Phân phối bản sao | Nhật ký gửi và nhận bản sao (APD.0118, FRM.0007, APD.0024, hồ sơ cá nhân) đến đơn vị quản lý |
+| D-48 | Xuất hồ sơ cá nhân theo lô | Chạy nền, mỗi lô có duyệt; giới hạn số người mỗi lô; ghi mã băm |
+| D-49 | Ngoại tuyến | Không làm PWA ở giai đoạn này; giấy là đường dự phòng |
+| D-50 | Bỏ người khỏi danh sách | Xóa dòng **chỉ** khi danh sách chưa xác nhận và người chưa có điểm danh; ghi Audit Trail (tên, lý do); sau đó chỉ đánh dấu vắng (**đã làm**) |
+| D-51 | Nhập hộ từ giấy | Cho phép; phải có scan; người xác minh khác người nhập; nhập muộn quá một ngày làm việc phải có lý do |
+
+### 17.8 Gói công việc mới và thứ tự
+
+| Gói | Nội dung | Phụ thuộc | Ghi chú |
+|---|---|---|---|
+| WP-EXT | Đào tạo bên ngoài (TR-42, D-43) | không | **ĐÃ LÀM trên DEV 2026-10-17** (V615): nhãn Active và Passive theo SOP, trường Training unit và Vendor reference, buổi không có method và assessment, giảng viên bên ngoài tùy chọn, bỏ bước duyệt nội dung, chứng chỉ là bản scan loại `CERTIFICATE`, kết quả hồ sơ `ATTENDED`. Chưa làm: cảnh báo nhà cung cấp chưa được duyệt (SOP.0025) |
+| WP-OBS | `OBSERVATION` (TR-41), cột APD.0108 (TR-40), "Trực tuyến" (TR-39) | không | **ĐÃ LÀM trên DEV 2026-10-17** (V615): giá trị Observation cho Practical; bảng người tham gia đổi sang cột APD.0108 (mã đào tạo, ngày đọc hiểu, chữ ký) khi buổi là tự đọc; nhãn "Online" cho học viên trực tuyến. Chưa làm: in biểu mẫu (thuộc WP-PAPER) |
+| WP-PAPER | Gói hồ sơ giấy, nhập hộ, xác minh lần hai, điểm danh nhanh (TR-37, TR-38, D-39 đến D-40, D-51) | WP-OBS | **Một phần, ĐÃ LÀM trên DEV 2026-10-17 (V616, V617):** chế độ giao buổi (Electronic, Paper, Mixed; đổi sau khi đã in cần lý do), in gói hồ sơ giấy có mã gói, số bản, Training Number và Page x / y trên mọi trang (mỗi lần in được ghi, bản in lại cần lý do); nhập hộ từ giấy với bản quét bắt buộc, người thứ hai kiểm tra và ký (`TRAINING_TRANSCRIPTION_VERIFIED`), lý do nhập trễ sau một ngày làm việc, khóa chống gửi trùng, tối đa 500 dòng. **Làm thêm cùng ngày (V618):** điểm danh nhanh `TRAINER_ATTESTED` (người đào tạo đánh dấu cả buổi và ký một lần), gói in có đủ sáu phần APD.0117 (phần 4, 5, 6 là ô ký tay), và ngày nghỉ của nhà máy (WP-DAYS) trong Training Properties, dùng cho 'một ngày làm việc'. **Chưa làm:** chân trang APD.0009 theo từng học viên và đúng bố cục từng biểu mẫu (gói in chưa phải bản sao từng biểu mẫu); chưa kiểm thử có đăng nhập |
+| WP-PREP | Việc chuẩn bị (TR-35), hạn nộp trong ngày (TR-36) | không | **Một phần, ĐÃ LÀM trên DEV 2026-10-17 (V620):** danh sách việc chuẩn bị cho từng buổi (địa điểm, thiết bị, tài liệu, thông báo), mỗi việc Pending, Done hoặc Not needed, có thể giao cho một người (người đó được thông báo và tự báo xong); chỉ cảnh báo, không chặn buổi (D-46). **Làm thêm 2026-10-18:** hạn nộp danh sách cho QA trong ngày (TR-36, SOP.0003 5.3.6): với đào tạo về tài liệu mới hoặc nâng phiên bản, màn hình nhắc ngày hạn là ngày buổi đào tạo được tổ chức, có nhắc buổi sáng hôm đó và nhắc hằng tuần khi trễ; gửi trễ vẫn được và được ghi vào Audit Trail (SOP là mặc định, không chặn) |
+| WP-DIST | Phân phối bản sao (TR-43), xuất theo lô (TR-44) | WP-PAPER | **Một phần, ĐÃ LÀM trên DEV 2026-10-17 (V620):** nhật ký phân phối bản sao cho phiếu yêu cầu đã duyệt và bản giao việc đang hiệu lực (bộ phận nhận, người gửi, ngày gửi, người xác nhận đã nhận; mỗi dòng không sửa được), tab "Copies received" trong My Training (D-47). **Làm thêm cùng ngày (V621):** xuất hồ sơ cá nhân theo bộ phận và năm (TR-44, D-48): một người chuẩn bị và ký, một người khác được chỉ định duyệt và ký, rồi mới tạo ZIP gồm một PDF APD.0014 cho mỗi người (tối đa 150 người, tạo ngay lúc duyệt, không chạy nền). **Chưa làm:** bản sao chữ ký mẫu (FRM.0007) trong nhật ký bản sao. **Làm thêm 2026-10-18:** chữ ký mẫu có hai ảnh (lần 1 và lần 2, ảnh thứ hai bắt buộc với phiên bản mới, V622; chủ dự án quyết định ngày 2026-10-18) và hồ sơ đào tạo ban đầu cho người ký tài liệu (người soạn, kiểm tra, duyệt được ghi hồ sơ nguồn `SIGNATORY_INITIAL` khi revision được duyệt, V623; chủ dự án đồng ý ngày 2026-10-18) |
+| WP-XFER | Transfer review (TR-45), gói đào tạo ban đầu (TR-32), hồ sơ người ký (TR-33), đào tạo lại sau vắng (TR-34) | không | Vừa |
+| WP-DAYS | Ngày nghỉ (TR-46) | không | Nhỏ; **chưa làm**: bảng `training_non_working_days` hiện chưa được dùng ở đâu để tính hạn, nên màn quản lý chỉ có giá trị khi làm cùng bộ tính "7 ngày làm việc" (TR-13) |
+| WP-MATRIX | Lưới mức hoàn thành ma trận theo vị trí, bản in, Update needed (TR-57 đến TR-61, mục 17.11) | WP-OBS | **Một phần:** điểm 1 (lưới ma trận định nghĩa: ba nhóm hàng, cột "Annual", hai cột đầu cố định, tìm kiếm, tùy chỉnh cột) và lưới mức hoàn thành theo vị trí (sáu trạng thái do máy chủ tính, tab "Matrix completion" trong Training Compliance, phân tích khoảng trống, ngăn chi tiết ô, giới hạn 300 người và 200 hàng) đã làm 2026-10-17; bản in lưới (danh sách người và việc còn mở) và thẻ cho màn hình hẹp đã làm cùng ngày; chưa làm: nhóm "Management Personnel" (D-54 chưa có quyết định về ý nghĩa) |
+
+**Đã hoàn thành sau lần soát trước** (cập nhật ở SDS-TR-001 mục "Trạng thái triển khai"): màn thao tác tách khỏi màn xem (Edit, Conduct, Review, Approve, Confirm, Participate), vùng làm việc Participants năm nguồn (ma trận, Business Unit, Department, Individual, người ngoài) kèm đánh dấu vắng trước buổi, nội dung đào tạo dạng file hoặc liên kết, đề và đáp án có xem trước, thanh tiến độ tải lên, địa điểm buổi (tại chỗ hoặc trực tuyến), in PDF ma trận và phiếu yêu cầu.
+
+### 17.9 Rủi ro mới
+
+| Rủi ro | Hậu quả | Biện pháp |
+|---|---|---|
+| Nhập hộ từ giấy sai hoặc làm giả | Hồ sơ không đúng thực tế | Bắt buộc scan; xác minh lần hai khác người; lý do nhập muộn; Audit Trail ghi người nhập và người thực hiện |
+| Gói in bị thiếu trang hoặc in lại tùy tiện | Mất bằng chứng | Mã gói, "Trang x/y", bộ đếm bản in, lý do in lại |
+| Người dùng ở xưởng không dùng được giao diện | Bỏ dùng, quay lại giấy rời rạc | Chế độ điểm danh nhanh responsive; người nhập hộ làm việc ở văn phòng |
+| Chức năng chồng chéo (cùng việc làm ở hai nơi) | Dữ liệu mâu thuẫn | Mỗi dữ kiện có một nguồn sự thật: điểm danh chỉ ghi qua màn Conduct hoặc nhập hộ đã xác minh; không sửa trực tiếp ở bảng người tham gia |
+| Tải lớn khi xuất lô hoặc in gói cho lớp đông | Chậm, treo | Giới hạn số người mỗi lô, tạo PDF chạy nền và phân trang, hàng đợi có giới hạn đồng thời |
+
+### 17.10 Kiểm tra lại từng biểu mẫu (2026-10-17, đọc đủ từng file APD và FRM)
+
+Lần đối chiếu 17.2 ban đầu đọc SOP đầy đủ nhưng đọc các biểu mẫu chưa đủ chi tiết. Bảng dưới là kết quả đọc lại **từng** biểu mẫu và so với dữ liệu, màn hình, bản in hiện có. Lưu ý: bản Markdown chuyển từ Word có thể **mất ô gộp** (đã gặp ở bảng 5.1.2 của SOP: dòng Hybrid dùng chung ô đánh giá của dòng Classroom nên Markdown hiện ô trống). Khi một bảng quan trọng có ô trống, phải đối chiếu file `.docx`.
+
+| Mã | Biểu mẫu | Điều biểu mẫu yêu cầu | Hiện trạng | Việc |
+|---|---|---|---|---|
+| TR-48 | FRM.0007 | Mỗi lần có chữ ký ban đầu hoặc thay đổi cần **hai chữ ký mẫu** (lần 1 và lần 2), ngày, và xác nhận của trưởng đơn vị; thay đổi đánh số lần 1, 2, 3 | Mỗi phiên bản chỉ có **một** ảnh chữ ký | Thêm ảnh thứ hai cho mỗi phiên bản (D-52); bản in FRM.0007 để ký tay rồi scan (biểu mẫu này vốn là giấy) |
+| TR-49 | APD.0014 v2.0.0 | Họ tên, **trình độ chuyên môn**, **ngày vào công ty**; lịch sử (nội dung, ngày, mã đào tạo); bỏ thông tin vị trí; ký người chuẩn bị và Trưởng phòng QA; trưởng đơn vị xem hồ sơ nhân viên của mình | Bản xuất **đã bỏ vị trí** (sửa 2026-10-17); chưa có trình độ chuyên môn và ngày vào công ty vì chưa có nơi lưu dữ liệu đó | Quyết định nơi lưu hai trường (D-53); thêm vào bản xuất |
+| TR-50 | APD.0118 | Đầu: Year, Request No, loại (định kỳ SOP hay hằng năm). Bảng: STT, Tháng, Chủ đề, **Mã đào tạo, Ngày đào tạo, Sign by QA, Comment from QA** (do người quản lý đào tạo QA ghi sau khi đào tạo xong). Ký: Training coordinator, QA manager, QM | Bản in **đã sửa 2026-10-17** (thêm loại, ngày thực hiện, QA ký, nhận xét; ba chữ ký theo vai) | Không còn việc |
+| TR-51 | APD.0117 | Sáu phần: (1) thông tin chung (nội dung, bộ phận, loại đào tạo); (2) chi tiết session (Session, SOP, chủ đề, hình thức, người đào tạo, ngày); (3) danh sách theo từng session (STT, mã NV, tên, bộ phận, ký tên, kết quả, kết quả đào tạo lại); (4) **xác nhận người chuẩn bị** danh sách và chủ đề trước khi đào tạo; (5) **xác nhận người đào tạo cho từng session**; (6) **xác nhận hoàn thành của DCO-QA** sau khi đánh giá xong; đầu trang có mã đào tạo, Page x/y | Các xác nhận (4), (5), (6) đã có dưới dạng chữ ký điện tử | Bản in giấy (WP-PAPER) **phải theo đúng bố cục sáu phần**; bản in trước buổi mang sẵn phần (4) đã ký |
+| TR-52 | APD.0009 v2.0.0 | **Chân trang của mọi trang bài kiểm tra: số đào tạo và chữ ký học viên**; danh sách chủ đề; tên, mã NV, đơn vị; ngày; thời gian làm bài; loại đào tạo (lần đầu, đào tạo lại, định kỳ, đột xuất); kết quả (đạt khi từ 7/10; không đạt thì đào tạo lại); người đánh giá; hai mẫu: TH1 câu hỏi tự luận hoặc nhiều đáp án, TH2 checklist Đúng hoặc Không đúng; số câu hỏi | Chưa có bản in | Gói giấy in phiếu cho từng học viên đúng các mục này, chân trang mỗi trang có số đào tạo và ô ký học viên |
+| TR-53 | APD.0108 | **Một phiếu cho một tài liệu** (mã, tên, phiên bản) của một bộ phận; cột: STT, mã NV, tên, mã đào tạo, ngày đọc hiểu, chữ ký; phần xác nhận của trưởng phòng: họ tên, chức vụ, ngày, chữ ký, nhận xét | Bảng người tham gia chưa có cột này | Cột APD.0108 và bản in theo từng tài liệu (đã có ở TR-40) |
+| TR-54 | APD.0011 | Cột vị trí; vị trí quản lý (QM, Production Manager) **có thể ghi chung "Management Personnel"** | Mỗi vị trí là một cột riêng | Cho phép một vị trí nhóm "Management Personnel" gán cho nhiều chức danh quản lý (D-54) |
+| TR-55 | APD.0024 v2.00 | Hai trường hợp: bổ nhiệm lần đầu hoặc thay đổi/bổ sung vị trí, mỗi trường hợp có bảng riêng; ô "đã hoàn thiện đào tạo theo ma trận, mã và phiên bản"; quyền hạn; bảng trách nhiệm và mô tả công việc; ký **người giao việc** (ghi chức danh nếu người nhận là trưởng đơn vị, QM hoặc QP) và **người nhận** | Dữ liệu và chữ ký điện tử đã có (gồm ảnh chụp ma trận); chưa có bản in | Bản in APD.0024 để ký tay khi cần, rồi scan |
+| TR-56 | FRM.0044 | Cột: ngày, mã đào tạo, mã SOP, chủ đề, số buổi, ghi chú; theo bộ phận | Đã có màn Training Number Register theo bộ phận và năm | Không còn việc |
+
+**Quyết định bổ sung (ĐỀ XUẤT; QA xác nhận):** D-52 hai ảnh chữ ký mẫu cho mỗi phiên bản; D-53 nơi lưu trình độ chuyên môn và ngày vào công ty (đề xuất: hồ sơ nhân sự trong quản lý người dùng, chỉ đọc ở Training); D-54 vị trí nhóm "Management Personnel".
+
+**Bản in là bản có kiểm soát:** mọi bản in giấy ở đây (gói APD.0117, APD.0009, APD.0108, FRM.0007, APD.0024, APD.0014, APD.0011, APD.0118) dùng chung quy tắc 17.3: mã gói, số trang, bộ đếm bản in, lý do in lại, và song ngữ Việt và Anh.
+
+### 17.11 Matrix: thiết kế bám theo quy trình (hai cách nhìn)
+
+**Lưu ý nguồn:** ý tưởng "lưới nhân viên × chủ đề có màu trạng thái" xuất phát từ một giao diện cũ do chủ dự án gợi ý. **SOP không mô tả lưới đó.** Mục này chỉ giữ phần có căn cứ trong SOP, và điều chỉnh phần còn lại cho đúng ngữ cảnh của quy trình.
+
+**Căn cứ SOP và biểu mẫu**
+
+| Điều | SOP và biểu mẫu nói gì | Hệ quả cho thiết kế |
+|---|---|---|
+| 5.3.1, APD.0011 | Ma trận lập **theo bộ phận**, dựa trên mô tả công việc từng **vị trí**. Hàng: chủ đề hoặc SOP; cột: các **vị trí công việc**; thêm cột "Annual training required (Yes/No)". Sắp theo ba nhóm: đào tạo chung của nhà máy, đào tạo chung của bộ phận, danh mục SOP cho từng vị trí. Vị trí quản lý (QM, Production Manager) có thể ghi chung "Management Personnel" | Ma trận định nghĩa **là lưới chủ đề × vị trí**, đã đúng dạng lưới. Cần giữ ba nhóm hàng và nhóm vị trí quản lý |
+| 5.3.1 | Cập nhật ma trận khi đổi mô tả công việc, sau rà soát hằng năm, khi ban hành mới tài liệu cấp 1, 2, 3; tài liệu cấp 4 và thay đổi chỉ biên tập có thể không cần đào tạo | Cần thấy ngay tác động của một thay đổi: vị trí nào cần đào tạo tài liệu nào |
+| 5.1 | Mọi nhân viên phải được đào tạo về lĩnh vực của mình **trước khi bắt đầu công việc**; trưởng đơn vị đảm bảo điều đó trước khi giao việc độc lập | Cần xem **từng người** đã đủ chủ đề của vị trí mình chưa |
+| 5.3.8, APD.0024 | Bản giao việc chỉ lập khi nhân viên **hoàn thành tất cả mục trong ma trận** của vị trí; ghi mã và phiên bản ma trận | Cần cách nhìn "mức hoàn thành ma trận" của một người, đúng với điều kiện này |
+| 5.3.11 | Chuyển bộ phận: trưởng bộ phận tiếp nhận và người được phân công rà soát hồ sơ hiện có để xác định đào tạo bổ sung | Cần so hồ sơ của người với ma trận của vị trí mới |
+| 5.3.2 | Yêu cầu đào tạo hằng năm và đào tạo định kỳ tài liệu dựa trên ma trận và thời hạn rà soát tài liệu | Cần biết ai "đến hạn" đào tạo hằng năm hoặc định kỳ |
+| 5.3.10 | Hồ sơ đào tạo cá nhân (APD.0014) là nơi ghi các lần đã đào tạo | Nguồn sự thật của "đã đào tạo" là hồ sơ cá nhân, không phải nhập tay trên lưới |
+
+**Thiết kế (ĐỀ XUẤT; QA xác nhận):**
+
+1. **Ma trận định nghĩa (APD.0011): lưới chủ đề × vị trí.** Giữ ba nhóm hàng, cột "Annual", nhóm vị trí "Management Personnel" (TR-54). Cải thiện giao diện: cột vị trí và hai cột đầu cố định khi cuộn, ô tích chọn có màu, tìm và lọc hàng, đếm số vị trí cần đào tạo mỗi hàng. Vẫn là bảng tích chọn vì cần sửa nhanh và duyệt từng phiên bản.
+2. **Lưới mức hoàn thành ma trận, theo từng vị trí (mới).** Chọn **bộ phận và vị trí**; cột là **đúng các hàng ma trận của vị trí đó** (gồm hai nhóm chung); hàng là các nhân viên giữ vị trí đó. Lý do: mỗi vị trí cần một tập chủ đề khác nhau, nên lưới "mọi nhân viên × mọi chủ đề" toàn là ô trống và không trả lời được câu hỏi của SOP. Mỗi hàng có cột tóm tắt "đã hoàn thành x trên y mục" và biểu hiện đủ điều kiện nhận **bản giao việc** (5.3.8). Có chế độ "Gap analysis" chỉ giữ người và chủ đề còn thiếu.
+3. **Cách nhìn theo người** (cho chuyển vị trí, 5.3.11): chọn một nhân viên và một vị trí đích, hiện từng mục ma trận của vị trí đó với trạng thái. Đây là màn Transfer review của TR-45 và dùng chung dữ liệu.
+4. **Dữ liệu trạng thái một ô** (ĐỀ XUẤT, suy từ SOP; QA xác nhận tên và quy tắc):
+
+| Trạng thái | Điều kiện | Căn cứ |
+|---|---|---|
+| Not required | Ma trận không yêu cầu chủ đề cho vị trí của người đó, hoặc tài liệu được xác nhận không cần đào tạo (cấp 4, thay đổi biên tập) | 5.3.1 |
+| Required | Ma trận yêu cầu, chưa có hồ sơ hợp lệ | 5.1, 5.3.10 |
+| In progress | Người đó có tên trong một hoạt động đang mở (Planned, Notified, In progress) cho chủ đề này | 5.3.3 đến 5.3.6 |
+| Qualified | Có hồ sơ hợp lệ cho **phiên bản đang hiệu lực** của tài liệu (hoặc chủ đề không phải SOP) | 5.3.10 |
+| Update needed | Có hồ sơ cho phiên bản cũ; phiên bản hiện hành cần đào tạo (nâng phiên bản) | 5.1.3, 5.3.1 |
+| Due | Chủ đề có cờ hằng năm hoặc đến hạn đào tạo định kỳ theo thời hạn rà soát tài liệu | 5.3.2 |
+
+   Hồ sơ bị vô hiệu (void) không được tính. Trạng thái luôn **tính ở máy chủ** từ hồ sơ cá nhân, ma trận hiệu lực và hoạt động; không có ô nhập tay.
+5. **Vận hành giấy:** trưởng đơn vị in lưới theo bộ phận và vị trí (bản có kiểm soát, theo quy tắc 17.3) để rà soát trong phòng họp; bản in ghi trạng thái bằng chữ, không chỉ bằng màu. Không có thao tác sửa trạng thái trên lưới.
+6. **Không chỉ dựa vào màu:** mỗi ô có biểu tượng và chữ (ALCOA: đọc được cả khi in đen trắng); bấm ô mở ngăn kéo gồm lần đào tạo gần nhất, hạn, hoạt động đang mở và liên kết.
+7. **Responsive:** trên điện thoại lưới chuyển sang dạng thẻ theo nhân viên (mỗi thẻ có danh sách chủ đề và trạng thái, tóm tắt "x trên y").
+
+**Việc mới:**
+- TR-57: lưới mức hoàn thành ma trận theo bộ phận và vị trí (điểm 2).
+- TR-58: tóm tắt đủ điều kiện nhận bản giao việc trên lưới (điểm 2; liên hệ D-15).
+- TR-59: trạng thái "Update needed" khi nâng phiên bản tài liệu (điểm 4).
+- TR-60: bản in lưới theo bộ phận và vị trí (điểm 5).
+- TR-61: lưới ma trận định nghĩa có cột cố định, ba nhóm hàng, tìm và lọc (điểm 1).
+
+**Quyết định bổ sung (ĐỀ XUẤT; QA xác nhận):** D-55 trạng thái ô tính hoàn toàn ở máy chủ từ hồ sơ cá nhân, không nhập tay; D-56 lưới theo từng vị trí, không có lưới "mọi người × mọi chủ đề" ở giai đoạn này (chỉ thêm nếu QA cần sau khi dùng thử); D-57 "Update needed" áp dụng khi phiên bản hiệu lực của tài liệu đổi và Document Control đã xác định cần đào tạo; D-58 tên nhãn trạng thái là gợi ý và có thể đổi theo cách gọi của QA.
+
+**Thứ tự:** gói **WP-MATRIX** (TR-57 đến TR-61), làm sau WP-OBS và độc lập với WP-PAPER; điểm 1 và 4 làm trước vì nhỏ và không đổi dữ liệu.

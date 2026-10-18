@@ -714,3 +714,50 @@ Assistant findings that the owner should know (not decided here):
 - Expiry instant: **start of the Valid Until day** (matches how controlled copy expiry is already computed).
 - Notification language: **both Vietnamese and English**; the email may be longer than the in-app message.
 - Recipients: every Active user account (email and in-app), plus the recipients of electronic copies of the document, who are also told to expect physical recall.
+
+
+## TRAINING-HYBRID-2026-10-18 — Software supports the SOP; the manual part stays manual and is recorded
+
+Owner instruction in the session (2026-10-18): the software only supports the procedure and is not 100% of it; the proposed solution must combine software and manual steps as the SOP describes. Chosen by the assistant under that instruction, **not approved by QA**:
+
+| Item | Software does | People do |
+|---|---|---|
+| APD.0009 footer (TR-52) | Prints a copy of the approved PDF exam for each trainee with a cover page and a footer (Training Number, trainee name, signature line); keeps the approved file unchanged; numbers and records each print. | Sign the pages, mark, send the result for transcription. For a DOCX exam: set the footer in the document and print from Word. |
+| Attendance list to QA on the day (TR-36) | Shows the day, reminds in the morning and weekly when late, records a late sending. Does not block. | Send the list to QA. |
+| Absence over six months, transfers, new employee (TR-32, TR-34, TR-45) | Holds the SOP checklist, links the trainings organised, closes with a signature of a person other than the employee. | Detect the event, open the review, do each item. |
+| Approved vendor list (SOP.0025) | Shows a warning when an external training has no vendor reference. | Check the approved vendor list. |
+
+Open for QA: whether a closed review may replace the manual record of the item; whether a late list to QA needs a reason; the wording of the checklist items.
+
+## TRAINING-FLEXIBLE-PAPER-2026-10-17 — Training Management is a supporting tool: SOP values are defaults, paper is a valid path
+
+Design documents: `../../../docs/to-be-sds/training/PLAN-TR-001-training-management.md` section 17 and `SDS-TR-001-training-management-design.md` section 18.
+
+**Owner decision, given in this conversation (2026-10-17):**
+
+- The software is a tool that supports the training procedure; it does not replace it entirely. Staff in the workshop and the clean rooms often have no device, so training may be run on paper or in one meeting room, and the software must work for both.
+- SOP.0003 values are **defaults, not blocks**: the screen suggests the SOP value, an authorised person may choose another, and the choice is recorded. Implemented for the way of assessment of a session (SOP.0003 5.1.2).
+- What stays strict: electronic signatures with meaning, Audit Trail, no edit or delete of a closed record, segregation of duties, server-side permission and scope checks, server-side calculation of the pass result.
+
+**Already built and in use on DEV (recorded for traceability):** a person may be removed from the attendee list only before the list is confirmed and before anything is recorded for the person, with the name and the reason in the Audit Trail; after that the person is marked absent. External persons may be added several at a time. An exam or an answer key accepts only PDF or DOCX; PDF is previewed with the project PDF viewer and DOCX with the read-only OnlyOffice viewer, nothing is converted.
+
+**Proposals — NOT approved; each needs a named decision by the owner or QA before it is relied on** (numbers are those of PLAN-TR-001 17.7, 17.10 and 17.11):
+
+| # | Proposal |
+|---|---|
+| D-39 | A session has a delivery mode: electronic, paper or mixed; changing it is recorded with a reason. |
+| D-40 | A paper pack carries the Training Number on every page, a pack code, page numbers, a print counter; a reprint needs a reason. |
+| D-42 | Practical training may be assessed by "Observation of actual operations", recorded with the APD.0009 checklist (case TH2); same score and 70% threshold. **Built on DEV on 2026-10-17 as an option; QA to confirm.** |
+| D-43 | External training: unit or individual that trains is mandatory; no method, no assessment, no review of content; certificate as scanned evidence; record result `ATTENDED` when there is no score. **Built on DEV on 2026-10-17; QA to confirm.** |
+| D-45 | Signatories of a document get the initial training record of that document automatically. |
+| D-46 | A preparation checklist per session (venue, equipment, informing trainees) with a notice to the unit that has to act; it warns, it does not block. |
+| D-47 | A log of copies sent to and received by the managing units. |
+| D-48 | Personal training records can be exported in a batch by department and year, prepared and approved by two different people. |
+| D-49 | No offline or PWA application at this stage; paper is the fallback. |
+| D-51 | Results may be transcribed from paper: the scan is mandatory, a second person verifies with an electronic signature, and a late entry (after one working day) needs a reason. |
+| D-52 | Two specimen signature images per version (FRM.0007 "1st" and "2nd" signature). |
+| D-53 | Where the qualification and the date of joining of an employee are kept (needed by APD.0014). |
+| D-54 | A position group "Management Personnel" in the matrix (APD.0011 note). |
+| D-55 to D-58 | Matrix completion grid by position: every cell is calculated on the server from the personal training records, never typed; states Not required, Required, In progress, Qualified, Update needed, Due; labels may be changed by QA. |
+
+**Open for QA (not decided):** how a training on a document version is recognised as needing "Update needed"; whether the result `ATTENDED` is acceptable on a personal training record for an external training; the evidence QA accepts as proof of an external training.

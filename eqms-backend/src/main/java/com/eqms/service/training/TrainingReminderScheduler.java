@@ -56,13 +56,14 @@ public class TrainingReminderScheduler {
         sent += dueSoon(today);
         sent += overdue(today);
         sent += waitingSteps(today);
+        sent += qaListReminders(today);
         return sent;
     }
 
     private int dueSoon(LocalDate today) {
         int count = 0;
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select distinct a.id, a.training_number, a.title, a.due_date, p.person_user_id
+            select distinct a.id, a.training_number, a.training_title, a.due_date, p.person_user_id
               from training_activities a join training_participants p on p.activity_id = a.id
              where a.status in ('NOTIFIED','IN_PROGRESS') and a.due_date between ? and ? and p.person_user_id is not null and p.state = 'INVITED'
             """, today, today.plusDays(3));
@@ -70,7 +71,7 @@ public class TrainingReminderScheduler {
             UserAccount person = users.findById((UUID) row.get("person_user_id")).orElse(null);
             if (person == null) continue;
             notifier.send("TRAINING_DUE_SOON", person, null, "Training: due soon",
-                    "The training " + row.get("training_number") + " (" + row.get("title") + ") is due on " + row.get("due_date") + ".", "TRAINING_ACTIVITY", (UUID) row.get("id"), "due-soon:" + today);
+                    "The training " + row.get("training_number") + " (" + row.get("training_title") + ") is due on " + row.get("due_date") + ".", "TRAINING_ACTIVITY", (UUID) row.get("id"), "due-soon:" + today);
             count++;
         }
         return count;
@@ -80,14 +81,46 @@ public class TrainingReminderScheduler {
         int count = 0;
         String week = today.get(IsoFields.WEEK_BASED_YEAR) + "-W" + today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select id, training_number, title, due_date, created_by from training_activities
+            select id, training_number, training_title, due_date, created_by from training_activities
              where status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and due_date < ? and created_by is not null
             """, today);
         for (Map<String, Object> row : rows) {
             UserAccount organizer = users.findById((UUID) row.get("created_by")).orElse(null);
             if (organizer == null) continue;
             notifier.send("TRAINING_OVERDUE", organizer, null, "Training: overdue",
-                    "The training " + row.get("training_number") + " (" + row.get("title") + ") was due on " + row.get("due_date") + " and is not completed.", "TRAINING_ACTIVITY", (UUID) row.get("id"), "overdue:" + week);
+                    "The training " + row.get("training_number") + " (" + row.get("training_title") + ") was due on " + row.get("due_date") + " and is not completed.", "TRAINING_ACTIVITY", (UUID) row.get("id"), "overdue:" + week);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * SOP.0003 5.3.6: for a new or revised document the attendance list goes to QA on the day of the training. The morning of the day, the organizer is reminded; the day after, if the list
+     * has not been sent, once a week while it stays late.
+     */
+    private int qaListReminders(LocalDate today) {
+        int count = 0;
+        String week = today.get(IsoFields.WEEK_BASED_YEAR) + "-W" + today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+        for (Map<String, Object> row : jdbc.queryForList("""
+            select distinct a.id, a.training_number, a.training_title, a.created_by from training_activities a join training_sessions s on s.activity_id = a.id
+             where a.status in ('NOTIFIED','IN_PROGRESS') and a.document_id is not null and a.kind_reason in ('NEW_SOP','SOP_VERSION') and a.created_by is not null
+               and s.status = 'PLANNED' and s.scheduled_on = ?
+            """, today)) {
+            UserAccount organizer = users.findById((UUID) row.get("created_by")).orElse(null);
+            if (organizer == null) continue;
+            notifier.send("TRAINING_QA_LIST_TODAY", organizer, null, "Training today: send the list to QA today",
+                    "Today is the training " + row.get("training_number") + " (" + row.get("training_title") + ") on a new or revised document. Send the attendance list to QA today (SOP.0003 5.3.6).", "TRAINING_ACTIVITY", (UUID) row.get("id"), "qa-list-today:" + today);
+            count++;
+        }
+        for (Map<String, Object> row : jdbc.queryForList("""
+            select a.id, a.training_number, a.training_title, a.created_by, max(s.held_on) as held_on from training_activities a join training_sessions s on s.activity_id = a.id and s.status = 'HELD'
+             where a.status = 'IN_PROGRESS' and a.document_id is not null and a.kind_reason in ('NEW_SOP','SOP_VERSION') and a.created_by is not null
+             group by a.id, a.training_number, a.training_title, a.created_by having max(s.held_on) < ?
+            """, java.sql.Date.valueOf(today))) {
+            UserAccount organizer = users.findById((UUID) row.get("created_by")).orElse(null);
+            if (organizer == null) continue;
+            notifier.send("TRAINING_QA_LIST_LATE", organizer, null, "Training: the list for QA is late",
+                    "The attendance list of " + row.get("training_number") + " (" + row.get("training_title") + ") was due to QA on " + row.get("held_on") + " and has not been sent.", "TRAINING_ACTIVITY", (UUID) row.get("id"), "qa-list-late:" + week);
             count++;
         }
         return count;

@@ -185,6 +185,15 @@ public class TrainingRecordExportService {
         }
     }
 
+    /** The APD.0014 PDF of one person with the records completed up to the cut-off date. Used by the batch export; nothing is stored here. */
+    public byte[] renderPersonal(UserAccount person, UserAccount preparer, UserAccount approver, OffsetDateTime at, String reason, UUID id, java.time.LocalDate cutOff) throws Exception {
+        List<Map<String, Object>> records = jdbc.queryForList("""
+            select r.record_no, r.training_number, r.topic_text, r.document_number, r.document_revision, r.completed_on, r.result, r.content_sha256, v.voided_at, v.reason as void_reason
+              from training_records r left join training_record_voids v on v.record_id = r.id where r.person_user_id = ? and r.completed_on <= ? order by r.completed_on, r.record_no
+            """, person.getId(), java.sql.Date.valueOf(cutOff));
+        return render(person, records, preparer, approver, at, reason, id);
+    }
+
     // ----------------------------------------------------------------------------------------------------------------------------- PDF
 
     private byte[] render(UserAccount person, List<Map<String, Object>> records, UserAccount preparer, UserAccount approver, OffsetDateTime at, String reason, UUID id) throws Exception {
@@ -213,7 +222,9 @@ public class TrainingRecordExportService {
                 text(s, strong, 13, margin, y, "Personal Training Record (APD.0014)"); y -= 20;
                 if (page == 0) {
                     text(s, font, size, margin, y, "Employee: " + person.getFullName() + (person.getEmployeeCode() == null ? "" : " (" + person.getEmployeeCode() + ")")); y -= line;
-                    text(s, font, size, margin, y, "Department: " + nvl(person.getDepartment()) + "    Position: " + nvl(person.getPosition())); y -= line;
+                    text(s, font, size, margin, y, "Department: " + nvl(person.getDepartment())); y -= line;
+                    text(s, font, size, margin, y, "Qualification: " + clip(font, qualification(person), size, width - 2 * margin - 80)); y -= line;
+                    text(s, font, size, margin, y, "Joined the company: " + (person.getStartDate() == null ? "" : person.getStartDate().toString())); y -= line;
                     text(s, font, size, margin, y, "Reason for the export: " + clip(font, reason, size, width - 2 * margin - 120)); y -= line;
                     text(s, font, size, margin, y, "Records listed: " + records.size() + "    Generated: " + at.toLocalDateTime().withNano(0)); y -= line + 6;
                 }
@@ -243,6 +254,12 @@ public class TrainingRecordExportService {
             pdf.save(out);
             return out.toByteArray();
         }
+    }
+
+    /** The highest qualification the person has on record (APD.0014 v2.0.0): the latest degree with its field of study and institution. */
+    private String qualification(UserAccount person) {
+        return jdbc.queryForList("select degree, field_of_study, institution from user_educations where user_id = ? order by graduation_year desc nulls last, created_at desc limit 1", person.getId()).stream().findFirst()
+                .map(r -> nvl((String) r.get("degree")) + (r.get("field_of_study") == null ? "" : ", " + r.get("field_of_study")) + (r.get("institution") == null ? "" : " (" + r.get("institution") + ")")).orElse("");
     }
 
     private static void text(PDPageContentStream s, PDType0Font font, float size, float x, float y, String value) throws IOException {

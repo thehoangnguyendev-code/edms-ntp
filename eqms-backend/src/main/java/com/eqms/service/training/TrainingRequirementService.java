@@ -81,11 +81,23 @@ public class TrainingRequirementService {
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select r.id, r.request_no, r.year, r.kind, r.status, r.due_by, d.name as department_name, r.created_at,
+            select r.id, r.request_no, r.year, r.kind, r.status, r.due_by, r.department_id, d.name as department_name, r.created_at,
                    (select count(*) from training_requirement_lines l where l.requirement_id = r.id) as line_count
               from training_requirements r join departments d on d.id = r.department_id""" + where + " order by r.year desc, r.request_no desc limit ? offset ?", args.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("data", TrainingRows.camel(rows));
+        List<Map<String, Object>> data = TrainingRows.camel(rows);
+        // What the person may do with each row, decided here, so the menu of the list shows only what the server would accept.
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, Object> caps = capabilities(actor, rows.get(i));
+            Map<String, Object> actions = new LinkedHashMap<>();
+            actions.put("edit", caps.get("edit"));
+            actions.put("review", caps.get("review"));
+            actions.put("approve", caps.get("approve"));
+            actions.put("track", Boolean.TRUE.equals(caps.get("postpone")) || Boolean.TRUE.equals(caps.get("openActivity")) || Boolean.TRUE.equals(caps.get("qaSign")));
+            actions.put("print", "APPROVED".equals(rows.get(i).get("status")));
+            data.get(i).put("actions", actions);
+        }
+        result.put("data", data);
         long count = total == null ? 0 : total;
         result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
         return result;
@@ -102,7 +114,7 @@ public class TrainingRequirementService {
         out.put("lines", TrainingRows.camel(jdbc.queryForList("""
             select l.id, l.line_no, l.planned_month, l.topic_id, l.document_id, l.activity_id, l.postponed_from, l.postpone_reason, l.qa_comment, l.qa_signed_at,
                    coalesce(t.name, d.document_name) as title, coalesce(t.code, d.document_number) as code,
-                   a.training_number, a.status as activity_status, qu.full_name as qa_signed_by_name,
+                   a.training_number, a.status as activity_status, a.completed_on as executed_on, qu.full_name as qa_signed_by_name,
                    case when a.status = 'COMPLETED' then 'DONE'
                         when a.id is not null and a.status <> 'CANCELLED' then 'IN_PROGRESS'
                         when l.planned_month + interval '1 month' <= current_date then 'OVERDUE'
@@ -318,7 +330,7 @@ public class TrainingRequirementService {
                 : jdbc.queryForObject("select document_number || ' ' || document_name from documents where id=?", String.class, line.get("document_id"));
         LocalDate month = ((java.sql.Date) line.get("planned_month")).toLocalDate();
         Map<String, Object> created = activities.create(actor, new TrainingActivityService.CreateRequest((UUID) r.get("department_id"), "PERIODIC", "OTHER", null,
-                title.length() > 255 ? title.substring(0, 255) : title, month.withDayOfMonth(month.lengthOfMonth()), "From " + r.get("request_no")));
+                title.length() > 255 ? title.substring(0, 255) : title, month.withDayOfMonth(month.lengthOfMonth()), "From " + r.get("request_no"), null, null));
         jdbc.update("update training_activities set requirement_line_id=? where id=?", lineId, created.get("id"));
         jdbc.update("update training_requirement_lines set activity_id=? where id=?", created.get("id"), lineId);
         audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), (UUID) r.get("id"), "TRAINING_REQUIREMENT_ACTIVITY_OPENED", null, String.valueOf(created.get("trainingNumber")), title);

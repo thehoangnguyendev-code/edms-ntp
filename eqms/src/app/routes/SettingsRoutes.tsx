@@ -75,8 +75,8 @@ const DisasterRecoveryPlanView = lazy(() => import('@/features/settings').then(m
 const AnnouncementsView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementsView })));
 const AnnouncementEditorView = lazy(() => import('@/features/settings').then(m => ({ default: m.AnnouncementEditorView })));
 const BackupAlertsView = lazy(() => import('@/features/settings').then(m => ({ default: m.BackupAlertsView })));
-const TrainingTopicsView = lazy(() => import('@/features/settings/training-administration/TrainingTopicsView').then(m => ({ default: m.TrainingTopicsView })));
-const TrainingPersonPositionsView = lazy(() => import('@/features/settings/training-administration/TrainingPersonPositionsView').then(m => ({ default: m.TrainingPersonPositionsView })));
+const TrainingTopicsView = lazy(() => import('@/features/settings/training-administration/topics/TrainingTopicsView').then(m => ({ default: m.TrainingTopicsView })));
+const TrainingPersonPositionsView = lazy(() => import('@/features/settings/training-administration/positions/TrainingPersonPositionsView').then(m => ({ default: m.TrainingPersonPositionsView })));
 const TrainingPropertiesView = lazy(() => import('@/features/settings').then(m => ({ default: m.TrainingPropertiesView })));
 
 const ProfileViewWrapper = ({ navigate }: { navigate: NavigateFunction }) => {

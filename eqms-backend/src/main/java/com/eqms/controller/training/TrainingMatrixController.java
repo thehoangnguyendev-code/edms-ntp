@@ -87,6 +87,17 @@ public class TrainingMatrixController {
         return ResponseEntity.ok(Map.of("data", matrices.topics(users.requireCurrentUser(), search, activeOnly)));
     }
 
+    @GetMapping("/topics/page")
+    public ResponseEntity<?> topicsPage(@RequestParam(required = false) String search,
+                                        @RequestParam(required = false) String scope,
+                                        @RequestParam(required = false) String status,
+                                        @RequestParam(required = false) String sortBy,
+                                        @RequestParam(defaultValue = "asc") String sortDirection,
+                                        @RequestParam(defaultValue = "1") int page,
+                                        @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(matrices.topicsPage(users.requireCurrentUser(), search, scope, status, sortBy, sortDirection, page, limit));
+    }
+
     @PostMapping("/topics")
     public ResponseEntity<?> createTopic(@RequestBody TopicRequest request) { return ResponseEntity.ok(matrices.saveTopic(users.requireCurrentUser(), null, request)); }
 

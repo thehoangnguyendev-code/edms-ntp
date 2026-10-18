@@ -355,6 +355,44 @@ public class TrainingMatrixService {
              where (lower(t.name) like ? escape '\\' or lower(t.code) like ? escape '\\')""" + (activeOnly ? " and t.active" : "") + " order by t.code limit 200", like, like));
     }
 
+    /** Paged, searchable, sortable list for the Training Topics administration screen. Sort keys are fixed; anything else falls back to code. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> topicsPage(UserAccount actor, String search, String scope, String status, String sortBy, String sortDirection, int page, int limit) {
+        access.require(actor, "training.matrix.view", "training.matrix.manage", "training.admin.manage");
+        String like = "%" + escape((search == null ? "" : search.trim()).toLowerCase(Locale.ROOT)) + "%";
+        List<Object> filters = new ArrayList<>(List.of(like, like));
+        StringBuilder where = new StringBuilder(" where (lower(t.name) like ? escape '\\' or lower(t.code) like ? escape '\\')");
+        // A scope or status the screen does not know is ignored rather than turned into SQL.
+        if (scope != null && Set.of("FACTORY_GENERAL", "DEPARTMENT_GENERAL", "OTHER").contains(scope)) {
+            where.append(" and t.scope = ?");
+            filters.add(scope);
+        }
+        if ("Active".equalsIgnoreCase(status)) where.append(" and t.active");
+        else if ("Inactive".equalsIgnoreCase(status)) where.append(" and not t.active");
+        String from = " from training_topics t left join departments d on d.id = t.department_id";
+        String column = switch (sortBy == null ? "" : sortBy) {
+            case "name" -> "t.name";
+            case "scope" -> "t.scope";
+            case "department" -> "d.name";
+            case "active" -> "t.active";
+            default -> "t.code";
+        };
+        String direction = "desc".equalsIgnoreCase(sortDirection) ? "desc" : "asc";
+        int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
+        Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, filters.toArray());
+        List<Object> args = new ArrayList<>(filters);
+        args.add(safeLimit);
+        args.add((safePage - 1) * safeLimit);
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+            select t.id, t.code, t.name, t.scope, t.department_id, d.name as department_name, t.active, t.version
+            """ + from + where + " order by " + column + " " + direction + ", t.code limit ? offset ?", args.toArray());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("data", TrainingRows.camel(rows));
+        long count = total == null ? 0 : total;
+        result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
+        return result;
+    }
+
     @Transactional
     public Map<String, Object> saveTopic(UserAccount actor, UUID id, TopicRequest request) {
         access.require(actor, "training.admin.manage");
