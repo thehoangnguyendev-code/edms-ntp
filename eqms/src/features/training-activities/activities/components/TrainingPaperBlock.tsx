@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Button } from "@/components/ui/button/Button";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -28,6 +29,7 @@ export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: {
 
   const load = useCallback(() => { trainingPaperApi.packs(activity.id).then(setPacks).catch(() => setPacks([])); }, [activity.id]);
   useEffect(load, [load]);
+  useEntityChanged(["TRAINING"], load);
 
   const printed = (sessionId: string) => packs.filter((p) => p.sessionId === sessionId && p.packKind === "ATTENDANCE").length;
   const printedExam = (sessionId: string) => packs.filter((p) => p.sessionId === sessionId && p.packKind === "EXAM").length;

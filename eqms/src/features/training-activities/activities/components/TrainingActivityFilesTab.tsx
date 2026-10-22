@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { CloudUpload, Eye, Link2, Lock } from "lucide-react";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { Button } from "@/components/ui/button/Button";
@@ -10,11 +11,12 @@ import { Select } from "@/components/ui/select/Select";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
-import { trainingError, trainingFilesApi, type TrainingActivityFiles, type TrainingMaterial, type TrainingPaperEvidence, type TrainingParticipant } from "@/services/api/trainingActivities";
+import { trainingError, trainingFilesApi, trainingFormTemplatesApi, type AssessmentEditOpen, type TrainingFormTemplateRef, type TrainingActivityFiles, type TrainingMaterial, type TrainingPaperEvidence, type TrainingParticipant } from "@/services/api/trainingActivities";
 import { day, when } from "../../shared/trainingLabels";
 import { TrainingFileDropzone } from "../../shared/TrainingFileDropzone";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import type { ActivityMode } from "../TrainingActivityDetailPage";
+import { TrainingAssessmentEditorFrame } from "./TrainingAssessmentEditorFrame";
 
 const KIND_LABEL: Record<string, string> = { ATTENDANCE_SHEET: "Attendance sheet", ASSESSMENT: "Test or checklist", CERTIFICATE: "Certificate", OTHER: "Other" };
 const ACCEPT = ".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.pptx";
@@ -31,7 +33,7 @@ function save(blob: Blob, name: string) {
 }
 
 type Sending = { file: File; percent: number };
-const EMPTY_EVIDENCE = { file: null as File | null, kind: "ATTENDANCE_SHEET", participantId: "", remark: "" };
+const EMPTY_EVIDENCE = { file: null as File | null, kind: "ATTENDANCE_SHEET", participantId: "", remark: "", formUsed: "" };
 
 /**
  * The files of an activity: the materials (file or link), the exam and the answer key, and the scans of what was signed on paper. Each file has a fingerprint and is never
@@ -46,11 +48,18 @@ export function TrainingActivityFilesTab({ activityId, participants, part, mode,
   const [material, setMaterial] = useState<{ mode: "file" | "link"; file: File | null; title: string; url: string }>({ mode: "file", file: null, title: "", url: "" });
   const [evidence, setEvidence] = useState(EMPTY_EVIDENCE);
   const [removing, setRemoving] = useState<{ id: string; reason: string }>();
+  const [templates, setTemplates] = useState<TrainingFormTemplateRef[]>([]);
+  const [editing, setEditing] = useState<AssessmentEditOpen>();
 
   const load = useCallback(() => {
     trainingFilesApi.list(activityId).then(setFiles).catch((e) => setError(trainingError(e)));
   }, [activityId]);
   useEffect(load, [load]);
+  useEntityChanged(["TRAINING"], load);
+  const canEditHere = mode === "edit" && !!files?.canUploadMaterial;
+  useEffect(() => { if (canEditHere && part === "assessment") trainingFormTemplatesApi.current().then(setTemplates).catch(() => setTemplates([])); }, [canEditHere, part]);
+  // The editor saves into the activity while it is open; when it is closed the list is read again (the document server reports the last save a few seconds later).
+  const closeEditor = () => { setEditing(undefined); load(); window.setTimeout(load, 3000); window.setTimeout(load, 8000); };
 
   const run = async (action: () => Promise<TrainingActivityFiles>, done: string) => {
     setBusy(true);
@@ -127,6 +136,7 @@ export function TrainingActivityFilesTab({ activityId, participants, part, mode,
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => i + 1 },
     { id: "kind", header: "Type", cell: (e) => KIND_LABEL[e.kind] ?? e.kind },
     { id: "file", header: "File", cell: (e) => `${e.originalName} (${size(e.sizeBytes)})` },
+    { id: "form", header: "Form used", cell: (e) => e.formUsed ?? "—" },
     { id: "person", header: "For", cell: (e) => e.participantName ?? "The whole session" },
     { id: "by", header: "Uploaded by", cell: (e) => `${e.uploadedByName} (${day(e.uploadedAt)})` },
     { id: "received", header: "Checked against the paper", cell: (e) => (e.receivedAt ? <Badge color="emerald">{e.receivedByName}, {when(e.receivedAt)}</Badge> : <Badge color="amber">Not yet</Badge>) },
@@ -148,7 +158,23 @@ export function TrainingActivityFilesTab({ activityId, participants, part, mode,
     const current = slotOf(purpose);
     const isKey = purpose === "ANSWER_KEY";
     const active = sending[purpose];
+    const isDocx = !!current && previewType(current.originalName) === "docx";
+    const examDocx = (() => { const exam = slotOf("EXAM"); return !!exam && previewType(exam.originalName) === "docx"; })();
+    const editButtons = canEditHere && !active ? (
+      <div className="flex flex-wrap items-center gap-2">
+        {!isKey && !current && templates.map((t) => (
+          <Button key={t.id} size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "EXAM", source: "TEMPLATE", templateId: t.id })}>Start from {t.code} {t.versionLabel}</Button>
+        ))}
+        {!isKey && isDocx && <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "EXAM", source: "EXISTING" })}>Open to Edit</Button>}
+        {isKey && isDocx && <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "ANSWER_KEY", source: "EXISTING" })}>Open to Edit Answer</Button>}
+        {isKey && !current && examDocx && <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "ANSWER_KEY", source: "EXAM_COPY" })}>Open to Edit Answer</Button>}
+        {!isKey && !current && templates.map((t) => (
+          <Button key={`d-${t.id}`} size="sm" variant="outline" onClick={() => void download(() => trainingFormTemplatesApi.download(t.id), t.originalName)}>Download {t.code} {t.versionLabel}</Button>
+        ))}
+      </div>
+    ) : null;
     return (
+      <div className="space-y-2">
       <TrainingFileDropzone
         label={isKey ? "Answer Key (Optional)" : "Exam Template"}
         description={isKey ? "Upload the answer key for grading reference. Only visible to the organizers and to the people who review or approve the content." : "Upload the exam or quiz paper (Word or PDF) that will be printed and given to the employees."}
@@ -168,6 +194,8 @@ export function TrainingActivityFilesTab({ activityId, participants, part, mode,
         readOnlyText={!active && !current && !canAddMaterial ? "No file." : undefined}
         onChange={(f) => { if (f) void upload(purpose, f, (onProgress) => trainingFilesApi.uploadMaterial(activityId, f, undefined, purpose, onProgress), isKey ? "Answer key added" : "Exam template added"); }}
       />
+      {editButtons}
+      </div>
     );
   };
 
@@ -181,12 +209,13 @@ export function TrainingActivityFilesTab({ activityId, participants, part, mode,
   const addEvidence = async () => {
     const e = evidence;
     if (!e.file) return;
-    const ok = await upload("evidence", e.file, (onProgress) => trainingFilesApi.uploadEvidence(activityId, e.file as File, e.kind, e.participantId || undefined, e.remark.trim() || undefined, onProgress), "Scan uploaded");
+    const ok = await upload("evidence", e.file, (onProgress) => trainingFilesApi.uploadEvidence(activityId, e.file as File, e.kind, e.participantId || undefined, e.remark.trim() || undefined, onProgress, e.formUsed.trim() || undefined), "File uploaded");
     if (ok) setEvidence(EMPTY_EVIDENCE);
   };
 
   return (
     <div className="space-y-6">
+      {editing && <TrainingAssessmentEditorFrame activityId={activityId} request={editing} onClose={closeEditor} />}
       {part === "assessment" && (
         <>
           {external && <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-4 text-sm text-slate-600">An external training has no exam of its own. Upload the certificate or the attendance proof of the training unit below.</p>}
@@ -198,24 +227,25 @@ export function TrainingActivityFilesTab({ activityId, participants, part, mode,
             </div>
           </div>}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-800">Paper evidence</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Evidence: scans of paper and filled files</h3>
             {canAddEvidence && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   <div className="md:col-span-2">
-                    <TrainingFileDropzone label="Scan" required accept={ACCEPT} maxMb={20} hint="PDF, picture or Office file (max 20 MB)" file={sending.evidence?.file ?? evidence.file}
+                    <TrainingFileDropzone label="Scan or filled file" required accept={ACCEPT} maxMb={20} hint="PDF, picture or Office file (max 20 MB). A test or a checklist done on paper or in a Word file is uploaded here." file={sending.evidence?.file ?? evidence.file}
                       uploading={sending.evidence ? { percent: sending.evidence.percent } : undefined} onChange={(f) => setEvidence({ ...evidence, file: f })} />
                   </div>
                   <FormField label="Type" required><Select value={evidence.kind} enableSearch={false} onChange={(v) => setEvidence({ ...evidence, kind: v })} options={Object.entries(KIND_LABEL).map(([value, label]) => ({ label, value }))} /></FormField>
                   <FormField label="For one person (optional)"><Select value={evidence.participantId} onChange={(v) => setEvidence({ ...evidence, participantId: v })} options={[{ label: "The whole session", value: "" }, ...participants.map((p) => ({ label: p.fullName, value: p.id }))]} /></FormField>
+                  <FormField label="Form and version used (optional)"><Input value={evidence.formUsed} maxLength={80} placeholder="For example APD.0009 2.0.0" onChange={(e) => setEvidence({ ...evidence, formUsed: e.target.value })} /></FormField>
                   <div className="md:col-span-2"><FormField label="Remark"><Textarea rows={2} value={evidence.remark} onChange={(e) => setEvidence({ ...evidence, remark: e.target.value })} /></FormField></div>
                 </div>
                 <p className="text-xs text-slate-500">A second person checks the scan against the paper. When it belongs to one person, receiving it records that person's paper signature.</p>
-                <div><Button size="sm" variant="outline-emerald" loading={!!sending.evidence} disabled={!evidence.file} onClick={() => void addEvidence()}>Upload scan</Button></div>
+                <div><Button size="sm" variant="outline-emerald" loading={!!sending.evidence} disabled={!evidence.file} onClick={() => void addEvidence()}>Upload</Button></div>
               </div>
             )}
             <TabBlock>
-              <DataTable rows={files.evidence} getRowKey={(e) => e.id} columns={evidenceColumns} emptyState={<p className="p-4 text-sm text-slate-500">No scan yet. Sheets and tests signed by hand are uploaded here and checked against the paper by a second person.</p>} />
+              <DataTable rows={files.evidence} getRowKey={(e) => e.id} columns={evidenceColumns} emptyState={<p className="p-4 text-sm text-slate-500">No file yet. Sheets and tests signed by hand, or filled in a Word file, are uploaded here and checked against the paper by a second person.</p>} />
             </TabBlock>
           </div>
         </>

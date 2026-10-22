@@ -21,12 +21,25 @@ public class MyTrainingQueryService {
         this.access = access;
     }
 
+    /** A trainee marked present, with no result yet, on a training whose test is written, and a try that is still allowed (or one that is open). */
+    private static final String EXAM_READY = """
+        a.status = 'IN_PROGRESS' and s.status = 'HELD' and s.assessment_method = 'TEST' and p.state in ('ATTENDED','ONLINE') and p.result = 'PENDING'
+        and exists (select 1 from training_exam_questions q where q.activity_id = a.id)
+        and ((select count(*) from training_exam_attempts t where t.participant_id = p.id) <= (select count(*) from training_exam_resets r where r.participant_id = p.id)
+             or exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'IN_PROGRESS' and (t.due_at is null or t.due_at + interval '60 seconds' >= now())))
+        """;
+
     private static final String TASKS = """
         select p.id as participant_id, a.id as activity_id, a.training_number, a.training_title, a.status, a.due_date,
                s.method, s.scheduled_on, p.state,
-               (select string_agg(t.topic_text, '; ' order by t.topic_text) from training_session_topics t where t.session_id = s.id) as topics
+               (select string_agg(t.topic_text, '; ' order by t.topic_text) from training_session_topics t where t.session_id = s.id) as topics,
+               (
+        """ + EXAM_READY + """
+               ) as exam_ready
           from training_participants p join training_activities a on a.id = p.activity_id join training_sessions s on s.id = p.session_id
-         where p.person_user_id = ? and a.status in ('NOTIFIED','IN_PROGRESS') and p.state = 'INVITED' and s.status in ('PLANNED','HELD')
+         where p.person_user_id = ? and ((a.status in ('NOTIFIED','IN_PROGRESS') and p.state = 'INVITED' and s.status in ('PLANNED','HELD')) or (
+        """ + EXAM_READY + """
+               ))
         """;
     private static final String RECORDS = """
         select r.id, r.record_no, r.person_user_id, r.full_name, r.employee_code, r.department, r.position, r.training_number, r.topic_text,

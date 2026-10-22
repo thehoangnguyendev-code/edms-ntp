@@ -28,8 +28,8 @@ import java.util.UUID;
 
 /**
  * The paper test of a session (SOP.0003 5.3.7, APD.0009, TR-52): one copy for each trainee, made from the approved exam, with the Training Number and a place for the trainee's
- * signature in the footer of every page, and a cover page with the trainee's details. The approved file is never changed: the footer is added to a copy made at print time. Only a
- * PDF exam can be stamped without converting it, so a DOCX exam is refused with a clear message and the manual way (set the footer in the document) stays in the procedure.
+ * signature in the footer of every page, and a cover page with the trainee's details. The approved file is never changed: the footer is added to a copy made at print time. A PDF exam
+ * is stamped as it is; a Word exam is first turned into a PDF by the document server at print time (the Word file stays the approved one, and the Audit Trail records both fingerprints).
  * Every print is numbered and recorded; a print after the first needs a reason.
  */
 @Service
@@ -42,8 +42,10 @@ public class TrainingExamPackService {
     private final TrainingAccess access;
     private final TrainingStore store;
     private final FileStorageService files;
+    private final com.eqms.service.OnlyOfficeDocumentEditService onlyOffice;
 
-    public TrainingExamPackService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, FileStorageService files) {
+    public TrainingExamPackService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, FileStorageService files, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice) {
+        this.onlyOffice = onlyOffice;
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
@@ -66,7 +68,8 @@ public class TrainingExamPackService {
 
         Map<String, Object> exam = jdbc.queryForList("select * from training_materials where activity_id = ? and purpose = 'EXAM' and removed_at is null and link_url is null order by created_at desc limit 1", activityId)
                 .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_MISSING"));
-        if (!"application/pdf".equalsIgnoreCase(String.valueOf(exam.get("content_type")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_PDF");
+        boolean word = String.valueOf(exam.get("original_name")).toLowerCase(java.util.Locale.ROOT).endsWith(".docx");
+        if (!word && !"application/pdf".equalsIgnoreCase(String.valueOf(exam.get("content_type")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_PDF");
         byte[] examBytes;
         try {
             examBytes = files.readReportArtifact(String.valueOf(exam.get("provider")), String.valueOf(exam.get("stored_path")));
@@ -74,6 +77,11 @@ public class TrainingExamPackService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
         }
         if (!sha256(examBytes).equals(exam.get("sha256"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_FILE_INTEGRITY_FAILED");
+        String convertedSha = null;
+        if (word) {
+            examBytes = toPdf(examBytes, String.valueOf(exam.get("original_name")));
+            convertedSha = sha256(examBytes);
+        }
 
         Integer printed = jdbc.queryForObject("select count(*) from training_paper_packs where session_id = ? and pack_kind = 'EXAM'", Integer.class, sessionId);
         int copy = (printed == null ? 0 : printed) + 1;
@@ -133,7 +141,7 @@ public class TrainingExamPackService {
         String sha = sha256(bytes);
         jdbc.update("insert into training_paper_packs(id, activity_id, session_id, pack_code, copy_no, page_count, people_count, sha256, reason, printed_by, pack_kind) values (?,?,?,?,?,?,?,?,?,?,'EXAM')",
                 UUID.randomUUID(), activityId, sessionId, code, copy, pages, trainees.size(), sha, copy > 1 ? why : null, actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_EXAM_PACK_PRINTED", null, code, "Copy " + copy + ", " + pages + " page(s), " + trainees.size() + " trainee(s), exam file SHA-256 " + exam.get("sha256") + ", printed SHA-256 " + sha
+        store.auditActivity(actor, activity, "TRAINING_EXAM_PACK_PRINTED", null, code, "Copy " + copy + ", " + pages + " page(s), " + trainees.size() + " trainee(s), exam file SHA-256 " + exam.get("sha256") + (convertedSha == null ? "" : ", converted to PDF SHA-256 " + convertedSha) + ", printed SHA-256 " + sha
                 + (copy > 1 ? ". Reason: " + why : ""));
         return Map.of("bytes", bytes, "name", code.replace('/', '-') + ".pdf");
     }
@@ -181,6 +189,20 @@ public class TrainingExamPackService {
         StringBuilder sb = new StringBuilder();
         for (int cp : (value == null ? "" : value).codePoints().toArray()) if (!Character.isISOControl(cp)) sb.appendCodePoint(cp);
         return sb.toString();
+    }
+
+    /** A Word exam turned into a PDF by the document server; the temporary file is deleted at once. */
+    private byte[] toPdf(byte[] docx, String name) {
+        java.nio.file.Path temp = null;
+        try {
+            temp = java.nio.file.Files.createTempFile("training-exam-", ".docx");
+            java.nio.file.Files.write(temp, docx);
+            return onlyOffice.convertLocalFileToPdf(temp, name);
+        } catch (IOException | IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "TRAINING_EXAM_CONVERT_FAILED");
+        } finally {
+            if (temp != null) { try { java.nio.file.Files.deleteIfExists(temp); } catch (IOException ignored) { /* a temporary file */ } }
+        }
     }
 
     private static String sha256(byte[] bytes) {

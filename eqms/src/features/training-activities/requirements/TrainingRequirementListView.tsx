@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
+import { resettingDates, useDateRange, useDepartmentOptions } from "../shared/useListFilters";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
 import {
@@ -73,7 +75,13 @@ export function TrainingRequirementListView() {
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canPrepare = hasPermission("training.requirement.prepare");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = usePersistedState("training.requirements.status", "");
+  const [kindFilter, setKindFilter] = usePersistedState("training.requirements.kind", "");
+  const [departmentId, setDepartmentId] = usePersistedState("training.requirements.departmentId", "");
+  const [yearFilter, setYearFilter] = usePersistedState("training.requirements.year", "");
+  const departments = useDepartmentOptions();
+  const dueRange = useDateRange("training.requirements.due", "Due Date Range");
+  const createdRange = useDateRange("training.requirements.created", "Created Date Range");
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -89,14 +97,20 @@ export function TrainingRequirementListView() {
       }),
     [],
   );
-  const extra = useMemo(() => ({ status: status || undefined }), [status]);
-  const table = useServerTable<TrainingRequirementSummary>({
+  const extra = useMemo(() => ({
+    status: status || undefined, kind: kindFilter || undefined, departmentId: departmentId || undefined, year: yearFilter || undefined,
+    ...dueRange.params("dueFrom", "dueTo"), ...createdRange.params("createdFrom", "createdTo"),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [status, kindFilter, departmentId, yearFilter, dueRange.from, dueRange.to, createdRange.from, createdRange.to]);
+  const table = useServerTable<TrainingRequirementSummary>({ persistKey: "training.requirements", liveTypes: ["TRAINING"],
     fetcher,
     defaultSortBy: "year",
     defaultSortDirection: "desc",
     extraParams: extra,
     initialItemsPerPage: 10,
   });
+
+  const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   const columns: DataTableColumn<TrainingRequirementSummary>[] = [
     {
@@ -107,7 +121,7 @@ export function TrainingRequirementListView() {
     },
     {
       id: "no",
-      header: "Request number",
+      header: "Request number", sort: sorted("requestNo"),
       cell: (r) => (
         <button
           type="button"
@@ -118,14 +132,15 @@ export function TrainingRequirementListView() {
         </button>
       ),
     },
-    { id: "year", header: "Year", cell: (r) => r.year },
-    { id: "kind", header: "Type", cell: (r) => KIND_LABEL[r.kind] ?? r.kind },
-    { id: "department", header: "Department", cell: (r) => r.departmentName },
-    { id: "lines", header: "Lines", cell: (r) => r.lineCount },
-    { id: "due", header: "Due by", cell: (r) => day(r.dueBy) },
+    { id: "year", header: "Year", sort: sorted("year"), cell: (r) => r.year },
+    { id: "kind", header: "Type", sort: sorted("kind"), cell: (r) => KIND_LABEL[r.kind] ?? r.kind },
+    { id: "department", header: "Department", sort: sorted("department"), cell: (r) => r.departmentName },
+    { id: "lines", header: "Lines", sort: sorted("lines"), cell: (r) => r.lineCount },
+    { id: "due", header: "Due Date", sort: sorted("dueBy"), cell: (r) => day(r.dueBy) },
+    { id: "createdAt", header: "Created On", sort: sorted("createdAt"), cell: (r) => day(r.createdAt) },
     {
       id: "status",
-      header: "Status",
+      header: "Status", sort: sorted("status"),
       cell: (r) => (
         <Badge color={REQUIREMENT_STATUS_COLOR[r.status]}>
           {REQUIREMENT_STATUS_LABEL[r.status]}
@@ -169,7 +184,7 @@ export function TrainingRequirementListView() {
       label: "Status",
       value: status,
       options: [
-        { label: "All statuses", value: "" },
+        { label: "All", value: "" },
         ...Object.entries(REQUIREMENT_STATUS_LABEL).map(([value, label]) => ({
           label,
           value,
@@ -180,6 +195,9 @@ export function TrainingRequirementListView() {
         table.setCurrentPage(1);
       },
     },
+    { id: "kind", label: "Type", value: kindFilter, options: [{ label: "All", value: "" }, ...Object.entries(KIND_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setKindFilter(v); table.setCurrentPage(1); } },
+    { id: "department", label: "Department", value: departmentId, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => { setDepartmentId(v); table.setCurrentPage(1); } },
+    { id: "year", label: "Year", value: yearFilter, options: [{ label: "All", value: "" }, ...Array.from({ length: 6 }, (_x, i) => String(new Date().getFullYear() + 1 - i)).map((y) => ({ label: y, value: y }))], onChange: (v) => { setYearFilter(v); table.setCurrentPage(1); } },
   ];
 
   const create = async () => {
@@ -234,10 +252,15 @@ export function TrainingRequirementListView() {
           table.setCurrentPage(1);
         }}
         filters={filters}
-        dates={[]}
-        hasActiveFilters={Boolean(status)}
+        dates={resettingDates([dueRange.filter, createdRange.filter], () => table.setCurrentPage(1))}
+        hasActiveFilters={Boolean(status || kindFilter || departmentId || yearFilter || dueRange.isSet || createdRange.isSet || table.searchQuery)}
         onClear={() => {
           setStatus("");
+          setKindFilter("");
+          setDepartmentId("");
+          setYearFilter("");
+          dueRange.clear();
+          createdRange.clear();
           table.setCurrentPage(1);
         }}
         customControl={control}

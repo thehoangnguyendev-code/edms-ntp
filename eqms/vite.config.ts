@@ -17,6 +17,12 @@ export default defineConfig(({ mode }) => {
             target: env.VITE_API_PROXY_TARGET || 'http://localhost:5000',
             changeOrigin: true,
           },
+          // Home-screen shortcut: the manifest and icon are served by the backend (Configuration > General > App Shortcut)
+          '/pwa': {
+            target: env.VITE_API_PROXY_TARGET || 'http://localhost:5000',
+            changeOrigin: true,
+            rewrite: (path: string) => path.replace(/^\/pwa/, '/api/branding/pwa'),
+          },
         },
       },
       plugins: [react()],

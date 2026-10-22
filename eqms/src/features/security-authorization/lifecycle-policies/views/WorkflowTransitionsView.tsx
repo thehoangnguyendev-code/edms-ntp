@@ -164,7 +164,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   };
 
   const workflowFilterOptions: SelectOption[] = useMemo(() => [
-    { label: "All Workflows", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...[...new Set(facetPolicies.map((p) => p.workflowKey))].sort().map((w) => ({
       label: facetPolicies.find((p) => p.workflowKey === w)?.workflowLabel ?? w,
       value: w,
@@ -172,7 +172,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   ], [facetPolicies]);
 
   const actionOptions: SelectOption[] = useMemo(() => [
-    { label: "All Actions", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...[...new Set(facetPolicies.map((p) => p.actionCode))].sort().map((a) => ({
       label: facetPolicies.find((p) => p.actionCode === a)?.actionLabel ?? a,
       value: a,
@@ -180,7 +180,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   ], [facetPolicies]);
 
   const fromStatusOptions: SelectOption[] = useMemo(() => [
-    { label: "All Statuses", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...[...new Set(facetPolicies.map((p) => p.fromStatus))].sort().map((s) => ({
       label: facetPolicies.find((p) => p.fromStatus === s)?.fromStatusLabel ?? s,
       value: s,
@@ -188,7 +188,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   ], [facetPolicies]);
 
   const docTypeOptions: SelectOption[] = useMemo(() => [
-    { label: "All Doc Types", value: "ALL" },
+    { label: "All", value: "ALL" },
     { label: "Global only", value: "GLOBAL" },
     ...(options?.documentTypes ?? []).map((d) => ({ label: d.name, value: d.id })),
   ], [options]);

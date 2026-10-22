@@ -24,7 +24,7 @@ import { IconSettingsAutomation } from "@tabler/icons-react";
 type SortKey = "version" | "status" | "proposedBy" | "approvedBy" | "createdAt" | "activatedAt";
 
 const ALL = "ALL";
-const STATUS_OPTIONS = [{ label: "All Statuses", value: ALL }, ...(["ACTIVE", "DRAFT", "SUPERSEDED", "DISCARDED"] as PolicyStatus[]).map((value) => ({ label: statusLabel(value), value }))];
+const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...(["ACTIVE", "DRAFT", "SUPERSEDED", "DISCARDED"] as PolicyStatus[]).map((value) => ({ label: statusLabel(value), value }))];
 
 /**
  * Backup Policy: what is backed up, where it is copied and when. A policy is never edited; a change is a new version proposed by
@@ -199,7 +199,7 @@ export const BackupPolicyView: React.FC = () => {
         onSearch={setSearch}
         searchLabel="Search policy versions"
         searchPlaceholder="Version, person or reason…"
-        filters={[{ id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Statuses", onChange: setStatus }]}
+        filters={[{ id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus }]}
         onClear={() => {
           setSearch("");
           setStatus(ALL);

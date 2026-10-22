@@ -549,7 +549,7 @@ export const RoleSetupWizardView: React.FC = () => {
               value={businessUnits}
               onChange={(values) => setBusinessUnits(values.map(String))}
               options={businessUnitOptions}
-              placeholder="All Business Units"
+              placeholder="All"
               isLoading={scopeOptionsLoading}
             />
             <MultiSelect
@@ -557,7 +557,7 @@ export const RoleSetupWizardView: React.FC = () => {
               value={departments}
               onChange={(values) => setDepartments(values.map(String))}
               options={departmentOptions}
-              placeholder="All Departments"
+              placeholder="All"
               isLoading={scopeOptionsLoading}
             />
           </div>
@@ -593,13 +593,13 @@ export const RoleSetupWizardView: React.FC = () => {
                   setUserBusinessUnitFilter(String(value));
                   setUserDepartmentFilter("All");
                 }}
-                options={[{ label: "All Business Units", value: "All" }, ...userBusinessUnitOptions]}
+                options={[{ label: "All", value: "All" }, ...userBusinessUnitOptions]}
               />
               <Select
                 label="Department"
                 value={userDepartmentFilter}
                 onChange={(value) => setUserDepartmentFilter(String(value))}
-                options={[{ label: "All Departments", value: "All" }, ...userDepartmentOptions]}
+                options={[{ label: "All", value: "All" }, ...userDepartmentOptions]}
               />
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

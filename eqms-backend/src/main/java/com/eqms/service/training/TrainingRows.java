@@ -11,6 +11,16 @@ import java.util.Map;
 public final class TrainingRows {
     private TrainingRows() {}
 
+    /**
+     * The ORDER BY of a list that the person sorts by a column header. Only a key the service lists is turned into SQL (the screen never sends a column name); an unknown or missing key
+     * gives the default order. The default order also breaks ties, so the pages never repeat or skip a row.
+     */
+    public static String orderBy(String sortBy, String direction, Map<String, String> allowed, String fallback) {
+        String column = sortBy == null ? null : allowed.get(sortBy);
+        if (column == null) return " order by " + fallback;
+        return " order by " + column + " " + ("desc".equalsIgnoreCase(direction) ? "desc" : "asc") + " nulls last, " + fallback;
+    }
+
     public static Map<String, Object> camel(Map<String, Object> row) {
         Map<String, Object> out = new LinkedHashMap<>();
         row.forEach((key, value) -> out.put(camelKey(key), plain(value)));

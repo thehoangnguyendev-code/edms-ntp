@@ -257,7 +257,7 @@ export function ScheduledReportsView() {
                 label: "Status",
                 value: status,
                 options: [
-                  { label: "All statuses", value: "" },
+                  { label: "All", value: "" },
                   { label: "Active", value: "ACTIVE" },
                   { label: "Paused", value: "PAUSED" },
                   { label: "Authorization changed", value: "SUSPENDED_AUTHORIZATION_CHANGED" },

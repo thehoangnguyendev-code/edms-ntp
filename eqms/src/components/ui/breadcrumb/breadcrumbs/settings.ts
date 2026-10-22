@@ -445,6 +445,11 @@ export const trainingProperties = (navigate?: NavigateFn): BreadcrumbItem[] => [
   { label: "Training Properties", isActive: true },
 ];
 
+export const trainingNotifications = (navigate?: NavigateFn): BreadcrumbItem[] => [
+  ...trainingAdministrationBase(navigate),
+  { label: "Training Notifications", isActive: true },
+];
+
 export const electronicSignatureSettings = (navigate?: NavigateFn): BreadcrumbItem[] => [
   ...systemAdminBase(navigate),
   { label: "E-Sign Config", isActive: true },

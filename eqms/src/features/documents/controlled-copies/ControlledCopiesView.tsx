@@ -278,7 +278,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
   const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") ?? "All");
   const [usagePurposeFilter, setUsagePurposeFilter] = useState<string>(() => usagePurposeFilterFromParam(searchParams.get("usagePurpose")));
-  const [statusOptions, setStatusOptions] = useState<Array<{ label: string; value: string }>>([{ label: "All States", value: "All" }]);
+  const [statusOptions, setStatusOptions] = useState<Array<{ label: string; value: string }>>([{ label: "All", value: "All" }]);
   const [createdFromDate, setCreatedFromDate] = useState(() => searchParams.get("createdFrom") ?? "");
   const [createdToDate, setCreatedToDate] = useState(() => searchParams.get("createdTo") ?? "");
   const [validFromDate, setValidFromDate] = useState(() => searchParams.get("validFrom") ?? "");
@@ -359,19 +359,19 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         const filters = await documentApi.getControlledCopyFilters();
         if (!mounted) return;
         const options = [
-          { label: "All States", value: "All" },
+          { label: "All", value: "All" },
           ...(filters.statuses || []).map((status) => ({
             label: normalizeControlledCopyStatusLabel(status?.label || status?.name || status?.code || ""),
             value: status?.value || status?.code || status?.label || status?.name || "Unknown",
           })),
         ];
-        setStatusOptions(options.length > 1 ? options : [{ label: "All States", value: "All" }]);
+        setStatusOptions(options.length > 1 ? options : [{ label: "All", value: "All" }]);
       } catch (err) {
         if (import.meta.env.DEV) {
           console.error("Failed to fetch controlled copy filters", err);
         }
         if (mounted) {
-          setStatusOptions([{ label: "All States", value: "All" }]);
+          setStatusOptions([{ label: "All", value: "All" }]);
         }
       }
     };
@@ -1751,7 +1751,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                       setCurrentPage(1);
                     }}
                     options={statusOptions}
-                    placeholder="All States"
+                    placeholder="All"
                   />
                 ) : (
                   <Select

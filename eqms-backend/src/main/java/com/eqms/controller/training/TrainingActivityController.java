@@ -33,9 +33,15 @@ public class TrainingActivityController {
     @GetMapping("/activities")
     public ResponseEntity<?> list(@RequestParam(required = false) String search, @RequestParam(required = false) String status, @RequestParam(required = false) String kind,
                                   @RequestParam(required = false) UUID departmentId, @RequestParam(required = false) Integer year, @RequestParam(required = false) String documentNumber,
-                                  @RequestParam(defaultValue = "false") boolean overdue, @RequestParam(defaultValue = "createdAt") String sortBy,
+                                  @RequestParam(defaultValue = "false") boolean overdue,
+                                  @RequestParam(required = false) String method, @RequestParam(required = false) String kindReason, @RequestParam(required = false) Boolean onPaper,
+                                  @RequestParam(required = false) String scheduledFrom, @RequestParam(required = false) String scheduledTo,
+                                  @RequestParam(required = false) String dueFrom, @RequestParam(required = false) String dueTo,
+                                  @RequestParam(required = false) String createdFrom, @RequestParam(required = false) String createdTo,
+                                  @RequestParam(defaultValue = "createdAt") String sortBy,
                                   @RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(activities.list(users.requireCurrentUser(), search, status, kind, departmentId, year, documentNumber, overdue, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(activities.list(users.requireCurrentUser(), search, status, kind, departmentId, year, documentNumber, overdue,
+                new TrainingActivityService.ListFilters(method, kindReason, onPaper, scheduledFrom, scheduledTo, dueFrom, dueTo, createdFrom, createdTo), sortBy, sortDirection, page, limit));
     }
 
     @PostMapping("/activities")
@@ -111,6 +117,9 @@ public class TrainingActivityController {
 
     @PostMapping("/participants/{id}/planned-absence")
     public ResponseEntity<?> plannedAbsence(@PathVariable UUID id, @RequestBody ReasonRequest request) { return ResponseEntity.ok(activities.setPlannedAbsence(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/participants/{id}/attendance/correct")
+    public ResponseEntity<?> correctAttendance(@PathVariable UUID id, @RequestBody TrainingActivityService.CorrectionRequest request) { return ResponseEntity.ok(activities.correctAttendance(users.requireCurrentUser(), id, request)); }
 
     @PostMapping("/participants/{id}/attendance")
     public ResponseEntity<?> attendance(@PathVariable UUID id, @RequestBody AttendanceRequest request) { return ResponseEntity.ok(activities.recordAttendance(users.requireCurrentUser(), id, request)); }

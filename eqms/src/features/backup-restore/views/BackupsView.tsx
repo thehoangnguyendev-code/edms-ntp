@@ -26,9 +26,9 @@ type SortKey = "startedAt" | "backupNumber" | "status" | "type" | "sizeBytes" | 
 
 const ALL = "ALL";
 const option = (value: string) => ({ label: statusLabel(value), value });
-const STATUS_OPTIONS = [{ label: "All Status", value: ALL }, ...["COMPLETED", "RUNNING", "FAILED"].map(option)];
-const TYPE_OPTIONS = [{ label: "All Types", value: ALL }, { label: "Full", value: "FULL" }, { label: "Pre-change", value: "PRE_CHANGE" }];
-const INTEGRITY_OPTIONS = [{ label: "All Results", value: ALL }, ...["VERIFIED", "NOT_VERIFIED", "FAILED"].map(option)];
+const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...["COMPLETED", "RUNNING", "FAILED"].map(option)];
+const TYPE_OPTIONS = [{ label: "All", value: ALL }, { label: "Full", value: "FULL" }, { label: "Pre-change", value: "PRE_CHANGE" }];
+const INTEGRITY_OPTIONS = [{ label: "All", value: ALL }, ...["VERIFIED", "NOT_VERIFIED", "FAILED"].map(option)];
 
 /**
  * Backup History: every backup the agent has taken, newest first. Search, filters, sorting and paging all run on the server; the
@@ -235,9 +235,9 @@ export const BackupsView: React.FC = () => {
         searchLabel="Search backups"
         searchPlaceholder="Backup Number, person or reason…"
         filters={[
-          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Status", onChange: setStatus },
-          { id: "type", label: "Type", value: type, options: TYPE_OPTIONS, defaultValue: ALL, placeholder: "All Types", onChange: setType },
-          { id: "integrity", label: "Integrity", value: integrity, options: INTEGRITY_OPTIONS, defaultValue: ALL, placeholder: "All Results", onChange: setIntegrity },
+          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
+          { id: "type", label: "Type", value: type, options: TYPE_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setType },
+          { id: "integrity", label: "Integrity", value: integrity, options: INTEGRITY_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setIntegrity },
         ]}
         dates={[{ id: "started", label: "Started", from: startedFrom, to: startedTo, onFromChange: setStartedFrom, onToChange: setStartedTo }]}
         onClear={clearFilters}

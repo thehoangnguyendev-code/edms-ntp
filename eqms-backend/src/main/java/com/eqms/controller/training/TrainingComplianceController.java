@@ -31,8 +31,9 @@ public class TrainingComplianceController {
 
     @GetMapping("/coverage")
     public ResponseEntity<?> coverage(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(required = false) String search,
-                                      @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(compliance.coverage(users.requireCurrentUser(), departmentId, status, search, page, limit));
+                                      @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(compliance.coverage(users.requireCurrentUser(), departmentId, status, search, sortBy, sortDirection, page, limit));
     }
 
     @GetMapping("/positions")
@@ -44,6 +45,11 @@ public class TrainingComplianceController {
                                               @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit,
                                               @RequestParam(defaultValue = "1") int columnPage, @RequestParam(defaultValue = "12") int columnLimit) {
         return ResponseEntity.ok(completion.completion(users.requireCurrentUser(), departmentId, positionId, search, status, gapsOnly, page, limit, columnPage, columnLimit));
+    }
+
+    @GetMapping("/matrix-completion/cell")
+    public ResponseEntity<?> cell(@RequestParam(required = false) UUID departmentId, @RequestParam UUID personId, @RequestParam UUID rowId) {
+        return ResponseEntity.ok(completion.cellDetail(users.requireCurrentUser(), departmentId, personId, rowId));
     }
 
     @GetMapping("/matrix-completion/print")

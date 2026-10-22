@@ -35,7 +35,7 @@ const COLUMNS = [
 ] as const;
 
 const STATUS_OPTIONS = [
-  { label: "All Status", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Active", value: "ACTIVE" },
   { label: "Inactive", value: "INACTIVE" },
 ];

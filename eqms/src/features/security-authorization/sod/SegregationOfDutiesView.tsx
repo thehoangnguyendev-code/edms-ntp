@@ -40,12 +40,12 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 // evidence, instead of a panel here with no persistence.
 
 const TYPE_OPTIONS: SelectOption[] = [
-  { label: "All Types", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "System", value: "SYSTEM" },
   { label: "Custom", value: "CUSTOM" },
 ];
 const STATUS_OPTIONS: SelectOption[] = [
-  { label: "All Status", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Active", value: "ACTIVE" },
   { label: "Inactive", value: "INACTIVE" },
 ];
@@ -178,7 +178,7 @@ export const SegregationOfDutiesView: React.FC = () => {
   }, [canViewSod]);
 
   const severityOptions: SelectOption[] = [
-    { label: "All Severities", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...severities.map((sv) => ({ label: sv, value: sv })),
   ];
 

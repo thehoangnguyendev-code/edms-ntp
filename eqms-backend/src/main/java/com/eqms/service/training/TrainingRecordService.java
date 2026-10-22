@@ -35,9 +35,10 @@ public class TrainingRecordService {
 
     private static final String RECORD_SELECT = """
         select r.id, r.record_no, r.person_user_id, r.full_name, r.employee_code, r.department, r.position, r.training_number, r.topic_text, r.document_number,
-               r.document_revision, r.completed_on, r.method, r.result, r.source, r.activity_id,
-               v.voided_at, v.reason as void_reason, vu.full_name as voided_by_name
+               r.document_revision, r.completed_on, r.created_at as recorded_at, r.method, r.result, r.source, r.activity_id,
+               v.voided_at, v.reason as void_reason, vu.full_name as voided_by_name, pu.avatar as avatar
           from training_records r left join training_record_voids v on v.record_id = r.id left join app_users vu on vu.id = v.voided_by
+          left join app_users pu on pu.id = r.person_user_id
         """;
 
     /** The records of the person who is logged in, never of another person. */
@@ -51,6 +52,12 @@ public class TrainingRecordService {
     @Transactional(readOnly = true)
     public Map<String, Object> records(UserAccount actor, String search, UUID personId, String documentNumber, String trainingNumber, boolean includeVoided,
                                        String sortBy, String sortDirection, int page, int limit) {
+        return records(actor, search, personId, documentNumber, trainingNumber, includeVoided, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> records(UserAccount actor, String search, UUID personId, String documentNumber, String trainingNumber, boolean includeVoided,
+                                       String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.record.view");
         StringBuilder where = new StringBuilder(" where 1=1");
         List<Object> args = new ArrayList<>();
@@ -62,11 +69,26 @@ public class TrainingRecordService {
         if (documentNumber != null && !documentNumber.isBlank()) { where.append(" and lower(r.document_number) = lower(?)"); args.add(documentNumber.trim()); }
         if (trainingNumber != null && !trainingNumber.isBlank()) { where.append(" and lower(r.training_number) like ? escape '\\'"); args.add("%" + escape(trainingNumber.trim().toLowerCase(Locale.ROOT)) + "%"); }
         if (!includeVoided) where.append(" and v.id is null");
+        TrainingListFilter extra = new TrainingListFilter().equal("r.method", more.get("method")).equal("r.result", more.get("result")).equal("r.source", more.get("source"))
+                .contains(more.get("position"), "r.position").contains(more.get("topic"), "r.topic_text")
+                .dateRange("r.completed_on", more.get("completedFrom"), more.get("completedTo")).timeRange("r.created_at", more.get("recordedFrom"), more.get("recordedTo"));
+        if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(r.department)) = lower(trim(?))", more.get("department"));
+        where.append(extra.and());
+        args.addAll(extra.args());
         String column = switch (sortBy == null ? "completedOn" : sortBy) {
             case "completedOn" -> "r.completed_on";
             case "trainingNumber" -> "r.training_number";
             case "fullName" -> "r.full_name";
             case "documentNumber" -> "r.document_number";
+            case "topicText" -> "r.topic_text";
+            case "documentRevision" -> "r.document_revision";
+            case "method" -> "r.method";
+            case "result" -> "r.result";
+            case "source" -> "r.source";
+            case "department" -> "r.department";
+            case "position" -> "r.position";
+            case "employeeCode" -> "r.employee_code";
+            case "recordedAt" -> "r.created_at";
             default -> throw new IllegalArgumentException("TRAINING_SORT_NOT_ALLOWED");
         };
         return page(where.toString(), args, search, column, sortDirection, page, limit);
@@ -109,7 +131,12 @@ public class TrainingRecordService {
 
     /** The Training Number log of a department and year: every number issued, including cancelled ones, and the session count (FRM.0044). */
     @Transactional(readOnly = true)
-    public Map<String, Object> numberLog(UserAccount actor, UUID departmentId, Integer year, String search, int page, int limit) {
+    public Map<String, Object> numberLog(UserAccount actor, UUID departmentId, Integer year, String search, String sortBy, String sortDirection, int page, int limit) {
+        return numberLog(actor, departmentId, year, search, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> numberLog(UserAccount actor, UUID departmentId, Integer year, String search, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.compliance.view", "training.activity.view");
         UUID department = departmentId != null ? departmentId : access.departmentOf(actor);
         if (department == null) throw new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED");
@@ -121,6 +148,10 @@ public class TrainingRecordService {
         String filter = like == null ? "" : " and (lower(a.training_number) like ? escape '\\' or lower(a.training_title) like ? escape '\\' or lower(coalesce(a.document_number,'')) like ? escape '\\')";
         List<Object> args = new ArrayList<>(List.of(department, y));
         if (like != null) { args.add(like); args.add(like); args.add(like); }
+        TrainingListFilter extra = new TrainingListFilter().equal("a.kind", more.get("kind")).equal("a.status", more.get("status")).equal("a.kind_reason", more.get("kindReason"))
+                .timeRange("a.created_at", more.get("issuedFrom"), more.get("issuedTo"));
+        filter = filter + extra.and();
+        args.addAll(extra.args());
         Long total = jdbc.queryForObject("select count(*) from training_activities a where a.organizer_department_id=? and a.year=?" + filter, Long.class, args.toArray());
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(safeLimit);
@@ -129,9 +160,9 @@ public class TrainingRecordService {
             select a.training_number, a.created_at, a.kind, a.status, a.training_title, a.document_number, a.revision_number, a.cancel_reason,
                    (select count(*) from training_sessions s where s.activity_id = a.id and s.status <> 'CANCELLED') as sessions,
                    (select count(*) from training_events e where e.activity_id = a.id and e.event_type = 'SESSION_POSTPONED') as postponements
-              from training_activities a where a.organizer_department_id=? and a.year=?""" + filter + """
-             order by a.serial, a.suffix nulls first limit ? offset ?
-            """, pageArgs.toArray());
+              from training_activities a where a.organizer_department_id=? and a.year=?""" + filter
+                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("date", "a.created_at", "number", "a.serial", "kind", "a.kind", "title", "a.training_title", "document", "a.document_number", "sessions", "sessions", "status", "a.status"),
+                "a.serial, a.suffix nulls first") + " limit ? offset ?", pageArgs.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;

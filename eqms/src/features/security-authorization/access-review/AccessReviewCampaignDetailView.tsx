@@ -663,13 +663,13 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
               label="User Status"
               value={userStatusFilter}
               onChange={(v) => { setUserStatusFilter(String(v)); setItemPage(1); }}
-              options={toOptions("userStatuses", "All Status")}
+              options={toOptions("userStatuses", "All")}
             />
             <Select
               label="Decision"
               value={decisionFilter}
               onChange={(v) => { setDecisionFilter(String(v)); setItemPage(1); }}
-              options={toOptions("decisions", "All Decisions")}
+              options={toOptions("decisions", "All")}
             />
           </div>
           <div className="mt-4">
@@ -747,7 +747,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
           onToggle={() => toggleFilterSection("userStatus")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {toOptions("userStatuses", "All Status").map((opt) => (
+            {toOptions("userStatuses", "All").map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => { setUserStatusFilter(String(opt.value)); setItemPage(1); }}
@@ -765,7 +765,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
           onToggle={() => toggleFilterSection("decision")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {toOptions("decisions", "All Decisions").map((opt) => (
+            {toOptions("decisions", "All").map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => { setDecisionFilter(String(opt.value)); setItemPage(1); }}

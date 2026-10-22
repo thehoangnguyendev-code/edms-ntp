@@ -55,7 +55,7 @@ export const PermissionCatalogTab: React.FC = () => {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [moduleFilter, setModuleFilter] = useState("ALL");
-  const [moduleOptions, setModuleOptions] = useState<SelectOption[]>([{ label: "All Modules", value: "ALL" }]);
+  const [moduleOptions, setModuleOptions] = useState<SelectOption[]>([{ label: "All", value: "ALL" }]);
 
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "code", direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,8 +67,8 @@ export const PermissionCatalogTab: React.FC = () => {
     settingsApi.getPermissionCatalog().then((groups) => {
       const modules = new Set<string>();
       groups.forEach((g) => g.permissions.forEach((p) => p.module && modules.add(p.module)));
-      setModuleOptions([{ label: "All Modules", value: "ALL" }, ...Array.from(modules).sort().map((m) => ({ label: m, value: m }))]);
-    }).catch(() => setModuleOptions([{ label: "All Modules", value: "ALL" }]));
+      setModuleOptions([{ label: "All", value: "ALL" }, ...Array.from(modules).sort().map((m) => ({ label: m, value: m }))]);
+    }).catch(() => setModuleOptions([{ label: "All", value: "ALL" }]));
   }, []);
 
   const load = useCallback(async () => {

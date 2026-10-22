@@ -64,7 +64,7 @@ public class TrainingMatrixService {
     // ----------------------------------------------------------------------------------------------------------------------------- reading
 
     @Transactional(readOnly = true)
-    public Map<String, Object> matrices(UserAccount actor, String search, String state, int page, int limit) {
+    public Map<String, Object> matrices(UserAccount actor, String search, String state, String sortBy, String sortDirection, int page, int limit) {
         access.require(actor, "training.matrix.view", "training.matrix.manage");
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
@@ -95,7 +95,7 @@ public class TrainingMatrixService {
             select m.id, m.code, m.department_id, d.name as department_name,
                    ev.id as effective_version_id, ev.version_no as effective_version_no, ev.effective_at,
                    ov.id as open_version_id, ov.version_no as open_version_no, ov.status as open_status
-            """ + from + where + " order by d.name limit ? offset ?", pageArgs.toArray());
+            """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("code", "m.code", "department", "d.name", "effective", "ev.version_no", "prepared", "ov.version_no"), "d.name") + " limit ? offset ?", pageArgs.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;
@@ -110,13 +110,54 @@ public class TrainingMatrixService {
         access.requireScope(actor, (UUID) m.get("department_id"));
         Map<String, Object> out = TrainingRows.camel(m);
         out.put("departmentName", jdbc.queryForObject("select name from departments where id=?", String.class, m.get("department_id")));
-        out.put("versions", TrainingRows.camel(jdbc.queryForList("""
-            select v.id, v.version_no, v.status, v.change_reason, v.reject_reason, v.effective_at, v.approved_at, pu.full_name as prepared_by_name, au.full_name as approved_by_name
-              from training_matrix_versions v left join app_users pu on pu.id = v.prepared_by left join app_users au on au.id = v.approved_by
-             where v.matrix_id=? order by v.version_no desc
-            """, matrixId)));
+        out.put("versionCount", jdbc.queryForObject("select count(*) from training_matrix_versions where matrix_id=?", Integer.class, matrixId));
+        out.put("effective", TrainingRows.camel(jdbc.queryForList("select id, version_no, effective_at from training_matrix_versions where matrix_id=? and status='EFFECTIVE'", matrixId)).stream().findFirst().orElse(null));
         out.put("canManage", access.has(actor, "training.matrix.manage") && access.inScope(actor, (UUID) m.get("department_id")));
         return out;
+    }
+
+    /** The versions of one matrix, searched, filtered by status, sorted and paged here. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> versionsPage(UserAccount actor, UUID matrixId, String search, String status, String sortBy, String sortDirection, int page, int limit) {
+        Map<String, Object> m = matrixRow(matrixId);
+        access.require(actor, "training.matrix.view", "training.matrix.manage");
+        access.requireScope(actor, (UUID) m.get("department_id"));
+        List<Object> args = new ArrayList<>();
+        args.add(matrixId);
+        StringBuilder where = new StringBuilder(" where v.matrix_id = ?");
+        if (search != null && !search.isBlank()) {
+            String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
+            where.append(" and (('version ' || v.version_no) like ? escape '\\' or lower(coalesce(v.change_reason,'')) like ? escape '\\' or lower(coalesce(pu.full_name,'')) like ? escape '\\' or lower(coalesce(au.full_name,'')) like ? escape '\\')");
+            args.add(like); args.add(like); args.add(like); args.add(like);
+        }
+        if (status != null && Set.of("DRAFT", "PENDING_APPROVAL", "EFFECTIVE", "OBSOLETE").contains(status)) {
+            where.append(" and v.status = ?");
+            args.add(status);
+        }
+        String from = " from training_matrix_versions v left join app_users pu on pu.id = v.prepared_by left join app_users au on au.id = v.approved_by";
+        String column = switch (sortBy == null ? "" : sortBy) {
+            case "status" -> "v.status";
+            case "changeReason" -> "v.change_reason";
+            case "preparedBy" -> "pu.full_name";
+            case "approvedBy" -> "au.full_name";
+            case "effectiveAt" -> "v.effective_at";
+            default -> "v.version_no";
+        };
+        String direction = "asc".equalsIgnoreCase(sortDirection) ? "asc" : "desc";
+        int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
+        Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add(safeLimit);
+        pageArgs.add((safePage - 1) * safeLimit);
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+            select v.id, v.version_no, v.status, v.change_reason, v.reject_reason, v.effective_at, v.approved_at, pu.full_name as prepared_by_name, au.full_name as approved_by_name,
+                   (select p.id from training_matrix_versions p where p.matrix_id = v.matrix_id and p.version_no = v.version_no - 1) as previous_id
+            """ + from + where + " order by " + column + " " + direction + " nulls last, v.version_no desc limit ? offset ?", pageArgs.toArray());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("data", TrainingRows.camel(rows));
+        long count = total == null ? 0 : total;
+        result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
+        return result;
     }
 
     @Transactional(readOnly = true)
@@ -167,6 +208,7 @@ public class TrainingMatrixService {
     }
 
     @Transactional(readOnly = true)
+    @SuppressWarnings("unchecked")
     public Map<String, Object> compare(UserAccount actor, UUID a, UUID b) {
         Map<String, Object> va = version(actor, a);
         Map<String, Object> vb = version(actor, b);
@@ -185,7 +227,11 @@ public class TrainingMatrixService {
             }
         });
         left.forEach((key, row) -> { if (!right.containsKey(key)) removed.add(row); });
-        return Map.of("from", va.get("versionNo"), "to", vb.get("versionNo"), "added", added, "removed", removed, "changed", changed);
+        Map<Object, Object> names = new LinkedHashMap<>();
+        for (Map<String, Object> v : List.of(va, vb)) for (Map<String, Object> p : (List<Map<String, Object>>) v.get("positions")) names.put(p.get("id"), p.get("name"));
+        List<Map<String, Object>> positions = new ArrayList<>();
+        names.forEach((id, name) -> positions.add(Map.of("id", id, "name", name)));
+        return Map.of("from", va.get("versionNo"), "to", vb.get("versionNo"), "added", added, "removed", removed, "changed", changed, "positions", positions);
     }
 
     @SuppressWarnings("unchecked")
@@ -420,7 +466,7 @@ public class TrainingMatrixService {
 
     /** The positions of a person (the user table keeps only text). The report of people without a position is for the person who maps them by hand. */
     @Transactional(readOnly = true)
-    public Map<String, Object> personPositions(UserAccount actor, String search, boolean unmatchedOnly, int page, int limit) {
+    public Map<String, Object> personPositions(UserAccount actor, String search, boolean unmatchedOnly, String sortBy, String sortDirection, int page, int limit) {
         access.require(actor, "training.admin.manage");
         StringBuilder where = new StringBuilder(" where u.status = 'Active'");
         List<Object> args = new ArrayList<>();
@@ -435,9 +481,9 @@ public class TrainingMatrixService {
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select u.id as person_id, u.full_name, u.employee_code, u.department, u.position as position_text, p.id as position_id, p.name as position_name,
+            select u.id as person_id, u.full_name, u.avatar, u.employee_code, u.department, u.position as position_text, p.id as position_id, p.name as position_name,
                    (select pp.id from positions pp where lower(trim(pp.name)) = lower(trim(u.position)) limit 1) as suggested_position_id
-            """ + from + where + " order by u.full_name limit ? offset ?", args.toArray());
+            """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("fullName", "u.full_name", "employeeCode", "u.employee_code", "department", "u.department", "positionText", "u.position", "positionName", "p.name"), "u.full_name") + " limit ? offset ?", args.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;

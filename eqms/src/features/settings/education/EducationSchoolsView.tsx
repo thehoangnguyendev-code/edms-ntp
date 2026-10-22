@@ -226,7 +226,7 @@ export const EducationSchoolsView: React.FC = () => {
       id: "typeFilter",
       label: "Type",
       value: String(typeFilter),
-      options: [{ label: "All Types", value: "All" }, ...SCHOOL_TYPE_OPTIONS],
+      options: [{ label: "All", value: "All" }, ...SCHOOL_TYPE_OPTIONS],
       onChange: (value) => {
         setTypeFilter(value as "All" | SchoolType);
         setCurrentPage(1);
@@ -237,7 +237,7 @@ export const EducationSchoolsView: React.FC = () => {
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "All" },
+        { label: "All", value: "All" },
         { label: "Active", value: "Active" },
         { label: "Inactive", value: "Inactive" },
       ],
@@ -250,7 +250,7 @@ export const EducationSchoolsView: React.FC = () => {
       id: "ownershipFilter",
       label: "Ownership",
       value: String(ownershipFilter),
-      options: [{ label: "All Ownership", value: "All" }, ...SCHOOL_OWNERSHIP_OPTIONS],
+      options: [{ label: "All", value: "All" }, ...SCHOOL_OWNERSHIP_OPTIONS],
       onChange: (value) => {
         setOwnershipFilter(value as "All" | SchoolOwnership);
         setCurrentPage(1);
@@ -261,7 +261,7 @@ export const EducationSchoolsView: React.FC = () => {
       label: "Governing Body",
       value: String(governanceFilter),
       options: [
-        { label: "All Governing Bodies", value: "All" },
+        { label: "All", value: "All" },
         ...governingBodies.map((value) => ({ label: value, value })),
       ],
       onChange: (value) => {
@@ -274,7 +274,7 @@ export const EducationSchoolsView: React.FC = () => {
       label: "Origin",
       value: String(originFilter),
       options: [
-        { label: "All Origins", value: "All" },
+        { label: "All", value: "All" },
         ...origins.map((value) => ({ label: value, value })),
       ],
       onChange: (value) => {
@@ -311,32 +311,32 @@ export const EducationSchoolsView: React.FC = () => {
               <div className="w-full">
                 <Select label="Type" value={typeFilter}
                   onChange={(value) => { setTypeFilter(value as "All" | SchoolType); setCurrentPage(1); }}
-                  options={[{ label: "All Types", value: "All" }, ...SCHOOL_TYPE_OPTIONS]}
-                  placeholder="All Types" />
+                  options={[{ label: "All", value: "All" }, ...SCHOOL_TYPE_OPTIONS]}
+                  placeholder="All" />
               </div>
               <div className="w-full">
                 <Select label="Status" value={statusFilter}
                   onChange={(value) => { setStatusFilter(value as "All" | "Active" | "Inactive"); setCurrentPage(1); }}
-                  options={[{ label: "All Status", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }]}
-                  placeholder="All Status" />
+                  options={[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }]}
+                  placeholder="All" />
               </div>
               <div className="w-full">
                 <Select label="Ownership" value={ownershipFilter}
                   onChange={(value) => { setOwnershipFilter(value as "All" | SchoolOwnership); setCurrentPage(1); }}
-                  options={[{ label: "All Ownership", value: "All" }, ...SCHOOL_OWNERSHIP_OPTIONS]}
-                  placeholder="All Ownership" />
+                  options={[{ label: "All", value: "All" }, ...SCHOOL_OWNERSHIP_OPTIONS]}
+                  placeholder="All" />
               </div>
               <div className="w-full">
                 <Select label="Governing Body" value={governanceFilter}
                   onChange={(value) => { setGovernanceFilter(value); setCurrentPage(1); }}
-                  options={[{ label: "All Governing Bodies", value: "All" }, ...governingBodies.map((value) => ({ label: value, value }))]}
-                  placeholder="All Governing Bodies" />
+                  options={[{ label: "All", value: "All" }, ...governingBodies.map((value) => ({ label: value, value }))]}
+                  placeholder="All" />
               </div>
               <div className="w-full">
                 <Select label="Origin" value={originFilter}
                   onChange={(value) => { setOriginFilter(value); setCurrentPage(1); }}
-                  options={[{ label: "All Origins", value: "All" }, ...origins.map((value) => ({ label: value, value }))]}
-                  placeholder="All Origins" />
+                  options={[{ label: "All", value: "All" }, ...origins.map((value) => ({ label: value, value }))]}
+                  placeholder="All" />
               </div>
               <DateRangePicker label="Modified Date Range" startDate={modifiedFrom} endDate={modifiedTo}
                 onStartDateChange={(value) => setModifiedFrom(toApiDate(value))}
@@ -419,7 +419,7 @@ export const EducationSchoolsView: React.FC = () => {
       <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
         <FilterAccordionItem label="Type" isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {[{ label: "All Types", value: "All" }, ...SCHOOL_TYPE_OPTIONS].map((opt) => (
+            {[{ label: "All", value: "All" }, ...SCHOOL_TYPE_OPTIONS].map((opt) => (
               <button key={opt.value} onClick={() => { setTypeFilter(opt.value as "All" | SchoolType); setCurrentPage(1); }} className={getOptionClassName(typeFilter === opt.value)}>
                 <span className="text-xs">{opt.label}</span>
                 {typeFilter === opt.value && <Check size={16} className="text-emerald-500" />}
@@ -429,7 +429,7 @@ export const EducationSchoolsView: React.FC = () => {
         </FilterAccordionItem>
         <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {[{ label: "All Status", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }].map((opt) => (
+            {[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }].map((opt) => (
               <button key={opt.value} onClick={() => { setStatusFilter(opt.value as "All" | "Active" | "Inactive"); setCurrentPage(1); }} className={getOptionClassName(statusFilter === opt.value)}>
                 <span className="text-xs">{opt.label}</span>
                 {statusFilter === opt.value && <Check size={16} className="text-emerald-500" />}
@@ -439,7 +439,7 @@ export const EducationSchoolsView: React.FC = () => {
         </FilterAccordionItem>
         <FilterAccordionItem label="Ownership" isExpanded={expandedSections.has("ownership")} onToggle={() => toggleSection("ownership")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {[{ label: "All Ownership", value: "All" }, ...SCHOOL_OWNERSHIP_OPTIONS].map((opt) => (
+            {[{ label: "All", value: "All" }, ...SCHOOL_OWNERSHIP_OPTIONS].map((opt) => (
               <button key={opt.value} onClick={() => { setOwnershipFilter(opt.value as "All" | SchoolOwnership); setCurrentPage(1); }} className={getOptionClassName(ownershipFilter === opt.value)}>
                 <span className="text-xs">{opt.label}</span>
                 {ownershipFilter === opt.value && <Check size={16} className="text-emerald-500" />}

@@ -74,7 +74,7 @@ public class TrainingCopyService {
 
     /** The copies sent to the department of the person, newest first, with the ones still to be received. A person sees only the kinds of copy the person may read. */
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> mine(UserAccount actor) {
+    public List<Map<String, Object>> mine(UserAccount actor, String sortBy, String sortDirection) {
         access.require(actor, "training.requirement.view", "training.job_assignment.view");
         UUID own = access.departmentOf(actor);
         if (own == null) return List.of();
@@ -85,8 +85,8 @@ public class TrainingCopyService {
               left join training_requirements rq on c.object_type = 'TRAINING_REQUIREMENT' and rq.id = c.object_id
               left join training_job_assignments ja on c.object_type = 'TRAINING_JOB_ASSIGNMENT' and ja.id = c.object_id
               left join departments d on d.id = coalesce(rq.department_id, ja.department_id)
-             where c.recipient_department = ? order by c.received_at is not null, c.sent_at desc limit 200
-            """, own));
+             where c.recipient_department = ?""" + TrainingRows.orderBy(sortBy, sortDirection, Map.of("type", "c.object_type", "reference", "object_name", "fromDepartment", "d.name", "sent", "c.sent_at", "note", "c.note", "state", "c.received_at"),
+                "c.received_at is not null, c.sent_at desc") + " limit 200", own));
         rows.removeIf(r -> !access.has(actor, viewPermission(String.valueOf(r.get("objectType")))));
         for (Map<String, Object> row : rows) row.put("canReceive", row.get("receivedAt") == null);
         return rows;

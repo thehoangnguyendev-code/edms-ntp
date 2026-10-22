@@ -33,8 +33,16 @@ public class TrainingMatrixController {
 
     @GetMapping("/matrices")
     public ResponseEntity<?> list(@RequestParam(required = false) String search, @RequestParam(required = false) String state,
+                                  @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(matrices.matrices(users.requireCurrentUser(), search, state, page, limit));
+        return ResponseEntity.ok(matrices.matrices(users.requireCurrentUser(), search, state, sortBy, sortDirection, page, limit));
+    }
+
+    @GetMapping("/matrices/{id}/versions")
+    public ResponseEntity<?> versions(@PathVariable UUID id, @RequestParam(required = false) String search, @RequestParam(required = false) String status,
+                                      @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
+                                      @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(matrices.versionsPage(users.requireCurrentUser(), id, search, status, sortBy, sortDirection, page, limit));
     }
 
     @PostMapping("/matrices")
@@ -109,8 +117,9 @@ public class TrainingMatrixController {
 
     @GetMapping("/person-positions")
     public ResponseEntity<?> personPositions(@RequestParam(required = false) String search, @RequestParam(defaultValue = "false") boolean unmatchedOnly,
-                                             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
-        return ResponseEntity.ok(matrices.personPositions(users.requireCurrentUser(), search, unmatchedOnly, page, limit));
+                                             @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(matrices.personPositions(users.requireCurrentUser(), search, unmatchedOnly, sortBy, sortDirection, page, limit));
     }
 
     @PutMapping("/person-positions")

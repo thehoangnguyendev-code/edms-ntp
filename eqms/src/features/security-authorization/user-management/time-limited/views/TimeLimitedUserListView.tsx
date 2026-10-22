@@ -258,7 +258,7 @@ export const TimeLimitedUserListView: React.FC = () => {
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "All" },
+        { label: "All", value: "All" },
         { label: "Active", value: "ACTIVE" },
         { label: "Cancelled", value: "CANCELLED" },
         { label: "Expired", value: "EXPIRED" },
@@ -341,7 +341,7 @@ export const TimeLimitedUserListView: React.FC = () => {
                 value={statusFilter}
                 onChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}
                 options={[
-                  { label: "All Status", value: "All" },
+                  { label: "All", value: "All" },
                   { label: "Active", value: "ACTIVE" },
                   { label: "Cancelled", value: "CANCELLED" },
                   { label: "Expired", value: "EXPIRED" },
@@ -509,7 +509,7 @@ export const TimeLimitedUserListView: React.FC = () => {
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Status", value: "All" },
+              { label: "All", value: "All" },
               { label: "Active", value: "ACTIVE" },
               { label: "Cancelled", value: "CANCELLED" },
               { label: "Expired", value: "EXPIRED" },

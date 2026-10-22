@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { TrainingPersonName } from "../shared/TrainingPersonName";
+import { useCallback, useEffect, useState, useRef } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -48,7 +50,11 @@ export function TrainingJobDetailPage() {
     setDuties(j.duties);
     setDirty(false);
   }, []);
-  useEffect(() => { trainingJobsApi.get(jobId).then(apply).catch((e) => setError(trainingError(e))); }, [jobId, apply]);
+  const refetch = useCallback(() => { trainingJobsApi.get(jobId).then(apply).catch((e) => setError(trainingError(e))); }, [jobId, apply]);
+  useEffect(refetch, [refetch]);
+  const editing = useRef(false);
+  editing.current = dirty;
+  useEntityChanged(["TRAINING"], () => { if (!editing.current) refetch(); });
 
   const run = async (action: () => Promise<TrainingJobDetail>, done: string) => {
     setBusy(true);
@@ -193,7 +199,7 @@ export function TrainingJobDetailPage() {
               getRowKey={(a) => a.id}
               columns={[
                 { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => i + 1 },
-                { id: "who", header: "Person", cell: (a) => a.assigneeName },
+                { id: "who", header: "Full Name", cell: (a) => <TrainingPersonName fullName={a.assigneeName} avatar={a.avatar} /> },
                 { id: "status", header: "Status", cell: (a) => a.status.toLowerCase() },
                 { id: "at", header: "Date", cell: (a) => when(a.completedAt ?? a.assignedAt) },
               ] as DataTableColumn<(typeof job.approvers)[number]>[]}

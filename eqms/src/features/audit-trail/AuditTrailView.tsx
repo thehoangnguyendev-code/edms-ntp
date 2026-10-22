@@ -39,6 +39,7 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import {
   getAuditActionBadgeClass,
   formatAuditActionLabel,
+  formatAuditModuleLabel,
 } from "./utils/actionBadge";
 import { getDefaultAuditTrailDateRange } from "./utils/dateRange";
 import { formatWorkflowStatusLabel } from "./utils/statusLabel";
@@ -59,7 +60,7 @@ const formatSignatureId = (id?: string | null): string => {
 };
 
 const ACTION_OPTIONS = [
-  { label: "All Actions", value: "All" },
+  { label: "All", value: "All" },
   { label: "Create", value: "Create" },
   { label: "Update", value: "Update" },
   { label: "Delete", value: "Delete" },
@@ -141,7 +142,7 @@ const mapModuleLabel = (module: string) => {
     case "Controlled Copy":
       return "Controlled Copy";
     default:
-      return REPORT_MODULE_LABEL[module] ?? (module || "-");
+      return REPORT_MODULE_LABEL[module] ?? formatAuditModuleLabel(module);
   }
 };
 
@@ -295,7 +296,7 @@ export const AuditTrailView: React.FC = () => {
   const [isNavigating, setIsNavigating] = useState(false);
   const [userOptions, setUserOptions] = useState<
     { label: string; value: string }[]
-  >([{ label: "All Users", value: "" }]);
+  >([{ label: "All", value: "" }]);
   const [isUserOptionsLoading, setIsUserOptionsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 350);
@@ -403,11 +404,11 @@ export const AuditTrailView: React.FC = () => {
       .getAuditTrailUsers()
       .then((response) => {
         if (!alive) return;
-        setUserOptions([{ label: "All Users", value: "" }, ...response]);
+        setUserOptions([{ label: "All", value: "" }, ...response]);
       })
       .catch(() => {
         if (!alive) return;
-        setUserOptions([{ label: "All Users", value: "" }]);
+        setUserOptions([{ label: "All", value: "" }]);
       })
       .finally(() => {
         if (alive) {
@@ -681,7 +682,7 @@ export const AuditTrailView: React.FC = () => {
                 value={actionFilter}
                 onChange={(value) => setActionFilter(String(value))}
                 options={actionOptions}
-                placeholder="All Actions"
+                placeholder="All"
               />
             </div>
 
@@ -691,7 +692,7 @@ export const AuditTrailView: React.FC = () => {
                 value={userFilter}
                 onChange={(value) => setUserFilter(String(value))}
                 options={userOptions}
-                placeholder="All Users"
+                placeholder="All"
                 isLoading={isUserOptionsLoading}
                 loadingText="Loading users..."
               />

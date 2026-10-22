@@ -77,12 +77,12 @@ const emptyForm: WorkflowRoleFormState = {
 };
 
 const typeOptions: SelectOption[] = [
-  { label: "All Types", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "System", value: "SYSTEM" },
   { label: "Custom", value: "CUSTOM" },
 ];
 const statusOptions: SelectOption[] = [
-  { label: "All Statuses", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Active", value: "ACTIVE" },
   { label: "Inactive", value: "INACTIVE" },
 ];
@@ -164,7 +164,7 @@ export const WorkflowRolesView: React.FC = () => {
   }, [search, debouncedSearch, moduleFilter, typeFilter, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sort, pagination.page, pagination.limit, searchParams, setSearchParams]);
 
   const moduleOptions: SelectOption[] = [
-    { label: "All Modules", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...modules.map((module) => ({ label: module, value: module })),
   ];
   const selectedRole = openId

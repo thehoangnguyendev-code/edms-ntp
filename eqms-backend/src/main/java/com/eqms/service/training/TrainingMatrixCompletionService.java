@@ -38,6 +38,9 @@ public class TrainingMatrixCompletionService {
     private static final int MAX_ROWS = 200;
     private static final Set<String> STATES = Set.of("NOT_REQUIRED", "IN_PROGRESS", "QUALIFIED", "UPDATE_NEEDED", "DUE", "REQUIRED");
     private static final Set<String> GAPS = Set.of("REQUIRED", "UPDATE_NEEDED", "DUE");
+    /** States that keep a person on the list of those still to be trained on a row; the list of a row is cut here and says how many more there are. */
+    private static final Set<String> OPEN_STATES = Set.of("REQUIRED", "UPDATE_NEEDED", "DUE", "IN_PROGRESS");
+    static final int MAX_NAMED_PER_ROW = 30;
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -153,6 +156,10 @@ public class TrainingMatrixCompletionService {
         }
         LocalDate today = LocalDate.now(TrainingNumberService.ZONE);
         List<Map<String, Object>> data = new ArrayList<>();
+        // Totals over every person of the position who matches the search, before the state filter and the paging, so they are the whole picture of the position.
+        Map<String, Map<String, Object>> rowSummary = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) rowSummary.put(String.valueOf(row.get("row_id")), newRowSummary());
+        int peopleReady = 0, peopleWithGap = 0;
         for (Map<String, Object> person : people) {
             Map<String, Object> cells = new LinkedHashMap<>();
             int required = 0, done = 0;
@@ -162,6 +169,7 @@ public class TrainingMatrixCompletionService {
                 Map<String, Object> fact = facts.get(person.get("pid") + "|" + row.get("row_id"));
                 LocalDate lastDone = fact == null || fact.get("last_done") == null ? null : ((Date) fact.get("last_done")).toLocalDate();
                 String state = state(row, lastDone, fact == null ? null : (String) fact.get("last_rev"), fact != null && fact.get("activity_id") != null, today);
+                countInRow(rowSummary.get(String.valueOf(row.get("row_id"))), person, state);
                 if (!"NOT_REQUIRED".equals(state)) required++;
                 if ("QUALIFIED".equals(state)) done++;
                 if (GAPS.contains(state)) hasGap = true;
@@ -173,6 +181,8 @@ public class TrainingMatrixCompletionService {
                 cell.put("activityId", fact == null ? null : fact.get("activity_id"));
                 cells.put(String.valueOf(row.get("row_id")), cell);
             }
+            if (required > 0 && done == required) peopleReady++;
+            if (hasGap) peopleWithGap++;
             if (!hasStatus || (gapsOnly && !hasGap)) continue;
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("personId", person.get("pid"));
@@ -203,7 +213,110 @@ public class TrainingMatrixCompletionService {
             columns.add(column);
         }
         out.put("columns", columns);
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("people", people.size());
+        summary.put("ready", peopleReady);
+        summary.put("withGap", peopleWithGap);
+        summary.put("rows", rowSummary);
+        out.put("summary", summary);
         out.put("columnPagination", Map.of("page", safeColumnPage, "limit", safeColumnLimit, "total", rows.size(), "totalPages", Math.max(1, (rows.size() + safeColumnLimit - 1) / safeColumnLimit)));
+        return out;
+    }
+
+    private static Map<String, Object> newRowSummary() {
+        Map<String, Object> counts = new LinkedHashMap<>();
+        for (String state : STATES) counts.put(state, 0);
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("counts", counts);
+        summary.put("open", new ArrayList<Map<String, Object>>());
+        summary.put("moreOpen", 0);
+        return summary;
+    }
+
+    /** Counts the state of one person on one row and names the person when the row is still open for them (up to {@link #MAX_NAMED_PER_ROW}). */
+    @SuppressWarnings("unchecked")
+    static void countInRow(Map<String, Object> rowSummary, Map<String, Object> person, String state) {
+        Map<String, Object> counts = (Map<String, Object>) rowSummary.get("counts");
+        counts.put(state, ((Integer) counts.get(state)) + 1);
+        if (!OPEN_STATES.contains(state)) return;
+        List<Map<String, Object>> open = (List<Map<String, Object>>) rowSummary.get("open");
+        if (open.size() >= MAX_NAMED_PER_ROW) {
+            rowSummary.put("moreOpen", ((Integer) rowSummary.get("moreOpen")) + 1);
+            return;
+        }
+        Map<String, Object> named = new LinkedHashMap<>();
+        named.put("personId", person.get("pid"));
+        named.put("fullName", person.get("full_name"));
+        named.put("employeeCode", person.get("employee_code"));
+        named.put("status", state);
+        open.add(named);
+    }
+
+    /**
+     * Everything behind one cell of the grid: the requirement, the state with the reason in words, the records of the person for it (voided ones marked) and the open trainings the person is on.
+     * It uses the same rules as the grid, so the two never disagree.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> cellDetail(UserAccount actor, UUID departmentId, UUID personId, UUID rowId) {
+        UUID department = department(actor, departmentId);
+        if (personId == null || rowId == null) throw new IllegalArgumentException("TRAINING_POSITION_REQUIRED");
+        Map<String, Object> row = jdbc.queryForList("""
+            select r.id as row_id, r.row_group, r.annual_required, coalesce(t.code, d.document_number) as code, coalesce(t.name, d.document_name) as title, t.name as tname, d.document_number as dnum,
+                   (select dr.revision_number from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_rev,
+                   (select dr.requires_training from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_requires
+              from training_matrix_rows r join training_matrix_versions v on v.id = r.version_id and v.status = 'EFFECTIVE' join training_matrices m on m.id = v.matrix_id and m.department_id = ?
+              left join training_topics t on t.id = r.topic_id left join documents d on d.id = r.document_id
+             where r.id = ? and exists (select 1 from training_matrix_cells c join training_person_positions tp on tp.position_id = c.position_id and tp.person_user_id = ? and tp.valid_to is null where c.row_id = r.id)
+            """, department, rowId, personId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        Map<String, Object> person = jdbc.queryForList("""
+            select u.id, u.full_name, u.employee_code, u.department, (select string_agg(p.name, ', ') from training_person_positions tp join positions p on p.id = tp.position_id where tp.person_user_id = u.id and tp.valid_to is null) as positions
+              from app_users u where u.id = ?
+            """, personId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        String match = "((?::text is not null and rec.document_number = ?) or (?::text is not null and lower(rec.topic_text) = lower(?)))";
+        List<Map<String, Object>> records = TrainingRows.camel(jdbc.queryForList("""
+            select rec.id, rec.record_no, rec.training_number, rec.activity_id, rec.completed_on, rec.document_revision, rec.method, rec.result, (v.id is not null) as voided, v.reason as void_reason
+              from training_records rec left join training_record_voids v on v.record_id = rec.id
+             where rec.person_user_id = ? and """ + match + " order by rec.completed_on desc, rec.record_no desc limit 20", personId, row.get("dnum"), row.get("dnum"), row.get("tname"), row.get("tname")));
+        List<Map<String, Object>> open = TrainingRows.camel(jdbc.queryForList("""
+            select distinct a.id, a.training_number, a.training_title, a.status, a.due_date, s.scheduled_on
+              from training_participants p join training_activities a on a.id = p.activity_id join training_sessions s on s.id = p.session_id join training_session_topics st on st.session_id = s.id
+             where p.person_user_id = ? and a.status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state <> 'ABSENT'
+               and ((?::text is not null and st.document_number = ?) or (?::text is not null and lower(st.topic_text) = lower(?)))
+             order by a.due_date nulls last limit 5
+            """, personId, row.get("dnum"), row.get("dnum"), row.get("tname"), row.get("tname")));
+        Map<String, Object> last = records.stream().filter(r -> !Boolean.TRUE.equals(r.get("voided"))).findFirst().orElse(null);
+        LocalDate lastDone = last == null ? null : LocalDate.parse(String.valueOf(last.get("completedOn")).substring(0, 10));
+        String lastRevision = last == null ? null : (String) last.get("documentRevision");
+        LocalDate today = LocalDate.now(TrainingNumberService.ZONE);
+        String state = state(row, lastDone, lastRevision, !open.isEmpty(), today);
+        boolean annual = Boolean.TRUE.equals(row.get("annual_required"));
+        String why = switch (state) {
+            case "NOT_REQUIRED" -> "The revision of this SOP now in force was marked as not needing training.";
+            case "IN_PROGRESS" -> "A training on this requirement is open and the person is on its list.";
+            case "QUALIFIED" -> "Trained" + (lastRevision == null ? "" : " on revision " + lastRevision) + " on " + lastDone + (annual ? "; the annual training falls due on " + lastDone.plusYears(1) + "." : ".");
+            case "UPDATE_NEEDED" -> "The last training was on revision " + lastRevision + ", but revision " + row.get("eff_rev") + " is in force and needs training.";
+            case "DUE" -> "The annual training is due again: the last training was on " + lastDone + ", more than a year ago.";
+            default -> "There is no valid training record of this person for this requirement.";
+        };
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("person", TrainingRows.camel(person));
+        Map<String, Object> req = new LinkedHashMap<>();
+        req.put("code", row.get("code"));
+        req.put("title", row.get("title"));
+        req.put("group", row.get("row_group"));
+        req.put("annual", annual);
+        req.put("sop", row.get("dnum") != null);
+        req.put("currentRevision", row.get("eff_rev"));
+        out.put("requirement", req);
+        out.put("state", state);
+        out.put("reason", why);
+        out.put("lastDoneOn", lastDone == null ? null : lastDone.toString());
+        out.put("lastRevision", lastRevision);
+        out.put("lastTrainingNumber", last == null ? null : last.get("trainingNumber"));
+        out.put("lastActivityId", last == null ? null : last.get("activityId"));
+        out.put("nextDueOn", annual && lastDone != null ? lastDone.plusYears(1).toString() : null);
+        out.put("records", records);
+        out.put("openTrainings", open);
         return out;
     }
 
@@ -222,6 +335,7 @@ public class TrainingMatrixCompletionService {
     private static Map<String, Object> empty(Map<String, Object> out, int page, int limit, int columnPage, int columnLimit) {
         out.put("data", List.of());
         out.put("columns", List.of());
+        out.put("summary", Map.of("people", 0, "ready", 0, "withGap", 0, "rows", Map.of()));
         out.put("pagination", Map.of("page", page, "limit", limit, "total", 0, "totalPages", 1));
         out.put("columnPagination", Map.of("page", columnPage, "limit", columnLimit, "total", 0, "totalPages", 1));
         return out;

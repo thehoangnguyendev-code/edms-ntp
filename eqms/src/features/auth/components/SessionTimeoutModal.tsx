@@ -67,16 +67,6 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
     }
 
     try {
-      const systemConfig = await settingsApi.getSystemConfiguration();
-      if (systemConfig?.security?.sessionTimeoutMinutes) {
-        setTimeoutMinutes(readTimeoutMinutes(systemConfig.security.sessionTimeoutMinutes));
-        return;
-      }
-    } catch {
-      // ignore
-    }
-
-    try {
       const config = await settingsApi.getSecurityConfiguration();
       setTimeoutMinutes(readTimeoutMinutes(config.sessionTimeoutMinutes));
     } catch {

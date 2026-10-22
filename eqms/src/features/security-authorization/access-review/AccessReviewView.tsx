@@ -161,7 +161,7 @@ export const AccessReviewView: React.FC = () => {
   }, [canView]);
 
   const statusOptions: SelectOption[] = [
-    { label: "All Status", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...statusValues.map((status) => ({ label: status.label, value: status.value })),
   ];
   const hasFilters = !!search || statusFilter !== "ALL" || !!createdFrom || !!createdTo || !!updatedFrom || !!updatedTo;

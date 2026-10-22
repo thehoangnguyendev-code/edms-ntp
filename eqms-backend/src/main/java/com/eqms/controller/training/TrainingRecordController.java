@@ -33,8 +33,9 @@ public class TrainingRecordController {
     public ResponseEntity<?> list(@RequestParam(required = false) String search, @RequestParam(required = false) UUID personId, @RequestParam(required = false) String documentNumber,
                                   @RequestParam(required = false) String trainingNumber, @RequestParam(defaultValue = "false") boolean includeVoided,
                                   @RequestParam(defaultValue = "completedOn") String sortBy, @RequestParam(defaultValue = "desc") String sortDirection,
-                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(records.records(users.requireCurrentUser(), search, personId, documentNumber, trainingNumber, includeVoided, sortBy, sortDirection, page, limit));
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                  @RequestParam Map<String, String> filters) {
+        return ResponseEntity.ok(records.records(users.requireCurrentUser(), search, personId, documentNumber, trainingNumber, includeVoided, sortBy, sortDirection, page, limit, filters));
     }
 
     @PostMapping("/records/{id}/void")
@@ -44,7 +45,8 @@ public class TrainingRecordController {
 
     @GetMapping("/number-log")
     public ResponseEntity<?> numberLog(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) Integer year, @RequestParam(required = false) String search,
-                                       @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
-        return ResponseEntity.ok(records.numberLog(users.requireCurrentUser(), departmentId, year, search, page, limit));
+                                       @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(records.numberLog(users.requireCurrentUser(), departmentId, year, search, sortBy, sortDirection, page, limit));
     }
 }

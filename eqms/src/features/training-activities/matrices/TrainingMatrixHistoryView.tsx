@@ -1,63 +1,153 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate, useParams } from "react-router-dom";
+import { MoreVertical } from "lucide-react";
+import { IconEye, IconGitCompare } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
-import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
+import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
+import { TablePagination } from "@/components/ui/table/TablePagination";
 import { SectionLoading } from "@/components/ui/loading/Loading";
+import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
+import { usePortalDropdown } from "@/hooks/usePortalDropdown";
+import { useTableDragScroll } from "@/hooks/useTableDragScroll";
+import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
+import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingError, trainingMatrixApi, type TrainingMatrixDetail, type TrainingMatrixRow, type TrainingMatrixVersionRef } from "@/services/api/trainingActivities";
 import { day, trainingBreadcrumbs } from "../shared/trainingLabels";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", PENDING_APPROVAL: "Waiting for approval", EFFECTIVE: "Effective", OBSOLETE: "Obsolete" };
+const STATUS_OPTIONS = [{ label: "All", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))];
 const rowName = (r: TrainingMatrixRow) => (r.topicId ? `${r.topicCode} — ${r.topicName}` : `${r.documentNumber} — ${r.documentName}`);
+type Diff = Awaited<ReturnType<typeof trainingMatrixApi.compare>>;
 
-/** The versions of one matrix, and what changed between a version and the one before it. */
+/** The versions of one matrix: which one is in use, which are history, and what changed between a version and the one before it. Search, filter, sort and paging are done by the server. */
 export function TrainingMatrixHistoryView() {
   const { matrixId = "" } = useParams();
   const navigate = useNavigate();
+  const drag = useTableDragScroll();
+  const menu = usePortalDropdown();
   const [matrix, setMatrix] = useState<TrainingMatrixDetail>();
+  const [status, setStatus] = usePersistedState("training.matrixVersions.status", "");
   const [error, setError] = useState("");
-  const [diff, setDiff] = useState<Awaited<ReturnType<typeof trainingMatrixApi.compare>>>();
+  const [diff, setDiff] = useState<Diff>();
 
-  useEffect(() => {
-    trainingMatrixApi.get(matrixId).then(setMatrix).catch((e) => setError(trainingError(e)));
-  }, [matrixId]);
+  const loadMatrix = useCallback(() => { trainingMatrixApi.get(matrixId).then(setMatrix).catch((e) => setError(trainingError(e))); }, [matrixId]);
+  useEffect(loadMatrix, [loadMatrix]);
+  useEntityChanged(["TRAINING"], loadMatrix);
+  const fetcher = useMemo(() => trainingMatrixApi.versions(matrixId), [matrixId]);
+  const extraParams = useMemo(() => ({ status: status || undefined }), [status]);
+  const table = useServerTable<TrainingMatrixVersionRef>({ persistKey: "training.matrixVersions", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "versionNo", defaultSortDirection: "desc", extraParams, syncToUrl: false });
+  const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
-  const compare = async (v: TrainingMatrixVersionRef) => {
-    const previous = matrix?.versions.find((x) => x.versionNo === v.versionNo - 1);
-    if (!previous) return;
+  const compare = useCallback(async (v: TrainingMatrixVersionRef) => {
     try {
-      setDiff(await trainingMatrixApi.compare(previous.id, v.id));
+      if (v.previousId) setDiff(await trainingMatrixApi.compare(v.previousId, v.id));
     } catch (e) {
       setError(trainingError(e));
     }
-  };
+  }, []);
+
   const columns: DataTableColumn<TrainingMatrixVersionRef>[] = [
-    { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => i + 1 },
-    { id: "version", header: "Version", cell: (v) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/matrix-versions/${v.id}`)}>Version {v.versionNo}</button> },
-    { id: "status", header: "Status", cell: (v) => <Badge color={v.status === "EFFECTIVE" ? "emerald" : v.status === "OBSOLETE" ? "slate" : "amber"}>{STATUS_LABEL[v.status]}</Badge> },
-    { id: "reason", header: "What changed", cell: (v) => <div className="max-w-80 whitespace-normal">{v.changeReason || "—"}</div> },
-    { id: "prepared", header: "Prepared by", cell: (v) => v.preparedByName ?? "—" },
-    { id: "approved", header: "Approved by", cell: (v) => v.approvedByName ?? "—" },
-    { id: "effective", header: "Effective", cell: (v) => day(v.effectiveAt) },
-    { id: "compare", header: "", cell: (v) => (v.versionNo > 1 && ["EFFECTIVE", "OBSOLETE"].includes(v.status) ? <Button size="sm" variant="outline" onClick={() => void compare(v)}>Compare with previous</Button> : null) },
+    { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
+    { id: "version", header: "Version", sort: sorted("versionNo"), cell: (v) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/matrix-versions/${v.id}`)}>Version {v.versionNo}</button> },
+    { id: "status", header: "Status", sort: sorted("status"), cell: (v) => <Badge color={v.status === "EFFECTIVE" ? "emerald" : v.status === "OBSOLETE" ? "slate" : "amber"}>{STATUS_LABEL[v.status]}</Badge> },
+    { id: "reason", header: "What changed", sort: sorted("changeReason"), cell: (v) => <div className="max-w-80 whitespace-normal">{v.changeReason || "—"}</div> },
+    { id: "prepared", header: "Prepared by", sort: sorted("preparedBy"), cell: (v) => v.preparedByName ?? "—" },
+    { id: "approved", header: "Approved by", sort: sorted("approvedBy"), cell: (v) => v.approvedByName ?? "—" },
+    { id: "effective", header: "Effective", sort: sorted("effectiveAt"), cell: (v) => day(v.effectiveAt) },
   ];
+  const action = {
+    cell: (v: TrainingMatrixVersionRef) => (
+      <button type="button" ref={menu.getRef(v.id)} aria-label="More actions" className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(event) => menu.toggle(v.id, event)}>
+        <MoreVertical className="h-4 w-4" />
+      </button>
+    ),
+  };
+  const { layout, control } = useCustomColumnLayout("training.matrix.versions", columns, action);
+  const actionRow = table.items.find((row) => row.id === menu.openId);
+  const filters: ReportSelectFilter[] = [{ id: "status", label: "Status", value: status, options: STATUS_OPTIONS, onChange: (v) => { setStatus(v); table.setCurrentPage(1); } }];
   const title = "Training Matrix Versions";
+
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
-      <PageHeader title={title} breadcrumbItems={trainingBreadcrumbs(navigate, "matrices", title)} />
+      <PageHeader title={title} breadcrumbItems={trainingBreadcrumbs(navigate, "matrices", title)} actions={<Button size="sm" variant="outline-emerald" onClick={() => navigate("/training-management/matrices")}>Back</Button>} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      {!matrix ? !error && <SectionLoading text="Loading versions…" /> : <DataTable rows={matrix.versions} getRowKey={(v) => v.id} columns={columns} />}
-      <FormModal isOpen={!!diff} onClose={() => setDiff(undefined)} title={diff ? `Version ${diff.from} to version ${diff.to}` : ""} showCancel={false} confirmText="Close" onConfirm={() => setDiff(undefined)} size="xl">
-        {diff && (
-          <div className="space-y-4 text-sm">
-            <section><h4 className="font-semibold">Added ({diff.added.length})</h4><ul className="list-disc pl-5">{diff.added.map((r, i) => <li key={i}>{rowName(r)}</li>)}</ul></section>
-            <section><h4 className="font-semibold">Removed ({diff.removed.length})</h4><ul className="list-disc pl-5">{diff.removed.map((r, i) => <li key={i}>{rowName(r)}</li>)}</ul></section>
-            <section><h4 className="font-semibold">Changed positions or annual flag ({diff.changed.length})</h4><ul className="list-disc pl-5">{diff.changed.map((r, i) => <li key={i}>{rowName(r)}</li>)}</ul></section>
+      {matrix && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600" aria-label="About this matrix">
+          <p><span className="font-semibold text-slate-900">{matrix.code}</span> — {matrix.departmentName}. {matrix.effective ? `Version ${matrix.effective.versionNo} is in use since ${day(matrix.effective.effectiveAt)}.` : "No version is in use yet."}</p>
+          <p className="mt-1 text-xs text-slate-500">An approved version is never changed. Each change is a new version that is prepared, then approved with an electronic signature. The effective version tells who must be trained on what; obsolete versions stay as history. Use Compare with previous to see what a version changed.</p>
+        </section>
+      )}
+      <ReportListToolbar
+        searchPlaceholder="Search version, change or person…" search={table.searchQuery}
+        onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
+        filters={filters} dates={[]} hasActiveFilters={Boolean(status || table.searchQuery)}
+        onClear={() => { setStatus(""); table.setSearchQuery(""); table.setCurrentPage(1); }} customControl={control}
+      >
+        <DataTable
+          rows={table.items} getRowKey={(v) => v.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading versions…" />}
+          emptyState={<TableEmptyState title="No version found" description="Change the search or the filter." />}
+          scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}
+          columns={columns} columnLayout={layout} action={action}
+          pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined}
+        />
+      </ReportListToolbar>
+      <PortalDropdownMenu isOpen={!!actionRow} onClose={menu.close} position={menu.position} minWidth={220}>
+        {actionRow && (
+          <div className="py-1">
+            <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { navigate(`/training-management/matrix-versions/${actionRow.id}`); menu.close(); }}>View Details</DropdownMenuItem>
+            {actionRow.previousId && ["EFFECTIVE", "OBSOLETE"].includes(actionRow.status) && (
+              <DropdownMenuItem icon={<IconGitCompare className="h-4 w-4" />} onClick={() => { void compare(actionRow); menu.close(); }}>Compare with previous</DropdownMenuItem>
+            )}
           </div>
         )}
-      </FormModal>
+      </PortalDropdownMenu>
+      {diff && <CompareModal diff={diff} onClose={() => setDiff(undefined)} />}
     </div>
+  );
+}
+
+function CompareModal({ diff, onClose }: { diff: Diff; onClose: () => void }) {
+  const names = new Map(diff.positions.map((p) => [p.id, p.name]));
+  const list = (ids: string[]) => (ids.length ? ids.map((id) => names.get(id) ?? "?").join(", ") : "nobody");
+  const none = <p className="text-slate-500">None.</p>;
+  return (
+    <FormModal isOpen onClose={onClose} title={`What changed from version ${diff.from} to version ${diff.to}`} showCancel={false} confirmText="Close" onConfirm={onClose} size="xl">
+      <div className="space-y-5 text-sm">
+        <p className="flex flex-wrap gap-2">
+          <Badge color="emerald">{diff.added.length} added</Badge><Badge color="red">{diff.removed.length} removed</Badge><Badge color="amber">{diff.changed.length} changed</Badge>
+        </p>
+        <section>
+          <h4 className="font-semibold text-slate-900">Added in version {diff.to}</h4>
+          <p className="mb-2 text-xs text-slate-500">Topics or documents that were not in version {diff.from}. The positions are the ones that must be trained.</p>
+          {diff.added.length === 0 ? none : <ul className="space-y-2">{diff.added.map((r, i) => <li key={i} className="rounded-lg border border-slate-200 p-3"><div className="font-medium">{rowName(r)}</div><div className="text-xs text-slate-600">For: {list(r.positionIds)}{r.annualRequired ? " · every year" : ""}</div></li>)}</ul>}
+        </section>
+        <section>
+          <h4 className="font-semibold text-slate-900">Removed in version {diff.to}</h4>
+          <p className="mb-2 text-xs text-slate-500">Topics or documents that were in version {diff.from} and are no longer required.</p>
+          {diff.removed.length === 0 ? none : <ul className="space-y-2">{diff.removed.map((r, i) => <li key={i} className="rounded-lg border border-slate-200 p-3"><div className="font-medium">{rowName(r)}</div><div className="text-xs text-slate-600">Was for: {list(r.positionIds)}{r.annualRequired ? " · every year" : ""}</div></li>)}</ul>}
+        </section>
+        <section>
+          <h4 className="font-semibold text-slate-900">Same topic, different positions or yearly rule</h4>
+          <p className="mb-2 text-xs text-slate-500">The topic or document is in both versions, but who must be trained, or the yearly repeat, is not the same.</p>
+          {diff.changed.length === 0 ? none : (
+            <ul className="space-y-2">
+              {diff.changed.map((r, i) => (
+                <li key={i} className="rounded-lg border border-slate-200 p-3">
+                  <div className="font-medium">{rowName(r)}</div>
+                  <div className="text-xs text-slate-600">Positions: {list(r.previousPositionIds)} → {list(r.positionIds)}</div>
+                  {r.previousAnnualRequired !== r.annualRequired && <div className="text-xs text-slate-600">Every year: {r.previousAnnualRequired ? "yes" : "no"} → {r.annualRequired ? "yes" : "no"}</div>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </FormModal>
   );
 }

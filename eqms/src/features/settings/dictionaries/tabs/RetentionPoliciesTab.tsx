@@ -290,7 +290,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "All" },
+        { label: "All", value: "All" },
         { label: "Active", value: "Active" },
         { label: "Inactive", value: "Inactive" },
       ],
@@ -345,11 +345,11 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
                   setCurrentPage(1);
                 }}
                 options={[
-                  { label: "All Status", value: "All" },
+                  { label: "All", value: "All" },
                   { label: "Active", value: "Active" },
                   { label: "Inactive", value: "Inactive" },
                 ]}
-                placeholder="All Status"
+                placeholder="All"
               />
             </div>
 
@@ -540,7 +540,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
         <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Status", value: "All" },
+              { label: "All", value: "All" },
               { label: "Active", value: "Active" },
               { label: "Inactive", value: "Inactive" },
             ].map((opt) => (

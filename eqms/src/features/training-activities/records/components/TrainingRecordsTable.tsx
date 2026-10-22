@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { MoreVertical } from "lucide-react";
-import { IconBan } from "@tabler/icons-react";
+import { IconBan, IconExternalLink, IconFileSearch } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
+import { TrainingScannedTestsModal } from "../../shared/TrainingScannedTestsModal";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -20,6 +24,7 @@ import { ReportListToolbar, pickerDateToIso, type ReportSelectFilter } from "@/f
 import { myTrainingApi } from "@/services/api/myTraining";
 import { trainingError, trainingRecordsApi, type TrainingRecord } from "@/services/api/trainingActivities";
 import { METHOD_LABEL, day } from "../../shared/trainingLabels";
+import { resettingDates, useDateRange, useDepartmentNameOptions } from "../../shared/useListFilters";
 
 /**
  * Personal training records. `mine` shows only the records of the person who is logged in; otherwise the person sees the records of the own department (or all
@@ -29,14 +34,22 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canVoid = !mine && hasPermission("training.record.void");
+  const canOpenActivity = hasPermission("training.activity.view");
+  const navigate = useNavigate();
+  const [scans, setScans] = useState<TrainingRecord>();
   const menu = usePortalDropdown();
   const drag = useTableDragScroll();
-  const [voided, setVoided] = useState("");
-  const [method, setMethod] = useState("");
-  const [result, setResult] = useState("");
-  const [recordState, setRecordState] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [voided, setVoided] = usePersistedState(`training.records.${mine ? "mine" : "all"}.voided`, "");
+  const [method, setMethod] = usePersistedState(`training.records.${mine ? "mine" : "all"}.method`, "");
+  const [result, setResult] = usePersistedState(`training.records.${mine ? "mine" : "all"}.result`, "");
+  const [recordState, setRecordState] = usePersistedState(`training.records.${mine ? "mine" : "all"}.recordState`, "");
+  const [from, setFrom] = usePersistedState(`training.records.${mine ? "mine" : "all"}.from`, "");
+  const [to, setTo] = usePersistedState(`training.records.${mine ? "mine" : "all"}.to`, "");
+  const scope = mine ? "mine" : "all";
+  const [departmentFilter, setDepartmentFilter] = usePersistedState(`training.records.${scope}.department`, "");
+  const departments = useDepartmentNameOptions();
+  const completedRange = useDateRange(`training.records.${scope}.completedRange`, "Completed Date Range");
+  const recordedRange = useDateRange(`training.records.${scope}.recordedRange`, "Recorded Date Range");
   const [error, setError] = useState("");
   const [voiding, setVoiding] = useState<{ record: TrainingRecord; reason: string; step: "reason" | "sign" }>();
   const [busy, setBusy] = useState(false);
@@ -52,18 +65,36 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
   const extraParams = useMemo(() => (mine ? {
     method: method || undefined, result: result || undefined, recordState: recordState || undefined,
     fromDate: pickerDateToIso(from) || undefined, toDate: pickerDateToIso(to) || undefined,
-  } : { includeVoided: voided === "yes" ? true : undefined }), [mine, voided, method, result, recordState, from, to]);
-  const table = useServerTable<TrainingRecord>({ fetcher, defaultSortBy: "completedOn", defaultSortDirection: "desc", extraParams, initialItemsPerPage: 10, syncToUrl: !mine });
+  } : {
+    includeVoided: voided === "yes" ? true : undefined, method: method || undefined, result: result || undefined, department: departmentFilter || undefined,
+    ...completedRange.params("completedFrom", "completedTo"), ...recordedRange.params("recordedFrom", "recordedTo"),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [mine, voided, method, result, recordState, from, to, departmentFilter, completedRange.from, completedRange.to, recordedRange.from, recordedRange.to]);
+  const table = useServerTable<TrainingRecord>({ persistKey: `training.records.${mine ? "mine" : "all"}`, liveTypes: ["TRAINING"], fetcher, defaultSortBy: "completedOn", defaultSortDirection: "desc", extraParams, initialItemsPerPage: 10, syncToUrl: !mine });
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   const columns: DataTableColumn<TrainingRecord>[] = [
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    ...(mine ? [] : [{ id: "person", header: "Employee", sort: sorted("fullName"), cell: (r: TrainingRecord) => <div><div className="font-medium">{r.fullName}</div><div className="text-xs text-slate-500">{r.employeeCode ?? ""}</div></div> }]),
+    ...(mine ? [] : [
+      { id: "employeeCode", header: "Employee ID", sort: sorted("employeeCode"), cell: (r: TrainingRecord) => r.employeeCode ?? "—" },
+      {
+        id: "person",
+        header: "Full Name",
+        sort: sorted("fullName"),
+        cell: (r: TrainingRecord) => (
+          <div className="flex items-center gap-2.5">
+            <Avatar name={r.fullName || "User"} src={r.avatar} tone="brand" className="h-8 w-8" />
+            <span className="font-medium text-slate-900">{r.fullName}</span>
+          </div>
+        ),
+      },
+    ]),
     { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (r) => r.trainingNumber },
-    { id: "topic", header: "Topic", sort: mine ? sorted("topicText") : undefined, cell: (r) => <div className="max-w-80 whitespace-normal">{r.topicText}</div> },
+    { id: "topic", header: "Topic", sort: sorted("topicText"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topicText}</div> },
     { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentNumber ? `${r.documentNumber}${r.documentRevision ? ` Rev ${r.documentRevision}` : ""}` : "—") },
-    { id: "completed", header: "Completed", sort: sorted("completedOn"), cell: (r) => day(r.completedOn) },
-    { id: "result", header: "Result", sort: mine ? sorted("result") : undefined, cell: (r) => (r.result === "READ" ? "Read and understood" : r.result === "ATTENDED" ? "Attended" : "Passed") },
+    { id: "completed", header: "Completed On", sort: sorted("completedOn"), cell: (r) => day(r.completedOn) },
+    ...(mine ? [] : [{ id: "recordedOn", header: "Recorded On", sort: sorted("recordedAt"), cell: (r: TrainingRecord) => day(r.recordedAt) }]),
+    { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.result === "READ" ? "Read and understood" : r.result === "ATTENDED" ? "Attended" : "Passed") },
     {
       id: "state",
       header: "Record",
@@ -72,16 +103,14 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
     },
     { id: "void", header: "Void reason", cell: (r) => (r.voidedAt ? <div className="max-w-60 whitespace-normal">{r.voidReason}</div> : "—") },
   ];
-  const action = canVoid
-    ? {
-        cell: (r: TrainingRecord) =>
-          r.voidedAt ? null : (
-            <button type="button" ref={menu.getRef(r.id)} aria-label="More actions" className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(event) => menu.toggle(r.id, event)}>
-              <MoreVertical className="h-4 w-4" />
-            </button>
-          ),
-      }
-    : undefined;
+  // Every row has a menu: the scanned tests can be seen by the person and by the one who inspects; voiding stays with the right to void.
+  const action = {
+    cell: (r: TrainingRecord) => (
+      <button type="button" ref={menu.getRef(r.id)} aria-label="More actions" className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(event) => menu.toggle(r.id, event)}>
+        <MoreVertical className="h-4 w-4" />
+      </button>
+    ),
+  };
   const { layout, control } = useCustomColumnLayout(mine ? "training.records.mine" : "training.records.all", columns, action);
   const actionRow = table.items.find((row) => row.id === menu.openId);
   const filters: ReportSelectFilter[] = mine
@@ -90,7 +119,12 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
         { id: "result", label: "Result", value: result, options: [{ label: "All", value: "" }, { label: "Read and understood", value: "READ" }, { label: "Passed", value: "PASSED" }, { label: "Attended", value: "ATTENDED" }], onChange: (v) => { setResult(v); table.setCurrentPage(1); } },
         { id: "recordState", label: "Record", value: recordState, options: [{ label: "All", value: "" }, { label: "Valid", value: "VALID" }, { label: "Voided", value: "VOIDED" }], onChange: (v) => { setRecordState(v); table.setCurrentPage(1); } },
       ]
-    : [{ id: "voided", label: "Voided records", value: voided, options: [{ label: "Hide voided", value: "" }, { label: "Show voided", value: "yes" }], onChange: (v) => { setVoided(v); table.setCurrentPage(1); } }];
+    : [
+        { id: "method", label: "Method", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setMethod(v); table.setCurrentPage(1); } },
+        { id: "result", label: "Result", value: result, options: [{ label: "All", value: "" }, { label: "Read and understood", value: "READ" }, { label: "Passed", value: "PASSED" }, { label: "Attended", value: "ATTENDED" }], onChange: (v) => { setResult(v); table.setCurrentPage(1); } },
+        { id: "department", label: "Department", value: departmentFilter, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => { setDepartmentFilter(v); table.setCurrentPage(1); } },
+        { id: "voided", label: "Voided records", value: voided, options: [{ label: "Hide voided", value: "" }, { label: "Show voided", value: "yes" }], onChange: (v) => { setVoided(v); table.setCurrentPage(1); } },
+      ];
 
   const doVoid = async (signatureToken: string) => {
     if (!voiding) return;
@@ -115,9 +149,9 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
         search={table.searchQuery}
         onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
         filters={filters}
-        dates={mine ? [{ id: "completed", label: "Completed date", from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }] : []}
-        hasActiveFilters={Boolean(voided || method || result || recordState || from || to || table.searchQuery)}
-        onClear={() => { setVoided(""); setMethod(""); setResult(""); setRecordState(""); setFrom(""); setTo(""); table.setSearchQuery(""); table.setCurrentPage(1); }}
+        dates={mine ? [{ id: "completed", label: "Completed Date Range", from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }] : resettingDates([completedRange.filter, recordedRange.filter], () => table.setCurrentPage(1))}
+        hasActiveFilters={Boolean(voided || method || result || recordState || from || to || departmentFilter || completedRange.isSet || recordedRange.isSet || table.searchQuery)}
+        onClear={() => { setVoided(""); setMethod(""); setResult(""); setRecordState(""); setFrom(""); setTo(""); setDepartmentFilter(""); completedRange.clear(); recordedRange.clear(); table.setSearchQuery(""); table.setCurrentPage(1); }}
         customControl={control}
         framed={!mine}
         flush={mine}
@@ -144,12 +178,23 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
       <PortalDropdownMenu isOpen={!!actionRow} onClose={menu.close} position={menu.position} minWidth={200}>
         {actionRow && (
           <div className="py-1">
-            <DropdownMenuItem icon={<IconBan className="h-4 w-4" />} onClick={() => { setVoiding({ record: actionRow, reason: "", step: "reason" }); menu.close(); }}>
-              Void record
+            <DropdownMenuItem icon={<IconFileSearch className="h-4 w-4" />} onClick={() => { setScans(actionRow); menu.close(); }}>
+              View scanned tests
             </DropdownMenuItem>
+            {canOpenActivity && (
+              <DropdownMenuItem icon={<IconExternalLink className="h-4 w-4" />} onClick={() => { navigate(`/training-management/activities/${actionRow.activityId}`); menu.close(); }}>
+                View training activity
+              </DropdownMenuItem>
+            )}
+            {canVoid && !actionRow.voidedAt && (
+              <DropdownMenuItem icon={<IconBan className="h-4 w-4" />} onClick={() => { setVoiding({ record: actionRow, reason: "", step: "reason" }); menu.close(); }}>
+                Void record
+              </DropdownMenuItem>
+            )}
           </div>
         )}
       </PortalDropdownMenu>
+      {scans && <TrainingScannedTestsModal personId={scans.personUserId} activityId={scans.activityId} onClose={() => setScans(undefined)} />}
       <FormModal
         isOpen={voiding?.step === "reason"}
         onClose={() => setVoiding(undefined)}

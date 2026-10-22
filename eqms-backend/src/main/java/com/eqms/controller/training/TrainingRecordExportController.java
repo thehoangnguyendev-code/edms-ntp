@@ -30,8 +30,10 @@ public class TrainingRecordExportController {
 
     @GetMapping
     public ResponseEntity<?> list(@RequestParam(required = false) UUID personId, @RequestParam(required = false) String status,
-                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(exports.list(users.requireCurrentUser(), personId, status, page, limit));
+                                  @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                  @RequestParam Map<String, String> filters) {
+        return ResponseEntity.ok(exports.list(users.requireCurrentUser(), personId, status, sortBy, sortDirection, page, limit, filters));
     }
 
     @GetMapping("/eligible-approvers")
@@ -58,8 +60,9 @@ public class TrainingRecordExportController {
     // ------------------------------------------------------------------------------------------------------------------------------ batches (a department and a year)
 
     @GetMapping("/batches")
-    public ResponseEntity<?> batches(@RequestParam(required = false) String status, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(batches.list(users.requireCurrentUser(), status, page, limit));
+    public ResponseEntity<?> batches(@RequestParam(required = false) String status, @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit, @RequestParam Map<String, String> filters) {
+        return ResponseEntity.ok(batches.list(users.requireCurrentUser(), status, sortBy, sortDirection, page, limit, filters));
     }
 
     @GetMapping("/batches/preview")

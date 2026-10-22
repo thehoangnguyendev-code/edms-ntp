@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -21,12 +22,12 @@ const SIGNATURE_STEPS: Record<string, string> = { ...STEP_LABEL, RECEIVER_ACCEPT
 export function MyTrainingSignaturesTab({ onTotal }: { onTotal: (total: number) => void }) {
   const navigate = useNavigate();
   const drag = useTableDragScroll();
-  const [objectType, setObjectType] = useState("");
-  const [stepCode, setStepCode] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [objectType, setObjectType] = usePersistedState("training.my.signatures.objectType", "");
+  const [stepCode, setStepCode] = usePersistedState("training.my.signatures.stepCode", "");
+  const [from, setFrom] = usePersistedState("training.my.signatures.from", "");
+  const [to, setTo] = usePersistedState("training.my.signatures.to", "");
   const extraParams = useMemo(() => ({ objectType: objectType || undefined, stepCode: stepCode || undefined, fromDate: pickerDateToIso(from) || undefined, toDate: pickerDateToIso(to) || undefined }), [objectType, stepCode, from, to]);
-  const table = useServerTable<TrainingMyApproval>({ fetcher: myTrainingApi.approvals, defaultSortBy: "assignedAt", extraParams, syncToUrl: false });
+  const table = useServerTable<TrainingMyApproval>({ persistKey: "training.my.signatures", liveTypes: ["TRAINING"], fetcher: myTrainingApi.approvals, defaultSortBy: "assignedAt", extraParams, syncToUrl: false });
   useEffect(() => { if (!table.isLoading) onTotal(table.totalItems); }, [table.isLoading, table.totalItems, onTotal]);
   const open = (a: TrainingMyApproval) => navigate(a.objectType === "TRAINING_MATRIX_VERSION" ? `/training-management/matrix-versions/${a.objectId}` : a.objectType === "TRAINING_JOB_ASSIGNMENT" ? `/training-management/job-assignments/${a.objectId}` : a.objectType === "TRAINING_SPECIMEN_SIGNATURE" ? "/training-management/specimen-signatures" : a.objectType === "TRAINING_RECORD_EXPORT_BATCH" ? "/training-management/record-exports?tab=batches" : a.objectType === "TRAINING_RECORD_EXPORT" ? "/training-management/record-exports" : a.objectType === "TRAINING_TRAINER_EXCEPTION" && a.activityId ? `/training-management/activities/${a.activityId}/approve` : a.objectType === "TRAINING_LEGACY_EVIDENCE" ? "/training-management/legacy-evidence" : a.objectType === "TRAINING_REQUIREMENT" ? `/training-management/requirements/${a.objectId}/${a.stepCode === "REQUIREMENT_REVIEW" ? "review" : "approve"}` : `/training-management/activities/${a.objectId}/${a.stepCode === "CONTENT_REVIEW" ? "review" : a.stepCode === "CONTENT_APPROVE" ? "approve" : a.stepCode === "ACTIVITY_COMPLETE" ? "confirm" : ""}`.replace(/\/$/, ""));
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });

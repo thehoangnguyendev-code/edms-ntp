@@ -119,7 +119,7 @@ export const ReportAccessScopeView: React.FC = () => {
               id: "scope",
               label: "Data scope",
               value: scope,
-              options: [{ label: "All scopes", value: "" }, ...Object.entries(SCOPE_LABEL).map(([value, label]) => ({ label, value }))],
+              options: [{ label: "All", value: "" }, ...Object.entries(SCOPE_LABEL).map(([value, label]) => ({ label, value }))],
               onChange: (value) => {
                 setScope(value);
                 table.setCurrentPage(1);
@@ -300,7 +300,7 @@ export const ReportDeliveryView: React.FC = () => {
               label: "Channel",
               value: channel,
               options: [
-                { label: "All channels", value: "" },
+                { label: "All", value: "" },
                 { label: "In app", value: "IN_APP" },
                 { label: "E-mail", value: "EMAIL" },
               ],
@@ -314,7 +314,7 @@ export const ReportDeliveryView: React.FC = () => {
               label: "Result",
               value: deliveryStatus,
               options: [
-                { label: "All results", value: "" },
+                { label: "All", value: "" },
                 { label: "Sent", value: "SENT" },
                 { label: "Failed", value: "FAILED" },
                 { label: "Skipped: not authorized", value: "SKIPPED_NOT_AUTHORIZED" },

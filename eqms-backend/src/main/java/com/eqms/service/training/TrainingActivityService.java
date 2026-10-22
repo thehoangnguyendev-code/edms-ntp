@@ -71,15 +71,31 @@ public class TrainingActivityService {
     public record HoldRequest(LocalDate heldOn) {}
     public record PostponeRequest(LocalDate newDate, String reason) {}
     public record AttendanceRequest(String state, String absenceReason) {}
+    public record CorrectionRequest(String state, String reason) {}
     public record AssessmentRequest(BigDecimal scoreObtained, BigDecimal scoreMax, String remarks) {}
     public record SupplementaryRequest(List<UUID> participantIds, String reason) {}
 
     // ------------------------------------------------------------------------------------------------------------------------------ reading
 
+    /**
+     * More filters of the list. Dates are ISO yyyy-MM-dd and a malformed one is refused; the scheduled range matches an activity that has a session in it.
+     * An unknown method or reason matches nothing; it is never turned into SQL.
+     */
+    public record ListFilters(String method, String kindReason, Boolean onPaper, String scheduledFrom, String scheduledTo, String dueFrom, String dueTo, String createdFrom, String createdTo) {
+        public static final ListFilters NONE = new ListFilters(null, null, null, null, null, null, null, null, null);
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> list(UserAccount actor, String search, String status, String kind, UUID departmentId, Integer year, String documentNumber,
                                     boolean overdue, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, search, status, kind, departmentId, year, documentNumber, overdue, ListFilters.NONE, sortBy, sortDirection, page, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> list(UserAccount actor, String search, String status, String kind, UUID departmentId, Integer year, String documentNumber,
+                                    boolean overdue, ListFilters more, String sortBy, String sortDirection, int page, int limit) {
         access.require(actor, "training.activity.view");
+        ListFilters extra = more == null ? ListFilters.NONE : more;
         String column = switch (sortBy == null ? "createdAt" : sortBy) {
             case "trainingNumber" -> "t.training_number";
             case "trainingTitle" -> "t.training_title";
@@ -88,6 +104,17 @@ public class TrainingActivityService {
             case "dueDate" -> "t.due_date";
             case "year" -> "t.year";
             case "createdAt" -> "t.created_at";
+            case "scheduledOn" -> "(select min(s.scheduled_on) from training_sessions s where s.activity_id = t.id)";
+            case "departmentName" -> "d.name";
+            case "createdByName" -> "cu.full_name";
+            case "topics" -> "(select string_agg(distinct st.topic_text, '; ') from training_sessions s join training_session_topics st on st.session_id = s.id where s.activity_id = t.id)";
+            case "trainers" -> "(select string_agg(distinct coalesce(tu.full_name, s.external_trainer_name), ', ') from training_sessions s left join app_users tu on tu.id = s.trainer_user_id where s.activity_id = t.id)";
+            case "methods" -> "(select string_agg(distinct s.method, ',') from training_sessions s where s.activity_id = t.id)";
+            case "kindReason" -> "t.kind_reason";
+            case "documentNumber" -> "t.document_number";
+            case "participantCount" -> "(select count(*) from training_participants p where p.activity_id = t.id)";
+            case "attendedCount" -> "(select count(*) from training_participants p where p.activity_id = t.id and p.state in ('ATTENDED','ONLINE','READ_CONFIRMED'))";
+            case "passedCount" -> "(select count(*) from training_participants p where p.activity_id = t.id and p.result = 'PASSED')";
             default -> throw new IllegalArgumentException("TRAINING_SORT_NOT_ALLOWED");
         };
         String direction = "asc".equalsIgnoreCase(sortDirection) ? "asc" : "desc";
@@ -100,32 +127,69 @@ public class TrainingActivityService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + escapeLike(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (lower(t.training_number) like ? escape '\\' or lower(t.training_title) like ? escape '\\' or lower(coalesce(t.document_number,'')) like ? escape '\\')");
-            args.add(like); args.add(like); args.add(like);
+            where.append(" and (lower(t.training_number) like ? escape '\\' or lower(t.training_title) like ? escape '\\' or lower(coalesce(t.document_number,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\' or exists (select 1 from training_sessions s left join app_users tu on tu.id = s.trainer_user_id left join training_session_topics st on st.session_id = s.id where s.activity_id = t.id and (lower(coalesce(st.topic_text,'')) like ? escape '\\' or lower(coalesce(tu.full_name,'')) like ? escape '\\' or lower(coalesce(s.external_trainer_name,'')) like ? escape '\\')))");
+            args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         if (status != null && !status.isBlank()) { where.append(" and t.status = ?"); args.add(status); }
         if (kind != null && !kind.isBlank()) { where.append(" and t.kind = ?"); args.add(kind); }
         if (departmentId != null) { where.append(" and t.organizer_department_id = ?"); args.add(departmentId); }
         if (year != null) { where.append(" and t.year = ?"); args.add(year); }
         if (documentNumber != null && !documentNumber.isBlank()) { where.append(" and lower(t.document_number) = lower(?)"); args.add(documentNumber.trim()); }
+        if (extra.method() != null && !extra.method().isBlank()) {
+            where.append(" and exists (select 1 from training_sessions s where s.activity_id = t.id and s.method = ?)");
+            args.add(extra.method());
+        }
+        if (extra.kindReason() != null && !extra.kindReason().isBlank()) { where.append(" and t.kind_reason = ?"); args.add(extra.kindReason()); }
+        if (extra.onPaper() != null) {
+            where.append(extra.onPaper()
+                    ? " and exists (select 1 from training_sessions s where s.activity_id = t.id and s.delivery_mode <> 'ELECTRONIC')"
+                    : " and not exists (select 1 from training_sessions s where s.activity_id = t.id and s.delivery_mode <> 'ELECTRONIC')");
+        }
+        LocalDate scheduledFrom = listDate(extra.scheduledFrom()), scheduledTo = listDate(extra.scheduledTo());
+        if (scheduledFrom != null) { where.append(" and exists (select 1 from training_sessions s where s.activity_id = t.id and s.scheduled_on >= ?)"); args.add(java.sql.Date.valueOf(scheduledFrom)); }
+        if (scheduledTo != null) { where.append(" and exists (select 1 from training_sessions s where s.activity_id = t.id and s.scheduled_on <= ?)"); args.add(java.sql.Date.valueOf(scheduledTo)); }
+        LocalDate dueFrom = listDate(extra.dueFrom()), dueTo = listDate(extra.dueTo());
+        if (dueFrom != null) { where.append(" and t.due_date >= ?"); args.add(java.sql.Date.valueOf(dueFrom)); }
+        if (dueTo != null) { where.append(" and t.due_date <= ?"); args.add(java.sql.Date.valueOf(dueTo)); }
+        LocalDate createdFrom = listDate(extra.createdFrom()), createdTo = listDate(extra.createdTo());
+        if (createdFrom != null) { where.append(" and t.created_at >= ?"); args.add(java.sql.Timestamp.from(createdFrom.atStartOfDay(TrainingNumberService.ZONE).toInstant())); }
+        if (createdTo != null) { where.append(" and t.created_at < ?"); args.add(java.sql.Timestamp.from(createdTo.plusDays(1).atStartOfDay(TrainingNumberService.ZONE).toInstant())); }
         if (overdue) where.append(" and t.due_date < current_date and t.status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION')");
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
-        Long total = jdbc.queryForObject("select count(*) from training_activities t" + where, Long.class, args.toArray());
+        Long total = jdbc.queryForObject("select count(*) from training_activities t left join app_users cu on cu.id = t.created_by" + where, Long.class, args.toArray());
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(safeLimit);
         pageArgs.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
             select t.id, t.training_number, t.training_title, t.kind, t.kind_reason, t.status, t.due_date, t.document_number, t.revision_number, t.year, t.created_at,
                    t.organizer_department_id, t.revision_id, (select r.status_code from document_revisions r where r.id = t.revision_id) as revision_status,
-                   d.name as department_name, (select count(*) from training_participants p where p.activity_id = t.id) as participant_count
-              from training_activities t join departments d on d.id = t.organizer_department_id
+                   d.name as department_name, (select count(*) from training_participants p where p.activity_id = t.id) as participant_count,
+                   (select count(*) from training_participants p where p.activity_id = t.id and p.state in ('ATTENDED','ONLINE','READ_CONFIRMED')) as attended_count,
+                   (select count(*) from training_participants p where p.activity_id = t.id and p.result = 'PASSED') as passed_count,
+                   (select string_agg(distinct st.topic_text, '; ') from training_sessions s join training_session_topics st on st.session_id = s.id where s.activity_id = t.id) as topics,
+                   (select string_agg(distinct coalesce(tu.full_name, s.external_trainer_name), ', ') from training_sessions s left join app_users tu on tu.id = s.trainer_user_id where s.activity_id = t.id) as trainers,
+                   (select string_agg(distinct s.method, ',') from training_sessions s where s.activity_id = t.id) as methods,
+                   (select min(s.scheduled_on) from training_sessions s where s.activity_id = t.id) as scheduled_from,
+                   (select max(s.scheduled_on) from training_sessions s where s.activity_id = t.id) as scheduled_to,
+                   (select bool_or(s.delivery_mode <> 'ELECTRONIC') from training_sessions s where s.activity_id = t.id) as on_paper,
+                   t.training_unit_name, t.external_type, cu.full_name as created_by_name
+              from training_activities t join departments d on d.id = t.organizer_department_id left join app_users cu on cu.id = t.created_by
             """ + where + " order by " + column + " " + direction + ", t.training_number desc limit ? offset ?", pageArgs.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", withActions(actor, TrainingRows.camel(rows)));
         long count = total == null ? 0 : total;
         result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
         return result;
+    }
+
+    private static LocalDate listDate(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new IllegalArgumentException("TRAINING_DATE_INVALID");
+        }
     }
 
     /**
@@ -191,8 +255,15 @@ public class TrainingActivityService {
         out.put("participants", TrainingRows.camel(jdbc.queryForList("""
             select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.department, p.position, p.external_name, p.external_org, p.state, p.result,
                    p.absence_reason, p.planned_absence, p.added_reason, p.sign_mode, p.read_confirmed_at,
+                   case when not exists (select 1 from training_exam_questions q where q.activity_id = p.activity_id) then null
+                        when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'SUBMITTED') then 'DONE'
+                        when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'IN_PROGRESS' and (t.due_at is null or t.due_at + interval '60 seconds' >= now())) then 'OPEN'
+                        when exists (select 1 from training_exam_attempts t where t.participant_id = p.id and t.status = 'IN_PROGRESS') then 'USED'
+                        when (select count(*) from training_exam_attempts t where t.participant_id = p.id) > (select count(*) from training_exam_resets r where r.participant_id = p.id) then 'USED'
+                        else 'READY' end as exam_state,
                    (select max(attempt_no) from training_assessments a where a.participant_id = p.id) as attempts,
-                   (select a.percent from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_percent
+                   (select a.percent from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_percent,
+                   (select au.avatar from app_users au where au.id = p.person_user_id) as avatar
               from training_participants p where p.activity_id=? order by p.full_name
             """, id)));
         out.put("confirmations", TrainingRows.camel(jdbc.queryForList("""
@@ -318,7 +389,11 @@ public class TrainingActivityService {
         boolean open = !Set.of("COMPLETED", "CANCELLED", "RESERVED").contains(status);
         Map<String, Object> caps = new LinkedHashMap<>();
         caps.put("edit", organize && "PLANNED".equals(status));
-        caps.put("planSessions", organize && Set.of("PLANNED", "NOTIFIED", "IN_PROGRESS").contains(status));
+        caps.put("planSessions", organize && Set.of("PLANNED", "NOTIFIED").contains(status));
+        // Once the training has started the plan is fixed: a session not yet held may still be moved. People are added only while the list is being prepared (SOP.0003 5.3.4);
+        // later, a person who was not on the list is trained in a make-up or in a new unplanned training.
+        caps.put("adjustPlan", organize && Set.of("PLANNED", "NOTIFIED", "IN_PROGRESS").contains(status));
+        caps.put("addParticipants", organize && "PLANNED".equals(status) && activity.get("list_prepared_by") == null);
         Integer people = jdbc.queryForObject("select count(*) from training_participants where activity_id=?", Integer.class, activity.get("id"));
         boolean listDone = activity.get("list_prepared_by") != null;
         caps.put("removeParticipants", organize && "PLANNED".equals(status) && !listDone);
@@ -434,7 +509,7 @@ public class TrainingActivityService {
     @Transactional
     public Map<String, Object> addSession(UserAccount actor, UUID id, SessionRequest request) {
         Map<String, Object> activity = lockedForOrganizer(actor, id);
-        requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS");
+        requireStatus(activity, "PLANNED", "NOTIFIED");
         boolean externalActivity = "EXTERNAL".equals(activity.get("kind"));
         if (request == null || (!externalActivity && (request.method() == null || request.assessmentMethod() == null))) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
         if (externalActivity && (request.method() != null || request.assessmentMethod() != null || request.trainerUserId() != null)) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
@@ -483,7 +558,9 @@ public class TrainingActivityService {
     @Transactional
     public Map<String, Object> addParticipants(UserAccount actor, UUID id, ParticipantsRequest request) {
         Map<String, Object> activity = lockedForOrganizer(actor, id);
-        requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS");
+        requireStatus(activity, "PLANNED");
+        // The list is prepared and communicated before the training (SOP.0003 5.3.4). Once it is confirmed it is not changed; a person who is not on it is trained in a make-up or a new training.
+        if (activity.get("list_prepared_by") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_LIST_LOCKED");
         if (request == null || request.sessionId() == null) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
         Integer inActivity = jdbc.queryForObject("select count(*) from training_sessions where id=? and activity_id=? and status <> 'CANCELLED'", Integer.class, request.sessionId(), id);
         if (inActivity == null || inActivity == 0) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
@@ -521,7 +598,6 @@ public class TrainingActivityService {
         if (added == 0) throw new IllegalArgumentException("TRAINING_PARTICIPANT_REQUIRED");
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "PARTICIPANTS_ADDED", Map.of("count", added, "reason", request.reason().trim()), actor.getId());
         store.auditActivity(actor, activity, "TRAINING_PARTICIPANTS_ADDED", null, null, added + " added: " + request.reason().trim());
-        // The list was changed after it was confirmed: it has to be confirmed again.
         return get(actor, id);
     }
 
@@ -647,6 +723,7 @@ public class TrainingActivityService {
         if (request == null || request.state() == null || !Set.of("ATTENDED", "ONLINE", "ABSENT").contains(request.state())) throw new IllegalArgumentException("TRAINING_ATTENDANCE_INVALID");
         Map<String, Object> session = session((UUID) participant.get("session_id"));
         if (!"HELD".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
+        if (!"INVITED".equals(participant.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_ALREADY");
         if ("ABSENT".equals(request.state()) && (request.absenceReason() == null || request.absenceReason().isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         // An external training has no score: the person who attended has completed it.
@@ -654,6 +731,38 @@ public class TrainingActivityService {
         jdbc.update("update training_participants set state=?, absence_reason=?, result=?, version=version+1 where id=?", request.state(),
                 "ABSENT".equals(request.state()) ? request.absenceReason().trim() : null, result, participantId);
         store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_RECORDED", String.valueOf(participant.get("state")), request.state(), String.valueOf(participant.get("full_name")));
+        return get(actor, (UUID) activity.get("id"));
+    }
+
+    /**
+     * Correcting an attendance that was recorded by mistake. It needs a reason and no signature; the old and the new value and the reason are written to the Audit Trail and to the events.
+     * Only while the training is in progress and before the person has a score, a test attempt or a transcribed result, so a result never rests on an attendance that was changed afterwards.
+     */
+    @Transactional
+    public Map<String, Object> correctAttendance(UserAccount actor, UUID participantId, CorrectionRequest request) {
+        Map<String, Object> participant = participant(participantId);
+        Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        requireConductor(actor, activity);
+        requireStatus(activity, "IN_PROGRESS");
+        if (request == null || request.state() == null || !Set.of("ATTENDED", "ONLINE", "ABSENT").contains(request.state())) throw new IllegalArgumentException("TRAINING_ATTENDANCE_INVALID");
+        if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
+        String before = String.valueOf(participant.get("state"));
+        if (!Set.of("ATTENDED", "ONLINE", "ABSENT").contains(before)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_NOT_RECORDED");
+        if (before.equals(request.state())) throw new IllegalArgumentException("TRAINING_ATTENDANCE_UNCHANGED");
+        Integer used = jdbc.queryForObject("""
+            select (select count(*) from training_assessments where participant_id = ?) + (select count(*) from training_exam_attempts where participant_id = ?)
+                 + (select count(*) from training_transcription_lines where participant_id = ?)
+            """, Integer.class, participantId, participantId, participantId);
+        if (!"PENDING".equals(participant.get("result")) || (used != null && used > 0)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_HAS_RESULT");
+        String result = "EXTERNAL".equals(activity.get("kind")) && !"ABSENT".equals(request.state()) ? "PASSED" : "PENDING";
+        String reason = request.reason().trim();
+        // The earlier way of confirming no longer describes the row, so it is cleared; the Audit Trail keeps what it was.
+        jdbc.update("update training_participants set state=?, absence_reason=?, result=?, sign_mode='NONE', attend_signature_id=null, version=version+1 where id=?",
+                request.state(), "ABSENT".equals(request.state()) ? reason : null, result, participantId);
+        store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "ATTENDANCE_CORRECTED",
+                Map.of("participant", String.valueOf(participant.get("full_name")), "from", before, "to", request.state(), "reason", reason, "was", String.valueOf(participant.get("sign_mode"))), actor.getId());
+        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_CORRECTED", before, request.state(), participant.get("full_name") + " (was " + participant.get("sign_mode") + "): " + reason);
         return get(actor, (UUID) activity.get("id"));
     }
 
@@ -668,6 +777,7 @@ public class TrainingActivityService {
         if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_SELF");
         String state = String.valueOf(participant.get("state"));
         if (!"ATTENDED".equals(state) && !"ONLINE".equals(state)) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
+        if ("PASSED".equals(participant.get("result"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_RESULT_ALREADY_PASSED");
         Map<String, Object> session = session((UUID) participant.get("session_id"));
         if (session.get("assessment_method") == null || "SELF_READING_CONFIRMATION".equals(session.get("assessment_method"))) throw new IllegalArgumentException("TRAINING_ASSESSMENT_METHOD_INVALID");
         if (request == null || request.scoreObtained() == null || request.scoreMax() == null || request.scoreMax().signum() <= 0

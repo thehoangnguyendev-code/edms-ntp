@@ -61,29 +61,38 @@ public class TrainingRequirementService {
 
     // ----------------------------------------------------------------------------------------------------------------------------- reading
 
+    /** More filters of the list; dates are ISO yyyy-MM-dd and both days of a range are included. */
+    public record ListFilters(String kind, UUID departmentId, String dueFrom, String dueTo, String createdFrom, String createdTo) {
+        public static final ListFilters NONE = new ListFilters(null, null, null, null, null, null);
+    }
+
     @Transactional(readOnly = true)
-    public Map<String, Object> list(UserAccount actor, Integer year, String status, String search, int page, int limit) {
+    public Map<String, Object> list(UserAccount actor, Integer year, String status, String search, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, year, status, search, ListFilters.NONE, sortBy, sortDirection, page, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> list(UserAccount actor, Integer year, String status, String search, ListFilters more, String sortBy, String sortDirection, int page, int limit) {
         access.require(actor, "training.requirement.view", "training.requirement.prepare");
-        List<Object> args = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" where 1=1");
+        ListFilters extra = more == null ? ListFilters.NONE : more;
+        TrainingListFilter filter = new TrainingListFilter();
         if (!access.allDepartments(actor)) {
             UUID own = access.departmentOf(actor);
-            where.append(" and r.department_id = ?");
-            args.add(own == null ? new UUID(0, 0) : own);
+            filter.raw("r.department_id = ?", own == null ? new UUID(0, 0) : own);
         }
-        if (year != null) { where.append(" and r.year = ?"); args.add(year); }
-        if (status != null && !status.isBlank()) { where.append(" and r.status = ?"); args.add(status); }
-        if (search != null && !search.isBlank()) {
-            where.append(" and lower(r.request_no) like ? escape '\\'");
-            args.add("%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
-        }
+        filter.equal("r.year", year).equal("r.status", status).equal("r.kind", extra.kind()).equal("r.department_id", extra.departmentId())
+                .contains(search, "r.request_no")
+                .dateRange("r.due_by", extra.dueFrom(), extra.dueTo()).timeRange("r.created_at", extra.createdFrom(), extra.createdTo());
+        String where = filter.where();
+        List<Object> args = filter.args();
         Long total = jdbc.queryForObject("select count(*) from training_requirements r" + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
             select r.id, r.request_no, r.year, r.kind, r.status, r.due_by, r.department_id, d.name as department_name, r.created_at,
                    (select count(*) from training_requirement_lines l where l.requirement_id = r.id) as line_count
-              from training_requirements r join departments d on d.id = r.department_id""" + where + " order by r.year desc, r.request_no desc limit ? offset ?", args.toArray());
+              from training_requirements r join departments d on d.id = r.department_id""" + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("requestNo", "r.request_no", "year", "r.year", "kind", "r.kind", "department", "d.name", "lines", "line_count", "dueBy", "r.due_by", "status", "r.status", "createdAt", "r.created_at"),
+                    "r.year desc, r.request_no desc") + " limit ? offset ?", args.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         List<Map<String, Object>> data = TrainingRows.camel(rows);
         // What the person may do with each row, decided here, so the menu of the list shows only what the server would accept.

@@ -204,11 +204,11 @@ export const ReportTypesView: React.FC = () => {
   const { layout, control } = useCustomColumnLayout("reportTypes", columns, action);
   const openItem = items.find((current) => current.code === openDropdownId);
   const statusOptions = [
-    { label: "All Status", value: "All" },
+    { label: "All", value: "All" },
     { label: "Enabled", value: "Enabled" },
     { label: "Disabled", value: "Disabled" },
   ];
-  const categoryOptions = [{ label: "All Categories", value: "" }, ...categories.map((category) => ({ label: category, value: category }))];
+  const categoryOptions = [{ label: "All", value: "" }, ...categories.map((category) => ({ label: category, value: category }))];
 
   return (
     <div className="h-full flex flex-col gap-6">
@@ -274,10 +274,10 @@ export const ReportTypesView: React.FC = () => {
                       </div>
                     </div>
                     <div className="sm:col-span-1 lg:col-span-4">
-                      <Select label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); }} options={statusOptions} placeholder="All Status" />
+                      <Select label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); }} options={statusOptions} placeholder="All" />
                     </div>
                     <div className="sm:col-span-1 lg:col-span-4">
-                      <Select label="Category" value={categoryFilter} onChange={(value) => { setCategoryFilter(String(value)); setCurrentPage(1); }} options={categoryOptions} placeholder="All Categories" />
+                      <Select label="Category" value={categoryFilter} onChange={(value) => { setCategoryFilter(String(value)); setCurrentPage(1); }} options={categoryOptions} placeholder="All" />
                     </div>
                   </div>
                   <div className="hidden md:flex justify-start mt-3 gap-2">

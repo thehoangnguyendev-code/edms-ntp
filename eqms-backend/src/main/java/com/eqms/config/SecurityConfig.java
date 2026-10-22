@@ -69,6 +69,8 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/branding",
                                 "/branding/logo",
+                                // Home-screen shortcut: a phone reads the manifest and the icon before anyone signs in
+                                "/branding/pwa/**",
                                 "/system/environment",
                                 // Maintenance window (SDS 11.5): the state is public; the actions need a Maintenance Pass checked in the controller
                                 "/system/maintenance-status",

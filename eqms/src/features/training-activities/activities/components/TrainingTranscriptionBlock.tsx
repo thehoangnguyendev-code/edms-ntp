@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
@@ -44,6 +45,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
     if (canEnter) trainingFilesApi.list(activity.id).then((f) => setEvidence(f.evidence.filter((e) => e.kind === "ATTENDANCE_SHEET" || e.kind === "ASSESSMENT"))).catch(() => setEvidence([]));
   }, [activity.id, canEnter]);
   useEffect(load, [load]);
+  useEntityChanged(["TRAINING"], load);
 
   const fail = (e: unknown) => showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
   const done = (title: string) => { showToast({ type: "success", title, message: activity.trainingNumber }); load(); onChanged(); };
@@ -201,7 +203,7 @@ function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
             ? <p className="text-sm text-amber-700">No scan yet. Upload the signed sheet under Training Materials, paper evidence, kind Attendance sheet or Assessment.</p>
             : <Select value={evidenceId} options={evidence.map((e) => ({ value: e.id, label: `${e.originalName} (${day(e.uploadedAt)})` }))} placeholder="Choose the scan" onChange={setEvidenceId} />}
         </FormField>
-        <FormField label="Reason for typing late (needed when more than one working day has passed)">
+        <FormField label="Reason for typing late (needed when more than one day has passed)">
           <Input value={late} onChange={(e) => setLate(e.target.value)} />
         </FormField>
         <div className="space-y-2">

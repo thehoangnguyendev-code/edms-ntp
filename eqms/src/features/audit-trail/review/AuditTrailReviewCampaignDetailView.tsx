@@ -43,9 +43,10 @@ import { navigateBack } from "@/app/navigation/backNavigation";
 import { formatDateTime, formatDateUS } from "@/utils/format";
 import { auditTrailReviewCampaignDetail as breadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { formatAuditActionLabel, formatAuditModuleLabel } from "../utils/actionBadge";
 
 const DECISION_OPTIONS = [
-  { label: "All Decisions", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Pending", value: "PENDING" },
   { label: "Confirmed", value: "CONFIRMED" },
   { label: "Flagged", value: "FLAGGED" },
@@ -659,10 +660,10 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                           )}
                         </TableMarkup.Cell>
                         <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
-                          {item.module || "—"}
+                          {item.module ? formatAuditModuleLabel(item.module) : "—"}
                         </TableMarkup.Cell>
                         <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
-                          {item.action || "—"}
+                          {item.action ? formatAuditActionLabel(item.action) : "—"}
                         </TableMarkup.Cell>
                         <TableMarkup.Cell className="max-w-xs px-4 py-3 text-xs text-slate-600 sm:text-sm">
                           <div

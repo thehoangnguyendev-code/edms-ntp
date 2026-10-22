@@ -203,7 +203,7 @@ export const ReportNameFormatsTab: React.FC = () => {
   const openItem = items.find((current) => current.id === openDropdownId);
 
   const statusOptions = [
-    { label: "All Status", value: "All" },
+    { label: "All", value: "All" },
     { label: "Active", value: "Active" },
     { label: "Inactive", value: "Inactive" },
   ];
@@ -287,7 +287,7 @@ export const ReportNameFormatsTab: React.FC = () => {
                 value={statusFilter}
                 onChange={(value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); }}
                 options={statusOptions}
-                placeholder="All Status"
+                placeholder="All"
               />
             </div>
             <div className="sm:col-span-1 lg:col-span-4">

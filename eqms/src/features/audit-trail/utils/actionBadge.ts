@@ -40,14 +40,35 @@ const ACTION_LABEL_MAP: Record<string, string> = {
   placeholder_style_copied_to_new_version: "Placeholder Style Copied to New Version",
 };
 
+/** Words that keep their own spelling in a label (an acronym or a product name), by their lower-case form. */
+const LABEL_WORDS: Record<string, string> = {
+  pdf: "PDF", sop: "SOP", id: "ID", ip: "IP", url: "URL", api: "API", otp: "OTP", mfa: "MFA", sso: "SSO", qr: "QR", ai: "AI", minio: "MinIO", onlyoffice: "OnlyOffice",
+};
+
+/**
+ * The label of an audit action. The server sends the action as a code (TRAINING_ACTIVITY_CREATED, or Training_activity_created once normalised); every audit
+ * screen shows the same words in Title Case without the underscores: "Training Activity Created".
+ */
 export const formatAuditActionLabel = (action: string) => {
   const normalized = action.trim().toLowerCase();
   const mapped = ACTION_LABEL_MAP[normalized];
   if (mapped) {
     return mapped;
   }
-  return action
-    .trim()
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return normalized
+    .replace(/[_\s-]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => LABEL_WORDS[word] ?? word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+/**
+ * The label of the module of an audit record. A module the screens already name ("Document", "Controlled Copy") is shown as it is; a machine code
+ * (TRAINING_ACTIVITY) is shown as words ("Training Activity").
+ */
+export const formatAuditModuleLabel = (module?: string | null) => {
+  const value = (module ?? "").trim();
+  if (!value) return "-";
+  return /_/.test(value) || value === value.toUpperCase() ? formatAuditActionLabel(value) : value;
 };

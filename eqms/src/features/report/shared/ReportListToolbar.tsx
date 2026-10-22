@@ -70,6 +70,7 @@ export function ReportListToolbar({
   customControl,
   framed = true,
   flush = false,
+  bare = false,
   children,
 }: {
   searchPlaceholder: string;
@@ -83,6 +84,8 @@ export function ReportListToolbar({
   framed?: boolean;
   /** True inside a container that already has its own padding (a tab, a section): the filters and the table then sit on its edges instead of being indented a second time. */
   flush?: boolean;
+  /** The content brings its own frame, so it is not put in the bordered box of the toolbar. */
+  bare?: boolean;
   children: React.ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -172,7 +175,7 @@ export function ReportListToolbar({
 
   const tableSection = (
     <div className={flush ? "relative flex flex-1 flex-col" : "relative flex flex-1 flex-col px-4 pb-4 md:px-5 md:pb-5"}>
-      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">{children}</div>
+      {bare ? children : <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">{children}</div>}
     </div>
   );
 

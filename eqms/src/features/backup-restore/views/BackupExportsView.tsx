@@ -23,7 +23,7 @@ import { statusLabel } from "../types";
 type SortKey = "requestedAt" | "status" | "backupNumber" | "media" | "requestedBy" | "finishedAt";
 
 const ALL = "ALL";
-const STATUS_OPTIONS = [{ label: "All Statuses", value: ALL }, ...(Object.keys(EXPORT_STATUS_COLOR) as ExportStatus[]).map((value) => ({ label: statusLabel(value), value }))];
+const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...(Object.keys(EXPORT_STATUS_COLOR) as ExportStatus[]).map((value) => ({ label: statusLabel(value), value }))];
 
 /**
  * Export requests: a backup written to an offline medium so a copy can be kept somewhere else. A second person approves each request;
@@ -207,7 +207,7 @@ export const BackupExportsView: React.FC = () => {
         onSearch={setSearch}
         searchLabel="Search export requests"
         searchPlaceholder="Export, backup, medium or person…"
-        filters={[{ id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Statuses", onChange: setStatus }]}
+        filters={[{ id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus }]}
         onClear={() => {
           setSearch("");
           setStatus(ALL);

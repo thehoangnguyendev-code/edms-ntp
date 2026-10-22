@@ -59,7 +59,7 @@ public class TrainingComplianceService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> coverage(UserAccount actor, UUID departmentId, String status, String search, int page, int limit) {
+    public Map<String, Object> coverage(UserAccount actor, UUID departmentId, String status, String search, String sortBy, String sortDirection, int page, int limit) {
         UUID department = department(actor, departmentId);
         List<Object> args = new ArrayList<>();
         args.add(department);
@@ -78,8 +78,9 @@ public class TrainingComplianceService {
         Long total = jdbc.queryForObject("select count(*) from (" + BASE + ") x" + where, Long.class, args.toArray());
         args.add(safeLimit);
         args.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = jdbc.queryForList("select * from (" + BASE + ") x" + where
-                + " order by case x.status when 'MISSING' then 0 when 'DUE' then 1 else 2 end, x.full_name, x.title limit ? offset ?", args.toArray());
+        List<Map<String, Object>> rows = jdbc.queryForList("select x.*, au.avatar from (" + BASE + ") x left join app_users au on au.id = x.pid" + where
+                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("fullName", "x.full_name", "employeeCode", "x.employee_code", "positionName", "x.position_name", "title", "x.title", "annualRequired", "x.annual_required", "lastDone", "x.last_done", "status", "case x.status when 'MISSING' then 0 when 'DUE' then 1 else 2 end"),
+                "case x.status when 'MISSING' then 0 when 'DUE' then 1 else 2 end, x.full_name, x.title") + " limit ? offset ?", args.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;

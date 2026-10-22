@@ -21,18 +21,25 @@ interface Props {
   tabLayoutId: string;
   /** Command buttons that sit after Back in the footer row. */
   footer?: ReactNode;
+  /** Show the same Back and command buttons beside the title too, so they can be used without scrolling to the foot of the page. */
+  repeatFooterInHeader?: boolean;
   children: ReactNode;
 }
 
 /** The frame of every Training detail screen; it repeats the frame of Document Details (stepper, tab card, footer row). */
-export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, currentStepIndex, terminalProgressStep, skippedSteps, tabs, activeTab, onTab, tabLayoutId, footer, children }: Props) {
+export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, currentStepIndex, terminalProgressStep, skippedSteps, tabs, activeTab, onTab, tabLayoutId, footer, repeatFooterInHeader = false, children }: Props) {
   return (
     <div className="w-full space-y-4 md:space-y-6">
       <div className="flex flex-col gap-4">
         <PageHeader
           title={title}
           breadcrumbItems={breadcrumbItems}
-          actions={<div className="flex items-center gap-2"><Button onClick={onBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">Back</Button></div>}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={onBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">Back</Button>
+              {repeatFooterInHeader && footer}
+            </div>
+          }
         />
       </div>
       <WorkflowStepper steps={steps} currentStepIndex={currentStepIndex} terminalProgressStep={terminalProgressStep} skippedSteps={skippedSteps} />

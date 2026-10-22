@@ -17,7 +17,7 @@ const STATUS_COLOR: Record<RestoreRehearsal["status"], "emerald" | "red" | "ambe
   QUEUED: "amber",
 };
 const STATUS_LABEL: Record<RestoreRehearsal["status"], string> = { PASSED: "Passed", FAILED: "Failed", RUNNING: "Running", QUEUED: "Queued" };
-const STATUS_OPTIONS = [{ label: "All Outcomes", value: ALL }, ...(Object.keys(STATUS_COLOR) as RestoreRehearsal["status"][]).map((value) => ({ label: STATUS_LABEL[value], value }))];
+const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...(Object.keys(STATUS_COLOR) as RestoreRehearsal["status"][]).map((value) => ({ label: STATUS_LABEL[value], value }))];
 
 type SortKey = "requestedAt" | "status" | "backupNumber" | "requestedBy" | "finishedAt";
 
@@ -123,7 +123,7 @@ export const RestoreVerificationReportsView: React.FC = () => {
         onSearch={setSearch}
         searchLabel="Search verification reports"
         searchPlaceholder="Test restore, backup or person…"
-        filters={[{ id: "status", label: "Outcome", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Outcomes", onChange: setStatus }]}
+        filters={[{ id: "status", label: "Outcome", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus }]}
         onClear={() => {
           setSearch("");
           setStatus(ALL);

@@ -1,5 +1,6 @@
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
-import React, { useEffect, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
+import React, { useEffect, useRef, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { AlertTriangle, Check, MoreVertical, Plus, Power, PowerOff, Search, X } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
@@ -64,8 +65,8 @@ export const TrainingTopicsView: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("All");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
+  const [scopeFilter, setScopeFilter] = usePersistedState<ScopeFilter>("training.admin.topics.scope", "All");
+  const [statusFilter, setStatusFilter] = usePersistedState<StatusFilter>("training.admin.topics.status", "All");
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["scope", "status"]));
   const [resultModal, setResultModal] = useState<ResultModalState>({
     isOpen: false,
@@ -90,6 +91,8 @@ export const TrainingTopicsView: React.FC = () => {
     reload,
   } = useDictionaryServerTable<TrainingTopic>({
     fetcher: trainingMatrixApi.topicsPage,
+    persistKey: "training.admin.topics",
+    liveTypes: ["TRAINING"],
     defaultSortBy: "code",
     extraParams: {
       scope: scopeFilter === "All" ? undefined : scopeFilter,
@@ -103,7 +106,10 @@ export const TrainingTopicsView: React.FC = () => {
 
   const closeResultModal = () => setResultModal((prev) => ({ ...prev, isOpen: false }));
 
+  const filtersSeen = useRef(false);
   useEffect(() => {
+    // The first run is the arrival on the screen: the page that was restored stays.
+    if (!filtersSeen.current) { filtersSeen.current = true; return; }
     setCurrentPage(1);
   }, [scopeFilter, statusFilter, setCurrentPage]);
 
@@ -201,9 +207,9 @@ export const TrainingTopicsView: React.FC = () => {
         : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
     );
 
-  const scopeOptions = [{ label: "All Scopes", value: "All" }, ...Object.entries(SCOPE_LABEL).map(([value, label]) => ({ label, value }))];
+  const scopeOptions = [{ label: "All", value: "All" }, ...Object.entries(SCOPE_LABEL).map(([value, label]) => ({ label, value }))];
   const statusOptions = [
-    { label: "All Status", value: "All" },
+    { label: "All", value: "All" },
     { label: "Active", value: "Active" },
     { label: "Inactive", value: "Inactive" },
   ];
@@ -344,7 +350,7 @@ export const TrainingTopicsView: React.FC = () => {
                 setCurrentPage(1);
               }}
               options={scopeOptions}
-              placeholder="All Scopes"
+              placeholder="All"
             />
           </div>
 
@@ -357,7 +363,7 @@ export const TrainingTopicsView: React.FC = () => {
                 setCurrentPage(1);
               }}
               options={statusOptions}
-              placeholder="All Status"
+              placeholder="All"
             />
           </div>
         </div>

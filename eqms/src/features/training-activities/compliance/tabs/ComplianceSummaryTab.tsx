@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { IconAlertTriangle, IconCalendarDue, IconClipboardCheck, IconUserOff, IconUsers } from "@tabler/icons-react";
 import { Select } from "@/components/ui/select/Select";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -89,6 +90,8 @@ export function ComplianceSummaryTab({ departmentId, departments, onDepartment }
     setError("");
     trainingComplianceApi.summary(departmentId || undefined).then(setSummary).catch((e) => setError(trainingError(e)));
   }, [departmentId]);
+  // A change made by anyone refreshes the figures in place.
+  useEntityChanged(["TRAINING"], () => { trainingComplianceApi.summary(departmentId || undefined).then(setSummary).catch(() => undefined); });
 
   return (
     <div className="space-y-6">

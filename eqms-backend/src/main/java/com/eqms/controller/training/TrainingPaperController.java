@@ -1,6 +1,7 @@
 package com.eqms.controller.training;
 
 import com.eqms.auth.CurrentUserService;
+import com.eqms.service.training.TrainingCheckInService;
 import com.eqms.service.training.TrainingExamPackService;
 import com.eqms.service.training.TrainingPaperService;
 import com.eqms.service.training.TrainingRollCallService;
@@ -20,9 +21,11 @@ public class TrainingPaperController {
     private final TrainingPaperService paper;
     private final TrainingRollCallService rollCalls;
     private final TrainingExamPackService exams;
+    private final TrainingCheckInService checkIns;
     private final CurrentUserService users;
 
-    public TrainingPaperController(TrainingPaperService paper, TrainingRollCallService rollCalls, TrainingExamPackService exams, CurrentUserService users) {
+    public TrainingPaperController(TrainingPaperService paper, TrainingRollCallService rollCalls, TrainingExamPackService exams, TrainingCheckInService checkIns, CurrentUserService users) {
+        this.checkIns = checkIns;
         this.exams = exams;
         this.paper = paper;
         this.rollCalls = rollCalls;
@@ -51,4 +54,16 @@ public class TrainingPaperController {
 
     @PostMapping("/sessions/{id}/roll-call")
     public ResponseEntity<?> rollCall(@PathVariable UUID id, @RequestBody TrainingRollCallService.Request request) { return ResponseEntity.ok(rollCalls.rollCall(users.requireCurrentUser(), id, request)); }
+
+    @GetMapping("/sessions/{id}/check-in")
+    public ResponseEntity<?> checkInStatus(@PathVariable UUID id) { return ResponseEntity.ok(checkIns.status(users.requireCurrentUser(), id)); }
+
+    @PostMapping("/sessions/{id}/check-in/open")
+    public ResponseEntity<?> checkInOpen(@PathVariable UUID id) { return ResponseEntity.ok(checkIns.open(users.requireCurrentUser(), id)); }
+
+    @PostMapping("/sessions/{id}/check-in/close")
+    public ResponseEntity<?> checkInClose(@PathVariable UUID id) { return ResponseEntity.ok(checkIns.close(users.requireCurrentUser(), id)); }
+
+    @PostMapping("/me/check-in")
+    public ResponseEntity<?> checkIn(@RequestBody TrainingCheckInService.CheckInRequest request) { return ResponseEntity.ok(checkIns.checkIn(users.requireCurrentUser(), request)); }
 }

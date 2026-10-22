@@ -32,7 +32,7 @@ import { auditTrailReview as auditTrailReviewBreadcrumb } from "@/components/ui/
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const STATUS_OPTIONS = [
-  { label: "All Statuses", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "In Progress", value: "IN_PROGRESS" },
   { label: "Completed", value: "COMPLETED" },
   { label: "Cancelled", value: "CANCELLED" },

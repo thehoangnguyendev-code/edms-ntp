@@ -73,7 +73,7 @@ public class TrainingPersonnelReviewService {
     }
 
     private static final String SELECT = """
-        select r.id, r.review_no, r.person_user_id, u.full_name, u.employee_code, u.department, r.kind, r.status, r.event_date, r.absence_from, r.absence_to, r.department_from, r.department_to, r.note,
+        select r.id, r.review_no, r.person_user_id, u.full_name, u.employee_code, u.avatar, u.department, r.kind, r.status, r.event_date, r.absence_from, r.absence_to, r.department_from, r.department_to, r.note,
                r.created_at, cu.full_name as created_by_name, r.closed_at, xu.full_name as closed_by_name, r.cancel_reason,
                (select count(*) from training_personnel_review_items i where i.review_id = r.id and i.status = 'PENDING') as open_items
           from training_personnel_reviews r join app_users u on u.id = r.person_user_id join app_users cu on cu.id = r.created_by left join app_users xu on xu.id = r.closed_by
@@ -86,7 +86,12 @@ public class TrainingPersonnelReviewService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> list(UserAccount actor, String status, String kind, String search, int page, int limit) {
+    public Map<String, Object> list(UserAccount actor, String status, String kind, String search, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, status, kind, search, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> list(UserAccount actor, String status, String kind, String search, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.job_assignment.view");
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
@@ -107,10 +112,16 @@ public class TrainingPersonnelReviewService {
             where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')");
             args.add(like); args.add(like);
         }
-        Long total = jdbc.queryForObject("select count(*) from training_personnel_reviews r join app_users u on u.id = r.person_user_id" + where, Long.class, args.toArray());
+        TrainingListFilter extra = new TrainingListFilter().contains(more.get("createdBy"), "cu.full_name")
+                .dateRange("r.event_date", more.get("eventFrom"), more.get("eventTo")).timeRange("r.created_at", more.get("createdFrom"), more.get("createdTo"));
+        if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(u.department)) = lower(trim(?))", more.get("department"));
+        where.append(extra.and());
+        args.addAll(extra.args());
+        Long total = jdbc.queryForObject("select count(*) from training_personnel_reviews r join app_users u on u.id = r.person_user_id left join app_users cu on cu.id = r.created_by" + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(SELECT + where + " order by r.created_at desc limit ? offset ?", args.toArray()));
+        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(SELECT + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("employee", "u.full_name", "employeeCode", "u.employee_code", "kind", "r.kind", "eventDate", "r.event_date", "department", "u.department", "status", "r.status", "openItems", "open_items", "createdBy", "cu.full_name", "createdAt", "r.created_at"),
+                "r.created_at desc") + " limit ? offset ?", args.toArray()));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", rows);
         long count = total == null ? 0 : total;

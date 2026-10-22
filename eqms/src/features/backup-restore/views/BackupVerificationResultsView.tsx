@@ -21,7 +21,7 @@ import { formatDateTime } from "../format";
 type SortKey = "backupNumber" | "startedAt" | "verification" | "verifiedAt";
 
 const ALL = "ALL";
-const RESULT_OPTIONS = [{ label: "All Results", value: ALL }, ...["FAILED", "NOT_VERIFIED", "VERIFIED"].map((value) => ({ label: statusLabel(value), value }))];
+const RESULT_OPTIONS = [{ label: "All", value: ALL }, ...["FAILED", "NOT_VERIFIED", "VERIFIED"].map((value) => ({ label: statusLabel(value), value }))];
 
 /**
  * Integrity result of every completed backup, problems first: a backup that has never passed its check is not proven, and a
@@ -177,7 +177,7 @@ export const BackupVerificationResultsView: React.FC = () => {
         onSearch={setSearch}
         searchLabel="Search backups"
         searchPlaceholder="Backup Number or person…"
-        filters={[{ id: "result", label: "Integrity", value: result, options: RESULT_OPTIONS, defaultValue: ALL, placeholder: "All Results", onChange: setResult }]}
+        filters={[{ id: "result", label: "Integrity", value: result, options: RESULT_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setResult }]}
         dates={[
           { id: "taken", label: "Backup Taken Date Range", from: takenFrom, to: takenTo, onFromChange: setTakenFrom, onToChange: setTakenTo, includeTime: true },
           { id: "checked", label: "Checked Date Range", from: checkedFrom, to: checkedTo, onFromChange: setCheckedFrom, onToChange: setCheckedTo, includeTime: true },

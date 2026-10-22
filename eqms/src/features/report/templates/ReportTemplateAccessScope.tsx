@@ -168,7 +168,7 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
             label: "Assignment",
             value: assignment,
             options: [
-              { label: "All profiles", value: "ALL" },
+              { label: "All", value: "ALL" },
               { label: "With access", value: "ASSIGNED" },
               { label: "Without access", value: "UNASSIGNED" },
             ],
@@ -181,7 +181,7 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
             id: "scope",
             label: "Data scope",
             value: scope,
-            options: [{ label: "All scopes", value: "" }, ...scopeChoices],
+            options: [{ label: "All", value: "" }, ...scopeChoices],
             onChange: (value) => {
               setScope(value);
               setPage(1);

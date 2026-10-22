@@ -1,7 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useDebounce } from "@/hooks";
 import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { persistedKey, readPersisted, writePersisted } from "@/hooks/usePersistedState";
+import { useEntityChanged, type ChangedEntityType } from "@/features/realtime/useEntityChanged";
 
 export type DictionaryServerPageResponse<T> = {
   data: T[];
@@ -29,7 +32,14 @@ interface UseDictionaryServerTableOptions<T> {
   extraParams?: DictionaryServerQuery;
   searchDelayMs?: number;
   initialItemsPerPage?: number;
+  /** Keeps search, page, page size and sort for the browser tab, so coming back from a detail screen finds the list as it was left. */
+  persistKey?: string;
+  /** Refreshes the rows by itself, without a loading flash, when the server announces that one of these entity types changed. */
+  liveTypes?: ChangedEntityType[];
 }
+
+const TABLE_PARAMS = ["search", "page", "limit", "sortBy", "sortDirection"];
+type SavedTable = { search: string; page: number; limit: number; sort: { key: string; direction: "asc" | "desc" } };
 
 export function useDictionaryServerTable<T>({
   fetcher,
@@ -38,16 +48,22 @@ export function useDictionaryServerTable<T>({
   extraParams = {},
   searchDelayMs = 300,
   initialItemsPerPage = 10,
+  persistKey,
+  liveTypes,
 }: UseDictionaryServerTableOptions<T>) {
   const { showToast } = useToast();
+  const { user } = useAuth() as { user?: { id?: string } | null };
+  const storageKey = persistKey ? persistedKey(user?.id, persistKey) : undefined;
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
-  const [currentPage, setCurrentPage] = useState(() => Math.max(1, Number(searchParams.get("page")) || 1));
-  const [itemsPerPage, setItemsPerPage] = useState(() => Number(searchParams.get("limit")) || initialItemsPerPage);
-  const [sortConfig, setSortConfig] = useState<SortConfig>(() => ({
-    key: searchParams.get("sortBy") ?? defaultSortBy,
-    direction: searchParams.get("sortDirection") === "desc" ? "desc" : defaultSortDirection,
-  }));
+  // The address wins when it carries the table state (a shared link); otherwise the state saved for this tab is used.
+  const urlHasState = TABLE_PARAMS.some((name) => searchParams.has(name));
+  const saved = useState<SavedTable | undefined>(() => (urlHasState ? undefined : readPersisted<SavedTable>(storageKey)))[0];
+  const [searchQuery, setSearchQuery] = useState(() => (urlHasState ? searchParams.get("search") ?? "" : saved?.search ?? ""));
+  const [currentPage, setCurrentPage] = useState(() => (urlHasState ? Math.max(1, Number(searchParams.get("page")) || 1) : saved?.page ?? 1));
+  const [itemsPerPage, setItemsPerPage] = useState(() => (urlHasState ? Number(searchParams.get("limit")) || initialItemsPerPage : saved?.limit ?? initialItemsPerPage));
+  const [sortConfig, setSortConfig] = useState<SortConfig>(() => (urlHasState
+    ? { key: searchParams.get("sortBy") ?? defaultSortBy, direction: searchParams.get("sortDirection") === "desc" ? "desc" : defaultSortDirection }
+    : saved?.sort ?? { key: defaultSortBy, direction: defaultSortDirection }));
   const [items, setItems] = useState<T[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -57,6 +73,8 @@ export function useDictionaryServerTable<T>({
   const debouncedSearch = useDebounce(searchQuery, searchDelayMs);
   const extraParamsSignature = useMemo(() => JSON.stringify(extraParams ?? {}), [extraParams]);
   useLayoutEffect(() => {
+    // An address without table state keeps what the screen holds when that state is saved for the tab (the Back button of a detail screen goes to the bare list address).
+    if (storageKey && !TABLE_PARAMS.some((name) => searchParams.has(name))) return;
     setSearchQuery(searchParams.get("search") ?? "");
     setCurrentPage(Math.max(1, Number(searchParams.get("page")) || 1));
     setItemsPerPage(Number(searchParams.get("limit")) || initialItemsPerPage);
@@ -73,6 +91,11 @@ export function useDictionaryServerTable<T>({
     if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
   }, [searchQuery, debouncedSearch, currentPage, itemsPerPage, sortConfig, initialItemsPerPage, defaultSortBy, defaultSortDirection, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    if (searchQuery !== debouncedSearch) return;
+    writePersisted(storageKey, { search: debouncedSearch, page: currentPage, limit: itemsPerPage, sort: sortConfig } satisfies SavedTable);
+  }, [storageKey, searchQuery, debouncedSearch, currentPage, itemsPerPage, sortConfig]);
+
   const handleSort = (key: string) => {
     setSortConfig((prev) => ({
       key,
@@ -80,13 +103,16 @@ export function useDictionaryServerTable<T>({
     }));
   };
 
+  const silentRef = useRef(false);
   const reload = () => setRefreshToken((prev) => prev + 1);
+  // A change announced by the server refreshes the rows in place: no loading state, the table does not flash.
+  useEntityChanged(liveTypes ?? [], () => { silentRef.current = true; setRefreshToken((prev) => prev + 1); }, { enabled: Boolean(liveTypes?.length), debounceMs: 800 });
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
-      setIsLoading(true);
+      if (silentRef.current) silentRef.current = false; else setIsLoading(true);
       try {
         const response = await fetcher({
           ...extraParams,

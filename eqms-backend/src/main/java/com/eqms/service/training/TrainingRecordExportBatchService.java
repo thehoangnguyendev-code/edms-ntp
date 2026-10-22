@@ -89,7 +89,12 @@ public class TrainingRecordExportBatchService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> list(UserAccount actor, String status, int page, int limit) {
+    public Map<String, Object> list(UserAccount actor, String status, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, status, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> list(UserAccount actor, String status, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.record.export");
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
@@ -99,10 +104,28 @@ public class TrainingRecordExportBatchService {
             args.add(own == null ? new UUID(0, 0) : own);
         }
         if (status != null && !status.isBlank()) { where.append(" and b.status = ?"); args.add(status); }
-        Long total = jdbc.queryForObject("select count(*) from training_record_export_batches b" + where, Long.class, args.toArray());
+        Integer yearFilter = null;
+        try {
+            yearFilter = more.get("year") == null || more.get("year").isBlank() ? null : Integer.valueOf(more.get("year").trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("TRAINING_FILTER_INVALID");
+        }
+        TrainingListFilter extra = new TrainingListFilter().equal("b.year", yearFilter).contains(more.get("search"), "b.reason", "d.name").contains(more.get("preparedBy"), "pu.full_name").contains(more.get("approvedBy"), "au.full_name")
+                .timeRange("b.generated_at", more.get("generatedFrom"), more.get("generatedTo")).timeRange("b.created_at", more.get("requestedFrom"), more.get("requestedTo"));
+        if (more.get("departmentId") != null && !more.get("departmentId").isBlank()) {
+            try {
+                extra.raw("b.department_id = ?", UUID.fromString(more.get("departmentId").trim()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("TRAINING_FILTER_INVALID");
+            }
+        }
+        where.append(extra.and());
+        args.addAll(extra.args());
+        Long total = jdbc.queryForObject("select count(*) from training_record_export_batches b join departments d on d.id = b.department_id left join app_users pu on pu.id = b.prepared_by left join app_users au on au.id = b.approved_by" + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(SELECT + where + " order by b.created_at desc limit ? offset ?", args.toArray()));
+        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(SELECT + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("department", "d.name", "year", "b.year", "status", "b.status", "people", "b.person_count", "reason", "b.reason", "preparedBy", "pu.full_name", "approvedBy", "au.full_name", "generated", "b.generated_at", "createdAt", "b.created_at"),
+                "b.created_at desc") + " limit ? offset ?", args.toArray()));
         for (Map<String, Object> row : rows) {
             boolean assigned = jdbc.queryForObject("select count(*) from training_approval_assignments where object_type=? and object_id=? and status='PENDING' and assignee_user_id=?",
                     Integer.class, TYPE, row.get("id"), actor.getId()) > 0;

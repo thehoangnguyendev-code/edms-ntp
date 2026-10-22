@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
-import { IconChalkboardTeacher, IconCheck, IconChecklist, IconChecks, IconInfoCircle, IconPencilMinus, IconPlus, IconRefresh } from "@tabler/icons-react";
+import { IconChalkboardTeacher, IconCheck, IconChecklist, IconChecks, IconInfoCircle, IconPencilMinus, IconPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -14,9 +15,10 @@ import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
-import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
+import { ReportListToolbar, pickerDateToIso, type ReportDateFilter, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingActivitiesApi, trainingError, type TrainingActivitySummary } from "@/services/api/trainingActivities";
-import { KIND_LABEL, KIND_REASON_LABEL, STATUS_COLOR, STATUS_LABEL, day, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
+import { dictionaryApi } from "@/services/api/dictionary";
+import { KIND_LABEL, KIND_REASON_LABEL, METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day, when, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
 
 const STATUSES = ["PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED", "RESERVED"];
 
@@ -28,9 +30,22 @@ export function TrainingActivityListView() {
   const canOrganize = hasPermission("training.activity.organize");
   const menu = usePortalDropdown();
   const drag = useTableDragScroll();
-  const [status, setStatus] = useState("");
-  const [kind, setKind] = useState("");
-  const [overdue, setOverdue] = useState("");
+  const [status, setStatus] = usePersistedState("training.activities.status", "");
+  const [kind, setKind] = usePersistedState("training.activities.kind", "");
+  const [overdue, setOverdue] = usePersistedState("training.activities.overdue", "");
+  const [year, setYear] = usePersistedState("training.activities.year", "");
+  const [departmentId, setDepartmentId] = usePersistedState("training.activities.departmentId", "");
+  const [method, setMethod] = usePersistedState("training.activities.method", "");
+  const [reason, setReason] = usePersistedState("training.activities.reason", "");
+  const [paper, setPaper] = usePersistedState("training.activities.paper", "");
+  const [scheduledFrom, setScheduledFrom] = usePersistedState("training.activities.scheduledFrom", "");
+  const [scheduledTo, setScheduledTo] = usePersistedState("training.activities.scheduledTo", "");
+  const [dueFrom, setDueFrom] = usePersistedState("training.activities.dueFrom", "");
+  const [dueTo, setDueTo] = usePersistedState("training.activities.dueTo", "");
+  const [createdFrom, setCreatedFrom] = usePersistedState("training.activities.createdFrom", "");
+  const [createdTo, setCreatedTo] = usePersistedState("training.activities.createdTo", "");
+  const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
+  useEffect(() => { dictionaryApi.getDepartments().then((list) => setDepartments(list.map((d) => ({ label: d.name, value: d.id })))).catch(() => setDepartments([])); }, []);
   const [error, setError] = useState("");
 
   const fetcher = useCallback(
@@ -41,8 +56,13 @@ export function TrainingActivityListView() {
       }),
     [],
   );
-  const extraParams = useMemo(() => ({ status, kind, overdue: overdue === "yes" ? true : undefined }), [status, kind, overdue]);
-  const table = useServerTable<TrainingActivitySummary>({ fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams, initialItemsPerPage: 10 });
+  const extraParams = useMemo(() => ({
+    status, kind, overdue: overdue === "yes" ? true : undefined, year: year || undefined, departmentId: departmentId || undefined,
+    method: method || undefined, kindReason: reason || undefined, onPaper: paper === "yes" ? true : paper === "no" ? false : undefined,
+    scheduledFrom: pickerDateToIso(scheduledFrom) || undefined, scheduledTo: pickerDateToIso(scheduledTo) || undefined, dueFrom: pickerDateToIso(dueFrom) || undefined, dueTo: pickerDateToIso(dueTo) || undefined,
+    createdFrom: pickerDateToIso(createdFrom) || undefined, createdTo: pickerDateToIso(createdTo) || undefined,
+  }), [status, kind, overdue, year, departmentId, method, reason, paper, scheduledFrom, scheduledTo, dueFrom, dueTo, createdFrom, createdTo]);
+  const table = useServerTable<TrainingActivitySummary>({ persistKey: "training.activities", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams, initialItemsPerPage: 10 });
   useEffect(() => setError(""), [table.items]);
 
   const reset = (apply: () => void) => {
@@ -50,9 +70,19 @@ export function TrainingActivityListView() {
     table.setCurrentPage(1);
   };
   const filters: ReportSelectFilter[] = [
-    { id: "status", label: "Status", value: status, options: [{ label: "All statuses", value: "" }, ...STATUSES.map((s) => ({ label: STATUS_LABEL[s], value: s }))], onChange: (v) => reset(() => setStatus(v)) },
-    { id: "kind", label: "Type", value: kind, options: [{ label: "All types", value: "" }, ...Object.entries(KIND_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => reset(() => setKind(v)) },
-    { id: "overdue", label: "Due date", value: overdue, options: [{ label: "All", value: "" }, { label: "Overdue", value: "yes" }], onChange: (v) => reset(() => setOverdue(v)) },
+    { id: "status", label: "Status", value: status, options: [{ label: "All", value: "" }, ...STATUSES.map((s) => ({ label: STATUS_LABEL[s], value: s }))], onChange: (v) => reset(() => setStatus(v)) },
+    { id: "kind", label: "Type", value: kind, options: [{ label: "All", value: "" }, ...Object.entries(KIND_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => reset(() => setKind(v)) },
+    { id: "department", label: "Department", value: departmentId, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => reset(() => setDepartmentId(v)) },
+    { id: "year", label: "Year", value: year, options: [{ label: "All", value: "" }, ...Array.from({ length: 6 }, (_x, i) => String(new Date().getFullYear() - i)).map((y) => ({ label: y, value: y }))], onChange: (v) => reset(() => setYear(v)) },
+    { id: "reason", label: "Reason", value: reason, options: [{ label: "All", value: "" }, ...Object.entries(KIND_REASON_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => reset(() => setReason(v)) },
+    { id: "method", label: "Method", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => reset(() => setMethod(v)) },
+    { id: "paper", label: "Paper training", value: paper, options: [{ label: "All", value: "" }, { label: "On paper", value: "yes" }, { label: "Electronic only", value: "no" }], onChange: (v) => reset(() => setPaper(v)) },
+    { id: "overdue", label: "Overdue", value: overdue, options: [{ label: "All", value: "" }, { label: "Overdue only", value: "yes" }], onChange: (v) => reset(() => setOverdue(v)) },
+  ];
+  const dates: ReportDateFilter[] = [
+    { id: "scheduled", label: "Scheduled Date Range", from: scheduledFrom, to: scheduledTo, onChange: (from, to) => reset(() => { setScheduledFrom(from); setScheduledTo(to); }) },
+    { id: "due", label: "Due Date Range", from: dueFrom, to: dueTo, onChange: (from, to) => reset(() => { setDueFrom(from); setDueTo(to); }) },
+    { id: "created", label: "Created Date Range", from: createdFrom, to: createdTo, onChange: (from, to) => reset(() => { setCreatedFrom(from); setCreatedTo(to); }) },
   ];
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
@@ -69,13 +99,21 @@ export function TrainingActivityListView() {
       ),
     },
     { id: "title", header: "Training Title", sort: sorted("trainingTitle"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.trainingTitle}</div> },
+    { id: "topics", header: "Topics", sort: sorted("topics"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topics ?? "—"}</div> },
+    { id: "trainer", header: "Trainer", sort: sorted("trainers"), cell: (r) => <div className="max-w-60 whitespace-normal">{r.trainers ?? r.trainingUnitName ?? "—"}</div> },
+    { id: "method", header: "Method", sort: sorted("methods"), cell: (r) => (r.methods ? r.methods.split(",").map((m) => METHOD_LABEL[m] ?? m).join(", ") + (r.onPaper ? " (paper)" : "") : "—") },
+    { id: "scheduled", header: "Scheduled", sort: sorted("scheduledOn"), cell: (r) => (r.scheduledFrom ? (r.scheduledTo && r.scheduledTo !== r.scheduledFrom ? `${day(r.scheduledFrom)} – ${day(r.scheduledTo)}` : day(r.scheduledFrom)) : "—") },
     { id: "kind", header: "Type", sort: sorted("kind"), cell: (r) => KIND_LABEL[r.kind] ?? r.kind },
-    { id: "reason", header: "Reason", cell: (r) => (r.kindReason ? KIND_REASON_LABEL[r.kindReason] ?? r.kindReason : "—") },
+    { id: "reason", header: "Reason", sort: sorted("kindReason"), cell: (r) => (r.kindReason ? KIND_REASON_LABEL[r.kindReason] ?? r.kindReason : "—") },
     { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status] ?? "slate"}>{STATUS_LABEL[r.status] ?? r.status}</Badge> },
-    { id: "document", header: "Document", cell: (r) => (r.documentNumber ? `${r.documentNumber}${r.revisionNumber ? ` Rev ${r.revisionNumber}` : ""}` : "—") },
-    { id: "department", header: "Department", cell: (r) => r.departmentName },
-    { id: "people", header: "People", cell: (r) => r.participantCount },
+    { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentNumber ? `${r.documentNumber}${r.revisionNumber ? ` Rev ${r.revisionNumber}` : ""}` : "—") },
+    { id: "department", header: "Department", sort: sorted("departmentName"), cell: (r) => r.departmentName },
+    { id: "people", header: "People", sort: sorted("participantCount"), cell: (r) => r.participantCount },
+    { id: "attended", header: "Attended", sort: sorted("attendedCount"), cell: (r) => (r.participantCount ? `${r.attendedCount ?? 0} / ${r.participantCount}` : "—") },
+    { id: "passed", header: "Passed", sort: sorted("passedCount"), cell: (r) => (r.participantCount ? `${r.passedCount ?? 0} / ${r.participantCount}` : "—") },
     { id: "due", header: "Due", sort: sorted("dueDate"), cell: (r) => day(r.dueDate) },
+    { id: "createdBy", header: "Created by", sort: sorted("createdByName"), cell: (r) => r.createdByName ?? "—" },
+    { id: "createdAt", header: "Created on", sort: sorted("createdAt"), cell: (r) => when(r.createdAt) },
   ];
   const action = {
     cell: (r: TrainingActivitySummary) => (
@@ -99,18 +137,12 @@ export function TrainingActivityListView() {
         title={TRAINING_PAGES.activities.title}
         breadcrumbItems={trainingBreadcrumbs(navigate, "activities")}
         actions={
-          <>
-            <Button size="sm" variant="outline" onClick={() => table.reload()}>
-              <IconRefresh className={`mr-2 h-4 w-4 ${table.isLoading ? "animate-spin" : ""}`} />
-              Refresh
+          canOrganize ? (
+            <Button size="sm" variant="default" onClick={() => navigate("/training-management/activities/new")}>
+              <IconPlus className="mr-2 h-4 w-4" />
+              New Training Activity
             </Button>
-            {canOrganize && (
-              <Button size="sm" variant="default" onClick={() => navigate("/training-management/activities/new")}>
-                <IconPlus className="mr-2 h-4 w-4" />
-                New Training Activity
-              </Button>
-            )}
-          </>
+          ) : undefined
         }
       />
       {error && (
@@ -119,19 +151,30 @@ export function TrainingActivityListView() {
         </p>
       )}
       <ReportListToolbar
-        searchPlaceholder="Search Training Number, Training Title or document…"
+        searchPlaceholder="Search number, title, topic, trainer, document, creator…"
         search={table.searchQuery}
         onSearch={(value) => {
           table.setSearchQuery(value);
           table.setCurrentPage(1);
         }}
         filters={filters}
-        dates={[]}
-        hasActiveFilters={Boolean(status || kind || overdue)}
+        dates={dates}
+        hasActiveFilters={Boolean(status || kind || overdue || year || departmentId || method || reason || paper || scheduledFrom || scheduledTo || dueFrom || dueTo || createdFrom || createdTo || table.searchQuery)}
         onClear={() => {
           setStatus("");
           setKind("");
           setOverdue("");
+          setYear("");
+          setDepartmentId("");
+          setMethod("");
+          setReason("");
+          setPaper("");
+          setScheduledFrom("");
+          setScheduledTo("");
+          setDueFrom("");
+          setDueTo("");
+          setCreatedFrom("");
+          setCreatedTo("");
           table.setCurrentPage(1);
         }}
         customControl={control}

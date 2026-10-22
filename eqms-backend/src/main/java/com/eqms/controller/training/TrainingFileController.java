@@ -19,9 +19,11 @@ import java.util.UUID;
 @RequestMapping("/training")
 public class TrainingFileController {
     private final TrainingFileService fileService;
+    private final com.eqms.service.training.TrainingAssessmentEditService edits;
     private final CurrentUserService users;
 
-    public TrainingFileController(TrainingFileService fileService, CurrentUserService users) {
+    public TrainingFileController(TrainingFileService fileService, com.eqms.service.training.TrainingAssessmentEditService edits, CurrentUserService users) {
+        this.edits = edits;
         this.fileService = fileService;
         this.users = users;
     }
@@ -59,8 +61,14 @@ public class TrainingFileController {
 
     @PostMapping(value = "/activities/{id}/paper-evidence", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadEvidence(@PathVariable UUID id, @RequestPart("file") MultipartFile file, @RequestParam String kind,
-                                            @RequestParam(required = false) UUID participantId, @RequestParam(required = false) String remark) {
-        return ResponseEntity.ok(fileService.uploadEvidence(users.requireCurrentUser(), id, file, kind, participantId, remark));
+                                            @RequestParam(required = false) UUID participantId, @RequestParam(required = false) String remark, @RequestParam(required = false) String formUsed) {
+        return ResponseEntity.ok(fileService.uploadEvidence(users.requireCurrentUser(), id, file, kind, participantId, remark, formUsed));
+    }
+
+    /** Opens the exam template or the answer key of an activity in the editor: the answer holds the editor configuration signed for the document server. */
+    @PostMapping("/activities/{id}/assessment-editor")
+    public ResponseEntity<?> openEditor(@PathVariable UUID id, @RequestBody com.eqms.service.training.TrainingAssessmentEditService.OpenRequest request) {
+        return ResponseEntity.ok(edits.open(users.requireCurrentUser(), id, request));
     }
 
     @PostMapping("/paper-evidence/{id}/receive")
@@ -68,6 +76,26 @@ public class TrainingFileController {
 
     @GetMapping("/paper-evidence/{id}/download")
     public ResponseEntity<byte[]> downloadEvidence(@PathVariable UUID id) { return file(fileService.downloadEvidence(users.requireCurrentUser(), id)); }
+
+    /** The scans of one person in one activity: from the records, the reviews and My Training. */
+    @GetMapping("/people/{personId}/activities/{activityId}/evidence")
+    public ResponseEntity<?> personEvidence(@PathVariable UUID personId, @PathVariable UUID activityId, @RequestParam(required = false) String search, @RequestParam(required = false) String sortBy,
+                                            @RequestParam(required = false) String sortDirection, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(fileService.personEvidence(users.requireCurrentUser(), personId, activityId, search, sortBy, sortDirection, page, limit));
+    }
+
+    @GetMapping("/people/{personId}/activities/{activityId}/evidence/{evidenceId}/file")
+    public ResponseEntity<byte[]> personEvidenceFile(@PathVariable UUID personId, @PathVariable UUID activityId, @PathVariable UUID evidenceId, @RequestParam(defaultValue = "false") boolean inline) {
+        Map<String, Object> file = fileService.personEvidenceFile(users.requireCurrentUser(), personId, activityId, evidenceId, inline);
+        ContentDisposition disposition = (inline ? ContentDisposition.inline() : ContentDisposition.attachment()).filename((String) file.get("name")).build();
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) file.get("contentType"))).cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString()).body((byte[]) file.get("bytes"));
+    }
+
+    @GetMapping("/people/{personId}/activities/{activityId}/evidence/{evidenceId}/view-config")
+    public ResponseEntity<?> personEvidenceViewConfig(@PathVariable UUID personId, @PathVariable UUID activityId, @PathVariable UUID evidenceId) {
+        return ResponseEntity.ok(fileService.personEvidenceViewConfig(users.requireCurrentUser(), personId, activityId, evidenceId));
+    }
 
     private static ResponseEntity<byte[]> file(Map<String, Object> file) {
         return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) file.get("contentType"))).cacheControl(CacheControl.noStore())

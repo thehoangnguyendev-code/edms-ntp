@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { IconPlus } from "@tabler/icons-react";
+import { Button } from "@/components/ui/button/Button";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
@@ -16,20 +18,23 @@ export function TrainingRecordExportsView() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get("tab") === "batches" ? "batches" : "personal");
+  const [creating, setCreating] = useState(false);
   const changeTab = (id: string) => {
     if (id === tab) return;
+    setCreating(false);
     setSearchParams(id === "personal" ? {} : { tab: id }, { replace: true });
     setTab(id);
   };
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
-      <PageHeader title={TRAINING_PAGES.exports.title} breadcrumbItems={trainingBreadcrumbs(navigate, "exports")} />
+      <PageHeader title={TRAINING_PAGES.exports.title} breadcrumbItems={trainingBreadcrumbs(navigate, "exports")}
+        actions={<Button size="sm" className="whitespace-nowrap" onClick={() => setCreating(true)}><IconPlus className="mr-2 h-4 w-4" />{tab === "personal" ? "New Export" : "New Batch"}</Button>} />
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <TabNav tabs={TABS} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel="Record exports" tabIdPrefix="exports-tab" panelIdPrefix="exports-panel" />
         <div className="p-4 md:p-5">
           <div id={`exports-panel-${tab}`} role="tabpanel" aria-labelledby={`exports-tab-${tab}`} className="min-w-0">
-            {tab === "personal" && <ExportsPersonalTab />}
-            {tab === "batches" && <ExportsBatchesTab />}
+            {tab === "personal" && <ExportsPersonalTab creating={creating} setCreating={setCreating} />}
+            {tab === "batches" && <ExportsBatchesTab creating={creating} setCreating={setCreating} />}
           </div>
         </div>
       </div>

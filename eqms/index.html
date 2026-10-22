@@ -81,7 +81,8 @@
   <meta name="apple-mobile-web-app-title" content="EQMS" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <link rel="manifest" href="/manifest.json" />
+  <!-- Served by the backend from the System Configuration, so the administrator can change the shortcut icon (PwaBranding keeps these in step). -->
+  <link rel="manifest" href="/pwa/manifest.webmanifest" />
 
   <!-- Prevent phone number detection -->
   <meta name="format-detection" content="telephone=no" />
@@ -90,7 +91,7 @@
   <link rel="icon" type="image/x-icon" href="/icons/favicon.ico" />
 
   <!-- Apple Touch Icons -->
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" href="/pwa/icon/apple-touch-icon.png" />
 
   <!-- Microsoft Tiles - using SVG -->
   <meta name="msapplication-TileColor" content="#059669" />

@@ -348,7 +348,7 @@ function DataTableBase<T>({
                 )}
               </TableMarkup.Row>
             </TableMarkup.Head>
-            <TableMarkup.Body className="bg-white">
+            <TableMarkup.Body className="bg-white [&>tr:last-child>td]:border-b-0">
               {rows.length === 0 ? (
                 <TableMarkup.Row>
                   <TableMarkup.Cell

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -66,7 +67,12 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
     setLines(r.lines.map((l) => ({ plannedMonth: l.plannedMonth.slice(0, 10), topicId: l.topicId, documentId: l.documentId, title: l.title, code: l.code })));
     setDirty(false);
   }, []);
-  useEffect(() => { trainingRequirementsApi.get(requirementId).then(apply).catch((e) => setError(trainingError(e))); }, [requirementId, apply]);
+  const refetch = useCallback(() => { trainingRequirementsApi.get(requirementId).then(apply).catch((e) => setError(trainingError(e))); }, [requirementId, apply]);
+  useEffect(refetch, [refetch]);
+  // A change made by someone else refreshes the screen, but never over what the person is typing.
+  const editing = useRef(false);
+  editing.current = dirty;
+  useEntityChanged(["TRAINING"], () => { if (!editing.current) refetch(); });
 
   const run = async (action: () => Promise<TrainingRequirementDetail>, done: string) => {
     setBusy(true);
@@ -150,6 +156,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
         onTab={setTab}
         tabLayoutId="training-requirement-detail-tab"
         footer={footer}
+        repeatFooterInHeader
       >
         {tab === "overview" && (
           <ReadonlyGrid>

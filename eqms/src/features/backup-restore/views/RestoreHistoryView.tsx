@@ -15,7 +15,7 @@ import { formatDateTime } from "../format";
 
 const ALL = "ALL";
 const TARGET_OPTIONS = [
-  { label: "All Targets", value: ALL },
+  { label: "All", value: ALL },
   { label: "Validation environment", value: "VALIDATION" },
   { label: "Production", value: "PRODUCTION" },
 ];
@@ -151,7 +151,7 @@ export const RestoreHistoryView: React.FC = () => {
         onSearch={setSearch}
         searchLabel="Search restore history"
         searchPlaceholder="Restore, backup or person…"
-        filters={[{ id: "target", label: "Target", value: target, options: TARGET_OPTIONS, defaultValue: ALL, placeholder: "All Targets", onChange: setTarget }]}
+        filters={[{ id: "target", label: "Target", value: target, options: TARGET_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setTarget }]}
         onClear={() => {
           setSearch("");
           setTarget(ALL);

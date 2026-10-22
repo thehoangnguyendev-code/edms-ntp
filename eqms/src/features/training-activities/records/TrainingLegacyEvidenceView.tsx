@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
-import { IconBan, IconCheck, IconFileDownload, IconPaperclip, IconFileOff } from "@tabler/icons-react";
+import { IconBan, IconCheck, IconFileDownload, IconPaperclip, IconFileOff, IconDownload } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -21,6 +22,7 @@ import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/sh
 import { trainingError, trainingLegacyApi, type TrainingLegacyRow, type TrainingPerson } from "@/services/api/trainingActivities";
 import { TrainingFileDropzone } from "../shared/TrainingFileDropzone";
 import { day, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
+import { resettingDates, useDateRange, useDepartmentOptions } from "../shared/useListFilters";
 
 const STATE_LABEL: Record<string, string> = { MISSING: "No evidence yet", SUBMITTED: "Waiting for verification", VERIFIED: "Verified" };
 const STATE_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", SUBMITTED: "amber", VERIFIED: "emerald" };
@@ -31,7 +33,12 @@ export function TrainingLegacyEvidenceView() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const menu = usePortalDropdown();
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = usePersistedState("training.legacy.status", "");
+  const [departmentFilter, setDepartmentFilter] = usePersistedState("training.legacy.departmentId", "");
+  const departments = useDepartmentOptions();
+  const completedRange = useDateRange("training.legacy.completed", "Paper Training Completed Date Range");
+  const submittedRange = useDateRange("training.legacy.submitted", "Evidence Submitted Date Range");
+  const verifiedRange = useDateRange("training.legacy.verified", "Evidence Verified Date Range");
   const [error, setError] = useState("");
   const [canSubmit, setCanSubmit] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -45,8 +52,12 @@ export function TrainingLegacyEvidenceView() {
       trainingLegacyApi.queue(params).then((page) => { setCanSubmit(page.canSubmit); return page; }).catch((e) => { setError(trainingError(e)); throw e; }),
     [],
   );
-  const extra = useMemo(() => ({ status: status || undefined }), [status]);
-  const table = useServerTable<TrainingLegacyRow>({ fetcher, defaultSortBy: "documentNumber", extraParams: extra, initialItemsPerPage: 10 });
+  const extra = useMemo(() => ({
+    status: status || undefined, departmentId: departmentFilter || undefined,
+    ...completedRange.params("completionFrom", "completionTo"), ...submittedRange.params("submittedFrom", "submittedTo"), ...verifiedRange.params("verifiedFrom", "verifiedTo"),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [status, departmentFilter, completedRange.from, completedRange.to, submittedRange.from, submittedRange.to, verifiedRange.from, verifiedRange.to]);
+  const table = useServerTable<TrainingLegacyRow>({ persistKey: "training.legacy", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "document", extraParams: extra, initialItemsPerPage: 10 });
 
   useEffect(() => {
     if (!submitting) { setVerifiers([]); return; }
@@ -109,15 +120,19 @@ export function TrainingLegacyEvidenceView() {
     }
   };
 
+  const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
+
   const columns: DataTableColumn<TrainingLegacyRow>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "doc", header: "Document", cell: (r) => <div className="max-w-80 whitespace-normal"><div className="font-medium">{r.documentNumber} Rev {r.revisionNumber}</div><div className="text-xs text-slate-500">{r.documentName}</div></div> },
-    { id: "completion", header: "Training completed (paper)", cell: (r) => day(r.completionDate) },
-    { id: "paperNo", header: "Paper Training Number", cell: (r) => r.paperTrainingNumber ?? "—" },
-    { id: "state", header: "Evidence", cell: (r) => <Badge color={STATE_COLOR[stateOf(r)]}>{STATE_LABEL[stateOf(r)]}</Badge> },
-    { id: "detail", header: "Detail", cell: (r) => <div className="max-w-60 whitespace-normal">{r.notEvidenced ? `No evidence: ${r.notEvidencedReason}` : r.originalName ?? "—"}</div> },
-    { id: "by", header: "Submitted by", cell: (r) => (r.submittedByName ? `${r.submittedByName} (${day(r.submittedAt)})` : "—") },
-    { id: "verified", header: "Verified by", cell: (r) => (r.verifiedByName ? `${r.verifiedByName} (${day(r.verifiedAt)})` : "—") },
+    { id: "doc", header: "Document", sort: sorted("document"), cell: (r) => <div className="max-w-80 whitespace-normal"><div className="font-medium">{r.documentNumber} Rev {r.revisionNumber}</div><div className="text-xs text-slate-500">{r.documentName}</div></div> },
+    { id: "completion", header: "Paper Training Completed On", sort: sorted("completion"), cell: (r) => day(r.completionDate) },
+    { id: "paperNo", header: "Paper Training Number", sort: sorted("paperNo"), cell: (r) => r.paperTrainingNumber ?? "—" },
+    { id: "state", header: "Evidence", sort: sorted("evidence"), cell: (r) => <Badge color={STATE_COLOR[stateOf(r)]}>{STATE_LABEL[stateOf(r)]}</Badge> },
+    { id: "detail", header: "Detail", sort: sorted("detail"), cell: (r) => <div className="max-w-60 whitespace-normal">{r.notEvidenced ? `No evidence: ${r.notEvidencedReason}` : r.originalName ?? "—"}</div> },
+    { id: "by", header: "Submitted By", sort: sorted("submittedBy"), cell: (r) => r.submittedByName ?? "—" },
+    { id: "submittedOn", header: "Submitted On", sort: sorted("submittedOn"), cell: (r) => (r.submittedAt ? day(r.submittedAt) : "—") },
+    { id: "verified", header: "Verified By", sort: sorted("verifiedBy"), cell: (r) => r.verifiedByName ?? "—" },
+    { id: "verifiedOn", header: "Verified On", sort: sorted("verifiedOn"), cell: (r) => (r.verifiedAt ? day(r.verifiedAt) : "—") },
   ];
   const action = {
     cell: (r: TrainingLegacyRow) => (
@@ -128,14 +143,19 @@ export function TrainingLegacyEvidenceView() {
   };
   const { layout, control } = useCustomColumnLayout("training.legacy.evidence", columns, action);
   const row = table.items.find((r) => r.revisionId === menu.openId);
-  const filters: ReportSelectFilter[] = [{ id: "status", label: "Evidence", value: status, options: [{ label: "All", value: "" }, ...Object.entries(STATE_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } }];
+  const filters: ReportSelectFilter[] = [
+    { id: "status", label: "Evidence", value: status, options: [{ label: "All", value: "" }, ...Object.entries(STATE_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } },
+    { id: "department", label: "Department", value: departmentFilter, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => { setDepartmentFilter(v); table.setCurrentPage(1); } },
+  ];
 
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
       <PageHeader title={TRAINING_PAGES.legacy.title} breadcrumbItems={trainingBreadcrumbs(navigate, "legacy")} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar searchPlaceholder="Search document number or name…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
-        filters={filters} dates={[]} hasActiveFilters={Boolean(status)} onClear={() => { setStatus(""); table.setCurrentPage(1); }} customControl={control}>
+        filters={filters} dates={resettingDates([completedRange.filter, submittedRange.filter, verifiedRange.filter], () => table.setCurrentPage(1))}
+        hasActiveFilters={Boolean(status || departmentFilter || completedRange.isSet || submittedRange.isSet || verifiedRange.isSet || table.searchQuery)}
+        onClear={() => { setStatus(""); setDepartmentFilter(""); completedRange.clear(); submittedRange.clear(); verifiedRange.clear(); table.setCurrentPage(1); }} customControl={control}>
         <DataTable rows={table.items} getRowKey={(r) => r.revisionId} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading…" />} columns={columns} columnLayout={layout} action={action}
           emptyState={<TableEmptyState title="Nothing to show" description="Documents imported from paper that required training appear here." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined} />
@@ -145,7 +165,7 @@ export function TrainingLegacyEvidenceView() {
           <div className="py-1">
             {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconPaperclip className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: false, file: null, reason: "", verifierId: "" }); menu.close(); }}>Attach the scan</DropdownMenuItem>}
             {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconFileOff className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: true, file: null, reason: "", verifierId: "" }); menu.close(); }}>Declare: no evidence</DropdownMenuItem>}
-            {row.evidenceId && !row.notEvidenced && <DropdownMenuItem icon={<IconFileDownload className="h-4 w-4" />} onClick={() => { void download(row); menu.close(); }}>Download the scan</DropdownMenuItem>}
+            {row.evidenceId && !row.notEvidenced && <DropdownMenuItem icon={<IconDownload className="h-4 w-4" />} onClick={() => { void download(row); menu.close(); }}>Download the scan</DropdownMenuItem>}
             {row.pendingForMe && <DropdownMenuItem icon={<IconCheck className="h-4 w-4" />} onClick={() => { setSign(row); menu.close(); }}>Verify</DropdownMenuItem>}
             {row.pendingForMe && <DropdownMenuItem icon={<IconBan className="h-4 w-4" />} onClick={() => { setRejecting({ id: row.evidenceId as string, reason: "" }); menu.close(); }}>Reject</DropdownMenuItem>}
           </div>

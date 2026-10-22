@@ -991,7 +991,7 @@ export const NotificationsView: React.FC = () => {
                     setCurrentPage(1);
                   }}
                   options={[
-                    { label: "All Status", value: "all" },
+                    { label: "All", value: "all" },
                     { label: "Unread Only", value: "unread" },
                     { label: "Read Only", value: "read" },
                   ]}
@@ -1006,7 +1006,7 @@ export const NotificationsView: React.FC = () => {
                     setCurrentPage(1);
                   }}
                   options={[
-                    { label: "All Modules", value: "all" },
+                    { label: "All", value: "all" },
                     { label: "Document", value: "Document" },
                     { label: "Deviation", value: "Deviation" },
                     { label: "CAPA", value: "CAPA" },
@@ -1025,7 +1025,7 @@ export const NotificationsView: React.FC = () => {
                     setCurrentPage(1);
                   }}
                   options={[
-                    { label: "All Priorities", value: "all" },
+                    { label: "All", value: "all" },
                     { label: "Critical", value: "critical" },
                     { label: "High", value: "high" },
                     { label: "Medium", value: "medium" },
@@ -1227,7 +1227,7 @@ export const NotificationsView: React.FC = () => {
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Status", value: "all" },
+              { label: "All", value: "all" },
               { label: "Unread Only", value: "unread" },
               { label: "Read Only", value: "read" },
             ].map((opt) => (
@@ -1248,7 +1248,7 @@ export const NotificationsView: React.FC = () => {
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Modules", value: "all" },
+              { label: "All", value: "all" },
               { label: "Document", value: "Document" },
               { label: "Deviation", value: "Deviation" },
               { label: "CAPA", value: "CAPA" },
@@ -1272,7 +1272,7 @@ export const NotificationsView: React.FC = () => {
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Priorities", value: "all" },
+              { label: "All", value: "all" },
               { label: "Critical", value: "critical" },
               { label: "High", value: "high" },
               { label: "Medium", value: "medium" },

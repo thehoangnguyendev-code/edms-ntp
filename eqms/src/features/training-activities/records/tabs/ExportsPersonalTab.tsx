@@ -1,7 +1,8 @@
+import { TrainingPersonName } from "../../shared/TrainingPersonName";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { MoreVertical } from "lucide-react";
-import { IconBan, IconCheck, IconFileDownload, IconPlus } from "@tabler/icons-react";
-import { Button } from "@/components/ui/button/Button";
+import { IconBan, IconCheck, IconFileDownload } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -19,18 +20,22 @@ import { useServerTable } from "@/features/settings/shared/hooks/useServerTable"
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingActivitiesApi, trainingError, trainingExportsApi, type TrainingPerson, type TrainingRecordExport } from "@/services/api/trainingActivities";
 import { day, when } from "../../shared/trainingLabels";
+import { resettingDates, useDateRange, useDepartmentNameOptions } from "../../shared/useListFilters";
 
 const STATUS_LABEL: Record<string, string> = { PENDING_APPROVAL: "Waiting for approval", APPROVED: "Approved", REJECTED: "Rejected" };
 const STATUS_COLOR: Record<string, "amber" | "emerald" | "red"> = { PENDING_APPROVAL: "amber", APPROVED: "emerald", REJECTED: "red" };
 
 /** Exports of the personal training record as a PDF (APD.0014): prepared with a signature, approved by a person designated with a signature, then kept unchanged. */
-export function ExportsPersonalTab() {
+export function ExportsPersonalTab({ creating, setCreating }: { creating: boolean; setCreating: (open: boolean) => void }) {
   const { showToast } = useToast();
   const menu = usePortalDropdown();
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = usePersistedState("training.exports.personal.status", "");
+  const [departmentFilter, setDepartmentFilter] = usePersistedState("training.exports.personal.department", "");
+  const departments = useDepartmentNameOptions();
+  const requestedRange = useDateRange("training.exports.personal.requested", "Requested Date Range");
+  const generatedRange = useDateRange("training.exports.personal.generated", "Generated Date Range");
   const [error, setError] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [personId, setPersonId] = useState("");
+  const [personId, setPersonId] = usePersistedState("training.exports.personal.personId", "");
   const [people, setPeople] = useState<{ label: string; value: string }[]>([]);
   const [approvers, setApprovers] = useState<TrainingPerson[]>([]);
   const [approverId, setApproverId] = useState("");
@@ -41,8 +46,12 @@ export function ExportsPersonalTab() {
   const [rejecting, setRejecting] = useState<{ id: string; reason: string }>();
 
   const fetcher = useCallback((params: Record<string, string | number | boolean | undefined>) => trainingExportsApi.list(params).catch((e) => { setError(trainingError(e)); throw e; }), []);
-  const extra = useMemo(() => ({ status: status || undefined }), [status]);
-  const table = useServerTable<TrainingRecordExport>({ fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams: extra, initialItemsPerPage: 10 });
+  const extra = useMemo(() => ({
+    status: status || undefined, department: departmentFilter || undefined,
+    ...requestedRange.params("requestedFrom", "requestedTo"), ...generatedRange.params("generatedFrom", "generatedTo"),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [status, departmentFilter, requestedRange.from, requestedRange.to, generatedRange.from, generatedRange.to]);
+  const table = useServerTable<TrainingRecordExport>({ persistKey: "training.exports.personal", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams: extra, initialItemsPerPage: 10 });
 
   const searchPeople = useCallback(async (query: string) => {
     const list = await trainingActivitiesApi.people(query).catch(() => []);
@@ -110,15 +119,19 @@ export function ExportsPersonalTab() {
     }
   };
 
+  const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
+
   const columns: DataTableColumn<TrainingRecordExport>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "name", header: "Employee", cell: (r) => <div><div className="font-medium">{r.fullName}</div><div className="text-xs text-slate-500">{r.employeeCode ?? ""}</div></div> },
-    { id: "status", header: "Status", cell: (r) => <Badge color={STATUS_COLOR[r.status]}>{STATUS_LABEL[r.status]}</Badge> },
-    { id: "reason", header: "Reason", cell: (r) => <div className="max-w-60 whitespace-normal">{r.rejectReason ?? r.reason}</div> },
-    { id: "prepared", header: "Prepared by", cell: (r) => `${r.preparedByName} (${day(r.createdAt)})` },
-    { id: "approved", header: "Approved by", cell: (r) => r.approvedByName ?? "—" },
-    { id: "records", header: "Records", cell: (r) => r.recordCount ?? "—" },
-    { id: "generated", header: "Generated", cell: (r) => when(r.generatedAt) },
+    { id: "employeeCode", header: "Employee ID", sort: sorted("employeeCode"), cell: (r) => r.employeeCode ?? "—" },
+    { id: "name", header: "Full Name", sort: sorted("employee"), cell: (r) => <TrainingPersonName fullName={r.fullName} avatar={r.avatar} /> },
+    { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status]}>{STATUS_LABEL[r.status]}</Badge> },
+    { id: "reason", header: "Reason", sort: sorted("reason"), cell: (r) => <div className="max-w-60 whitespace-normal">{r.rejectReason ?? r.reason}</div> },
+    { id: "prepared", header: "Prepared By", sort: sorted("preparedBy"), cell: (r) => r.preparedByName },
+    { id: "requested", header: "Requested On", sort: sorted("createdAt"), cell: (r) => day(r.createdAt) },
+    { id: "approved", header: "Approved By", sort: sorted("approvedBy"), cell: (r) => r.approvedByName ?? "—" },
+    { id: "records", header: "Records", sort: sorted("records"), cell: (r) => r.recordCount ?? "—" },
+    { id: "generated", header: "Generated On", sort: sorted("generated"), cell: (r) => when(r.generatedAt) },
     { id: "sha", header: "SHA-256", cell: (r) => (r.sha256 ? <span className="break-all font-mono text-xs">{r.sha256.slice(0, 16)}…</span> : "—") },
   ];
   const action = {
@@ -131,14 +144,18 @@ export function ExportsPersonalTab() {
   };
   const { layout, control } = useCustomColumnLayout("training.record.exports", columns, action);
   const row = table.items.find((r) => r.id === menu.openId);
-  const filters: ReportSelectFilter[] = [{ id: "status", label: "Status", value: status, options: [{ label: "All statuses", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } }];
+  const filters: ReportSelectFilter[] = [
+    { id: "status", label: "Status", value: status, options: [{ label: "All", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } },
+    { id: "department", label: "Department", value: departmentFilter, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => { setDepartmentFilter(v); table.setCurrentPage(1); } },
+  ];
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><Button size="sm" onClick={() => setCreating(true)}><IconPlus className="mr-2 h-4 w-4" />New Export</Button></div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <ReportListToolbar searchPlaceholder="Search…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
-        filters={filters} dates={[]} hasActiveFilters={Boolean(status)} onClear={() => { setStatus(""); table.setCurrentPage(1); }} customControl={control} framed={false} flush>
+      <ReportListToolbar searchPlaceholder="Search employee, code or reason…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
+        filters={filters} dates={resettingDates([requestedRange.filter, generatedRange.filter], () => table.setCurrentPage(1))}
+        hasActiveFilters={Boolean(status || departmentFilter || requestedRange.isSet || generatedRange.isSet || table.searchQuery)}
+        onClear={() => { setStatus(""); setDepartmentFilter(""); requestedRange.clear(); generatedRange.clear(); table.setCurrentPage(1); }} customControl={control} framed={false} flush>
         <DataTable rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading…" />} columns={columns} columnLayout={layout} action={action}
           emptyState={<TableEmptyState title="No Exports" description="Prepare an export of a personal training record to have it approved." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined} />

@@ -37,13 +37,13 @@ type SortConfig = {
 const DEFAULT_PAGE_SIZE = 10;
 
 const STATUS_OPTIONS = [
-  { label: "All Statuses", value: "All" },
+  { label: "All", value: "All" },
   { label: "Active", value: "ACTIVE" },
   { label: "Inactive", value: "INACTIVE" },
 ];
 
 const PUBLISHING_MODE_OPTIONS = [
-  { label: "All Modes", value: "All" },
+  { label: "All", value: "All" },
   { label: "Cover only", value: "COVER_ONLY" },
   { label: "Cover + Header/Footer", value: "COVER_HEADER_FOOTER" },
   { label: "Header/Footer only", value: "HEADER_FOOTER_ONLY" },

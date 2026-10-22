@@ -39,7 +39,7 @@ const STATUS_COLOR: Record<InspectionStatus, "amber" | "emerald" | "red" | "blue
   REJECTED: "red",
   FAILED: "red",
 };
-const STATUS_OPTIONS = [{ label: "All Statuses", value: ALL }, ...(Object.keys(STATUS_LABEL) as InspectionStatus[]).map((value) => ({ label: STATUS_LABEL[value], value }))];
+const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...(Object.keys(STATUS_LABEL) as InspectionStatus[]).map((value) => ({ label: STATUS_LABEL[value], value }))];
 const BACKUP_ID = /^BK-\d{8}-\d{4}-\d{4}$/;
 
 type Decision = { row: InspectionRecord; mode: "approve" | "reject" };
@@ -269,7 +269,7 @@ export const InspectionsView: React.FC = () => {
         onSearch={setSearch}
         searchLabel="Search inspections"
         searchPlaceholder="Inspection, backup or person…"
-        filters={[{ id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Statuses", onChange: setStatus }]}
+        filters={[{ id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus }]}
         onClear={() => {
           setSearch("");
           setStatus(ALL);

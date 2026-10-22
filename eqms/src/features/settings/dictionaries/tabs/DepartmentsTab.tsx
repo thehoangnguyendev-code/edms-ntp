@@ -354,7 +354,7 @@ export const DepartmentsTab = React.forwardRef<
       id: "businessUnitFilter",
       label: "Business Unit",
       value: String(businessUnitFilter),
-      options: [{ label: "All Units", value: "All" }, ...businessUnits],
+      options: [{ label: "All", value: "All" }, ...businessUnits],
       onChange: (value) => {
         setBusinessUnitFilter(value as "All" | BusinessUnit);
         setCurrentPage(1);
@@ -365,7 +365,7 @@ export const DepartmentsTab = React.forwardRef<
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "All" },
+        { label: "All", value: "All" },
         { label: "Active", value: "Active" },
         { label: "Inactive", value: "Inactive" },
       ],
@@ -420,8 +420,8 @@ export const DepartmentsTab = React.forwardRef<
                 setBusinessUnitFilter(value as "All" | BusinessUnit);
                 setCurrentPage(1);
               }}
-              options={[{ label: "All Units", value: "All" }, ...businessUnits]}
-              placeholder="All Business Units"
+              options={[{ label: "All", value: "All" }, ...businessUnits]}
+              placeholder="All"
             />
           </div>
 
@@ -434,11 +434,11 @@ export const DepartmentsTab = React.forwardRef<
                 setCurrentPage(1);
               }}
               options={[
-                { label: "All Status", value: "All" },
+                { label: "All", value: "All" },
                 { label: "Active", value: "Active" },
                 { label: "Inactive", value: "Inactive" },
               ]}
-              placeholder="All Status"
+              placeholder="All"
             />
           </div>
 
@@ -679,7 +679,7 @@ export const DepartmentsTab = React.forwardRef<
           onToggle={() => toggleSection("businessUnit")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {[{ label: "All Units", value: "All" }, ...businessUnits].map(
+            {[{ label: "All", value: "All" }, ...businessUnits].map(
               (opt) => (
                 <button
                   key={opt.value}
@@ -708,7 +708,7 @@ export const DepartmentsTab = React.forwardRef<
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Status", value: "All" },
+              { label: "All", value: "All" },
               { label: "Active", value: "Active" },
               { label: "Inactive", value: "Inactive" },
             ].map((opt) => (

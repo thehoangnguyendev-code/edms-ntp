@@ -62,13 +62,18 @@ public class TrainingRecordExportService {
     public record RejectRequest(String reason) {}
 
     private static final String SELECT = """
-        select e.id, e.person_user_id, u.full_name, u.employee_code, e.status, e.reason, e.reject_reason, e.record_count, e.generated_at, e.sha256, e.created_at,
+        select e.id, e.person_user_id, u.full_name, u.employee_code, u.avatar, e.status, e.reason, e.reject_reason, e.record_count, e.generated_at, e.sha256, e.created_at,
                pu.full_name as prepared_by_name, au.full_name as approved_by_name
           from training_record_exports e join app_users u on u.id = e.person_user_id join app_users pu on pu.id = e.prepared_by left join app_users au on au.id = e.approved_by
         """;
 
     @Transactional(readOnly = true)
-    public Map<String, Object> list(UserAccount actor, UUID personId, String status, int page, int limit) {
+    public Map<String, Object> list(UserAccount actor, UUID personId, String status, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, personId, status, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> list(UserAccount actor, UUID personId, String status, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.record.export");
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
@@ -78,10 +83,16 @@ public class TrainingRecordExportService {
         }
         if (personId != null) { where.append(" and e.person_user_id = ?"); args.add(personId); }
         if (status != null && !status.isBlank()) { where.append(" and e.status = ?"); args.add(status); }
-        Long total = jdbc.queryForObject("select count(*) from training_record_exports e join app_users u on u.id = e.person_user_id" + where, Long.class, args.toArray());
+        TrainingListFilter extra = new TrainingListFilter().contains(more.get("search"), "u.full_name", "u.employee_code", "e.reason").contains(more.get("preparedBy"), "pu.full_name").contains(more.get("approvedBy"), "au.full_name")
+                .timeRange("e.generated_at", more.get("generatedFrom"), more.get("generatedTo")).timeRange("e.created_at", more.get("requestedFrom"), more.get("requestedTo"));
+        if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(u.department)) = lower(trim(?))", more.get("department"));
+        where.append(extra.and());
+        args.addAll(extra.args());
+        Long total = jdbc.queryForObject("select count(*) from training_record_exports e join app_users u on u.id = e.person_user_id left join app_users pu on pu.id = e.prepared_by left join app_users au on au.id = e.approved_by" + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(SELECT + where + " order by e.created_at desc limit ? offset ?", args.toArray()));
+        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(SELECT + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("employee", "u.full_name", "employeeCode", "u.employee_code", "status", "e.status", "reason", "e.reason", "preparedBy", "pu.full_name", "approvedBy", "au.full_name", "records", "e.record_count", "generated", "e.generated_at", "createdAt", "e.created_at"),
+                "e.created_at desc") + " limit ? offset ?", args.toArray()));
         for (Map<String, Object> row : rows) {
             boolean assigned = jdbc.queryForObject("select count(*) from training_approval_assignments where object_type=? and object_id=? and status='PENDING' and assignee_user_id=?",
                     Integer.class, TYPE, row.get("id"), actor.getId()) > 0;

@@ -21,7 +21,7 @@ const STATE_OPTIONS = [
   { label: "Acknowledged", value: "ACKNOWLEDGED" },
   { label: "All", value: "ALL" },
 ];
-const SEVERITY_OPTIONS = [{ label: "All Severities", value: ALL }, ...["CRITICAL", "HIGH", "WARNING", "INFO"].map((value) => ({ label: value, value }))];
+const SEVERITY_OPTIONS = [{ label: "All", value: ALL }, ...["CRITICAL", "HIGH", "WARNING", "INFO"].map((value) => ({ label: value, value }))];
 const SEVERITY_COLOR = { CRITICAL: "red", HIGH: "red", WARNING: "amber", INFO: "blue" } as const;
 
 /**
@@ -186,7 +186,7 @@ export const BackupAlertsView: React.FC = () => {
         searchPlaceholder="Alert, detail or reference…"
         filters={[
           { id: "state", label: "State", value: state, options: STATE_OPTIONS, defaultValue: "OPEN", placeholder: "Not yet acknowledged", onChange: setState },
-          { id: "severity", label: "Severity", value: severity, options: SEVERITY_OPTIONS, defaultValue: ALL, placeholder: "All Severities", onChange: setSeverity },
+          { id: "severity", label: "Severity", value: severity, options: SEVERITY_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setSeverity },
         ]}
         onClear={() => {
           setSearch("");

@@ -18,6 +18,9 @@ export interface PublicBranding {
   /** Text of the Dashboard top bar; empty or missing means DEFAULT_SYSTEM_HEADER_TITLE. */
   systemHeaderTitle?: string;
   navigationLabelOverrides?: Record<string, string>;
+  /** Changes whenever the home-screen shortcut icon, colour or name changes; empty when the built-in icon is used. */
+  appIconVersion?: string;
+  appShortName?: string;
 }
 
 export const brandingApi = {

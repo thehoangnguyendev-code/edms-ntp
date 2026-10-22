@@ -41,8 +41,13 @@ public class OnlyOfficeController {
     private final RevisionService revisionService;
     private final OnlyOfficeDocumentEditService onlyOfficeDocumentEditService;
     private final com.eqms.service.training.TrainingFileService trainingFiles;
+    private final com.eqms.service.training.TrainingAssessmentEditService trainingEdits;
+    private final com.eqms.service.training.TrainingFormTemplateService trainingTemplates;
 
-    public OnlyOfficeController(RevisionService revisionService, OnlyOfficeDocumentEditService onlyOfficeDocumentEditService, com.eqms.service.training.TrainingFileService trainingFiles) {
+    public OnlyOfficeController(RevisionService revisionService, OnlyOfficeDocumentEditService onlyOfficeDocumentEditService, com.eqms.service.training.TrainingFileService trainingFiles,
+                                com.eqms.service.training.TrainingAssessmentEditService trainingEdits, com.eqms.service.training.TrainingFormTemplateService trainingTemplates) {
+        this.trainingEdits = trainingEdits;
+        this.trainingTemplates = trainingTemplates;
         this.revisionService = revisionService;
         this.onlyOfficeDocumentEditService = onlyOfficeDocumentEditService;
         this.trainingFiles = trainingFiles;
@@ -53,6 +58,51 @@ public class OnlyOfficeController {
     public ResponseEntity<byte[]> trainingMaterial(@PathVariable UUID id, @RequestParam String token) throws Exception {
         onlyOfficeDocumentEditService.verifyStoredFileToken("training-material", id, token);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(trainingFiles.materialBytesForViewer(id));
+    }
+
+    /** The document server's fetch of a scanned Word file of a person to show in the read-only viewer. */
+    @GetMapping("/stored-file/training-evidence/{id}")
+    public ResponseEntity<byte[]> trainingEvidence(@PathVariable UUID id, @RequestParam String token) throws Exception {
+        onlyOfficeDocumentEditService.verifyStoredFileToken("training-evidence", id, token);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(trainingFiles.evidenceBytesForViewer(id));
+    }
+
+    /** The document server's fetch of a form template (a Word file) to show in the read-only viewer. */
+    @GetMapping("/stored-file/training-form-template/{id}")
+    public ResponseEntity<byte[]> trainingFormTemplate(@PathVariable UUID id, @RequestParam String token) throws Exception {
+        onlyOfficeDocumentEditService.verifyStoredFileToken("training-form-template", id, token);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(trainingTemplates.bytesForViewer(id));
+    }
+
+    /** The document server's fetch of the working file of an edit session of a training file. */
+    @GetMapping("/stored-file/training-edit/{id}")
+    public ResponseEntity<byte[]> trainingEdit(@PathVariable UUID id, @RequestParam String token) throws Exception {
+        onlyOfficeDocumentEditService.verifyTrainingEditToken(id, token);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(trainingEdits.bytesForEditor(id));
+    }
+
+    /** The save webhook of an edit session of a training file. Same protocol as the revision callback: the body always says {"error": 0} unless the save failed. */
+    @PostMapping("/training-callback/{id}")
+    public ResponseEntity<Map<String, Object>> trainingCallback(@PathVariable UUID id, @RequestParam String token, @RequestBody JsonNode body) {
+        int errorCode = 0;
+        try {
+            onlyOfficeDocumentEditService.verifyTrainingEditToken(id, token);
+            int status = body.path("status").asInt(-1);
+            log.info("OnlyOffice callback for training edit session {}: status={}", id, status);
+            if (status == OnlyOfficeDocumentEditService.STATUS_SAVE || status == OnlyOfficeDocumentEditService.STATUS_FORCE_SAVE) {
+                String fileUrl = body.path("url").asText(null);
+                if (fileUrl == null || fileUrl.isBlank()) throw new IllegalStateException("OnlyOffice callback did not include a file url");
+                trainingEdits.applySave(id, onlyOfficeDocumentEditService.downloadCallbackFile(fileUrl), resolveEditingUserId(body), status == OnlyOfficeDocumentEditService.STATUS_SAVE);
+            } else if (status == 4) {
+                trainingEdits.close(id);
+            }
+        } catch (Exception ex) {
+            log.error("OnlyOffice save-callback failed for training edit session {}: {}", id, ex.toString(), ex);
+            errorCode = 1;
+        }
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("error", errorCode);
+        return ResponseEntity.ok(response);
     }
 
     /** OnlyOffice's initial fetch of the document to edit. */

@@ -28,12 +28,12 @@ import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const EFFECT_OPTIONS: SelectOption[] = [
-  { label: "All Effects", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Allow", value: "ALLOW" },
   { label: "Deny", value: "DENY" },
 ];
 const STATUS_OPTIONS: SelectOption[] = [
-  { label: "All Status", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Active", value: "ACTIVE" },
   { label: "Inactive", value: "INACTIVE" },
 ];
@@ -156,7 +156,7 @@ export const ObjectAccessRulesView: React.FC = () => {
   }, [canViewRules]);
 
   const resourceTypeOptions: SelectOption[] = [
-    { label: "All Resource Types", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...resourceTypes.map((t) => ({ label: t.replace(/_/g, " "), value: t })),
   ];
 

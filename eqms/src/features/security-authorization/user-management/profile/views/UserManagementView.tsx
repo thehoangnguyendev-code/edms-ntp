@@ -437,14 +437,14 @@ export const UserManagementView: React.FC = () => {
       id: "roleFilter",
       label: "Access Profile",
       value: String(roleFilter),
-      options: [{ label: "All Profiles", value: "All" }, ...lookupAccessProfiles],
+      options: [{ label: "All", value: "All" }, ...lookupAccessProfiles],
       onChange: (value) => setRoleFilter(value as UserRoleLabel | "All"),
     },
     {
       id: "statusFilter",
       label: "Status",
       value: String(statusFilter),
-      options: [{ label: "All Status", value: "All" }, ...lookupStatuses],
+      options: [{ label: "All", value: "All" }, ...lookupStatuses],
       onChange: (value) => setStatusFilter(value as UserStatus | "All"),
     },
     {
@@ -452,7 +452,7 @@ export const UserManagementView: React.FC = () => {
       label: "Business Unit",
       value: String(businessUnitFilter),
       resetOnChange: { departmentFilter: "All" },
-      options: [{ label: "All Units", value: "All" }, ...lookupBusinessUnits],
+      options: [{ label: "All", value: "All" }, ...lookupBusinessUnits],
       onChange: (value) => {
         setBusinessUnitFilter(value);
         setDepartmentFilter("All");
@@ -474,15 +474,15 @@ export const UserManagementView: React.FC = () => {
           )
           .map((dept) => ({ label: dept.name, value: dept.name }));
       },
-      options: [{ label: "All Departments", value: "All" }],
-      getOptions: () => [{ label: "All Departments", value: "All" }],
+      options: [{ label: "All", value: "All" }],
+      getOptions: () => [{ label: "All", value: "All" }],
       onChange: setDepartmentFilter,
     },
     {
       id: "positionFilter",
       label: "Position",
       value: String(positionFilter),
-      options: [{ label: "All Positions", value: "" }, ...lookupPositions],
+      options: [{ label: "All", value: "" }, ...lookupPositions],
       onChange: (value) => setPositionFilter(value),
     },
   ]}
@@ -564,7 +564,7 @@ export const UserManagementView: React.FC = () => {
                 value={roleFilter}
                 onChange={(value) => setRoleFilter(value as UserRoleLabel | "All")}
                 options={[
-                  { label: "All Profiles", value: "All" },
+                  { label: "All", value: "All" },
                   ...lookupAccessProfiles,
                 ]}
               />
@@ -577,7 +577,7 @@ export const UserManagementView: React.FC = () => {
                   setStatusFilter(value as UserStatus | "All")
                 }
                 options={[
-                  { label: "All Status", value: "All" },
+                  { label: "All", value: "All" },
                   ...lookupStatuses,
                 ]}
               />
@@ -591,7 +591,7 @@ export const UserManagementView: React.FC = () => {
                   setDepartmentFilter("All");
                 }}
                 options={[
-                  { label: "All Units", value: "All" },
+                  { label: "All", value: "All" },
                   ...lookupBusinessUnits,
                 ]}
               />
@@ -613,10 +613,10 @@ export const UserManagementView: React.FC = () => {
                 value={positionFilter}
                 onChange={(value) => setPositionFilter(value)}
                 options={[
-                  { label: "All Positions", value: "" },
+                  { label: "All", value: "" },
                   ...lookupPositions,
                 ]}
-                placeholder="All Positions"
+                placeholder="All"
               />
 
               {/* Created Date Range Filter */}
@@ -1128,7 +1128,7 @@ export const UserManagementView: React.FC = () => {
           onToggle={() => toggleSection("role")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {[{ label: "All Profiles", value: "All" }, ...lookupAccessProfiles].map(
+            {[{ label: "All", value: "All" }, ...lookupAccessProfiles].map(
               (opt) => (
                 <button
                   key={opt.value}
@@ -1154,7 +1154,7 @@ export const UserManagementView: React.FC = () => {
           onToggle={() => toggleSection("position")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {[{ label: "All Positions", value: "" }, ...lookupPositions].map(
+            {[{ label: "All", value: "" }, ...lookupPositions].map(
               (opt) => (
                 <button
                   key={opt.value}
@@ -1180,7 +1180,7 @@ export const UserManagementView: React.FC = () => {
           onToggle={() => toggleSection("status")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {[{ label: "All Status", value: "All" }, ...lookupStatuses].map(
+            {[{ label: "All", value: "All" }, ...lookupStatuses].map(
               (opt) => (
                 <button
                   key={opt.value}
@@ -1219,7 +1219,7 @@ export const UserManagementView: React.FC = () => {
                 >
                   <span className="text-xs">
                     {unit === "All"
-                      ? "All Units"
+                      ? "All"
                       : lookupBusinessUnits.find((item) => item.value === unit)
                           ?.label || unit}
                   </span>

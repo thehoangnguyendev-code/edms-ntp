@@ -21,8 +21,8 @@ import { MEDIA_KIND_LABEL, MEDIA_STATUS_COLOR, exportErrorMessage } from "./medi
 type SortKey = "label" | "status" | "kind" | "holder" | "lastReadTestAt" | "expiresOn";
 
 const ALL = "ALL";
-const STATUS_OPTIONS = [{ label: "All Statuses", value: ALL }, ...(Object.keys(MEDIA_STATUS_COLOR) as MediaStatus[]).map((value) => ({ label: statusLabel(value), value }))];
-const KIND_OPTIONS = [{ label: "All Kinds", value: ALL }, ...(Object.keys(MEDIA_KIND_LABEL) as MediaKind[]).map((value) => ({ label: MEDIA_KIND_LABEL[value], value }))];
+const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...(Object.keys(MEDIA_STATUS_COLOR) as MediaStatus[]).map((value) => ({ label: statusLabel(value), value }))];
+const KIND_OPTIONS = [{ label: "All", value: ALL }, ...(Object.keys(MEDIA_KIND_LABEL) as MediaKind[]).map((value) => ({ label: MEDIA_KIND_LABEL[value], value }))];
 const GB = 1_000_000_000;
 
 const RegisterMediumModal: React.FC<{ isOpen: boolean; onClose: () => void; onDone: (medium: OfflineMedium) => void }> = ({ isOpen, onClose, onDone }) => {
@@ -213,8 +213,8 @@ export const MediaRegisterPanel: React.FC<{ registering: boolean; onRegisterClos
         searchLabel="Search offline media"
         searchPlaceholder="Label, serial or holder…"
         filters={[
-          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Statuses", onChange: setStatus },
-          { id: "kind", label: "Kind", value: kind, options: KIND_OPTIONS, defaultValue: ALL, placeholder: "All Kinds", onChange: setKind },
+          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
+          { id: "kind", label: "Kind", value: kind, options: KIND_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setKind },
         ]}
         onClear={() => {
           setSearch("");

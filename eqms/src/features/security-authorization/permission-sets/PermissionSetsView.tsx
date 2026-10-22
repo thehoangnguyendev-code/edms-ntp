@@ -42,13 +42,13 @@ const downloadJson = (filename: string, data: unknown) => {
 };
 
 const STATUS_OPTIONS: SelectOption[] = [
-  { label: "All Status", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Active", value: "ACTIVE" },
   { label: "Inactive", value: "INACTIVE" },
 ];
 
 const TYPE_OPTIONS: SelectOption[] = [
-  { label: "All Types", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "System", value: "SYSTEM" },
   { label: "Custom", value: "CUSTOM" },
 ];
@@ -197,11 +197,11 @@ export const PermissionSetsView: React.FC = () => {
   };
 
   const moduleOptions: SelectOption[] = [
-    { label: "All Modules", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...(listOptions.modules ?? []).map((m) => ({ label: m, value: m })),
   ];
   const categoryOptions: SelectOption[] = [
-    { label: "All Categories", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...(listOptions.categories ?? []).map((c) => ({ label: c, value: c })),
   ];
 

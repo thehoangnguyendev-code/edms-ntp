@@ -57,7 +57,12 @@ public class TrainingLegacyEvidenceService {
 
     /** Every imported revision that required training, with the state of its evidence. */
     @Transactional(readOnly = true)
-    public Map<String, Object> queue(UserAccount actor, String status, String search, int page, int limit) {
+    public Map<String, Object> queue(UserAccount actor, String status, String search, String sortBy, String sortDirection, int page, int limit) {
+        return queue(actor, status, search, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> queue(UserAccount actor, String status, String search, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.activity.view", "training.compliance.view", "training.activity.organize");
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where r.training_origin = 'LEGACY_IMPORT' and r.requires_training");
@@ -78,6 +83,18 @@ public class TrainingLegacyEvidenceService {
             where.append(" and (lower(d.document_number) like ? escape '\\' or lower(d.document_name) like ? escape '\\')");
             args.add(like); args.add(like);
         }
+        TrainingListFilter extra = new TrainingListFilter().contains(more.get("submittedBy"), "su.full_name").contains(more.get("verifiedBy"), "vu.full_name")
+                .dateRange("r.training_completion_date", more.get("completionFrom"), more.get("completionTo"))
+                .timeRange("le.submitted_at", more.get("submittedFrom"), more.get("submittedTo")).timeRange("le.verified_at", more.get("verifiedFrom"), more.get("verifiedTo"));
+        if (more.get("departmentId") != null && !more.get("departmentId").isBlank()) {
+            try {
+                extra.raw("d.department_id = ?", UUID.fromString(more.get("departmentId").trim()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("TRAINING_FILTER_INVALID");
+            }
+        }
+        where.append(extra.and());
+        args.addAll(extra.args());
         String from = """
              from document_revisions r join documents d on d.id = r.document_id
              left join training_legacy_evidence le on le.revision_id = r.id and le.status in ('SUBMITTED','VERIFIED')
@@ -91,7 +108,8 @@ public class TrainingLegacyEvidenceService {
                    su.full_name as submitted_by_name, vu.full_name as verified_by_name
             """ + from + """
               left join app_users su on su.id = le.submitted_by left join app_users vu on vu.id = le.verified_by
-            """ + where + " order by d.document_number, r.revision_number limit ? offset ?", args.toArray()));
+            """ + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("document", "d.document_number", "completion", "r.training_completion_date", "paperNo", "r.training_number", "evidence", "le.status", "detail", "le.original_name", "submittedBy", "su.full_name", "verifiedBy", "vu.full_name", "submittedOn", "le.submitted_at", "verifiedOn", "le.verified_at"),
+                "d.document_number, r.revision_number") + " limit ? offset ?", args.toArray()));
         for (Map<String, Object> row : rows) {
             row.put("pendingForMe", row.get("evidenceId") != null && "SUBMITTED".equals(row.get("evidenceStatus")) && jdbc.queryForObject(
                     "select count(*) from training_approval_assignments where object_type=? and object_id=? and status='PENDING' and assignee_user_id=?", Integer.class, TYPE, row.get("evidenceId"), actor.getId()) > 0);
@@ -196,7 +214,7 @@ public class TrainingLegacyEvidenceService {
     // ----------------------------------------------------------------------------------------------------------------------------- helpers
 
     private Map<String, Object> queueRow(UserAccount actor, UUID revisionId) {
-        Map<String, Object> page = queue(actor, null, null, 1, 100);
+        Map<String, Object> page = queue(actor, null, null, null, null, 1, 100);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) page.get("data");
         return rows.stream().filter(x -> revisionId.equals(x.get("revisionId"))).findFirst().orElse(Map.of());

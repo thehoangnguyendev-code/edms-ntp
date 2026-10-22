@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -14,6 +15,7 @@ import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import { trainingActivitiesApi, trainingError, trainingReviewsApi, type TrainingPersonnelReview, type TrainingReviewItem } from "@/services/api/trainingActivities";
 import { Textarea } from "../shared/TrainingFields";
+import { TrainingScannedTestsModal } from "../shared/TrainingScannedTestsModal";
 import { day, trainingBreadcrumbs, when } from "../shared/trainingLabels";
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
 import { REVIEW_KIND_LABEL, REVIEW_STATUS_LABEL } from "./PersonnelReviewListView";
@@ -31,12 +33,15 @@ export function PersonnelReviewDetailPage() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("overview");
   const [editing, setEditing] = useState<TrainingReviewItem>();
+  const [scans, setScans] = useState<string>();
   const [signing, setSigning] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { trainingReviewsApi.get(reviewId).then(setReview).catch((e) => setError(trainingError(e))); }, [reviewId]);
+  const refetch = useCallback(() => { trainingReviewsApi.get(reviewId).then(setReview).catch((e) => setError(trainingError(e))); }, [reviewId]);
+  useEffect(refetch, [refetch]);
+  useEntityChanged(["TRAINING"], refetch);
   const run = useCallback(async (action: () => Promise<TrainingPersonnelReview>, done: string) => {
     setBusy(true);
     try {
@@ -86,10 +91,11 @@ export function PersonnelReviewDetailPage() {
     {
       id: "actions",
       header: "",
-      cell: (i) => (caps.editItems ? (
+      cell: (i) => (caps.editItems || i.activityId ? (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => setEditing(i)}>Update</Button>
-          {i.canLink && !i.activityId && i.status === "PENDING" && <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => void startTraining(i)}>Create training</Button>}
+          {caps.editItems && <Button size="sm" variant="outline" onClick={() => setEditing(i)}>Update</Button>}
+          {caps.editItems && i.canLink && !i.activityId && i.status === "PENDING" && <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => void startTraining(i)}>Create training</Button>}
+          {i.activityId && <Button size="sm" variant="outline" onClick={() => setScans(i.activityId ?? undefined)}>View scanned tests</Button>}
         </div>
       ) : null),
     },
@@ -129,6 +135,7 @@ export function PersonnelReviewDetailPage() {
         {tab === "audit" && <AuditTrailTab entityId={review.id} entityType="TRAINING_PERSONNEL_REVIEW" />}
       </TrainingDetailLayout>
 
+      {scans && <TrainingScannedTestsModal personId={review.personUserId} activityId={scans} onClose={() => setScans(undefined)} />}
       {editing && <ItemDialog item={editing} personName={review.fullName} busy={busy} onClose={() => setEditing(undefined)}
         onSave={async (body) => { if (await run(() => trainingReviewsApi.item(review.id, editing.itemCode, body), "Item updated")) setEditing(undefined); }} />}
       <FormModal isOpen={cancelling} onClose={() => setCancelling(false)} onConfirm={async () => { if (await run(() => trainingReviewsApi.cancel(review.id, reason.trim()), "Review cancelled")) setCancelling(false); }}

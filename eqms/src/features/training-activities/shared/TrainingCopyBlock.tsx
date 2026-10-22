@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -23,6 +24,7 @@ export function TrainingCopyBlock({ type, objectId, title = "Copies sent to depa
 
   const load = useCallback(() => { trainingCopyApi.list(type, objectId).then(setLog).catch(() => setLog(undefined)); }, [type, objectId]);
   useEffect(load, [load]);
+  useEntityChanged(["TRAINING"], load);
 
   const receive = async (row: TrainingCopyRow) => {
     setBusy(true);

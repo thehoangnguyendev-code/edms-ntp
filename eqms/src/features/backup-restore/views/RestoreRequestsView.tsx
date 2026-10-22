@@ -22,9 +22,9 @@ import { formatDateTime } from "../format";
 
 const ALL = "ALL";
 const STATUS_COLOR = { PENDING_APPROVAL: "amber", APPROVED: "emerald", REJECTED: "red" } as const;
-const STATUS_OPTIONS = [{ label: "All Statuses", value: ALL }, ...(Object.keys(STATUS_COLOR) as RestoreRequestStatus[]).map((value) => ({ label: statusLabel(value), value }))];
+const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...(Object.keys(STATUS_COLOR) as RestoreRequestStatus[]).map((value) => ({ label: statusLabel(value), value }))];
 const TARGET_OPTIONS = [
-  { label: "All Targets", value: ALL },
+  { label: "All", value: ALL },
   { label: "Validation environment", value: "VALIDATION" },
   { label: "Production", value: "PRODUCTION" },
 ];
@@ -182,8 +182,8 @@ export const RestoreRequestsView: React.FC = () => {
         searchLabel="Search restore requests"
         searchPlaceholder="Request, backup or person…"
         filters={[
-          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Statuses", onChange: setStatus },
-          { id: "target", label: "Target", value: target, options: TARGET_OPTIONS, defaultValue: ALL, placeholder: "All Targets", onChange: setTarget },
+          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
+          { id: "target", label: "Target", value: target, options: TARGET_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setTarget },
         ]}
         onClear={() => {
           setSearch("");

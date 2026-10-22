@@ -66,7 +66,7 @@ public class TrainingSpecimenService {
     public record RejectRequest(String reason) {}
 
     private static final String SELECT = """
-        select s.id, s.person_user_id, u.full_name, u.employee_code, u.department, s.version_no, s.status, s.effective_date, s.content_type, s.size_bytes, s.sha256,
+        select s.id, s.person_user_id, u.full_name, u.employee_code, u.avatar, u.department, s.version_no, s.status, s.effective_date, s.content_type, s.size_bytes, s.sha256,
                s.change_reason, s.reject_reason, s.created_at, (s.sha256_2 is not null) as has_second, uu.full_name as uploaded_by_name, cu.full_name as confirmed_by_name
           from training_specimen_signatures s join app_users u on u.id = s.person_user_id join app_users uu on uu.id = s.uploaded_by left join app_users cu on cu.id = s.confirmed_by
         """;
@@ -74,7 +74,12 @@ public class TrainingSpecimenService {
     // ----------------------------------------------------------------------------------------------------------------------------- reading
 
     @Transactional(readOnly = true)
-    public Map<String, Object> list(UserAccount actor, String search, String status, int page, int limit) {
+    public Map<String, Object> list(UserAccount actor, String search, String status, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, search, status, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> list(UserAccount actor, String search, String status, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         boolean wide = access.has(actor, "training.signature.view", "training.signature.manage", "training.signature.confirm");
         if (!wide) access.require(actor, "training.self.view");
         List<Object> args = new ArrayList<>();
@@ -93,10 +98,16 @@ public class TrainingSpecimenService {
             where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')");
             args.add(like); args.add(like);
         }
-        Long total = jdbc.queryForObject("select count(*) from training_specimen_signatures s join app_users u on u.id = s.person_user_id" + where, Long.class, args.toArray());
+        TrainingListFilter extra = new TrainingListFilter().contains(more.get("uploadedBy"), "uu.full_name")
+                .dateRange("s.effective_date", more.get("effectiveFrom"), more.get("effectiveTo")).timeRange("s.created_at", more.get("uploadedFrom"), more.get("uploadedTo"));
+        if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(u.department)) = lower(trim(?))", more.get("department"));
+        where.append(extra.and());
+        args.addAll(extra.args());
+        Long total = jdbc.queryForObject("select count(*) from training_specimen_signatures s join app_users u on u.id = s.person_user_id join app_users uu on uu.id = s.uploaded_by" + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(SELECT + where + " order by s.created_at desc limit ? offset ?", args.toArray()));
+        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(SELECT + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("employee", "u.full_name", "employeeCode", "u.employee_code", "department", "u.department", "version", "s.version_no", "status", "s.status", "uploadedBy", "uu.full_name", "confirmedBy", "cu.full_name", "effective", "s.effective_date", "reason", "s.change_reason", "createdAt", "s.created_at"),
+                "s.created_at desc") + " limit ? offset ?", args.toArray()));
         for (Map<String, Object> row : rows) row.put("capabilities", capabilities(actor, (UUID) row.get("id"), (UUID) row.get("personUserId"), String.valueOf(row.get("status"))));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", rows);

@@ -26,8 +26,10 @@ public class TrainingSpecimenController {
 
     @GetMapping
     public ResponseEntity<?> list(@RequestParam(required = false) String search, @RequestParam(required = false) String status,
-                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(specimens.list(users.requireCurrentUser(), search, status, page, limit));
+                                  @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                  @RequestParam Map<String, String> filters) {
+        return ResponseEntity.ok(specimens.list(users.requireCurrentUser(), search, status, sortBy, sortDirection, page, limit, filters));
     }
 
     @GetMapping("/eligible-confirmers")

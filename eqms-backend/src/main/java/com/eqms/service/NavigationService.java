@@ -132,6 +132,7 @@ public class NavigationService {
             List<NavigationItemResponse> people = new ArrayList<>();
             if (hasPermission(normalizedPermissions, "training.job_assignment.view")) {
                 people.add(new NavigationItemResponse("training-job-assignments", "Job Assignments", null, "/training-management/job-assignments", false, null));
+                people.add(new NavigationItemResponse("training-personnel-reviews", "Training Reviews", null, "/training-management/personnel-reviews", false, null));
             }
             if (hasPermission(normalizedPermissions, "training.signature.view") || hasPermission(normalizedPermissions, "training.signature.manage")
                     || hasPermission(normalizedPermissions, "training.signature.confirm") || hasPermission(normalizedPermissions, "training.self.view")) {
@@ -371,6 +372,7 @@ public class NavigationService {
             if (hasPermission(normalizedPermissions, "training.admin.manage")) {
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-topics", "Training Topics", null, "/settings/administration/training/topics", false, null));
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-person-positions", "Person Positions", null, "/settings/administration/training/person-positions", false, null));
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-notifications", "Training Notifications", null, "/settings/administration/training/notifications", false, null));
             }
             if (!trainingAdminChildren.isEmpty()) {
                 sysAdminChildren.add(new NavigationItemResponse("training-administration", "Training Administration", "GraduationCap", null, false, trainingAdminChildren));

@@ -72,7 +72,7 @@ public class TrainingFileService {
               from training_materials m join app_users u on u.id = m.uploaded_by where m.activity_id=? """ + (manager ? " " : " and m.removed_at is null ") + (answerKeyViewer ? " " : " and m.purpose <> 'ANSWER_KEY' ") + " order by m.created_at", activityId)));
         out.put("canSeeAnswerKey", answerKeyViewer);
         out.put("evidence", manager || access.has(actor, "training.activity.view") ? TrainingRows.camel(jdbc.queryForList("""
-            select e.id, e.kind, e.original_name, e.content_type, e.size_bytes, e.sha256, e.remark, e.uploaded_at, e.received_at, e.participant_id, p.full_name as participant_name,
+            select e.id, e.kind, e.original_name, e.content_type, e.size_bytes, e.sha256, e.remark, e.form_used, e.uploaded_at, e.received_at, e.participant_id, p.full_name as participant_name,
                    u.full_name as uploaded_by_name, r.full_name as received_by_name
               from training_paper_evidence e join app_users u on u.id = e.uploaded_by left join app_users r on r.id = e.received_by left join training_participants p on p.id = e.participant_id
              where e.activity_id=? order by e.uploaded_at
@@ -234,7 +234,7 @@ public class TrainingFileService {
     // ----------------------------------------------------------------------------------------------------------------------------- paper evidence
 
     @Transactional
-    public Map<String, Object> uploadEvidence(UserAccount actor, UUID activityId, MultipartFile file, String kind, UUID participantId, String remark) {
+    public Map<String, Object> uploadEvidence(UserAccount actor, UUID activityId, MultipartFile file, String kind, UUID participantId, String remark, String formUsed) {
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!conductor(actor, activity)) throw new SecurityException(TrainingAccess.DENIED);
         if (!Set.of("NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
@@ -243,14 +243,15 @@ public class TrainingFileService {
             Integer belongs = jdbc.queryForObject("select count(*) from training_participants where id=? and activity_id=?", Integer.class, participantId, activityId);
             if (belongs == null || belongs == 0) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
         }
+        if (formUsed != null && formUsed.trim().length() > 80) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         Checked checked = check(file);
         if ("mp4".equals(checked.extension())) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         UUID id = UUID.randomUUID();
         FileStorageService.StorageWriteResult stored = write("training/paper-evidence/" + activityId + "/" + id + "." + checked.extension(), checked);
-        jdbc.update("insert into training_paper_evidence(id, activity_id, participant_id, kind, original_name, provider, stored_path, content_type, size_bytes, sha256, remark, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?,?)",
+        jdbc.update("insert into training_paper_evidence(id, activity_id, participant_id, kind, original_name, provider, stored_path, content_type, size_bytes, sha256, remark, form_used, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 id, activityId, participantId, kind, checked.name(), stored.provider(), stored.storedPath(), checked.contentType(), checked.bytes().length, checked.sha256(),
-                remark == null || remark.isBlank() ? null : remark.trim(), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + " (SHA-256 " + checked.sha256().substring(0, 12) + ")");
+                remark == null || remark.isBlank() ? null : remark.trim(), formUsed == null || formUsed.isBlank() ? null : formUsed.trim(), actor.getId());
+        store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + (formUsed == null || formUsed.isBlank() ? "" : " [form " + formUsed.trim() + "]") + " (SHA-256 " + checked.sha256().substring(0, 12) + ")");
         return list(actor, activityId);
     }
 
@@ -277,6 +278,108 @@ public class TrainingFileService {
         access.require(actor, "training.activity.view");
         access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
         return read(actor, activity, e, "TRAINING_PAPER_EVIDENCE_DOWNLOADED");
+    }
+
+    // ------------------------------------------------------------------------------------------------------------ the scans of one person
+
+    private static final String PERSON_EVIDENCE = """
+        select e.id, e.kind, e.original_name, e.content_type, e.size_bytes, e.sha256, e.remark, e.form_used, e.uploaded_at, e.received_at, e.participant_id,
+               (e.participant_id is null) as whole_session, u.full_name as uploaded_by_name, r.full_name as received_by_name
+          from training_paper_evidence e join app_users u on u.id = e.uploaded_by left join app_users r on r.id = e.received_by
+          left join training_participants p on p.id = e.participant_id
+         where e.activity_id = ? and (p.person_user_id = ?
+               or (e.participant_id is null and not ? and exists (select 1 from training_participants q where q.activity_id = e.activity_id and q.person_user_id = ?)))
+        """;
+
+    /**
+     * The person sees the scans that belong to them alone; another person who may read the records (or the reviews, or the activity) of that person's department
+     * also sees the scans of the whole session, such as the attendance sheet, because the person signed on it.
+     */
+    private Map<String, Object> personActivity(UserAccount actor, UUID personId, UUID activityId) {
+        Map<String, Object> activity = store.activity(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        if (actor.getId().equals(personId)) {
+            access.require(actor, "training.self.view");
+            return activity;
+        }
+        access.require(actor, "training.record.view", "training.job_assignment.view", "training.activity.view");
+        if (!access.allDepartments(actor)) {
+            String own = actor.getDepartment() == null ? "" : actor.getDepartment().trim().toLowerCase();
+            Integer sameDepartment = jdbc.queryForObject("select count(*) from app_users where id=? and lower(trim(coalesce(department,''))) = ?", Integer.class, personId, own);
+            if ((sameDepartment == null || sameDepartment == 0) && !access.inScope(actor, (UUID) activity.get("organizer_department_id"))) throw new SecurityException(TrainingAccess.DENIED);
+        }
+        return activity;
+    }
+
+    private static final Map<String, String> PERSON_EVIDENCE_SORT = Map.of(
+            "kind", "e.kind", "originalName", "lower(e.original_name)", "uploadedAt", "e.uploaded_at", "receivedAt", "e.received_at",
+            "uploadedByName", "lower(u.full_name)", "formUsed", "lower(e.form_used)");
+
+    /** The scans of that person in that activity: searched, sorted and paged by the server. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> personEvidence(UserAccount actor, UUID personId, UUID activityId, String search, String sortBy, String sortDirection, int page, int limit) {
+        Map<String, Object> activity = personActivity(actor, personId, activityId);
+        boolean owner = actor.getId().equals(personId);
+        List<Object> args = new java.util.ArrayList<>(List.of(activityId, personId, owner, personId));
+        StringBuilder where = new StringBuilder();
+        if (search != null && !search.isBlank()) {
+            String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+            where.append(" and (lower(e.original_name) like ? escape '\\' or lower(coalesce(e.form_used,'')) like ? escape '\\' or lower(u.full_name) like ? escape '\\' or lower(coalesce(e.remark,'')) like ? escape '\\')");
+            for (int i = 0; i < 4; i++) args.add(like);
+        }
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        int safePage = Math.max(page, 1);
+        Long total = jdbc.queryForObject("select count(*) from (" + PERSON_EVIDENCE + where + ") c", Long.class, args.toArray());
+        args.add(safeLimit);
+        args.add((safePage - 1) * safeLimit);
+        List<Map<String, Object>> rows = jdbc.queryForList(PERSON_EVIDENCE + where + TrainingRows.orderBy(sortBy, sortDirection, PERSON_EVIDENCE_SORT, "e.uploaded_at, e.id") + " limit ? offset ?", args.toArray());
+        long count = total == null ? 0 : total;
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("trainingNumber", activity.get("training_number"));
+        out.put("trainingTitle", activity.get("training_title"));
+        out.put("data", TrainingRows.camel(rows));
+        out.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
+        return out;
+    }
+
+    /** The row of one scan of that person; the person and the activity are checked first, so a scan of another person or activity is never reached. */
+    private Map<String, Object> personEvidenceRow(UserAccount actor, UUID personId, UUID activityId, UUID evidenceId, Map<String, Object> activity) {
+        boolean owner = actor.getId().equals(personId);
+        return jdbc.queryForList("select * from training_paper_evidence where id = ? and activity_id = ? and id in (select id from (" + PERSON_EVIDENCE + ") x)", evidenceId, activityId, activityId, personId, owner, personId)
+                .stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+    }
+
+    /** One scan of that person, to be shown in the page or saved. Both are recorded in the Audit Trail. */
+    @Transactional
+    public Map<String, Object> personEvidenceFile(UserAccount actor, UUID personId, UUID activityId, UUID evidenceId, boolean inline) {
+        Map<String, Object> activity = personActivity(actor, personId, activityId);
+        Map<String, Object> row = personEvidenceRow(actor, personId, activityId, evidenceId, activity);
+        return read(actor, activity, row, inline ? "TRAINING_PAPER_EVIDENCE_VIEWED" : "TRAINING_PAPER_EVIDENCE_DOWNLOADED");
+    }
+
+    /** The read-only OnlyOffice viewer config of a scanned Word file of that person. The file is served to the document server by a token that names it, after its SHA-256 is checked. */
+    @Transactional
+    public Map<String, Object> personEvidenceViewConfig(UserAccount actor, UUID personId, UUID activityId, UUID evidenceId) {
+        Map<String, Object> activity = personActivity(actor, personId, activityId);
+        Map<String, Object> row = personEvidenceRow(actor, personId, activityId, evidenceId, activity);
+        String name = String.valueOf(row.get("original_name"));
+        if (!name.toLowerCase(Locale.ROOT).endsWith(".docx") || !onlyOffice.isConfigured()) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "TRAINING_PREVIEW_UNAVAILABLE");
+        store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_VIEWED", null, null, name);
+        return new java.util.LinkedHashMap<>(com.fasterxml.jackson.databind.json.JsonMapper.builder().build().convertValue(
+                onlyOffice.buildStoredFileViewConfig("training-evidence", evidenceId, String.valueOf(row.get("sha256")), name, actor), Map.class));
+    }
+
+    /** The bytes the OnlyOffice document server fetches for the viewer (authenticated by its token, not by a session); the SHA-256 is checked. */
+    @Transactional(readOnly = true)
+    public byte[] evidenceBytesForViewer(UUID id) {
+        Map<String, Object> e = jdbc.queryForList("select * from training_paper_evidence where id=?", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        if (!String.valueOf(e.get("original_name")).toLowerCase(Locale.ROOT).endsWith(".docx")) throw new SecurityException(TrainingAccess.DENIED);
+        try {
+            byte[] bytes = files.readReportArtifact(String.valueOf(e.get("provider")), String.valueOf(e.get("stored_path")));
+            if (!sha256(bytes).equals(e.get("sha256"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_FILE_INTEGRITY_FAILED");
+            return bytes;
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
+        }
     }
 
     // ----------------------------------------------------------------------------------------------------------------------------- helpers
@@ -312,9 +415,46 @@ public class TrainingFileService {
         if (file.getSize() > MAX_BYTES && !"mp4".equals(ext)) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         byte[] bytes;
         try { bytes = file.getBytes(); } catch (IOException e) { throw new IllegalArgumentException("TRAINING_FILE_REJECTED"); }
+        return verify(name, ext, bytes);
+    }
+
+    /** The content must be what the name says, and the file must be clean. */
+    private Checked verify(String name, String ext, byte[] bytes) {
         if (!matches(ext, bytes)) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         if (!virusScan.scan(bytes).clean()) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         return new Checked(bytes, name, ext, TYPES.get(ext), sha256(bytes));
+    }
+
+    /** A file kept in the records bucket for another part of Training (a form template, a file saved by the editor). */
+    public record StoredFile(String name, String extension, String contentType, String sha256, int size, String provider, String path) {}
+
+    /** Checks an uploaded file (type by content, size, malware) and stores it under the key; only the extensions listed are accepted. */
+    public StoredFile storeUpload(MultipartFile file, String keyWithoutExtension, Set<String> extensions) {
+        Checked checked = check(file);
+        if (!extensions.contains(checked.extension())) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        FileStorageService.StorageWriteResult stored = write(keyWithoutExtension + "." + checked.extension(), checked);
+        return new StoredFile(checked.name(), checked.extension(), checked.contentType(), checked.sha256(), checked.bytes().length, stored.provider(), stored.storedPath());
+    }
+
+    /** The same checks for bytes that came from the editor, not from an upload. */
+    public StoredFile storeBytes(byte[] bytes, String name, String keyWithoutExtension, Set<String> extensions) {
+        int dot = name.lastIndexOf('.');
+        String ext = dot < 0 ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
+        if (bytes == null || bytes.length == 0 || bytes.length > MAX_BYTES || !extensions.contains(ext)) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        Checked checked = verify(name, ext, bytes);
+        FileStorageService.StorageWriteResult stored = write(keyWithoutExtension + "." + ext, checked);
+        return new StoredFile(name, ext, checked.contentType(), checked.sha256(), bytes.length, stored.provider(), stored.storedPath());
+    }
+
+    /** The bytes of a stored file, after its SHA-256 is checked. */
+    public byte[] readStored(String provider, String path, String sha256) {
+        try {
+            byte[] bytes = files.readReportArtifact(provider, path);
+            if (!sha256(bytes).equals(sha256)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_FILE_INTEGRITY_FAILED");
+            return bytes;
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
+        }
     }
 
     /** The content must be what the name says: PDF, PNG, JPEG, or a ZIP package for the Office types. */

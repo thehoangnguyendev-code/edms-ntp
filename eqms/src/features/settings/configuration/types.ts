@@ -70,6 +70,12 @@ export interface GeneralConfig {
   systemLogo: string;
   systemSidebarCollapsedLogo?: string;
   systemFavicon: string;
+  /** Home-screen shortcut icon (PNG or JPEG data URL, at least 512 x 512). Empty means the built-in icon. */
+  appIcon?: string;
+  /** Label under the shortcut icon, at most 12 characters; empty means the display name. */
+  appShortName?: string;
+  /** Colour behind the icon on the home screen (#RRGGBB); a transparent logo needs one. */
+  appIconBackground?: string;
   systemFooter: string;
   /** Text of the Dashboard top bar; empty means the built-in default. */
   systemHeaderTitle?: string;

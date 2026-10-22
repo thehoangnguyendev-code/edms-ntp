@@ -295,7 +295,7 @@ export const EmailTemplatesView: React.FC = () => {
       label: "Template Type",
       value: String(typeFilter),
       options: [
-        { label: "All Types", value: "All" },
+        { label: "All", value: "All" },
         ...Object.keys(EMAIL_TEMPLATE_TYPES).map((key) => ({
           label: getEmailTemplateTypeConfig(key).label,
           value: key,
@@ -308,7 +308,7 @@ export const EmailTemplatesView: React.FC = () => {
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "All" },
+        { label: "All", value: "All" },
         { label: "Active", value: "Active" },
         { label: "Inactive", value: "Inactive" },
         { label: "Draft", value: "Draft" },
@@ -371,7 +371,7 @@ export const EmailTemplatesView: React.FC = () => {
                 value={typeFilter}
                 onChange={(value) => setTypeFilter(value as any)}
                 options={[
-                  { label: "All Types", value: "All" },
+                  { label: "All", value: "All" },
                   ...Object.keys(EMAIL_TEMPLATE_TYPES).map((key) => ({
                     label: getEmailTemplateTypeConfig(key).label,
                     value: key,
@@ -385,7 +385,7 @@ export const EmailTemplatesView: React.FC = () => {
                 value={statusFilter}
                 onChange={(value) => setStatusFilter(value as any)}
                 options={[
-                  { label: "All Status", value: "All" },
+                  { label: "All", value: "All" },
                   { label: "Active", value: "Active" },
                   { label: "Inactive", value: "Inactive" },
                   { label: "Draft", value: "Draft" },
@@ -781,7 +781,7 @@ export const EmailTemplatesView: React.FC = () => {
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Types", value: "All" },
+              { label: "All", value: "All" },
               ...Object.keys(EMAIL_TEMPLATE_TYPES).map((key) => ({
                 label: getEmailTemplateTypeConfig(key).label,
                 value: key,
@@ -811,7 +811,7 @@ export const EmailTemplatesView: React.FC = () => {
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Status", value: "All" },
+              { label: "All", value: "All" },
               { label: "Active", value: "Active" },
               { label: "Inactive", value: "Inactive" },
               { label: "Draft", value: "Draft" },

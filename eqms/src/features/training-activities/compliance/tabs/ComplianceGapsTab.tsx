@@ -1,4 +1,6 @@
+import { TrainingPersonName } from "../../shared/TrainingPersonName";
 import { useCallback, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -14,7 +16,7 @@ const STATUS_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "re
 
 /** Every requirement of the effective matrix for every person of the department, one line each, with what is missing or due. */
 export function ComplianceGapsTab({ departmentId, departmentFilter }: { departmentId: string; departmentFilter: ReportSelectFilter }) {
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = usePersistedState("training.compliance.gaps.status", "");
   const [error, setError] = useState("");
 
   const fetcher = useCallback(
@@ -26,16 +28,19 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
     [],
   );
   const extra = useMemo(() => ({ departmentId: departmentId || undefined, status: status || undefined }), [departmentId, status]);
-  const table = useServerTable<TrainingGap>({ fetcher, defaultSortBy: "status", extraParams: extra, initialItemsPerPage: 10, syncToUrl: false });
+  const table = useServerTable<TrainingGap>({ persistKey: "training.compliance.gaps", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "status", extraParams: extra, initialItemsPerPage: 10, syncToUrl: false });
+
+  const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   const columns: DataTableColumn<TrainingGap>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "name", header: "Employee", cell: (g) => <div><div className="font-medium">{g.fullName}</div><div className="text-xs text-slate-500">{g.employeeCode ?? ""}</div></div> },
-    { id: "position", header: "Position", cell: (g) => g.positionName ?? "—" },
-    { id: "topic", header: "Required training", cell: (g) => <div className="max-w-80 whitespace-normal">{g.code ? `${g.code} — ` : ""}{g.title}</div> },
-    { id: "annual", header: "Annual", cell: (g) => (g.annualRequired ? "Yes" : "No") },
-    { id: "last", header: "Last trained", cell: (g) => day(g.lastDone) },
-    { id: "status", header: "Status", cell: (g) => <Badge color={STATUS_COLOR[g.status]}>{STATUS_LABEL[g.status]}</Badge> },
+    { id: "employeeCode", header: "Employee ID", sort: sorted("employeeCode"), cell: (g) => g.employeeCode ?? "—" },
+    { id: "name", header: "Full Name", sort: sorted("fullName"), cell: (g) => <TrainingPersonName fullName={g.fullName} avatar={g.avatar} /> },
+    { id: "position", header: "Position", sort: sorted("positionName"), cell: (g) => g.positionName ?? "—" },
+    { id: "topic", header: "Required training", sort: sorted("title"), cell: (g) => <div className="max-w-80 whitespace-normal">{g.code ? `${g.code} — ` : ""}{g.title}</div> },
+    { id: "annual", header: "Annual", sort: sorted("annualRequired"), cell: (g) => (g.annualRequired ? "Yes" : "No") },
+    { id: "last", header: "Last trained", sort: sorted("lastDone"), cell: (g) => day(g.lastDone) },
+    { id: "status", header: "Status", sort: sorted("status"), cell: (g) => <Badge color={STATUS_COLOR[g.status]}>{STATUS_LABEL[g.status]}</Badge> },
   ];
   const { layout, control } = useCustomColumnLayout("training.compliance.coverage", columns);
   const filters: ReportSelectFilter[] = [

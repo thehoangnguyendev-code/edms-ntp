@@ -126,7 +126,7 @@ const buildUserOptionsFromRecords = (records: AuditTrailRecord[]) => {
       unique.set(key, { label, value });
     }
   });
-  return [{ label: "All Users", value: "" }, ...Array.from(unique.values()).sort((left, right) => left.label.localeCompare(right.label))];
+  return [{ label: "All", value: "" }, ...Array.from(unique.values()).sort((left, right) => left.label.localeCompare(right.label))];
 };
 
 const getActionOptions = (records: AuditTrailRecord[]) => {
@@ -139,13 +139,13 @@ const getActionOptions = (records: AuditTrailRecord[]) => {
   ).sort((a, b) => a.localeCompare(b));
 
   return [
-    { label: "All Actions", value: "All" },
+    { label: "All", value: "All" },
     ...actions.map((action) => ({ label: formatAuditActionLabel(action), value: action })),
   ];
 };
 
 const DEFAULT_ACTION_OPTIONS = [
-  { label: "All Actions", value: "All" },
+  { label: "All", value: "All" },
   { label: "Create", value: "Create" },
   { label: "Update", value: "Update" },
   { label: "Delete", value: "Delete" },
@@ -197,7 +197,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   const [actionFilter, setActionFilter] = useState<AuditAction | "All">("All");
   const [userFilter, setUserFilter] = useState("");
   const [userOptions, setUserOptions] = useState<{ label: string; value: string }[]>([
-    { label: "All Users", value: "" },
+    { label: "All", value: "" },
   ]);
   const [isUserOptionsLoading, setIsUserOptionsLoading] = useState(false);
   const [eSignatureFilter, setESignatureFilter] = useState<"All" | "Yes" | "No">("All");
@@ -320,7 +320,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     const combined = [...DEFAULT_ACTION_OPTIONS];
     dynamicActions.forEach((action) => {
       if (!combined.some((option) => option.value === action)) {
-        combined.push({ label: action, value: action });
+        combined.push({ label: formatAuditActionLabel(action), value: action });
       }
     });
     return combined;
@@ -347,11 +347,11 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
       })
       .then((options) => {
         if (!alive) return;
-        setUserOptions([{ label: "All Users", value: "" }, ...options]);
+        setUserOptions([{ label: "All", value: "" }, ...options]);
       })
       .catch(() => {
         if (!alive) return;
-        setUserOptions([{ label: "All Users", value: "" }]);
+        setUserOptions([{ label: "All", value: "" }]);
       })
       .finally(() => {
         if (alive) setIsUserOptionsLoading(false);
@@ -527,7 +527,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
             value={actionFilter}
             onChange={(value) => setActionFilter(String(value) as AuditAction | "All")}
             options={actionOptions}
-            placeholder="All Actions"
+            placeholder="All"
           />
         </div>
 
@@ -537,7 +537,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
             value={userFilter}
             onChange={(value) => setUserFilter(String(value))}
             options={userOptions}
-            placeholder="All Users"
+            placeholder="All"
             enableSearch={true}
             isLoading={isUserOptionsLoading}
             loadingText="Loading users..."

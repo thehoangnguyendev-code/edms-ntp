@@ -30,8 +30,13 @@ public class TrainingRequirementController {
 
     @GetMapping
     public ResponseEntity<?> list(@RequestParam(required = false) Integer year, @RequestParam(required = false) String status, @RequestParam(required = false) String search,
+                                  @RequestParam(required = false) String kind, @RequestParam(required = false) UUID departmentId,
+                                  @RequestParam(required = false) String dueFrom, @RequestParam(required = false) String dueTo,
+                                  @RequestParam(required = false) String createdFrom, @RequestParam(required = false) String createdTo,
+                                  @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(requirements.list(users.requireCurrentUser(), year, status, search, page, limit));
+        return ResponseEntity.ok(requirements.list(users.requireCurrentUser(), year, status, search,
+                new TrainingRequirementService.ListFilters(kind, departmentId, dueFrom, dueTo, createdFrom, createdTo), sortBy, sortDirection, page, limit));
     }
 
     @GetMapping("/suggestions")

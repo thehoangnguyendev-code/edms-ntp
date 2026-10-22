@@ -102,14 +102,14 @@ export function ReportHistoryView() {
       id: "status",
       label: "Status",
       value: status,
-      options: [{ label: "All statuses", value: "" }, ...STATUSES.map((s) => ({ label: runStatusLabel(s), value: s }))],
+      options: [{ label: "All", value: "" }, ...STATUSES.map((s) => ({ label: runStatusLabel(s), value: s }))],
       onChange: (value) => reset(() => setStatus(value)),
     },
     {
       id: "template",
       label: "Template",
       value: definitionCode,
-      options: [{ label: "All templates", value: "" }, ...templates],
+      options: [{ label: "All", value: "" }, ...templates],
       onChange: (value) => reset(() => setDefinitionCode(value)),
     },
   ];

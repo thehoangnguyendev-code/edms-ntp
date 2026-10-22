@@ -17,7 +17,7 @@ import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 
 const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
-  { label: "All Resource Types", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Revision", value: "REVISION" },
   { label: "Document", value: "DOCUMENT" },
   { label: "Controlled Copy", value: "CONTROLLED_COPY" },

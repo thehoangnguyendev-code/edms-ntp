@@ -18,19 +18,19 @@ type SortKey = "component" | "type" | "frequency" | "time" | "status";
 
 const ALL = "ALL";
 const STATUS_OPTIONS = [
-  { label: "All Status", value: ALL },
+  { label: "All", value: ALL },
   { label: "Active", value: "ACTIVE" },
   { label: "Not scheduled", value: "NOT_SCHEDULED" },
 ];
 
 const TYPE_OPTIONS = [
-  { label: "All Types", value: ALL },
+  { label: "All", value: ALL },
   { label: "Full", value: "FULL" },
   { label: "Incremental", value: "INCREMENTAL" },
   { label: "Pre-change", value: "PRE_CHANGE" },
 ];
 const FREQUENCY_OPTIONS = [
-  { label: "All Frequencies", value: ALL },
+  { label: "All", value: ALL },
   { label: "Hourly", value: "HOURLY" },
   { label: "Daily", value: "DAILY" },
   { label: "Weekly", value: "WEEKLY" },
@@ -192,9 +192,9 @@ export const BackupSchedulesView: React.FC = () => {
         searchLabel="Search schedules"
         searchPlaceholder="Component, type, frequency or time…"
         filters={[
-          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All Status", onChange: setStatus },
-          { id: "type", label: "Backup type", value: type, options: TYPE_OPTIONS, defaultValue: ALL, placeholder: "All Types", onChange: setType },
-          { id: "frequency", label: "Frequency", value: frequency, options: FREQUENCY_OPTIONS, defaultValue: ALL, placeholder: "All Frequencies", onChange: setFrequency },
+          { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
+          { id: "type", label: "Backup type", value: type, options: TYPE_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setType },
+          { id: "frequency", label: "Frequency", value: frequency, options: FREQUENCY_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setFrequency },
         ]}
         onClear={clearFilters}
         page={page}

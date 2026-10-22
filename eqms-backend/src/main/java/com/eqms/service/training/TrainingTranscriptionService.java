@@ -36,10 +36,8 @@ public class TrainingTranscriptionService {
     private final TrainingActivityService activities;
     private final ElectronicSignatureService signatures;
     private final UserAccountRepository users;
-    private final TrainingCalendarService calendar;
 
-    public TrainingTranscriptionService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingActivityService activities, ElectronicSignatureService signatures, UserAccountRepository users, TrainingCalendarService calendar) {
-        this.calendar = calendar;
+    public TrainingTranscriptionService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingActivityService activities, ElectronicSignatureService signatures, UserAccountRepository users) {
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
@@ -187,11 +185,11 @@ public class TrainingTranscriptionService {
         return list(actor, activityId).stream().filter(r -> id.equals(r.get("id"))).findFirst().orElseThrow();
     }
 
-    /** More than one working day after the session was held (Monday to Friday, minus the days off set in Training Properties). */
+    /** More than one day after the session was held, counted in calendar days: the SOP does not define working days, so a late typing only needs a reason. */
     private boolean isLate(Map<String, Object> session) {
         Object held = session.get("held_on");
         if (held == null) return false;
-        return calendar.workingDaysAfter(((java.sql.Date) held).toLocalDate(), LocalDate.now(TrainingNumberService.ZONE)) > 1;
+        return java.time.temporal.ChronoUnit.DAYS.between(((java.sql.Date) held).toLocalDate(), LocalDate.now(TrainingNumberService.ZONE)) > 1;
     }
 
     private static String blank(String v) { return v == null || v.isBlank() ? null : v.trim(); }

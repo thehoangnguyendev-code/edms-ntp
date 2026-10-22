@@ -205,7 +205,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "All" },
+        { label: "All", value: "All" },
         { label: "Active", value: "Active" },
         { label: "Inactive", value: "Inactive" },
       ],
@@ -251,8 +251,8 @@ export const DocumentNameFormatsTab: React.FC = () => {
               label="Status"
               value={statusFilter}
               onChange={(value) => { setStatusFilter(value as "All" | "Active" | "Inactive"); setCurrentPage(1); }}
-              options={[{ label: "All Status", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }]}
-              placeholder="All Status"
+              options={[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }]}
+              placeholder="All"
             />
           </div>
           <div className="sm:col-span-1 lg:col-span-4">
@@ -352,7 +352,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
       <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
         <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {[{ label: "All Status", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }].map((opt) => (
+            {[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }].map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => { setStatusFilter(opt.value as "All" | "Active" | "Inactive"); setCurrentPage(1); }}

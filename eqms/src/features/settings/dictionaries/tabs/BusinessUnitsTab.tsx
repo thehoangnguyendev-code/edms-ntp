@@ -322,7 +322,7 @@ export const BusinessUnitsTab = React.forwardRef<
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "All" },
+        { label: "All", value: "All" },
         { label: "Active", value: "Active" },
         { label: "Inactive", value: "Inactive" },
       ],
@@ -377,11 +377,11 @@ export const BusinessUnitsTab = React.forwardRef<
                   setCurrentPage(1);
                 }}
                 options={[
-                  { label: "All Status", value: "All" },
+                  { label: "All", value: "All" },
                   { label: "Active", value: "Active" },
                   { label: "Inactive", value: "Inactive" },
                 ]}
-                placeholder="All Status"
+                placeholder="All"
               />
             </div>
 
@@ -603,7 +603,7 @@ export const BusinessUnitsTab = React.forwardRef<
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Status", value: "All" },
+              { label: "All", value: "All" },
               { label: "Active", value: "Active" },
               { label: "Inactive", value: "Inactive" },
             ].map((opt) => (

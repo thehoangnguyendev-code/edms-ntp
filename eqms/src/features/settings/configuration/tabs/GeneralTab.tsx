@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/toast/Toast';
 import { settingsApi } from '@/services/api/settings';
 import type { ToastPosition } from '../types';
 import { DEFAULT_SYSTEM_HEADER_TITLE } from '@/services/api/branding';
+import { AppShortcutSection } from './AppShortcutSection';
 
 const TOAST_POSITION_OPTIONS: Array<{ label: string; value: ToastPosition }> = [
   { label: 'Top Right', value: 'top-right' },
@@ -300,6 +301,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               </div>
             </div>
           </div>
+          <AppShortcutSection config={config} onChange={onChange} />
         </div>
       </FormSection>
 

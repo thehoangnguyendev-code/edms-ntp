@@ -64,6 +64,9 @@ public class SystemConfigurationService {
     private final String defaultMinioTempPrefix;
     private final int defaultMinioRetentionYears;
 
+    /** Stateless apart from its render cache; the controller serving the icons has its own instance. Only the version and the checks are used here. */
+    private final PwaBrandingService pwaBranding = new PwaBrandingService();
+
     public SystemConfigurationService(
             SystemConfigurationRepository repository,
             UserAccountRepository userRepository,
@@ -173,6 +176,7 @@ public class SystemConfigurationService {
         validateDesktopFilterConfig(nextGeneral);
         validateToastPosition(nextGeneral);
         validateSystemHeaderTitle(nextGeneral);
+        PwaBrandingService.validate(nextGeneral);
         config.setGeneralConfig(nextGeneral);
         config.setSecurityConfig(defaultIfNull(request.security(), config.getSecurityConfig()));
         if (request.documents() != null) {
@@ -336,8 +340,32 @@ public class SystemConfigurationService {
                 textValue(general, "systemFavicon"),
                 appearance == null ? null : textValue(appearance, "systemFooter"),
                 systemHeaderTitle(general),
-                readStringMap(general == null ? null : general.get("navigationLabelOverrides"))
+                readStringMap(general == null ? null : general.get("navigationLabelOverrides")),
+                pwaBranding.hasCustomIcon(pwaSource(general)) ? pwaBranding.version(pwaSource(general)) : "",
+                blankToNull(textValue(general, PwaBrandingService.SHORT_NAME_FIELD))
         );
+    }
+
+    /** What the home-screen shortcut is made of. Cached with the rest of the public branding and dropped by the same save. */
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "public-branding", key = "'pwa'")
+    public PwaBrandingService.Source getPwaBrandingSource() {
+        return pwaSource(requireConfiguration().getGeneralConfig());
+    }
+
+    private PwaBrandingService.Source pwaSource(JsonNode general) {
+        JsonNode appearance = general == null ? null : general.get("appearance");
+        String primary = appearance == null ? null : textValue(appearance, "primaryColor");
+        return new PwaBrandingService.Source(
+                blankToNull(textValue(general, PwaBrandingService.ICON_FIELD)),
+                blankToNull(textValue(general, PwaBrandingService.SHORT_NAME_FIELD)),
+                blankToNull(textValue(general, PwaBrandingService.BACKGROUND_FIELD)),
+                blankToNull(textValue(general, "systemDisplayName")),
+                primary != null && primary.matches("^#[0-9a-fA-F]{6}$") ? primary : null);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
     }
 
     static final int SYSTEM_HEADER_TITLE_MAX_LENGTH = 120;

@@ -634,7 +634,7 @@ export const AccessProfileListView: React.FC = () => {
       label: "Type",
       value: String(typeFilter),
       options: [
-        { label: "All Types", value: "ALL" },
+        { label: "All", value: "ALL" },
         { label: "System", value: "SYSTEM" },
         { label: "Custom", value: "CUSTOM" },
       ],
@@ -648,7 +648,7 @@ export const AccessProfileListView: React.FC = () => {
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "all" },
+        { label: "All", value: "all" },
         { label: "Active", value: "active" },
         { label: "Inactive", value: "inactive" },
       ],
@@ -708,7 +708,7 @@ export const AccessProfileListView: React.FC = () => {
                 value={typeFilter}
                 onChange={v => { setTypeFilter(String(v)); setCurrentPage(1); }}
                 options={[
-                  { label: "All Types", value: "ALL" },
+                  { label: "All", value: "ALL" },
                   { label: "System",    value: "SYSTEM" },
                   { label: "Custom",    value: "CUSTOM" },
                 ]}
@@ -720,7 +720,7 @@ export const AccessProfileListView: React.FC = () => {
                 value={statusFilter}
                 onChange={v => { setStatusFilter(String(v)); setCurrentPage(1); }}
                 options={[
-                  { label: "All Status", value: "all"      },
+                  { label: "All", value: "all"      },
                   { label: "Active",     value: "active"   },
                   { label: "Inactive",   value: "inactive" },
                 ]}
@@ -767,7 +767,7 @@ export const AccessProfileListView: React.FC = () => {
             <FilterAccordionItem label="Type" isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
               <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
                 {[
-                  { label: "All Types", value: "ALL" },
+                  { label: "All", value: "ALL" },
                   { label: "System",    value: "SYSTEM" },
                   { label: "Custom",    value: "CUSTOM" },
                 ].map(opt => (
@@ -785,7 +785,7 @@ export const AccessProfileListView: React.FC = () => {
             <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
               <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
                 {[
-                  { label: "All Status", value: "all"      },
+                  { label: "All", value: "all"      },
                   { label: "Active",     value: "active"   },
                   { label: "Inactive",   value: "inactive" },
                 ].map(opt => (

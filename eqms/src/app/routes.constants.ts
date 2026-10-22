@@ -223,6 +223,7 @@ export const ROUTES = {
       PROPERTIES: '/settings/administration/training/properties',
       TOPICS: '/settings/administration/training/topics',
       PERSON_POSITIONS: '/settings/administration/training/person-positions',
+      NOTIFICATIONS: '/settings/administration/training/notifications',
     },
   },
 

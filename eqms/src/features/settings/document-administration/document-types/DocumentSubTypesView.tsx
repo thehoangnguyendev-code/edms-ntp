@@ -154,7 +154,7 @@ export const DocumentSubTypesView: React.FC = () => {
           ? formatDocumentTypeLookupLabel(selectedItem.shortCode, selectedItem.name)
           : "";
       return [
-        { label: "All Document Types", value: "All" },
+        { label: "All", value: "All" },
         ...activeOptions,
         ...(selected ? [{ label: selected, value: documentTypeFilter }] : []),
       ];
@@ -162,7 +162,7 @@ export const DocumentSubTypesView: React.FC = () => {
 
     const filterDocumentTypeOptions = useMemo<DocumentTypeOption[]>(
       () => [
-        { label: "All Document Types", value: "All" },
+        { label: "All", value: "All" },
         ...documentTypes.map((item) => ({
           label: formatDocumentTypeLookupLabel(item.shortCode, item.name),
           value: item.id,
@@ -389,7 +389,7 @@ export const DocumentSubTypesView: React.FC = () => {
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "All" },
+        { label: "All", value: "All" },
         { label: "Active", value: "Active" },
         { label: "Inactive", value: "Inactive" },
       ],
@@ -455,11 +455,11 @@ export const DocumentSubTypesView: React.FC = () => {
                   setCurrentPage(1);
                 }}
                 options={[
-                  { label: "All Status", value: "All" },
+                  { label: "All", value: "All" },
                   { label: "Active", value: "Active" },
                   { label: "Inactive", value: "Inactive" },
                 ]}
-                placeholder="All Status"
+                placeholder="All"
               />
             </div>
 
@@ -472,7 +472,7 @@ export const DocumentSubTypesView: React.FC = () => {
                   setCurrentPage(1);
                 }}
                 options={filterDocumentTypeOptions}
-                placeholder="All Document Types"
+                placeholder="All"
                 enableSearch={true}
               />
             </div>
@@ -647,7 +647,7 @@ export const DocumentSubTypesView: React.FC = () => {
           >
             <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
               {[
-                { label: "All Status", value: "All" },
+                { label: "All", value: "All" },
                 { label: "Active", value: "Active" },
                 { label: "Inactive", value: "Inactive" },
               ].map((opt) => (

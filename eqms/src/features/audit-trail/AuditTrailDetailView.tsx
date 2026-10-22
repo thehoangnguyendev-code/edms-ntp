@@ -1,3 +1,4 @@
+import { formatAuditActionLabel, formatAuditModuleLabel } from "./utils/actionBadge";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -89,13 +90,7 @@ const getSeverityBadgeColor = (severity?: string): BadgeColor => {
   }
 };
 
-const formatAuditLabel = (value?: string): string => {
-  if (!value) return "-";
-  return value
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
-};
+const formatAuditLabel = (value?: string): string => (value ? formatAuditActionLabel(value) : "-");
 
 const buildEntityLabel = (r: AuditTrailRecord): string => {
   if (r.entityName && r.entityName.trim()) return r.entityName.trim();
@@ -367,7 +362,7 @@ export const AuditTrailDetailView: React.FC<{
                     {actionLabel}
                   </Badge>
                   <Badge color="slate" size="sm">
-                    {r.module || "General"}
+                    {r.module ? formatAuditModuleLabel(r.module) : "General"}
                   </Badge>
                   {r.severity && (
                     <Badge color={getSeverityBadgeColor(r.severity)} size="sm">
@@ -476,7 +471,7 @@ export const AuditTrailDetailView: React.FC<{
                 <DetailItem
                   icon={<Layers className="h-3.5 w-3.5" />}
                   label="Target Module"
-                  value={r.module || "-"}
+                  value={formatAuditModuleLabel(r.module)}
                 />
                 <DetailItem
                   icon={<IconLabel className="h-3.5 w-3.5" />}

@@ -30,7 +30,16 @@ export const SessionTimeoutGuard: React.FC = () => {
     let isActive = true;
     const hydrateSecurityConfig = async () => {
       try {
-        const config = await settingsApi.getSystemConfiguration();
+        // The full configuration is for people with the Settings > Configuration permission; everyone else reads the session timeout alone.
+        let config: Record<string, any>;
+        if ((user?.permissions ?? []).includes("settings.configuration.view")) {
+          config = await settingsApi.getSystemConfiguration();
+        } else {
+          let cached: Record<string, any> = {};
+          try { cached = JSON.parse(window.localStorage.getItem(SECURITY_CONFIG_STORAGE_KEY) || "{}"); } catch { cached = {}; }
+          const security = await settingsApi.getSecurityConfiguration();
+          config = { ...cached, security: { ...(cached.security ?? {}), sessionTimeoutMinutes: security.sessionTimeoutMinutes } };
+        }
         if (!isActive) return;
         window.localStorage.setItem(SECURITY_CONFIG_STORAGE_KEY, JSON.stringify(config));
         window.dispatchEvent(new Event("eqms:security-config-updated"));
@@ -50,7 +59,7 @@ export const SessionTimeoutGuard: React.FC = () => {
       isActive = false;
       unsubscribeRealtime();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.permissions]);
 
   const sendHeartbeat = useCallback(async (force = false) => {
     if (!isAuthenticated || sessionLockedRef.current) {

@@ -303,7 +303,7 @@ export const PositionsTab = React.forwardRef<
       label: "Business Unit",
       value: String(businessUnitFilter),
       resetOnChange: { departmentFilter: "All" },
-      options: [{ label: "All Units", value: "All" }, ...businessUnits],
+      options: [{ label: "All", value: "All" }, ...businessUnits],
       onChange: (value) => {
         setBusinessUnitFilter(value as "All" | BusinessUnit);
         setCurrentPage(1);
@@ -314,11 +314,11 @@ export const PositionsTab = React.forwardRef<
       label: "Department",
       value: String(departmentFilter),
       options: availableDepartments.map((d) => ({
-        label: d === "All" ? "All Departments" : d,
+        label: d === "All" ? "All" : d,
         value: d,
       })),
       getOptions: (draft) => [
-        { label: "All Departments", value: "All" },
+        { label: "All", value: "All" },
         ...departments
           .filter((dept) => dept.businessUnit === draft.businessUnitFilter)
           .map((dept) => ({ label: dept.name, value: dept.name })),
@@ -334,7 +334,7 @@ export const PositionsTab = React.forwardRef<
       label: "Status",
       value: String(statusFilter),
       options: [
-        { label: "All Status", value: "All" },
+        { label: "All", value: "All" },
         { label: "Active", value: "Active" },
         { label: "Inactive", value: "Inactive" },
       ],
@@ -382,10 +382,10 @@ export const PositionsTab = React.forwardRef<
               value={businessUnitFilter}
               onChange={(value) => { setBusinessUnitFilter(value as "All" | BusinessUnit); setDepartmentFilter("All"); setCurrentPage(1); }}
               options={[
-                { label: "All Units", value: "All" },
+                { label: "All", value: "All" },
                 ...businessUnits,
               ]}
-              placeholder="All Business Units"
+              placeholder="All"
             />
           </div>
 
@@ -394,8 +394,8 @@ export const PositionsTab = React.forwardRef<
               label="Department"
               value={departmentFilter}
               onChange={(value) => { setDepartmentFilter(value); setCurrentPage(1); }}
-              options={availableDepartments.map((d) => ({ label: d === "All" ? "All Departments" : d, value: d }))}
-              placeholder="All Departments"
+              options={availableDepartments.map((d) => ({ label: d === "All" ? "All" : d, value: d }))}
+              placeholder="All"
               disabled={businessUnitFilter === "All"}
             />
           </div>
@@ -406,11 +406,11 @@ export const PositionsTab = React.forwardRef<
               value={statusFilter}
               onChange={(value) => { setStatusFilter(value as "All" | "Active" | "Inactive"); setCurrentPage(1); }}
               options={[
-                { label: "All Status", value: "All" },
+                { label: "All", value: "All" },
                 { label: "Active", value: "Active" },
                 { label: "Inactive", value: "Inactive" },
               ]}
-              placeholder="All Status"
+              placeholder="All"
             />
           </div>
 
@@ -604,7 +604,7 @@ export const PositionsTab = React.forwardRef<
         <FilterAccordionItem label="Business Unit" isExpanded={expandedSections.has("businessUnit")} onToggle={() => toggleSection("businessUnit")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Units", value: "All" },
+              { label: "All", value: "All" },
               ...businessUnits,
             ].map((opt) => (
               <button
@@ -627,7 +627,7 @@ export const PositionsTab = React.forwardRef<
                 onClick={() => { setDepartmentFilter(dept); setCurrentPage(1); }}
                 className={getOptionClassName(departmentFilter === dept)}
               >
-                <span className="text-xs">{dept === "All" ? "All Departments" : dept}</span>
+                <span className="text-xs">{dept === "All" ? "All" : dept}</span>
                 {departmentFilter === dept && <Check size={16} className="text-emerald-500" />}
               </button>
             ))}
@@ -637,7 +637,7 @@ export const PositionsTab = React.forwardRef<
         <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
-              { label: "All Status", value: "All" },
+              { label: "All", value: "All" },
               { label: "Active", value: "Active" },
               { label: "Inactive", value: "Inactive" },
             ].map((opt) => (

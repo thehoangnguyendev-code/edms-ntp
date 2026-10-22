@@ -2,6 +2,7 @@ package com.eqms.service.training;
 
 import com.eqms.entity.UserAccount;
 import com.eqms.service.AuditTrailService;
+import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.ElectronicSignatureService;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,13 +18,14 @@ import java.util.UUID;
 
 /**
  * Who may train others (SOP.0003 TR-19). A trainer of the organisation is qualified for a session when the person has been trained on GMP and, for every topic
- * of the session, has been trained on it or takes part in its document (author, co-author, reviewer, approver) or heads the department that organises the
- * training. A trainer who is not qualified can still be used when a person designated for the step approves an exception with a signature. A trainer from outside
+ * of the session, has been trained on it or takes part in its document (author, co-author, reviewer, approver), or holds the permission training.trainer.qualified that QA
+ * grants (D-10; it replaced the rule about heading the organising department). A trainer who is not qualified can still be used when a person designated for the step approves an exception with a signature. A trainer from outside
  * the organisation is not judged here: the qualification of outside trainers is kept in the documents of the supplier.
  */
 @Service
 public class TrainingTrainerService {
     private static final String TYPE = "TRAINING_TRAINER_EXCEPTION";
+    static final String QUALIFIED = "training.trainer.qualified";
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -31,14 +33,16 @@ public class TrainingTrainerService {
     private final ElectronicSignatureService signatures;
     private final AuditTrailService audit;
     private final TrainingStore store;
+    private final UserAccountRepository users;
 
-    public TrainingTrainerService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures, AuditTrailService audit, TrainingStore store) {
+    public TrainingTrainerService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures, AuditTrailService audit, TrainingStore store, UserAccountRepository users) {
         this.jdbc = jdbc;
         this.access = access;
         this.approvals = approvals;
         this.signatures = signatures;
         this.audit = audit;
         this.store = store;
+        this.users = users;
     }
 
     public record ExceptionRequest(String reason, UUID approverUserId) {}
@@ -61,7 +65,7 @@ public class TrainingTrainerService {
             select count(*) from training_records r left join training_record_voids v on v.record_id = r.id
              where r.person_user_id=? and v.id is null and lower(r.topic_text) like '%gmp%'
             """, Integer.class, trainer) > 0;
-        boolean head = jdbc.queryForObject("select count(*) from departments where id=? and department_head_id=?", Integer.class, session.get("organizer_department_id"), trainer) > 0;
+        boolean grantedByQa = users.findById(trainer).map(u -> access.has(u, QUALIFIED)).orElse(false);
         List<Map<String, Object>> topics = new ArrayList<>();
         List<String> reasons = new ArrayList<>();
         if (!gmp) reasons.add("The trainer has no training record on GMP.");
@@ -78,10 +82,11 @@ public class TrainingTrainerService {
             row.put("trained", trained);
             row.put("involved", involved);
             topics.add(row);
-            if (!(trained || involved || head)) reasons.add("The trainer was not trained on \"" + topic.get("topic_text") + "\" and does not take part in its document.");
+            if (!(trained || involved || grantedByQa)) reasons.add("The trainer was not trained on \"" + topic.get("topic_text") + "\" and does not take part in its document.");
         }
         out.put("applies", true);
         out.put("gmpTrained", gmp);
+        out.put("qualifiedByPermission", grantedByQa);
         out.put("topics", topics);
         out.put("qualified", reasons.isEmpty());
         out.put("reasons", reasons);

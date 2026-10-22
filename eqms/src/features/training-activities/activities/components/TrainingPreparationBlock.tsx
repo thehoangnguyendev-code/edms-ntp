@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -34,6 +35,7 @@ export function TrainingPreparationBlock({ activityId, canManage, userId }: { ac
 
   const load = useCallback(() => { trainingPreparationApi.get(activityId).then(setSessions).catch(() => setSessions([])); }, [activityId]);
   useEffect(load, [load]);
+  useEntityChanged(["TRAINING"], load);
 
   const save = async (row: Row, body: { status: string; assignedTo?: string | null; note?: string | null }) => {
     setBusy(true);

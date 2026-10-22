@@ -7,7 +7,7 @@ export type SeverityFilter = "ALL" | "INFO" | "WARNING" | "CRITICAL";
 export type StateFilter = "ALL" | AnnouncementState;
 
 export const STATE_FILTER_OPTIONS: { label: string; value: StateFilter }[] = [
-  { label: "All Status", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Active", value: "ACTIVE" },
   { label: "Scheduled", value: "SCHEDULED" },
   { label: "Expired", value: "EXPIRED" },
@@ -15,7 +15,7 @@ export const STATE_FILTER_OPTIONS: { label: string; value: StateFilter }[] = [
 ];
 
 export const SEVERITY_FILTER_OPTIONS: { label: string; value: SeverityFilter }[] = [
-  { label: "All Severities", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Information", value: "INFO" },
   { label: "Warning", value: "WARNING" },
   { label: "Critical", value: "CRITICAL" },

@@ -1,4 +1,6 @@
+import { TrainingPersonName } from "@/features/training-activities/shared/TrainingPersonName";
 import { useCallback, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -19,7 +21,7 @@ import { useEffect } from "react";
 export function TrainingPersonPositionsView() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [unmatched, setUnmatched] = useState("");
+  const [unmatched, setUnmatched] = usePersistedState("training.admin.positions.unmatched", "");
   const [positions, setPositions] = useState<TrainingPosition[]>([]);
   const [choice, setChoice] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
@@ -27,7 +29,7 @@ export function TrainingPersonPositionsView() {
   useEffect(() => { trainingMatrixApi.positions().then(setPositions).catch(() => setPositions([])); }, []);
   const fetcher = useCallback((params: Record<string, string | number | boolean | undefined>) => trainingMatrixApi.personPositions(params).catch((e) => { setError(trainingError(e)); throw e; }), []);
   const extra = useMemo(() => ({ unmatchedOnly: unmatched === "yes" ? true : undefined }), [unmatched]);
-  const table = useServerTable<TrainingPersonPosition>({ fetcher, defaultSortBy: "fullName", extraParams: extra, initialItemsPerPage: 10 });
+  const table = useServerTable<TrainingPersonPosition>({ persistKey: "training.admin.positions", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "fullName", extraParams: extra, initialItemsPerPage: 10 });
 
   const apply = async (row: TrainingPersonPosition, positionId: string) => {
     try {
@@ -39,12 +41,15 @@ export function TrainingPersonPositionsView() {
     }
   };
   const options = positions.map((p) => ({ label: `${p.name}${p.departmentName ? ` (${p.departmentName})` : ""}`, value: p.id }));
+  const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
+
   const columns: DataTableColumn<TrainingPersonPosition>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "name", header: "Employee", cell: (r) => <div><div className="font-medium">{r.fullName}</div><div className="text-xs text-slate-500">{r.employeeCode ?? ""}</div></div> },
-    { id: "department", header: "Department", cell: (r) => r.department ?? "—" },
-    { id: "text", header: "Position in the user table", cell: (r) => r.positionText ?? "—" },
-    { id: "mapped", header: "Position for training", cell: (r) => (r.positionName ? <Badge color="emerald">{r.positionName}</Badge> : <Badge color="amber">Not set</Badge>) },
+    { id: "employeeCode", header: "Employee ID", sort: sorted("employeeCode"), cell: (r) => r.employeeCode ?? "—" },
+    { id: "name", header: "Full Name", sort: sorted("fullName"), cell: (r) => <TrainingPersonName fullName={r.fullName} avatar={r.avatar} /> },
+    { id: "department", header: "Department", sort: sorted("department"), cell: (r) => r.department ?? "—" },
+    { id: "text", header: "Position in the user table", sort: sorted("positionText"), cell: (r) => r.positionText ?? "—" },
+    { id: "mapped", header: "Position for training", sort: sorted("positionName"), cell: (r) => (r.positionName ? <Badge color="emerald">{r.positionName}</Badge> : <Badge color="amber">Not set</Badge>) },
     {
       id: "set",
       header: "Set position",
@@ -57,7 +62,7 @@ export function TrainingPersonPositionsView() {
     },
   ];
   const { layout, control } = useCustomColumnLayout("training.person.positions", columns);
-  const filters: ReportSelectFilter[] = [{ id: "unmatched", label: "Show", value: unmatched, options: [{ label: "All people", value: "" }, { label: "Without a position", value: "yes" }], onChange: (v) => { setUnmatched(v); table.setCurrentPage(1); } }];
+  const filters: ReportSelectFilter[] = [{ id: "unmatched", label: "Show", value: unmatched, options: [{ label: "All", value: "" }, { label: "Without a position", value: "yes" }], onChange: (v) => { setUnmatched(v); table.setCurrentPage(1); } }];
   const crumbs = [...trainingAdministrationBase(navigate), { label: "Person Positions", isActive: true }];
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">

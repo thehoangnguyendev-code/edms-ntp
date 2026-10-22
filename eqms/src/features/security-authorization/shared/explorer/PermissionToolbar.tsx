@@ -42,7 +42,7 @@ interface PermissionToolbarProps {
 }
 
 const RISK_OPTIONS: { value: RiskFilter; label: string }[] = [
-  { value: "ALL", label: "All Risk" },
+  { value: "ALL", label: "All" },
   { value: "LOW", label: "Low" },
   { value: "MEDIUM", label: "Medium" },
   { value: "HIGH", label: "High" },
@@ -114,12 +114,12 @@ export const PermissionToolbar: React.FC<PermissionToolbarProps> = ({
   const clearAll = () => onChange(DEFAULT_FILTERS);
 
   const moduleOptions = [
-    { label: "All Modules", value: "" },
+    { label: "All", value: "" },
     ...modules.map((m) => ({ label: m, value: m })),
   ];
 
   const resourceOptions = [
-    { label: "All Resources", value: "" },
+    { label: "All", value: "" },
     ...resources.map((r) => ({ label: r, value: r })),
   ];
 
@@ -196,7 +196,7 @@ export const PermissionToolbar: React.FC<PermissionToolbarProps> = ({
             value={filters.module}
             onChange={(v) => onChange({ ...filters, module: v, resource: "" })}
             options={moduleOptions}
-            placeholder="All Modules"
+            placeholder="All"
             searchPlaceholder="Search module..."
           />
         </div>
@@ -207,7 +207,7 @@ export const PermissionToolbar: React.FC<PermissionToolbarProps> = ({
             value={filters.resource}
             onChange={(v) => set("resource", v)}
             options={resourceOptions}
-            placeholder="All Resources"
+            placeholder="All"
             searchPlaceholder="Search resource..."
           />
         </div>
@@ -218,7 +218,7 @@ export const PermissionToolbar: React.FC<PermissionToolbarProps> = ({
             value={filters.risk}
             onChange={(v) => set("risk", v as RiskFilter)}
             options={RISK_OPTIONS}
-            placeholder="All Risk"
+            placeholder="All"
           />
         </div>
 

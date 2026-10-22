@@ -204,7 +204,7 @@ public class TrainingApprovalService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> assignments(String objectType, UUID objectId) {
         return jdbc.queryForList("""
-            select a.id, a.step_code as "stepCode", a.assignee_user_id as "assigneeId", u.full_name as "assigneeName", a.status, a.assigned_at as "assignedAt", a.completed_at as "completedAt"
+            select a.id, a.step_code as "stepCode", a.assignee_user_id as "assigneeId", u.full_name as "assigneeName", u.avatar as "avatar", a.status, a.assigned_at as "assignedAt", a.completed_at as "completedAt"
               from training_approval_assignments a join app_users u on u.id = a.assignee_user_id
              where a.object_type=? and a.object_id=? order by a.assigned_at
             """, objectType, objectId);

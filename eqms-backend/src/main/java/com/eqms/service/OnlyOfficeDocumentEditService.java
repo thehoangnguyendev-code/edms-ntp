@@ -203,6 +203,69 @@ public class OnlyOfficeDocumentEditService {
         return rootConfig;
     }
 
+    /**
+     * The editor config of an edit session of a training file (the exam template or the answer key of an activity). The document server fetches the working copy and reports
+     * saves with a token that names the session; the key belongs to the session, so everyone who opens the session shares one editing session and a new session never shows
+     * a cached file. Download and print stay off: the file is kept in the activity, not on the computer.
+     */
+    public ObjectNode buildTrainingEditConfig(UUID sessionId, String documentKey, String fileName, UserAccount currentUser) {
+        OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
+        if (!config.enabled() || !StringUtils.hasText(config.jwtSecret())) {
+            throw new IllegalStateException("OnlyOffice Document Server is not configured");
+        }
+        SecretKey secret = Keys.hmacShaKeyFor(config.jwtSecret().getBytes(StandardCharsets.UTF_8));
+        Instant now = Instant.now();
+        String accessToken = Jwts.builder().subject(currentUser.getId().toString()).claim("purpose", "training-edit").claim("file", sessionId.toString())
+                .issuedAt(Date.from(now)).expiration(Date.from(now.plus(Duration.ofHours(14)))).signWith(secret).compact();
+
+        ObjectNode documentNode = objectMapper.createObjectNode();
+        documentNode.put("fileType", fileExtension(fileName));
+        documentNode.put("key", documentKey.replace("_", "-"));
+        documentNode.put("title", fileName);
+        documentNode.put("url", config.callbackBaseUrl() + "/onlyoffice/stored-file/training-edit/" + sessionId + "?token=" + accessToken);
+        ObjectNode permissions = objectMapper.createObjectNode();
+        permissions.put("edit", true);
+        permissions.put("review", false);
+        permissions.put("comment", true);
+        permissions.put("download", false);
+        permissions.put("print", false);
+        documentNode.set("permissions", permissions);
+
+        ObjectNode editorConfigNode = objectMapper.createObjectNode();
+        editorConfigNode.put("mode", "edit");
+        editorConfigNode.put("callbackUrl", config.callbackBaseUrl() + "/onlyoffice/training-callback/" + sessionId + "?token=" + accessToken);
+        ObjectNode user = objectMapper.createObjectNode();
+        user.put("id", currentUser.getId().toString());
+        user.put("name", currentUser.getFullName());
+        editorConfigNode.set("user", user);
+        ObjectNode customization = objectMapper.createObjectNode();
+        // Save in the editor sends the file to the activity at once, not only when the last person leaves.
+        customization.put("forcesave", true);
+        String logoUrl = requestedLogoUrl();
+        if (StringUtils.hasText(logoUrl) && systemConfigurationService.getPublicBranding().systemLogo() != null) {
+            ObjectNode logo = objectMapper.createObjectNode();
+            logo.put("image", logoUrl);
+            logo.put("imageEmbedded", logoUrl);
+            customization.set("logo", logo);
+        }
+        editorConfigNode.set("customization", customization);
+
+        ObjectNode rootConfig = objectMapper.createObjectNode();
+        rootConfig.put("documentType", "word");
+        rootConfig.set("document", documentNode);
+        rootConfig.set("editorConfig", editorConfigNode);
+        rootConfig.put("token", signConfig(rootConfig, config.jwtSecret()));
+        return rootConfig;
+    }
+
+    /** Checks the token of an edit session of a training file and returns the person who opened it. */
+    public UUID verifyTrainingEditToken(UUID sessionId, String token) {
+        verifyStoredFileToken("training-edit", sessionId, token);
+        OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
+        SecretKey key = Keys.hmacShaKeyFor(config.jwtSecret().getBytes(StandardCharsets.UTF_8));
+        return UUID.fromString(Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload().getSubject());
+    }
+
     /** Checks the token the document server presents when it fetches a stored file for the viewer. */
     public void verifyStoredFileToken(String purpose, UUID fileId, String token) {
         OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();

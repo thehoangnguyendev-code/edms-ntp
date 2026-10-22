@@ -29,12 +29,12 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 const BASE_PATH = `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/state-policies`;
 
 const TYPE_OPTIONS: SelectOption[] = [
-  { label: "All Types", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "System", value: "SYSTEM" },
   { label: "Custom", value: "CUSTOM" },
 ];
 const ACTIVE_OPTIONS: SelectOption[] = [
-  { label: "All Status", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Active", value: "ACTIVE" },
   { label: "Inactive", value: "INACTIVE" },
 ];
@@ -116,11 +116,11 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
   }, [canView]);
 
   const capabilityOptions: SelectOption[] = [
-    { label: "All Capabilities", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...(options?.capabilities ?? []).map((c) => ({ label: c.replace(/_/g, " "), value: c })),
   ];
   const scopeOptions: SelectOption[] = [
-    { label: "All Actor Scopes", value: "ALL" },
+    { label: "All", value: "ALL" },
     ...(options?.actorScopes ?? []).map((s) => ({ label: s, value: s })),
   ];
 

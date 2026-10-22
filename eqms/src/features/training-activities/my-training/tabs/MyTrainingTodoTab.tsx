@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
@@ -15,22 +16,23 @@ import { METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day } from "../../shared/trai
 export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => void }) {
   const navigate = useNavigate();
   const drag = useTableDragScroll();
-  const [method, setMethod] = useState("");
-  const [status, setStatus] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [method, setMethod] = usePersistedState("training.my.todo.method", "");
+  const [status, setStatus] = usePersistedState("training.my.todo.status", "");
+  const [from, setFrom] = usePersistedState("training.my.todo.from", "");
+  const [to, setTo] = usePersistedState("training.my.todo.to", "");
   const extraParams = useMemo(() => ({ method: method || undefined, status: status || undefined, fromDate: pickerDateToIso(from) || undefined, toDate: pickerDateToIso(to) || undefined }), [method, status, from, to]);
-  const table = useServerTable<TrainingTask>({ fetcher: myTrainingApi.tasks, defaultSortBy: "dueDate", extraParams, syncToUrl: false });
+  const table = useServerTable<TrainingTask>({ persistKey: "training.my.todo", liveTypes: ["TRAINING"], fetcher: myTrainingApi.tasks, defaultSortBy: "dueDate", extraParams, syncToUrl: false });
   useEffect(() => { if (!table.isLoading) onTotal(table.totalItems); }, [table.isLoading, table.totalItems, onTotal]);
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
   const columns: DataTableColumn<TrainingTask>[] = [
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (t) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${t.activityId}/participate`)}>{t.trainingNumber}</button> },
+    { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (t) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(t.examReady ? `/training-management/participations/${t.participantId}/test` : `/training-management/activities/${t.activityId}/participate`)}>{t.trainingNumber}</button> },
     { id: "title", header: "Training Title", sort: sorted("trainingTitle"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.trainingTitle}</div> },
     { id: "topics", header: "Topics", sort: sorted("topics"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.topics ?? "—"}</div> },
     { id: "method", header: "Method", sort: sorted("method"), cell: (t) => METHOD_LABEL[t.method] ?? t.method },
     { id: "when", header: "Scheduled", sort: sorted("scheduledOn"), cell: (t) => day(t.scheduledOn) },
     { id: "due", header: "Due", sort: sorted("dueDate"), cell: (t) => day(t.dueDate) },
+    { id: "todo", header: "To do", cell: (t) => (t.examReady ? <Badge color="blue">Take the test</Badge> : <Badge color="slate">Attend</Badge>) },
     { id: "status", header: "Status", sort: sorted("status"), cell: (t) => <Badge color={STATUS_COLOR[t.status] ?? "slate"}>{STATUS_LABEL[t.status] ?? t.status}</Badge> },
   ];
   const { layout, control } = useCustomColumnLayout("training.mine.tasks", columns);

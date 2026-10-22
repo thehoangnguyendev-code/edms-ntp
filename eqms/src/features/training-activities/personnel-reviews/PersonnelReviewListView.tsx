@@ -1,4 +1,6 @@
+import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { IconPlus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -19,6 +21,7 @@ import { trainingActivitiesApi, trainingError, trainingReviewsApi, type Training
 import { Input, Textarea } from "../shared/TrainingFields";
 import { TrainingDateField } from "../shared/TrainingDateField";
 import { day, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
+import { resettingDates, useDateRange, useDepartmentNameOptions } from "../shared/useListFilters";
 
 export const REVIEW_KIND_LABEL: Record<string, string> = { NEW_HIRE: "New employee", ABSENCE_RETURN: "Return after absence", DEPT_TRANSFER: "Transfer to another department", LOCATION_TRANSFER: "Transfer to another site" };
 export const REVIEW_STATUS_LABEL: Record<string, string> = { OPEN: "Open", CLOSED: "Closed", CANCELLED: "Cancelled" };
@@ -33,8 +36,12 @@ export function PersonnelReviewListView() {
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("training.job_assignment.manage");
-  const [status, setStatus] = useState("");
-  const [kind, setKind] = useState("");
+  const [status, setStatus] = usePersistedState("training.reviews.status", "");
+  const [kind, setKind] = usePersistedState("training.reviews.kind", "");
+  const [departmentFilter, setDepartmentFilter] = usePersistedState("training.reviews.department", "");
+  const departments = useDepartmentNameOptions();
+  const eventRange = useDateRange("training.reviews.event", "Event Date Range");
+  const openedRange = useDateRange("training.reviews.opened", "Opened Date Range");
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -56,23 +63,32 @@ export function PersonnelReviewListView() {
     return mapped;
   }, []);
   const fetcher = useCallback((params: Record<string, string | number | boolean | undefined>) => trainingReviewsApi.list(params).catch((e) => { setError(trainingError(e)); throw e; }), []);
-  const extra = useMemo(() => ({ status: status || undefined, kind: kind || undefined }), [status, kind]);
-  const table = useServerTable<TrainingPersonnelReviewSummary>({ fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams: extra, initialItemsPerPage: 10 });
+  const extra = useMemo(() => ({
+    status: status || undefined, kind: kind || undefined, department: departmentFilter || undefined,
+    ...eventRange.params("eventFrom", "eventTo"), ...openedRange.params("createdFrom", "createdTo"),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [status, kind, departmentFilter, eventRange.from, eventRange.to, openedRange.from, openedRange.to]);
+  const table = useServerTable<TrainingPersonnelReviewSummary>({ persistKey: "training.reviews", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams: extra, initialItemsPerPage: 10 });
+
+  const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   const columns: DataTableColumn<TrainingPersonnelReviewSummary>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "employee", header: "Employee", cell: (r) => <button type="button" className="text-left" onClick={() => navigate(`/training-management/personnel-reviews/${r.id}`)}><div className="font-medium text-emerald-600 hover:underline">{r.fullName}</div><div className="text-xs text-slate-500">{r.employeeCode ?? ""}</div></button> },
-    { id: "kind", header: "Event", cell: (r) => REVIEW_KIND_LABEL[r.kind] ?? r.kind },
-    { id: "date", header: "Event date", cell: (r) => day(r.eventDate) },
-    { id: "department", header: "Department", cell: (r) => r.department ?? "—" },
-    { id: "status", header: "Status", cell: (r) => <Badge color={REVIEW_STATUS_COLOR[r.status]}>{REVIEW_STATUS_LABEL[r.status]}</Badge> },
-    { id: "open", header: "Items to do", cell: (r) => (r.status === "OPEN" ? r.openItems : "—") },
-    { id: "by", header: "Opened by", cell: (r) => `${r.createdByName} (${day(r.createdAt)})` },
+    { id: "employeeCode", header: "Employee ID", sort: sorted("employeeCode"), cell: (r) => r.employeeCode ?? "—" },
+    { id: "employee", header: "Full Name", sort: sorted("employee"), cell: (r) => <TrainingPersonName fullName={r.fullName} avatar={r.avatar} onClick={() => navigate(`/training-management/personnel-reviews/${r.id}`)} /> },
+    { id: "kind", header: "Event", sort: sorted("kind"), cell: (r) => REVIEW_KIND_LABEL[r.kind] ?? r.kind },
+    { id: "date", header: "Event Date", sort: sorted("eventDate"), cell: (r) => day(r.eventDate) },
+    { id: "department", header: "Department", sort: sorted("department"), cell: (r) => r.department ?? "—" },
+    { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={REVIEW_STATUS_COLOR[r.status]}>{REVIEW_STATUS_LABEL[r.status]}</Badge> },
+    { id: "open", header: "Items to do", sort: sorted("openItems"), cell: (r) => (r.status === "OPEN" ? r.openItems : "—") },
+    { id: "by", header: "Opened By", sort: sorted("createdBy"), cell: (r) => r.createdByName },
+    { id: "openedOn", header: "Opened On", sort: sorted("createdAt"), cell: (r) => day(r.createdAt) },
   ];
   const { layout, control } = useCustomColumnLayout("training.personnel.reviews", columns);
   const filters: ReportSelectFilter[] = [
-    { id: "kind", label: "Event", value: kind, options: [{ label: "All events", value: "" }, ...Object.entries(REVIEW_KIND_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setKind(v); table.setCurrentPage(1); } },
-    { id: "status", label: "Status", value: status, options: [{ label: "All statuses", value: "" }, ...Object.entries(REVIEW_STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } },
+    { id: "kind", label: "Event", value: kind, options: [{ label: "All", value: "" }, ...Object.entries(REVIEW_KIND_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setKind(v); table.setCurrentPage(1); } },
+    { id: "status", label: "Status", value: status, options: [{ label: "All", value: "" }, ...Object.entries(REVIEW_STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } },
+    { id: "department", label: "Department", value: departmentFilter, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => { setDepartmentFilter(v); table.setCurrentPage(1); } },
   ];
 
   const transfer = form.kind === "DEPT_TRANSFER" || form.kind === "LOCATION_TRANSFER";
@@ -112,7 +128,9 @@ export function PersonnelReviewListView() {
         </section>
       )}
       <ReportListToolbar searchPlaceholder="Search employee…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
-        filters={filters} dates={[]} hasActiveFilters={Boolean(status || kind)} onClear={() => { setStatus(""); setKind(""); table.setCurrentPage(1); }} customControl={control}>
+        filters={filters} dates={resettingDates([eventRange.filter, openedRange.filter], () => table.setCurrentPage(1))}
+        hasActiveFilters={Boolean(status || kind || departmentFilter || eventRange.isSet || openedRange.isSet || table.searchQuery)}
+        onClear={() => { setStatus(""); setKind(""); setDepartmentFilter(""); eventRange.clear(); openedRange.clear(); table.setCurrentPage(1); }} customControl={control}>
         <DataTable rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading…" />} columns={columns} columnLayout={layout}
           emptyState={<TableEmptyState title="No Reviews" description="Open a review when a new employee joins, a person returns after a long absence, or a person transfers." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined} />

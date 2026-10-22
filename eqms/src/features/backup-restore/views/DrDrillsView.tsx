@@ -21,7 +21,7 @@ const ALL = "ALL";
 const RESULT_COLOR = { PASSED: "emerald", PASSED_WITH_FINDINGS: "amber", FAILED: "red" } as const;
 const RESULT_LABEL = { PASSED: "Passed", PASSED_WITH_FINDINGS: "Passed with findings", FAILED: "Failed" } as const;
 const RESULT_OPTIONS = [
-  { label: "All Results", value: ALL },
+  { label: "All", value: ALL },
   { label: RESULT_LABEL.PASSED, value: "PASSED" },
   { label: RESULT_LABEL.PASSED_WITH_FINDINGS, value: "PASSED_WITH_FINDINGS" },
   { label: RESULT_LABEL.FAILED, value: "FAILED" },
@@ -119,7 +119,7 @@ export const DrDrillsView: React.FC = () => {
   });
 
   const scenarioOf = (code: string) => scenarios.find((s) => s.code === code);
-  const scenarioOptions = [{ label: "All Scenarios", value: ALL }, ...scenarios.map((s) => ({ label: s.label, value: s.code }))];
+  const scenarioOptions = [{ label: "All", value: ALL }, ...scenarios.map((s) => ({ label: s.label, value: s.code }))];
   const valid = !!form && form.scenario && form.performedAt && form.lead.trim() && form.achieved.trim() !== "" && !Number.isNaN(Number(form.achieved)) && Number(form.achieved) >= 0
     && (form.result === "PASSED" || form.findings.trim().length > 0);
 
@@ -198,8 +198,8 @@ export const DrDrillsView: React.FC = () => {
         searchLabel="Search disaster recovery drills"
         searchPlaceholder="Drill, scenario or person…"
         filters={[
-          { id: "scenario", label: "Scenario", value: scenarioFilter, options: scenarioOptions, defaultValue: ALL, placeholder: "All Scenarios", onChange: setScenarioFilter },
-          { id: "result", label: "Result", value: resultFilter, options: RESULT_OPTIONS, defaultValue: ALL, placeholder: "All Results", onChange: setResultFilter },
+          { id: "scenario", label: "Scenario", value: scenarioFilter, options: scenarioOptions, defaultValue: ALL, placeholder: "All", onChange: setScenarioFilter },
+          { id: "result", label: "Result", value: resultFilter, options: RESULT_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setResultFilter },
         ]}
         onClear={() => {
           setSearch("");

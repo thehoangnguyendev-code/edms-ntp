@@ -22,6 +22,8 @@ export interface FormModalProps {
   confirmVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   showFooter?: boolean;
   footerLeft?: React.ReactNode;
+  /** Buttons placed in the footer, on the right, just before the cancel and confirm buttons. */
+  footerExtra?: React.ReactNode;
   className?: string;
 }
 
@@ -48,6 +50,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   confirmVariant = 'default',
   showFooter = true,
   footerLeft,
+  footerExtra,
   size = 'xl',
   className,
 }) => {
@@ -208,6 +211,7 @@ export const FormModal: React.FC<FormModalProps> = ({
                   {footerLeft}
                 </div>
                 <div className="flex justify-end gap-2 sm:gap-3">
+                  {footerExtra}
                   {showCancel && (
                     <Button size="sm" variant="outline" onClick={onClose} disabled={isLoading}>
                       {cancelText}

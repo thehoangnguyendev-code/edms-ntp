@@ -524,7 +524,7 @@ export const AnnouncementsView: React.FC = () => {
                   value={stateFilter}
                   onChange={(value) => setStateFilter(value as StateFilter)}
                   options={STATE_FILTER_OPTIONS}
-                  placeholder="All Status"
+                  placeholder="All"
                 />
                 <Select
                   label="Severity"
@@ -533,7 +533,7 @@ export const AnnouncementsView: React.FC = () => {
                     setSeverityFilter(value as SeverityFilter)
                   }
                   options={SEVERITY_FILTER_OPTIONS}
-                  placeholder="All Severities"
+                  placeholder="All"
                 />
                 <DateRangePicker
                   label="Starts"

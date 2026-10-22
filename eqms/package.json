@@ -30,6 +30,7 @@
     "framer-motion": "^12.23.26",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
+    "jsqr": "^1.4.0",
     "konva": "^9.3.22",
     "lexical": "^0.42.0",
     "lucide-react": "^1.53.0",

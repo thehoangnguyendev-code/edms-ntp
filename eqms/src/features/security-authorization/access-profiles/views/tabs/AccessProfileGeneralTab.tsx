@@ -91,7 +91,7 @@ export const GeneralTab: React.FC<{
               value={scopeStringToList(draft.businessUnitScope)}
               onChange={(values) => onChange("businessUnitScope", scopeListToString(values.map(String)) ?? "")}
               options={businessUnitOptions}
-              placeholder="All Business Units"
+              placeholder="All"
               isLoading={scopeOptionsLoading}
             />
           ) : (
@@ -107,7 +107,7 @@ export const GeneralTab: React.FC<{
               value={scopeStringToList(draft.departmentScope)}
               onChange={(values) => onChange("departmentScope", scopeListToString(values.map(String)) ?? "")}
               options={departmentOptions}
-              placeholder="All Departments"
+              placeholder="All"
               isLoading={scopeOptionsLoading}
             />
           ) : (
@@ -191,7 +191,7 @@ export const NewProfileForm: React.FC<{
             value={scopeStringToList(draft.businessUnitScope)}
             onChange={(values) => onChange("businessUnitScope", scopeListToString(values.map(String)) ?? "")}
             options={businessUnitOptions}
-            placeholder="All Business Units"
+            placeholder="All"
             isLoading={scopeOptionsLoading}
           />
         </div>
@@ -201,7 +201,7 @@ export const NewProfileForm: React.FC<{
             value={scopeStringToList(draft.departmentScope)}
             onChange={(values) => onChange("departmentScope", scopeListToString(values.map(String)) ?? "")}
             options={departmentOptions}
-            placeholder="All Departments"
+            placeholder="All"
             isLoading={scopeOptionsLoading}
           />
         </div>

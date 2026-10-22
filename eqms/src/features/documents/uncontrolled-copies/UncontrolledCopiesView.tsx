@@ -114,7 +114,7 @@ export const UncontrolledCopiesView: React.FC<{
   );
   const [statusOptions, setStatusOptions] = useState<
     { label: string; value: string }[]
-  >([{ label: "All States", value: "ALL" }]);
+  >([{ label: "All", value: "ALL" }]);
   const [createdFrom, setCreatedFrom] = useState(
     () => searchParams.get("createdFrom") ?? "",
   );
@@ -252,7 +252,7 @@ export const UncontrolledCopiesView: React.FC<{
       .getUncontrolledCopyFilters()
       .then((filters) =>
         setStatusOptions([
-          { label: "All States", value: "ALL" },
+          { label: "All", value: "ALL" },
           ...filters.statuses.map((s) => ({ label: s.label, value: s.code })),
         ]),
       )
@@ -610,7 +610,7 @@ export const UncontrolledCopiesView: React.FC<{
                   setCurrentPage(1);
                 }}
                 options={statusOptions}
-                placeholder="All States"
+                placeholder="All"
                 disabled={viewType !== "all"}
               />
             </div>

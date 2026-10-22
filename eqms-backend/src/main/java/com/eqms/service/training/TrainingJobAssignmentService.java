@@ -60,7 +60,12 @@ public class TrainingJobAssignmentService {
     // ----------------------------------------------------------------------------------------------------------------------------- reading
 
     @Transactional(readOnly = true)
-    public Map<String, Object> list(UserAccount actor, String search, String status, int page, int limit) {
+    public Map<String, Object> list(UserAccount actor, String search, String status, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, search, status, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> list(UserAccount actor, String search, String status, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.job_assignment.view", "training.job_assignment.manage", "training.self.view");
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
@@ -80,17 +85,30 @@ public class TrainingJobAssignmentService {
             where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(p.name) like ? escape '\\')");
             args.add(like); args.add(like); args.add(like);
         }
+        TrainingListFilter extra = new TrainingListFilter().equal("j.case_type", more.get("caseType")).equal("j.department_id", uuid(more.get("departmentId"))).equal("j.position_id", uuid(more.get("positionId")))
+                .timeRange("j.effective_at", more.get("effectiveFrom"), more.get("effectiveTo")).timeRange("j.created_at", more.get("createdFrom"), more.get("createdTo"));
+        where.append(extra.and());
+        args.addAll(extra.args());
         String from = " from training_job_assignments j join app_users u on u.id = j.person_user_id join positions p on p.id = j.position_id join departments d on d.id = j.department_id ";
         Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = jdbc.queryForList("select j.id, j.issue_no, j.case_type, j.status, j.created_at, j.effective_at, u.full_name, u.employee_code, p.name as position_name, d.name as department_name"
-                + from + where + " order by j.created_at desc limit ? offset ?", args.toArray());
+        List<Map<String, Object>> rows = jdbc.queryForList("select j.id, j.issue_no, j.case_type, j.status, j.created_at, j.effective_at, u.full_name, u.employee_code, u.avatar, p.name as position_name, d.name as department_name"
+                + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("employee", "u.full_name", "employeeCode", "u.employee_code", "position", "p.name", "department", "d.name", "type", "j.case_type", "issue", "j.issue_no", "status", "j.status", "effective", "j.effective_at", "createdAt", "j.created_at"),
+                "j.created_at desc") + " limit ? offset ?", args.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;
         result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
         return result;
+    }
+
+    private static UUID uuid(String value) {
+        try {
+            return value == null || value.isBlank() ? null : UUID.fromString(value.trim());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("TRAINING_FILTER_INVALID");
+        }
     }
 
     @Transactional(readOnly = true)

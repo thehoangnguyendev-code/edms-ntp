@@ -6,6 +6,7 @@ import com.eqms.service.training.TrainingPersonnelReviewService.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 /** Training reviews after an event of a person (new employee, return after absence, transfer): a checklist worked by people, closed with a signature. */
@@ -22,8 +23,10 @@ public class TrainingPersonnelReviewController {
 
     @GetMapping
     public ResponseEntity<?> list(@RequestParam(required = false) String status, @RequestParam(required = false) String kind, @RequestParam(required = false) String search,
-                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(reviews.list(users.requireCurrentUser(), status, kind, search, page, limit));
+                                  @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                  @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                  @RequestParam Map<String, String> filters) {
+        return ResponseEntity.ok(reviews.list(users.requireCurrentUser(), status, kind, search, sortBy, sortDirection, page, limit, filters));
     }
 
     @GetMapping("/suggestions")

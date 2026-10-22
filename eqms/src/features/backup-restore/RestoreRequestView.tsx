@@ -24,7 +24,7 @@ const STEPS = ["Select Backup", "Type & Target", "Pre-checks", "Review & Submit"
 const BACKUPS_PER_PAGE = 10;
 const ALL = "ALL";
 const BACKUP_TYPE_OPTIONS = [
-  { label: "All Types", value: ALL },
+  { label: "All", value: ALL },
   { label: "Full", value: "FULL" },
   { label: "Incremental", value: "INCREMENTAL" },
 ];
@@ -338,7 +338,7 @@ export const RestoreRequestView: React.FC = () => {
             onSearch={setBackupSearch}
             searchLabel="Search backups"
             searchPlaceholder="Backup Number…"
-            filters={[{ id: "type", label: "Type", value: backupType, options: BACKUP_TYPE_OPTIONS, defaultValue: ALL, placeholder: "All Types", onChange: setBackupType }]}
+            filters={[{ id: "type", label: "Type", value: backupType, options: BACKUP_TYPE_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setBackupType }]}
             onClear={() => {
               setBackupSearch("");
               setBackupType(ALL);
