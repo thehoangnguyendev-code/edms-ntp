@@ -110,7 +110,7 @@ public class TrainingRecordExportBatchService {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("TRAINING_FILTER_INVALID");
         }
-        TrainingListFilter extra = new TrainingListFilter().equal("b.year", yearFilter).contains(more.get("search"), "b.reason", "d.name").contains(more.get("preparedBy"), "pu.full_name").contains(more.get("approvedBy"), "au.full_name")
+        TrainingListFilter extra = new TrainingListFilter().equal("b.year", yearFilter).contains(more.get("search"), "b.reason", "d.name", "pu.full_name", "au.full_name").contains(more.get("preparedBy"), "pu.full_name").contains(more.get("approvedBy"), "au.full_name")
                 .timeRange("b.generated_at", more.get("generatedFrom"), more.get("generatedTo")).timeRange("b.created_at", more.get("requestedFrom"), more.get("requestedTo"));
         if (more.get("departmentId") != null && !more.get("departmentId").isBlank()) {
             try {

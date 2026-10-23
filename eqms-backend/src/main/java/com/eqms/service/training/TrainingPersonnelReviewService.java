@@ -63,7 +63,10 @@ public class TrainingPersonnelReviewService {
     private final UserAccountRepository users;
     private final TrainingActivityService activities;
 
-    public TrainingPersonnelReviewService(JdbcTemplate jdbc, TrainingAccess access, ElectronicSignatureService signatures, AuditTrailService audit, UserAccountRepository users, TrainingActivityService activities) {
+    private final TrainingComplianceService compliance;
+
+    public TrainingPersonnelReviewService(JdbcTemplate jdbc, TrainingAccess access, ElectronicSignatureService signatures, AuditTrailService audit, UserAccountRepository users, TrainingActivityService activities, TrainingComplianceService compliance) {
+        this.compliance = compliance;
         this.activities = activities;
         this.jdbc = jdbc;
         this.access = access;
@@ -109,8 +112,8 @@ public class TrainingPersonnelReviewService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')");
-            args.add(like); args.add(like);
+            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(coalesce(u.department,'')) like ? escape '\\' or lower(coalesce(r.note,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\')");
+            args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         TrainingListFilter extra = new TrainingListFilter().contains(more.get("createdBy"), "cu.full_name")
                 .dateRange("r.event_date", more.get("eventFrom"), more.get("eventTo")).timeRange("r.created_at", more.get("createdFrom"), more.get("createdTo"));
@@ -148,6 +151,7 @@ public class TrainingPersonnelReviewService {
             entry.put("label", item.label());
             entry.put("hint", item.hint());
             entry.put("canLink", item.link());
+            entry.put("systemCheck", systemCheck(item.code(), person));
             items.add(entry);
         }
         out.put("items", items);
@@ -242,6 +246,52 @@ public class TrainingPersonnelReviewService {
         Map<String, Object> out = get(actor, id);
         out.put("createdActivityId", activityId);
         return out;
+    }
+
+    /**
+     * What the system already holds for an item, shown beside it so the person who works through the checklist sees it. It never marks an item done: a person decides.
+     * Null when the system holds nothing about that kind of item.
+     */
+    private Map<String, Object> systemCheck(String code, UUID person) {
+        switch (code) {
+            case "SPECIMEN": {
+                List<Map<String, Object>> rows = jdbc.queryForList("select version_no, effective_date from training_specimen_signatures where person_user_id = ? and status = 'APPROVED' order by version_no desc limit 1", person);
+                return rows.isEmpty() ? check(false, "No approved specimen signature yet.")
+                        : check(true, "Approved specimen signature, version " + rows.getFirst().get("version_no") + (rows.getFirst().get("effective_date") == null ? "" : ", effective " + rows.getFirst().get("effective_date")) + ".");
+            }
+            case "JOB_ASSIGNMENT": {
+                List<Map<String, Object>> rows = jdbc.queryForList("select issue_no, effective_at from training_job_assignments where person_user_id = ? and status = 'EFFECTIVE' order by issue_no desc limit 1", person);
+                Map<String, Object> gaps = compliance.gapsOfPerson(person, access.departmentOf(users.findById(person).orElseThrow()));
+                long open = ((Number) gaps.get("missing")).longValue() + ((Number) gaps.get("due")).longValue();
+                String matrix = ((Number) gaps.get("required")).intValue() == 0 ? "" : open == 0 ? " The matrix of the position is complete." : " " + open + " training of the matrix of the position is still open.";
+                return rows.isEmpty() ? check(false, "No effective job assignment yet." + matrix)
+                        : check(open == 0, "Job assignment, issue " + rows.getFirst().get("issue_no") + (rows.getFirst().get("effective_at") == null ? "" : ", effective " + String.valueOf(rows.getFirst().get("effective_at")).substring(0, 10)) + "." + matrix);
+            }
+            case "HANDOVER": {
+                List<Map<String, Object>> rows = jdbc.queryForList("select generated_at from training_record_exports where person_user_id = ? and status = 'APPROVED' order by generated_at desc nulls last limit 1", person);
+                return rows.isEmpty() ? check(false, "No approved export of the training record yet (Training Record Exports).")
+                        : check(true, "A signed export of the record was approved" + (rows.getFirst().get("generated_at") == null ? "" : " on " + String.valueOf(rows.getFirst().get("generated_at")).substring(0, 10)) + ".");
+            }
+            default:
+                return null;
+        }
+    }
+
+    private static Map<String, Object> check(boolean found, String text) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("found", found);
+        out.put("text", text);
+        return out;
+    }
+
+    /** The gaps of the person against the matrix of the department: what the head of department and the assigned employee look at when they review the record (SOP.0003 5.3.11). */
+    @Transactional(readOnly = true)
+    public Map<String, Object> matrixGaps(UserAccount actor, UUID id) {
+        access.require(actor, "training.job_assignment.view");
+        Map<String, Object> r = jdbc.queryForList(SELECT + " where r.id = ?", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        UUID person = (UUID) r.get("person_user_id");
+        if (!inScope(actor, person)) throw new SecurityException(TrainingAccess.DENIED);
+        return compliance.gapsOfPerson(person, access.departmentOf(users.findById(person).orElseThrow()));
     }
 
     /** New employees who have no review yet: the people of the scope who started in the last 60 days (the start date is kept in the user profile). A hint, not a rule. */

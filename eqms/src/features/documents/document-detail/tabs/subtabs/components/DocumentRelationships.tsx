@@ -433,7 +433,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
     const infoItems = [
       { label: "Document Number", value: doc.documentNumber || doc.id },
       { label: "Created", value: doc.created || "-" },
-      { label: "Opened by", value: doc.openedBy || "-" },
+      { label: "Opened By", value: doc.openedBy || "-" },
       { label: "Document Name", value: normalizeDocumentName(doc.documentName), fullWidth: true },
       { label: "State", value: <StatusBadge status={(doc.status?.toLowerCase() as any) || 'draft'} size="xs" /> },
       { label: "Document Type", value: String(doc.type || "-") },

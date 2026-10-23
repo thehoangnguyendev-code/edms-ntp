@@ -31,15 +31,15 @@ import java.util.UUID;
 
 /**
  * Specimen signatures (SOP.0003 section 5.3.9): the image of the signature of a person, kept for comparison with signed records. The person (or someone who
- * manages them) uploads it and chooses who confirms it; the file is checked (a real PNG or JPEG of a bounded size), scanned for malware and stored in the records
+ * manages them) uploads it and chooses who confirms it; the file is checked (a real PNG, JPEG, WebP or BMP picture, not a GIF, of a bounded size), scanned for malware and stored in the records
  * bucket, which never deletes. The person chosen confirms with a signature and cannot be the person themselves or the uploader. Only one image is approved for
  * a person; a newer approved one replaces it and the older one stays on record. The image is never part of a list; opening it is recorded in the Audit Trail.
  */
 @Service
 public class TrainingSpecimenService {
     private static final String TYPE = "TRAINING_SPECIMEN_SIGNATURE";
-    private static final int MAX_BYTES = 512 * 1024;
-    private static final int MAX_WIDTH = 2000, MAX_HEIGHT = 1000;
+    private static final int MAX_BYTES = 5 * 1024 * 1024;
+    private static final int MAX_WIDTH = 5000, MAX_HEIGHT = 5000;
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -95,15 +95,15 @@ public class TrainingSpecimenService {
         if (status != null && !status.isBlank()) { where.append(" and s.status = ?"); args.add(status); }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')");
-            args.add(like); args.add(like);
+            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(coalesce(u.department,'')) like ? escape '\\' or lower(coalesce(s.change_reason,'')) like ? escape '\\' or lower(coalesce(uu.full_name,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\')");
+            args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         TrainingListFilter extra = new TrainingListFilter().contains(more.get("uploadedBy"), "uu.full_name")
                 .dateRange("s.effective_date", more.get("effectiveFrom"), more.get("effectiveTo")).timeRange("s.created_at", more.get("uploadedFrom"), more.get("uploadedTo"));
         if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(u.department)) = lower(trim(?))", more.get("department"));
         where.append(extra.and());
         args.addAll(extra.args());
-        Long total = jdbc.queryForObject("select count(*) from training_specimen_signatures s join app_users u on u.id = s.person_user_id join app_users uu on uu.id = s.uploaded_by" + where, Long.class, args.toArray());
+        Long total = jdbc.queryForObject("select count(*) from training_specimen_signatures s join app_users u on u.id = s.person_user_id join app_users uu on uu.id = s.uploaded_by left join app_users cu on cu.id = s.confirmed_by" + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(SELECT + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("employee", "u.full_name", "employeeCode", "u.employee_code", "department", "u.department", "version", "s.version_no", "status", "s.status", "uploadedBy", "uu.full_name", "confirmedBy", "cu.full_name", "effective", "s.effective_date", "reason", "s.change_reason", "createdAt", "s.created_at"),
@@ -180,8 +180,8 @@ public class TrainingSpecimenService {
         UUID id = UUID.randomUUID();
         FileStorageService.StorageWriteResult stored, stored2;
         try {
-            stored = files.storeReportArtifact("training/specimen-signatures/" + person + "/" + id + ("image/png".equals(first.type()) ? ".png" : ".jpg"), new ByteArrayInputStream(first.bytes()), first.type());
-            stored2 = files.storeReportArtifact("training/specimen-signatures/" + person + "/" + id + "-2" + ("image/png".equals(second.type()) ? ".png" : ".jpg"), new ByteArrayInputStream(second.bytes()), second.type());
+            stored = files.storeReportArtifact("training/specimen-signatures/" + person + "/" + id + extensionOf(first.type()), new ByteArrayInputStream(first.bytes()), first.type());
+            stored2 = files.storeReportArtifact("training/specimen-signatures/" + person + "/" + id + "-2" + extensionOf(second.type()), new ByteArrayInputStream(second.bytes()), second.type());
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "TRAINING_FILE_UNAVAILABLE");
         }
@@ -205,12 +205,8 @@ public class TrainingSpecimenService {
         try { bytes = file.getBytes(); } catch (IOException e) { throw new IllegalArgumentException("TRAINING_FILE_REJECTED"); }
         String type = detectType(bytes);
         if (type == null) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
-        try {
-            BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
-            if (image == null || image.getWidth() > MAX_WIDTH || image.getHeight() > MAX_HEIGHT || image.getWidth() < 40 || image.getHeight() < 20) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
-        } catch (IOException e) {
-            throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
-        }
+        int[] size = dimensions(type, bytes);
+        if (size == null || size[0] > MAX_WIDTH || size[1] > MAX_HEIGHT || size[0] < 40 || size[1] < 20) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         ClamAvScanService.ScanResult scan = virusScan.scan(bytes);
         if (!scan.clean()) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         return new Checked(bytes, type);
@@ -265,9 +261,45 @@ public class TrainingSpecimenService {
         return new TrainingApprovalService.Subject(TYPE, id, access.departmentOf(person), "Specimen signature of " + person.getFullName(), "training.signature.manage");
     }
 
+    /** The kind of image, from its content and not from its name. A GIF (and anything else) is refused; only a picture that every browser shows is kept. */
     private static String detectType(byte[] b) {
         if (b.length > 8 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G') return "image/png";
         if (b.length > 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) return "image/jpeg";
+        if (b.length > 30 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F' && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P') return "image/webp";
+        if (b.length > 30 && b[0] == 'B' && b[1] == 'M') return "image/bmp";
+        return null;
+    }
+
+    private static String extensionOf(String type) {
+        return switch (type) {
+            case "image/png" -> ".png";
+            case "image/webp" -> ".webp";
+            case "image/bmp" -> ".bmp";
+            default -> ".jpg";
+        };
+    }
+
+    /** Width and height of the picture, or null when it cannot be read. WebP is read from its header; the others by the image reader of the platform. */
+    private static int[] dimensions(String type, byte[] b) {
+        try {
+            if ("image/webp".equals(type)) return webpDimensions(b);
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(b));
+            return image == null ? null : new int[]{image.getWidth(), image.getHeight()};
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static int[] webpDimensions(byte[] b) {
+        String chunk = new String(b, 12, 4, StandardCharsets.US_ASCII);
+        if ("VP8 ".equals(chunk) && b.length > 30) return new int[]{((b[26] & 0xFF) | ((b[27] & 0xFF) << 8)) & 0x3FFF, ((b[28] & 0xFF) | ((b[29] & 0xFF) << 8)) & 0x3FFF};
+        if ("VP8L".equals(chunk) && b.length > 25) {
+            int bits = (b[21] & 0xFF) | ((b[22] & 0xFF) << 8) | ((b[23] & 0xFF) << 16) | ((b[24] & 0xFF) << 24);
+            return new int[]{(bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1};
+        }
+        if ("VP8X".equals(chunk) && b.length > 29) {
+            return new int[]{1 + ((b[24] & 0xFF) | ((b[25] & 0xFF) << 8) | ((b[26] & 0xFF) << 16)), 1 + ((b[27] & 0xFF) | ((b[28] & 0xFF) << 8) | ((b[29] & 0xFF) << 16))};
+        }
         return null;
     }
 

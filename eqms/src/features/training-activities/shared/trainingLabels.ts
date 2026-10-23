@@ -23,7 +23,7 @@ export const KIND_LABEL: Record<string, string> = {
   INITIAL: "Initial",
   PERIODIC: "Periodic",
   UNPLANNED: "Unplanned",
-  RETRAINING: "Retraining / make-up",
+  RETRAINING: "Supplementary training",
   EXTERNAL: "External",
 };
 /** SOP.0003 5.1.2: the two kinds of external training. */
@@ -41,7 +41,7 @@ export const KIND_REASON_LABEL: Record<string, string> = {
   AUDIT_FINDING: "Audit finding",
   VISITOR: "Visitor",
   ABSENCE_RETURN: "Return after absence",
-  ABSENT_MAKEUP: "Make-up for absence",
+  ABSENT_MAKEUP: "Supplementary for absence",
   FAILED_ASSESSMENT: "Failed assessment",
   OTHER: "Other",
 };
@@ -82,6 +82,9 @@ export const CONFIRMATION_LABEL: Record<string, string> = {
 };
 
 export const when = (value?: string | null) => (value ? new Date(value).toLocaleString() : "—");
+/** What the e-signature modal shows before the person signs: the status the record is in now and the status it will be after the signature. */
+export const statusChange = (from: string, to: string, action = "Update Status") => [{ action, oldValue: from, newValue: to, category: "status" as const }];
+
 export const day = (value?: string | null) => (value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString() : "—");
 
 export type TrainingPageKey = "myTraining" | "activities" | "matrices" | "requirements" | "jobs" | "reviews" | "specimen" | "records" | "compliance" | "numberLog" | "exports" | "legacy";
@@ -94,7 +97,7 @@ export const TRAINING_PAGES: Record<TrainingPageKey, { title: string; group?: st
   myTraining: { title: "My Training", path: "/training-management/my-training" },
   requirements: { title: "Training Requirements", group: "Training Programme", path: "/training-management/requirements" },
   activities: { title: "Training Activities", group: "Training Programme", path: "/training-management/activities" },
-  matrices: { title: "Training Matrices", group: "Training Programme", path: "/training-management/matrices" },
+  matrices: { title: "Training Matrix", group: "Training Programme", path: "/training-management/matrix" },
   jobs: { title: "Job Assignments", group: "Personnel Qualification", path: "/training-management/job-assignments" },
   reviews: { title: "Training Reviews", group: "Personnel Qualification", path: "/training-management/personnel-reviews" },
   specimen: { title: "Specimen Signatures", group: "Personnel Qualification", path: "/training-management/specimen-signatures" },

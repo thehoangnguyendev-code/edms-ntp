@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -268,9 +269,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
         </div>
 
         <div className="hidden md:flex justify-start mt-3 gap-2">
-          <Button size="sm" variant="outline" onClick={clearFilters} disabled={!hasActiveFilters} className="gap-2">
-            Clear Filters
-          </Button>
+          <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
             {nameFormatsControl}
         </div>
 </ConfiguredDesktopFilters>

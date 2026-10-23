@@ -19,7 +19,7 @@ import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingActivitiesApi, trainingError, trainingExportsApi, type TrainingPerson, type TrainingRecordExport } from "@/services/api/trainingActivities";
-import { day, when } from "../../shared/trainingLabels";
+import { day, when, statusChange } from "../../shared/trainingLabels";
 import { resettingDates, useDateRange, useDepartmentNameOptions } from "../../shared/useListFilters";
 
 const STATUS_LABEL: Record<string, string> = { PENDING_APPROVAL: "Waiting for approval", APPROVED: "Approved", REJECTED: "Rejected" };
@@ -132,7 +132,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
     { id: "approved", header: "Approved By", sort: sorted("approvedBy"), cell: (r) => r.approvedByName ?? "—" },
     { id: "records", header: "Records", sort: sorted("records"), cell: (r) => r.recordCount ?? "—" },
     { id: "generated", header: "Generated On", sort: sorted("generated"), cell: (r) => when(r.generatedAt) },
-    { id: "sha", header: "SHA-256", cell: (r) => (r.sha256 ? <span className="break-all font-mono text-xs">{r.sha256.slice(0, 16)}…</span> : "—") },
+    { id: "sha", header: "SHA-256", cell: (r) => (r.sha256 ? <span className="block max-w-[21rem] whitespace-normal break-all font-mono text-xs">{r.sha256}</span> : "—") },
   ];
   const action = {
     cell: (r: TrainingRecordExport) =>
@@ -164,7 +164,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
         {row && (
           <div className="py-1">
             {row.canDownload && <DropdownMenuItem icon={<IconFileDownload className="h-4 w-4" />} onClick={() => { void download(row); menu.close(); }}>Download PDF</DropdownMenuItem>}
-            {row.canApprove && <DropdownMenuItem icon={<IconCheck className="h-4 w-4" />} onClick={() => { setSignApprove(row); menu.close(); }}>Approve</DropdownMenuItem>}
+            {row.canApprove && <DropdownMenuItem icon={<IconCheck className="h-4 w-4" />} onClick={() => { setSignApprove(row); menu.close(); }}>Complete Approval</DropdownMenuItem>}
             {row.canApprove && <DropdownMenuItem icon={<IconBan className="h-4 w-4" />} onClick={() => { setRejecting({ id: row.id, reason: "" }); menu.close(); }}>Reject</DropdownMenuItem>}
           </div>
         )}
@@ -179,9 +179,9 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
           </FormField>
         </div>
       </FormModal>
-      <ESignatureModal isOpen={signNew} onClose={() => setSignNew(false)} onConfirm={async (d: { signatureToken: string }) => create(d.signatureToken)} actionTitle="Prepare training record export"
+      <ESignatureModal isOpen={signNew} onClose={() => setSignNew(false)} onConfirm={async (d: { signatureToken: string }) => create(d.signatureToken)} actionTitle="Prepare training record export" changes={statusChange("New", "Waiting for approval")}
         meaningDisplayName="Training Record Prepared" meaningCode="TRAINING_RECORD_PREPARED" targetDetails={{ code: "APD.0014", title: "Personal training record", revision: "" }} />
-      <ESignatureModal isOpen={!!signApprove} onClose={() => setSignApprove(undefined)} onConfirm={async (d: { signatureToken: string }) => approve(d.signatureToken)} actionTitle="Approve training record export"
+      <ESignatureModal isOpen={!!signApprove} onClose={() => setSignApprove(undefined)} onConfirm={async (d: { signatureToken: string }) => approve(d.signatureToken)} actionTitle="Complete approval of the training record export" changes={statusChange("Waiting for approval", "Approved")}
         meaningDisplayName="Training Record Approved" meaningCode="TRAINING_RECORD_APPROVED" targetDetails={{ code: signApprove?.fullName ?? "", title: "Personal training record", revision: "" }} />
       <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title="Reject export" confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
         <FormField label="Reason" required><Textarea rows={3} value={rejecting?.reason ?? ""} onChange={(e) => rejecting && setRejecting({ ...rejecting, reason: e.target.value })} /></FormField>

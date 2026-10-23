@@ -49,7 +49,7 @@ export function TrainingCopyBlock({ type, objectId, title = "Copies sent to depa
   if (log.rows.length === 0 && !log.canSend) return null;
   return (
     <>
-      <TabBlock title={title} action={log.canSend ? <Button size="sm" variant="outline-emerald" onClick={() => setSending(true)}>Send a copy</Button> : undefined}>
+      <TabBlock title={title} action={log.canSend ? <Button size="sm" variant="default" onClick={() => setSending(true)}>Send a Copy</Button> : undefined}>
         <DataTable rows={log.rows} getRowKey={(r) => r.id} columns={columns} emptyState={<p className="p-4 text-sm text-slate-500">No copy sent yet.</p>} />
       </TabBlock>
       {sending && <SendDialog type={type} objectId={objectId} sentTo={log.rows.map((r) => r.departmentId)} onClose={() => setSending(false)} onSent={(next) => { setLog(next); setSending(false); }} />}

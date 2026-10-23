@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import React, { useCallback, useEffect, useState } from "react";
@@ -610,14 +611,7 @@ export const WorkflowRolesView: React.FC = () => {
                 autoApply
               />
               <div className="flex items-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="h-9 px-4 whitespace-nowrap font-medium transition-all duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white"
-                >
-                  Clear Filters
-                </Button>
+                <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} />
                 {roleControl}
               </div>
             </div>

@@ -1,8 +1,8 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MoreVertical, Download, X, ChevronRight, ShieldAlert, ChevronUp, ChevronDown } from "lucide-react";
 import { usePortalDropdown, useTableDragScroll, useDebounce, PortalDropdownPosition } from "@/hooks";
-import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -571,10 +571,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
         </div>
 
         <div className="w-full flex items-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
+          <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={() => {
               setSearchQuery("");
               setActionFilter("All");
               setUserFilter("");
@@ -582,11 +579,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
               setDateFrom(defaultAuditTrailDateRange.startDate);
               setDateTo(defaultAuditTrailDateRange.endDate);
               setCurrentPage(1);
-            }}
-            className="h-9 px-4 whitespace-nowrap"
-          >
-            Clear Filter
-          </Button>
+            }} />
         </div>
       </div>
 

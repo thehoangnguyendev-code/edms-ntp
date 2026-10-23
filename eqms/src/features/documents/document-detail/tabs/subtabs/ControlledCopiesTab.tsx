@@ -156,7 +156,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                                 {sortableTh("created", "Created", "hidden md:table-cell")}
                                 {sortableTh("status", "Status")}
                                 {sortableTh("usagePurpose", "Purpose", "hidden md:table-cell")}
-                                {sortableTh("openedBy", "Opened by", "hidden lg:table-cell")}
+                                {sortableTh("openedBy", "Opened By", "hidden lg:table-cell")}
                                 {sortableTh("validUntil", "Valid Until", "hidden lg:table-cell")}
                                 {sortableTh("revisionName", "Document Revision", "hidden xl:table-cell")}
                                 {sortableTh("controlledCopyNumber", "Document Number")}

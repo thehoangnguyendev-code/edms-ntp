@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import { useUrlParam } from "@/hooks/useUrlParam";
 import React, { useState } from "react";
@@ -259,7 +260,7 @@ export const EducationDegreeLevelsView: React.FC = () => {
                 onApply={({ startDate, endDate }) => { setModifiedFrom(toApiDate(startDate)); setModifiedTo(toApiDate(endDate)); }}
                 placeholder="Select date range" />
             <div className="flex items-end gap-2">
-              <Button variant="outline" size="sm" onClick={clearFilters} className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap">Clear Filters</Button>
+              <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
               {degreeControl}
             </div>
           </div>

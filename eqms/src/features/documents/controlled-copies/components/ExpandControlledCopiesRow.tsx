@@ -553,7 +553,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>No.</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Number</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Created</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Opened by</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Opened By</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Controlled Copy Name</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Quantity</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Status</TableMarkup.HeaderCell>
@@ -592,7 +592,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>No.</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Number</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Created</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Opened by</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Opened By</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Controlled Copy Name</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Quantity</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Status</TableMarkup.HeaderCell>

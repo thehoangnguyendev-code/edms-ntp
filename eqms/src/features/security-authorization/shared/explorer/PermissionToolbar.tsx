@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useState } from "react";
 import { Search, X, Check } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
@@ -253,14 +254,7 @@ export const PermissionToolbar: React.FC<PermissionToolbarProps> = ({
         </div>
 
         <div className="flex items-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearAll}
-            className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap"
-          >
-            Clear Filters
-          </Button>
+          <ClearFiltersButton onClearSearch={() => set("search", "")} onClear={clearAll} />
         </div>
       </div>
 

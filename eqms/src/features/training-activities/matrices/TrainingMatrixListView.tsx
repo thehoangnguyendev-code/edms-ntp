@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
-import { MoreVertical } from "lucide-react";
-import { IconEyeCheck, IconFileText, IconInfoCircle, IconListDetails, IconPlus } from "@tabler/icons-react";
+import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -17,9 +16,7 @@ import {
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { SectionLoading } from "@/components/ui/loading/Loading";
-import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast/Toast";
-import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
@@ -56,7 +53,6 @@ export function TrainingMatrixListView() {
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("training.matrix.manage");
-  const menu = usePortalDropdown();
   const drag = useTableDragScroll();
   const [state, setState] = usePersistedState("training.matrices.state", "");
   const [error, setError] = useState("");
@@ -102,7 +98,7 @@ export function TrainingMatrixListView() {
         title: "Matrix created",
         message: v.matrixCode,
       });
-      navigate(`/training-management/matrix-versions/${v.id}`);
+      navigate(`/training-management/matrix/${v.id}`);
     } catch (e) {
       showToast({
         type: "error",
@@ -126,72 +122,33 @@ export function TrainingMatrixListView() {
     {
       id: "code",
       header: "Matrix", sort: sorted("code"),
-      cell: (m) => <span className="font-medium text-slate-900">{m.code}</span>,
+      cell: (m) => {
+        const target = m.effectiveVersionId ?? m.openVersionId;
+        return target ? (
+          <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/matrix/${target}`)}>
+            {m.code}
+          </button>
+        ) : (
+          <span className="font-medium text-slate-900">{m.code}</span>
+        );
+      },
     },
     { id: "department", header: "Department", sort: sorted("department"), cell: (m) => m.departmentName },
     {
       id: "effective",
       header: "Effective version", sort: sorted("effective"),
-      cell: (m) =>
-        m.effectiveVersionId ? (
-          <button
-            type="button"
-            className="font-medium text-emerald-600 hover:underline"
-            onClick={() =>
-              navigate(
-                `/training-management/matrix-versions/${m.effectiveVersionId}`,
-              )
-            }
-          >
-            Version {m.effectiveVersionNo} ({day(m.effectiveAt)})
-          </button>
-        ) : (
-          "—"
-        ),
+      cell: (m) => (m.effectiveVersionId ? `Version ${m.effectiveVersionNo} (${day(m.effectiveAt)})` : "—"),
     },
     {
       id: "open",
-      header: "Being prepared", sort: sorted("prepared"),
-      cell: (m) =>
-        m.openVersionId ? (
-          <button
-            type="button"
-            className="text-left"
-            onClick={() =>
-              navigate(
-                `/training-management/matrix-versions/${m.openVersionId}`,
-              )
-            }
-          >
-            <Badge color="amber">
-              Version {m.openVersionNo}:{" "}
-              {OPEN_LABEL[m.openStatus ?? ""] ?? m.openStatus}
-            </Badge>
-          </button>
-        ) : (
-          "—"
-        ),
+      header: "Draft in progress", sort: sorted("prepared"),
+      cell: (m) => (m.openVersionId ? <Badge color="amber">Version {m.openVersionNo}: {OPEN_LABEL[m.openStatus ?? ""] ?? m.openStatus}</Badge> : "—"),
     },
   ];
-  const action = {
-    cell: (m: TrainingMatrixSummary) => (
-      <button
-        type="button"
-        ref={menu.getRef(m.id)}
-        aria-label="More actions"
-        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
-        onClick={(event) => menu.toggle(m.id, event)}
-      >
-        <MoreVertical className="h-4 w-4" />
-      </button>
-    ),
-  };
   const { layout, control } = useCustomColumnLayout(
     "training.matrices.list",
     columns,
-    action,
   );
-  const actionRow = table.items.find((row) => row.id === menu.openId);
   const filters: ReportSelectFilter[] = [
     {
       id: "state",
@@ -257,7 +214,6 @@ export function TrainingMatrixListView() {
           isDragging={drag.isDragging}
           columns={columns}
           columnLayout={layout}
-          action={action}
           pagination={
             table.totalItems > 0 ? (
               <TablePagination
@@ -272,52 +228,6 @@ export function TrainingMatrixListView() {
           }
         />
       </ReportListToolbar>
-      <PortalDropdownMenu
-        isOpen={!!actionRow}
-        onClose={menu.close}
-        position={menu.position}
-        minWidth={220}
-      >
-        {actionRow && (
-          <div className="py-1">
-            {actionRow.effectiveVersionId && (
-              <DropdownMenuItem
-                icon={<IconEyeCheck className="h-4 w-4" />}
-                onClick={() => {
-                  navigate(
-                    `/training-management/matrix-versions/${actionRow.effectiveVersionId}`,
-                  );
-                  menu.close();
-                }}
-              >
-                View Effective Version
-              </DropdownMenuItem>
-            )}
-            {actionRow.openVersionId && (
-              <DropdownMenuItem
-                icon={<IconFileText className="h-4 w-4" />}
-                onClick={() => {
-                  navigate(
-                    `/training-management/matrix-versions/${actionRow.openVersionId}`,
-                  );
-                  menu.close();
-                }}
-              >
-                Open Version Being Prepared
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              icon={<IconListDetails className="h-4 w-4" />}
-              onClick={() => {
-                navigate(`/training-management/matrices/${actionRow.id}`);
-                menu.close();
-              }}
-            >
-              All Versions
-            </DropdownMenuItem>
-          </div>
-        )}
-      </PortalDropdownMenu>
       <FormModal
         isOpen={creating}
         onClose={() => setCreating(false)}

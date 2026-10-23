@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
-import type { TabItem } from "@/components/ui/tabs/TabNav";
+import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { Input, Textarea } from "../shared/TrainingFields";
@@ -12,6 +12,8 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { Select } from "@/components/ui/select/Select";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
+import { usePermissions } from "@/hooks/usePermissions";
+import { ROUTES } from "@/app/routes.constants";
 import { documentApi } from "@/services/api/documents";
 import {
   trainingError,
@@ -21,19 +23,27 @@ import {
   type TrainingPerson,
   type TrainingTopic,
 } from "@/services/api/trainingActivities";
-import { day, saveBlob, trainingBreadcrumbs } from "../shared/trainingLabels";
+import { day, saveBlob, trainingBreadcrumbs, statusChange } from "../shared/trainingLabels";
 import {
   ReadonlyField,
   ReadonlyGrid,
   TrainingDetailLayout,
 } from "../shared/TrainingDetailLayout";
 import { TrainingMatrixGrid } from "./components/TrainingMatrixGrid";
+import { TrainingMatrixVersionsPanel } from "./TrainingMatrixVersionsPanel";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
   PENDING_APPROVAL: "Waiting for approval",
   EFFECTIVE: "Effective",
   OBSOLETE: "Obsolete",
+};
+
+const NEXT_STEP: Record<string, string> = {
+  DRAFT: "This version is a draft. Edit the matrix, save it, then submit it for approval with an electronic signature.",
+  PENDING_APPROVAL: "This version is waiting for the approver. It cannot be changed until it is approved or sent back.",
+  EFFECTIVE: "This version is in use: it tells who must be trained on what. To change the matrix, start a new version.",
+  OBSOLETE: "This version was replaced by a newer one and stays as history. It cannot be changed.",
 };
 
 const MATRIX_STEPS = [
@@ -60,15 +70,20 @@ export function TrainingMatrixVersionPage() {
   const [reason, setReason] = useState("");
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("general");
+  const { hasPermission } = usePermissions();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = ["matrix", "general", "audit"].includes(searchParams.get("tab") ?? "") ? searchParams.get("tab")! : "matrix";
+  const setTab = (id: string) => setSearchParams({ tab: id }, { replace: true });
   const [dialog, setDialog] = useState<Dialog>();
   const [sign, setSign] = useState<{
     title: string;
     code: string;
     name: string;
+    changes: ReturnType<typeof statusChange>;
     run: (token: string) => Promise<TrainingMatrixVersion>;
   }>();
   const [busy, setBusy] = useState(false);
+  const [baseline, setBaseline] = useState<{ rows: TrainingMatrixRow[]; versionNo: number }>();
 
   const apply = useCallback((v: TrainingMatrixVersion) => {
     setVersion(v);
@@ -115,7 +130,23 @@ export function TrainingMatrixVersionPage() {
     }
   };
 
-  const title = "Training Matrix Version Details";
+  // A version being prepared or waiting for approval is shown against the version before it, so that what changed stands out.
+  const versionNo = version?.versionNo;
+  const status = version?.status;
+  const matrixId = version?.matrixId;
+  useEffect(() => {
+    setBaseline(undefined);
+    if (!versionId || !matrixId || !versionNo || versionNo < 2 || (status !== "DRAFT" && status !== "PENDING_APPROVAL")) return;
+    let alive = true;
+    trainingMatrixApi.versions(matrixId)({ page: 1, limit: 100 })
+      .then((page) => page.data.find((v) => v.id === versionId)?.previousId)
+      .then((previousId) => (previousId ? trainingMatrixApi.version(previousId) : undefined))
+      .then((previous) => { if (alive && previous) setBaseline({ rows: previous.rows, versionNo: previous.versionNo }); })
+      .catch(() => undefined);
+    return () => { alive = false; };
+  }, [versionId, matrixId, versionNo, status]);
+
+  const title = "Training Matrix";
   const crumbs = trainingBreadcrumbs(navigate, "matrices", title);
   const positions = useMemo(() => version?.positions ?? [], [version]);
 
@@ -165,16 +196,6 @@ export function TrainingMatrixVersionPage() {
 
   const footer = (
     <>
-      <Button
-        size="sm"
-        variant="outline-emerald"
-        className="whitespace-nowrap"
-        onClick={() =>
-          navigate(`/training-management/matrices/${version.matrixId}`)
-        }
-      >
-        All versions
-      </Button>
       {editing && (
         <Button
           size="sm"
@@ -218,7 +239,8 @@ export function TrainingMatrixVersionPage() {
           className="whitespace-nowrap"
           onClick={() =>
             setSign({
-              title: "Approve matrix",
+              title: "Complete approval of the matrix",
+              changes: statusChange("Waiting for approval", "Effective"),
               code: "TRAINING_MATRIX_APPROVED",
               name: "Training Matrix Approved",
               run: (t) =>
@@ -226,7 +248,7 @@ export function TrainingMatrixVersionPage() {
             })
           }
         >
-          Approve
+          Complete Approval
         </Button>
       )}
       {caps.reject && (
@@ -285,8 +307,8 @@ export function TrainingMatrixVersionPage() {
         MATRIX_STEPS.findIndex((x) => x.status === version.status),
       );
   const tabs: TabItem[] = [
-    { id: "general", label: "General Information" },
     { id: "matrix", label: "Matrix", count: rows.length },
+    { id: "general", label: "General Information" },
     { id: "audit", label: "Audit Trail" },
   ];
 
@@ -295,7 +317,7 @@ export function TrainingMatrixVersionPage() {
       <TrainingDetailLayout
         title={title}
         breadcrumbItems={crumbs}
-        onBack={() => navigate("/training-management/matrices")}
+        onBack={() => navigate(hasPermission("training.scope.all") ? "/training-management/matrix" : "/training-management/my-training")}
         steps={steps}
         currentStepIndex={stepIndex}
         terminalProgressStep="Effective"
@@ -304,7 +326,17 @@ export function TrainingMatrixVersionPage() {
         onTab={setTab}
         tabLayoutId="training-matrix-detail-tab"
         footer={footer}
+        repeatFooterInHeader
+        afterFooter={
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <TabNav tabs={[{ id: "versions", label: "Matrix Versions" }]} activeTab="versions" onChange={() => undefined} variant="simple-underline" />
+            <div className="p-4 md:p-5">
+              <TrainingMatrixVersionsPanel matrixId={version.matrixId} currentVersionId={version.id} />
+            </div>
+          </div>
+        }
       >
+        <p className="mb-3 text-sm text-slate-700">{NEXT_STEP[version.status]}</p>
         {tab === "general" && (
           <div className="space-y-4">
             <ReadonlyGrid>
@@ -375,8 +407,15 @@ export function TrainingMatrixVersionPage() {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-slate-800">Matrix</h3>
+              <div className="flex flex-wrap gap-2">
+                {hasPermission("training.admin.manage") && (
+                  <>
+                    <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.TOPICS)}>Manage topics</Button>
+                    <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.PERSON_POSITIONS)}>Assign positions</Button>
+                  </>
+                )}
               {editing ? (
-                <div className="flex gap-2">
+                <>
                   <Button
                     size="sm"
                     variant="outline-emerald"
@@ -391,8 +430,9 @@ export function TrainingMatrixVersionPage() {
                   >
                     Add SOP
                   </Button>
-                </div>
+                </>
               ) : undefined}
+              </div>
             </div>
             {positions.length === 0 ? (
               <p className="p-4 text-sm text-amber-700">
@@ -406,6 +446,8 @@ export function TrainingMatrixVersionPage() {
                 rows={rows}
                 positions={positions}
                 editing={editing}
+                baseline={baseline?.rows}
+                baselineNo={baseline?.versionNo}
                 onToggle={toggle}
                 onAnnual={(index, annual) => {
                   setRows(
@@ -480,6 +522,7 @@ export function TrainingMatrixVersionPage() {
             setDialog(undefined);
             setSign({
               title: "Send matrix for approval",
+              changes: statusChange("Draft", "Waiting for approval"),
               code: "TRAINING_MATRIX_PREPARED",
               name: "Training Matrix Prepared",
               run: (t) =>
@@ -517,7 +560,7 @@ export function TrainingMatrixVersionPage() {
           void run(
             () => trainingMatrixApi.upgrade(version.matrixId),
             "New version started",
-            (v) => navigate(`/training-management/matrix-versions/${v.id}`),
+            (v) => navigate(`/training-management/matrix/${v.id}`),
           )
         }
       >
@@ -538,6 +581,7 @@ export function TrainingMatrixVersionPage() {
           }
         }}
         actionTitle={sign?.title}
+        changes={sign?.changes}
         meaningDisplayName={sign?.name}
         meaningCode={sign?.code}
         targetDetails={{

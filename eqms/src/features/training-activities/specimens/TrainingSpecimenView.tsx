@@ -40,8 +40,7 @@ import {
 import {
   day,
   trainingBreadcrumbs,
-  TRAINING_PAGES,
-} from "../shared/trainingLabels";
+  TRAINING_PAGES, statusChange } from "../shared/trainingLabels";
 import { SpecimenImagePicker } from "../shared/SpecimenImagePicker";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -384,7 +383,7 @@ export function TrainingSpecimenView() {
                   menu.close();
                 }}
               >
-                View image
+                View Image
               </DropdownMenuItem>
             )}
             {row.capabilities.confirm && (
@@ -422,7 +421,7 @@ export function TrainingSpecimenView() {
         }}
         onConfirm={() => void upload()}
         title="Upload a specimen signature"
-        description="A PNG or JPEG of up to 512 KB. The person you choose confirms it with a signature; it cannot be the employee or you."
+        description="A PNG, JPEG, WebP or BMP picture of up to 5 MB (not a GIF). The person you choose confirms it with a signature; it cannot be the employee or you."
         confirmText="Upload"
         isLoading={busy}
         confirmDisabled={!file || !file2 || !confirmerId}
@@ -537,6 +536,7 @@ export function TrainingSpecimenView() {
           doConfirm(d.signatureToken)
         }
         actionTitle="Confirm specimen signature"
+        changes={statusChange("Waiting for confirmation", "Approved")}
         meaningDisplayName="Specimen Signature Approved"
         meaningCode="TRAINING_SPECIMEN_APPROVED"
         targetDetails={{

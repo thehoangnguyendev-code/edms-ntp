@@ -313,7 +313,7 @@ This section defines the user roles and corresponding access permissions within 
     
     - BR_01 – Email Assigned Distribution List once Distribute.
     - BR_02 – Email DCO Person once record on Ready for Distribution state.
-    - BR_03 – Email Opened by Person & DCO Person once record on Obsolete state.
+    - BR_03 – Email Opened By Person & DCO Person once record on Obsolete state.
     
     1.  Uncontrolled Copy
 
@@ -367,7 +367,7 @@ Document Codes will be assigned by the system as;
 | --- | --- | --- | --- | --- |
 | Document Number | String |     | x   | N/A |
 | Created | Date/Time |     | x   | N/A |
-| Opened by | Reference - User |     | x   | N/A |
+| Opened By | Reference - User |     | x   | N/A |
 | Author | Reference - User | **x** |     | Single |
 | Co-authors | Reference - User | **x** |     | Repeating |
 | Is Template? | True/False |     |     | N/A |
@@ -409,7 +409,7 @@ Document Codes will be assigned by the system as;
 | --- | --- | --- | --- | --- |
 | Revision number | String |     | x   | N/A |
 | Created | Date/Time |     | x   | N/A |
-| Opened by | Reference - User |     | x   | N/A |
+| Opened By | Reference - User |     | x   | N/A |
 | Author | Reference - User |     | x   | Single |
 | Co-authors | Reference - User |     | x   | Repeating |
 | Revision Name | String |     | x   | N/A |
@@ -454,7 +454,7 @@ Document Codes will be assigned by the system as;
 | --- | --- | --- | --- | --- |
 | Document Number | String |     | x   | N/A |
 | Created | Date/Time |     | x   | N/A |
-| Opened by | Reference - User |     | x   | N/A |
+| Opened By | Reference - User |     | x   | N/A |
 | Business Unit | Reference - Business Unit |     | x   | N/A |
 | Name | String |     | x   | N/A |
 | Document | String |     | x   | N/A |

@@ -32,6 +32,9 @@ public class TrainingPersonnelReviewController {
     @GetMapping("/suggestions")
     public ResponseEntity<?> suggestions() { return ResponseEntity.ok(reviews.suggestions(users.requireCurrentUser())); }
 
+    @GetMapping("/{id}/matrix-gaps")
+    public ResponseEntity<?> matrixGaps(@PathVariable UUID id) { return ResponseEntity.ok(reviews.matrixGaps(users.requireCurrentUser(), id)); }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> get(@PathVariable UUID id) { return ResponseEntity.ok(reviews.get(users.requireCurrentUser(), id)); }
 

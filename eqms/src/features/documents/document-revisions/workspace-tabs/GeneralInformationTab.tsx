@@ -143,7 +143,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <label className="text-xs sm:text-sm font-medium text-slate-700">
-              Opened by
+              Opened By
             </label>
             <input
               type="text"

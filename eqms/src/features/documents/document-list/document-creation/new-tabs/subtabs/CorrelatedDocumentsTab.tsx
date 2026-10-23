@@ -12,7 +12,6 @@ interface CorrelatedDocumentsTabProps {
 
 export const CorrelatedDocumentsTab: React.FC<CorrelatedDocumentsTabProps> = ({
     correlatedDocuments,
-    onCorrelatedDocumentsChange
 }) => {
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -29,9 +28,9 @@ export const CorrelatedDocumentsTab: React.FC<CorrelatedDocumentsTabProps> = ({
         return documents.filter(
             (doc) =>
                 doc.documentNumber.toLowerCase().includes(query) ||
-                doc.documentName.toLowerCase().includes(query) ||
-                doc.openedBy.toLowerCase().includes(query) ||
-                doc.authorCoAuthor.toLowerCase().includes(query)
+                (doc.documentName ?? "").toLowerCase().includes(query) ||
+                (doc.openedBy ?? "").toLowerCase().includes(query) ||
+                (doc.authorCoAuthor ?? "").toLowerCase().includes(query)
         );
     }, [searchQuery, documents]);
 
@@ -76,7 +75,7 @@ export const CorrelatedDocumentsTab: React.FC<CorrelatedDocumentsTabProps> = ({
                                     Created
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>
-                                    Opened by
+                                    Opened By
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
                                     Document Name
@@ -135,7 +134,7 @@ export const CorrelatedDocumentsTab: React.FC<CorrelatedDocumentsTabProps> = ({
                                             {doc.documentName}
                                         </TableMarkup.Cell>
                                         <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
-                                            <StatusBadge status={doc.status.toLowerCase().replace(/ /g, "") as any} />
+                                            <StatusBadge status={(doc.status ?? "").toLowerCase().replace(/ /g, "") as any} />
                                         </TableMarkup.Cell>
                                         <TableMarkup.Cell className={TABLE_STYLES.cell15}>
                                             {doc.type as string}

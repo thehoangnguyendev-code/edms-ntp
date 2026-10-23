@@ -188,14 +188,10 @@ export function TrainingSessionWorkspaceShell({
         className="overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white p-4 shadow-sm md:p-6"
         aria-label="Session"
       >
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-8">
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              {trainingNumber}
-            </div>
-            <h2 className="mt-1 text-lg font-semibold leading-snug text-slate-900 md:text-xl">
-              {heading}
-            </h2>
+            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{trainingNumber}</div>
+            <h2 className="mt-1 text-lg font-semibold leading-snug text-slate-900 md:text-xl">{heading}</h2>
             <div className="mt-2 flex flex-wrap gap-2">
               {badges.map((b) => (
                 <Badge key={b.label} color={b.color}>
@@ -203,64 +199,64 @@ export function TrainingSessionWorkspaceShell({
                 </Badge>
               ))}
             </div>
+            <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 xl:grid-cols-4">
+              {facts.map((f) => {
+                const FactIcon = f.icon;
+                return (
+                  <div key={f.label} className="flex min-w-0 items-start gap-2.5">
+                    <FactIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                    <div className="min-w-0">
+                      <dt className="text-2xs font-semibold uppercase tracking-wide text-slate-500">{f.label}</dt>
+                      <dd className="break-words text-sm font-medium text-slate-900" title={`${f.label}: ${f.value}`}>
+                        {f.value || "—"}
+                      </dd>
+                    </div>
+                  </div>
+                );
+              })}
+            </dl>
           </div>
-          <div className="w-full min-w-48 max-w-xs sm:w-64">
-            <div className="flex items-baseline justify-between text-xs text-slate-600">
-              <span>Progress</span>
-              <span className="font-semibold text-slate-900">
-                {doneCount} of {steps.length} steps
-              </span>
-            </div>
-            <div
-              className="mt-1.5 h-2 overflow-hidden rounded-full bg-emerald-100"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={percent}
-              aria-label="Progress of the session"
-            >
-              <motion.div
-                className="h-full rounded-full bg-emerald-500"
-                initial={false}
-                animate={{ width: `${percent}%` }}
-                transition={{ type: "spring", stiffness: 120, damping: 20 }}
-              />
-            </div>
-          </div>
-        </div>
 
-        <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
-          {facts.map((f) => {
-            const FactIcon = f.icon;
-            return (
-              <div key={f.label} className="flex min-w-0 max-w-full items-center gap-1.5">
-                <FactIcon className="h-4 w-4 shrink-0 text-slate-400" />
-                <dt className="sr-only">{f.label}</dt>
-                <dd className="truncate text-slate-700" title={`${f.label}: ${f.value}`}>
-                  <span className="text-slate-500">{f.label}: </span>
-                  {f.value || "—"}
-                </dd>
+          <aside className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4" aria-label="Figures of the session">
+            <div>
+              <div className="flex items-baseline justify-between text-xs">
+                <span className="font-semibold text-slate-800">Progress</span>
+                <span className="text-slate-500">
+                  <span className="font-semibold text-slate-900">{doneCount}</span> of {steps.length} steps
+                </span>
               </div>
-            );
-          })}
-        </dl>
-
-        <div className="mt-3 grid gap-x-6 gap-y-3 border-t border-emerald-100 pt-3 md:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
-          {rates.map((r) => (
-            <RateBar key={r.label} rate={r} />
-          ))}
-          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 md:col-span-2 lg:col-span-1">
-            {stats.map((s) => {
-              const StatIcon = s.icon;
-              return (
-                <li key={s.label} className="flex items-center gap-1.5">
-                  <StatIcon className={cn("h-4 w-4 shrink-0", TONE[s.tone])} />
-                  <span className="font-semibold text-slate-900">{s.value}</span>
-                  <span>{s.label}</span>
-                </li>
-              );
-            })}
-          </ul>
+              <div
+                className="mt-1.5 h-2 overflow-hidden rounded-full bg-emerald-100"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={percent}
+                aria-label="Progress of the session"
+              >
+                <motion.div
+                  className="h-full rounded-full bg-emerald-500"
+                  initial={false}
+                  animate={{ width: `${percent}%` }}
+                  transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                />
+              </div>
+            </div>
+            {rates.map((r) => (
+              <RateBar key={r.label} rate={r} />
+            ))}
+            <ul className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+              {stats.map((s) => {
+                const StatIcon = s.icon;
+                return (
+                  <li key={s.label} className="flex items-center gap-2 text-sm text-slate-600">
+                    <StatIcon className={cn("h-4 w-4 shrink-0", TONE[s.tone])} />
+                    <span className="text-base font-semibold leading-none text-slate-900">{s.value}</span>
+                    <span className="truncate">{s.label}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </aside>
         </div>
       </section>
 

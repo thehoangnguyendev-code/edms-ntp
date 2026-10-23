@@ -23,7 +23,31 @@ describe("TrainingMatrixGrid (APD.0011 layout)", () => {
     expect(screen.getByText("SOP for each position")).toBeTruthy();
     expect(screen.getByText("GMP overview")).toBeTruthy();
     expect(screen.getByText("Yes")).toBeTruthy();
-    expect(screen.getByText("Operator")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Operator" })).toBeTruthy();
+  });
+
+  it("shows only the rows of the chosen position and collapses a group", () => {
+    render(<TrainingMatrixGrid rows={rows} positions={positions} editing={false} onToggle={vi.fn()} onAnnual={vi.fn()} onRemove={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText("Show only the rows of a position"), { target: { value: "p2" } });
+    expect(screen.queryByText("GMP overview")).toBeNull();
+    expect(screen.getByText("Training")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Collapse SOP for each position" }));
+    expect(screen.queryByText("Training")).toBeNull();
+  });
+
+  it("marks what was added, removed and changed against the version before", () => {
+    const before: TrainingMatrixRow[] = [
+      { rowGroup: "SOP", documentId: "d1", documentNumber: "SOP.0003", documentName: "Training", annualRequired: false, positionIds: ["p1"] },
+      { rowGroup: "SOP", documentId: "d9", documentNumber: "SOP.0009", documentName: "Gone", annualRequired: false, positionIds: ["p1"] },
+    ];
+    render(<TrainingMatrixGrid rows={rows} positions={positions} editing={false} onToggle={vi.fn()} onAnnual={vi.fn()} onRemove={vi.fn()} baseline={before} baselineNo={1} />);
+
+    expect(screen.getByText(/Compared with version 1: 1 added, 1 removed, 1 changed/)).toBeTruthy();
+    expect(screen.getByText("New")).toBeTruthy();
+    expect(screen.getByText(/Removed: SOP.0009 Gone/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Changes only" }));
+    expect(screen.queryByText("GMP overview")).toBeTruthy();
   });
 
   it("toggles a position and the annual flag only when editing, and counts the rows per position", () => {

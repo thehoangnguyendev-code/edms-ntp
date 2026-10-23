@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import React, { useEffect, useRef, useState } from "react";
@@ -369,15 +370,7 @@ export const TrainingTopicsView: React.FC = () => {
         </div>
 
         <div className="hidden md:flex justify-start gap-2 mt-3">
-          <Button
-           size="sm"
-            variant="outline"
-            onClick={clearFilters}
-            disabled={!hasActiveFilters}
-            className="gap-2"
-          >
-            Clear Filters
-          </Button>
+          <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
             {topicsControl}
         </div>
 </ConfiguredDesktopFilters>

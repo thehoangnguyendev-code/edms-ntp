@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { Eye, FileText, MoreVertical, Search, X } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
@@ -358,14 +359,7 @@ export const ExecutedRecordsView: React.FC = () => {
                   />
                 </div>
                 <div className="flex items-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap"
-                  >
-                    Clear Filters
-                  </Button>
+                  <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
                   {control}
                 </div>
               </div>

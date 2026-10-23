@@ -3,6 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Input, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { cn } from "@/components/ui/utils";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
+import { ProposedParticipantsField } from "@/features/training-activities/shared/ProposedParticipantsField";
 import type { TrainingLink } from "@/services/api/trainingLinks";
 
 interface TrainingConfig {
@@ -21,6 +22,8 @@ interface TrainingTabProps {
     };
     /** Read from Training Management. The Training Number belongs to the revision and is shown on the revision screens; here it only backs the untick warning. */
     trainingLink?: TrainingLink | null;
+    /** The saved document, to choose the people proposed for its training. */
+    documentId?: string | null;
 }
 
 export const TrainingTab: React.FC<TrainingTabProps> = ({
@@ -28,7 +31,8 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
     data,
     onChange,
     validationError,
-    trainingLink
+    trainingLink,
+    documentId
 }) => {
     const [confirmRemove, setConfirmRemove] = React.useState(false);
     const hasNumber = Boolean(trainingLink?.trainingNumber) && trainingLink?.status !== "CANCELLED";
@@ -120,6 +124,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                             )}
                         </div>
                     </div>
+                    <ProposedParticipantsField documentId={documentId} />
                 </div>
             ) : (
                 <div className="space-y-4">

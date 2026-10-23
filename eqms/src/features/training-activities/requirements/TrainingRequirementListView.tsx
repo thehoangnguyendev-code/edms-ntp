@@ -47,6 +47,7 @@ import {
   saveBlob,
   trainingBreadcrumbs,
   TRAINING_PAGES,
+  when,
 } from "../shared/trainingLabels";
 
 export const REQUIREMENT_STATUS_LABEL: Record<string, string> = {
@@ -137,7 +138,8 @@ export function TrainingRequirementListView() {
     { id: "department", header: "Department", sort: sorted("department"), cell: (r) => r.departmentName },
     { id: "lines", header: "Lines", sort: sorted("lines"), cell: (r) => r.lineCount },
     { id: "due", header: "Due Date", sort: sorted("dueBy"), cell: (r) => day(r.dueBy) },
-    { id: "createdAt", header: "Created On", sort: sorted("createdAt"), cell: (r) => day(r.createdAt) },
+    { id: "createdBy", header: "Opened By", sort: sorted("createdByName"), cell: (r) => r.createdByName ?? "—" },
+    { id: "createdAt", header: "Created", sort: sorted("createdAt"), cell: (r) => when(r.createdAt) },
     {
       id: "status",
       header: "Status", sort: sorted("status"),

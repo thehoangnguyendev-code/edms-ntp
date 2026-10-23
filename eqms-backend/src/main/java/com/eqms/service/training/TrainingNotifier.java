@@ -45,7 +45,7 @@ public class TrainingNotifier {
     public static String path(String objectType, UUID id) {
         return switch (objectType == null ? "" : objectType) {
             case "TRAINING_ACTIVITY" -> "/training-management/activities/" + id;
-            case "TRAINING_MATRIX_VERSION" -> "/training-management/matrix-versions/" + id;
+            case "TRAINING_MATRIX_VERSION" -> "/training-management/matrix/" + id;
             case "TRAINING_JOB_ASSIGNMENT" -> "/training-management/job-assignments/" + id;
             case "TRAINING_SPECIMEN_SIGNATURE" -> "/training-management/specimen-signatures";
             case "TRAINING_RECORD_EXPORT" -> "/training-management/record-exports";

@@ -117,9 +117,10 @@ public class TrainingMatrixController {
 
     @GetMapping("/person-positions")
     public ResponseEntity<?> personPositions(@RequestParam(required = false) String search, @RequestParam(defaultValue = "false") boolean unmatchedOnly,
-                                             @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
+                                             @RequestParam(required = false) String department, @RequestParam(required = false) UUID positionId, @RequestParam(required = false) String mapped,
+                                             @RequestParam(required = false) String suggested, @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
-        return ResponseEntity.ok(matrices.personPositions(users.requireCurrentUser(), search, unmatchedOnly, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(matrices.personPositions(users.requireCurrentUser(), search, unmatchedOnly, department, positionId, mapped, suggested, sortBy, sortDirection, page, limit));
     }
 
     @PutMapping("/person-positions")

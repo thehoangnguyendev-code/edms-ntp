@@ -48,10 +48,10 @@ export function MyTrainingView({
     [],
   );
   const tabs: TabItem[] = [
-    { id: "todo", label: "To do", count: totals.todo },
-    { id: "sign", label: "Waiting for my signature", count: totals.sign },
-    { id: "copies", label: "Copies received" },
-    { id: "records", label: "My records" },
+    { id: "todo", label: "To Do", count: totals.todo },
+    { id: "sign", label: "Waiting for My Signature", count: totals.sign },
+    { id: "copies", label: "Copies Received" },
+    { id: "records", label: "My Records" },
   ];
   const changeTab = (id: string) => {
     if (id === tab) return;

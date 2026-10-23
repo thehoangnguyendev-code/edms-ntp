@@ -444,7 +444,7 @@ Tối thiểu tạo/kiểm tra các rule sau:
 2. Bấm **New Document**.
 3. Tab **General Information**:
    - **Document Number** và **Created Time** read-only; hệ thống tự sinh sau khi lưu thành công.
-   - **Opened by** phải hiển thị User A (DCO).
+   - **Opened By** phải hiển thị User A (DCO).
    - **Author***: chọn `uat.author`.
    - **Co-Author(s)**: chọn `uat.coauthor` để test đồng tác giả; không chọn Author trùng trong Co-Author.
    - **Business Unit***: `Quality`.

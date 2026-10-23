@@ -82,8 +82,8 @@ public class TrainingJobAssignmentService {
         if (status != null && !status.isBlank()) { where.append(" and j.status = ?"); args.add(status); }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(p.name) like ? escape '\\')");
-            args.add(like); args.add(like); args.add(like);
+            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(p.name) like ? escape '\\' or lower(coalesce(d.name,'')) like ? escape '\\')");
+            args.add(like); args.add(like); args.add(like); args.add(like);
         }
         TrainingListFilter extra = new TrainingListFilter().equal("j.case_type", more.get("caseType")).equal("j.department_id", uuid(more.get("departmentId"))).equal("j.position_id", uuid(more.get("positionId")))
                 .timeRange("j.effective_at", more.get("effectiveFrom"), more.get("effectiveTo")).timeRange("j.created_at", more.get("createdFrom"), more.get("createdTo"));

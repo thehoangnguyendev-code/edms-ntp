@@ -11,7 +11,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable
 import { trainingError, type TrainingTranscriptionLine, trainingFilesApi, trainingTranscriptionApi, type TrainingActivityDetail, type TrainingPaperEvidence, type TrainingSession, type TrainingTranscription } from "@/services/api/trainingActivities";
 import { Input, Textarea } from "../../shared/TrainingFields";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
-import { day } from "../../shared/trainingLabels";
+import { day, statusChange } from "../../shared/trainingLabels";
 
 const lineColumns: DataTableColumn<TrainingTranscriptionLine>[] = [
   { id: "n", header: "No.", cell: (_l, i) => i + 1 },
@@ -141,6 +141,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
           try { await trainingTranscriptionApi.verify(signing.id, data.signatureToken); setSigning(undefined); done("Verified. Attendance and scores are recorded"); } catch (e) { fail(e); }
         }}
         actionTitle="Verify the typed results against the scan"
+        changes={statusChange("Entered", "Verified", "Typed results")}
         meaningDisplayName="Transcription Verified"
         meaningCode="TRAINING_TRANSCRIPTION_VERIFIED"
         targetDetails={{ code: activity.trainingNumber, title: activity.trainingTitle, revision: "" }}

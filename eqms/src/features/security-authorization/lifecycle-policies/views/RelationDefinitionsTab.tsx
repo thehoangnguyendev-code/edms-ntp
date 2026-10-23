@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
 import { Check, ChevronDown, ChevronUp, Search, X } from "lucide-react";
@@ -351,16 +352,7 @@ export const RelationDefinitionsTab: React.FC = () => {
             />
 
             <div className="flex items-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={clearFilters}
-                disabled={!hasFilters}
-                className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Clear Filters
-              </Button>
+              <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
               {relationControl}
             </div>
           </div>

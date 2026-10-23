@@ -1,3 +1,4 @@
+import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import type { CompletionColumn, CompletionState, CompletionSummary } from "@/services/api/trainingActivities";
@@ -77,57 +78,57 @@ export function CompletionByRow({ columns, summary }: { columns: CompletionColum
   return (
     <>
       <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
-        <table className="w-full border-separate border-spacing-0 text-sm">
-          <thead>
-            <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-              <th className="w-16 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-center">No</th>
-              <th className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3">SOP No</th>
-              <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3">Subject / SOP title</th>
-              <th className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-center">Annual training</th>
-              <th className="w-64 whitespace-nowrap border-b border-slate-200 px-4 py-3">Completion</th>
-              <th className="w-[26rem] whitespace-nowrap border-b border-slate-200 px-4 py-3">Still to be trained</th>
-              <th className="w-10 border-b border-slate-200" />
-            </tr>
-          </thead>
-          <tbody>
+        <TableMarkup.Root className="w-full border-separate border-spacing-0 text-sm">
+          <TableMarkup.Head>
+            <TableMarkup.Row className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <TableMarkup.HeaderCell className="w-16 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left">No</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3">SOP No</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="whitespace-nowrap border-b border-slate-200 px-4 py-3">Subject / SOP title</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left">Annual training</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-64 whitespace-nowrap border-b border-slate-200 px-4 py-3">Completion</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-[26rem] whitespace-nowrap border-b border-slate-200 px-4 py-3">Still to be trained</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-10 border-b border-slate-200" />
+            </TableMarkup.Row>
+          </TableMarkup.Head>
+          <TableMarkup.Body>
             {GROUPS.map((g) => {
               const part = rows.filter((f) => f.column.group === g.id);
               if (part.length === 0) return null;
               return (
                 <Fragment key={g.id}>
-                  <tr><td colSpan={7} className="border-b border-emerald-100 bg-emerald-50/70 px-4 py-2"><span className="text-sm font-semibold text-emerald-900">{g.title}</span><span className="ml-2 rounded-full bg-emerald-600/10 px-2 py-0.5 text-xs font-medium text-emerald-800">{part.length}</span></td></tr>
+                  <TableMarkup.Row><TableMarkup.Cell colSpan={7} className="border-b border-emerald-100 bg-emerald-50/70 px-4 py-2"><span className="text-sm font-semibold text-emerald-900">{g.title}</span><span className="ml-2 rounded-full bg-emerald-600/10 px-2 py-0.5 text-xs font-medium text-emerald-800">{part.length}</span></TableMarkup.Cell></TableMarkup.Row>
                   {part.map((f) => {
                     const id = f.column.rowId;
                     const expanded = openRow === id;
                     const canOpen = f.openTotal > 0;
                     return (
                       <Fragment key={id}>
-                        <tr className={`group ${canOpen ? "cursor-pointer" : ""} hover:bg-slate-50`} onClick={() => canOpen && setOpenRow(expanded ? undefined : id)}>
-                          <td className="border-b border-slate-100 px-4 py-3.5 text-center text-xs tabular-nums text-slate-500">{numbered.get(id)}</td>
-                          <td className="border-b border-slate-100 px-4 py-3.5 text-xs font-medium text-slate-700">{f.column.code ?? ""}</td>
-                          <td className="border-b border-slate-100 px-4 py-3.5 font-medium leading-snug text-slate-900">{f.column.title}</td>
-                          <td className="border-b border-slate-100 px-4 py-3.5 text-center"><Annual yes={f.column.annual} /></td>
-                          <td className="border-b border-slate-100 px-4 py-3.5"><RowBar facts={f} /></td>
-                          <td className="border-b border-slate-100 px-4 py-3.5">
+                        <TableMarkup.Row className={`group ${canOpen ? "cursor-pointer" : ""} hover:bg-slate-50`} onClick={() => canOpen && setOpenRow(expanded ? undefined : id)}>
+                          <TableMarkup.Cell className="border-b border-slate-100 px-4 py-3.5 text-center text-xs tabular-nums text-slate-500">{numbered.get(id)}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="border-b border-slate-100 px-4 py-3.5 text-xs font-medium text-slate-700">{f.column.code ?? ""}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="border-b border-slate-100 px-4 py-3.5 font-medium leading-snug text-slate-900">{f.column.title}</TableMarkup.Cell>
+                          <TableMarkup.Cell className="border-b border-slate-100 px-4 py-3.5 text-center"><Annual yes={f.column.annual} /></TableMarkup.Cell>
+                          <TableMarkup.Cell className="border-b border-slate-100 px-4 py-3.5"><RowBar facts={f} /></TableMarkup.Cell>
+                          <TableMarkup.Cell className="border-b border-slate-100 px-4 py-3.5">
                             {expanded ? <span className="text-xs text-slate-500">{f.openTotal} people, listed below</span> : <OpenSummary facts={f} />}
-                          </td>
-                          <td className="border-b border-slate-100 pr-2 text-slate-400">
+                          </TableMarkup.Cell>
+                          <TableMarkup.Cell className="border-b border-slate-100 pr-2 text-slate-400">
                             {canOpen && (
                               <button type="button" aria-expanded={expanded} aria-label={`${expanded ? "Hide" : "Show"} the people still to be trained on ${f.column.title}`} onClick={(e) => { e.stopPropagation(); setOpenRow(expanded ? undefined : id); }} className="rounded p-1 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
                                 {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                               </button>
                             )}
-                          </td>
-                        </tr>
-                        {expanded && <tr><td colSpan={7} className="border-b border-slate-100 bg-slate-50/60 px-6 py-3"><OpenPeople facts={f} /></td></tr>}
+                          </TableMarkup.Cell>
+                        </TableMarkup.Row>
+                        {expanded && <TableMarkup.Row><TableMarkup.Cell colSpan={7} className="border-b border-slate-100 bg-slate-50/60 px-6 py-3"><OpenPeople facts={f} /></TableMarkup.Cell></TableMarkup.Row>}
                       </Fragment>
                     );
                   })}
                 </Fragment>
               );
             })}
-          </tbody>
-        </table>
+          </TableMarkup.Body>
+        </TableMarkup.Root>
       </div>
 
       <div className="space-y-4 md:hidden">

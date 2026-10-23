@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, Download, Import, Plus, Search, Trash2, X, Check, MoreVertical, ChevronUp, ChevronDown } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -555,15 +556,7 @@ export const PermissionSetsView: React.FC = () => {
               />
             </div>
             <div className="flex items-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearFilters}
-                disabled={!hasFilters}
-                className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap disabled:opacity-40"
-              >
-                Clear Filters
-              </Button>
+              <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
               {setControl}
             </div>
           </div>

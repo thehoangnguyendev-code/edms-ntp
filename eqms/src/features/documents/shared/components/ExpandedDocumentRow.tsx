@@ -268,7 +268,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                                 Created
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Opened by
+                                Opened By
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Revision Name
@@ -331,7 +331,7 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                                 Created
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Opened by
+                                Opened By
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
                                 Document Name

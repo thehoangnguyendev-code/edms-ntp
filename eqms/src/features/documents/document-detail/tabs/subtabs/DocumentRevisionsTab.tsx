@@ -189,7 +189,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                                 </TableMarkup.HeaderCell>
                                 {th("Revision Number", "revisionNumber")}
                                 {th("Created", "created", "hidden md:table-cell")}
-                                {th("Opened by", "openedBy", "hidden md:table-cell")}
+                                {th("Opened By", "openedBy", "hidden md:table-cell")}
                                 {th("Revision Name", "revisionName")}
                                 {th("Status", "status")}
                             </TableMarkup.Row>

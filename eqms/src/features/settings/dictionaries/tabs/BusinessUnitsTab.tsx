@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 ﻿import React, { useState, useMemo } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -404,14 +405,7 @@ export const BusinessUnitsTab = React.forwardRef<
           </div>
 
           <div className="flex justify-start gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearFilters}
-              className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap"
-            >
-              Clear Filters
-            </Button>
+            <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
             {unitControl}
           </div>
         </div>

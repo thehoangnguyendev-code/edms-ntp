@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React from "react";
 import { Search, X, Check } from "lucide-react";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
@@ -476,14 +477,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         </div>
 
         <div className="flex items-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearFilters}
-            className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap"
-          >
-            Clear Filters
-          </Button>
+          <ClearFiltersButton onClearSearch={() => onSearchChange("")} onClear={onClearFilters} />
           {filterTrailing}
         </div>
       </div>

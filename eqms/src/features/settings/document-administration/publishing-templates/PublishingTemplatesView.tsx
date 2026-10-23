@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getApiErrorMessage } from '@/utils/apiError';
 import { useNavigate } from "react-router-dom";
@@ -454,14 +455,7 @@ export const PublishingTemplatesView: React.FC = () => {
 
               {/* Clear Filters */}
               <div className="flex items-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="h-9 gap-2 px-4 font-medium transition-all duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white whitespace-nowrap"
-                >
-                  Clear Filters
-                </Button>
+                <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
                 {publishingTemplatesControl}
               </div>
             </div>

@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -733,14 +734,7 @@ export const AuditTrailView: React.FC = () => {
             </div>
 
             <div className="flex items-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearFilters}
-                className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap"
-              >
-                Clear Filters
-              </Button>
+              <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={handleClearFilters} />
             </div>
           </div>
 </ConfiguredDesktopFilters>

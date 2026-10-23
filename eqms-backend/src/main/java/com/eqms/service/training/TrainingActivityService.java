@@ -127,8 +127,8 @@ public class TrainingActivityService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + escapeLike(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (lower(t.training_number) like ? escape '\\' or lower(t.training_title) like ? escape '\\' or lower(coalesce(t.document_number,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\' or exists (select 1 from training_sessions s left join app_users tu on tu.id = s.trainer_user_id left join training_session_topics st on st.session_id = s.id where s.activity_id = t.id and (lower(coalesce(st.topic_text,'')) like ? escape '\\' or lower(coalesce(tu.full_name,'')) like ? escape '\\' or lower(coalesce(s.external_trainer_name,'')) like ? escape '\\')))");
-            args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
+            where.append(" and (lower(t.training_number) like ? escape '\\' or lower(t.training_title) like ? escape '\\' or lower(coalesce(t.document_number,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\' or lower(coalesce(d.name,'')) like ? escape '\\' or exists (select 1 from training_sessions s left join app_users tu on tu.id = s.trainer_user_id left join training_session_topics st on st.session_id = s.id where s.activity_id = t.id and (lower(coalesce(st.topic_text,'')) like ? escape '\\' or lower(coalesce(tu.full_name,'')) like ? escape '\\' or lower(coalesce(s.external_trainer_name,'')) like ? escape '\\')))");
+            args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         if (status != null && !status.isBlank()) { where.append(" and t.status = ?"); args.add(status); }
         if (kind != null && !kind.isBlank()) { where.append(" and t.kind = ?"); args.add(kind); }
@@ -157,7 +157,7 @@ public class TrainingActivityService {
         if (overdue) where.append(" and t.due_date < current_date and t.status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION')");
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
-        Long total = jdbc.queryForObject("select count(*) from training_activities t left join app_users cu on cu.id = t.created_by" + where, Long.class, args.toArray());
+        Long total = jdbc.queryForObject("select count(*) from training_activities t join departments d on d.id = t.organizer_department_id left join app_users cu on cu.id = t.created_by" + where, Long.class, args.toArray());
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(safeLimit);
         pageArgs.add((safePage - 1) * safeLimit);
@@ -236,6 +236,8 @@ public class TrainingActivityService {
         Map<String, Object> activity = visible(actor, id);
         Map<String, Object> out = TrainingRows.camel(activity);
         out.put("departmentName", jdbc.queryForObject("select name from departments where id=?", String.class, activity.get("organizer_department_id")));
+        // Who opened it (the General Information tab shows it, as the one of a document does).
+        out.put("createdByName", activity.get("created_by") == null ? null : jdbc.queryForList("select full_name from app_users where id=?", String.class, activity.get("created_by")).stream().findFirst().orElse(null));
         List<Map<String, Object>> sessions = TrainingRows.camel(jdbc.queryForList("""
             select s.*, u.full_name as trainer_name from training_sessions s left join app_users u on u.id = s.trainer_user_id where s.activity_id=? order by s.session_no
             """, id));
@@ -272,6 +274,8 @@ public class TrainingActivityService {
             """, id)));
         out.put("approvers", TrainingRows.camel(approvals.assignments("TRAINING_ACTIVITY", id)));
         out.put("qaList", qaList(activity));
+        Integer proposed = jdbc.queryForObject("select count(*) from training_proposed_participants where activity_id=? and applied_at is null", Integer.class, id);
+        out.put("proposedParticipantCount", proposed == null ? 0 : proposed);
         out.put("capabilities", capabilities(actor, activity));
         return out;
     }
@@ -506,6 +510,28 @@ public class TrainingActivityService {
         return get(actor, id);
     }
 
+    /**
+     * The people the author of the document proposed (while the document was prepared) go on the list of the first session as a draft. The list is still
+     * confirmed by the organizer with a signature, and only while it is open; a person who is no longer active is left out.
+     */
+    private void applyProposedParticipants(UserAccount actor, Map<String, Object> activity, UUID sessionId) {
+        if (!"PLANNED".equals(activity.get("status")) || activity.get("list_prepared_by") != null) return;
+        UUID id = (UUID) activity.get("id");
+        int added = jdbc.update("""
+            insert into training_participants(id, activity_id, session_id, person_user_id, employee_code, full_name, department, position, added_reason, created_by)
+            select gen_random_uuid(), ?, ?, u.id, u.employee_code, u.full_name, u.department, u.position, 'Proposed when the document was prepared', ?
+              from training_proposed_participants p join app_users u on u.id = p.person_user_id
+             where p.activity_id = ? and u.status = 'Active'
+               and not exists (select 1 from training_participants x where x.session_id = ? and x.person_user_id = u.id)
+            """, id, sessionId, actor.getId(), id, sessionId);
+        jdbc.update("update training_proposed_participants set applied_at = now() where activity_id = ? and applied_at is null", id);
+        if (added > 0) {
+            store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "PARTICIPANTS_ADDED", Map.of("count", added, "reason", "Proposed when the document was prepared"), actor.getId());
+            String names = jdbc.queryForObject("select string_agg(full_name || coalesce(' (' || employee_code || ')', ''), ', ' order by full_name) from training_participants where session_id=? and added_reason='Proposed when the document was prepared'", String.class, sessionId);
+            store.auditActivity(actor, activity, "TRAINING_PARTICIPANTS_ADDED", null, null, added + " added to Session 1 from the people proposed when the document was prepared: " + names);
+        }
+    }
+
     @Transactional
     public Map<String, Object> addSession(UserAccount actor, UUID id, SessionRequest request) {
         Map<String, Object> activity = lockedForOrganizer(actor, id);
@@ -552,6 +578,7 @@ public class TrainingActivityService {
         // New content or a new session means the earlier confirmations of the list no longer cover it: they are asked again before the activity is notified.
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "SESSION_ADDED", Map.of("sessionNo", next), actor.getId());
         store.auditActivity(actor, activity, "TRAINING_SESSION_ADDED", null, null, "Session " + next);
+        if (next == 1) applyProposedParticipants(actor, activity, sessionId);
         return get(actor, id);
     }
 

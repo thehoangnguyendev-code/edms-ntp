@@ -1,3 +1,4 @@
+import { ClearFiltersButton, clearSearchAndFilters } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useState } from "react";
 import { Search, X } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
@@ -162,20 +163,13 @@ export function ServerListPanel<T>({
                 />
               ))}
               <div className="flex items-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onClear}
-                  className="h-9 gap-2 whitespace-nowrap px-4 font-medium transition-all duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white"
-                >
-                  Clear Filters
-                </Button>
+                <ClearFiltersButton onClearSearch={() => onSearch("")} onClear={onClear} />
                 {control}
               </div>
             </div>
           </ConfiguredDesktopFilters>
 
-          <FilterDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} onClear={onClear} onApply={() => setDrawerOpen(false)}>
+          <FilterDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} onClear={clearSearchAndFilters(() => onSearch(""), onClear)} onApply={() => setDrawerOpen(false)}>
             {filters.map((f) => (
               <FilterAccordionItem key={f.id} label={f.label} isExpanded={expanded.has(f.id)} onToggle={() => toggle(f.id)}>
                 <div className="flex flex-wrap gap-2 pb-3">

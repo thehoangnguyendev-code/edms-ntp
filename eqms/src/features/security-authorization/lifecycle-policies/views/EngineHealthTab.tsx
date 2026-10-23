@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Search, ShieldCheck, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -284,14 +285,7 @@ export const EngineHealthTab: React.FC = () => {
           />
         </div>
         <div className="flex items-end gap-2">
-          <button
-            type="button"
-            onClick={clearFilters}
-            disabled={!hasFilters}
-            className="h-9 whitespace-nowrap rounded-lg border border-slate-200 px-4 text-sm font-medium transition-all duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Clear Filters
-          </button>
+          <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
           {engineControl}
         </div>
       </div>

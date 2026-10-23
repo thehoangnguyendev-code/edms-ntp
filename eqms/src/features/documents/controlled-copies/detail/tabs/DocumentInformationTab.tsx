@@ -63,10 +63,10 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           />
         </div>
 
-        {/* Opened by */}
+        {/* Opened By */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700">
-            Opened by
+            Opened By
           </label>
           <input
             type="text"

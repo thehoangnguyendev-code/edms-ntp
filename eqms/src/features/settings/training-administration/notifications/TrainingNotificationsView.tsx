@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -148,15 +149,15 @@ export const TrainingNotificationsView: React.FC = () => {
   const sortFor = (key: string) => ({ direction: sortConfig.key === key ? sortConfig.direction : undefined, onSort: () => handleSort(key) });
   const columns: DataTableColumn<TrainingNotificationLogRow>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, cell: (_item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "sentAt", header: "Time", label: "Time", sort: sortFor("sentAt"), cellClassName: "whitespace-nowrap text-slate-600", cell: (item) => formatDateTime(item.createdAt) },
+    { id: "sentAt", header: "Sent At", label: "Sent At", sort: sortFor("sentAt"), cellClassName: "whitespace-nowrap text-slate-600", cell: (item) => formatDateTime(item.createdAt) },
     { id: "event", header: "Event", label: "Event", sort: sortFor("event"), cell: (item) => <span className="font-medium text-slate-900">{readable(item.eventCode)}</span> },
     { id: "recipient", header: "Recipient", label: "Recipient", sort: sortFor("recipient"), cell: (item) => item.recipientName },
-    { id: "channel", header: "Channel", label: "Channel", sort: sortFor("channel"), cell: (item) => <Badge color="slate" size="sm">{item.channel === "EMAIL" ? "E-mail" : "In-app"}</Badge> },
+    { id: "channel", header: "Channel", label: "Channel", sort: sortFor("channel"), cell: (item) => <Badge color={item.channel === "EMAIL" ? "amber" : "blue"} size="sm">{item.channel === "EMAIL" ? "E-mail" : "In-app"}</Badge> },
     { id: "status", header: "Status", label: "Status", sort: sortFor("status"), cell: (item) => <Badge color={STATUS_COLOR[item.status]} size="sm">{STATUS_LABEL[item.status]}</Badge> },
     { id: "reason", header: "Reason", label: "Reason", cellClassName: "text-slate-600", cell: (item) => (item.reasonCode ? readable(item.reasonCode) : "—") },
     { id: "title", header: "Notice", label: "Notice", sort: sortFor("title"), cellClassName: "max-w-xs truncate text-slate-600", cell: (item) => item.title || "—" },
   ];
-  const { layout, control } = useCustomColumnLayout("trainingNotifications", columns);
+  const { layout, control } = useCustomColumnLayout("training.notifications", columns);
 
   const stat = (status: TrainingNotificationLogRow["status"]) => (
     <button
@@ -263,7 +264,7 @@ export const TrainingNotificationsView: React.FC = () => {
                   ]}
                 >
                   <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
-                    <div className="sm:col-span-1 lg:col-span-3">
+                    <div className="sm:col-span-1 lg:col-span-4">
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Search</label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -279,13 +280,13 @@ export const TrainingNotificationsView: React.FC = () => {
                         />
                       </div>
                     </div>
-                    <div className="sm:col-span-1 lg:col-span-3">
+                    <div className="sm:col-span-1 lg:col-span-4">
                       <Select label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); }} options={STATUS_OPTIONS} placeholder="All" />
                     </div>
-                    <div className="sm:col-span-1 lg:col-span-3">
+                    <div className="sm:col-span-1 lg:col-span-4">
                       <Select label="Channel" value={channelFilter} onChange={(value) => { setChannelFilter(value as ChannelFilter); setCurrentPage(1); }} options={CHANNEL_OPTIONS} placeholder="All" />
                     </div>
-                    <div className="sm:col-span-1 lg:col-span-3">
+                    <div className="sm:col-span-1 lg:col-span-4">
                       <DateRangePicker
                         label="Sent Date Range"
                         startDate={sentFromDate}
@@ -295,13 +296,11 @@ export const TrainingNotificationsView: React.FC = () => {
                         placeholder="Select range"
                       />
                     </div>
-                  </div>
-
-                  <div className="hidden md:flex justify-start gap-2 mt-3">
-                    <Button size="sm" variant="outline" onClick={clearFilters} disabled={!hasActiveFilters} className="gap-2">
-                      Clear Filters
-                    </Button>
-                    {control}
+                    {/* The two buttons share the row of the date range, on its right. */}
+                    <div className="flex justify-end gap-2 sm:col-span-1 lg:col-span-8">
+                      <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
+                      {control}
+                    </div>
                   </div>
                 </ConfiguredDesktopFilters>
               </div>

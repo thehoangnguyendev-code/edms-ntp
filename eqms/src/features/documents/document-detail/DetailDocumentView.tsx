@@ -1868,6 +1868,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           {activeTab === "training" && (
             <TrainingInformationTab
               isTemplate={Boolean(document.isTemplate)}
+              documentId={document.id}
               data={
                 canConfigureNextRevisionNow && canConfigureNextRevisionMetadataNow
                   ? trainingDraft

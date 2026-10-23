@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Check, ChevronDown, ChevronUp, MoreVertical, Search, X } from "lucide-react";
@@ -673,15 +674,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
             />
           </div>
           <div className="mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearFilters}
-              disabled={!hasFilters}
-              className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap disabled:opacity-40"
-            >
-              Clear Filters
-            </Button>
+            <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
           {itemControl}
           </div>
           </div>

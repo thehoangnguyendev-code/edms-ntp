@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, MoreVertical, Plus, Search, X } from "lucide-react";
@@ -367,14 +368,7 @@ export const AuditTrailReviewView: React.FC = () => {
                   options={STATUS_OPTIONS}
                 />
                 <div className="flex items-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="h-9 whitespace-nowrap px-4 font-medium transition-all duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white"
-                  >
-                    Clear Filters
-                  </Button>
+                  <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} />
                 </div>
               </div>
             </div>

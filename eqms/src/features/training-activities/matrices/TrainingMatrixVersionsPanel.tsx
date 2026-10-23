@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useEntityChanged } from "@/features/realtime/useEntityChanged";
+import { useCallback, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
 import { IconEye, IconGitCompare } from "@tabler/icons-react";
-import { PageHeader } from "@/components/ui/page/PageHeader";
-import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
@@ -17,32 +14,31 @@ import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
-import { trainingError, trainingMatrixApi, type TrainingMatrixDetail, type TrainingMatrixRow, type TrainingMatrixVersionRef } from "@/services/api/trainingActivities";
-import { day, trainingBreadcrumbs } from "../shared/trainingLabels";
+import { trainingError, trainingMatrixApi, type TrainingMatrixRow, type TrainingMatrixVersionRef } from "@/services/api/trainingActivities";
+import { day } from "../shared/trainingLabels";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", PENDING_APPROVAL: "Waiting for approval", EFFECTIVE: "Effective", OBSOLETE: "Obsolete" };
 const STATUS_OPTIONS = [{ label: "All", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))];
 const rowName = (r: TrainingMatrixRow) => (r.topicId ? `${r.topicCode} — ${r.topicName}` : `${r.documentNumber} — ${r.documentName}`);
 type Diff = Awaited<ReturnType<typeof trainingMatrixApi.compare>>;
 
-/** The versions of one matrix: which one is in use, which are history, and what changed between a version and the one before it. Search, filter, sort and paging are done by the server. */
-export function TrainingMatrixHistoryView() {
-  const { matrixId = "" } = useParams();
+/**
+ * The versions of one matrix, as a tab of the matrix page: which one is in use, which are history, and what changed between a version and the one before it.
+ * Search, filter, sort and paging are done by the server.
+ */
+export function TrainingMatrixVersionsPanel({ matrixId, currentVersionId }: { matrixId: string; currentVersionId: string }) {
   const navigate = useNavigate();
   const drag = useTableDragScroll();
   const menu = usePortalDropdown();
-  const [matrix, setMatrix] = useState<TrainingMatrixDetail>();
   const [status, setStatus] = usePersistedState("training.matrixVersions.status", "");
   const [error, setError] = useState("");
   const [diff, setDiff] = useState<Diff>();
 
-  const loadMatrix = useCallback(() => { trainingMatrixApi.get(matrixId).then(setMatrix).catch((e) => setError(trainingError(e))); }, [matrixId]);
-  useEffect(loadMatrix, [loadMatrix]);
-  useEntityChanged(["TRAINING"], loadMatrix);
   const fetcher = useMemo(() => trainingMatrixApi.versions(matrixId), [matrixId]);
   const extraParams = useMemo(() => ({ status: status || undefined }), [status]);
   const table = useServerTable<TrainingMatrixVersionRef>({ persistKey: "training.matrixVersions", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "versionNo", defaultSortDirection: "desc", extraParams, syncToUrl: false });
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
+  const open = (v: TrainingMatrixVersionRef) => navigate(`/training-management/matrix/${v.id}`);
 
   const compare = useCallback(async (v: TrainingMatrixVersionRef) => {
     try {
@@ -54,7 +50,14 @@ export function TrainingMatrixHistoryView() {
 
   const columns: DataTableColumn<TrainingMatrixVersionRef>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "version", header: "Version", sort: sorted("versionNo"), cell: (v) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/matrix-versions/${v.id}`)}>Version {v.versionNo}</button> },
+    {
+      id: "version", header: "Version", sort: sorted("versionNo"),
+      cell: (v) => (
+        <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => open(v)}>
+          Version {v.versionNo}{v.id === currentVersionId ? " (shown)" : ""}
+        </button>
+      ),
+    },
     { id: "status", header: "Status", sort: sorted("status"), cell: (v) => <Badge color={v.status === "EFFECTIVE" ? "emerald" : v.status === "OBSOLETE" ? "slate" : "amber"}>{STATUS_LABEL[v.status]}</Badge> },
     { id: "reason", header: "What changed", sort: sorted("changeReason"), cell: (v) => <div className="max-w-80 whitespace-normal">{v.changeReason || "—"}</div> },
     { id: "prepared", header: "Prepared by", sort: sorted("preparedBy"), cell: (v) => v.preparedByName ?? "—" },
@@ -71,23 +74,17 @@ export function TrainingMatrixHistoryView() {
   const { layout, control } = useCustomColumnLayout("training.matrix.versions", columns, action);
   const actionRow = table.items.find((row) => row.id === menu.openId);
   const filters: ReportSelectFilter[] = [{ id: "status", label: "Status", value: status, options: STATUS_OPTIONS, onChange: (v) => { setStatus(v); table.setCurrentPage(1); } }];
-  const title = "Training Matrix Versions";
 
   return (
-    <div className="flex min-w-0 flex-col gap-4 md:gap-6">
-      <PageHeader title={title} breadcrumbItems={trainingBreadcrumbs(navigate, "matrices", title)} actions={<Button size="sm" variant="outline-emerald" onClick={() => navigate("/training-management/matrices")}>Back</Button>} />
+    <div className="space-y-4">
+      <p className="text-xs text-slate-500">An approved version is never changed. Each change is a new version that is prepared, then approved with an electronic signature. The effective version tells who must be trained on what; obsolete versions stay as history. Use Compare with previous to see what a version changed.</p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      {matrix && (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600" aria-label="About this matrix">
-          <p><span className="font-semibold text-slate-900">{matrix.code}</span> — {matrix.departmentName}. {matrix.effective ? `Version ${matrix.effective.versionNo} is in use since ${day(matrix.effective.effectiveAt)}.` : "No version is in use yet."}</p>
-          <p className="mt-1 text-xs text-slate-500">An approved version is never changed. Each change is a new version that is prepared, then approved with an electronic signature. The effective version tells who must be trained on what; obsolete versions stay as history. Use Compare with previous to see what a version changed.</p>
-        </section>
-      )}
       <ReportListToolbar
         searchPlaceholder="Search version, change or person…" search={table.searchQuery}
         onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
         filters={filters} dates={[]} hasActiveFilters={Boolean(status || table.searchQuery)}
         onClear={() => { setStatus(""); table.setSearchQuery(""); table.setCurrentPage(1); }} customControl={control}
+        framed={false} flush
       >
         <DataTable
           rows={table.items} getRowKey={(v) => v.id} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading versions…" />}
@@ -100,7 +97,7 @@ export function TrainingMatrixHistoryView() {
       <PortalDropdownMenu isOpen={!!actionRow} onClose={menu.close} position={menu.position} minWidth={220}>
         {actionRow && (
           <div className="py-1">
-            <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { navigate(`/training-management/matrix-versions/${actionRow.id}`); menu.close(); }}>View Details</DropdownMenuItem>
+            <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { open(actionRow); menu.close(); }}>View Details</DropdownMenuItem>
             {actionRow.previousId && ["EFFECTIVE", "OBSOLETE"].includes(actionRow.status) && (
               <DropdownMenuItem icon={<IconGitCompare className="h-4 w-4" />} onClick={() => { void compare(actionRow); menu.close(); }}>Compare with previous</DropdownMenuItem>
             )}

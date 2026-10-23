@@ -23,11 +23,13 @@ interface Props {
   footer?: ReactNode;
   /** Show the same Back and command buttons beside the title too, so they can be used without scrolling to the foot of the page. */
   repeatFooterInHeader?: boolean;
+  /** A second card of tabs below the Back and command buttons, as in Document Details (the copies sent, for example). */
+  afterFooter?: ReactNode;
   children: ReactNode;
 }
 
 /** The frame of every Training detail screen; it repeats the frame of Document Details (stepper, tab card, footer row). */
-export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, currentStepIndex, terminalProgressStep, skippedSteps, tabs, activeTab, onTab, tabLayoutId, footer, repeatFooterInHeader = false, children }: Props) {
+export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, currentStepIndex, terminalProgressStep, skippedSteps, tabs, activeTab, onTab, tabLayoutId, footer, repeatFooterInHeader = false, afterFooter, children }: Props) {
   return (
     <div className="w-full space-y-4 md:space-y-6">
       <div className="flex flex-col gap-4">
@@ -51,6 +53,7 @@ export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, cu
         <Button onClick={onBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">Back</Button>
         {footer}
       </div>
+      {afterFooter}
     </div>
   );
 }
@@ -74,7 +77,7 @@ export function TabBlock({ title, action, children }: { title?: string; action?:
   return (
     <div className="space-y-3">
       {(title || action) && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className={`flex flex-wrap items-center gap-2 ${title ? "justify-between" : "justify-end"}`}>
           {title && <h3 className="text-sm font-semibold text-slate-800">{title}</h3>}
           {action}
         </div>

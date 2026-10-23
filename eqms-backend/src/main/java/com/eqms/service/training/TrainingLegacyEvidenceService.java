@@ -80,8 +80,8 @@ public class TrainingLegacyEvidenceService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(d.document_number) like ? escape '\\' or lower(d.document_name) like ? escape '\\')");
-            args.add(like); args.add(like);
+            where.append(" and (lower(d.document_number) like ? escape '\\' or lower(d.document_name) like ? escape '\\' or lower(coalesce(r.revision_number,'')) like ? escape '\\' or lower(coalesce(r.training_number,'')) like ? escape '\\' or lower(coalesce(le.original_name,'')) like ? escape '\\' or lower(coalesce(su.full_name,'')) like ? escape '\\' or lower(coalesce(vu.full_name,'')) like ? escape '\\')");
+            args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         TrainingListFilter extra = new TrainingListFilter().contains(more.get("submittedBy"), "su.full_name").contains(more.get("verifiedBy"), "vu.full_name")
                 .dateRange("r.training_completion_date", more.get("completionFrom"), more.get("completionTo"))
@@ -98,6 +98,7 @@ public class TrainingLegacyEvidenceService {
         String from = """
              from document_revisions r join documents d on d.id = r.document_id
              left join training_legacy_evidence le on le.revision_id = r.id and le.status in ('SUBMITTED','VERIFIED')
+             left join app_users su on su.id = le.submitted_by left join app_users vu on vu.id = le.verified_by
             """;
         Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
@@ -106,9 +107,7 @@ public class TrainingLegacyEvidenceService {
             select r.id as revision_id, d.document_number, d.document_name, r.revision_number, r.training_completion_date as completion_date, r.training_number as paper_training_number,
                    le.id as evidence_id, le.status as evidence_status, le.not_evidenced, le.not_evidenced_reason, le.original_name, le.submitted_at, le.verified_at,
                    su.full_name as submitted_by_name, vu.full_name as verified_by_name
-            """ + from + """
-              left join app_users su on su.id = le.submitted_by left join app_users vu on vu.id = le.verified_by
-            """ + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("document", "d.document_number", "completion", "r.training_completion_date", "paperNo", "r.training_number", "evidence", "le.status", "detail", "le.original_name", "submittedBy", "su.full_name", "verifiedBy", "vu.full_name", "submittedOn", "le.submitted_at", "verifiedOn", "le.verified_at"),
+            """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("document", "d.document_number", "completion", "r.training_completion_date", "paperNo", "r.training_number", "evidence", "le.status", "detail", "le.original_name", "submittedBy", "su.full_name", "verifiedBy", "vu.full_name", "submittedOn", "le.submitted_at", "verifiedOn", "le.verified_at"),
                 "d.document_number, r.revision_number") + " limit ? offset ?", args.toArray()));
         for (Map<String, Object> row : rows) {
             row.put("pendingForMe", row.get("evidenceId") != null && "SUBMITTED".equals(row.get("evidenceStatus")) && jdbc.queryForObject(

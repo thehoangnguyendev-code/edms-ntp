@@ -16,19 +16,24 @@ import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/sh
 import { trainingError, trainingMatrixApi, type TrainingPersonPosition, type TrainingPosition } from "@/services/api/trainingActivities";
 import { trainingAdministrationBase } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { useEffect } from "react";
+import { useDepartmentNameOptions } from "@/features/training-activities/shared/useListFilters";
 
 /** The position of each person, as Training Management uses it for the matrix. The user table keeps only text, so a person is mapped by hand: nothing is guessed. */
 export function TrainingPersonPositionsView() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [unmatched, setUnmatched] = usePersistedState("training.admin.positions.unmatched", "");
+  const [departmentFilter, setDepartmentFilter] = usePersistedState("training.admin.positions.department", "");
+  const [positionFilter, setPositionFilter] = usePersistedState("training.admin.positions.position", "");
+  const [suggested, setSuggested] = usePersistedState("training.admin.positions.suggested", "");
+  const departments = useDepartmentNameOptions();
   const [positions, setPositions] = useState<TrainingPosition[]>([]);
   const [choice, setChoice] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
   useEffect(() => { trainingMatrixApi.positions().then(setPositions).catch(() => setPositions([])); }, []);
   const fetcher = useCallback((params: Record<string, string | number | boolean | undefined>) => trainingMatrixApi.personPositions(params).catch((e) => { setError(trainingError(e)); throw e; }), []);
-  const extra = useMemo(() => ({ unmatchedOnly: unmatched === "yes" ? true : undefined }), [unmatched]);
+  const extra = useMemo(() => ({ mapped: unmatched === "yes" ? "NO" : unmatched === "no" ? "YES" : undefined, department: departmentFilter || undefined, positionId: positionFilter || undefined, suggested: suggested || undefined }), [unmatched, departmentFilter, positionFilter, suggested]);
   const table = useServerTable<TrainingPersonPosition>({ persistKey: "training.admin.positions", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "fullName", extraParams: extra, initialItemsPerPage: 10 });
 
   const apply = async (row: TrainingPersonPosition, positionId: string) => {
@@ -62,14 +67,19 @@ export function TrainingPersonPositionsView() {
     },
   ];
   const { layout, control } = useCustomColumnLayout("training.person.positions", columns);
-  const filters: ReportSelectFilter[] = [{ id: "unmatched", label: "Show", value: unmatched, options: [{ label: "All", value: "" }, { label: "Without a position", value: "yes" }], onChange: (v) => { setUnmatched(v); table.setCurrentPage(1); } }];
+  const filters: ReportSelectFilter[] = [
+    { id: "department", label: "Department", value: departmentFilter, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => { setDepartmentFilter(v); table.setCurrentPage(1); } },
+    { id: "position", label: "Position for training", value: positionFilter, options: [{ label: "All", value: "" }, ...options], onChange: (v) => { setPositionFilter(v); table.setCurrentPage(1); } },
+    { id: "unmatched", label: "Position set", value: unmatched, options: [{ label: "All", value: "" }, { label: "Without a position", value: "yes" }, { label: "With a position", value: "no" }], onChange: (v) => { setUnmatched(v); table.setCurrentPage(1); } },
+    { id: "suggested", label: "Suggestion", value: suggested, options: [{ label: "All", value: "" }, { label: "With a suggested position", value: "YES" }, { label: "Without a suggestion", value: "NO" }], onChange: (v) => { setSuggested(v); table.setCurrentPage(1); } },
+  ];
   const crumbs = [...trainingAdministrationBase(navigate), { label: "Person Positions", isActive: true }];
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
       <PageHeader title="Person Positions" breadcrumbItems={crumbs} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar searchPlaceholder="Search name or employee code…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
-        filters={filters} dates={[]} hasActiveFilters={Boolean(unmatched)} onClear={() => { setUnmatched(""); table.setCurrentPage(1); }} customControl={control}>
+        filters={filters} dates={[]} hasActiveFilters={Boolean(unmatched || departmentFilter || positionFilter || suggested || table.searchQuery)} onClear={() => { setUnmatched(""); setDepartmentFilter(""); setPositionFilter(""); setSuggested(""); table.setSearchQuery(""); table.setCurrentPage(1); }} customControl={control}>
         <DataTable rows={table.items} getRowKey={(r) => r.personId} isLoading={table.isLoading} loadingContent={<SectionLoading text="Loading people…" />} columns={columns} columnLayout={layout}
           emptyState={<TableEmptyState title="No People" description="Try changing your search or filter." />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined} />

@@ -54,11 +54,11 @@ describe("My Training server tables", () => {
   it("queries the complete signature table on the server without carrying another tab's sort", async () => {
     render(<MemoryRouter initialEntries={["/?sortBy=dueDate&page=2"]}><MyTrainingView /></MemoryRouter>);
     await waitFor(() => expect(api.tasks).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("tab", { name: /Waiting for my signature/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Waiting for my signature/i }));
     await waitFor(() => expect(api.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, sortBy: "assignedAt" })));
     fireEvent.change(screen.getByLabelText("Step"), { target: { value: "RECEIVER_ACCEPT" } });
     await waitFor(() => expect(api.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ stepCode: "RECEIVER_ACCEPT" })));
-    expect(screen.getByRole("tabpanel", { name: /Waiting for my signature/ })).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: /Waiting for my signature/i })).toBeInTheDocument();
   });
 
   it("passes personal record filters and sortable columns to the personal server endpoint", async () => {

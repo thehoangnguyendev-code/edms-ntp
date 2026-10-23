@@ -1,3 +1,4 @@
+import { statusChange } from "../../shared/trainingLabels";
 import { useState } from "react";
 import { Button } from "@/components/ui/button/Button";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
@@ -78,6 +79,7 @@ export function TrainingRollCallBlock({ activity, onChanged }: { activity: Train
           }
         }}
         actionTitle="Attest the roll-call of the session"
+        changes={statusChange("Not attested", "Attested by the trainer", "Roll-call")}
         meaningDisplayName="Attendance Confirmed by Trainer"
         meaningCode="TRAINING_ATTENDANCE_CONFIRMED"
         targetDetails={{ code: activity.trainingNumber, title: activity.trainingTitle, revision: "" }}

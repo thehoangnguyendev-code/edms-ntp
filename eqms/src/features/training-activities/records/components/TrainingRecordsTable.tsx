@@ -23,7 +23,7 @@ import { useServerTable } from "@/features/settings/shared/hooks/useServerTable"
 import { ReportListToolbar, pickerDateToIso, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { myTrainingApi } from "@/services/api/myTraining";
 import { trainingError, trainingRecordsApi, type TrainingRecord } from "@/services/api/trainingActivities";
-import { METHOD_LABEL, day } from "../../shared/trainingLabels";
+import { METHOD_LABEL, day, statusChange } from "../../shared/trainingLabels";
 import { resettingDates, useDateRange, useDepartmentNameOptions } from "../../shared/useListFilters";
 
 /**
@@ -145,7 +145,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
     <>
       {error && <p role="alert" className="mb-2 text-sm text-red-700">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search topic, Training Number, document or name…"
+        searchPlaceholder="Search employee, topic, Training Number or document…"
         search={table.searchQuery}
         onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
         filters={filters}
@@ -215,6 +215,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
         onClose={() => setVoiding(undefined)}
         onConfirm={async (data: { signatureToken: string }) => doVoid(data.signatureToken)}
         actionTitle="Void training record"
+        changes={statusChange("Valid", "Voided", "Training record")}
         meaningDisplayName="Training Record Voided"
         meaningCode="TRAINING_RECORD_VOIDED"
         targetDetails={{ code: voiding?.record.trainingNumber ?? "", title: voiding?.record.fullName ?? "", revision: "" }}

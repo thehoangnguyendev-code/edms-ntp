@@ -235,6 +235,13 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
                 document.getId(), revision == null ? null : revision.getId(), revision == null ? null : revision.getRevisionNumber(),
                 document.getDocumentNumber(), trim(document.getDocumentName(), 255), days, actor == null ? null : actor.getId());
         Map<String, Object> created = store.activity(id).orElseThrow();
+        // The people proposed for the previous revision are proposed again, to be adjusted rather than chosen from the start.
+        jdbc.update("""
+            insert into training_proposed_participants(id, activity_id, person_user_id, proposed_by)
+            select gen_random_uuid(), ?, p.person_user_id, p.proposed_by from training_proposed_participants p join app_users u on u.id = p.person_user_id and u.status = 'Active'
+             where p.activity_id = (select a.id from training_activities a where a.document_id = ? and a.id <> ? and a.parent_activity_id is null
+                                       and exists (select 1 from training_proposed_participants q where q.activity_id = a.id) order by a.created_at desc limit 1)
+            """, id, document.getId(), id);
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "NUMBER_ISSUED", Map.of("trainingNumber", issued.baseNumber(), "document", String.valueOf(document.getDocumentNumber())), actor == null ? null : actor.getId());
         store.auditActivity(actor, created, "TRAINING_NUMBER_ASSIGNED", null, "RESERVED", "Training Number assigned to " + (revision == null ? "the first revision of " : "revision of ") + document.getDocumentNumber());
         if (revision != null) {

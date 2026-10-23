@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
-const MAX_BYTES = 512 * 1024;
-const TYPES = ["image/png", "image/jpeg"];
+const MAX_BYTES = 5 * 1024 * 1024;
+/** Pictures that every browser shows. A GIF is not accepted. */
+const TYPES = ["image/png", "image/jpeg", "image/webp", "image/bmp"];
 
 interface Props {
   file: File | null;
   onChange: (file: File | null) => void;
 }
 
-/** Drop zone for a PNG/JPEG (same look as the other image uploads); the chosen image is shown before it is uploaded. */
+/** Drop zone for a picture (PNG, JPEG, WebP or BMP; same look as the other image uploads); the chosen image is shown before it is uploaded. */
 export function SpecimenImagePicker({ file, onChange }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -26,8 +27,8 @@ export function SpecimenImagePicker({ file, onChange }: Props) {
 
   const pick = (next?: File) => {
     if (!next) return;
-    if (!TYPES.includes(next.type)) { setError("Only a PNG or JPEG image is accepted."); return; }
-    if (next.size > MAX_BYTES) { setError("The image is larger than 512 KB."); return; }
+    if (!TYPES.includes(next.type)) { setError("Only a PNG, JPEG, WebP or BMP image is accepted (not a GIF)."); return; }
+    if (next.size > MAX_BYTES) { setError("The image is larger than 5 MB."); return; }
     setError("");
     onChange(next);
   };
@@ -35,7 +36,7 @@ export function SpecimenImagePicker({ file, onChange }: Props) {
 
   return (
     <div className="space-y-2">
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/bmp" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
       {!file ? (
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -51,7 +52,7 @@ export function SpecimenImagePicker({ file, onChange }: Props) {
             <Upload className={cn("h-6 w-6", dragging ? "text-emerald-600" : "text-slate-400")} />
           </div>
           <p className="text-center text-xs font-medium text-slate-700 sm:text-sm">{dragging ? "Drop your file here" : "Click to upload or drag & drop"}</p>
-          <p className="mt-1 text-2xs font-normal text-slate-400 sm:text-xs">PNG, JPG (max 512 KB)</p>
+          <p className="mt-1 text-2xs font-normal text-slate-400 sm:text-xs">PNG, JPG, WebP, BMP (max 5 MB)</p>
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 md:p-5">
@@ -61,7 +62,7 @@ export function SpecimenImagePicker({ file, onChange }: Props) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-slate-900">{file.name}</p>
-              <p className="mt-0.5 text-xs text-slate-500">{Math.max(1, Math.round(file.size / 1024))} KB · Preview before upload</p>
+              <p className="mt-0.5 text-xs text-slate-500">{file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`} · Preview before upload</p>
             </div>
             <button type="button" onClick={clear} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title="Remove image">
               <X className="h-4 w-4 text-slate-500 hover:text-red-600" />

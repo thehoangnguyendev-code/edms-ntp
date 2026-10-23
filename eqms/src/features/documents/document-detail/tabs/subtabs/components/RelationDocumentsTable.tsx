@@ -88,7 +88,7 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
                                 </TableMarkup.HeaderCell>
                                 {th("Document Number", "documentNumber")}
                                 {th("Created", "created", "hidden md:table-cell")}
-                                {th("Opened by", "openedBy", "hidden lg:table-cell")}
+                                {th("Opened By", "openedBy", "hidden lg:table-cell")}
                                 {th("Document Name", "documentName")}
                                 {th("Status", "status")}
                                 {th("Document Type", "type", "hidden md:table-cell")}

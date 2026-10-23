@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useState, createRef, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { hasControlledCopyExpansion } from "@/features/documents/shared/rowExpansion";
@@ -1542,7 +1543,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       ),
     },
     { id: "created", header: "Created", label: "Created", sort: { direction: sortConfig.key === "created" ? sortConfig.direction : undefined, onSort: () => handleSort("created") }, cell: (copy) => formatDateTimeParts(copyMeta(copy).displayFields.createdDate, copyMeta(copy).displayFields.createdTime) },
-    { id: "openedBy", header: "Opened by", label: "Opened by", sort: { direction: sortConfig.key === "openedBy" ? sortConfig.direction : undefined, onSort: () => handleSort("openedBy") }, cell: (copy) => copy.openedBy },
+    { id: "openedBy", header: "Opened By", label: "Opened By", sort: { direction: sortConfig.key === "openedBy" ? sortConfig.direction : undefined, onSort: () => handleSort("openedBy") }, cell: (copy) => copy.openedBy },
     { id: "name", header: "Controlled Copy Name", label: "Controlled Copy Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: "font-medium text-slate-900", cell: (copy) => copy.name },
     {
       id: "quantity",
@@ -1840,14 +1841,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               </div>
 
               <div className="flex items-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap"
-                >
-                  Clear Filters
-                </Button>
+                <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
                 {controlledControl}
               </div>
             </div>

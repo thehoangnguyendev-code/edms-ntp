@@ -1,4 +1,5 @@
-﻿import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+﻿import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { DesktopSelectFilters } from '@/components/ui/filter/DesktopSelectFilters';
 import { useBranding } from '@/components/branding/BrandLogo';
@@ -1051,14 +1052,7 @@ export const NotificationsView: React.FC = () => {
                 />
               </div>
               <div className="w-full flex justify-start">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearFilters}
-                  className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap"
-                >
-                  Clear Filters
-                </Button>
+                <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={handleClearFilters} />
               </div>
             </div>
           </div>

@@ -2109,6 +2109,7 @@ export const NewDocumentView: React.FC = () => {
               data={trainingConfig}
               onChange={setTrainingConfig}
               trainingLink={trainingLink}
+              documentId={documentId}
               isReadOnly={
                 documentStatus === "Obsoleted" ||
                 documentStatus === "Closed - Cancelled" ||

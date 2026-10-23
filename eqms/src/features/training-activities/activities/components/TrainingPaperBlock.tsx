@@ -116,12 +116,16 @@ export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: {
   ];
 
   return (
-    <>
+    <div className="space-y-6">
       <TabBlock title="Paper">
         <p className="px-4 py-3 text-xs text-slate-500">A session may be held on paper, in the room or in the workshop. The pack carries the Training Number on every page; each print is numbered and recorded.</p>
         <DataTable rows={sessions} getRowKey={(s) => s.id} columns={columns} />
-        {packs.length > 0 && <DataTable rows={packs} getRowKey={(p) => p.id} columns={packColumns} />}
       </TabBlock>
+      {packs.length > 0 && (
+        <TabBlock title="Printed packs">
+          <DataTable rows={packs} getRowKey={(p) => p.id} columns={packColumns} />
+        </TabBlock>
+      )}
       {ask && (
         <FormModal
           isOpen
@@ -137,6 +141,6 @@ export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: {
           <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
         </FormModal>
       )}
-    </>
+    </div>
   );
 }

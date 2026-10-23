@@ -58,6 +58,24 @@ public class TrainingComplianceService {
         return department;
     }
 
+    /**
+     * The training the effective matrix of the department asks for the position of one person, and where the person stands: MISSING (never done), DUE (annual and older than a year) or
+     * OK. The caller has already checked who may see the person. A person with no position for training, or a department with no effective matrix, has no rows.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> gapsOfPerson(UUID personId, UUID departmentId) {
+        List<Map<String, Object>> rows = departmentId == null ? List.of()
+                : jdbc.queryForList("select x.* from (" + BASE + ") x where x.pid = ? order by case x.status when 'MISSING' then 0 when 'DUE' then 1 else 2 end, x.title", departmentId, personId);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("positionName", rows.isEmpty() ? null : rows.getFirst().get("position_name"));
+        out.put("required", rows.size());
+        out.put("missing", rows.stream().filter((r) -> "MISSING".equals(r.get("status"))).count());
+        out.put("due", rows.stream().filter((r) -> "DUE".equals(r.get("status"))).count());
+        out.put("done", rows.stream().filter((r) -> "OK".equals(r.get("status"))).count());
+        out.put("gaps", TrainingRows.camel(rows));
+        return out;
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> coverage(UserAccount actor, UUID departmentId, String status, String search, String sortBy, String sortDirection, int page, int limit) {
         UUID department = department(actor, departmentId);
@@ -71,8 +89,8 @@ public class TrainingComplianceService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(x.full_name) like ? escape '\\' or lower(coalesce(x.employee_code,'')) like ? escape '\\' or lower(x.title) like ? escape '\\')");
-            args.add(like); args.add(like); args.add(like);
+            where.append(" and (lower(x.full_name) like ? escape '\\' or lower(coalesce(x.employee_code,'')) like ? escape '\\' or lower(x.title) like ? escape '\\' or lower(coalesce(x.position_name,'')) like ? escape '\\' or lower(coalesce(x.code,'')) like ? escape '\\')");
+            args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         Long total = jdbc.queryForObject("select count(*) from (" + BASE + ") x" + where, Long.class, args.toArray());

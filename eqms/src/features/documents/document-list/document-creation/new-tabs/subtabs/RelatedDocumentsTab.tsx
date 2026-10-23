@@ -76,7 +76,7 @@ export const RelatedDocumentsTab: React.FC<RelatedDocumentsTabProps> = ({
                                     Created
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>
-                                    Opened by
+                                    Opened By
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
                                     Document Name

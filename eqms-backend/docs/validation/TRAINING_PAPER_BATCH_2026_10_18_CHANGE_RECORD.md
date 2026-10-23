@@ -74,3 +74,70 @@ Date: 2026-10-18. Owner requests: run training on paper or in one room as well a
 ## Limitations and rollback
 
 DEV evidence only, not released-environment validation. Rollback of the data model is forward-only (a new migration); the tables added here hold no business record before use. The screens and services can be removed without touching earlier Training records; the column rename would need a new migration to reverse.
+
+## Training Reviews: matrix gaps and system checks (2026-10-22)
+
+- **Change.** The detail of a Training Review has a tab "Matrix Gaps" (the training the effective matrix asks for the position of the person and where the person stands: not trained, annual training due, trained) and a column "System check" in the checklist (what the system already holds for the items Specimen signature, Job assignment and Hand over the training record).
+- **Source.** SOP.0003 5.3.11 (the receiving head of department and the assigned employee review the current record); 5.1 (job assignment after the matrix is complete). New endpoint `GET /training/personnel-reviews/{id}/matrix-gaps`; the checks are computed in `TrainingPersonnelReviewService.systemCheck`.
+- **Control kept.** The system check never marks an item done and never blocks the closing of a review: a person decides, and the review is closed by someone other than the employee with an electronic signature. The scope check of the review applies to both reads.
+- **Evidence.** API on DEV: a review of a person with an approved specimen and an effective job assignment shows both checks (the job assignment check says one training of the matrix is still open); the gaps list shows the one missing training; a person with no position for training has no gaps. UI: the two tabs were opened with no failed request.
+- **Not done / for QA.** No unit test of the two new backend reads. Open decisions: whether closing a review must wait for an effective job assignment; whether the Human Resources part (rules and safety) is tracked as a training activity; the second-site transfer (D-18). The gaps are shown, but the additional training is still created from an item as before, not from selected gaps.
+
+## Search bars of the Training lists (2026-10-22)
+
+- **Change.** The search of each Training list now also finds the text columns the list shows: Training Records (employee ID, department, position), Job Assignments (department), Training Reviews (department, note, who opened it), Specimen Signatures (department, reason, uploader), Record Exports and their batches (who prepared and approved), Legacy Evidence (revision, paper training number, file name, submitter, verifier), Training Activities (department), Training Number Register (cancel reason), Requirements (department), Compliance gaps (position, training code), Person positions (department, position), Form templates (file name, remark).
+- **Fault found on the way.** The legacy evidence list failed when filtered by "submitted by" or "verified by": its count query lacked the two joins. Fixed with the search.
+- **Evidence.** A probe on DEV took the displayed values of two rows of each of 16 lists and searched for each one: every text value is found by its bar. Values shown as a label of a code (status, kind, method, result) and numbers are not found by their words; the dropdown filters cover them.
+- **Not done.** No automated test of the new search clauses; other modules (documents, users, audit trail) were not probed.
+
+## Training Matrix: new addresses and one entry point (2026-10-22)
+
+- UI addresses replaced, no redirect from the old ones: `/training-management/matrix` (entry) and `/training-management/matrix/{versionId}` (a version, with tabs Matrix, General Information, Versions, Audit Trail; `?tab=` selects a tab). Removed: `matrices`, `matrices/{id}`, `matrix-versions/{id}` and the page `TrainingMatrixHistoryView` (its versions table and compare dialog are now the Versions tab).
+- Entry: a user with `training.scope.all` sees the list of all department matrices; any other user is sent to the matrix of their own department (the server already limits the list to it). A department without a matrix sees the list, where it is created.
+- `TrainingNotifier.path` now links to `/training-management/matrix/{id}`; notifications stored before this change keep the old link and will not open.
+- Permissions, API endpoints, e-signatures and audit are unchanged.
+- Verified: `tsc` clean; training vitest 18/19 (the one failure, `MyTrainingView` tab label, is the earlier known one); frontend and backend rebuilt and healthy; entry URL answers 200.
+- NOT verified in a browser: landing redirect for a non-all-scope user, overview for admin, Versions tab, compare dialog, create/new-version flows (no DEV password in this shell session).
+
+## Training Matrix: grid and shortcuts (2026-10-22, steps 2 and 3)
+
+- Grid (`TrainingMatrixGrid`): groups can be collapsed; filters for one position, annual rows and changed rows; a draft or waiting version is shown against the version before it (New badge, amber ring on changed cells, list of removed rows). The earlier version is read with the same endpoints and permission as before; nothing is written.
+- Matrix tab: "Manage topics" and "Assign positions" open the existing Training Administration screens, shown only with `training.admin.manage`; those screens keep their own permission guard.
+- Landing: whether the list or the own matrix opens is decided from the permission codes the server resolved for the person (`training.scope.all`), the same code `TrainingAccess.allDepartments` checks; the server still limits the data.
+- Not done: reminder of new SOPs missing from every matrix (needs a QA decision on the trigger rule); PDF layout was already APD.0011 and is unchanged.
+- Verified: `tsc` clean, grid tests 7/7. NOT verified in a browser (no DEV password in the shell).
+
+## Training Matrix list: one link instead of an Action menu (2026-10-22)
+
+- Modelled on Document Control (one row per document, its revisions in a tab of the detail page): the list has one row per department matrix; the Matrix code opens the version in use (or the draft when none is in use). The Action menu (View Effective Version / Open Version Being Prepared / All Versions) is removed; all versions are in the Versions tab of the matrix page. "Being prepared" is renamed "Draft in progress".
+- UI only; not verified in a browser.
+
+- Layout follow-up: the versions are no longer a main tab of the matrix page. As in Document Details, a second card with the sub-tab "Matrix Versions" sits below the Back and action buttons (`afterFooter` of `TrainingDetailLayout`). Main tabs are now Matrix, General Information, Audit Trail. UI only; not verified in a browser.
+
+## Complete Approval, status transition in the e-signature modal, detailed audit (2026-10-22)
+
+- Names: every approving button/menu item of Training is now "Complete Approval" (Training Matrix, Training Requirement, Job Assignment exception, content approval and trainer exception of a Training Activity, Training Record Exports personal and batch). Modal titles read "Complete approval of ...". The signature meaning codes and display names (`TRAINING_*_APPROVED`) are unchanged: they are recorded data, not labels.
+- E-signature modal: all Training signature modals now pass `changes` (`statusChange(from, to)` in `trainingLabels.ts`), so the person sees the status the record has and the status it will have before signing (matrix submit/approve; requirement submit/review/approve/QA line; job exception/assign/accept; activity list, content review/approval, self-reading, trainer exception, completion; review close; exports prepare/approve; legacy verify; specimen confirm; record void; transcription verify; roll-call; test). The labels are the same ones the screens show; the server decides the real transition, so the text is an announcement, not a control.
+- Audit Trail (backend): Training Matrix save now records the rows added, removed or changed (positions and yearly rule before and after) and the change reason; submit records status, preparer, designated approver and links the signature; approve records status, approver, the version it makes obsolete and links the signature. Training Requirement submit/review/approve record status, actor and the designated next person, linked to the signature. Other Training objects already recorded from/to status; they were not changed in this step.
+- Verified: `tsc` clean; training vitest 20/21 (known MyTrainingView failure); backend image built and started healthy. NOT verified: the modal and the new audit rows in a browser or by an API call (no DEV password in the shell); no backend unit test added for the new audit details.
+
+## Unit tests (2026-10-22)
+
+- New frontend tests: `TrainingMatrixLandingPage.test.tsx` (scope-all sees the list; own department opens the effective or the draft version; no matrix or a read error shows the list), `statusChange.test.ts`, three cases in `TrainingMatrixGrid.test.tsx` (position filter, collapse, difference against the previous version).
+- New backend test: `TrainingMatrixAuditDetailTest` (Mockito, no database): approval, submission and save record the details described above and the signature link.
+- Fixed: the three Training grids now use `TableMarkup` (pure pass-through, no visual change), so `TableArchitecture.test.ts` passes; `MyTrainingView.test.tsx` matched the tab label case-sensitively.
+- Backend: all Mockito tests of `com.eqms.service.training` pass (31 tests). The full backend suite was not run: its Spring tests use the shared DEV database and one parity test is known to hang.
+
+## List of participants proposed at document preparation (2026-10-22)
+
+- Owner decisions (2026-10-22): the people chosen when the document is prepared are a **proposal** (not a locked list); the person who chooses is usually the DCO; people come from a **separate API** (no new permission, no profile changed); a new revision **starts from the proposal of the previous revision**.
+- Data: `V634__training_proposed_participants.sql` (new table, applied on DEV). Backend: `TrainingProposedParticipantService` + controller (`GET/PUT /training/documents/{id}/proposed-participants`, `GET /training/proposal-people[/groups|/in-groups]`). Who may edit: the person Document Control allows to edit the draft document (`canEditInitialDocumentDraft`) or the draft revision (`canEditDraftRevision`), or a Training organizer of the department; only while the activity is Reserved, or Planned with the list not yet confirmed. Who may search people: `documents.workspace.manage`, create-document right, or Training organizer; the result has only name, employee code, department, position, business unit, avatar, for all departments (a document is read across the company).
+- Flow: activity exists from the document save (Reserved, holds the Training Number); the proposal is stored against it; when the organizer adds the **first session** of the opened activity (`addSession`), the active people are inserted as participants of that session with the reason "Proposed when the document was prepared" and the proposal is marked applied. The list is still confirmed with an e-signature by the organizer (SOP.0003 5.3.4), who can remove or add people before that; segregation of duties and the list lock are unchanged. A new revision's activity copies the proposal of the previous activity of the document (`createForDocument`).
+- Audit: every change of the proposal is an Audit Trail entry on the activity (`TRAINING_PARTICIPANTS_PROPOSED`, with who was added and removed) and a training event; the transfer writes `TRAINING_PARTICIPANTS_ADDED`.
+- UI: `ProposedParticipantsField` ("List of participants in the Training") on the Training tab of New Document and of Document Details (shown when Requires Training is ticked); it saves by itself, so the document payload and the Document Control save flow are unchanged. Training Activity shows how many proposed people will be put on the first session. `TrainingAssigneePicker` takes a `source` and `withOutside` (default unchanged).
+- Not changed: Document Control request/response, hooks interface, permissions, the Training integration switch (when integration is off, no activity exists and the field says so).
+- Verified: `tsc` clean; vitest (shared + documents) 150/150; backend Mockito tests `TrainingProposedParticipantServiceTest` 5/5; backend started and V634 applied. NOT verified in a browser or by API (no DEV password); the SQL that copies the proposal to the first session and the SQL that copies it to a new revision have no automated test (they run on the real database only).
+
+- Follow-up (UI only): the dialog that adds proposed participants is now one screen (`ProposedParticipantsPicker`): Business Unit and Department selects that narrow the list, one search box (name or employee ID, on the server), checkboxes, "Select all shown", people already proposed shown ticked. It replaces the five-tab Training Activity picker for this case; `TrainingAssigneePicker` is back to its previous form. Tests: 3 for the picker. Not verified in a browser.
+
+- Audit detail of the proposal (follow-up): each save of the list writes one Audit Trail entry on the **training activity** and the same entry on the **document**, with field-level changes: "List of participants in the Training" (before and after count) and one line per person "Participant added" / "Participant removed" with name, employee ID, department and position; the entry names the actor, and the comment gives added, removed and total. The transfer to the first session now names the people added. Test `TrainingProposedParticipantServiceTest` checks both entries. Not verified in the Audit Trail screen of a running system (no DEV password).

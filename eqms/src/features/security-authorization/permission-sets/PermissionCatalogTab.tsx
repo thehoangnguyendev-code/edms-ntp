@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
@@ -182,13 +183,7 @@ export const PermissionCatalogTab: React.FC = () => {
         </div>
         <Select label="Module" value={moduleFilter} onChange={setModuleFilter} options={moduleOptions} />
         <div className="flex items-end gap-2">
-          <button
-            onClick={clearFilters}
-            disabled={!hasFilters}
-            className="h-9 px-4 gap-2 font-medium border border-slate-200 rounded-lg text-sm transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Clear Filters
-          </button>
+          <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
           {catalogControl}
         </div>
       </div>

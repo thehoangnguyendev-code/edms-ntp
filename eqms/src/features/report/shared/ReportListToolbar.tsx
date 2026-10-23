@@ -1,3 +1,4 @@
+import { ClearFiltersButton, clearSearchAndFilters } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useState } from "react";
 import { Check, Search, X } from "lucide-react";
 import { IconFilter2 } from "@tabler/icons-react";
@@ -157,14 +158,7 @@ export function ReportListToolbar({
               />
             ))}
             <div className="flex items-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onClear}
-                className="h-9 gap-2 whitespace-nowrap px-4 font-medium transition-all duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white"
-              >
-                Clear Filters
-              </Button>
+              <ClearFiltersButton onClearSearch={() => onSearch("")} onClear={onClear} />
               {customControl}
             </div>
           </div>
@@ -180,7 +174,7 @@ export function ReportListToolbar({
   );
 
   const drawer = (
-    <FilterDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} onClear={onClear} onApply={() => setDrawerOpen(false)}>
+    <FilterDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} onClear={clearSearchAndFilters(() => onSearch(""), onClear)} onApply={() => setDrawerOpen(false)}>
       {filters.map((filter) => (
         <FilterAccordionItem key={filter.id} label={filter.label} isExpanded={expanded.has(filter.id)} onToggle={() => toggle(filter.id)}>
           <div className="grid grid-cols-1 gap-2 pb-4 pt-1">

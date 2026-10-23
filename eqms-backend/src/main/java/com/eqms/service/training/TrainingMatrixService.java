@@ -1,5 +1,6 @@
 package com.eqms.service.training;
 
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.entity.UserAccount;
 import com.eqms.entity.UserStatus;
 import com.eqms.repository.UserAccountRepository;
@@ -283,6 +284,8 @@ public class TrainingMatrixService {
         requireVersion(v, request == null ? null : request.version());
         if (request.rows() == null) throw new IllegalArgumentException("TRAINING_MATRIX_ROWS_REQUIRED");
         Set<UUID> allowed = new LinkedHashSet<>(jdbc.queryForList("select id from positions where is_active and department_id=?", UUID.class, department));
+        Map<String, String> before = rowSnapshot(versionId);
+        String reasonBefore = String.valueOf(v.get("change_reason") == null ? "" : v.get("change_reason"));
         jdbc.update("delete from training_matrix_cells where row_id in (select id from training_matrix_rows where version_id=?)", versionId);
         jdbc.update("delete from training_matrix_rows where version_id=?", versionId);
         int no = 0;
@@ -302,7 +305,10 @@ public class TrainingMatrixService {
             }
         }
         jdbc.update("update training_matrix_versions set change_reason=?, version=version+1, updated_at=now() where id=?", request.changeReason() == null ? null : request.changeReason().trim(), versionId);
-        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_SAVED", null, null, no + " rows saved");
+        List<AuditTrailChangeResponse> changes = new ArrayList<>(rowChanges(before, rowSnapshot(versionId)));
+        String reasonAfter = request.changeReason() == null ? "" : request.changeReason().trim();
+        if (!reasonBefore.equals(reasonAfter)) changes.add(new AuditTrailChangeResponse("What changed in this version", reasonBefore.isEmpty() ? null : reasonBefore, reasonAfter.isEmpty() ? null : reasonAfter));
+        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_SAVED", null, null, no + " rows saved; " + changes.size() + " change" + (changes.size() == 1 ? "" : "s"), changes);
         return version(actor, versionId);
     }
 
@@ -350,9 +356,15 @@ public class TrainingMatrixService {
         approvals.cancelOpen(TYPE, versionId, "Resubmitted");
         approvals.designate(actor, subject(v), "MATRIX_APPROVE", request.approverUserId(), Set.of(actor.getId()));
         UUID signature = sign(actor, v, "TRAINING_MATRIX_PREPARED", request.signatureToken());
+        String approverName = users.findById(request.approverUserId()).map(UserAccount::getFullName).orElse(String.valueOf(request.approverUserId()));
         jdbc.update("update training_matrix_versions set status='PENDING_APPROVAL', prepared_by=?, submitted_at=now(), prepare_signature_id=?, content_sha256=?, reject_reason=null, version=version+1, updated_at=now() where id=?",
                 actor.getId(), signature, contentHash(versionId), versionId);
-        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_SUBMITTED", "DRAFT", "PENDING_APPROVAL", "Sent for approval");
+        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_SUBMITTED", "DRAFT", "PENDING_APPROVAL", "Sent for approval to " + approverName + " (" + rows + " rows)",
+                List.of(new AuditTrailChangeResponse("Status", "Draft", "Waiting for approval"),
+                        new AuditTrailChangeResponse("Prepared by", null, actor.getFullName()),
+                        new AuditTrailChangeResponse("Designated approver", null, approverName),
+                        new AuditTrailChangeResponse("What changed in this version", null, v.get("change_reason") == null ? null : String.valueOf(v.get("change_reason")))),
+                signature);
         return version(actor, versionId);
     }
 
@@ -365,11 +377,16 @@ public class TrainingMatrixService {
         UUID assignment = approvals.requireCanSign(actor, subject(v), "MATRIX_APPROVE", keptApart(v, actor));
         UUID signature = sign(actor, v, "TRAINING_MATRIX_APPROVED", request.signatureToken());
         approvals.complete(assignment, signature);
+        List<Integer> replaced = jdbc.queryForList("select version_no from training_matrix_versions where matrix_id=? and status='EFFECTIVE'", Integer.class, v.get("matrix_id"));
         jdbc.update("update training_matrix_versions set status='OBSOLETE', version=version+1, updated_at=now() where matrix_id=? and status='EFFECTIVE'", v.get("matrix_id"));
         jdbc.update("update training_matrix_versions set status='EFFECTIVE', approved_by=?, approved_at=now(), effective_at=now(), approve_signature_id=?, version=version+1, updated_at=now() where id=?",
                 actor.getId(), signature, versionId);
         jdbc.update("update training_matrices set current_version_id=? where id=?", versionId, v.get("matrix_id"));
-        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_APPROVED", "PENDING_APPROVAL", "EFFECTIVE", "Version " + v.get("version_no") + " is now effective");
+        List<AuditTrailChangeResponse> approved = new ArrayList<>(List.of(new AuditTrailChangeResponse("Status", "Waiting for approval", "Effective"),
+                new AuditTrailChangeResponse("Approved by", null, actor.getFullName())));
+        for (Integer old : replaced) approved.add(new AuditTrailChangeResponse("Version " + old + " status", "Effective", "Obsolete"));
+        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_APPROVED", "PENDING_APPROVAL", "EFFECTIVE",
+                "Version " + v.get("version_no") + " is now effective" + (replaced.isEmpty() ? "" : "; it replaces version " + replaced.getFirst()), approved, signature);
         tellPreparer(v, actor, "TRAINING_MATRIX_APPROVED", "Training: matrix approved", label(v) + " was approved by " + actor.getFullName() + " and is now effective.");
         return version(actor, versionId);
     }
@@ -466,16 +483,23 @@ public class TrainingMatrixService {
 
     /** The positions of a person (the user table keeps only text). The report of people without a position is for the person who maps them by hand. */
     @Transactional(readOnly = true)
-    public Map<String, Object> personPositions(UserAccount actor, String search, boolean unmatchedOnly, String sortBy, String sortDirection, int page, int limit) {
+    public Map<String, Object> personPositions(UserAccount actor, String search, boolean unmatchedOnly, String department, UUID positionId, String mapped, String suggested, String sortBy, String sortDirection, int page, int limit) {
         access.require(actor, "training.admin.manage");
         StringBuilder where = new StringBuilder(" where u.status = 'Active'");
         List<Object> args = new ArrayList<>();
         if (search != null && !search.isBlank()) {
-            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')");
+            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(coalesce(u.department,'')) like ? escape '\\' or lower(coalesce(u.position,'')) like ? escape '\\' or lower(coalesce(p.name,'')) like ? escape '\\')");
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            args.add(like); args.add(like);
+            args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
-        if (unmatchedOnly) where.append(" and tp.id is null");
+        if (unmatchedOnly || "NO".equalsIgnoreCase(mapped)) where.append(" and tp.id is null");
+        if ("YES".equalsIgnoreCase(mapped)) where.append(" and tp.id is not null");
+        if (department != null && !department.isBlank()) { where.append(" and lower(trim(u.department)) = lower(trim(?))"); args.add(department); }
+        if (positionId != null) { where.append(" and tp.position_id = ?"); args.add(positionId); }
+        // Without a position yet, but the text of the user table matches the name of a position of the training: the one a person only has to confirm.
+        String suggestion = " exists (select 1 from positions pp where lower(trim(pp.name)) = lower(trim(u.position)))";
+        if ("YES".equalsIgnoreCase(suggested)) where.append(" and tp.id is null and").append(suggestion);
+        if ("NO".equalsIgnoreCase(suggested)) where.append(" and tp.id is null and not").append(suggestion);
         String from = " from app_users u left join training_person_positions tp on tp.person_user_id = u.id and tp.valid_to is null left join positions p on p.id = tp.position_id ";
         Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
@@ -526,6 +550,31 @@ public class TrainingMatrixService {
 
     private UUID departmentOf(Map<String, Object> version) {
         return (UUID) matrixRow((UUID) version.get("matrix_id")).get("department_id");
+    }
+
+    /** Each row of a version as "title" -> "positions | annual", to tell what a save changed. */
+    private Map<String, String> rowSnapshot(UUID versionId) {
+        Map<String, String> out = new LinkedHashMap<>();
+        for (Map<String, Object> r : jdbc.queryForList("""
+                select r.id, r.annual_required, coalesce(t.code || ' ' || t.name, d.document_number || ' ' || d.document_name) as title
+                from training_matrix_rows r left join training_topics t on t.id = r.topic_id left join documents d on d.id = r.document_id
+                where r.version_id=? order by r.row_no""", versionId)) {
+            List<String> positions = jdbc.queryForList("select p.name from training_matrix_cells c join positions p on p.id = c.position_id where c.row_id=? order by p.name", String.class, r.get("id"));
+            out.put(String.valueOf(r.get("title")), (positions.isEmpty() ? "no position" : String.join(", ", positions)) + (Boolean.TRUE.equals(r.get("annual_required")) ? " | every year" : ""));
+        }
+        return out;
+    }
+
+    private List<AuditTrailChangeResponse> rowChanges(Map<String, String> before, Map<String, String> after) {
+        List<AuditTrailChangeResponse> out = new ArrayList<>();
+        after.forEach((title, now) -> {
+            if (!before.containsKey(title)) out.add(new AuditTrailChangeResponse("Row added: " + title, null, now));
+            else if (!before.get(title).equals(now)) out.add(new AuditTrailChangeResponse("Row changed: " + title, before.get(title), now));
+        });
+        before.forEach((title, was) -> {
+            if (!after.containsKey(title)) out.add(new AuditTrailChangeResponse("Row removed: " + title, was, null));
+        });
+        return out;
     }
 
     private String label(Map<String, Object> version) {

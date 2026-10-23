@@ -112,8 +112,8 @@ export function TrainingActivityListView() {
     { id: "attended", header: "Attended", sort: sorted("attendedCount"), cell: (r) => (r.participantCount ? `${r.attendedCount ?? 0} / ${r.participantCount}` : "—") },
     { id: "passed", header: "Passed", sort: sorted("passedCount"), cell: (r) => (r.participantCount ? `${r.passedCount ?? 0} / ${r.participantCount}` : "—") },
     { id: "due", header: "Due", sort: sorted("dueDate"), cell: (r) => day(r.dueDate) },
-    { id: "createdBy", header: "Created by", sort: sorted("createdByName"), cell: (r) => r.createdByName ?? "—" },
-    { id: "createdAt", header: "Created on", sort: sorted("createdAt"), cell: (r) => when(r.createdAt) },
+    { id: "createdBy", header: "Opened By", sort: sorted("createdByName"), cell: (r) => r.createdByName ?? "—" },
+    { id: "createdAt", header: "Created", sort: sorted("createdAt"), cell: (r) => when(r.createdAt) },
   ];
   const action = {
     cell: (r: TrainingActivitySummary) => (

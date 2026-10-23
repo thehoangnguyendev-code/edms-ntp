@@ -1,5 +1,6 @@
 package com.eqms.service.training;
 
+import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.entity.UserAccount;
 import com.eqms.service.AuditTrailService;
 import com.eqms.service.ElectronicSignatureService;
@@ -27,6 +28,11 @@ import java.util.UUID;
  */
 @Service
 public class TrainingRequirementService {
+    private String personName(UUID userId) {
+        List<String> names = userId == null ? List.of() : jdbc.queryForList("select full_name from app_users where id=?", String.class, userId);
+        return names.isEmpty() ? String.valueOf(userId) : names.getFirst();
+    }
+
     private static final String TYPE = "TRAINING_REQUIREMENT";
 
     private final JdbcTemplate jdbc;
@@ -81,7 +87,7 @@ public class TrainingRequirementService {
             filter.raw("r.department_id = ?", own == null ? new UUID(0, 0) : own);
         }
         filter.equal("r.year", year).equal("r.status", status).equal("r.kind", extra.kind()).equal("r.department_id", extra.departmentId())
-                .contains(search, "r.request_no")
+                .contains(search, "r.request_no", "(select dd.name from departments dd where dd.id = r.department_id)", "(select u.full_name from app_users u where u.id = r.created_by)")
                 .dateRange("r.due_by", extra.dueFrom(), extra.dueTo()).timeRange("r.created_at", extra.createdFrom(), extra.createdTo());
         String where = filter.where();
         List<Object> args = filter.args();
@@ -89,9 +95,9 @@ public class TrainingRequirementService {
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select r.id, r.request_no, r.year, r.kind, r.status, r.due_by, r.department_id, d.name as department_name, r.created_at,
+            select r.id, r.request_no, r.year, r.kind, r.status, r.due_by, r.department_id, d.name as department_name, r.created_at, (select u.full_name from app_users u where u.id = r.created_by) as created_by_name,
                    (select count(*) from training_requirement_lines l where l.requirement_id = r.id) as line_count
-              from training_requirements r join departments d on d.id = r.department_id""" + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("requestNo", "r.request_no", "year", "r.year", "kind", "r.kind", "department", "d.name", "lines", "line_count", "dueBy", "r.due_by", "status", "r.status", "createdAt", "r.created_at"),
+              from training_requirements r join departments d on d.id = r.department_id""" + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("requestNo", "r.request_no", "createdByName", "(select u.full_name from app_users u where u.id = r.created_by)", "year", "r.year", "kind", "r.kind", "department", "d.name", "lines", "line_count", "dueBy", "r.due_by", "status", "r.status", "createdAt", "r.created_at"),
                     "r.year desc, r.request_no desc") + " limit ? offset ?", args.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         List<Map<String, Object>> data = TrainingRows.camel(rows);
@@ -117,7 +123,7 @@ public class TrainingRequirementService {
         Map<String, Object> r = visible(actor, id);
         Map<String, Object> out = TrainingRows.camel(r);
         out.put("departmentName", jdbc.queryForObject("select name from departments where id=?", String.class, r.get("department_id")));
-        for (String column : List.of("prepared_by", "reviewed_by", "approved_by")) {
+        for (String column : List.of("created_by", "prepared_by", "reviewed_by", "approved_by")) {
             out.put(column.replace("_by", "ByName").replaceAll("_(\\w)", "$1"), r.get(column) == null ? null : jdbc.queryForObject("select full_name from app_users where id=?", String.class, r.get(column)));
         }
         out.put("lines", TrainingRows.camel(jdbc.queryForList("""
@@ -255,7 +261,11 @@ public class TrainingRequirementService {
         approvals.designate(actor, subject(r), "REQUIREMENT_REVIEW", request.nextApproverUserId(), TrainingApprovalService.apart(actor.getId()));
         UUID signature = sign(actor, r, "TRAINING_REQUIREMENT_PREPARED", request.signatureToken());
         jdbc.update("update training_requirements set status='PENDING_REVIEW', prepared_by=?, prepared_signature_id=?, prepared_at=now(), reject_reason=null, version=version+1, updated_at=now() where id=?", actor.getId(), signature, id);
-        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_SUBMITTED", "DRAFT", "PENDING_REVIEW", "Prepared and sent for review");
+        String reviewer = personName(request.nextApproverUserId());
+        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_SUBMITTED", "DRAFT", "PENDING_REVIEW", "Prepared and sent for review to " + reviewer + " (" + lines + " lines)",
+                List.of(new AuditTrailChangeResponse("Status", "Draft", "Waiting for review"),
+                        new AuditTrailChangeResponse("Prepared by", null, actor.getFullName()),
+                        new AuditTrailChangeResponse("Designated reviewer", null, reviewer)), signature);
         return get(actor, id);
     }
 
@@ -270,7 +280,11 @@ public class TrainingRequirementService {
         approvals.complete(assignment, signature);
         approvals.designate(actor, subject(r), "REQUIREMENT_APPROVE", request.nextApproverUserId(), TrainingApprovalService.apart((UUID) r.get("prepared_by"), actor.getId()));
         jdbc.update("update training_requirements set status='PENDING_APPROVAL', reviewed_by=?, reviewed_signature_id=?, reviewed_at=now(), version=version+1, updated_at=now() where id=?", actor.getId(), signature, id);
-        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_REVIEWED", "PENDING_REVIEW", "PENDING_APPROVAL", "Reviewed and sent for approval");
+        String approver = personName(request.nextApproverUserId());
+        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_REVIEWED", "PENDING_REVIEW", "PENDING_APPROVAL", "Reviewed and sent for approval to " + approver,
+                List.of(new AuditTrailChangeResponse("Status", "Waiting for review", "Waiting for approval"),
+                        new AuditTrailChangeResponse("Reviewed by", null, actor.getFullName()),
+                        new AuditTrailChangeResponse("Designated approver", null, approver)), signature);
         return get(actor, id);
     }
 
@@ -283,7 +297,9 @@ public class TrainingRequirementService {
         UUID signature = sign(actor, r, "TRAINING_REQUIREMENT_APPROVED", request.signatureToken());
         approvals.complete(assignment, signature);
         jdbc.update("update training_requirements set status='APPROVED', approved_by=?, approved_signature_id=?, approved_at=now(), version=version+1, updated_at=now() where id=?", actor.getId(), signature, id);
-        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_APPROVED", "PENDING_APPROVAL", "APPROVED", "Requirement approved");
+        audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_APPROVED", "PENDING_APPROVAL", "APPROVED", "Requirement approved by " + actor.getFullName(),
+                List.of(new AuditTrailChangeResponse("Status", "Waiting for approval", "Approved"),
+                        new AuditTrailChangeResponse("Approved by", null, actor.getFullName())), signature);
         tell(r, actor, "TRAINING_REQUIREMENT_APPROVED", "Training: requirement approved", String.valueOf(r.get("request_no")) + " was approved by " + actor.getFullName() + ".");
         return get(actor, id);
     }

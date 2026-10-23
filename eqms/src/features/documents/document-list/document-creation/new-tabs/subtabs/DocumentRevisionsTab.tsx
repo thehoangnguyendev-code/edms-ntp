@@ -257,7 +257,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                                     Created
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
-                                    Opened by
+                                    Opened By
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
                                     Revision Name

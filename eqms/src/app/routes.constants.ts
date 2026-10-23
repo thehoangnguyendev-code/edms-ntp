@@ -123,7 +123,7 @@ export const ROUTES = {
     BASE: '/training-management',
     ACTIVITIES: '/training-management/activities',
     ACTIVITY_DETAIL: (activityId: string) => `/training-management/activities/${activityId}`,
-    MATRICES: '/training-management/matrices',
+    MATRIX: '/training-management/matrix',
     RECORDS: '/training-management/records',
     NUMBER_LOG: '/training-management/number-log',
     COMPLIANCE: '/training-management/compliance',

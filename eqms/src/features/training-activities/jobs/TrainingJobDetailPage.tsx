@@ -16,9 +16,9 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { trainingError, trainingJobsApi, type TrainingEligibilityItem, type TrainingJobDetail, type TrainingJobDuty, type TrainingPerson } from "@/services/api/trainingActivities";
-import { day, trainingBreadcrumbs, when } from "../shared/trainingLabels";
+import { day, trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
-import { TrainingCopyBlock } from "../shared/TrainingCopyBlock";
+import { TrainingCopiesPanel } from "../shared/TrainingCopiesPanel";
 
 const JOB_STEPS = [
   { status: "DRAFT", label: "Draft" },
@@ -27,7 +27,7 @@ const JOB_STEPS = [
 ];
 
 type Dialog = "exception" | "cancel" | undefined;
-interface SignRequest { title: string; code: string; name: string; run: (token: string) => Promise<TrainingJobDetail> }
+interface SignRequest { title: string; code: string; name: string; changes: ReturnType<typeof statusChange>; run: (token: string) => Promise<TrainingJobDetail> }
 
 /** One job assignment: the facts, the duties, the matrix check, and the two signatures. */
 export function TrainingJobDetailPage() {
@@ -98,9 +98,9 @@ export function TrainingJobDetailPage() {
     <>
       {editable && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={!dirty} onClick={() => void run(() => trainingJobsApi.update(job.id, body()), "Draft saved")}>Save draft</Button>}
       {caps.requestException && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog("exception")}>Request exception</Button>}
-      {caps.approveException && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Approve exception", code: "TRAINING_JOB_EXCEPTION_APPROVED", name: "Job Assignment Exception Approved", run: (t) => trainingJobsApi.approveException(job.id, t) })}>Approve exception</Button>}
-      {caps.submit && <Button size="sm" variant="default" className="whitespace-nowrap" disabled={dirty} onClick={() => setSign({ title: "Assign job", code: "TRAINING_JOB_ASSIGNED", name: "Job Assigned", run: (t) => trainingJobsApi.submit(job.id, job.version, t) })}>Sign and send</Button>}
-      {caps.accept && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Accept job assignment", code: "TRAINING_JOB_ACCEPTED", name: "Job Accepted", run: (t) => trainingJobsApi.accept(job.id, job.version, t) })}>Accept</Button>}
+      {caps.approveException && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Complete approval of the exception", code: "TRAINING_JOB_EXCEPTION_APPROVED", name: "Job Assignment Exception Approved", changes: statusChange("Exception requested", "Exception approved", "Exception"), run: (t) => trainingJobsApi.approveException(job.id, t) })}>Complete Approval</Button>}
+      {caps.submit && <Button size="sm" variant="default" className="whitespace-nowrap" disabled={dirty} onClick={() => setSign({ title: "Assign job", code: "TRAINING_JOB_ASSIGNED", name: "Job Assigned", changes: statusChange("Draft", "Waiting for the employee"), run: (t) => trainingJobsApi.submit(job.id, job.version, t) })}>Sign and send</Button>}
+      {caps.accept && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Accept job assignment", code: "TRAINING_JOB_ACCEPTED", name: "Job Accepted", changes: statusChange("Waiting for the employee", "Effective"), run: (t) => trainingJobsApi.accept(job.id, job.version, t) })}>Accept</Button>}
       {caps.cancel && <Button size="sm" variant="destructive" className="whitespace-nowrap" onClick={() => setDialog("cancel")}>Cancel</Button>}
     </>
   );
@@ -123,6 +123,7 @@ export function TrainingJobDetailPage() {
         onTab={setTab}
         tabLayoutId="training-job-detail-tab"
         footer={footer}
+        afterFooter={tab === "overview" && job.status === "EFFECTIVE" ? <TrainingCopiesPanel type="job-assignment" objectId={job.id} /> : undefined}
       >
         {tab === "overview" && (
           <div className="space-y-6">
@@ -153,15 +154,14 @@ export function TrainingJobDetailPage() {
           </div>
         )}
 
-        {tab === "overview" && job.status === "EFFECTIVE" && <div className="mt-4"><TrainingCopyBlock type="job-assignment" objectId={job.id} /></div>}
         {tab === "duties" && (
           <TabBlock title="Duties" action={editable ? <Button size="sm" variant="outline-emerald" onClick={() => { setDuties([...duties, { responsibility: "", description: "" }]); setDirty(true); }}>Add duty</Button> : undefined}>
             {duties.length === 0 ? (
               <p className="p-4 text-sm text-slate-500">No duty yet.</p>
             ) : (
-              <div className="space-y-3 p-3">
+              <div className="divide-y divide-slate-100">
                 {duties.map((d, i) => (
-                  <div key={i} className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-[1fr_2fr_auto]">
+                  <div key={i} className="grid grid-cols-1 items-center gap-3 p-3 md:grid-cols-[1fr_2fr_auto]">
                     <Input placeholder="Responsibility" maxLength={500} value={d.responsibility} disabled={!editable} onChange={(e) => { setDuties(duties.map((x, k) => (k === i ? { ...x, responsibility: e.target.value } : x))); setDirty(true); }} />
                     <Input placeholder="Description" value={d.description ?? ""} disabled={!editable} onChange={(e) => { setDuties(duties.map((x, k) => (k === i ? { ...x, description: e.target.value } : x))); setDirty(true); }} />
                     {editable && <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => { setDuties(duties.filter((_x, k) => k !== i)); setDirty(true); }}>Remove</button>}
@@ -218,6 +218,7 @@ export function TrainingJobDetailPage() {
         onClose={() => setSign(undefined)}
         onConfirm={async (data: { signatureToken: string }) => { if (sign) { const ok = await run(() => sign.run(data.signatureToken), sign.title); if (ok) setSign(undefined); } }}
         actionTitle={sign?.title}
+        changes={sign?.changes}
         meaningDisplayName={sign?.name}
         meaningCode={sign?.code}
         targetDetails={{ code: job.personName, title: job.positionName, revision: String(job.issueNo) }}

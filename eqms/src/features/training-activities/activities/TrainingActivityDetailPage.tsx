@@ -93,8 +93,7 @@ import {
   STEP_LABEL,
   day,
   trainingBreadcrumbs,
-  when,
-} from "../shared/trainingLabels";
+  when, statusChange } from "../shared/trainingLabels";
 
 const ACTIVITY_STEPS = [
   { status: "RESERVED", label: "Waiting for approval" },
@@ -193,6 +192,7 @@ interface SignRequest {
   title: string;
   meaningCode: string;
   meaningName: string;
+  changes?: ReturnType<typeof statusChange>;
   run: (signatureToken: string) => Promise<TrainingActivityDetail>;
 }
 
@@ -461,7 +461,7 @@ export function TrainingActivityDetailPage({
                       variant="outline-emerald"
                       onClick={() =>
                         signAction(
-                          "Approve trainer exception",
+                          "Complete approval of the trainer exception",
                           "TRAINING_TRAINER_EXCEPTION_APPROVED",
                           "Trainer Exception Approved",
                           async (t) => {
@@ -471,6 +471,7 @@ export function TrainingActivityDetailPage({
                             );
                             return trainingActivitiesApi.get(activity.id);
                           },
+                          statusChange("Waiting for approval", "Approved", "Trainer exception"),
                         )
                       }
                     >
@@ -702,6 +703,7 @@ export function TrainingActivityDetailPage({
                 title: "Confirm self-reading",
                 meaningCode: "TRAINING_READ_CONFIRMED",
                 meaningName: "Self-reading Confirmed",
+                changes: statusChange("Invited", "Read and understood", "Self-reading"),
                 run: async (token) => {
                   await trainingActivitiesApi.confirmRead(p.id, token);
                   return trainingActivitiesApi.get(activity.id);
@@ -964,7 +966,8 @@ export function TrainingActivityDetailPage({
     meaningCode: string,
     meaningName: string,
     runWith: (token: string) => Promise<TrainingActivityDetail>,
-  ) => setSign({ title, meaningCode, meaningName, run: runWith });
+    changes?: ReturnType<typeof statusChange>,
+  ) => setSign({ title, meaningCode, meaningName, changes, run: runWith });
 
   const external = activity.kind === "EXTERNAL";
   const open = !["COMPLETED", "CANCELLED"].includes(activity.status);
@@ -982,7 +985,7 @@ export function TrainingActivityDetailPage({
             The training has started. The title, due date, content, materials,
             test and approvers are fixed. You can hold sessions, record
             attendance and results, and add scans. The attendee list is not
-            changed: a person who is not on it is trained in a make-up or a new
+            changed: a person who is not on it is trained in a supplementary training or a new
             unplanned training (SOP.0003 5.3.4). Attendance recorded by mistake
             is corrected with a reason.
           </p>
@@ -1384,8 +1387,27 @@ export function TrainingActivityDetailPage({
     </>
   );
 
+  // What still stops the list from going to QA: the same three rules the server checks when the button is pressed.
+  const submitBlockers = [
+    [activity.sessions.filter((x) => ["PLANNED", "POSTPONED"].includes(x.status)).length, "session(s) still to be held"],
+    [activity.participants.filter((x) => x.state === "INVITED" && !x.plannedAbsence).length, "person(s) still to be marked present or absent"],
+    [activity.participants.filter((x) => ["ATTENDED", "ONLINE", "READ_CONFIRMED"].includes(x.state) && x.result === "PENDING").length, "person(s) without a result"],
+  ]
+    .filter(([n]) => (n as number) > 0)
+    .map(([n, text]) => `${n} ${text}`);
+
   const footer = (
     <>
+      {caps?.cancel && (
+        <Button
+          size="sm"
+          variant="outline-emerald"
+          className="whitespace-nowrap"
+          onClick={() => setDialog({ type: "cancel" })}
+        >
+          Cancel
+        </Button>
+      )}
       {mode === "conduct" &&
         activity.status === "IN_PROGRESS" &&
         activity.sessions
@@ -1394,7 +1416,7 @@ export function TrainingActivityDetailPage({
             <Button
               key={x.id}
               size="sm"
-              variant="default"
+              variant="outline-emerald"
               className="whitespace-nowrap"
               onClick={() => openWorkspace(x.id)}
             >
@@ -1446,6 +1468,7 @@ export function TrainingActivityDetailPage({
               "TRAINING_LIST_VERIFIED",
               "Attendance List Verified",
               (t) => trainingActivitiesApi.confirmList(activity.id, t),
+              statusChange("Not confirmed", "Confirmed", "Attendee list"),
             )
           }
         >
@@ -1485,6 +1508,7 @@ export function TrainingActivityDetailPage({
                 "TRAINING_READ_VERIFIED",
                 "Self-reading Verified",
                 (t) => trainingActivitiesApi.verifySelfReading(activity.id, t),
+                statusChange("Read and understood", "Verified", "Self-reading"),
               )
             }
           >
@@ -1497,6 +1521,8 @@ export function TrainingActivityDetailPage({
           variant="outline-emerald"
           className="whitespace-nowrap"
           loading={busy}
+          disabled={submitBlockers.length > 0}
+          title={submitBlockers.length > 0 ? `Not ready to send to QA: ${submitBlockers.join("; ")}.` : undefined}
           onClick={() =>
             void run(
               () =>
@@ -1527,6 +1553,7 @@ export function TrainingActivityDetailPage({
                   activity.version,
                   t,
                 ),
+              statusChange("Waiting for QA confirmation", "Completed"),
             )
           }
         >
@@ -1540,17 +1567,7 @@ export function TrainingActivityDetailPage({
           className="whitespace-nowrap"
           onClick={() => setDialog({ type: "supplementary" })}
         >
-          Make-up / retraining
-        </Button>
-      )}
-      {caps?.cancel && (
-        <Button
-          size="sm"
-          variant="outline-emerald"
-          className="whitespace-nowrap"
-          onClick={() => setDialog({ type: "cancel" })}
-        >
-          Cancel activity
+          Supplementary training
         </Button>
       )}
     </>
@@ -1630,7 +1647,7 @@ export function TrainingActivityDetailPage({
           onTab={setTab}
           tabLayoutId="training-activity-detail-tab"
           footer={footer}
-          repeatFooterInHeader={mode === "confirm"}
+          repeatFooterInHeader={mode === "confirm" || mode === "conduct"}
         >
           {notices}
           {tab === "overview" && (
@@ -1645,6 +1662,8 @@ export function TrainingActivityDetailPage({
                   label="Type"
                   value={KIND_LABEL[activity.kind] ?? activity.kind}
                 />
+                <ReadonlyField label="Created Time" value={when(activity.createdAt)} />
+                <ReadonlyField label="Opened By" value={activity.createdByName} />
                 <ReadonlyField
                   label="Reason"
                   value={
@@ -1656,7 +1675,7 @@ export function TrainingActivityDetailPage({
                 />
                 {external && (
                   <ReadonlyField
-                    label="External training"
+                    label="External Training"
                     value={
                       activity.externalType
                         ? EXTERNAL_TYPE_LABEL[activity.externalType]
@@ -1679,7 +1698,7 @@ export function TrainingActivityDetailPage({
                           }
                         />
                       </FormField>
-                      <FormField label="Vendor reference (SOP.0025)">
+                      <FormField label="Vendor Reference (SOP.0025)">
                         <Input
                           value={form.vendorRef}
                           maxLength={120}
@@ -1733,7 +1752,7 @@ export function TrainingActivityDetailPage({
                   }
                 />
                 <ReadonlyField
-                  label="Approved on"
+                  label="Approved On"
                   value={day(activity.approvedOn)}
                 />
                 {caps?.edit ? (
@@ -1746,7 +1765,7 @@ export function TrainingActivityDetailPage({
                   <ReadonlyField label="Due" value={day(activity.dueDate)} />
                 )}
                 <ReadonlyField
-                  label="Completed on"
+                  label="Completed On"
                   value={day(activity.completedOn)}
                 />
                 {caps?.edit ? (
@@ -1770,7 +1789,7 @@ export function TrainingActivityDetailPage({
                 )}
                 {activity.cancelReason && (
                   <ReadonlyField
-                    label="Reason for cancelling"
+                    label="Reason for Cancelling"
                     value={activity.cancelReason}
                     wide
                   />
@@ -1803,6 +1822,8 @@ export function TrainingActivityDetailPage({
                     <p className="p-4 text-sm text-slate-500">
                       No session yet. Fill in the form above to add the first
                       one.
+                      {(activity.proposedParticipantCount ?? 0) > 0 &&
+                        ` ${activity.proposedParticipantCount} participant${activity.proposedParticipantCount === 1 ? " was" : "s were"} proposed when the document was prepared; they are put on the list of the first session, and you confirm the list.`}
                     </p>
                   }
                 />
@@ -1946,7 +1967,7 @@ export function TrainingActivityDetailPage({
                                   signAction(
                                     step === "CONTENT_REVIEW"
                                       ? "Confirm review"
-                                      : "Confirm approval",
+                                      : "Complete approval of the training content",
                                     step === "CONTENT_REVIEW"
                                       ? "TRAINING_CONTENT_REVIEWED"
                                       : "TRAINING_CONTENT_APPROVED",
@@ -1961,12 +1982,15 @@ export function TrainingActivityDetailPage({
                                           | "CONTENT_APPROVE",
                                         t,
                                       ),
+                                    step === "CONTENT_REVIEW"
+                                      ? statusChange("Waiting for review", "Reviewed", "Training content")
+                                      : statusChange("Waiting for approval", "Approved", "Training content"),
                                   )
                                 }
                               >
                                 {step === "CONTENT_REVIEW"
                                   ? "Sign review"
-                                  : "Sign approval"}
+                                  : "Complete Approval"}
                               </Button>
                             )}
                         </div>
@@ -2270,7 +2294,7 @@ export function TrainingActivityDetailPage({
               );
               navigate(`/training-management/activities/${created.id}`);
               return created;
-            }, "Make-up activity created")
+            }, "Supplementary training created")
           }
         />
       )}
@@ -2283,6 +2307,7 @@ export function TrainingActivityDetailPage({
           if (ok) setSign(undefined);
         }}
         actionTitle={sign?.title}
+        changes={sign?.changes}
         meaningDisplayName={sign?.meaningName}
         meaningCode={sign?.meaningCode}
         targetDetails={{
@@ -2636,7 +2661,7 @@ function SupplementaryDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Make-up or retraining"
+      title="Supplementary training"
       description="A new activity is created under the same number with the next letter. People who were absent or failed are listed."
       confirmText="Create"
       isLoading={busy}

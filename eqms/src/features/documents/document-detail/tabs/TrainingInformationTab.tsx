@@ -2,6 +2,7 @@ import React from "react";
 import { TemplateNoTrainingNotice } from "@/features/documents/document-revisions/shared/components/TemplateNoTrainingNotice";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Input, Textarea } from "@/components/ui/form/ResponsiveForm";
+import { ProposedParticipantsField } from "@/features/training-activities/shared/ProposedParticipantsField";
 
 interface TrainingInformationData {
   isRequired?: boolean;
@@ -15,6 +16,8 @@ interface TrainingInformationTabProps {
   onChange?: (data: TrainingInformationData) => void;
   /** A controlled-document template never requires training: show a notice instead of the fields. */
   isTemplate?: boolean;
+  /** The document, to choose the people proposed for its training. */
+  documentId?: string | null;
 }
 
 export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
@@ -22,6 +25,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
   isReadOnly = true,
   onChange,
   isTemplate = false,
+  documentId,
 }) => {
   if (isTemplate) {
     return <TemplateNoTrainingNotice />;
@@ -73,6 +77,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
               />
             </div>
           </div>
+          <ProposedParticipantsField documentId={documentId} />
         </div>
       ) : (
         <div className="space-y-4">

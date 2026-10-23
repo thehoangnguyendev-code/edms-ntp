@@ -9,7 +9,7 @@ import { RadioGroup } from "@/components/ui/radio";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { trainingError, trainingExamApi, type TrainingExamAttemptView, type TrainingExamMine, type TrainingExamSummary } from "@/services/api/trainingActivities";
-import { trainingBreadcrumbs, when } from "../shared/trainingLabels";
+import { trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
 
 const isOpen = (a: TrainingExamMine["attempt"]): a is TrainingExamAttemptView => !!a && "questions" in a;
 
@@ -128,7 +128,7 @@ export function TrainingExamPage() {
             ))}
           </ol>
           <div className="flex justify-end"><Button onClick={() => setSigning(true)} disabled={busy}>Finish and sign</Button></div>
-          <ESignatureModal isOpen={signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => submit(d.signatureToken)} actionTitle="Sign the completed test"
+          <ESignatureModal isOpen={signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => submit(d.signatureToken)} actionTitle="Sign the completed test" changes={statusChange("In progress", "Submitted", "Test attempt")}
             meaningDisplayName="Assessment Signed" meaningCode="TRAINING_ASSESSMENT_SIGNED" targetDetails={{ code: `Attempt ${attempt.attemptNo}`, title: "Training test", revision: "" }} />
         </>
       )}

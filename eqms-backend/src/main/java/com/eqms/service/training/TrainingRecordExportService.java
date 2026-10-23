@@ -83,7 +83,7 @@ public class TrainingRecordExportService {
         }
         if (personId != null) { where.append(" and e.person_user_id = ?"); args.add(personId); }
         if (status != null && !status.isBlank()) { where.append(" and e.status = ?"); args.add(status); }
-        TrainingListFilter extra = new TrainingListFilter().contains(more.get("search"), "u.full_name", "u.employee_code", "e.reason").contains(more.get("preparedBy"), "pu.full_name").contains(more.get("approvedBy"), "au.full_name")
+        TrainingListFilter extra = new TrainingListFilter().contains(more.get("search"), "u.full_name", "u.employee_code", "e.reason", "pu.full_name", "au.full_name").contains(more.get("preparedBy"), "pu.full_name").contains(more.get("approvedBy"), "au.full_name")
                 .timeRange("e.generated_at", more.get("generatedFrom"), more.get("generatedTo")).timeRange("e.created_at", more.get("requestedFrom"), more.get("requestedTo"));
         if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(u.department)) = lower(trim(?))", more.get("department"));
         where.append(extra.and());

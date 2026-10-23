@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -747,11 +748,7 @@ export const AccessProfileListView: React.FC = () => {
               />
             </div>
             <div className="flex items-end gap-2">
-              <Button variant="outline" size="sm"
-                onClick={clearFilters}
-                className="h-9 px-4 gap-2 font-medium hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 whitespace-nowrap">
-                Clear Filters
-              </Button>
+              <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
               {profileControl}
             </div>
           </div>

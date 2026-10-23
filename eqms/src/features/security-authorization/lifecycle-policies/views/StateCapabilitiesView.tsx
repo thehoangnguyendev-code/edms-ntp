@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -442,15 +443,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
             <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setCreatedTo(v); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
             <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(v) => { setUpdatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setUpdatedTo(v); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
             <div className="flex items-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearFilters}
-                disabled={!hasFilters}
-                className="h-9 px-4 gap-2 font-medium transition-all duration-200 hover:bg-red-600 hover:text-white hover:border-red-600 whitespace-nowrap disabled:opacity-40"
-              >
-                Clear Filters
-              </Button>
+              <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
               {stateControl}
             </div>
           </div>

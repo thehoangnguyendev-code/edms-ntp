@@ -10,9 +10,8 @@ const TrainingSessionWorkspacePage = lazy(() => import('@/features/training-acti
 const TrainingMaterialPreviewPage = lazy(() => import('@/features/training-activities/activities/TrainingMaterialPreviewPage').then(m => ({ default: m.TrainingMaterialPreviewPage })));
 const TrainingActivityCreatePage = lazy(() => import('@/features/training-activities/activities/TrainingActivityCreatePage').then(m => ({ default: m.TrainingActivityCreatePage })));
 const TrainingActivityDetailPage = lazy(() => import('@/features/training-activities/activities/TrainingActivityDetailPage').then(m => ({ default: m.TrainingActivityDetailPage })));
-const TrainingMatrixListView = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixListView').then(m => ({ default: m.TrainingMatrixListView })));
+const TrainingMatrixLandingPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixLandingPage').then(m => ({ default: m.TrainingMatrixLandingPage })));
 const TrainingMatrixVersionPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixVersionPage').then(m => ({ default: m.TrainingMatrixVersionPage })));
-const TrainingMatrixHistoryView = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixHistoryView').then(m => ({ default: m.TrainingMatrixHistoryView })));
 const TrainingRecordsView = lazy(() => import('@/features/training-activities/records/TrainingRecordsView').then(m => ({ default: m.TrainingRecordsView })));
 const TrainingNumberLogView = lazy(() => import('@/features/training-activities/records/TrainingNumberLogView').then(m => ({ default: m.TrainingNumberLogView })));
 const TrainingComplianceView = lazy(() => import('@/features/training-activities/compliance/ComplianceView').then(m => ({ default: m.TrainingComplianceView })));
@@ -58,9 +57,8 @@ export function trainingRoutes() {
       <Route path="activities/:activityId/participate" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="participate" />)} />
       <Route path="participations/:participantId/test" element={guardedTrainingElement("training.self.view", <TrainingExamPage />)} />
       <Route path="check-in" element={guardedTrainingElement("training.self.view", <MyTrainingView openCheckIn />)} />
-      <Route path="matrices" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixListView />)} />
-      <Route path="matrices/:matrixId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixHistoryView />)} />
-      <Route path="matrix-versions/:versionId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixVersionPage />)} />
+      <Route path="matrix" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixLandingPage />)} />
+      <Route path="matrix/:versionId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixVersionPage />)} />
       <Route path="records" element={guardedTrainingElement("training.record.view", <TrainingRecordsView />)} />
       <Route path="job-assignments" element={guardedTrainingElement("training.job_assignment.view", <TrainingJobListView />)} />
       <Route path="job-assignments/:jobId" element={<Suspense fallback={<LoadingFallback />}><TrainingJobDetailPage /></Suspense>} />

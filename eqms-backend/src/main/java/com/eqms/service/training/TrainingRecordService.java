@@ -99,8 +99,8 @@ public class TrainingRecordService {
         StringBuilder sql = new StringBuilder(where);
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            sql.append(" and (lower(r.topic_text) like ? escape '\\' or lower(r.training_number) like ? escape '\\' or lower(coalesce(r.document_number,'')) like ? escape '\\' or lower(r.full_name) like ? escape '\\')");
-            args.add(like); args.add(like); args.add(like); args.add(like);
+            sql.append(" and (lower(r.topic_text) like ? escape '\\' or lower(r.training_number) like ? escape '\\' or lower(coalesce(r.document_number,'')) like ? escape '\\' or lower(r.full_name) like ? escape '\\' or lower(coalesce(r.employee_code,'')) like ? escape '\\' or lower(coalesce(r.department,'')) like ? escape '\\' or lower(coalesce(r.position,'')) like ? escape '\\')");
+            args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
@@ -145,9 +145,9 @@ public class TrainingRecordService {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
         String like = search == null || search.isBlank() ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-        String filter = like == null ? "" : " and (lower(a.training_number) like ? escape '\\' or lower(a.training_title) like ? escape '\\' or lower(coalesce(a.document_number,'')) like ? escape '\\')";
+        String filter = like == null ? "" : " and (lower(a.training_number) like ? escape '\\' or lower(a.training_title) like ? escape '\\' or lower(coalesce(a.document_number,'')) like ? escape '\\' or lower(coalesce(a.cancel_reason,'')) like ? escape '\\')";
         List<Object> args = new ArrayList<>(List.of(department, y));
-        if (like != null) { args.add(like); args.add(like); args.add(like); }
+        if (like != null) { args.add(like); args.add(like); args.add(like); args.add(like); }
         TrainingListFilter extra = new TrainingListFilter().equal("a.kind", more.get("kind")).equal("a.status", more.get("status")).equal("a.kind_reason", more.get("kindReason"))
                 .timeRange("a.created_at", more.get("issuedFrom"), more.get("issuedTo"));
         filter = filter + extra.and();

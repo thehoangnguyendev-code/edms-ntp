@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
 import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -281,9 +282,7 @@ export const ReportTypesView: React.FC = () => {
                     </div>
                   </div>
                   <div className="hidden md:flex justify-start mt-3 gap-2">
-                    <Button size="sm" variant="outline" onClick={clearFilters} disabled={!hasActiveFilters} className="gap-2">
-                      Clear Filters
-                    </Button>
+                    <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
                     {control}
                   </div>
                 </ConfiguredDesktopFilters>

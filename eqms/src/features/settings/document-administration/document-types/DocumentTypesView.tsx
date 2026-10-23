@@ -1,3 +1,4 @@
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -380,15 +381,7 @@ export const DocumentTypesView: React.FC = () => {
         </div>
 
         <div className="hidden md:flex justify-start gap-2 mt-3">
-          <Button
-           size="sm"
-            variant="outline"
-            onClick={clearFilters}
-            disabled={!hasActiveFilters}
-            className="gap-2"
-          >
-            Clear Filters
-          </Button>
+          <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} disabled={!hasActiveFilters} />
             {docTypesControl}
         </div>
 </ConfiguredDesktopFilters>
