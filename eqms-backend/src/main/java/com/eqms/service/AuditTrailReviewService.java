@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import org.springframework.security.access.AccessDeniedException;
 import com.eqms.dto.audittrail.AuditTrailReviewDtos.CampaignCompleteRequest;
@@ -145,8 +146,8 @@ public class AuditTrailReviewService {
         campaign.setUpdatedBy(actor);
         campaign = campaignRepo.save(campaign);
 
-        Instant from = request.reviewPeriodStart().atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant to = request.reviewPeriodEnd().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant from = request.reviewPeriodStart().atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
+        Instant to = request.reviewPeriodEnd().plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
         List<AuditLog> logs = auditLogRepository.findAllByCreatedAtBetweenOrderByCreatedAtAsc(from, to);
 
         int count = 0;

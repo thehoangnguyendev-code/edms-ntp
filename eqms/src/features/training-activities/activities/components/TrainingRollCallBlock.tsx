@@ -1,3 +1,4 @@
+import { sessionStarted } from "@/services/api/trainingActivities";
 import { statusChange } from "../../shared/trainingLabels";
 import { useState } from "react";
 import { Button } from "@/components/ui/button/Button";
@@ -21,7 +22,7 @@ export function TrainingRollCallBlock({ activity, onChanged }: { activity: Train
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [signing, setSigning] = useState(false);
 
-  const held = activity.sessions.filter((s) => s.status === "HELD");
+  const held = activity.sessions.filter(sessionStarted);
   const invited = (sessionId: string) => activity.participants.filter((p) => p.sessionId === sessionId && p.state === "INVITED");
   const candidates = held.filter((s) => invited(s.id).length > 0);
   if (candidates.length === 0) return null;
@@ -43,7 +44,7 @@ export function TrainingRollCallBlock({ activity, onChanged }: { activity: Train
       </TabBlock>
 
       {session && !signing && (
-        <FormModal isOpen onClose={() => setSession(undefined)} onConfirm={() => setSigning(true)} title={`Roll-call of session ${session.sessionNo}`} description="Everyone starts as present. Change the ones who were absent and say why. Next you sign." confirmText="Continue to sign" confirmDisabled={!valid} size="xl">
+        <FormModal isOpen onClose={() => setSession(undefined)} onConfirm={() => setSigning(true)} title={`Roll-Call of Session ${session.sessionNo}`} description="Everyone starts as present. Change the ones who were absent and say why. Next you sign." confirmText="Continue to sign" confirmDisabled={!valid} size="xl">
           <div className="space-y-2">
             {rows.map((p, i) => {
               const m = marks[p.id];
@@ -78,7 +79,7 @@ export function TrainingRollCallBlock({ activity, onChanged }: { activity: Train
             showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
           }
         }}
-        actionTitle="Attest the roll-call of the session"
+        actionTitle="Attest the Roll-Call of the Session"
         changes={statusChange("Not attested", "Attested by the trainer", "Roll-call")}
         meaningDisplayName="Attendance Confirmed by Trainer"
         meaningCode="TRAINING_ATTENDANCE_CONFIRMED"

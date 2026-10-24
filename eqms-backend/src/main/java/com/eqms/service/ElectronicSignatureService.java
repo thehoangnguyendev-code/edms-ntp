@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.auth.TokenService;
 import com.eqms.auth.UnauthorizedException;
@@ -44,7 +45,7 @@ import java.util.Comparator;
 @Service
 public class ElectronicSignatureService {
 
-    private static final DateTimeFormatter SIGNATURE_ID_YEAR = DateTimeFormatter.ofPattern("yyyy").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter SIGNATURE_ID_YEAR = DateTimeFormatter.ofPattern("yyyy").withZone(DateTimeFormatUtils.ZONE);
     // Electronic signatures are intentionally password-only (never configurable) -- login
     // MFA/SSO remains an account security feature, but is not an alternative signing mechanism.
     private static final String AUTHENTICATION_METHOD = "PASSWORD";
@@ -369,10 +370,8 @@ public class ElectronicSignatureService {
         ElectronicSignatureSetting current = requireSetting();
         ElectronicSignatureSetting preview = new ElectronicSignatureSetting();
         preview.setSignatureTimestampFormat(signatureRendererService.normalizeTimestampFormat(format));
-        String zone = StringUtils.hasText(timezone) ? timezone.trim() : current.getSignatureTimezone();
-        try { java.time.ZoneId.of(zone); }
-        catch (Exception ex) { throw new IllegalArgumentException("Unsupported signature timezone: " + zone); }
-        preview.setSignatureTimezone(zone);
+        // The time zone of a signature is the zone of the site: it is not chosen.
+        preview.setSignatureTimezone(DateTimeFormatUtils.ZONE_ID);
         // The whole signature block (name, "Electronically Signed", time, reason, signature id ...) rendered with the
         // UNSAVED format/timezone -- returning only the formatted timestamp made every other line disappear from the
         // preview as soon as the format was changed.
@@ -427,12 +426,8 @@ public class ElectronicSignatureService {
         if (StringUtils.hasText(request.signatureTimestampFormat())) {
             setting.setSignatureTimestampFormat(signatureRendererService.normalizeTimestampFormat(request.signatureTimestampFormat()));
         }
-        if (StringUtils.hasText(request.signatureTimezone())) {
-            String timezone = request.signatureTimezone().trim();
-            try { java.time.ZoneId.of(timezone); }
-            catch (Exception ex) { throw new IllegalArgumentException("Unsupported signature timezone: " + timezone); }
-            setting.setSignatureTimezone(timezone);
-        }
+        // The time zone is the zone of the site whatever the request carries.
+        setting.setSignatureTimezone(DateTimeFormatUtils.ZONE_ID);
         setting.setTimestampFormatEffectiveFrom(Instant.now());
     }
 
@@ -451,7 +446,7 @@ public class ElectronicSignatureService {
     private ElectronicSignatureSettingsResponse toSettingsResponse(ElectronicSignatureSetting setting, String previewBlock) {
         return new ElectronicSignatureSettingsResponse(
                 StringUtils.hasText(setting.getSignatureTimestampFormat()) ? setting.getSignatureTimestampFormat() : "dd-MMM-uuuu HH:mm:ss",
-                StringUtils.hasText(setting.getSignatureTimezone()) ? setting.getSignatureTimezone() : "Asia/Ho_Chi_Minh",
+                DateTimeFormatUtils.ZONE_ID,
                 setting.getTimestampFormatEffectiveFrom(),
                 meaningRepository.findAllByOrderByCodeAsc().stream().map(this::toMeaningResponse).toList(),
                 previewBlock
@@ -866,7 +861,7 @@ public class ElectronicSignatureService {
 
 
     private String displayTimezone(ElectronicSignatureSetting setting) {
-        return StringUtils.hasText(setting.getSignatureTimezone()) ? setting.getSignatureTimezone() : "Asia/Ho_Chi_Minh";
+        return DateTimeFormatUtils.ZONE_ID;
     }
 
     private String applyTransform(String value, String transform) {

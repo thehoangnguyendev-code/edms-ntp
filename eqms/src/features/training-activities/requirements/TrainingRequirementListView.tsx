@@ -52,8 +52,8 @@ import {
 
 export const REQUIREMENT_STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
-  PENDING_REVIEW: "Waiting for review",
-  PENDING_APPROVAL: "Waiting for approval",
+  PENDING_REVIEW: "Pending Review",
+  PENDING_APPROVAL: "Pending Approval",
   APPROVED: "Approved",
 };
 export const REQUIREMENT_STATUS_COLOR: Record<
@@ -374,7 +374,7 @@ export function TrainingRequirementListView() {
         isOpen={creating}
         onClose={() => setCreating(false)}
         onConfirm={() => void create()}
-        title="New training requirement"
+        title="New Training Requirement"
         description="A draft for your department. The request number is issued by the system."
         confirmText="Create draft"
         isLoading={busy}

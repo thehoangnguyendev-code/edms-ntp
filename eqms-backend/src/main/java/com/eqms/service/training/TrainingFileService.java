@@ -109,7 +109,7 @@ public class TrainingFileService {
     }
 
     private boolean contentReviewed(UUID activityId) {
-        Integer count = jdbc.queryForObject("select count(*) from training_activity_confirmations where activity_id=? and kind='CONTENT_REVIEWED'", Integer.class, activityId);
+        Integer count = jdbc.queryForObject("select count(*) from training_active_confirmations where activity_id=? and kind='CONTENT_REVIEWED'", Integer.class, activityId);
         return count != null && count > 0;
     }
 

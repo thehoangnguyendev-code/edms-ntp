@@ -263,7 +263,7 @@ public class TrainingRequirementService {
         jdbc.update("update training_requirements set status='PENDING_REVIEW', prepared_by=?, prepared_signature_id=?, prepared_at=now(), reject_reason=null, version=version+1, updated_at=now() where id=?", actor.getId(), signature, id);
         String reviewer = personName(request.nextApproverUserId());
         audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_SUBMITTED", "DRAFT", "PENDING_REVIEW", "Prepared and sent for review to " + reviewer + " (" + lines + " lines)",
-                List.of(new AuditTrailChangeResponse("Status", "Draft", "Waiting for review"),
+                List.of(new AuditTrailChangeResponse("Status", "Draft", "Pending Review"),
                         new AuditTrailChangeResponse("Prepared by", null, actor.getFullName()),
                         new AuditTrailChangeResponse("Designated reviewer", null, reviewer)), signature);
         return get(actor, id);
@@ -282,7 +282,7 @@ public class TrainingRequirementService {
         jdbc.update("update training_requirements set status='PENDING_APPROVAL', reviewed_by=?, reviewed_signature_id=?, reviewed_at=now(), version=version+1, updated_at=now() where id=?", actor.getId(), signature, id);
         String approver = personName(request.nextApproverUserId());
         audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_REVIEWED", "PENDING_REVIEW", "PENDING_APPROVAL", "Reviewed and sent for approval to " + approver,
-                List.of(new AuditTrailChangeResponse("Status", "Waiting for review", "Waiting for approval"),
+                List.of(new AuditTrailChangeResponse("Status", "Pending Review", "Pending Approval"),
                         new AuditTrailChangeResponse("Reviewed by", null, actor.getFullName()),
                         new AuditTrailChangeResponse("Designated approver", null, approver)), signature);
         return get(actor, id);
@@ -298,7 +298,7 @@ public class TrainingRequirementService {
         approvals.complete(assignment, signature);
         jdbc.update("update training_requirements set status='APPROVED', approved_by=?, approved_signature_id=?, approved_at=now(), version=version+1, updated_at=now() where id=?", actor.getId(), signature, id);
         audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), id, "TRAINING_REQUIREMENT_APPROVED", "PENDING_APPROVAL", "APPROVED", "Requirement approved by " + actor.getFullName(),
-                List.of(new AuditTrailChangeResponse("Status", "Waiting for approval", "Approved"),
+                List.of(new AuditTrailChangeResponse("Status", "Pending Approval", "Approved"),
                         new AuditTrailChangeResponse("Approved by", null, actor.getFullName())), signature);
         tell(r, actor, "TRAINING_REQUIREMENT_APPROVED", "Training: requirement approved", String.valueOf(r.get("request_no")) + " was approved by " + actor.getFullName() + ".");
         return get(actor, id);

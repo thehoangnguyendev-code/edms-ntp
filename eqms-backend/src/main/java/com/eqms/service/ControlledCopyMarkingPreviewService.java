@@ -40,7 +40,7 @@ import java.util.UUID;
 @Service
 public class ControlledCopyMarkingPreviewService {
 
-    private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId ZONE = DateTimeFormatUtils.ZONE;
     // Rendered at roughly 2x a typical screen's 96 DPI so the preview stays sharp on high-DPI (retina)
     // displays even when stretched to fill a wide column; PNG compresses the mostly-white page well
     // enough that the extra pixels cost little on the wire.

@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.dto.document.RevisionDetailResponse;
 import com.eqms.dto.document.DocumentParticipantResponse;
 import com.eqms.dto.publishing.PublishingTemplatePlaceholderMappingResponse;
@@ -17,7 +18,6 @@ import java.util.stream.Collectors;
 @Service
 public class PublishingTemplatePlaceholderMapperService {
 
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ROOT);
 
     private final ParentDocumentResolver parentDocumentResolver;
 
@@ -311,10 +311,7 @@ public class PublishingTemplatePlaceholderMapperService {
     }
 
     private String dateValue(Object value) {
-        if (value instanceof LocalDate localDate) {
-            return DATE_FORMAT.format(localDate);
-        }
-        return valueOrDash(value == null ? null : value.toString());
+        return valueOrDash(value == null ? null : DateTimeFormatUtils.display(value));
     }
 
     private java.util.Optional<ParentDocumentResolver.Parent> parentOf(RevisionDetailResponse revision) {

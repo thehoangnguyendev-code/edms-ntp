@@ -32,6 +32,7 @@ import {
 } from "./announcementForm";
 import { MESSAGE_MAX, TITLE_MAX } from "./types";
 import { IconEye, IconSpeakerphone } from "@tabler/icons-react";
+import { displayDateTime } from "@/utils/format";
 
 /** The label, control and hint/error used by the other forms: 12/14px label, 14px control, 12px hint. */
 const CONTROL =
@@ -216,7 +217,7 @@ export const AnnouncementEditorView: React.FC = () => {
   const end = fromPickerValue(values.endsAt);
   const period =
     start && end
-      ? `Shown from ${start.toLocaleString()} until ${end.toLocaleString()}${values.enabled ? "" : " (switched off)"}.`
+      ? `Shown from ${displayDateTime(start)} until ${displayDateTime(end)}${values.enabled ? "" : " (switched off)"}.`
       : undefined;
 
   return (

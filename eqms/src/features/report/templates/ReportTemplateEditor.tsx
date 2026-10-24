@@ -21,6 +21,7 @@ import { ReportRevisionStepper, latestRevisionStatus } from "../shared/ReportRev
 import { ReportTemplateAccessScope } from "./ReportTemplateAccessScope";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { defaultReportLayout } from "@/services/api/reportTemplates";
+import { displayDateTime } from "@/utils/format";
 import {
   reportTemplatesApi,
   reportError,
@@ -101,7 +102,7 @@ function ApprovalPanel({
           </p>
           {(status === "ACTIVE" || status === "INACTIVE") && stored.approvedAt && (
             <p className="mt-1 text-xs">
-              Approved version {stored.approvedVersion} on {new Date(stored.approvedAt).toLocaleString()}.
+              Approved version {stored.approvedVersion} on {displayDateTime(stored.approvedAt)}.
             </p>
           )}
           {status === "DRAFT" && stored.approvalComment && (
@@ -424,7 +425,7 @@ export function ReportTemplateEditor() {
       <FormModal
         isOpen={rejecting?.step === "form"}
         onClose={() => setRejecting(undefined)}
-        title="Return to draft"
+        title="Return to Draft"
         description="The author sees this reason and must change the template and submit it again."
         confirmText="Return to draft"
         confirmDisabled={!rejecting?.reason.trim() || saving}
@@ -459,14 +460,14 @@ export function ReportTemplateEditor() {
         onClose={() => setRejecting(undefined)}
         deferConfirm
         onConfirm={(data) => rejectVersion(data.signatureToken)}
-        actionTitle={`Return report template ${code}, version ${stored?.definitionVersion ?? ""}, to draft`}
+        actionTitle={`Return Report Template ${code}, Version ${stored?.definitionVersion ?? ""}, to Draft`}
         meaningDisplayName="Report Template Returned to Draft"
         meaningCode="REPORT_TEMPLATE_REJECTION"
       />
       <FormModal
         isOpen={approving?.step === "form"}
         onClose={() => setApproving(undefined)}
-        title="Approve report template"
+        title="Approve Report Template"
         description="You approve this exact saved version. You must not be its author or the person who submitted it. Say what you checked."
         confirmText="Continue to sign"
         confirmDisabled={!approving?.reason.trim()}
@@ -488,7 +489,7 @@ export function ReportTemplateEditor() {
         onClose={() => setApproving(undefined)}
         deferConfirm
         onConfirm={(data) => approveVersion(data.signatureToken)}
-        actionTitle={`Approve report template ${code}, version ${stored?.definitionVersion ?? ""}`}
+        actionTitle={`Approve Report Template ${code}, Version ${stored?.definitionVersion ?? ""}`}
         meaningDisplayName="Report Template Approved"
         meaningCode="REPORT_TEMPLATE_APPROVAL"
       />
@@ -500,7 +501,7 @@ export function ReportTemplateEditor() {
           setSigning(false);
           void save(data.signatureToken);
         }}
-        actionTitle={`Save report definition ${create ? "(new)" : code}`}
+        actionTitle={`Save Report Definition ${create ? "(new)" : code}`}
         meaningDisplayName="Report Definition Change"
         meaningCode="REPORT_DEFINITION_CHANGE"
       />
@@ -611,7 +612,7 @@ export function ReportTemplateEditor() {
                       <input
                         type="text"
                         readOnly
-                        value={stored?.createdAt ? new Date(stored.createdAt).toLocaleString() : ""}
+                        value={stored?.createdAt ? displayDateTime(stored.createdAt) : ""}
                         className={CONTROL_STATE_CLASSES.readonlyField}
                         placeholder="Set when saved"
                       />
@@ -623,7 +624,7 @@ export function ReportTemplateEditor() {
                       <input
                         type="text"
                         readOnly
-                        value={stored?.updatedAt ? new Date(stored.updatedAt).toLocaleString() : ""}
+                        value={stored?.updatedAt ? displayDateTime(stored.updatedAt) : ""}
                         className={CONTROL_STATE_CLASSES.readonlyField}
                         placeholder="Set when saved"
                       />
@@ -881,7 +882,7 @@ export function ReportTemplateEditor() {
                     {
                       id: "date",
                       header: "Changed at",
-                      cell: (row) => new Date(row.createdAt).toLocaleString(),
+                      cell: (row) => displayDateTime(row.createdAt),
                     },
                   ]}
                 />

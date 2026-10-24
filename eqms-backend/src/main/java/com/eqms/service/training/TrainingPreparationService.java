@@ -88,7 +88,7 @@ public class TrainingPreparationService {
         if (manager) access.requireScope(actor, (UUID) session.get("organizer_department_id"));
         else if (!assignee) throw new SecurityException(TrainingAccess.DENIED);
         if (Set.of("COMPLETED", "CANCELLED", "RESERVED").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_CLOSED");
-        if (!"PLANNED".equals(session.get("status")) && !"HELD".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PREPARATION_SESSION_CLOSED");
+        if (!"PLANNED".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PREPARATION_SESSION_CLOSED");
         UUID assignedTo = manager ? request.assignedTo() : currentAssignee;
         if (assignedTo != null && !assignedTo.equals(currentAssignee)) {
             Integer ok = jdbc.queryForObject("select count(*) from app_users where id = ? and status = 'Active'", Integer.class, assignedTo);

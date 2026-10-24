@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Avatar } from "@/components/ui/avatar";
@@ -13,7 +13,7 @@ const ROW = "grid grid-cols-[28px_minmax(0,1fr)_110px] items-center gap-3 px-3 p
  * One screen to choose the people: type a name or an employee ID, or narrow the list to a Business Unit and/or a Department, tick the people (or "Select all shown"),
  * and confirm. It edits the whole list: the people already proposed are ticked, unticking one takes the person off, ticking adds. `onChange` gets everyone who is ticked.
  */
-export function ProposedParticipantsPicker({ initialIds, onChange }: { initialIds: string[]; onChange: (personIds: string[]) => void }) {
+export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onChange }: { initialIds: string[]; /** Who the first ids are, when they are not on the server yet. */ initialPeople?: TrainingPerson[]; onChange: (personIds: string[], people: TrainingPerson[]) => void }) {
   const [units, setUnits] = useState<TrainingGroup[]>([]);
   const [departments, setDepartments] = useState<TrainingGroup[]>([]);
   const [unit, setUnit] = useState(ALL);
@@ -22,6 +22,8 @@ export function ProposedParticipantsPicker({ initialIds, onChange }: { initialId
   const [people, setPeople] = useState<TrainingPerson[]>([]);
   const [loading, setLoading] = useState(false);
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(initialIds));
+  // Everyone seen in the lists so far, to give the names of the people ticked when the dialog is confirmed.
+  const known = useRef<Map<string, TrainingPerson>>(new Map(initialPeople.map((p) => [p.id, p])));
 
   useEffect(() => {
     trainingProposalApi.peopleGroups("BUSINESS_UNIT").then(setUnits).catch(() => setUnits([]));
@@ -47,6 +49,7 @@ export function ProposedParticipantsPicker({ initialIds, onChange }: { initialId
         } else {
           rows = await trainingProposalApi.people(search, 50);
         }
+        rows.forEach((p) => known.current.set(p.id, p));
         if (alive) setPeople(rows);
       } catch {
         if (alive) setPeople([]);
@@ -59,7 +62,7 @@ export function ProposedParticipantsPicker({ initialIds, onChange }: { initialId
 
   const allShown = people.length > 0 && people.every((p) => chosen.has(p.id));
 
-  const update = (next: Set<string>) => { setChosen(next); onChange(Array.from(next)); };
+  const update = (next: Set<string>) => { setChosen(next); const ids = Array.from(next); onChange(ids, ids.map((id) => known.current.get(id)).filter((p): p is TrainingPerson => !!p)); };
   const toggle = (person: TrainingPerson) => {
     const next = new Set(chosen);
     if (!next.delete(person.id)) next.add(person.id);

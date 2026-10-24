@@ -60,7 +60,7 @@ public class NotificationService {
     private static final Pattern DETAILS_BOX_START_PATTERN = Pattern.compile("(?i)<(div|table)\\b");
     private static final int MAX_SUMMARY_PARAGRAPHS = 2;
     private static final DateTimeFormatter DD_MM_YYYY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final ZoneId ZONE = ZoneId.systemDefault();
+    private static final ZoneId ZONE = DateTimeFormatUtils.ZONE;
 
     private final UserNotificationRepository notificationRepository;
     private final UserAccountRepository userAccountRepository;
@@ -442,8 +442,8 @@ public class NotificationService {
         notification.setModule(StringUtils.hasText(module) ? module : "System");
         notification.setModuleKey(StringUtils.hasText(module) ? module.toLowerCase(Locale.ROOT).replace(" ", "-") : "system");
         notification.setType(StringUtils.hasText(type) ? type : "system");
-        notification.setTitle(title);
-        notification.setMessage(message);
+        notification.setTitle(DateTimeFormatUtils.normalizeText(title));
+        notification.setMessage(DateTimeFormatUtils.normalizeText(message));
         notification.setActionUrl(actionUrl);
         notification.setRelatedEntityType(relatedEntityType);
         notification.setRelatedEntityId(relatedEntityId);

@@ -18,9 +18,7 @@ interface LocalizationTabProps {
   onDirtyChange?: (dirty: boolean) => void;
 }
 
-const DATE_TIME_FORMATS = ['DD/MM/YYYY HH:mm:ss', 'DD/MM/YYYY HH:mm', 'MM/DD/YYYY HH:mm:ss', 'MM/DD/YYYY HH:mm', 'YYYY-MM-DD HH:mm:ss', 'YYYY-MM-DD HH:mm', 'DD-MMM-YYYY HH:mm:ss', 'DD-MMM-YYYY HH:mm', 'MMMM DD, YYYY HH:mm:ss', 'MMMM DD, YYYY HH:mm'].map(value => ({ value, label: value }));
 const NUMBER_FORMATS = [{ value: 'en-US', label: '1,234.56 (US/UK)' }, { value: 'de-DE', label: '1.234,56 (EU)' }, { value: 'fr-FR', label: '1 234,56 (FR)' }, { value: 'ja-JP', label: '1,234.56 (JP)' }];
-const TIME_ZONES = ['Asia/Ho_Chi_Minh', 'UTC', 'Asia/Tokyo', 'Asia/Seoul', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Los_Angeles'].map(value => ({ value, label: value.replace('_', ' ') }));
 
 export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSaveHandler, onRegisterResetHandler, onDirtyChange }) => {
   const [system, setSystem] = useState<SystemLocalizationSettings>(readSystemLocalizationSettings);
@@ -66,8 +64,8 @@ export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSave
       <div className="space-y-5">
         <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-4 py-3"><div><p className="text-sm font-medium text-slate-900">Use system defaults</p><p className="text-xs text-slate-500">Follow the localization configured by your administrator.</p></div><Switch checked={preferences.useSystemDefaults} onChange={(checked) => setPreferences(checked ? { useSystemDefaults: true } : { ...effective, useSystemDefaults: false })} disabled={loading} /></div>
         {!preferences.useSystemDefaults && <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Select label="Date & Time Format" value={effective.dateTimeFormat} options={DATE_TIME_FORMATS} onChange={value => setValue('dateTimeFormat', value)} />
-          <Select label="Time Zone" value={effective.timeZone} options={TIME_ZONES} onChange={value => setValue('timeZone', value)} />
+          <div><p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Date & Time Format</p><p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700">DD/MM/YYYY HH:mm:ss</p><p className="mt-1 text-xs text-slate-500">The same for everybody; it is not a preference.</p></div>
+          <div><p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Time Zone</p><p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700">Asia/Ho_Chi_Minh (UTC+7)</p><p className="mt-1 text-xs text-slate-500">The zone of the site; it is not a preference.</p></div>
           <Select label="Number Format" value={effective.numberFormat} options={NUMBER_FORMATS} onChange={value => setValue('numberFormat', value)} />
           <Select label="Application Font" value={effective.fontFamily} options={[...APPLICATION_FONT_OPTIONS]} onChange={value => setValue('fontFamily', String(value) as SystemLocalizationSettings['fontFamily'])} />
         </div>}

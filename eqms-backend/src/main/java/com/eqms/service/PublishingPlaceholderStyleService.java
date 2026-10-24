@@ -281,19 +281,19 @@ public class PublishingPlaceholderStyleService {
 
     private PublishingPlaceholderStyleConfig parseStyle(String styleJson) {
         if (!StringUtils.hasText(styleJson)) {
-            return new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH");
+            return new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, true, null, "BOTH");
         }
         try {
             PublishingPlaceholderStyleConfig config = objectMapper.readValue(styleJson, PublishingPlaceholderStyleConfig.class);
-            return config == null ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH") : config;
+            return config == null ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, true, null, "BOTH") : config;
         } catch (Exception ex) {
-            return new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH");
+            return new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, true, null, "BOTH");
         }
     }
 
     private String serializeStyle(PublishingPlaceholderStyleConfig style) {
         try {
-            return objectMapper.writeValueAsString(style == null ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH") : style);
+            return objectMapper.writeValueAsString(style == null ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, true, null, "BOTH") : style);
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize placeholder style", ex);
         }
@@ -301,7 +301,7 @@ public class PublishingPlaceholderStyleService {
 
     private PublishingPlaceholderStyleConfig sanitiseStyle(String placeholderType, PublishingPlaceholderStyleConfig style) {
         PublishingPlaceholderStyleConfig safe = style == null
-                ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "BOTH")
+                ? new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, true, null, "BOTH")
                 : style;
         boolean signature = "SIGNATURE".equalsIgnoreCase(placeholderType);
         List<String> transforms = signature ? List.of() : safe.transforms();
@@ -312,7 +312,6 @@ public class PublishingPlaceholderStyleService {
         Boolean underline = signature ? safe.underline() : safe.underline();
         String color = StringUtils.hasText(safe.color()) ? safe.color().trim() : null;
         String alignment = StringUtils.hasText(safe.alignment()) ? safe.alignment().trim().toUpperCase(Locale.ROOT) : null;
-        String dateFormat = signature ? null : safe.dateFormat();
         String numberFormat = signature ? null : safe.numberFormat();
         Boolean preserveLineBreaks = safe.preserveLineBreaks() == null || safe.preserveLineBreaks();
         Integer maxLines = safe.maxLines() != null && safe.maxLines() > 0 ? safe.maxLines() : null;
@@ -321,7 +320,7 @@ public class PublishingPlaceholderStyleService {
                 PublishingPlaceholderStyleConfig.VISIBILITY_CONTROLLED_COPY).contains(visibility)) {
             throw new IllegalArgumentException("Placeholder visibility must be BOTH, PUBLISH or CONTROLLED_COPY");
         }
-        return new PublishingPlaceholderStyleConfig(transforms, fontFamily, fontSizePt, bold, italic, underline, color, alignment, dateFormat, numberFormat, preserveLineBreaks, maxLines, visibility);
+        return new PublishingPlaceholderStyleConfig(transforms, fontFamily, fontSizePt, bold, italic, underline, color, alignment, numberFormat, preserveLineBreaks, maxLines, visibility);
     }
 
     private String normalizeComponentType(String value) {

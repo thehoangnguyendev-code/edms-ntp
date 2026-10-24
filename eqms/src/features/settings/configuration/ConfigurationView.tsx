@@ -330,7 +330,7 @@ export const ConfigurationView: React.FC = () => {
         onClose={() => setShowSaveModal(false)}
         onConfirm={saveConfiguration}
         type="confirm"
-        title="Save system configuration?"
+        title="Save System Configuration?"
         description={
           <div className="space-y-2">
             <p className="text-sm text-slate-600">
@@ -352,7 +352,7 @@ export const ConfigurationView: React.FC = () => {
         onConfirm={handleResetConfirm}
         mode="discard"
         currentPageTitle="System Configuration"
-        title="Discard unsaved changes?"
+        title="Discard Unsaved Changes?"
         description={
           <div className="space-y-2">
             <p className="text-sm text-slate-600">

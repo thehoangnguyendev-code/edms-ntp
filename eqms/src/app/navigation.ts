@@ -278,6 +278,7 @@ const FOUNDATION_MODULES: NavItem[] = [
           { id: "training-requirements", label: "Training Requirements", path: ROUTES.TRAINING.REQUIREMENTS, allowedPermissions: ["training.requirement.view"] },
           { id: "training-activities", label: "Training Activities", path: ROUTES.TRAINING.ACTIVITIES, allowedPermissions: ["training.activity.view"] },
           { id: "training-matrices", label: "Training Matrix", path: ROUTES.TRAINING.MATRIX, allowedPermissions: ["training.matrix.view"] },
+          { id: "training-document-trainings", label: "Document Trainings", path: ROUTES.TRAINING.DOCUMENT_TRAININGS, allowedPermissions: ["training.matrix.view"] },
         ],
       },
       {

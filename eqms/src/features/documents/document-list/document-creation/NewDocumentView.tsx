@@ -24,6 +24,8 @@ import { settingsApi } from "@/services/api/settings";
 import { securityApi, type ResourceCapabilities } from "@/services/api/security";
 import { auditTrailApi } from "@/services/api/auditTrail";
 import { trainingLinksApi, type TrainingLink } from "@/services/api/trainingLinks";
+import { trainingError, trainingProposalApi } from "@/services/api/trainingActivities";
+import type { ProposedPerson } from "@/features/training-activities/shared/ProposedParticipantsField";
 import { secureStorage } from "@/utils/security";
 import { collectExcludedWorkflowParticipantIds } from "@/features/documents/shared/workflowParticipantFilters";
 import {
@@ -555,6 +557,8 @@ export const NewDocumentView: React.FC = () => {
   const [documentId, setDocumentId] = useState<string | null>(initialData?.id || null);
   // The Training Number and training state of the document, read from Training Management after each save.
   const [trainingLink, setTrainingLink] = useState<TrainingLink | null>(null);
+  // The people proposed for the training, chosen before the document has its training activity; they are sent when the document is saved.
+  const [pendingParticipants, setPendingParticipants] = useState<ProposedPerson[]>([]);
   // Only the total is needed for the tab badge (limit 1); the tab itself loads and pages its own list.
   const { pagination: controlledCopiesPagination } = useDocumentControlledCopies(documentId ?? undefined, {
     limit: 1,
@@ -1196,11 +1200,21 @@ export const NewDocumentView: React.FC = () => {
     return candidate?.response?.status || candidate?.status || candidate?.response?.data?.status || null;
   };
 
+  // The page that opened this one hands over a snapshot of the document in the browser history (router state). A reload of the page, for example after the
+  // application was rebuilt, reads that snapshot again instead of asking the server, so it must follow what the server has: every time the document is read
+  // from the server, the snapshot is replaced by it. Without this a document saved successfully came back, after a reload, as it was when it was opened.
+  const refreshReloadSnapshot = (detail: DocumentDetailResponse) => {
+    const state = (location.state ?? null) as Record<string, unknown> | null;
+    if (!state || (!state.preloadedDocumentDetail && !state.documentData)) return;
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: { ...state, preloadedDocumentDetail: detail, documentData: undefined } });
+  };
+
   const hydrateDocumentFromBackend = async (id: string, logView: boolean = true) => {
     const detail = logView
       ? await documentApi.getDocumentById(id)
       : await documentApi.getDocumentDetailSnapshot(id);
     await applyDocumentDetail(detail, id);
+    refreshReloadSnapshot(detail);
   };
 
   useEffect(() => {
@@ -1681,6 +1695,14 @@ export const NewDocumentView: React.FC = () => {
         navigate(ROUTES.DOCUMENTS.EDIT(response.id), { replace: true });
       }
       setDocumentId(response.id);
+      if (pendingParticipants.length > 0 && trainingConfig.isRequired && !formData.isTemplate) {
+        try {
+          await trainingProposalApi.replace(response.id, pendingParticipants.map((p) => p.personId));
+          setPendingParticipants([]);
+        } catch (proposalError) {
+          showToast({ type: "error", title: "The participants were not saved", message: `${trainingError(proposalError)} The document is saved; choose the participants again on the Training Information tab.`, duration: 6000 });
+        }
+      }
       setServerReviewRequirement(response.reviewRequirement ?? (isInitialCreate ? "OPTIONAL" : serverReviewRequirement));
       setDocumentNumber(response.documentNumber || documentNumber);
       setCreatedDateTime(response.created || response.createdDate || createdDateTime);
@@ -2110,6 +2132,8 @@ export const NewDocumentView: React.FC = () => {
               onChange={setTrainingConfig}
               trainingLink={trainingLink}
               documentId={documentId}
+              pendingParticipants={pendingParticipants}
+              onPendingParticipantsChange={setPendingParticipants}
               isReadOnly={
                 documentStatus === "Obsoleted" ||
                 documentStatus === "Closed - Cancelled" ||
@@ -2585,7 +2609,7 @@ export const NewDocumentView: React.FC = () => {
         mode="navigate"
         currentPageTitle="New Document"
         destinationLabel="Document list"
-        title="Save before leaving?"
+        title="Save Before Leaving?"
         primaryActionLabel="Save & Leave"
         secondaryActionLabel="Leave without saving"
         description={

@@ -56,12 +56,6 @@ export const config = {
     documentServerUrl: import.meta.env.VITE_ONLYOFFICE_URL || 'http://localhost:8082',
   },
 
-  // Date Formats
-  dateFormats: {
-    display: 'MMM DD, YYYY',
-    iso: 'dd/MM/yyyy',
-    full: 'MMMM DD, YYYY HH:mm:ss',
-  },
 } as const;
 
 export type Config = typeof config;

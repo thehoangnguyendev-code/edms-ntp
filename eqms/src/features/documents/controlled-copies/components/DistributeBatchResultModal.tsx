@@ -50,7 +50,7 @@ export const DistributeBatchResultModal: React.FC<DistributeBatchResultModalProp
     <FormModal
       isOpen={isOpen}
       onClose={onClose}
-      title={`${actionLabel} result`}
+      title={`${actionLabel} Result`}
       size="md"
       className="max-w-lg"
       showFooter

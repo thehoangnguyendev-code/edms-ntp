@@ -94,6 +94,12 @@ public class TrainingActivityController {
     @PostMapping("/activities/{id}/verify-self-reading")
     public ResponseEntity<?> verifySelfReading(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.verifySelfReading(users.requireCurrentUser(), id, request)); }
 
+    @PostMapping("/activities/{id}/send-attendance-list")
+    public ResponseEntity<?> sendAttendanceList(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.sendAttendanceList(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/activities/{id}/finish-training")
+    public ResponseEntity<?> finishTraining(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.finishTraining(users.requireCurrentUser(), id, request)); }
+
     @PostMapping("/activities/{id}/submit-for-confirmation")
     public ResponseEntity<?> submit(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.submitForConfirmation(users.requireCurrentUser(), id, request)); }
 
@@ -129,6 +135,18 @@ public class TrainingActivityController {
 
     @PostMapping("/me/participations/{id}/confirm-read")
     public ResponseEntity<?> confirmRead(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.confirmRead(users.requireCurrentUser(), id, request)); }
+
+    @PutMapping("/sessions/{sessionId}")
+    public ResponseEntity<?> updateSession(@PathVariable UUID sessionId, @RequestBody SessionUpdateRequest request) { return ResponseEntity.ok(activities.updateSession(users.requireCurrentUser(), sessionId, request)); }
+
+    @PostMapping("/activities/{id}/content-exemptions")
+    public ResponseEntity<?> contentExemptions(@PathVariable UUID id, @RequestBody TrainingActivityService.ExemptionRequest request) { return ResponseEntity.ok(activities.setContentExemptions(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/activities/{id}/reopen-content")
+    public ResponseEntity<?> reopenContent(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.reopenContent(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/activities/{id}/return-for-correction")
+    public ResponseEntity<?> returnForCorrection(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.returnForCorrection(users.requireCurrentUser(), id, request)); }
 
     @GetMapping("/people/groups")
     public ResponseEntity<?> peopleGroups(@RequestParam String by) {

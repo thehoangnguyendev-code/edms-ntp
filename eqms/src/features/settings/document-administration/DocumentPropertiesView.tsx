@@ -569,7 +569,7 @@ export const DocumentPropertiesView: React.FC = () => {
         onClose={() => setShowSaveModal(false)}
         onConfirm={save}
         type="confirm"
-        title="Save document properties?"
+        title="Save Document Properties?"
         description={
           <p className="text-sm text-slate-600">
             You are about to save changes to Document Properties. This action will be recorded in the Audit Trail.

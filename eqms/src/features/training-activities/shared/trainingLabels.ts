@@ -1,14 +1,15 @@
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb/Breadcrumb";
 import { dashboard } from "@/components/ui/breadcrumb/breadcrumbs/shared";
+import { displayDate, displayDateTime } from "@/utils/format";
 
 export const STATUS_LABEL: Record<string, string> = {
-  RESERVED: "Waiting for approval",
+  RESERVED: "Pending Document Approval",
   PLANNED: "Planned",
   NOTIFIED: "Notified",
   IN_PROGRESS: "In progress",
-  PENDING_QA_CONFIRMATION: "Waiting for QA confirmation",
+  PENDING_QA_CONFIRMATION: "Pending QA Confirmation",
   COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
+  CANCELLED: "Closed - Cancelled",
 };
 export const STATUS_COLOR: Record<string, "emerald" | "amber" | "red" | "slate" | "blue"> = {
   RESERVED: "slate",
@@ -81,13 +82,13 @@ export const CONFIRMATION_LABEL: Record<string, string> = {
   QA_COMPLETION: "Completion confirmed by QA",
 };
 
-export const when = (value?: string | null) => (value ? new Date(value).toLocaleString() : "—");
+export const when = (value?: string | null) => (value ? displayDateTime(value) : "—");
 /** What the e-signature modal shows before the person signs: the status the record is in now and the status it will be after the signature. */
 export const statusChange = (from: string, to: string, action = "Update Status") => [{ action, oldValue: from, newValue: to, category: "status" as const }];
 
-export const day = (value?: string | null) => (value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString() : "—");
+export const day = (value?: string | null) => (value ? displayDate(`${value.slice(0, 10)}T00:00:00`) : "—");
 
-export type TrainingPageKey = "myTraining" | "activities" | "matrices" | "requirements" | "jobs" | "reviews" | "specimen" | "records" | "compliance" | "numberLog" | "exports" | "legacy";
+export type TrainingPageKey = "myTraining" | "activities" | "matrices" | "requirements" | "jobs" | "reviews" | "specimen" | "records" | "compliance" | "documentTrainings" | "numberLog" | "exports" | "legacy";
 
 /**
  * The name of every page of Training Management, exactly as the menu calls it, and the menu group it sits in. Page titles and breadcrumbs take their text from
@@ -98,6 +99,7 @@ export const TRAINING_PAGES: Record<TrainingPageKey, { title: string; group?: st
   requirements: { title: "Training Requirements", group: "Training Programme", path: "/training-management/requirements" },
   activities: { title: "Training Activities", group: "Training Programme", path: "/training-management/activities" },
   matrices: { title: "Training Matrix", group: "Training Programme", path: "/training-management/matrix" },
+  documentTrainings: { title: "Document Trainings", group: "Training Programme", path: "/training-management/document-trainings" },
   jobs: { title: "Job Assignments", group: "Personnel Qualification", path: "/training-management/job-assignments" },
   reviews: { title: "Training Reviews", group: "Personnel Qualification", path: "/training-management/personnel-reviews" },
   specimen: { title: "Specimen Signatures", group: "Personnel Qualification", path: "/training-management/specimen-signatures" },

@@ -286,7 +286,7 @@ export const InspectionsView: React.FC = () => {
       <FormModal
         isOpen={asking}
         onClose={() => setAsking(false)}
-        title="Ask for an inspection"
+        title="Ask for an Inspection"
         description="The copy is read-only and lasts five minutes. Someone else must approve it."
         confirmText="Send request"
         confirmDisabled={!BACKUP_ID.test(askBackup.trim()) || !askReason.trim() || busy}
@@ -342,7 +342,7 @@ export const InspectionsView: React.FC = () => {
         onClose={() => setDecision(undefined)}
         deferConfirm
         onConfirm={signed("approve")}
-        actionTitle={`Approve inspection ${decision?.row.inspectionNumber ?? ""}`}
+        actionTitle={`Approve Inspection ${decision?.row.inspectionNumber ?? ""}`}
         meaningDisplayName="Backup Inspection Approval"
         meaningCode="BACKUP_INSPECTION_APPROVAL"
       />
@@ -354,7 +354,7 @@ export const InspectionsView: React.FC = () => {
         }}
         deferConfirm
         onConfirm={signed("reject")}
-        actionTitle={`Reject inspection ${decision?.row.inspectionNumber ?? ""}`}
+        actionTitle={`Reject Inspection ${decision?.row.inspectionNumber ?? ""}`}
         meaningDisplayName="Backup Inspection Rejection"
         meaningCode="BACKUP_INSPECTION_REJECTION"
       />

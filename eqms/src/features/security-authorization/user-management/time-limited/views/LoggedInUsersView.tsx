@@ -405,7 +405,7 @@ export const LoggedInUsersView: React.FC = () => {
         onClose={() => setForceLogoutModal({ isOpen: false, userId: "", userName: "" })}
         onConfirm={confirmForceLogout}
         type="warning"
-        title={`Log out ${forceLogoutModal.userName} immediately?`}
+        title={`Log Out ${forceLogoutModal.userName} Immediately?`}
         description="This will revoke every active session for this user. The action is recorded in the audit trail."
         confirmText="Log Out Now"
         isLoading={isForceLoggingOut}

@@ -2292,7 +2292,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           setIsUploadRevisionModalOpen(true);
         }}
         type="warning"
-        title="Unsaved changes will be discarded"
+        title="Unsaved Changes Will Be Discarded"
         description="You have unsaved changes to Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification or Training. Upload Revision uses the last-saved configuration, not these unsaved edits — continuing will discard them. Click Cancel and Save first if you want them applied to the new revision."
         confirmText="Upload Anyway (Discard Unsaved Changes)"
       />
@@ -2332,7 +2332,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         type="warning"
         showCancel={false}
         confirmText="OK"
-        title="Document expired"
+        title="Document Expired"
         description="This document has passed its Valid Until date, so no copy can be requested. Electronic copies are voided automatically when a document expires. Do not use this document."
       />
 

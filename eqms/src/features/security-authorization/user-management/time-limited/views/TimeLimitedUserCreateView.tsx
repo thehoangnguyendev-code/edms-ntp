@@ -210,7 +210,7 @@ export const TimeLimitedUserCreateView: React.FC = () => {
         isOpen={isSignOpen}
         onClose={() => setIsSignOpen(false)}
         onConfirm={confirmCreate}
-        actionTitle={`Create time-limited access for ${selectedUserIds.length} user(s)`}
+        actionTitle={`Create Time-Limited Access for ${selectedUserIds.length} User(s)`}
         meaningDisplayName="Time-Limited User Grant Creation"
         meaningCode="TIME_LIMITED_USER_GRANT"
       />

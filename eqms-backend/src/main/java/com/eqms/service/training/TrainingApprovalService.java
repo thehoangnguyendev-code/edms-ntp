@@ -46,7 +46,8 @@ public class TrainingApprovalService {
             Map.entry("REQUIREMENT_REVIEW", new Step("REQUIREMENT_REVIEW", "training.requirement.review", "TRAINING_REQUIREMENT_REVIEWED")),
             Map.entry("REQUIREMENT_APPROVE", new Step("REQUIREMENT_APPROVE", "training.requirement.approve", "TRAINING_REQUIREMENT_APPROVED")),
             Map.entry("TRAINER_EXCEPTION", new Step("TRAINER_EXCEPTION", "training.trainer.exception.approve", "TRAINING_TRAINER_EXCEPTION_APPROVED")),
-            Map.entry("LEGACY_EVIDENCE_VERIFY", new Step("LEGACY_EVIDENCE_VERIFY", "training.activity.close", "TRAINING_LEGACY_VERIFIED")));
+            Map.entry("LEGACY_EVIDENCE_VERIFY", new Step("LEGACY_EVIDENCE_VERIFY", "training.activity.close", "TRAINING_LEGACY_VERIFIED")),
+            Map.entry("REVIEW_CLOSE", new Step("REVIEW_CLOSE", "training.job_assignment.manage", "TRAINING_REVIEW_CLOSED")));
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -92,6 +93,18 @@ public class TrainingApprovalService {
         if (keptApart != null && keptApart.contains(person.getId())) return false;
         if (!access.codes(person).contains(step.permission())) return false;
         return access.inScope(person, departmentId);
+    }
+
+    /**
+     * Everyone who may handle the step for an object of the department: they hold the permission of the step and the scope of the department (a person with the scope of all
+     * departments, as QA has, handles the objects of every department), and are not kept apart from it. Used to tell them that something is waiting.
+     */
+    @Transactional(readOnly = true)
+    public List<UserAccount> eligibleUsers(String stepCode, UUID departmentId, Set<UUID> keptApart) {
+        Step step = step(stepCode);
+        List<UserAccount> out = new ArrayList<>();
+        for (UserAccount candidate : users.findAll()) if (eligible(candidate, step, departmentId, keptApart)) out.add(candidate);
+        return out;
     }
 
     /** The persons the submitter may choose from; the server decides who is on the list. */

@@ -1,5 +1,6 @@
 package com.eqms.service.training;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.UserAccount;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.AuditTrailService;
@@ -51,7 +52,8 @@ public class TrainingPersonnelReviewService {
                     new Item("NEW_SITE_TRAINING", "Training at the new site", "The employee is trained as a new employee of the new department; link the activity.", true),
                     new Item("JOB_ASSIGNMENT", "Job assignment", "APD.0024 for the new position.", false)));
 
-    public record CreateRequest(UUID personUserId, String kind, LocalDate eventDate, LocalDate absenceFrom, LocalDate absenceTo, String departmentFrom, String departmentTo, String note) {}
+    public record CreateRequest(UUID personUserId, String kind, LocalDate eventDate, LocalDate absenceFrom, LocalDate absenceTo, String departmentTo, String note) {}
+    public record ChangeCloserRequest(UUID closerUserId, String reason) {}
     public record ItemRequest(String status, UUID activityId, String note) {}
     public record CloseRequest(String signatureToken) {}
     public record CancelRequest(String reason) {}
@@ -62,12 +64,17 @@ public class TrainingPersonnelReviewService {
     private final AuditTrailService audit;
     private final UserAccountRepository users;
     private final TrainingActivityService activities;
+    private final TrainingApprovalService approvals;
+    private final TrainingNotifier notifier;
 
     private final TrainingComplianceService compliance;
 
-    public TrainingPersonnelReviewService(JdbcTemplate jdbc, TrainingAccess access, ElectronicSignatureService signatures, AuditTrailService audit, UserAccountRepository users, TrainingActivityService activities, TrainingComplianceService compliance) {
+    public TrainingPersonnelReviewService(JdbcTemplate jdbc, TrainingAccess access, ElectronicSignatureService signatures, AuditTrailService audit, UserAccountRepository users, TrainingActivityService activities, TrainingComplianceService compliance,
+                                          TrainingApprovalService approvals, TrainingNotifier notifier) {
         this.compliance = compliance;
         this.activities = activities;
+        this.approvals = approvals;
+        this.notifier = notifier;
         this.jdbc = jdbc;
         this.access = access;
         this.signatures = signatures;
@@ -78,7 +85,9 @@ public class TrainingPersonnelReviewService {
     private static final String SELECT = """
         select r.id, r.review_no, r.person_user_id, u.full_name, u.employee_code, u.avatar, u.department, r.kind, r.status, r.event_date, r.absence_from, r.absence_to, r.department_from, r.department_to, r.note,
                r.created_at, cu.full_name as created_by_name, r.closed_at, xu.full_name as closed_by_name, r.cancel_reason,
-               (select count(*) from training_personnel_review_items i where i.review_id = r.id and i.status = 'PENDING') as open_items
+               (select count(*) from training_personnel_review_items i where i.review_id = r.id and i.status = 'PENDING') as open_items,
+               (select cl.full_name from training_approval_assignments a join app_users cl on cl.id = a.assignee_user_id where a.object_type = 'TRAINING_PERSONNEL_REVIEW' and a.object_id = r.id
+                   and a.step_code = 'REVIEW_CLOSE' and a.status = 'PENDING' limit 1) as closer_name
           from training_personnel_reviews r join app_users u on u.id = r.person_user_id join app_users cu on cu.id = r.created_by left join app_users xu on xu.id = r.closed_by
         """;
 
@@ -103,8 +112,10 @@ public class TrainingPersonnelReviewService {
             args.add(actor.getDepartment() == null ? "" : actor.getDepartment());
         }
         if (status != null && !status.isBlank()) {
-            if (!Set.of("OPEN", "CLOSED", "CANCELLED").contains(status)) throw new IllegalArgumentException("TRAINING_STATUS_INVALID");
-            where.append(" and r.status = ?"); args.add(status);
+            if (!Set.of("OPEN", "CLOSED", "CANCELLED", "READY_TO_CLOSE").contains(status)) throw new IllegalArgumentException("TRAINING_STATUS_INVALID");
+            // "Ready to close" is an open review whose every item is settled: it waits for the signature of the person chosen to close it.
+            if ("READY_TO_CLOSE".equals(status)) where.append(" and r.status = 'OPEN' and not exists (select 1 from training_personnel_review_items pi where pi.review_id = r.id and pi.status = 'PENDING')");
+            else { where.append(" and r.status = ?"); args.add(status); }
         }
         if (kind != null && !kind.isBlank()) {
             if (!ITEMS.containsKey(kind)) throw new IllegalArgumentException("TRAINING_REVIEW_KIND_INVALID");
@@ -118,6 +129,8 @@ public class TrainingPersonnelReviewService {
         TrainingListFilter extra = new TrainingListFilter().contains(more.get("createdBy"), "cu.full_name")
                 .dateRange("r.event_date", more.get("eventFrom"), more.get("eventTo")).timeRange("r.created_at", more.get("createdFrom"), more.get("createdTo"));
         if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(u.department)) = lower(trim(?))", more.get("department"));
+        // The same person's own entries, for the "related" card of a detail screen.
+        if (more.get("personId") != null && !more.get("personId").isBlank()) extra.raw("r.person_user_id = ?", java.util.UUID.fromString(more.get("personId")));
         where.append(extra.and());
         args.addAll(extra.args());
         Long total = jdbc.queryForObject("select count(*) from training_personnel_reviews r join app_users u on u.id = r.person_user_id left join app_users cu on cu.id = r.created_by" + where, Long.class, args.toArray());
@@ -157,9 +170,16 @@ public class TrainingPersonnelReviewService {
         out.put("items", items);
         boolean open = "OPEN".equals(r.get("status"));
         boolean manage = access.has(actor, "training.job_assignment.manage");
+        // The person chosen to close the review; a review opened before the choice existed has none and is closed by anyone who may.
+        Map<String, Object> closer = closerAssignment(id);
+        boolean ready = open && ((Number) r.get("open_items")).intValue() == 0;
+        out.put("closerUserId", closer == null ? null : closer.get("assignee_user_id"));
+        out.put("closerName", closer == null ? null : closer.get("full_name"));
+        out.put("readyToClose", ready);
         out.put("capabilities", Map.of(
                 "editItems", open && manage,
-                "close", open && manage && ((Number) r.get("open_items")).intValue() == 0 && !actor.getId().equals(person),
+                "close", ready && manage && !actor.getId().equals(person) && (closer == null || actor.getId().equals(closer.get("assignee_user_id"))),
+                "changeCloser", open && closer != null && access.has(actor, "training.approval.reassign"),
                 "cancel", open && manage));
         if ("ABSENCE_RETURN".equals(r.get("kind"))) {
             LocalDate from = ((Date) r.get("absence_from")).toLocalDate(), to = ((Date) r.get("absence_to")).toLocalDate();
@@ -175,8 +195,11 @@ public class TrainingPersonnelReviewService {
         if (!inScope(actor, request.personUserId())) throw new SecurityException(TrainingAccess.DENIED);
         UserAccount person = users.findById(request.personUserId()).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE"));
         if (person.getStatus() != com.eqms.entity.UserStatus.Active) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
-        if (request.eventDate().isAfter(LocalDate.now(TrainingNumberService.ZONE).plusDays(31))) throw new IllegalArgumentException("TRAINING_REVIEW_INVALID");
-        if ("ABSENCE_RETURN".equals(request.kind()) && (request.absenceFrom() == null || request.absenceTo() == null || request.absenceTo().isBefore(request.absenceFrom()))) throw new IllegalArgumentException("TRAINING_REVIEW_ABSENCE_INVALID");
+        validateDates(request);
+        // The department that decides who closes the review, and where the employee comes from, are read from the records, never typed.
+        Map<String, Object> plan = plan(person, request.kind(), request.departmentTo());
+        if (plan.get("problem") != null) throw new IllegalArgumentException((String) plan.get("problem"));
+        boolean transfer = "DEPT_TRANSFER".equals(request.kind()) || "LOCATION_TRANSFER".equals(request.kind());
         if (jdbc.queryForObject("select count(*) from training_personnel_reviews where person_user_id = ? and kind = ? and status = 'OPEN'", Integer.class, person.getId(), request.kind()) > 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REVIEW_ALREADY_OPEN");
         }
@@ -186,11 +209,61 @@ public class TrainingPersonnelReviewService {
         boolean absence = "ABSENCE_RETURN".equals(request.kind());
         jdbc.update("insert into training_personnel_reviews(id, person_user_id, kind, event_date, absence_from, absence_to, department_from, department_to, note, created_by) values (?,?,?,?,?,?,?,?,?,?)",
                 id, person.getId(), request.kind(), Date.valueOf(request.eventDate()), absence ? Date.valueOf(request.absenceFrom()) : null, absence ? Date.valueOf(request.absenceTo()) : null,
-                "DEPT_TRANSFER".equals(request.kind()) || "LOCATION_TRANSFER".equals(request.kind()) ? blank(request.departmentFrom()) : null,
-                "DEPT_TRANSFER".equals(request.kind()) || "LOCATION_TRANSFER".equals(request.kind()) ? blank(request.departmentTo()) : null, note, actor.getId());
+                transfer ? plan.get("departmentFrom") : null, transfer ? plan.get("departmentTo") : null, note, actor.getId());
         for (Item item : ITEMS.get(request.kind())) jdbc.update("insert into training_personnel_review_items(review_id, item_code) values (?,?)", id, item.code());
         audit.logAs(actor, TYPE, "Training review of " + person.getFullName(), id, "TRAINING_PERSONNEL_REVIEW_OPENED", null, "OPEN", request.kind() + (note == null ? "" : ". " + note));
+        // The head of the department signs to close the review, as for the other signing steps.
+        approvals.designate(actor, subject(lock(id), person), "REVIEW_CLOSE", (UUID) plan.get("closerUserId"), TrainingApprovalService.apart(person.getId()));
         return get(actor, id);
+    }
+
+    /** Dates of the event, as SOP.0003 reads them: the event has happened, and a return follows an absence of more than the months of Training Properties. */
+    private void validateDates(CreateRequest request) {
+        LocalDate today = LocalDate.now(TrainingNumberService.ZONE);
+        if (request.eventDate().isAfter(today)) throw new IllegalArgumentException("TRAINING_REVIEW_DATE_FUTURE");
+        if (!"ABSENCE_RETURN".equals(request.kind())) return;
+        if (request.absenceFrom() == null || request.absenceTo() == null || request.absenceTo().isBefore(request.absenceFrom())) throw new IllegalArgumentException("TRAINING_REVIEW_ABSENCE_INVALID");
+        if (request.absenceTo().isAfter(today)) throw new IllegalArgumentException("TRAINING_REVIEW_DATE_FUTURE");
+        if (request.eventDate().isBefore(request.absenceTo())) throw new IllegalArgumentException("TRAINING_REVIEW_RETURN_BEFORE_ABSENCE_END");
+        int months = jdbc.queryForObject("select absence_retrain_months from training_settings where id = 1", Integer.class);
+        if (!request.absenceTo().isAfter(request.absenceFrom().plusMonths(months))) throw new IllegalArgumentException("TRAINING_REVIEW_ABSENCE_TOO_SHORT");
+    }
+
+    /**
+     * What the dialog that opens a review needs from the records: the current department of the employee, the department a transfer goes to, the head of the department that closes the review
+     * (the department of the employee, or the new one in a transfer), and the months of absence after which the SOP asks for a review. "problem" names what stops the review from being opened.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> plan(UserAccount actor, UUID personId, String kind, String departmentTo) {
+        access.require(actor, "training.job_assignment.manage");
+        if (!inScope(actor, personId)) throw new SecurityException(TrainingAccess.DENIED);
+        return plan(users.findById(personId).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE")), kind, departmentTo);
+    }
+
+    private Map<String, Object> plan(UserAccount person, String kind, String departmentTo) {
+        boolean transfer = "DEPT_TRANSFER".equals(kind) || "LOCATION_TRANSFER".equals(kind);
+        String from = blank(person.getDepartment());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("departmentFrom", from);
+        out.put("absenceRetrainMonths", jdbc.queryForObject("select absence_retrain_months from training_settings where id = 1", Integer.class));
+        String target = transfer ? blank(departmentTo) : from;
+        String problem = null;
+        Map<String, Object> department = null;
+        if (target == null) problem = transfer ? "TRAINING_REVIEW_DEPARTMENT_REQUIRED" : "TRAINING_REVIEW_DEPARTMENT_HEAD_MISSING";
+        else {
+            department = jdbc.queryForList("select d.name, d.department_head_id from departments d where d.is_active and lower(trim(d.name)) = lower(trim(?))", target).stream().findFirst().orElse(null);
+            if (department == null) problem = transfer ? "TRAINING_REVIEW_DEPARTMENT_REQUIRED" : "TRAINING_REVIEW_DEPARTMENT_HEAD_MISSING";
+        }
+        if (problem == null && transfer && from != null && "DEPT_TRANSFER".equals(kind) && from.equalsIgnoreCase(String.valueOf(department.get("name")))) problem = "TRAINING_REVIEW_SAME_DEPARTMENT";
+        UserAccount head = problem != null || department.get("department_head_id") == null ? null : users.findById((UUID) department.get("department_head_id")).orElse(null);
+        if (problem == null && head == null) problem = "TRAINING_REVIEW_DEPARTMENT_HEAD_MISSING";
+        if (problem == null && head.getId().equals(person.getId())) problem = "TRAINING_REVIEW_HEAD_IS_EMPLOYEE";
+        if (problem == null && !access.has(head, "training.job_assignment.manage")) problem = "TRAINING_REVIEW_HEAD_NOT_ALLOWED";
+        out.put("departmentTo", transfer && department != null ? department.get("name") : null);
+        out.put("closerUserId", head == null ? null : head.getId());
+        out.put("closerName", head == null ? null : head.getFullName());
+        out.put("problem", problem);
+        return out;
     }
 
     @Transactional
@@ -214,9 +287,12 @@ public class TrainingPersonnelReviewService {
             if ((ok == null || ok == 0) && (own == null || own == 0)) throw new IllegalArgumentException("TRAINING_REVIEW_ACTIVITY_INVALID");
         }
         boolean done = !"PENDING".equals(request.status());
+        int pendingBefore = ((Number) r.get("open_items")).intValue();
         jdbc.update("update training_personnel_review_items set status = ?, activity_id = ?, note = ?, done_by = ?, done_at = case when ? then now() else null end where review_id = ? and item_code = ?",
                 request.status(), activityId, note, done ? actor.getId() : null, done, id, itemCode);
         audit.logAs(actor, TYPE, "Training review " + r.get("review_no"), id, "TRAINING_PERSONNEL_REVIEW_ITEM", null, request.status(), item.label() + (note == null ? "" : ". " + note));
+        Integer pendingAfter = jdbc.queryForObject("select count(*) from training_personnel_review_items where review_id = ? and status = 'PENDING'", Integer.class, id);
+        if (pendingBefore > 0 && pendingAfter != null && pendingAfter == 0) tellCloser(actor, r);
         return get(actor, id);
     }
 
@@ -265,12 +341,12 @@ public class TrainingPersonnelReviewService {
                 long open = ((Number) gaps.get("missing")).longValue() + ((Number) gaps.get("due")).longValue();
                 String matrix = ((Number) gaps.get("required")).intValue() == 0 ? "" : open == 0 ? " The matrix of the position is complete." : " " + open + " training of the matrix of the position is still open.";
                 return rows.isEmpty() ? check(false, "No effective job assignment yet." + matrix)
-                        : check(open == 0, "Job assignment, issue " + rows.getFirst().get("issue_no") + (rows.getFirst().get("effective_at") == null ? "" : ", effective " + String.valueOf(rows.getFirst().get("effective_at")).substring(0, 10)) + "." + matrix);
+                        : check(open == 0, "Job assignment, issue " + rows.getFirst().get("issue_no") + (rows.getFirst().get("effective_at") == null ? "" : ", effective " + DateTimeFormatUtils.display(rows.getFirst().get("effective_at"))) + "." + matrix);
             }
             case "HANDOVER": {
                 List<Map<String, Object>> rows = jdbc.queryForList("select generated_at from training_record_exports where person_user_id = ? and status = 'APPROVED' order by generated_at desc nulls last limit 1", person);
                 return rows.isEmpty() ? check(false, "No approved export of the training record yet (Training Record Exports).")
-                        : check(true, "A signed export of the record was approved" + (rows.getFirst().get("generated_at") == null ? "" : " on " + String.valueOf(rows.getFirst().get("generated_at")).substring(0, 10)) + ".");
+                        : check(true, "A signed export of the record was approved" + (rows.getFirst().get("generated_at") == null ? "" : " on " + DateTimeFormatUtils.display(rows.getFirst().get("generated_at"))) + ".");
             }
             default:
                 return null;
@@ -320,8 +396,11 @@ public class TrainingPersonnelReviewService {
         if (pending != null && pending > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REVIEW_ITEMS_PENDING");
         if (request == null || request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
         UserAccount owner = users.findById(person).orElseThrow();
+        // A review that has a person chosen to close it is closed by that person; one opened before the choice existed is closed by anyone who may.
+        UUID assignment = closerAssignment(id) == null ? null : approvals.requireCanSign(actor, subject(r, owner), "REVIEW_CLOSE", TrainingApprovalService.apart(person));
         UUID signature = signatures.createEntitySignature(TYPE, id, "Training review " + r.get("review_no") + " of " + owner.getFullName(), actor, request.signatureToken(), "TRAINING_REVIEW_CLOSED",
                 "Training Management: personnel training review closed", null, null, null).getId();
+        approvals.complete(assignment, signature);
         jdbc.update("update training_personnel_reviews set status = 'CLOSED', closed_by = ?, closed_at = now(), closed_signature_id = ? where id = ?", actor.getId(), signature, id);
         audit.logAs(actor, TYPE, "Training review " + r.get("review_no"), id, "TRAINING_PERSONNEL_REVIEW_CLOSED", "OPEN", "CLOSED", owner.getFullName());
         return get(actor, id);
@@ -335,7 +414,51 @@ public class TrainingPersonnelReviewService {
         if (!inScope(actor, (UUID) r.get("person_user_id"))) throw new SecurityException(TrainingAccess.DENIED);
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_personnel_reviews set status = 'CANCELLED', cancel_reason = ? where id = ?", request.reason().trim(), id);
+        approvals.cancelOpen(TYPE, id, "Review cancelled");
         audit.logAs(actor, TYPE, "Training review " + r.get("review_no"), id, "TRAINING_PERSONNEL_REVIEW_CANCELLED", "OPEN", "CANCELLED", request.reason().trim());
+        return get(actor, id);
+    }
+
+    private TrainingApprovalService.Subject subject(Map<String, Object> review, UserAccount person) {
+        return new TrainingApprovalService.Subject(TYPE, (UUID) review.get("id"), access.departmentOf(person), "Training review " + review.get("review_no") + " of " + person.getFullName(), "training.job_assignment.manage");
+    }
+
+    /** The open assignment to close the review: its id and the person, or null when nobody was chosen (a review opened before the choice existed). */
+    private Map<String, Object> closerAssignment(UUID reviewId) {
+        return jdbc.queryForList("select a.id, a.assignee_user_id, u.full_name from training_approval_assignments a join app_users u on u.id = a.assignee_user_id where a.object_type = ? and a.object_id = ? and a.step_code = 'REVIEW_CLOSE' and a.status = 'PENDING'",
+                TYPE, reviewId).stream().findFirst().orElse(null);
+    }
+
+    /** The last item was settled: the person chosen to close the review is told once for this moment. */
+    private void tellCloser(UserAccount actor, Map<String, Object> review) {
+        Map<String, Object> assignment = closerAssignment((UUID) review.get("id"));
+        if (assignment == null) return;
+        users.findById((UUID) assignment.get("assignee_user_id")).ifPresent(closer -> notifier.send("TRAINING_REVIEW_READY", closer, actor, "Training: a review is ready to close",
+                "Every item of the training review " + review.get("review_no") + " is settled. Please check it and sign to close it.", TYPE, (UUID) review.get("id"), "review-ready:" + review.get("id") + ":" + System.currentTimeMillis()));
+    }
+
+    /** The people who may be chosen to close the review of a person: they hold the permission in the department of the person, and are not the person. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> eligibleClosers(UserAccount actor, UUID personId, String search, int page, int limit) {
+        access.require(actor, "training.job_assignment.manage");
+        if (!inScope(actor, personId)) throw new SecurityException(TrainingAccess.DENIED);
+        UserAccount person = users.findById(personId).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE"));
+        return approvals.eligibleApprovers(actor, new TrainingApprovalService.Subject(TYPE, null, access.departmentOf(person), "Training review", "training.job_assignment.manage"), "REVIEW_CLOSE", search, page, limit, TrainingApprovalService.apart(personId));
+    }
+
+    /** Hands the closing over to another person (the person is away, left, or lost the permission): a reason is required and both people are on record. */
+    @Transactional
+    public Map<String, Object> changeCloser(UserAccount actor, UUID id, ChangeCloserRequest request) {
+        access.require(actor, "training.job_assignment.manage");
+        Map<String, Object> r = lock(id);
+        if (!"OPEN".equals(r.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REVIEW_CLOSED");
+        UUID personId = (UUID) r.get("person_user_id");
+        if (!inScope(actor, personId)) throw new SecurityException(TrainingAccess.DENIED);
+        Map<String, Object> assignment = closerAssignment(id);
+        if (assignment == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSIGNMENT_NOT_FOUND");
+        UserAccount person = users.findById(personId).orElseThrow();
+        approvals.reassign(actor, subject(r, person), (UUID) assignment.get("id"), request == null ? null : request.closerUserId(), request == null ? null : request.reason(), TrainingApprovalService.apart(personId));
+        if (((Number) r.get("open_items")).intValue() == 0) tellCloser(actor, r);
         return get(actor, id);
     }
 

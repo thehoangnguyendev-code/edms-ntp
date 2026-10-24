@@ -29,7 +29,7 @@ describe('Personal calendar server-driven UI', () => {
   it('opens a day drawer by clicking the day cell and has no bottom agenda', async () => {
     render(view()); await screen.findByText('October 2026');
     expect(screen.queryByLabelText('Selected day events')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Thursday, October 1, 2026' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thursday, 01/10/2026' }));
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Events (1)' }));
     expect(screen.getByText('Private appointment A')).toBeInTheDocument();

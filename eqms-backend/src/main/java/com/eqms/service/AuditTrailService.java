@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.audittrail.AuditTrailDetailResponse;
@@ -68,7 +69,7 @@ import java.util.stream.Stream;
 public class AuditTrailService {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
-            .withZone(ZoneId.systemDefault());
+            .withZone(DateTimeFormatUtils.ZONE);
     private static final UUID AUDIT_TRAIL_SYSTEM_ENTITY_ID = UUID.nameUUIDFromBytes(
             "EQMS_AUDIT_TRAIL".getBytes(java.nio.charset.StandardCharsets.UTF_8));
     private static final String AUDIT_VIEW_PERMISSION = "audit.view";
@@ -921,6 +922,7 @@ public class AuditTrailService {
             String toStatus,
             String comment
     ) {
+        comment = DateTimeFormatUtils.normalizeText(comment);
         RequestSnapshot requestSnapshot = resolveRequestSnapshot();
         AuditEntitySnapshot entitySnapshot = buildEntitySnapshot(entityType, entityId, entityName);
         Instant now = Instant.now();
@@ -971,6 +973,8 @@ public class AuditTrailService {
             UUID signatureId,
             List<AuditTrailChangeResponse> changes
     ) {
+        // A date or time written in the text of the comment is shown in the display format (dd/MM/yyyy), never as ISO.
+        comment = DateTimeFormatUtils.normalizeText(comment);
         RequestSnapshot requestSnapshot = resolveRequestSnapshot();
         AuditActorSnapshot actorSnapshot = buildActorSnapshot(actor);
         AuditEntitySnapshot entitySnapshot = buildEntitySnapshot(entityType, entityId, entityName);
@@ -2264,9 +2268,9 @@ public class AuditTrailService {
         boolean hasFrom = StringUtils.hasText(dateFrom);
         boolean hasTo = StringUtils.hasText(dateTo);
         if (!hasFrom && !hasTo) {
-            LocalDate today = LocalDate.now(ZoneId.systemDefault());
-            Instant from = today.minusDays(29).atStartOfDay(ZoneId.systemDefault()).toInstant();
-            Instant to = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).minusNanos(1).toInstant();
+            LocalDate today = LocalDate.now(DateTimeFormatUtils.ZONE);
+            Instant from = today.minusDays(29).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
+            Instant to = today.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).minusNanos(1).toInstant();
             return new AuditTrailDateRange(from, to);
         }
 
@@ -2280,13 +2284,13 @@ public class AuditTrailService {
         try {
             if (trimmed.matches("\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2}")) {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-                return LocalDateTime.parse(trimmed, formatter).atZone(ZoneId.systemDefault()).toInstant();
+                return LocalDateTime.parse(trimmed, formatter).atZone(DateTimeFormatUtils.ZONE).toInstant();
             }
             if (trimmed.matches("\\d{2}/\\d{2}/\\d{4}")) {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
                 LocalDate date = LocalDate.parse(trimmed, formatter);
                 return date.atTime(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0)
-                        .atZone(ZoneId.systemDefault())
+                        .atZone(DateTimeFormatUtils.ZONE)
                         .toInstant();
             }
             return Instant.parse(trimmed);

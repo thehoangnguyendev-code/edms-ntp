@@ -28,7 +28,6 @@ interface TrainingInformationTabProps {
   revisionId?: string | null;
 }
 
-const statusText = (status?: string | null) => (status ? status.replace(/_/g, " ").toLowerCase() : "");
 const parseDate = (value: string) => {
   const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
   if (!match) return null;
@@ -111,7 +110,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
     };
   }, [revisionId, trainingNumber]);
   const shownNumber = trainingNumber ?? (fetchedLink?.status === "CANCELLED" ? null : fetchedLink?.trainingNumber ?? null);
-  const shownStatus = trainingStatusLabel ?? statusText(fetchedLink?.status);
+  const shownStatus = trainingStatusLabel ?? fetchedLink?.statusLabel ?? "";
   const trainingPeriodDays = useMemo(() => data?.trainingPeriodDays ?? null, [data?.trainingPeriodDays]);
   const [trainingPlannedDate, setTrainingPlannedDate] = useState<string>(data?.trainingPlannedDate ?? "");
   const [trainingPeriodEndDate, setTrainingPeriodEndDate] = useState<string>(data?.trainingPeriodEndDate ?? "");

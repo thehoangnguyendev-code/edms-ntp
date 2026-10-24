@@ -6,6 +6,7 @@ import { ageInDays, formatAge, share, type MyWork } from './dashboardMetrics';
 import { PanelError, RowsSkeleton } from './dashboardParts';
 import { Card, CardHeader, FlatTable, NameCell, SearchBox, ToolbarButton, type FlatColumn } from './dashboardUi';
 import type { DashboardResource } from './useDashboardResource';
+import { displayDate } from "@/utils/format";
 
 const TASK_LABEL: Record<DashboardPendingWorkflowAction['taskType'], { label: string; color: 'amber' | 'emerald' }> = {
   REVIEW: { label: 'Review', color: 'amber' },
@@ -20,7 +21,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const formatDate = (value: string) => {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString(undefined, { dateStyle: 'medium' });
+  return Number.isNaN(date.getTime()) ? '-' : displayDate(date);
 };
 
 const COLUMNS: FlatColumn<DashboardPendingWorkflowAction>[] = [

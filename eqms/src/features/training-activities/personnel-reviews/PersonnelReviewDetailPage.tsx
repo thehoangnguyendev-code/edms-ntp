@@ -17,13 +17,17 @@ import { trainingActivitiesApi, trainingError, trainingReviewsApi, type Training
 import { Textarea } from "../shared/TrainingFields";
 import { TrainingScannedTestsModal } from "../shared/TrainingScannedTestsModal";
 import { day, trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
-import { REVIEW_KIND_LABEL, REVIEW_STATUS_LABEL } from "./PersonnelReviewListView";
+import { TrainingPersonRelatedCard } from "../shared/TrainingPersonRelatedCard";
+import { REVIEW_KIND_LABEL, REVIEW_STATUS_LABEL } from "./personnelReviewLabels";
+import { useTrainingBack } from "../shared/useTrainingBack";
 
 const ITEM_STATUS = { PENDING: "Pending", DONE: "Done", NOT_NEEDED: "Not needed" } as const;
 const ITEM_COLOR = { PENDING: "amber", DONE: "emerald", NOT_NEEDED: "slate" } as const;
 /** A review ends in one of two ways: closed with a signature, or cancelled. The stepper always shows all three; the end that was not taken is striped. */
 const STEPS = ["Open", "Closed", "Cancelled"];
+const EVENT_DATE_LABEL: Record<string, string> = { NEW_HIRE: "Start Date", ABSENCE_RETURN: "Return Date", DEPT_TRANSFER: "Transfer Date", LOCATION_TRANSFER: "Transfer Date" };
 const GAP_LABEL: Record<string, string> = { MISSING: "Not trained", DUE: "Annual training due", OK: "Trained" };
 const GAP_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", DUE: "amber", OK: "emerald" };
 
@@ -31,6 +35,7 @@ const GAP_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red",
 export function PersonnelReviewDetailPage() {
   const { reviewId = "" } = useParams();
   const navigate = useNavigate();
+  const goBack = useTrainingBack("/training-management/personnel-reviews");
   const { showToast } = useToast();
   const [review, setReview] = useState<TrainingPersonnelReview>();
   const [gaps, setGaps] = useState<TrainingPersonMatrixGaps>();
@@ -40,6 +45,9 @@ export function PersonnelReviewDetailPage() {
   const [scans, setScans] = useState<string>();
   const [signing, setSigning] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [changingCloser, setChangingCloser] = useState(false);
+  const [newCloserId, setNewCloserId] = useState("");
+  const [closerOptions, setClosersOptions] = useState<{ label: string; value: string }[]>([]);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -102,11 +110,11 @@ export function PersonnelReviewDetailPage() {
         </div>
       ) : "—"),
     },
-    { id: "note", header: "Note", cell: (i) => <div className="max-w-64 whitespace-normal text-xs text-slate-600">{i.note ?? "—"}</div> },
+    { id: "note", header: "Description", cell: (i) => <div className="max-w-64 whitespace-normal text-xs text-slate-600">{i.note ?? "—"}</div> },
     { id: "done", header: "Done by", cell: (i) => (i.doneByName ? <div><div>{i.doneByName}</div><div className="text-xs text-slate-500">{when(i.doneAt)}</div></div> : "—") },
     {
       id: "actions",
-      header: "",
+      header: "Action",
       cell: (i) => (caps.editItems || i.activityId ? (
         <div className="flex flex-wrap gap-2">
           {caps.editItems && <Button size="sm" variant="outline" onClick={() => setEditing(i)}>Update</Button>}
@@ -116,17 +124,29 @@ export function PersonnelReviewDetailPage() {
       ) : null),
     },
   ];
+  const searchClosers = async (query: string) => {
+    const page = await trainingReviewsApi.eligibleClosers(review.personUserId, query).catch(() => undefined);
+    const mapped = (page?.data ?? []).filter((p) => p.id !== review.closerUserId).map((p) => ({ label: `${p.fullName}${p.employeeCode ? ` (${p.employeeCode})` : ""}`, value: p.id }));
+    setClosersOptions(mapped);
+    return mapped;
+  };
   const footer = (
     <>
       {caps.close && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setSigning(true)}>Close review</Button>}
+      {caps.changeCloser && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => { setReason(""); setNewCloserId(""); void searchClosers(""); setChangingCloser(true); }}>Change Closer</Button>}
       {caps.cancel && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => { setReason(""); setCancelling(true); }}>Cancel</Button>}
     </>
   );
 
   return (
     <>
-      <TrainingDetailLayout title={title} breadcrumbItems={crumbs} onBack={() => navigate("/training-management/personnel-reviews")} steps={STEPS} currentStepIndex={review.status === "OPEN" ? 0 : review.status === "CLOSED" ? 1 : 2} terminalProgressStep="Open" skippedSteps={review.status === "CLOSED" ? ["Cancelled"] : undefined}
-        tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-review-detail-tab" footer={footer}>
+      <TrainingDetailLayout title={title} breadcrumbItems={crumbs} onBack={goBack} steps={STEPS} currentStepIndex={review.status === "OPEN" ? 0 : review.status === "CLOSED" ? 1 : 2} terminalProgressStep="Open" skippedSteps={review.status === "CLOSED" ? ["Cancelled"] : undefined}
+        tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-review-detail-tab" footer={footer} afterFooter={<TrainingPersonRelatedCard personId={review.personUserId} />}>
+        {review.readyToClose && (
+          <p role="status" className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">
+            Every item is settled. {review.closerName ? `${review.closerName} must check the review and sign to close it.` : "A person who may close the review must check it and sign."}
+          </p>
+        )}
         {tab === "overview" && (
           <ReadonlyGrid>
             <ReadonlyField label="Employee" value={`${review.fullName}${review.employeeCode ? ` (${review.employeeCode})` : ""}`} />
@@ -135,10 +155,23 @@ export function PersonnelReviewDetailPage() {
             <ReadonlyField label="Opened By" value={review.createdByName} />
             <ReadonlyField label="Event" value={REVIEW_KIND_LABEL[review.kind]} />
             <ReadonlyField label="Status" value={REVIEW_STATUS_LABEL[review.status]} />
-            <ReadonlyField label="Event Date" value={day(review.eventDate)} />
-            {review.kind === "ABSENCE_RETURN" && <ReadonlyField label="Absent" value={`${day(review.absenceFrom)} to ${day(review.absenceTo)}${review.absenceOverSixMonths ? " (more than six months)" : " (six months or less)"}`} wide />}
-            {(review.departmentFrom || review.departmentTo) && <ReadonlyField label="Transfer" value={`${review.departmentFrom ?? "—"} to ${review.departmentTo ?? "—"}`} wide />}
-            {review.note && <ReadonlyField label="Note" value={review.note} wide />}
+            <ReadonlyField label={EVENT_DATE_LABEL[review.kind] ?? "Event Date"} value={day(review.eventDate)} />
+            <ReadonlyField label="Person who closes the review" value={review.closerName ?? review.closedByName ?? (review.status === "OPEN" ? "Anyone who may (no person was chosen)" : "")} />
+            {review.kind === "ABSENCE_RETURN" && (
+              <>
+                <ReadonlyField label="Absent from" value={day(review.absenceFrom)} />
+                <ReadonlyField label="Absent until" value={`${day(review.absenceTo)}${review.absenceOverSixMonths ? " (more than six months)" : " (six months or less)"}`} />
+              </>
+            )}
+            {(review.kind === "DEPT_TRANSFER" || review.kind === "LOCATION_TRANSFER") && (
+              <>
+                <ReadonlyField label={review.kind === "LOCATION_TRANSFER" ? "Previous site / department" : "Previous department"} value={review.departmentFrom} />
+                <ReadonlyField label={review.kind === "LOCATION_TRANSFER" ? "New site / department" : "New department"} value={review.departmentTo} />
+              </>
+            )}
+            <ReadonlyField label="Description" wide>
+              <textarea rows={3} readOnly value={review.note ?? ""} placeholder="—" className={`${CONTROL_STATE_CLASSES.readonlyField} h-auto resize-none`} />
+            </ReadonlyField>
             {review.closedByName && <ReadonlyField label="Closed by" value={`${review.closedByName} (${day(review.closedAt)})`} />}
             {review.cancelReason && <ReadonlyField label="Cancelled because" value={review.cancelReason} wide />}
           </ReadonlyGrid>
@@ -183,7 +216,7 @@ export function PersonnelReviewDetailPage() {
               </>
             )}
             <div>
-              <Button size="sm" variant="outline" onClick={() => navigate(`/training-management/records?search=${encodeURIComponent(review.employeeCode ?? review.fullName)}`)}>Open the training records of this person</Button>
+              <Button size="sm" variant="default" onClick={() => navigate(`/training-management/records?search=${encodeURIComponent(review.employeeCode ?? review.fullName)}`)}>Open The Training Records Of This Person</Button>
             </div>
           </div>
         )}
@@ -193,12 +226,21 @@ export function PersonnelReviewDetailPage() {
       {scans && <TrainingScannedTestsModal personId={review.personUserId} activityId={scans} onClose={() => setScans(undefined)} />}
       {editing && <ItemDialog item={editing} personName={review.fullName} busy={busy} onClose={() => setEditing(undefined)}
         onSave={async (body) => { if (await run(() => trainingReviewsApi.item(review.id, editing.itemCode, body), "Item updated")) setEditing(undefined); }} />}
+      <FormModal isOpen={changingCloser} onClose={() => setChangingCloser(false)}
+        onConfirm={async () => { if (await run(() => trainingReviewsApi.changeCloser(review.id, newCloserId, reason.trim()), "Closer changed")) setChangingCloser(false); }}
+        title="Change the Person Who Closes the Review" description="Use it when the person is away, has left or no longer holds the permission. The reason and both people stay on record." confirmText="Change" isLoading={busy}
+        confirmDisabled={!newCloserId || !reason.trim()} size="md">
+        <div className="space-y-4">
+          <FormField label="New person" required><Select value={newCloserId} onChange={setNewCloserId} options={closerOptions} onSearch={searchClosers} placeholder="Search by name" /></FormField>
+          <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+        </div>
+      </FormModal>
       <FormModal isOpen={cancelling} onClose={() => setCancelling(false)} onConfirm={async () => { if (await run(() => trainingReviewsApi.cancel(review.id, reason.trim()), "Review cancelled")) setCancelling(false); }}
-        title="Cancel the review" description="The review stays on record with your reason." confirmText="Cancel review" confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
+        title="Cancel the Review" description="The review stays on record with your reason." confirmText="Cancel review" confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
         <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
       </FormModal>
       <ESignatureModal isOpen={signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => { if (await run(() => trainingReviewsApi.close(review.id, d.signatureToken), "Review closed")) setSigning(false); }}
-        actionTitle="Close the personnel training review" changes={statusChange("Open", "Closed")} meaningDisplayName="Personnel Training Review Closed" meaningCode="TRAINING_REVIEW_CLOSED" targetDetails={{ code: `Review ${review.reviewNo}`, title: review.fullName, revision: "" }} />
+        actionTitle="Close the Personnel Training Review" changes={statusChange("Open", "Closed")} meaningDisplayName="Personnel Training Review Closed" meaningCode="TRAINING_REVIEW_CLOSED" targetDetails={{ code: `Review ${review.reviewNo}`, title: review.fullName, revision: "" }} />
     </>
   );
 }
@@ -217,11 +259,11 @@ function ItemDialog({ item, personName, busy, onClose, onSave }: { item: Trainin
   useEffect(() => { if (item.canLink) void search(""); }, [item.canLink, search]);
   return (
     <FormModal isOpen onClose={onClose} onConfirm={() => onSave({ status, activityId: item.canLink ? activityId || null : null, note: note.trim() || null })} title={item.label} description={`For ${personName}. ${item.hint}`}
-      confirmText="Save" isLoading={busy} confirmDisabled={status === "NOT_NEEDED" && !note.trim()} size="md">
+      confirmText="Save" isLoading={busy} confirmDisabled={status === "NOT_NEEDED" && !note.trim()} size="xl">
       <div className="grid gap-4">
         <FormField label="State" required><Select value={status} enableSearch={false} onChange={setStatus} options={Object.entries(ITEM_STATUS).map(([value, label]) => ({ value, label }))} /></FormField>
         {item.canLink && <FormField label="Training organised for it (the employee must be on its list)"><Select value={activityId} onChange={setActivityId} options={options} onSearch={search} placeholder="Search a training by number or title" /></FormField>}
-        <FormField label={status === "NOT_NEEDED" ? "Reason it is not needed" : "Note"} required={status === "NOT_NEEDED"}><Textarea rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></FormField>
+        <FormField label={status === "NOT_NEEDED" ? "Reason it is not needed" : "Description"} required={status === "NOT_NEEDED"}><Textarea rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></FormField>
       </div>
     </FormModal>
   );

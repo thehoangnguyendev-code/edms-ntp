@@ -21,6 +21,7 @@ import { ServerListPanel } from "../components/ServerListPanel";
 import { useBackupJobs } from "../components/useBackupJobs";
 import { BACKUP_STATUS_COLOR, VERIFICATION_COLOR, statusLabel, type BackupRecord } from "../types";
 import { formatBytes, formatDateTime } from "../format";
+import { displayDate } from "@/utils/format";
 
 type SortKey = "startedAt" | "backupNumber" | "status" | "type" | "sizeBytes" | "createdBy" | "verification";
 
@@ -185,7 +186,7 @@ export const BackupsView: React.FC = () => {
       label: "Retained",
       cell: (b) => (
         <span className="inline-flex items-center gap-1.5">
-          {b.retention === "PERMANENT" ? "Permanently" : b.retentionUntil ? new Date(b.retentionUntil).toLocaleDateString() : "—"}
+          {b.retention === "PERMANENT" ? "Permanently" : b.retentionUntil ? displayDate(b.retentionUntil) : "—"}
           {b.legalHold && <Badge color="amber">Hold</Badge>}
         </span>
       ),

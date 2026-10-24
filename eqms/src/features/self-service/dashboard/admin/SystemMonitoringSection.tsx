@@ -9,6 +9,7 @@ import { formatBytes, formatUptime, share, type RankedCount } from '../shared/da
 import { PanelError } from '../shared/dashboardParts';
 import { Card, CardHeader, KpiStrip } from '../shared/dashboardUi';
 import { useDashboardResource, type DashboardResource } from '../shared/useDashboardResource';
+import { displayTime } from "@/utils/format";
 
 const dash = '—';
 /** Server-sent event (sent only to users who may see this dashboard, no data in it): the figures moved on, read them again. */
@@ -27,7 +28,7 @@ const userStatusColor = (row: RankedCount) => USER_STATUS_COLOR[row.key] ?? '#94
 
 const formatChecked = (value: string) => {
   const time = new Date(value);
-  return Number.isNaN(time.getTime()) ? dash : time.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return Number.isNaN(time.getTime()) ? dash : displayTime(time);
 };
 
 const Fact: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (

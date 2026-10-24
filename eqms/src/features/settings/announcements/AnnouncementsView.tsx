@@ -51,6 +51,7 @@ import {
   type StateFilter,
 } from "./announcementFilters";
 import type { Announcement, AnnouncementState } from "./types";
+import { displayDateTime } from "@/utils/format";
 
 const STATE_BADGE: Record<
   AnnouncementState,
@@ -72,7 +73,7 @@ const SEVERITY_LABEL = {
   CRITICAL: "Critical",
 } as const;
 const formatTime = (value?: string) =>
-  value ? new Date(value).toLocaleString() : "—";
+  value ? displayDateTime(value) : "—";
 
 /**
  * System Announcements: the announcements shown to every user after signing in. Search, filters, sorting and paging all run on

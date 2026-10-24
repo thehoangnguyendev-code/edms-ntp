@@ -154,7 +154,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                 onClose={() => setLogoutModal({ open: false, sessionId: null })}
                 onConfirm={handleConfirmLogout}
                 type="confirm"
-                title="Log out this session?"
+                title="Log Out This Session?"
                 description="Are you sure you want to log out this session? This device will be signed out immediately."
                 confirmText="Log Out"
                 cancelText="Cancel"

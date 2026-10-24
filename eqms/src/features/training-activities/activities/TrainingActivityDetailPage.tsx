@@ -1,8 +1,12 @@
+import { sessionStarted, sessionNotStarted } from "@/services/api/trainingActivities";
+import { SessionEditDialog } from "./components/SessionEditDialog";
+import { SessionDetails } from "./components/SessionDetails";
+import { ContentRulesPanel, assessmentFormKind, contentRuleNote } from "./components/ContentRulesPanel";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -41,7 +45,6 @@ import {
 } from "@tabler/icons-react";
 import {
   TrainingSessionWorkspaceShell,
-  type WorkspaceNext,
   type WorkspaceRate,
   type WorkspaceStat,
   type WorkspaceStep,
@@ -51,7 +54,9 @@ import { WorkspaceAttendanceStep } from "./components/workspace/WorkspaceAttenda
 import { WorkspaceTrainingStep } from "./components/workspace/WorkspaceTrainingStep";
 import { WorkspaceAssessmentStep } from "./components/workspace/WorkspaceAssessmentStep";
 import { WorkspaceResultsStep } from "./components/workspace/WorkspaceResultsStep";
+import { WorkspaceResultsTable } from "./components/workspace/WorkspaceResultsTable";
 import { TrainingExamBlock } from "./components/TrainingExamBlock";
+import { AttendanceListExport } from "./components/AttendanceListExport";
 import { TrainingPreparationBlock } from "./components/TrainingPreparationBlock";
 import { TrainingTranscriptionBlock } from "./components/TrainingTranscriptionBlock";
 import {
@@ -94,13 +99,14 @@ import {
   day,
   trainingBreadcrumbs,
   when, statusChange } from "../shared/trainingLabels";
+import { useTrainingBack } from "../shared/useTrainingBack";
 
 const ACTIVITY_STEPS = [
-  { status: "RESERVED", label: "Waiting for approval" },
+  { status: "RESERVED", label: "Pending Document Approval" },
   { status: "PLANNED", label: "Planned" },
   { status: "NOTIFIED", label: "Notified" },
   { status: "IN_PROGRESS", label: "In progress" },
-  { status: "PENDING_QA_CONFIRMATION", label: "Waiting for QA confirmation" },
+  { status: "PENDING_QA_CONFIRMATION", label: "Pending QA Confirmation" },
   { status: "COMPLETED", label: "Completed" },
 ];
 
@@ -125,7 +131,7 @@ const MODE_TITLE: Record<ActivityMode, string> = {
 const MODE_TAB: Record<ActivityMode, string> = {
   view: "overview",
   edit: "overview",
-  conduct: "today",
+  conduct: "overview",
   review: "materials",
   approve: "materials",
   confirm: "overview",
@@ -135,12 +141,16 @@ const MODE_CAPS: Record<ActivityMode, string[]> = {
   view: [],
   edit: [
     "edit",
+    "editRemarks",
+    "editSession",
+    "reopenContent",
     "planSessions",
     "adjustPlan",
     "addParticipants",
     "removeParticipants",
     "confirmList",
     "designateApprovers",
+    "setContentExemptions",
     "notify",
     "cancel",
   ],
@@ -154,12 +164,14 @@ const MODE_CAPS: Record<ActivityMode, string[]> = {
     "recordAttendance",
     "recordAssessment",
     "submitForConfirmation",
+    "finishTraining",
+    "sendAttendanceList",
     "addSupplementary",
     "cancel",
   ],
   review: [],
   approve: [],
-  confirm: ["confirmCompletion"],
+  confirm: ["confirmCompletion", "returnForCorrection"],
   participate: [],
 };
 const limitCaps = (
@@ -169,12 +181,15 @@ const limitCaps = (
   const allowed = new Set(MODE_CAPS[mode]);
   const out: Record<string, unknown> = { ...raw };
   for (const key of Object.keys(out))
-    if (key !== "notifyBlockers" && !allowed.has(key)) out[key] = false;
+    if (key !== "notifyBlockers" && key !== "completeTraining" && !allowed.has(key)) out[key] = false;
   return out as unknown as TrainingCapabilities;
 };
 
 type Dialog =
   | { type: "cancel" }
+  | { type: "editSession"; session: TrainingSession }
+  | { type: "reopenContent" }
+  | { type: "returnForCorrection" }
   | { type: "releaseExam"; participant: TrainingParticipant }
   | { type: "postpone"; session: TrainingSession }
   | { type: "attendance"; participant: TrainingParticipant }
@@ -187,6 +202,25 @@ type Dialog =
   | { type: "trainerException"; session: TrainingSession }
   | { type: "rejectException"; exceptionId: string }
   | undefined;
+
+/** What the toast says once a signed action is done (the title of the signing window says what is about to be done). */
+const SIGNED_DONE: Record<string, string> = {
+  TRAINING_LIST_VERIFIED: "Attendee list confirmed",
+  TRAINING_CONTENT_REVIEWED: "Training content reviewed",
+  TRAINING_CONTENT_APPROVED: "Training content approved",
+  TRAINING_TRAINER_EXCEPTION_APPROVED: "Trainer exception approved",
+  TRAINING_ACTIVITY_NOTIFIED: "Participants notified",
+  TRAINING_ATTENDANCE_SENT: "Attendance list sent to QA",
+  TRAINING_RESULTS_FINISHED: "Training finished",
+  TRAINING_SESSION_STARTED: "Training started",
+  TRAINING_READ_CONFIRMED: "Self-reading confirmed",
+  TRAINING_READ_VERIFIED: "Self-reading verified",
+  TRAINING_SUBMITTED_FOR_CONFIRMATION: "Results sent to QA",
+  TRAINING_COMPLETED: "Training completed",
+  TRAINING_CONTENT_REOPENED: "Training content reopened",
+  TRAINING_RETURNED_FOR_CORRECTION: "Results returned for correction",
+  TRAINING_ACTIVITY_CANCELLED: "Training activity cancelled",
+};
 
 interface SignRequest {
   title: string;
@@ -221,6 +255,7 @@ export function TrainingActivityDetailPage({
 }) {
   const { activityId = "" } = useParams();
   const navigate = useNavigate();
+  const goBack = useTrainingBack("/training-management/activities");
   const { showToast } = useToast();
   const { user } = useAuth() as { user?: { id?: string } };
   const { hasPermission } = usePermissions();
@@ -241,10 +276,21 @@ export function TrainingActivityDetailPage({
     }
     return (location.state as { tab?: string } | null)?.tab ?? MODE_TAB[mode];
   });
+  // A workspace opened without a remembered step (another browser, another day) opens at the first step that is not done, whatever was remembered here.
+  const [stepSettled, setStepSettled] = useState(() => {
+    if (!workspaceSessionId) return true;
+    try {
+      return !!(new URLSearchParams(location.search).get("step") ?? window.localStorage.getItem(stepKey(workspaceSessionId)));
+    } catch {
+      return !!new URLSearchParams(location.search).get("step");
+    }
+  });
   const [dialog, setDialog] = useState<Dialog>();
   const [sign, setSign] = useState<SignRequest>();
   const [busy, setBusy] = useState(false);
   const [pSession, setPSession] = useState(workspaceSessionId ?? "");
+  // Lines of the Prepare step still to be ticked; the steps after it wait for them while the session is not held.
+  const [prepPending, setPrepPending] = useState(0);
   const [draft, setDraft] = useState<{
     trainingTitle: string;
     dueDate: string;
@@ -294,35 +340,24 @@ export function TrainingActivityDetailPage({
   const title = workspace ? "Session Workspace" : MODE_TITLE[mode];
   const tabs: TabItem[] = useMemo(
     () =>
-      mode === "conduct"
-        ? [
-            { id: "today", label: "Overview" },
-            {
-              id: "sessions",
-              label: "Sessions",
-              count: activity?.sessions.length,
-            },
-            { id: "materials", label: "Training Materials" },
-            { id: "audit", label: "Audit Trail" },
-          ]
-        : [
-            { id: "overview", label: "General Information" },
-            {
-              id: "sessions",
-              label: "Sessions",
-              count: activity?.sessions.length,
-            },
-            {
-              id: "participants",
-              label: "Participants",
-              count: activity?.participants.length,
-            },
-            { id: "materials", label: "Training Materials" },
-            { id: "assessment", label: "Assessment" },
-            { id: "approvals", label: "Approvers" },
-            { id: "audit", label: "Audit Trail" },
-          ],
-    [mode, activity?.sessions.length, activity?.participants.length],
+      [
+        { id: "overview", label: "General Information" },
+        {
+          id: "sessions",
+          label: "Sessions",
+          count: activity?.sessions.length,
+        },
+        {
+          id: "participants",
+          label: "Participants",
+          count: activity?.participants.length,
+        },
+        { id: "materials", label: "Training Materials" },
+        { id: "assessment", label: "Assessment" },
+        { id: "approvals", label: "Approvers" },
+        { id: "audit", label: "Audit Trail" },
+      ],
+    [activity?.sessions.length, activity?.participants.length],
   );
   // The step is kept in the address and in this browser: a closed tab opens again on the step it was left on.
   useEffect(() => {
@@ -334,6 +369,12 @@ export function TrainingActivityDetailPage({
     }
     navigate({ search: `?step=${tab}` }, { replace: true });
   }, [tab, workspaceSessionId, navigate]);
+
+  // The steps after Prepare open once the training of the session has started (Prepare, Next: signed when it is the first session of the activity).
+  const notStartedHere = workspace && activity && tab !== "ws-prepare" && activity.sessions.some((x) => x.id === workspaceSessionId && sessionNotStarted(x));
+  useEffect(() => {
+    if (notStartedHere) setTab("ws-prepare");
+  }, [notStartedHere]);
 
   if (!activity) {
     return (
@@ -366,6 +407,14 @@ export function TrainingActivityDetailPage({
     (s) => s.method === "SELF_READING",
   );
 
+  /**
+   * While the training is in progress, the work of a session (attendance, results, the paper pack, the preparation, the test, the scans) is done in the Session Workspace of that
+   * session. Conduct Training then follows the training: where each session stands, who attended, the results and the evidence, read only.
+   */
+  const monitoring = mode === "conduct" && !workspace && activity.status === "IN_PROGRESS";
+  /** With one session the Session column and the choice of a session say nothing: they are left out. */
+  const singleSession = activity.sessions.length <= 1;
+
   /** The workspace of one session opens in a new tab, so the person can keep the activity open beside it. */
   const openWorkspace = (sessionId: string) =>
     window.open(
@@ -373,48 +422,15 @@ export function TrainingActivityDetailPage({
       "_blank",
       "noopener",
     );
-  /** The real name of the trainer; only an external activity with no name given shows the generic label. */
+  /** The real name of the trainer; an external training with no trainer named shows the unit or the person who trains. */
   const trainerOf = (s: TrainingSession) =>
     s.trainerName?.trim() ||
     s.externalTrainerName?.trim() ||
-    (activity.kind === "EXTERNAL" ? "External Trainer" : "—");
-  const sessionColumns: DataTableColumn<TrainingSession>[] = [
-    { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => i + 1 },
-    { id: "no", header: "Session", cell: (s) => s.sessionNo },
-    {
-      id: "topics",
-      header: "Topics",
-      cell: (s) => (
-        <div className="max-w-80 whitespace-normal">
-          {s.topics.map((t) => t.topicText).join("; ")}
-        </div>
-      ),
-    },
-    {
-      id: "method",
-      header: "Method",
-      cell: (s) => (s.method ? (METHOD_LABEL[s.method] ?? s.method) : "—"),
-    },
-    {
-      id: "delivery",
-      header: "Delivery",
-      cell: (s) => DELIVERY_LABEL[s.deliveryMode ?? "ELECTRONIC"],
-    },
-    {
-      id: "assessment",
-      header: "Assessment",
-      cell: (s) =>
-        s.assessmentMethod
-          ? (ASSESSMENT_LABEL[s.assessmentMethod] ?? s.assessmentMethod)
-          : "—",
-    },
-    { id: "trainer", header: "Trainer", cell: (s) => trainerOf(s) },
-    {
-      id: "check",
-      header: "Trainer check",
-      cell: (s) => {
+    (activity.kind === "EXTERNAL" ? activity.trainingUnitName?.trim() || "—" : "—");
+  /** What the check of the trainer of a session says (SOP.0003 5.3.4) and what the person may do about it; null when it does not apply. */
+  const renderTrainerCheck = (s: TrainingSession): ReactNode => {
         const q = s.trainerQualification;
-        if (!q || !q.applies) return "—";
+        if (!q || !q.applies) return null;
         if (q.qualified) return <Badge color="emerald">Qualified</Badge>;
         const ex = q.exception;
         return (
@@ -440,16 +456,16 @@ export function TrainingActivityDetailPage({
             )}
             <div className="flex flex-wrap gap-2">
               {(!ex || ex.status === "REJECTED") &&
-                s.status === "PLANNED" &&
+                sessionNotStarted(s) &&
                 caps?.adjustPlan && (
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="outline-emerald"
                     onClick={() =>
                       setDialog({ type: "trainerException", session: s })
                     }
                   >
-                    Request exception
+                    Request Exception
                   </Button>
                 )}
               {(mode === "approve" || mode === "edit") &&
@@ -471,15 +487,15 @@ export function TrainingActivityDetailPage({
                             );
                             return trainingActivitiesApi.get(activity.id);
                           },
-                          statusChange("Waiting for approval", "Approved", "Trainer exception"),
+                          statusChange("Pending Approval", "Approved", "Trainer exception"),
                         )
                       }
                     >
-                      Approve
+                      Complete Approve
                     </Button>
                     <Button
                       size="sm"
-                      variant="destructive"
+                      variant="outline-emerald"
                       onClick={() =>
                         setDialog({
                           type: "rejectException",
@@ -494,72 +510,28 @@ export function TrainingActivityDetailPage({
             </div>
           </div>
         );
-      },
-    },
-    {
-      id: "location",
-      header: "Location",
-      cell: (s) =>
-        s.locationType === "ONLINE" ? (
-          <div className="max-w-60 whitespace-normal">
-            {s.onlinePlatform}:{" "}
-            <a
-              href={s.meetingLink ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="break-all text-emerald-600 hover:underline"
-            >
-              {s.meetingLink}
-            </a>
-          </div>
-        ) : (
-          (s.venue ?? "—")
-        ),
-    },
-    { id: "scheduled", header: "Scheduled", cell: (s) => day(s.scheduledOn) },
-    { id: "held", header: "Held", cell: (s) => day(s.heldOn) },
-    {
-      id: "status",
-      header: "Status",
-      cell: (s) => (
-        <Badge color={s.status === "HELD" ? "emerald" : "slate"}>
-          {s.status.toLowerCase()}
-        </Badge>
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      cell: (s) =>
-        s.status === "PLANNED" && (caps?.hold || caps?.adjustPlan) ? (
+  };
+
+  /** The buttons that apply to a session that has not started: change it, postpone it. */
+  const renderSessionActions = (s: TrainingSession): ReactNode =>
+        sessionNotStarted(s) && (caps?.adjustPlan || caps?.editSession) ? (
           <div className="flex flex-wrap gap-2">
-            {s.status === "PLANNED" && caps?.hold && (
+            {caps?.editSession && (
+              <Button size="sm" variant="outline-emerald" onClick={() => setDialog({ type: "editSession", session: s })}>
+                Change
+              </Button>
+            )}
+            {sessionNotStarted(s) && caps?.adjustPlan && (
               <Button
                 size="sm"
                 variant="outline-emerald"
-                onClick={() =>
-                  void run(
-                    () => trainingActivitiesApi.holdSession(s.id),
-                    "Session held",
-                  )
-                }
-              >
-                Mark as held
-              </Button>
-            )}
-            {s.status === "PLANNED" && caps?.adjustPlan && (
-              <Button
-                size="sm"
-                variant="outline"
                 onClick={() => setDialog({ type: "postpone", session: s })}
               >
                 Postpone
               </Button>
             )}
           </div>
-        ) : null,
-    },
-  ];
+        ) : null;
 
   const sessionOf = (id: string) => activity.sessions.find((s) => s.id === id);
   const labelOfState = (p: TrainingParticipant) =>
@@ -586,7 +558,7 @@ export function TrainingActivityDetailPage({
         (p.plannedAbsence ? (
           <Button
             size="sm"
-            variant="outline"
+           variant="outline-emerald"
             onClick={() =>
               void run(
                 () => trainingActivitiesApi.setPlannedAbsence(p.id, ""),
@@ -594,17 +566,17 @@ export function TrainingActivityDetailPage({
               )
             }
           >
-            Clear absence
+            Clear Absence
           </Button>
         ) : (
           <Button
             size="sm"
-            variant="outline"
+           variant="outline-emerald"
             onClick={() =>
               setDialog({ type: "plannedAbsence", participant: p })
             }
           >
-            Mark absent
+            Mark Absent
           </Button>
         ))}
       {scope !== "results" &&
@@ -612,7 +584,7 @@ export function TrainingActivityDetailPage({
         p.state === "INVITED" && (
           <Button
             size="sm"
-            variant="outline"
+           variant="outline-emerald"
             onClick={() =>
               setDialog({ type: "removeParticipant", participant: p })
             }
@@ -628,24 +600,24 @@ export function TrainingActivityDetailPage({
         !p.examState?.match(/OPEN|USED|DONE/) && (
           <Button
             size="sm"
-            variant="outline"
+           variant="outline-emerald"
             onClick={() =>
               setDialog({ type: "correctAttendance", participant: p })
             }
           >
-            Correct attendance
+            Correct Attendance
           </Button>
         )}
       {scope !== "results" &&
         caps?.recordAttendance &&
         p.state === "INVITED" &&
-        sessionOf(p.sessionId)?.status === "HELD" && (
+        sessionStarted(sessionOf(p.sessionId) ?? { status: "" }) && (
           <Button
             size="sm"
-            variant="outline"
+           variant="outline-emerald"
             onClick={() => setDialog({ type: "attendance", participant: p })}
           >
-            Mark attendance
+            Mark Attendance
           </Button>
         )}
       {scope !== "attendance" &&
@@ -656,10 +628,10 @@ export function TrainingActivityDetailPage({
           "SELF_READING_CONFIRMATION" && (
           <Button
             size="sm"
-            variant="outline-emerald"
+           variant="outline-emerald"
             onClick={() => setDialog({ type: "assessment", participant: p })}
           >
-            Record result
+            Record Result
           </Button>
         )}
       {mode === "participate" &&
@@ -675,7 +647,7 @@ export function TrainingActivityDetailPage({
               navigate(`/training-management/participations/${p.id}/test`)
             }
           >
-            {p.examState === "OPEN" ? "Continue the test" : "Take the test"}
+            {p.examState === "OPEN" ? "Continue the Test" : "Take the Test"}
           </Button>
         )}
       {scope !== "attendance" &&
@@ -684,10 +656,10 @@ export function TrainingActivityDetailPage({
         p.result === "PENDING" && (
           <Button
             size="sm"
-            variant="outline"
+           variant="outline-emerald"
             onClick={() => setDialog({ type: "releaseExam", participant: p })}
           >
-            Release the test
+            Release the Test
           </Button>
         )}
       {mode === "participate" &&
@@ -697,10 +669,10 @@ export function TrainingActivityDetailPage({
         ["NOTIFIED", "IN_PROGRESS"].includes(activity.status) && (
           <Button
             size="sm"
-            variant="outline-emerald"
+           variant="outline-emerald"
             onClick={() =>
               setSign({
-                title: "Confirm self-reading",
+                title: "Confirm Self-Reading",
                 meaningCode: "TRAINING_READ_CONFIRMED",
                 meaningName: "Self-reading Confirmed",
                 changes: statusChange("Invited", "Read and understood", "Self-reading"),
@@ -781,23 +753,15 @@ export function TrainingActivityDetailPage({
       cell: (p) =>
         p.attempts && p.attempts > 1 ? `${p.attempts - 1} time(s)` : "—",
     },
-    { id: "actions", header: "", cell: (p) => renderActions(p, "all") },
+    { id: "actions", header: "Action", cell: (p) => renderActions(p, "all") },
   ];
   const attendanceColumns: DataTableColumn<TrainingParticipant>[] = [
     ...participantColumns.filter((c) =>
       ["rowNo", "code", "name", "department", "session", "state"].includes(
         c.id,
-      ),
+      ) && !(singleSession && c.id === "session"),
     ),
-    { id: "actions", header: "", cell: (p) => renderActions(p, "attendance") },
-  ];
-  const resultColumns: DataTableColumn<TrainingParticipant>[] = [
-    ...participantColumns.filter((c) =>
-      ["rowNo", "name", "session", "state", "result", "attempts"].includes(
-        c.id,
-      ),
-    ),
-    { id: "actions", header: "", cell: (p) => renderActions(p, "results") },
+    { id: "actions", header: "Action", cell: (p) => renderActions(p, "attendance") },
   ];
   const inSession = (p: TrainingParticipant) =>
     !pSession || p.sessionId === pSession;
@@ -902,7 +866,6 @@ export function TrainingActivityDetailPage({
       <TrainingPreparationBlock
         activityId={activity.id}
         canManage={Boolean(caps?.adjustPlan)}
-        userId={user?.id}
       />
     </>
   );
@@ -921,46 +884,6 @@ export function TrainingActivityDetailPage({
           />
         </TabBlock>
       ));
-  const conductToday = (
-    <div className="space-y-4">
-      <ReadonlyGrid>
-        <ReadonlyField
-          label="Training Number"
-          value={activity.trainingNumber}
-        />
-        <ReadonlyField label="Training Title" value={activity.trainingTitle} />
-        <ReadonlyField label="Department" value={activity.departmentName} />
-        <ReadonlyField label="Due" value={day(activity.dueDate)} />
-      </ReadonlyGrid>
-      {activity.sessions.length > 0 && (
-        <TabBlock title="Sessions">
-          <ul className="divide-y divide-slate-100">
-            {activity.sessions.map((x) => (
-              <li
-                key={x.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-              >
-                <div className="min-w-0 text-sm">
-                  <span className="font-medium text-slate-900">
-                    Session {x.sessionNo}
-                  </span>
-                  <span className="text-slate-600">
-                    {" "}
-                    · {x.topics.map((tp) => tp.topicText).join("; ") ||
-                      "—"} · {day(x.scheduledOn)}
-                  </span>
-                </div>
-                <Badge color={x.status === "HELD" ? "emerald" : "slate"}>
-                  {x.status.toLowerCase()}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        </TabBlock>
-      )}
-    </div>
-  );
-
   const signAction = (
     title: string,
     meaningCode: string,
@@ -972,24 +895,21 @@ export function TrainingActivityDetailPage({
   const external = activity.kind === "EXTERNAL";
   const open = !["COMPLETED", "CANCELLED"].includes(activity.status);
   const qa = activity.qaList;
+  const results = activity.resultsToQa;
+  // The days to send the results to QA (SOP.0003 5.3.7), counted in calendar days from the day the last session was held.
+  const resultsNotice = open && results && ["DUE", "DUE_TODAY", "OVERDUE"].includes(results.state) ? (
+    <p
+      role="status"
+      className={`rounded-lg border px-3 py-2 text-sm ${results.state === "OVERDUE" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+    >
+      {results.state === "DUE" && `Send the results to QA by ${day(results.dueOn)}: ${results.days} days after the training was held (SOP.0003 5.3.7).`}
+      {results.state === "DUE_TODAY" && "Today is the last day to send the results to QA (SOP.0003 5.3.7)."}
+      {results.state === "OVERDUE" && `The results were due to QA on ${day(results.dueOn)} and have not been sent. Send them now; the delay is recorded.`}
+    </p>
+  ) : null;
   // Two notices that guide the manual part of the procedure: the day the list goes to QA (SOP.0003 5.3.6) and the approved vendor list for an outside trainer (SOP.0025).
   const notices = open ? (
     <div className="mb-4 space-y-2 empty:hidden">
-      {mode === "conduct" &&
-        !workspace &&
-        activity.status === "IN_PROGRESS" && (
-          <p
-            role="status"
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
-          >
-            The training has started. The title, due date, content, materials,
-            test and approvers are fixed. You can hold sessions, record
-            attendance and results, and add scans. The attendee list is not
-            changed: a person who is not on it is trained in a supplementary training or a new
-            unplanned training (SOP.0003 5.3.4). Attendance recorded by mistake
-            is corrected with a reason.
-          </p>
-        )}
       {qa && ["DUE", "DUE_TODAY", "OVERDUE", "WAITING"].includes(qa.state) && (
         <p
           role="status"
@@ -1053,9 +973,28 @@ export function TrainingActivityDetailPage({
     ...(external
       ? []
       : [
+          // What is asked depends on the case (PLAN-TR-002): only what the activity needs is listed.
+          ...(activity.contentRules?.materialsRequired
+            ? [{
+                done: activity.contentRules.materialsSatisfied,
+                text: activity.contentRules.materialsSource === "DOCUMENT"
+                  ? "The approved document is the training material (add slides or other material in the tab Training Materials if you want)"
+                  : "Add the training material: a file or a link (tab Training Materials)",
+                tab: "materials",
+              }]
+            : []),
+          ...(activity.contentRules?.testRequired || activity.contentRules?.checklistRequired
+            ? [{
+                done: activity.contentRules.assessmentFormSatisfied || (activity.contentRules.testRequired && activity.contentRules.onlineTest),
+                text: activity.contentRules.checklistRequired && !activity.contentRules.testRequired
+                  ? "Add the checklist form (APD.0009) (tab Assessment)"
+                  : "Add the test (APD.0009), as a file or written in the system (tab Assessment)",
+                tab: "assessment",
+              }]
+            : []),
           {
             done: stepDone("CONTENT_REVIEWED") && stepDone("CONTENT_APPROVED"),
-            text: "Designate who reviews and approves the content (tab Approvers); add the materials and the exam (tabs Training Materials and Assessment)",
+            text: "Designate who reviews and approves the content (tab Approvers)",
             tab: "approvals",
           },
         ]),
@@ -1128,7 +1067,7 @@ export function TrainingActivityDetailPage({
   const wsPeople = workspace
     ? activity.participants.filter((p) => p.sessionId === workspaceSessionId)
     : [];
-  const wsHeld = wsSession?.status === "HELD";
+  const wsHeld = !!wsSession && sessionStarted(wsSession);
   const wsPending = wsPeople.filter(
     (p) => p.state === "INVITED" && !p.plannedAbsence,
   ).length;
@@ -1161,9 +1100,9 @@ export function TrainingActivityDetailPage({
     {
       id: "ws-prepare",
       label: "Prepare",
-      subtitle: wsHeld ? `Held ${day(wsSession?.heldOn)}` : "Not held yet",
+      subtitle: wsHeld ? `Started ${day(wsSession?.heldOn)}` : "Not started",
       description:
-        "Check the session, print the paper pack if the session is on paper, and mark the session as held when it takes place.",
+        "Tick what is ready: the room, the equipment, the materials, the notice, the test and the paper. The training starts with the first attendance.",
       done: wsHeld,
       icon: IconClipboardCheck,
     },
@@ -1172,7 +1111,7 @@ export function TrainingActivityDetailPage({
       label: "Attendance",
       subtitle: `${wsPresent} of ${wsPeople.length} present`,
       description:
-        "Record who came: with the code or the QR, with the quick roll-call, or one by one. A mistake is corrected with a reason.",
+        "Record who came: with the code or the QR, with the quick roll-call, or one by one; an absence needs its reason. When everyone is recorded, the trainer sends the attendance list to QA with an electronic signature. A mistake is corrected with a reason.",
       done: wsAttendanceDone,
       icon: IconUserCheck,
     },
@@ -1201,87 +1140,30 @@ export function TrainingActivityDetailPage({
       label: "Results",
       subtitle: `${wsPassed} passed · ${wsFailed} not passed`,
       description:
-        "See the result of each person, record a missing one, or release a test for another try. When all is recorded, send it to QA.",
-      done: wsEligible.length > 0 && wsUnscored === 0,
+        "Type the score of each person in the row (the maximum score once, above the table) and save. When every result is in, the trainer finishes the training with a signature: the results are written in the list APD.0117. Then the trainer sends the results to QA.",
+      done: !!activity.resultsFinishedAt,
       icon: IconTrophy,
     },
   ];
-  const wsNext: WorkspaceNext | null = !wsSession
-    ? null
-    : wsSession.status === "PLANNED"
-      ? {
-          text: "Mark the session as held when it takes place.",
-          tone: "go",
-          action: caps?.hold
-            ? {
-                label: "Mark as held",
-                loading: busy,
-                onClick: () =>
-                  void run(
-                    () => trainingActivitiesApi.holdSession(wsSession.id),
-                    "Session held",
-                  ),
-              }
-            : undefined,
-        }
-      : wsSession.status !== "HELD"
-        ? {
-            text: `The session is ${wsSession.status.toLowerCase()}.`,
-            tone: "wait",
-          }
-        : wsPending > 0
-          ? {
-              text: `${wsPending} ${wsPending === 1 ? "person is" : "people are"} still to be marked present or absent.`,
-              tone: "go",
-              action: {
-                label: "Go to attendance",
-                onClick: () => setTab("ws-attendance"),
-              },
-            }
-          : wsUnscored > 0
-            ? {
-                text: `${wsUnscored} ${wsUnscored === 1 ? "person has" : "people have"} no result yet.`,
-                tone: "go",
-                action: {
-                  label: "Go to assessment",
-                  onClick: () => setTab("ws-assessment"),
-                },
-              }
-            : activity.status !== "IN_PROGRESS"
-              ? { text: "The results were sent to QA.", tone: "done" }
-              : activity.sessions.some((x) =>
-                    ["PLANNED", "POSTPONED"].includes(x.status),
-                  )
-                ? {
-                    text: "Everything is recorded for this session. Other sessions of this training are still to be held; send to QA when all are done.",
-                    tone: "done",
-                    action: {
-                      label: "Back to Conduct Training",
-                      onClick: () =>
-                        navigate(
-                          `/training-management/activities/${activity.id}/conduct`,
-                        ),
-                    },
-                  }
-                : {
-                    text: "Everything is recorded. Send the attendance list and the results to QA.",
-                    tone: "done",
-                    action: caps?.submitForConfirmation
-                      ? {
-                          label: "Send to QA",
-                          loading: busy,
-                          onClick: () =>
-                            void run(
-                              () =>
-                                trainingActivitiesApi.submitForConfirmation(
-                                  activity.id,
-                                  activity.version,
-                                ),
-                              "Sent to QA",
-                            ),
-                        }
-                      : undefined,
-                  };
+  // What still stops the attendance list from going to QA (the same two rules as the server): a session still to be held, a person not recorded yet.
+  const attendanceBlockers = [
+    [activity.sessions.filter((x) => x.status === "POSTPONED" || sessionNotStarted(x)).length, "session(s) still to be held"],
+    [activity.participants.filter((x) => x.state === "INVITED").length, "person(s) still to be marked present or absent"],
+  ]
+    .filter(([n]) => (n as number) > 0)
+    .map(([n, text]) => `${n} ${text}`);
+  const sendAttendanceList = () =>
+    signAction(
+      "Send attendance list to QA",
+      "TRAINING_ATTENDANCE_SENT",
+      "Attendance List Sent to QA",
+      (t) => trainingActivitiesApi.sendAttendanceList(activity.id, activity.version, t),
+      statusChange("Not sent", "Sent to QA", "Attendance list"),
+    );
+  if (workspace && !stepSettled && wsSession) {
+    setStepSettled(true);
+    setTab((wsSteps.find((x) => !x.done) ?? wsSteps[wsSteps.length - 1]).id);
+  }
   const wsFactList = wsSession
     ? [
         {
@@ -1291,10 +1173,11 @@ export function TrainingActivityDetailPage({
         },
         {
           icon: IconCalendar,
-          label: "Held",
+          label: "Conducted on",
           value: wsSession.heldOn ? day(wsSession.heldOn) : "Not yet",
         },
         { icon: IconUser, label: "Trainer", value: trainerOf(wsSession) },
+        ...(results && results.dueOn ? [{ icon: IconCalendar, label: "Results due to QA", value: day(results.dueOn) }] : []),
         {
           icon: IconMapPin,
           label: "Venue",
@@ -1305,7 +1188,7 @@ export function TrainingActivityDetailPage({
         },
         {
           icon: IconPresentation,
-          label: "Method",
+          label: "Mode",
           value: wsSession.method
             ? (METHOD_LABEL[wsSession.method] ?? wsSession.method)
             : "",
@@ -1352,17 +1235,16 @@ export function TrainingActivityDetailPage({
     </p>
   ) : (
     <>
+      {tab === "ws-results" && resultsNotice}
       {tab === "ws-prepare" && (
         <WorkspacePrepareStep
           activityId={activity.id}
           scoped={wsScoped}
           session={wsSession}
           caps={caps}
-          busy={busy}
-          userId={user?.id}
-          onHold={() => void run(() => trainingActivitiesApi.holdSession(wsSession.id), "Session held")}
           onPostpone={() => setDialog({ type: "postpone", session: wsSession })}
           onChanged={refreshActivity}
+          onPending={setPrepPending}
         />
       )}
       {tab === "ws-attendance" && (
@@ -1383,21 +1265,86 @@ export function TrainingActivityDetailPage({
           onChanged={refreshActivity}
         />
       )}
-      {tab === "ws-results" && <WorkspaceResultsStep table={groupTables(resultColumns)} />}
+      {tab === "ws-results" && (
+        <WorkspaceResultsStep
+          table={
+            <WorkspaceResultsTable
+              activityId={activity.id}
+              people={wsPeople}
+              passPercent={activity.passPercent}
+              locked={!!activity.resultsFinishedAt}
+              canRecord={Boolean(caps?.recordAssessment)}
+              canRelease={Boolean(caps?.recordAttendance)}
+              onRelease={(participant) => setDialog({ type: "releaseExam", participant })}
+              assessmentMethod={wsSession.assessmentMethod}
+              onActivity={setActivity}
+            />
+          }
+          absent={wsPeople.filter((p) => p.state === "ABSENT").length}
+          failed={wsFailed}
+          canArrange={Boolean(caps?.addSupplementary)}
+          onArrange={() => setDialog({ type: "supplementary" })}
+        />
+      )}
     </>
   );
 
-  // What still stops the list from going to QA: the same three rules the server checks when the button is pressed.
-  const submitBlockers = [
-    [activity.sessions.filter((x) => ["PLANNED", "POSTPONED"].includes(x.status)).length, "session(s) still to be held"],
-    [activity.participants.filter((x) => x.state === "INVITED" && !x.plannedAbsence).length, "person(s) still to be marked present or absent"],
-    [activity.participants.filter((x) => ["ATTENDED", "ONLINE", "READ_CONFIRMED"].includes(x.state) && x.result === "PENDING").length, "person(s) without a result"],
-  ]
-    .filter(([n]) => (n as number) > 0)
-    .map(([n, text]) => `${n} ${text}`);
+  // The end of the training, one button at a time, each shown by the server when its turn comes (capabilities): Finish Training once every result is in, then Send results to QA.
+  const endButtons = (
+    <>
+      {caps?.finishTraining && (
+        <Button
+          size="sm"
+          loading={busy}
+          className="whitespace-nowrap"
+          onClick={() =>
+            signAction(
+              "Finish the training",
+              "TRAINING_RESULTS_FINISHED",
+              "Training Finished by Trainer",
+              (t) => trainingActivitiesApi.finishTraining(activity.id, activity.version, t),
+              statusChange("Results recorded", "Training finished", "Training"),
+            )
+          }
+        >
+          Finish Training
+        </Button>
+      )}
+      {caps?.submitForConfirmation && (
+        <Button
+          size="sm"
+          loading={busy}
+          className="whitespace-nowrap"
+          onClick={() =>
+            signAction(
+              "Send results to QA",
+              "TRAINING_SUBMITTED_FOR_CONFIRMATION",
+              "Results Sent to QA",
+              (t) => trainingActivitiesApi.submitForConfirmation(activity.id, activity.version, t),
+              statusChange("In progress", "Pending QA Confirmation", "Training activity"),
+            )
+          }
+        >
+          Send results to QA
+        </Button>
+      )}
+    </>
+  );
 
+  // The revisions of the documents that go with this Training Number and wait for "Complete Training" in Document Control (one button for each).
+  const waitingRevisions = (activity.groupRevisions ?? []).filter((r) => r.revisionStatus === "PENDING_TRAINING");
   const footer = (
     <>
+      {caps?.completeTraining && waitingRevisions.map((r) => (
+        <Button
+          key={r.revisionId}
+          size="sm"
+          className="whitespace-nowrap"
+          onClick={() => navigate(`/documents/revisions/training/${r.revisionId}`)}
+        >
+          {waitingRevisions.length > 1 ? `Complete Training (${r.documentNumber})` : "Complete Training (Revision)"}
+        </Button>
+      ))}
       {caps?.cancel && (
         <Button
           size="sm"
@@ -1421,11 +1368,11 @@ export function TrainingActivityDetailPage({
               onClick={() => openWorkspace(x.id)}
             >
               {all.length > 1
-                ? `Open workspace: session ${x.sessionNo}`
-                : "Open workspace"}
+                ? `Open Workspace: session ${x.sessionNo}`
+                : "Open Workspace"}
             </Button>
           ))}
-      {caps?.edit && formDirty && (
+      {(caps?.edit || caps?.editRemarks) && formDirty && (
         <Button
           size="sm"
           variant="outline-emerald"
@@ -1457,6 +1404,16 @@ export function TrainingActivityDetailPage({
           Save changes
         </Button>
       )}
+      {caps?.reopenContent && (
+        <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog({ type: "reopenContent" })}>
+          Reopen Content
+        </Button>
+      )}
+      {caps?.returnForCorrection && (
+        <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog({ type: "returnForCorrection" })}>
+          Return for Correction
+        </Button>
+      )}
       {caps?.confirmList && (
         <Button
           size="sm"
@@ -1484,9 +1441,12 @@ export function TrainingActivityDetailPage({
           disabled={blockers.length > 0}
           title={blockers.map(trainingCodeText).join(" ")}
           onClick={() =>
-            void run(
-              () => trainingActivitiesApi.notify(activity.id, activity.version),
-              "Participants notified",
+            signAction(
+              "Notify participants",
+              "TRAINING_ACTIVITY_NOTIFIED",
+              "Training Notified",
+              (t) => trainingActivitiesApi.notify(activity.id, activity.version, t),
+              statusChange("Planned", "Notified", "Training activity"),
             )
           }
         >
@@ -1515,28 +1475,7 @@ export function TrainingActivityDetailPage({
             Verify self-reading
           </Button>
         )}
-      {caps?.submitForConfirmation && (
-        <Button
-          size="sm"
-          variant="outline-emerald"
-          className="whitespace-nowrap"
-          loading={busy}
-          disabled={submitBlockers.length > 0}
-          title={submitBlockers.length > 0 ? `Not ready to send to QA: ${submitBlockers.join("; ")}.` : undefined}
-          onClick={() =>
-            void run(
-              () =>
-                trainingActivitiesApi.submitForConfirmation(
-                  activity.id,
-                  activity.version,
-                ),
-              "Sent to QA",
-            )
-          }
-        >
-          Send to QA
-        </Button>
-      )}
+      {endButtons}
       {caps?.confirmCompletion && (
         <Button
           size="sm"
@@ -1553,7 +1492,7 @@ export function TrainingActivityDetailPage({
                   activity.version,
                   t,
                 ),
-              statusChange("Waiting for QA confirmation", "Completed"),
+              statusChange("Pending QA Confirmation", "Completed"),
             )
           }
         >
@@ -1574,8 +1513,10 @@ export function TrainingActivityDetailPage({
   );
   const cancelled = activity.status === "CANCELLED";
   const steps = cancelled
-    ? [...ACTIVITY_STEPS.map((x) => x.label), "Cancelled"]
+    ? [...ACTIVITY_STEPS.map((x) => x.label), STATUS_LABEL.CANCELLED]
     : ACTIVITY_STEPS.map((x) => x.label);
+  // A cancelled activity shows how far it had come: the steps up to the one it was cancelled from are done, the ones after it are striped.
+  const reachedBeforeCancel = ACTIVITY_STEPS.find((x) => x.status === activity.cancelledFromStatus) ?? ACTIVITY_STEPS[0];
   const stepIndex = cancelled
     ? steps.length - 1
     : Math.max(
@@ -1604,13 +1545,9 @@ export function TrainingActivityDetailPage({
           badges={
             wsSession
               ? [
-                  {
-                    label:
-                      wsSession.status === "HELD"
-                        ? "Session held"
-                        : `Session ${wsSession.status.toLowerCase()}`,
-                    color: wsSession.status === "HELD" ? "emerald" : "slate",
-                  },
+                  ...(wsSession.status === "POSTPONED" || wsSession.status === "CANCELLED"
+                    ? [{ label: `Session ${wsSession.status.toLowerCase()}`, color: "slate" as const }]
+                    : []),
                   {
                     label: STATUS_LABEL[activity.status] ?? activity.status,
                     color: "blue",
@@ -1628,8 +1565,47 @@ export function TrainingActivityDetailPage({
           rates={wsRates}
           steps={wsSteps}
           current={tab}
-          onStep={setTab}
-          next={wsNext}
+          onStep={(id) => {
+            if (tab === "ws-prepare" && WORKSPACE_STEPS.indexOf(id) > 0) {
+              if (prepPending > 0) return;
+              // The training of the session starts here: signed for the first session of a notified activity, at once for a later session.
+              if (wsSession && sessionNotStarted(wsSession) && caps?.hold) {
+                if (activity.status === "NOTIFIED")
+                  signAction(
+                    "Start the training",
+                    "TRAINING_SESSION_STARTED",
+                    "Training Started",
+                    async (t) => {
+                      const started = await trainingActivitiesApi.holdSession(wsSession.id, t);
+                      setTab(id);
+                      return started;
+                    },
+                    statusChange("Notified", "In progress", "Training activity"),
+                  );
+                else void run(async () => { const started = await trainingActivitiesApi.holdSession(wsSession.id); setTab(id); return started; }, "Training started");
+                return;
+              }
+            }
+            setTab(id);
+          }}
+          headerActions={(
+            <>
+              <AttendanceListExport activityId={activity.id} trainingNumber={activity.trainingNumber} />
+              {caps?.sendAttendanceList && (
+                <Button
+                  size="sm"
+                  loading={busy}
+                  disabled={attendanceBlockers.length > 0}
+                  title={attendanceBlockers.length > 0 ? `Not ready to send the attendance list: ${attendanceBlockers.join("; ")}.` : undefined}
+                  onClick={sendAttendanceList}
+                >
+                  Send attendance list to QA
+                </Button>
+              )}
+              {endButtons}
+            </>
+          )}
+          nextBlocked={tab === "ws-prepare" && prepPending > 0 ? `Tick all ${prepPending === 1 ? "the last line" : `${prepPending} lines`} first.` : undefined}
         >
           {notices}
           {wsContent}
@@ -1638,10 +1614,10 @@ export function TrainingActivityDetailPage({
         <TrainingDetailLayout
           title={title}
           breadcrumbItems={trainingBreadcrumbs(navigate, "activities", title)}
-          onBack={() => navigate("/training-management/activities")}
+          onBack={goBack}
           steps={steps}
           currentStepIndex={stepIndex}
-          terminalProgressStep={ACTIVITY_STEPS[0].label}
+          terminalProgressStep={reachedBeforeCancel.label}
           tabs={tabs}
           activeTab={tab}
           onTab={setTab}
@@ -1652,6 +1628,7 @@ export function TrainingActivityDetailPage({
           {notices}
           {tab === "overview" && (
             <div className="space-y-6">
+              {resultsNotice}
               {mode === "edit" && nextSteps}
               <ReadonlyGrid>
                 <ReadonlyField
@@ -1751,8 +1728,18 @@ export function TrainingActivityDetailPage({
                       : ""
                   }
                 />
+                {(activity.groupRevisions ?? []).filter((r) => !r.isMain).length > 0 && (
+                  <ReadonlyField
+                    label="Related documents (same Training Number)"
+                    value={(activity.groupRevisions ?? []).filter((r) => !r.isMain).map((r) => `${r.documentNumber}${r.revisionNumber ? ` Rev ${r.revisionNumber}` : ""}`).join(", ")}
+                    wide
+                  />
+                )}
+                {activity.attendanceSentAt && (
+                  <ReadonlyField label="Attendance list sent to QA" value={`${activity.attendanceSentAt}${activity.attendanceSentByName ? ` by ${activity.attendanceSentByName}` : ""}`} />
+                )}
                 <ReadonlyField
-                  label="Approved On"
+                  label="Document Approved On"
                   value={day(activity.approvedOn)}
                 />
                 {caps?.edit ? (
@@ -1765,10 +1752,10 @@ export function TrainingActivityDetailPage({
                   <ReadonlyField label="Due" value={day(activity.dueDate)} />
                 )}
                 <ReadonlyField
-                  label="Completed On"
+                  label="Training Completed On"
                   value={day(activity.completedOn)}
                 />
-                {caps?.edit ? (
+                {caps?.edit || caps?.editRemarks ? (
                   <div className="md:col-span-2">
                     <FormField label="Remarks">
                       <Textarea
@@ -1812,30 +1799,33 @@ export function TrainingActivityDetailPage({
                   }
                 />
               )}
-              {mode !== "conduct" && paperBlocks}
-              <TabBlock title="Sessions">
-                <DataTable
-                  rows={activity.sessions}
-                  getRowKey={(s) => s.id}
-                  columns={sessionColumns}
-                  emptyState={
-                    <p className="p-4 text-sm text-slate-500">
+              {/* The paper pack and the preparation are tools of the person who organises: they are shown where that person works (planning, and before the first session is held);
+                  elsewhere they would only be read, and the prints are in the Audit Trail. */}
+              {(mode === "edit" || (mode === "conduct" && activity.status === "NOTIFIED")) && paperBlocks}
+              {activity.sessions.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50">
+                  <p className="p-4 text-sm text-slate-500">
                       No session yet. Fill in the form above to add the first
                       one.
                       {(activity.proposedParticipantCount ?? 0) > 0 &&
                         ` ${activity.proposedParticipantCount} participant${activity.proposedParticipantCount === 1 ? " was" : "s were"} proposed when the document was prepared; they are put on the list of the first session, and you confirm the list.`}
                     </p>
-                  }
+                </div>
+              ) : (
+                <SessionDetails
+                  sessions={activity.sessions}
+                  external={external}
+                  trainerOf={trainerOf}
+                  trainerCheck={renderTrainerCheck}
+                  actions={renderSessionActions}
                 />
-              </TabBlock>
+              )}
             </div>
           )}
 
-          {mode === "conduct" && !workspace && tab === "today" && conductToday}
-
-          {tab === "participants" && mode !== "conduct" && (
+          {tab === "participants" && (
             <div className="space-y-6">
-              {sessionChips}
+              {!singleSession && sessionChips}
               {caps?.addParticipants &&
                 (targetSession ? (
                   <ParticipantsPanel
@@ -1860,7 +1850,8 @@ export function TrainingActivityDetailPage({
                     a session.
                   </p>
                 ))}
-              {mode === "view" && (
+              {/* Typing the results of a paper test is work of the conduct of the training (and of the person who checks it), not of a screen that only shows the activity. */}
+              {(mode === "conduct" || mode === "confirm") && !monitoring && (
                 <TrainingTranscriptionBlock
                   activity={activity}
                   userId={user?.id}
@@ -1881,7 +1872,7 @@ export function TrainingActivityDetailPage({
                     <DataTable
                       rows={g.rows}
                       getRowKey={(p) => p.id}
-                      columns={columnsShown}
+                      columns={(monitoring ? columnsShown.filter((c) => c.id !== "actions") : columnsShown).filter((c) => !(singleSession && c.id === "session"))}
                       emptyState={
                         <p className="p-4 text-sm text-slate-500">
                           No participant yet.
@@ -1983,8 +1974,8 @@ export function TrainingActivityDetailPage({
                                         t,
                                       ),
                                     step === "CONTENT_REVIEW"
-                                      ? statusChange("Waiting for review", "Reviewed", "Training content")
-                                      : statusChange("Waiting for approval", "Approved", "Training content"),
+                                      ? statusChange("Pending Review", "Reviewed", "Training content")
+                                      : statusChange("Pending Approval", "Approved", "Training content"),
                                   )
                                 }
                               >
@@ -2044,23 +2035,35 @@ export function TrainingActivityDetailPage({
                       ? "Done"
                       : canClose
                         ? "Any person who holds the QA permission can confirm, except the person who confirmed the attendee list."
-                        : "Waiting for QA."}
+                        : "Pending QA confirmation."}
                   </p>
                 </TabBlock>
               </div>
             )}
 
+          {(tab === "materials" || tab === "assessment") && !external && (
+            <ContentRulesPanel
+              activity={activity}
+              part={tab}
+              canExempt={Boolean(caps?.setContentExemptions)}
+              onExempt={(body) => run(() => trainingActivitiesApi.setContentExemptions(activity.id, body), "Saved")}
+            />
+          )}
           {tab === "assessment" && !external && (
             <TrainingExamBlock
               activityId={activity.id}
-              editable={mode === "edit"}
+              editable={mode === "edit" && (assessmentFormKind(activity) === "TEST" || assessmentFormKind(activity) === "BOTH") && !!activity.contentRules?.testRequired}
             />
           )}
           {(tab === "materials" || tab === "assessment") && (
             <TrainingActivityFilesTab
               key={tab}
               part={tab}
-              mode={mode}
+              formKind={assessmentFormKind(activity)}
+              materialsNeeded={activity.contentRules?.materialsRequired ?? true}
+              formNeeded={activity.contentRules ? activity.contentRules.testRequired || activity.contentRules.checklistRequired : true}
+              note={external ? null : contentRuleNote(activity, tab)}
+              mode={monitoring && tab === "assessment" ? "view" : mode}
               external={external}
               activityId={activity.id}
               participants={activity.participants}
@@ -2076,30 +2079,76 @@ export function TrainingActivityDetailPage({
         </TrainingDetailLayout>
       )}
 
+      {dialog?.type === "editSession" && (
+        <SessionEditDialog
+          session={dialog.session}
+          external={external}
+          busy={busy}
+          onClose={() => setDialog(undefined)}
+          onSave={(change) => void run(() => trainingActivitiesApi.updateSession(dialog.session.id, change), "Session changed")}
+        />
+      )}
+      {dialog?.type === "reopenContent" && (
+        <ReasonDialog
+          title="Reopen the Training Content"
+          help="The review and the approval that were given stay in the history but no longer count; the content must be reviewed and approved again. If the people were notified, the activity goes back to Planned and they are notified again after the new approval."
+          confirmText="Continue"
+          busy={busy}
+          onClose={() => setDialog(undefined)}
+          onSave={(reason) => {
+            setDialog(undefined);
+            signAction(
+              "Reopen the training content",
+              "TRAINING_CONTENT_REOPENED",
+              "Training Content Reopened",
+              (t) => trainingActivitiesApi.reopenContent(activity.id, activity.version, reason, t),
+              statusChange("Reviewed and approved", "Pending Review", "Training content"),
+            );
+          }}
+        />
+      )}
+      {dialog?.type === "returnForCorrection" && (
+        <ReasonDialog
+          title="Return the Results for Correction"
+          help="Nothing has been written to a personal record yet. The activity goes back to In progress, the organizer corrects and sends it to QA again."
+          confirmText="Continue"
+          busy={busy}
+          onClose={() => setDialog(undefined)}
+          onSave={(reason) => {
+            setDialog(undefined);
+            signAction(
+              "Return the results for correction",
+              "TRAINING_RETURNED_FOR_CORRECTION",
+              "Training Returned for Correction",
+              (t) => trainingActivitiesApi.returnForCorrection(activity.id, activity.version, reason, t),
+              statusChange("Pending QA Confirmation", "In progress"),
+            );
+          }}
+        />
+      )}
       {dialog?.type === "cancel" && (
         <ReasonDialog
-          title="Cancel training activity"
-          help="The Training Number is never used again. The reason stays in the record."
+          title="Cancel Training Activity"
+          help="The cancellation is signed. The Training Number is never used again. The reason stays in the record."
           confirmText="Cancel activity"
           destructive
           busy={busy}
           onClose={() => setDialog(undefined)}
-          onSave={(reason) =>
-            run(
-              () =>
-                trainingActivitiesApi.cancel(
-                  activity.id,
-                  activity.version,
-                  reason,
-                ),
-              "Activity cancelled",
-            )
-          }
+          onSave={(reason) => {
+            setDialog(undefined);
+            signAction(
+              "Cancel the training activity",
+              "TRAINING_ACTIVITY_CANCELLED",
+              "Training Activity Cancelled",
+              (t) => trainingActivitiesApi.cancel(activity.id, activity.version, reason, t),
+              statusChange(STATUS_LABEL[activity.status] ?? activity.status, STATUS_LABEL.CANCELLED),
+            );
+          }}
         />
       )}
       {dialog?.type === "releaseExam" && (
         <ReasonDialog
-          title={`Release the test for ${dialog.participant.fullName}`}
+          title={`Release the Test for ${dialog.participant.fullName}`}
           help="The trainee may take the test once more. The reason stays in the Audit Trail."
           confirmText="Release"
           busy={busy}
@@ -2222,7 +2271,7 @@ export function TrainingActivityDetailPage({
       )}
       {dialog?.type === "rejectException" && (
         <ReasonDialog
-          title="Reject trainer exception"
+          title="Reject Trainer Exception"
           help="The session cannot go ahead with this trainer unless another exception is approved."
           confirmText="Reject"
           destructive
@@ -2261,7 +2310,7 @@ export function TrainingActivityDetailPage({
       )}
       {dialog?.type === "plannedAbsence" && (
         <ReasonDialog
-          title={`Mark ${dialog.participant.fullName} absent`}
+          title={`Mark ${dialog.participant.fullName} Absent`}
           help="The person stays on the attendee list, as SOP.0003 5.3.4 requires. The reason is written on the row."
           confirmText="Mark absent"
           busy={busy}
@@ -2303,7 +2352,7 @@ export function TrainingActivityDetailPage({
         onClose={() => setSign(undefined)}
         onConfirm={async (data: { signatureToken: string }) => {
           if (!sign) return;
-          const ok = await run(() => sign.run(data.signatureToken), sign.title);
+          const ok = await run(() => sign.run(data.signatureToken), SIGNED_DONE[sign.meaningCode] ?? sign.title);
           if (ok) setSign(undefined);
         }}
         actionTitle={sign?.title}
@@ -2380,7 +2429,7 @@ function PostponeDialog({
       isOpen
       onClose={onClose}
       onConfirm={() => onSave(date, reason.trim())}
-      title="Postpone session"
+      title="Postpone Session"
       description="The Training Number stays. The old date, the new date and the reason are recorded."
       confirmText="Postpone"
       isLoading={busy}
@@ -2474,7 +2523,7 @@ function CorrectAttendanceDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title={`Correct the attendance of ${participant.fullName}`}
+      title={`Correct the Attendance of ${participant.fullName}`}
       description="Use this only for a mistake. The old value, the new value and your reason stay in the Audit Trail. It cannot be changed after the person has a score."
       confirmText="Confirm"
       isLoading={busy}
@@ -2544,7 +2593,7 @@ function AssessmentDialog({
       }
     >
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Score obtained" required>
+        <FormField label="Score Obtained" required>
           <Input
             type="number"
             min={0}
@@ -2552,7 +2601,7 @@ function AssessmentDialog({
             onChange={(e) => setGot(e.target.value)}
           />
         </FormField>
-        <FormField label="Maximum score" required>
+        <FormField label="Maximum Score" required>
           <Input
             type="number"
             min={1}
@@ -2661,7 +2710,7 @@ function SupplementaryDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Supplementary training"
+      title="Supplementary Training"
       description="A new activity is created under the same number with the next letter. People who were absent or failed are listed."
       confirmText="Create"
       isLoading={busy}
@@ -2738,7 +2787,7 @@ function TrainerExceptionDialog({
       isOpen
       onClose={onClose}
       onConfirm={() => onSave(reason.trim(), id)}
-      title="Request an exception for the trainer"
+      title="Request an Exception for the Trainer"
       description="The session goes ahead with this trainer only if the person you choose approves, with a signature."
       confirmText="Request"
       isLoading={busy}

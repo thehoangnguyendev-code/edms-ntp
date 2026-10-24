@@ -3,7 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Input, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { cn } from "@/components/ui/utils";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
-import { ProposedParticipantsField } from "@/features/training-activities/shared/ProposedParticipantsField";
+import { ProposedParticipantsField, type ProposedPerson } from "@/features/training-activities/shared/ProposedParticipantsField";
 import type { TrainingLink } from "@/services/api/trainingLinks";
 
 interface TrainingConfig {
@@ -24,6 +24,9 @@ interface TrainingTabProps {
     trainingLink?: TrainingLink | null;
     /** The saved document, to choose the people proposed for its training. */
     documentId?: string | null;
+    /** The people chosen before the document has its training activity, and how they change. */
+    pendingParticipants?: ProposedPerson[];
+    onPendingParticipantsChange?: (people: ProposedPerson[]) => void;
 }
 
 export const TrainingTab: React.FC<TrainingTabProps> = ({
@@ -32,7 +35,9 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
     onChange,
     validationError,
     trainingLink,
-    documentId
+    documentId,
+    pendingParticipants,
+    onPendingParticipantsChange
 }) => {
     const [confirmRemove, setConfirmRemove] = React.useState(false);
     const hasNumber = Boolean(trainingLink?.trainingNumber) && trainingLink?.status !== "CANCELLED";
@@ -124,7 +129,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                             )}
                         </div>
                     </div>
-                    <ProposedParticipantsField documentId={documentId} />
+                    <ProposedParticipantsField documentId={documentId} pending={pendingParticipants} onPendingChange={onPendingParticipantsChange} />
                 </div>
             ) : (
                 <div className="space-y-4">
@@ -174,7 +179,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                     applyCheckbox(false);
                 }}
                 type="warning"
-                title="Remove training from this revision?"
+                title="Remove Training from This Revision?"
                 description={
                     <p className="text-sm text-slate-600">
                         Training Number <strong>{trainingLink?.trainingNumber}</strong> will be cancelled when you save the document. A cancelled number is never used again. If you

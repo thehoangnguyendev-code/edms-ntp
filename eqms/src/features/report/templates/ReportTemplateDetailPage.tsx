@@ -14,6 +14,7 @@ import { ReportRevisionStepper, latestRevisionStatus } from "../shared/ReportRev
 import { ReportTemplateReasonModal } from "./ReportTemplateReasonModal";
 import { useReportTemplateCapabilities } from "./useReportTemplateCapabilities";
 import { codeLabel, humanize } from "../shared/reportLabels";
+import { displayDateTime } from "@/utils/format";
 import {
   reportTemplatesApi,
   reportError,
@@ -30,7 +31,7 @@ const LIFECYCLE: Record<string, { label: string; color: "emerald" | "amber" | "s
   INACTIVE: { label: "Inactive", color: "slate" },
 };
 const SCOPE_LABEL: Record<string, string> = { PERSONAL: "Personal", DEPARTMENT: "Department", BUSINESS_UNIT: "Business Unit", SYSTEM: "Entire system" };
-const when = (value?: string | null) => (value ? new Date(value).toLocaleString() : "—");
+const when = (value?: string | null) => (value ? displayDateTime(value) : "—");
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (

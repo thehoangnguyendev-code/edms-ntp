@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Award } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { cn } from "@/components/ui/utils";
 import { formatDate } from "@/utils/format";
 import { settingsApi } from "@/services/api/settings";
@@ -152,11 +153,7 @@ export const CertPreviewModal: React.FC<CertPreviewModalProps> = ({ isOpen, cert
               />
             </div>
           ) : blobUrl && isPdf ? (
-            <iframe
-              src={blobUrl}
-              className="w-full h-[420px] rounded-lg border border-slate-200 shadow-sm"
-              title={cert?.name}
-            />
+            <DocumentPdfViewer key={blobUrl} fileUrl={blobUrl} height="420px" minHeight="420px" forceHideDownloadAndPrint allowContextMenu={false} />
           ) : (
             <div className="flex flex-col items-center justify-center py-12 rounded-lg border-2 border-dashed border-slate-200 gap-3 bg-slate-50/30">
               <div className="h-14 w-14 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-sm">

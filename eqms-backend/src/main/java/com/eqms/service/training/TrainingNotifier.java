@@ -51,6 +51,10 @@ public class TrainingNotifier {
             case "TRAINING_RECORD_EXPORT" -> "/training-management/record-exports";
             case "TRAINING_REQUIREMENT" -> "/training-management/requirements/" + id;
             case "TRAINING_LEGACY_EVIDENCE" -> "/training-management/legacy-evidence";
+            case "TRAINING_PERSONNEL_REVIEW" -> "/training-management/personnel-reviews/" + id;
+            case "TRAINING_COMPLIANCE_SUSPENSIONS" -> "/training-management/compliance?tab=suspensions";
+            case "TRAINING_REQUIREMENT_LIST" -> "/training-management/requirements";
+            case "TRAINING_DOCUMENT_TRAININGS" -> "/training-management/document-trainings";
             default -> "/training-management/my-training";
         };
     }
@@ -69,16 +73,22 @@ public class TrainingNotifier {
             case "TRAINER_EXCEPTION" -> "approve an exception for a trainer who is not yet qualified";
             case "REQUIREMENT_REVIEW" -> "review a training requirement";
             case "REQUIREMENT_APPROVE" -> "approve a training requirement";
+            case "REVIEW_CLOSE" -> "close a training review";
             default -> "handle a training step";
         };
     }
 
     /** Sends the notice when the surrounding transaction has committed (at once when there is none). Never throws. */
     public void send(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey) {
+        send(event, recipient, sender, title, message, objectType, objectId, dedupeKey, null, null);
+    }
+
+    /** The same notice, whose e-mail carries a file (the in-app notice has none). */
+    public void send(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey, String attachmentName, byte[] attachment) {
         if (recipient == null || recipient.getId() == null) return;
         Runnable work = () -> {
             try {
-                separate.executeWithoutResult(status -> deliver(event, recipient, sender, title, message, objectType, objectId, dedupeKey));
+                separate.executeWithoutResult(status -> deliver(event, recipient, sender, title, message, objectType, objectId, dedupeKey, attachmentName, attachment));
             } catch (Exception failure) {
                 log.warn("Training notice {} to {} was not delivered: {}", event, recipient.getId(), failure.getMessage());
             }
@@ -93,7 +103,7 @@ public class TrainingNotifier {
         }
     }
 
-    private void deliver(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey) {
+    private void deliver(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey, String attachmentName, byte[] attachment) {
         String path = path(objectType, objectId);
         UUID inApp = claim(event, recipient, "IN_APP", title, objectType, objectId, dedupeKey);
         if (inApp != null) {
@@ -112,9 +122,9 @@ public class TrainingNotifier {
             }
             try {
                 String link = email.resolvePublicAppBaseUrl() + path;
-                String body = "<p>" + HtmlUtils.htmlEscape(message) + "</p><p><a href=\"" + HtmlUtils.htmlEscape(link) + "\">Open in EQMS</a></p>";
-                boolean sent = email.sendRenderedEmailWithTracking(recipient.getEmail(), "EQMS: " + title, body, event, "TRAINING",
-                        Map.of("fullName", StringUtils.hasText(recipient.getFullName()) ? recipient.getFullName() : recipient.getUsername()));
+                String body = "<p>" + HtmlUtils.htmlEscape(com.eqms.util.DateTimeFormatUtils.normalizeText(message)) + "</p><p><a href=\"" + HtmlUtils.htmlEscape(link) + "\">Open in EQMS</a></p>";
+                boolean sent = email.sendRenderedEmailWithTracking(recipient.getEmail(), "EQMS: " + com.eqms.util.DateTimeFormatUtils.normalizeText(title), body, event, "TRAINING",
+                        Map.of("fullName", StringUtils.hasText(recipient.getFullName()) ? recipient.getFullName() : recipient.getUsername()), attachmentName, attachment);
                 finish(mail, sent ? "SENT" : "FAILED", sent ? null : "EMAIL_NOT_SENT");
             } catch (Exception failure) {
                 finish(mail, "FAILED", failure.getClass().getSimpleName());

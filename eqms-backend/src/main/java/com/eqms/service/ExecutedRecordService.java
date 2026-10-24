@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.executedrecord.ExecutedRecordResponse;
 import com.eqms.dto.executedrecord.RecordExecutionRequest;
@@ -39,7 +40,7 @@ import java.util.UUID;
 @Service
 public class ExecutedRecordService {
 
-    private static final ZoneId SYSTEM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
     private static final String ENTITY_TYPE = "EXECUTED_RECORD";
     private static final int MAX_LIST_PAGE_SIZE = 200;
 

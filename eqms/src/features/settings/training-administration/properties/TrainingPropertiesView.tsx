@@ -1,7 +1,7 @@
 import React from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Archive, CalendarClock, GraduationCap, Link2, Timer } from "lucide-react";
+import { Archive, BellRing, CalendarClock, GraduationCap, Link2, Send, Timer } from "lucide-react";
 import { IconPlus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -47,6 +47,23 @@ const NumberField: React.FC<{
   </div>
 );
 
+/**
+ * The settings are one record saved together, but they govern different things, so each tab holds one subject and says in a sentence what it governs and where it is used.
+ * "Save Changes" saves the changes of every tab.
+ */
+const SETTING_TABS = [
+  { id: "assessment", label: "Assessment", about: "How a test is marked, and how soon the results go to QA. It is used when the trainer records the result of a training and sends it to QA." },
+  { id: "documents", label: "Document Training", about: "How training on a new or revised document is organised. It is used when a document that requires training is created in Document Control." },
+  { id: "annual", label: "Annual & Retraining", about: "When the annual requirement is due and when a person who was away is retrained. It is used by the training requirements and by the training reviews." },
+  { id: "reminders", label: "Review Reminders", about: "When the person who must close a training review, and the person who opened it, are reminded. A reminder is sent once a week." },
+  { id: "retention", label: "Records Retention", about: "How long training records are kept. It is used when the records of a person who left are archived." },
+] as const;
+const FORMS_TAB = {
+  id: "forms",
+  label: "Assessment Forms",
+  about: "The Word source of a form such as APD.0009. The person who prepares a test starts from the enabled template and edits it in the browser. A template is enabled with an electronic signature, and enabling one disables the other of the same document number. The file never changes after it is uploaded.",
+} as const;
+
 /** Settings of Training Management. A change needs the version that was read and a reason, is checked by the server and is recorded in the Audit Trail. */
 export const TrainingPropertiesView: React.FC = () => {
   const navigate = useNavigate();
@@ -57,12 +74,13 @@ export const TrainingPropertiesView: React.FC = () => {
 
   const [params, setParams] = useSearchParams();
   const tabs: TabItem[] = [
-    { id: "general", label: "General" },
-    ...(canAdminister ? [{ id: "forms", label: "Assessment Forms" }] : []),
+    ...SETTING_TABS.map(({ id, label }) => ({ id, label })),
+    ...(canAdminister ? [{ id: FORMS_TAB.id, label: FORMS_TAB.label }] : []),
   ];
   const requested = params.get("tab");
-  const tab = tabs.some((x) => x.id === requested) ? (requested as string) : "general";
-  const changeTab = (id: string) => setParams(id === "general" ? {} : { tab: id }, { replace: true });
+  const tab = tabs.some((x) => x.id === requested) ? (requested as string) : SETTING_TABS[0].id;
+  const changeTab = (id: string) => setParams(id === SETTING_TABS[0].id ? {} : { tab: id }, { replace: true });
+  const settingTab = SETTING_TABS.find((x) => x.id === tab);
 
   const [uploadOpen, setUploadOpen] = React.useState(false);
   const [settings, setSettings] = React.useState<TrainingSettings | null>(null);
@@ -113,6 +131,9 @@ export const TrainingPropertiesView: React.FC = () => {
         annualRequirementDueDay: settings.annualRequirementDueDay,
         absenceRetrainMonths: settings.absenceRetrainMonths,
         retentionYearsAfterLeaving: settings.retentionYearsAfterLeaving,
+        reviewReadyReminderDays: settings.reviewReadyReminderDays,
+        reviewOpenReminderDays: settings.reviewOpenReminderDays,
+        resultsDueDays: settings.resultsDueDays,
         integrationEnabled: settings.integrationEnabled,
         version: settings.version,
         reason: reason.trim(),
@@ -130,25 +151,38 @@ export const TrainingPropertiesView: React.FC = () => {
     }
   };
 
-  const general = settings && (
-    <div className="space-y-4">
+  const panels: Record<string, React.ReactNode> = settings ? {
+    assessment: (
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <FormSection title="Assessment & Results" icon={<GraduationCap className="h-4 w-4" />} className="h-full">
-          <div className="grid grid-cols-1 gap-4">
-            <NumberField
-              label="Pass mark (%)"
-              hint="A trainee passes a test with at least this percentage. The system computes the result."
-              value={settings.passPercent}
-              min={1}
-              max={100}
-              fallback={1}
-              disabled={!canManage}
-              onChange={(v) => patch({ passPercent: v })}
-            />
-          </div>
+        <FormSection title="Pass Mark" icon={<GraduationCap className="h-4 w-4" />} className="h-full">
+          <NumberField
+            label="Pass mark (%)"
+            hint="A trainee passes a test with at least this percentage. The system computes the result."
+            value={settings.passPercent}
+            min={1}
+            max={100}
+            fallback={1}
+            disabled={!canManage}
+            onChange={(v) => patch({ passPercent: v })}
+          />
         </FormSection>
-
-        <FormSection title="Document Training" icon={<Timer className="h-4 w-4" />} className="h-full">
+        <FormSection title="Results to QA" icon={<Send className="h-4 w-4" />} className="h-full">
+          <NumberField
+            label="Days to send the results to QA"
+            hint="Counted in calendar days from the day the training was held (SOP.0003 5.3.7). The organizer is reminded on the last day, then every week while the results are late."
+            value={settings.resultsDueDays}
+            min={1}
+            max={60}
+            fallback={7}
+            disabled={!canManage}
+            onChange={(v) => patch({ resultsDueDays: v })}
+          />
+        </FormSection>
+      </div>
+    ),
+    documents: (
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <FormSection title="Training Period" icon={<Timer className="h-4 w-4" />} className="h-full">
           <NumberField
             label="Days to train on a new document"
             hint="Default Training Period (days) proposed for a document that requires training."
@@ -160,77 +194,104 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ documentTrainingDaysDefault: v })}
           />
         </FormSection>
-
-        <FormSection title="Annual Requirement & Retraining" icon={<CalendarClock className="h-4 w-4" />} className="xl:col-span-2">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <NumberField
-              label="Due month"
-              hint="Month (1 to 12) by which the annual requirement is due."
-              value={settings.annualRequirementDueMonth}
-              min={1}
-              max={12}
-              fallback={1}
-              disabled={!canManage}
-              onChange={(v) => patch({ annualRequirementDueMonth: v })}
-            />
-            <NumberField
-              label="Due day"
-              hint="Day of that month."
-              value={settings.annualRequirementDueDay}
-              min={1}
-              max={31}
-              fallback={1}
-              disabled={!canManage}
-              onChange={(v) => patch({ annualRequirementDueDay: v })}
-            />
-            <NumberField
-              label="Absence limit (months)"
-              hint="After a longer absence a person is retrained."
-              value={settings.absenceRetrainMonths}
-              min={1}
-              max={60}
-              fallback={1}
-              disabled={!canManage}
-              onChange={(v) => patch({ absenceRetrainMonths: v })}
-            />
-          </div>
-        </FormSection>
-
-        <FormSection title="Records Retention" icon={<Archive className="h-4 w-4" />} className="h-full">
-          <NumberField
-            label="Years to keep records after the employee leaves"
-            hint="Training records are kept at least 10 years after the employee leaves."
-            value={settings.retentionYearsAfterLeaving}
-            min={10}
-            max={100}
-            fallback={10}
-            disabled={!canManage}
-            onChange={(v) => patch({ retentionYearsAfterLeaving: v })}
-          />
-        </FormSection>
-
         <FormSection title="Document Control Link" icon={<Link2 className="h-4 w-4" />} className="h-full">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">Link with Document Control</p>
-            <p className="mt-1 text-xs text-slate-500">
-              <strong>{settings.integrationEnabled ? "On." : "Off."}</strong>{" "}
-              {settings.integrationEnabled
-                ? "A document that requires training gets a Training Number and is completed through Training Management."
-                : "Training dates are typed in Document Control, and a Training Number is not issued."}
-            </p>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900">Link with Document Control</p>
+              <p className="mt-1 text-xs text-slate-500">
+                <strong>{settings.integrationEnabled ? "On." : "Off."}</strong>{" "}
+                {settings.integrationEnabled
+                  ? "A document that requires training gets a Training Number and is completed through Training Management."
+                  : "Training dates are typed in Document Control, and a Training Number is not issued."}
+              </p>
+            </div>
+            <Switch
+              checked={settings.integrationEnabled}
+              disabled={!canManage}
+              aria-label="Link with Document Control"
+              onChange={(checked) => patch({ integrationEnabled: checked })}
+            />
           </div>
-          <Switch
-            checked={settings.integrationEnabled}
-            disabled={!canManage}
-            aria-label="Link with Document Control"
-            onChange={(checked) => patch({ integrationEnabled: checked })}
-          />
-        </div>
         </FormSection>
       </div>
-    </div>
-  );
+    ),
+    annual: (
+      <FormSection title="Annual Requirement & Retraining" icon={<CalendarClock className="h-4 w-4" />}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <NumberField
+            label="Due month"
+            hint="Month (1 to 12) by which the annual requirement is due."
+            value={settings.annualRequirementDueMonth}
+            min={1}
+            max={12}
+            fallback={1}
+            disabled={!canManage}
+            onChange={(v) => patch({ annualRequirementDueMonth: v })}
+          />
+          <NumberField
+            label="Due day"
+            hint="Day of that month."
+            value={settings.annualRequirementDueDay}
+            min={1}
+            max={31}
+            fallback={1}
+            disabled={!canManage}
+            onChange={(v) => patch({ annualRequirementDueDay: v })}
+          />
+          <NumberField
+            label="Absence limit (months)"
+            hint="After a longer absence a person is retrained. A training review for a return after an absence is opened only for an absence longer than this."
+            value={settings.absenceRetrainMonths}
+            min={1}
+            max={60}
+            fallback={1}
+            disabled={!canManage}
+            onChange={(v) => patch({ absenceRetrainMonths: v })}
+          />
+        </div>
+      </FormSection>
+    ),
+    reminders: (
+      <FormSection title="Training Review Reminders" icon={<BellRing className="h-4 w-4" />}>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <NumberField
+            label="Days before a review ready to close is reminded"
+            hint="Every item is settled and the person chosen to close it has not signed. The reminder goes to that person every week."
+            value={settings.reviewReadyReminderDays}
+            min={1}
+            max={60}
+            fallback={3}
+            disabled={!canManage}
+            onChange={(v) => patch({ reviewReadyReminderDays: v })}
+          />
+          <NumberField
+            label="Days before a review with items to do is reminded"
+            hint="The person who opened the review is reminded every week."
+            value={settings.reviewOpenReminderDays}
+            min={1}
+            max={365}
+            fallback={14}
+            disabled={!canManage}
+            onChange={(v) => patch({ reviewOpenReminderDays: v })}
+          />
+        </div>
+      </FormSection>
+    ),
+    retention: (
+      <FormSection title="Records Retention" icon={<Archive className="h-4 w-4" />}>
+        <NumberField
+          label="Years to keep records after the employee leaves"
+          hint="Training records are kept at least 10 years after the employee leaves."
+          value={settings.retentionYearsAfterLeaving}
+          min={10}
+          max={100}
+          fallback={10}
+          disabled={!canManage}
+          onChange={(v) => patch({ retentionYearsAfterLeaving: v })}
+        />
+      </FormSection>
+    ),
+  } : {};
 
   return (
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
@@ -238,7 +299,7 @@ export const TrainingPropertiesView: React.FC = () => {
         title="Training Properties"
         breadcrumbItems={trainingProperties(navigate)}
         actions={
-          tab === "general" && canManage && settings ? (
+          settingTab && canManage && settings ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving} onClick={() => setShowSaveModal(true)}>
               Save Changes
             </Button>
@@ -255,7 +316,7 @@ export const TrainingPropertiesView: React.FC = () => {
         <TabNav tabs={tabs} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel="Training properties" tabIdPrefix="training-properties-tab" panelIdPrefix="training-properties-panel" />
         <div className="p-4 md:p-5">
           <div id={`training-properties-panel-${tab}`} role="tabpanel" aria-labelledby={`training-properties-tab-${tab}`} className="min-w-0">
-        {tab === "general" && (
+        {settingTab && (
           <>
             {loading && (
               <SectionLoading text="Loading training properties..." />
@@ -268,10 +329,20 @@ export const TrainingPropertiesView: React.FC = () => {
                 </Button>
               </div>
             )}
-            {!loading && !error && general}
+            {!loading && !error && settings && (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">{settingTab.about} Changes made in any tab are saved together with Save Changes.</p>
+                {panels[settingTab.id]}
+              </div>
+            )}
           </>
         )}
-        {tab === "forms" && canAdminister && <TrainingFormTemplates canEdit={canAdminister} uploadOpen={uploadOpen} onUploadClose={() => setUploadOpen(false)} />}
+        {tab === "forms" && canAdminister && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">{FORMS_TAB.about}</p>
+            <TrainingFormTemplates canEdit={canAdminister} uploadOpen={uploadOpen} onUploadClose={() => setUploadOpen(false)} />
+          </div>
+        )}
           </div>
         </div>
       </div>
@@ -283,7 +354,7 @@ export const TrainingPropertiesView: React.FC = () => {
           if (reason.trim()) void save();
         }}
         type="confirm"
-        title="Save training properties?"
+        title="Save Training Properties?"
         description={
           <div className="space-y-3">
             <p className="text-sm text-slate-600">

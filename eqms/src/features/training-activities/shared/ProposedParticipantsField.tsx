@@ -9,23 +9,27 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { trainingError, trainingProposalApi, type TrainingProposal } from "@/services/api/trainingActivities";
+import { trainingError, trainingProposalApi, type TrainingPerson, type TrainingProposal } from "@/services/api/trainingActivities";
 import { ProposedParticipantsPicker } from "./ProposedParticipantsPicker";
 import { TrainingPersonName } from "./TrainingPersonName";
 
-type Person = TrainingProposal["people"][number];
+export type ProposedPerson = TrainingProposal["people"][number];
+type Person = ProposedPerson;
+const asProposed = (p: TrainingPerson): ProposedPerson => ({ personId: p.id, fullName: p.fullName, username: p.username, email: p.email, employeeCode: p.employeeCode, department: p.department, position: p.position, avatar: p.avatar });
+const asPerson = (p: ProposedPerson): TrainingPerson => ({ id: p.personId, fullName: p.fullName, username: p.username, email: p.email, employeeCode: p.employeeCode, department: p.department, position: p.position, avatar: p.avatar });
 
 /**
  * "List of participants in the Training", on the Training tab of a document. The people are a proposal made while the document is prepared: when the training of the
  * document opens and its first session is added, they are put on the list as a draft, and the organizer confirms the list with a signature (SOP.0003 5.3.4).
- * It saves by itself (each change is recorded in the Audit Trail of the training activity), so the document does not have to be saved again; the Training Number, and
- * so the activity, exists once the document is saved with a training period.
+ * Once the training activity of the document exists, a change saves by itself (each change is recorded in the Audit Trail of the training activity). Before that (a
+ * document that is being created) the people are chosen at once and kept by the form (`pending`, `onPendingChange`); the form sends them when the document is saved.
  */
-export function ProposedParticipantsField({ documentId }: { documentId?: string | null }) {
+export function ProposedParticipantsField({ documentId, pending, onPendingChange }: { documentId?: string | null; pending?: ProposedPerson[]; onPendingChange?: (people: ProposedPerson[]) => void }) {
   const [proposal, setProposal] = useState<TrainingProposal>();
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
+  const [selectionPeople, setSelectionPeople] = useState<TrainingPerson[]>([]);
   const [openNo, setOpenNo] = useState(0);
   const [busy, setBusy] = useState(false);
   const menu = usePortalDropdown();
@@ -39,7 +43,13 @@ export function ProposedParticipantsField({ documentId }: { documentId?: string 
   useEffect(load, [load]);
   useEntityChanged(["TRAINING"], load);
 
-  const save = async (ids: string[]) => {
+  const save = async (ids: string[], chosen: TrainingPerson[] = []) => {
+    if (local) {
+      const byId = new Map([...people.map((p) => [p.personId, p] as const), ...chosen.map((p) => [p.id, asProposed(p)] as const)]);
+      onPendingChange?.(ids.map((id) => byId.get(id)).filter((p): p is ProposedPerson => !!p));
+      setAdding(false);
+      return;
+    }
     if (!documentId) return;
     setBusy(true);
     try {
@@ -53,7 +63,11 @@ export function ProposedParticipantsField({ documentId }: { documentId?: string 
     }
   };
 
-  const people = proposal?.people ?? [];
+  // Before the document has its training activity the list is the one the form keeps; afterwards it is the one of the server.
+  // Whatever the form still holds stays on the screen until the server has it: if sending it failed, the people are not hidden behind an empty list of the server.
+  const local = !!onPendingChange && (!documentId || (pending?.length ?? 0) > 0 || (!!proposal && !proposal.available));
+  const people = local ? (pending ?? []) : (proposal?.people ?? []);
+  const editable = local || !!proposal?.editable;
   // The whole proposal is loaded (it is short); it is shown ten at a time, and the page is pulled back when people are removed.
   const totalPages = Math.max(1, Math.ceil(people.length / limit));
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
@@ -67,7 +81,7 @@ export function ProposedParticipantsField({ documentId }: { documentId?: string 
     { id: "department", header: "Department", cell: (p) => p.department ?? "\u2014" },
     { id: "position", header: "Position", cell: (p) => p.position ?? "\u2014" },
   ];
-  const action = proposal?.editable ? {
+  const action = editable ? {
     cell: (p: Person) => (
       <button type="button" ref={menu.getRef(p.personId)} aria-label="More actions" className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(event) => menu.toggle(p.personId, event)}>
         <MoreVertical className="h-4 w-4" />
@@ -83,16 +97,16 @@ export function ProposedParticipantsField({ documentId }: { documentId?: string 
           <h3 className="text-sm font-semibold text-slate-800">List of participants in the Training{people.length ? ` (${people.length})` : ""}</h3>
           <p className="text-xs text-slate-500">A proposal. When the training opens and its first session is added, these people are put on the list; the organizer confirms the list with a signature.</p>
         </div>
-        {proposal?.editable && <Button size="sm" variant="default" onClick={() => { setSelection(people.map((p) => p.personId)); setOpenNo((n) => n + 1); setAdding(true); }}><IconUserPlus className="mr-1.5 h-4 w-4" />Edit participants</Button>}
+        {editable && <Button size="sm" variant="default" onClick={() => { setSelection(people.map((p) => p.personId)); setSelectionPeople(people.map(asPerson)); setOpenNo((n) => n + 1); setAdding(true); }}><IconUserPlus className="mr-1.5 h-4 w-4" />Edit participants</Button>}
       </div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      {!documentId && <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">Save the document first. The Training Number is issued when it is saved with a training period, and the participants are chosen after that.</p>}
-      {documentId && proposal && !proposal.available && <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">There is no training activity for this document yet. Set the training period and save the document.</p>}
-      {proposal?.available && (
+      {local && <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">The people chosen here are saved with the document. The Training Number is issued, and the list is sent to the training, when the document is saved with a training period.</p>}
+      {!local && documentId && proposal && !proposal.available && <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">There is no training activity for this document yet. Set the training period and save the document.</p>}
+      {(local || proposal?.available) && (
         <DataTable
           rows={shown} getRowKey={(p) => p.personId} columns={columns} action={action}
           pagination={people.length > 0 ? <TablePagination currentPage={page} totalPages={totalPages} totalItems={people.length} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} /> : undefined}
-          emptyState={<TableEmptyState title="No participant proposed" description={proposal.editable ? "Use Edit participants to propose the people to be trained." : "Nobody has been proposed."} />}
+          emptyState={<TableEmptyState title="No participant proposed" description={editable ? "Use Edit participants to propose the people to be trained." : "Nobody has been proposed."} />}
         />
       )}
       <PortalDropdownMenu isOpen={!!actionRow} onClose={menu.close} position={menu.position} minWidth={200}>
@@ -105,9 +119,9 @@ export function ProposedParticipantsField({ documentId }: { documentId?: string 
       <FormModal
         isOpen={adding} onClose={() => setAdding(false)} title="Participants in the Training" confirmText={`Save (${selection.length})`} size="xl" isLoading={busy}
         confirmDisabled={selection.length === people.length && selection.every((id) => people.some((p) => p.personId === id))}
-        onConfirm={() => void save(selection)}
+        onConfirm={() => void save(selection, selectionPeople)}
       >
-        <ProposedParticipantsPicker key={openNo} initialIds={people.map((p) => p.personId)} onChange={setSelection} />
+        <ProposedParticipantsPicker key={openNo} initialIds={people.map((p) => p.personId)} initialPeople={people.map(asPerson)} onChange={(ids, chosen) => { setSelection(ids); setSelectionPeople(chosen); }} />
       </FormModal>
     </div>
   );

@@ -111,7 +111,7 @@ public class TrainingTrainerService {
         Map<String, Object> activity = activityOf(session);
         access.require(actor, "training.activity.organize");
         access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
-        if (!"PLANNED".equals(session.get("status")) || !java.util.Set.of("PLANNED", "NOTIFIED").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        if (!TrainingSessionState.notStarted(session) || !java.util.Set.of("PLANNED", "NOTIFIED").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         Map<String, Object> q = qualification(sessionId);
         if (Boolean.TRUE.equals(q.get("qualified"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TRAINER_ALREADY_QUALIFIED");

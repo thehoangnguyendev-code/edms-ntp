@@ -7,6 +7,7 @@ import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableC
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { reportTemplatesApi, reportError, type ReportRevisionPage, type ReportRevisionRow, type ReportRevisionStatus } from "@/services/api/reportTemplates";
+import { displayDateTime } from "@/utils/format";
 
 export const REVISION_STATUS: Record<ReportRevisionStatus, { label: string; color: "emerald" | "amber" | "slate" }> = {
   EFFECTIVE: { label: "Effective", color: "emerald" },
@@ -15,7 +16,7 @@ export const REVISION_STATUS: Record<ReportRevisionStatus, { label: string; colo
   OBSOLETE: { label: "Obsoleted", color: "slate" },
   DISCARDED: { label: "Discarded", color: "slate" },
 };
-export const whenText = (value?: string | null) => (value ? new Date(value).toLocaleString() : "—");
+export const whenText = (value?: string | null) => (value ? displayDateTime(value) : "—");
 
 /** The revisions of one report template: the effective one that runs, the one being written, and the obsoleted ones. Sorted, filtered and paged on the server. */
 export function ReportTemplateRevisions({ code, inAdministration }: { code: string; inAdministration: boolean }) {

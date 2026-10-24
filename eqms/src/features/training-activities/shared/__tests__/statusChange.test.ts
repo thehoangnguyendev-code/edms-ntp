@@ -3,8 +3,8 @@ import { statusChange } from "../trainingLabels";
 
 describe("statusChange", () => {
   it("describes the status before and after for the e-signature modal", () => {
-    expect(statusChange("Waiting for approval", "Effective")).toEqual([
-      { action: "Update Status", oldValue: "Waiting for approval", newValue: "Effective", category: "status" },
+    expect(statusChange("Pending Approval", "Effective")).toEqual([
+      { action: "Update Status", oldValue: "Pending Approval", newValue: "Effective", category: "status" },
     ]);
   });
 

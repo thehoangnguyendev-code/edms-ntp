@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import org.springframework.security.access.AccessDeniedException;
 import com.eqms.dto.audittrail.AuditTrailChangeResponse;
@@ -1440,13 +1441,13 @@ public class AccessProfileService {
     /** Parses a "dd/MM/yyyy" filter value into the start-of-day Instant (server local zone). */
     private java.time.Instant parseDayStart(String ddMMyyyy) {
         java.time.LocalDate date = parseDate(ddMMyyyy);
-        return date == null ? null : date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant();
+        return date == null ? null : date.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 
     /** Parses a "dd/MM/yyyy" filter value into the exclusive start of the next day (server local zone). */
     private java.time.Instant parseDayEndExclusive(String ddMMyyyy) {
         java.time.LocalDate date = parseDate(ddMMyyyy);
-        return date == null ? null : date.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant();
+        return date == null ? null : date.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 
     private java.time.LocalDate parseDate(String ddMMyyyy) {
@@ -1464,6 +1465,6 @@ public class AccessProfileService {
     /** Server-side formatting so the frontend only needs to display the string as-is. */
     private String formatCreatedAtDisplay(java.time.Instant instant) {
         if (instant == null) return null;
-        return CREATED_DISPLAY_FORMAT.withZone(java.time.ZoneId.systemDefault()).format(instant);
+        return CREATED_DISPLAY_FORMAT.withZone(DateTimeFormatUtils.ZONE).format(instant);
     }
 }

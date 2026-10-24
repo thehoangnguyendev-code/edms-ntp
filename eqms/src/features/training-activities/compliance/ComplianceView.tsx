@@ -8,11 +8,15 @@ import { trainingBreadcrumbs, TRAINING_PAGES } from "@/features/training-activit
 import { ComplianceSummaryTab } from "./tabs/ComplianceSummaryTab";
 import { ComplianceCompletionTab } from "./tabs/ComplianceCompletionTab";
 import { ComplianceGapsTab } from "./tabs/ComplianceGapsTab";
+import { ComplianceSuspensionsTab } from "./tabs/ComplianceSuspensionsTab";
+import { ComplianceRetentionTab } from "./tabs/ComplianceRetentionTab";
 
 const TABS: TabItem[] = [
   { id: "summary", label: "Summary" },
   { id: "completion", label: "Matrix completion" },
   { id: "gaps", label: "Gap list" },
+  { id: "suspensions", label: "Work suspensions" },
+  { id: "retention", label: "Record retention" },
 ];
 
 /** Who is trained on what the effective matrix requires, for one department. The department chosen is shared by the three tabs. */
@@ -20,7 +24,7 @@ export function TrainingComplianceView() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab");
-  const [tab, setTab] = useState(initialTab === "completion" || initialTab === "gaps" ? initialTab : "summary");
+  const [tab, setTab] = useState(TABS.some((t) => t.id === initialTab) ? String(initialTab) : "summary");
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
   const [departmentId, setDepartmentId] = useState("");
 
@@ -52,6 +56,8 @@ export function TrainingComplianceView() {
             {tab === "summary" && <ComplianceSummaryTab departmentId={departmentId} departments={departments} onDepartment={setDepartmentId} />}
             {tab === "completion" && <ComplianceCompletionTab departmentId={departmentId} departmentFilter={departmentFilter} />}
             {tab === "gaps" && <ComplianceGapsTab departmentId={departmentId} departmentFilter={departmentFilter} />}
+            {tab === "suspensions" && <ComplianceSuspensionsTab departmentId={departmentId} departmentFilter={departmentFilter} />}
+            {tab === "retention" && <ComplianceRetentionTab departmentId={departmentId} departmentFilter={departmentFilter} />}
           </div>
         </div>
       </div>

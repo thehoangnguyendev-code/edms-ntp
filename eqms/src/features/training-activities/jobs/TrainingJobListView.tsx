@@ -1,10 +1,8 @@
 import { TrainingPersonName } from "../shared/TrainingPersonName";
 import {
-  IconCertificate,
   IconEye,
-  IconFileSearch,
-  IconSignature,
-} from "@tabler/icons-react";
+  IconInfoCircle,
+  } from "@tabler/icons-react";
 import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
@@ -50,9 +48,11 @@ import {
   useDepartmentOptions,
 } from "../shared/useListFilters";
 
+/** The one item of the Action menu: what is waiting on this job assignment. Every other status just opens it. */
+const ROW_ACTION_LABEL: Record<string, string> = { DRAFT: "Continue Draft", PENDING_RECEIVER: "Review and Accept" };
 export const JOB_STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
-  PENDING_RECEIVER: "Waiting for the employee",
+  PENDING_RECEIVER: "Pending Employee Acceptance",
   EFFECTIVE: "Effective",
   SUPERSEDED: "Replaced",
   CANCELLED: "Cancelled",
@@ -242,46 +242,15 @@ export function TrainingJobListView() {
       cell: (r) => day(r.createdAt),
     },
   ];
-  // The last column leads from a job assignment to the screens about the same person.
-  const rowMenu = useTrainingRowMenu(table.items, (r) => {
-    const who = encodeURIComponent(r.employeeCode ?? r.fullName);
-    return [
-      {
-        label: "View Job Assignment",
-        icon: <IconEye className="h-4 w-4" />,
-        onClick: () => navigate(`/training-management/job-assignments/${r.id}`),
-      },
-      ...(hasPermission("training.record.view")
-        ? [
-            {
-              label: "View Training Records",
-              icon: <IconFileSearch className="h-4 w-4" />,
-              onClick: () =>
-                navigate(`/training-management/records?search=${who}`),
-            },
-          ]
-        : []),
-      {
-        label: "View Training Reviews",
-        icon: <IconCertificate className="h-4 w-4" />,
-        onClick: () =>
-          navigate(`/training-management/personnel-reviews?search=${who}`),
-      },
-      ...(hasPermission("training.signature.view") ||
-      hasPermission("training.signature.manage")
-        ? [
-            {
-              label: "View Specimen Signatures",
-              icon: <IconSignature className="h-4 w-4" />,
-              onClick: () =>
-                navigate(
-                  `/training-management/specimen-signatures?search=${who}`,
-                ),
-            },
-          ]
-        : []),
-    ];
-  });
+  // The last column opens the job assignment at the step that is waiting: the draft to finish, or the assignment the employee must accept. The people, records and
+  // signatures that belong to the same person are in the card under the buttons of the job assignment itself.
+  const rowMenu = useTrainingRowMenu(table.items, (r) => [
+    {
+      label: ROW_ACTION_LABEL[r.status] ?? "View Details",
+      icon: <IconInfoCircle className="h-4 w-4" />,
+      onClick: () => navigate(`/training-management/job-assignments/${r.id}`),
+    },
+  ]);
   const { layout, control } = useCustomColumnLayout(
     "training.job.assignments",
     columns,
@@ -453,7 +422,7 @@ export function TrainingJobListView() {
         isOpen={creating}
         onClose={() => setCreating(false)}
         onConfirm={() => void create()}
-        title="New job assignment"
+        title="New Job Assignment"
         description="A draft is created. The matrix training of the person is checked before it can be sent."
         confirmText="Create draft"
         isLoading={busy}

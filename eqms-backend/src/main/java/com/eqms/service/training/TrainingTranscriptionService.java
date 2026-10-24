@@ -76,6 +76,7 @@ public class TrainingTranscriptionService {
         access.require(actor, "training.paper.transcribe");
         // The lines are applied as this person, so this person must be allowed to record what the lines hold.
         access.require(actor, "training.activity.conduct", "training.activity.organize");
+        activities.startSession(actor, sessionId);
         Map<String, Object> session = sessionOf(sessionId);
         UUID activityId = (UUID) session.get("activity_id");
         access.requireScope(actor, (UUID) session.get("organizer_department_id"));
@@ -86,7 +87,7 @@ public class TrainingTranscriptionService {
         if (!again.isEmpty()) return one(actor, activityId, (UUID) again.get(0).get("id"));
 
         if (!"IN_PROGRESS".equals(activity.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TRANSCRIPTION_STATUS");
-        if (!"HELD".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
+        if (!TrainingSessionState.started(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
         if ("ELECTRONIC".equals(session.get("delivery_mode"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_NOT_PAPER");
         if (request.evidenceId() == null) throw new IllegalArgumentException("TRAINING_SCAN_REQUIRED");
         Integer scan = jdbc.queryForObject("select count(*) from training_paper_evidence where id = ? and activity_id = ? and kind in ('ATTENDANCE_SHEET','ASSESSMENT')", Integer.class, request.evidenceId(), activityId);

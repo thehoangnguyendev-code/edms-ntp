@@ -39,7 +39,7 @@ describe("My Training server tables", () => {
   it("sends task search, filters, sort and pagination to the server and clears them", async () => {
     render(<MemoryRouter><MyTrainingView /></MemoryRouter>);
     await waitFor(() => expect(api.tasks).toHaveBeenCalledWith(expect.objectContaining({ page: 1, limit: 10, sortBy: "dueDate" })));
-    fireEvent.change(screen.getByLabelText("Method"), { target: { value: "CLASSROOM" } });
+    fireEvent.change(screen.getByLabelText("Mode"), { target: { value: "CLASSROOM" } });
     await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ method: "CLASSROOM", page: 1 })));
     fireEvent.click(screen.getByRole("button", { name: "Training Number" }));
     await waitFor(() => expect(api.tasks).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: "trainingNumber" })));
@@ -54,11 +54,11 @@ describe("My Training server tables", () => {
   it("queries the complete signature table on the server without carrying another tab's sort", async () => {
     render(<MemoryRouter initialEntries={["/?sortBy=dueDate&page=2"]}><MyTrainingView /></MemoryRouter>);
     await waitFor(() => expect(api.tasks).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("tab", { name: /Waiting for my signature/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /Pending My Signature/i }));
     await waitFor(() => expect(api.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, sortBy: "assignedAt" })));
     fireEvent.change(screen.getByLabelText("Step"), { target: { value: "RECEIVER_ACCEPT" } });
     await waitFor(() => expect(api.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ stepCode: "RECEIVER_ACCEPT" })));
-    expect(screen.getByRole("tabpanel", { name: /Waiting for my signature/i })).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: /Pending My Signature/i })).toBeInTheDocument();
   });
 
   it("passes personal record filters and sortable columns to the personal server endpoint", async () => {

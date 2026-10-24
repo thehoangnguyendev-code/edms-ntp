@@ -38,6 +38,7 @@ import {
 import { ReportLookup } from "../templates/ReportLookup";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { IconPencilMinus, IconReplaceUser } from "@tabler/icons-react";
+import { displayDateTime } from "@/utils/format";
 
 export function ScheduledReportsView() {
   const navigate = useNavigate();
@@ -199,7 +200,7 @@ export function ScheduledReportsView() {
                     onSort: () => sortBy("nextRunAt"),
                   },
                   cell: (r) =>
-                    r.nextRunAt ? new Date(r.nextRunAt).toLocaleString() : "—",
+                    r.nextRunAt ? displayDateTime(r.nextRunAt) : "—",
                 },
   ];
   const scheduleAction: DataTableAction<ReportSchedule> = {
@@ -368,7 +369,7 @@ export function ScheduledReportsView() {
         onClose={() => {
           if (!ownerChange?.busy) setOwnerChange(undefined);
         }}
-        title="Change schedule owner"
+        title="Change Schedule Owner"
         description={`The owner of "${ownerChange?.name ?? ""}" is told when the schedule stops. Owning it does not give the right to change or run it; that stays with the creator.`}
         confirmText="Change owner"
         confirmDisabled={

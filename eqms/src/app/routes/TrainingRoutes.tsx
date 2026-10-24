@@ -12,6 +12,7 @@ const TrainingActivityCreatePage = lazy(() => import('@/features/training-activi
 const TrainingActivityDetailPage = lazy(() => import('@/features/training-activities/activities/TrainingActivityDetailPage').then(m => ({ default: m.TrainingActivityDetailPage })));
 const TrainingMatrixLandingPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixLandingPage').then(m => ({ default: m.TrainingMatrixLandingPage })));
 const TrainingMatrixVersionPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixVersionPage').then(m => ({ default: m.TrainingMatrixVersionPage })));
+const DocumentTrainingsView = lazy(() => import('@/features/training-activities/matrices/DocumentTrainingsView').then(m => ({ default: m.DocumentTrainingsView })));
 const TrainingRecordsView = lazy(() => import('@/features/training-activities/records/TrainingRecordsView').then(m => ({ default: m.TrainingRecordsView })));
 const TrainingNumberLogView = lazy(() => import('@/features/training-activities/records/TrainingNumberLogView').then(m => ({ default: m.TrainingNumberLogView })));
 const TrainingComplianceView = lazy(() => import('@/features/training-activities/compliance/ComplianceView').then(m => ({ default: m.TrainingComplianceView })));
@@ -59,6 +60,7 @@ export function trainingRoutes() {
       <Route path="check-in" element={guardedTrainingElement("training.self.view", <MyTrainingView openCheckIn />)} />
       <Route path="matrix" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixLandingPage />)} />
       <Route path="matrix/:versionId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixVersionPage />)} />
+      <Route path="document-trainings" element={guardedTrainingElement("training.matrix.view", <DocumentTrainingsView />)} />
       <Route path="records" element={guardedTrainingElement("training.record.view", <TrainingRecordsView />)} />
       <Route path="job-assignments" element={guardedTrainingElement("training.job_assignment.view", <TrainingJobListView />)} />
       <Route path="job-assignments/:jobId" element={<Suspense fallback={<LoadingFallback />}><TrainingJobDetailPage /></Suspense>} />

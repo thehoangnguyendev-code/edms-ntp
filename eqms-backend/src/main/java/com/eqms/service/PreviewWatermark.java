@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -35,7 +36,7 @@ public final class PreviewWatermark {
     static final String DEFAULT_TEXT = "FOR PREVIEW ONLY";
     static final String DEFAULT_COLOR = "#B3B3F5";
     static final int MAX_TEXT = 120;
-    private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
     private static final DateTimeFormatter OPENED_AT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(SYSTEM_ZONE);
 
     /** One large watermark, centred, as it has always been drawn. */

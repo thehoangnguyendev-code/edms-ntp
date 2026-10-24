@@ -17,7 +17,7 @@ import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/sh
 import { trainingError, trainingMatrixApi, type TrainingMatrixRow, type TrainingMatrixVersionRef } from "@/services/api/trainingActivities";
 import { day } from "../shared/trainingLabels";
 
-const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", PENDING_APPROVAL: "Waiting for approval", EFFECTIVE: "Effective", OBSOLETE: "Obsolete" };
+const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval", EFFECTIVE: "Effective", OBSOLETE: "Obsolete" };
 const STATUS_OPTIONS = [{ label: "All", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))];
 const rowName = (r: TrainingMatrixRow) => (r.topicId ? `${r.topicCode} — ${r.topicName}` : `${r.documentNumber} — ${r.documentName}`);
 type Diff = Awaited<ReturnType<typeof trainingMatrixApi.compare>>;
@@ -114,7 +114,7 @@ function CompareModal({ diff, onClose }: { diff: Diff; onClose: () => void }) {
   const list = (ids: string[]) => (ids.length ? ids.map((id) => names.get(id) ?? "?").join(", ") : "nobody");
   const none = <p className="text-slate-500">None.</p>;
   return (
-    <FormModal isOpen onClose={onClose} title={`What changed from version ${diff.from} to version ${diff.to}`} showCancel={false} confirmText="Close" onConfirm={onClose} size="xl">
+    <FormModal isOpen onClose={onClose} title={`What Changed from Version ${diff.from} to Version ${diff.to}`} showCancel={false} confirmText="Close" onConfirm={onClose} size="xl">
       <div className="space-y-5 text-sm">
         <p className="flex flex-wrap gap-2">
           <Badge color="emerald">{diff.added.length} added</Badge><Badge color="red">{diff.removed.length} removed</Badge><Badge color="amber">{diff.changed.length} changed</Badge>

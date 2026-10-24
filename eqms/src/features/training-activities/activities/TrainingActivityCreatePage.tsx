@@ -30,6 +30,7 @@ import {
   type ParticipantsDraft,
   type SessionDraft,
 } from "./components/TrainingActivityPlanning";
+import { useTrainingBack } from "../shared/useTrainingBack";
 
 const CREATE_KINDS: TrainingKind[] = [
   "INITIAL",
@@ -42,7 +43,7 @@ const STEPS = [
   "Planned",
   "Notified",
   "In progress",
-  "Waiting for QA confirmation",
+  "Pending QA Confirmation",
   "Completed",
 ];
 const LATER = ["materials", "assessment", "approvers"];
@@ -50,6 +51,7 @@ const LATER = ["materials", "assessment", "approvers"];
 /** A new training activity as a page with tabs, like Document Details. Basic Information and the sessions are filled here; the Training Number is issued when the activity is saved, and the other tabs open on the next screen. */
 export function TrainingActivityCreatePage() {
   const navigate = useNavigate();
+  const goBack = useTrainingBack("/training-management/activities");
   const { showToast } = useToast();
   const [tab, setTab] = useState("basic");
   const [busy, setBusy] = useState(false);
@@ -175,7 +177,7 @@ export function TrainingActivityCreatePage() {
         "activities",
         "New Training Activity",
       )}
-      onBack={() => navigate("/training-management/activities")}
+      onBack={goBack}
       steps={STEPS}
       currentStepIndex={0}
       tabs={tabs}

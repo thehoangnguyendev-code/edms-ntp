@@ -189,7 +189,7 @@ public class TrainingProposedParticipantService {
         requireCanChoose(actor);
         String like = "%" + escapeLike((search == null ? "" : search.trim()).toLowerCase(Locale.ROOT)) + "%";
         return TrainingRows.camel(jdbc.queryForList("""
-            select u.id, u.full_name, u.employee_code, u.department, u.position, u.business_unit, u.avatar from app_users u
+            select u.id, u.full_name, u.username, u.email, u.employee_code, u.department, u.position, u.business_unit, u.avatar from app_users u
              where u.status = 'Active' and (lower(u.full_name) like ? escape '\\' or lower(u.username) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')
              order by u.full_name limit ?
             """, like, like, like, Math.min(Math.max(limit, 1), 50)));
@@ -208,7 +208,7 @@ public class TrainingProposedParticipantService {
         String column = column(by);
         if (names == null || names.isEmpty()) return List.of();
         String marks = String.join(",", names.stream().map(n -> "?").toList());
-        return TrainingRows.camel(jdbc.queryForList("select u.id, u.full_name, u.employee_code, u.department, u.position, u.business_unit, u.avatar from app_users u where u.status='Active' and u." + column
+        return TrainingRows.camel(jdbc.queryForList("select u.id, u.full_name, u.username, u.email, u.employee_code, u.department, u.position, u.business_unit, u.avatar from app_users u where u.status='Active' and u." + column
                 + " in (" + marks + ") order by u.full_name limit 500", names.toArray()));
     }
 

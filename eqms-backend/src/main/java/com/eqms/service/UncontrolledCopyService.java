@@ -76,7 +76,7 @@ import java.util.UUID;
 public class UncontrolledCopyService {
 
     private static final Logger log = LoggerFactory.getLogger(UncontrolledCopyService.class);
-    private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
     private static final int MAX_LIST_PAGE_SIZE = 50;
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

@@ -63,7 +63,7 @@ export function SessionPanel({ busy = false, onSave, onDraft, saveText = "Add se
             options={topics.map((t) => ({ label: `${t.code} — ${t.name}`, value: t.id }))} />
         </div>
         <div className="md:col-span-2"><FormField label="Topic" required><Input value={form.topic} maxLength={500} placeholder="What will be taught (a SOP, or a standard topic)" onChange={(e) => setForm({ ...form, topic: e.target.value })} /></FormField></div>
-        {!external && <Select label="Training method" value={form.method} enableSearch={false} onChange={(v) => setForm({ ...form, method: v, assessmentMethod: ASSESSMENT_BY_METHOD[v][0] })} options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))} />}
+        {!external && <Select label="Mode" value={form.method} enableSearch={false} onChange={(v) => setForm({ ...form, method: v, assessmentMethod: ASSESSMENT_BY_METHOD[v][0] })} options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))} />}
         {!external && <Select label="Assessment" value={form.assessmentMethod} enableSearch={false} onChange={(v) => setForm({ ...form, assessmentMethod: v })} options={Object.entries(ASSESSMENT_LABEL).map(([value, label]) => ({ label: ASSESSMENT_BY_METHOD[form.method].includes(value) ? `${label} (SOP default)` : label, value }))} />}
         {!external && !ASSESSMENT_BY_METHOD[form.method].includes(form.assessmentMethod) && (
           <p className="text-xs text-amber-700 md:col-span-2">SOP.0003 5.1.2 gives {ASSESSMENT_LABEL[ASSESSMENT_BY_METHOD[form.method][0]]} for {METHOD_LABEL[form.method]}. A different way of assessment is allowed; it stays in the record of the session.</p>

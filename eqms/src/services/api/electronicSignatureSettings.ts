@@ -7,7 +7,7 @@ export interface ElectronicSignatureMeaning {
 }
 
 export interface ElectronicSignatureSettings {
-  signatureTimestampFormat: 'dd-MMM-uuuu HH:mm:ss' | 'dd/MM/uuuu HH:mm:ss' | 'uuuu-MM-dd HH:mm:ss' | 'MM/dd/uuuu hh:mm:ss a' | 'dd-MMM-uuuu HH:mm' | 'dd/MM/uuuu HH:mm' | 'uuuu-MM-dd HH:mm' | 'MM/dd/uuuu hh:mm a';
+  signatureTimestampFormat: 'dd/MM/uuuu HH:mm:ss';
   signatureTimezone: string;
   timestampFormatEffectiveFrom?: string;
   meanings: ElectronicSignatureMeaning[];

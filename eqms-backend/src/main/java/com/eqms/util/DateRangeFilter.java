@@ -22,12 +22,12 @@ public final class DateRangeFilter {
 
     private static Instant startOfDay(String value) {
         LocalDate day = parse(value);
-        return day == null ? null : day.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return day == null ? null : day.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 
     private static Instant startOfNextDay(String value) {
         LocalDate day = parse(value);
-        return day == null ? null : day.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return day == null ? null : day.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 
     private static LocalDate parse(String value) {

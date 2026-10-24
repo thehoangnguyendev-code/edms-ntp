@@ -572,7 +572,7 @@ export const EmailTemplateEditView: React.FC = () => {
         onConfirm={handleCancelConfirm}
         mode="discard"
         currentPageTitle="Email Template"
-        title="Discard unsaved changes?"
+        title="Discard Unsaved Changes?"
         primaryActionLabel="Discard changes"
         secondaryActionLabel="Keep editing"
       />

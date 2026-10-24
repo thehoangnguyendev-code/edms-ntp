@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.ElectronicSignatureMeaning;
 import com.eqms.entity.ElectronicSignatureSetting;
@@ -19,20 +20,12 @@ import java.util.regex.Pattern;
 @Service
 public class ElectronicSignatureRendererService {
 
-    private static final DateTimeFormatter DISPLAY_TIME_PATTERN = DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm", Locale.ENGLISH);
+    private static final DateTimeFormatter DISPLAY_TIME_PATTERN = DateTimeFormatter.ofPattern(DateTimeFormatUtils.DATETIME_PATTERN_STRICT, Locale.ROOT);
 
     private static final Pattern UTC_OFFSET_PATTERN = Pattern.compile("^UTC([+-]\\d{1,2})(?::?(\\d{2}))?$", Pattern.CASE_INSENSITIVE);
 
     /** Controlled catalog of timestamp patterns permitted for the active signature configuration. */
-    private static final Set<String> ALLOWED_TIMESTAMP_FORMATS = Set.of(
-            "dd/MM/uuuu HH:mm:ss",
-            "uuuu-MM-dd HH:mm",
-            "uuuu-MM-dd HH:mm:ss",
-            "dd-MMM-uuuu HH:mm",
-            "dd-MMM-uuuu HH:mm:ss",
-            "MM/dd/uuuu HH:mm:ss",
-            "MM/dd/uuuu hh:mm:ss a"
-    );
+    private static final Set<String> ALLOWED_TIMESTAMP_FORMATS = Set.of(DateTimeFormatUtils.DATETIME_PATTERN_STRICT);
 
     private final ElectronicSignatureMeaningRepository meaningRepository;
 
@@ -97,12 +90,15 @@ public class ElectronicSignatureRendererService {
         return b.toString();
     }
 
+    /**
+     * The time of a signature as a person reads it. The moment (signedAt) and the zone written on the record are the record; the text is how it is shown, and it is the same
+     * for every signature, old or new: dd/MM/yyyy HH:mm:ss and the offset of the zone of the record. The text stored when an old signature was made
+     * (timestamp_display, for example "11-Aug-2026 13:11:40 (UTC+7)") stays in the database as evidence of what was shown then; it is not read to show a signature.
+     */
     private String signedTime(ElectronicSignature s) {
         if (s.getSignedAt() == null) return "";
-        if (StringUtils.hasText(s.getTimestampDisplay())) return s.getTimestampDisplay();
         ZoneId zone = resolveZoneId(s.getTimezone());
-        String time = DISPLAY_TIME_PATTERN.withZone(zone).format(s.getSignedAt());
-        return StringUtils.hasText(s.getTimezone()) ? time + " (" + s.getTimezone() + ")" : time;
+        return DISPLAY_TIME_PATTERN.withZone(zone).format(s.getSignedAt()) + " (" + offsetLabel(zone, s.getSignedAt()) + ")";
     }
 
     /**
@@ -117,12 +113,10 @@ public class ElectronicSignatureRendererService {
         }
         String pattern = setting != null && StringUtils.hasText(setting.getSignatureTimestampFormat())
                 ? setting.getSignatureTimestampFormat()
-                : "dd-MMM-uuuu HH:mm:ss";
-        String tz = setting != null && StringUtils.hasText(setting.getSignatureTimezone())
-                ? setting.getSignatureTimezone()
-                : "UTC";
-        ZoneId zone = resolveZoneId(tz);
-        String formatted = DateTimeFormatter.ofPattern(pattern, Locale.ENGLISH).withZone(zone).format(instant);
+                : DateTimeFormatUtils.DATETIME_PATTERN_STRICT;
+        // A new signature is always written in the zone of the site.
+        ZoneId zone = DateTimeFormatUtils.ZONE;
+        String formatted = DateTimeFormatter.ofPattern(pattern, Locale.ROOT).withZone(zone).format(instant);
         return formatted + " (" + offsetLabel(zone, instant) + ")";
     }
 
@@ -137,7 +131,7 @@ public class ElectronicSignatureRendererService {
 
     private ZoneId resolveZoneId(String tz) {
         if (!StringUtils.hasText(tz)) {
-            return ZoneOffset.UTC;
+            return DateTimeFormatUtils.ZONE;
         }
         String trimmed = tz.trim();
         try {
@@ -199,7 +193,7 @@ public class ElectronicSignatureRendererService {
         sample.setMeaning("APPROVED");
         sample.setReason("Document Approval");
         sample.setSignedAt(Instant.now());
-        sample.setTimezone("UTC+7");
+        sample.setTimezone(DateTimeFormatUtils.ZONE_ID);
         sample.setStatus("SIGNED");
         sample.setSignatureId("SIG-2026-8F3A9B");
         return sample;

@@ -1,3 +1,4 @@
+import { sessionStarted } from "@/services/api/trainingActivities";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -50,7 +51,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
   const fail = (e: unknown) => showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
   const done = (title: string) => { showToast({ type: "success", title, message: activity.trainingNumber }); load(); onChanged(); };
 
-  const sessions = activity.sessions.filter((s) => s.status === "HELD" && (s.deliveryMode ?? "ELECTRONIC") !== "ELECTRONIC");
+  const sessions = activity.sessions.filter((s) => sessionStarted(s) && (s.deliveryMode ?? "ELECTRONIC") !== "ELECTRONIC");
   const waiting = (sessionId: string) => items.some((t) => t.sessionId === sessionId && t.status === "ENTERED");
   const open = (sessionId: string) => activity.participants.filter((p) => p.sessionId === sessionId && p.state === "INVITED");
 
@@ -65,12 +66,12 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
     { id: "note", header: "Note", cell: (t) => <div className="max-w-64 whitespace-normal text-xs text-slate-600">{t.rejectReason ?? t.lateReason ?? "—"}</div> },
     {
       id: "actions",
-      header: "",
+      header: "Action",
       cell: (t) => (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => setViewing(t)}>Lines</Button>
-          {t.status === "ENTERED" && canVerify && t.enteredBy !== userId && <Button size="sm" variant="outline-emerald" onClick={() => setSigning(t)}>Verify</Button>}
-          {t.status === "ENTERED" && canVerify && t.enteredBy !== userId && <Button size="sm" variant="outline" onClick={() => setRejecting(t)}>Reject</Button>}
+          <Button size="sm" onClick={() => setViewing(t)}>Lines</Button>
+          {t.status === "ENTERED" && canVerify && t.enteredBy !== userId && <Button size="sm" onClick={() => setSigning(t)}>Verify</Button>}
+          {t.status === "ENTERED" && canVerify && t.enteredBy !== userId && <Button size="sm" onClick={() => setRejecting(t)}>Reject</Button>}
         </div>
       ),
     },
@@ -119,7 +120,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
       )}
 
       {viewing && (
-        <FormModal isOpen onClose={() => setViewing(undefined)} onConfirm={() => setViewing(undefined)} title={`Session ${viewing.sessionNo}: typed lines`} confirmText="Close" size="lg">
+        <FormModal isOpen onClose={() => setViewing(undefined)} onConfirm={() => setViewing(undefined)} title={`Session ${viewing.sessionNo}: Typed Lines`} confirmText="Close" size="lg">
           <DataTable
             rows={viewing.lines}
             getRowKey={(l) => l.participantId}
@@ -140,7 +141,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
           if (!signing) return;
           try { await trainingTranscriptionApi.verify(signing.id, data.signatureToken); setSigning(undefined); done("Verified. Attendance and scores are recorded"); } catch (e) { fail(e); }
         }}
-        actionTitle="Verify the typed results against the scan"
+        actionTitle="Verify the Typed Results Against the Scan"
         changes={statusChange("Entered", "Verified", "Typed results")}
         meaningDisplayName="Transcription Verified"
         meaningCode="TRAINING_TRANSCRIPTION_VERIFIED"
@@ -153,7 +154,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
 function RejectDialog({ busy, onClose, onSave }: { busy: boolean; onClose: () => void; onSave: (reason: string) => void }) {
   const [reason, setReason] = useState("");
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => onSave(reason.trim())} title="Reject the transcription" description="The lines do not match the scan. The person who typed them types again; this one stays on record." confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
+    <FormModal isOpen onClose={onClose} onConfirm={() => onSave(reason.trim())} title="Reject the Transcription" description="The lines do not match the scan. The person who typed them types again; this one stays on record." confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
       <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
     </FormModal>
   );
@@ -191,7 +192,7 @@ function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
           return r.state === "ABSENT" ? { participantId: p.id, state: "ABSENT", absenceReason: r.reason.trim() } : { participantId: p.id, state: "ATTENDED", ...(scored ? { scoreObtained: num(r.got), scoreMax: num(r.max) } : {}) };
         }),
       })}
-      title={`Type the results of session ${session.sessionNo}`}
+      title={`Type the Results of Session ${session.sessionNo}`}
       description="Copy what the signed paper says. The scan is required, and a different person checks it before anything is recorded."
       confirmText="Submit for checking"
       isLoading={busy}

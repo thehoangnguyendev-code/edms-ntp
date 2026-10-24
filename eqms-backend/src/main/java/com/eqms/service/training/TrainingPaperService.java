@@ -1,5 +1,6 @@
 package com.eqms.service.training;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.UserAccount;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -72,7 +73,7 @@ public class TrainingPaperService {
         // Serialise the prints of one activity, so two people never take the same copy number.
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!Set.of("NOTIFIED", "IN_PROGRESS").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_STATUS");
-        if (!Set.of("PLANNED", "HELD").contains(String.valueOf(session.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_SESSION_STATUS");
+        if (!"PLANNED".equals(String.valueOf(session.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_SESSION_STATUS");
         if ("ELECTRONIC".equals(session.get("delivery_mode"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_NOT_PAPER");
 
         Integer printed = jdbc.queryForObject("select count(*) from training_paper_packs where session_id = ? and pack_kind = 'ATTENDANCE'", Integer.class, sessionId);
@@ -194,7 +195,7 @@ public class TrainingPaperService {
             // The page count is known only now, so the footer is added to every page afterwards.
             for (int i = 0; i < pages; i++) {
                 try (PDPageContentStream s = new PDPageContentStream(pdf, pdf.getPage(i), PDPageContentStream.AppendMode.APPEND, true, true)) {
-                    text(s, font, 7, MARGIN, MARGIN - 14, "Training No. " + session.get("training_number") + "   Pack " + code + "   Copy " + copy + "   Printed " + LocalDateTime.now().withNano(0) + "   Page " + (i + 1) + " / " + pages);
+                    text(s, font, 7, MARGIN, MARGIN - 14, "Training No. " + session.get("training_number") + "   Pack " + code + "   Copy " + copy + "   Printed " + DateTimeFormatUtils.formatDateTime(java.time.Instant.now()) + "   Page " + (i + 1) + " / " + pages);
                     text(s, font, 7, MARGIN, MARGIN - 24, "Controlled print. Keep the signed sheets with the training record; results are transcribed into the system and checked by a second person.");
                 }
             }

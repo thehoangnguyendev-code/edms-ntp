@@ -75,7 +75,7 @@ export function TrainingActivityListView() {
     { id: "department", label: "Department", value: departmentId, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => reset(() => setDepartmentId(v)) },
     { id: "year", label: "Year", value: year, options: [{ label: "All", value: "" }, ...Array.from({ length: 6 }, (_x, i) => String(new Date().getFullYear() - i)).map((y) => ({ label: y, value: y }))], onChange: (v) => reset(() => setYear(v)) },
     { id: "reason", label: "Reason", value: reason, options: [{ label: "All", value: "" }, ...Object.entries(KIND_REASON_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => reset(() => setReason(v)) },
-    { id: "method", label: "Method", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => reset(() => setMethod(v)) },
+    { id: "method", label: "Mode", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => reset(() => setMethod(v)) },
     { id: "paper", label: "Paper training", value: paper, options: [{ label: "All", value: "" }, { label: "On paper", value: "yes" }, { label: "Electronic only", value: "no" }], onChange: (v) => reset(() => setPaper(v)) },
     { id: "overdue", label: "Overdue", value: overdue, options: [{ label: "All", value: "" }, { label: "Overdue only", value: "yes" }], onChange: (v) => reset(() => setOverdue(v)) },
   ];
@@ -101,7 +101,7 @@ export function TrainingActivityListView() {
     { id: "title", header: "Training Title", sort: sorted("trainingTitle"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.trainingTitle}</div> },
     { id: "topics", header: "Topics", sort: sorted("topics"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topics ?? "—"}</div> },
     { id: "trainer", header: "Trainer", sort: sorted("trainers"), cell: (r) => <div className="max-w-60 whitespace-normal">{r.trainers ?? r.trainingUnitName ?? "—"}</div> },
-    { id: "method", header: "Method", sort: sorted("methods"), cell: (r) => (r.methods ? r.methods.split(",").map((m) => METHOD_LABEL[m] ?? m).join(", ") + (r.onPaper ? " (paper)" : "") : "—") },
+    { id: "method", header: "Mode", sort: sorted("methods"), cell: (r) => (r.methods ? r.methods.split(",").map((m) => METHOD_LABEL[m] ?? m).join(", ") + (r.onPaper ? " (paper)" : "") : "—") },
     { id: "scheduled", header: "Scheduled", sort: sorted("scheduledOn"), cell: (r) => (r.scheduledFrom ? (r.scheduledTo && r.scheduledTo !== r.scheduledFrom ? `${day(r.scheduledFrom)} – ${day(r.scheduledTo)}` : day(r.scheduledFrom)) : "—") },
     { id: "kind", header: "Type", sort: sorted("kind"), cell: (r) => KIND_LABEL[r.kind] ?? r.kind },
     { id: "reason", header: "Reason", sort: sorted("kindReason"), cell: (r) => (r.kindReason ? KIND_REASON_LABEL[r.kindReason] ?? r.kindReason : "—") },

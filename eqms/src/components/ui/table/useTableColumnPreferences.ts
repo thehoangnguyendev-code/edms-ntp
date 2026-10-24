@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { tablePreferencesApi, type SavedColumnPreference } from "@/services/api/tablePreferences";
+import { useAuth } from "@/contexts/AuthContext";
 
 /** A table column as the customizer sees it. `locked` columns (e.g. "No.") cannot be hidden, moved or unpinned. */
 export interface CustomizableColumn {
@@ -47,81 +48,136 @@ export function toSavedColumns(columns: CustomizableColumn[]): SavedColumnPrefer
     .map((column, index) => ({ id: column.id, visible: column.visible, order: index, pinned: Boolean(column.pinned) }));
 }
 
-/**
- * Loads and saves one table's column layout for the signed-in user. Until the saved layout arrives
- * the defaults are shown, so the table never waits on the preference request.
- */
 const LOAD_ATTEMPTS = 3;
 
+// The last layout the server returned for this person and table is kept in the browser, so the table opens in the saved layout at once and the server only confirms it.
+// The server stays the truth: what it answers replaces the copy, and a copy never leaves the browser or reaches another person (the key holds the user id).
+const cacheKey = (userId: string | undefined, tableKey: string) => (userId ? `eqms.table-columns.v1:${userId}:${tableKey}` : null);
+
+function readCache(userId: string | undefined, tableKey: string): SavedColumnPreference[] | null {
+  const key = cacheKey(userId, tableKey);
+  if (!key) return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(userId: string | undefined, tableKey: string, saved: SavedColumnPreference[] | null) {
+  const key = cacheKey(userId, tableKey);
+  if (!key) return;
+  try {
+    if (saved === null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, JSON.stringify(saved));
+  } catch {
+    /* storage may be full or blocked: the table still works from the server */
+  }
+}
+
+const sameLayout = (a: CustomizableColumn[], b: CustomizableColumn[]) => JSON.stringify(toSavedColumns(a)) === JSON.stringify(toSavedColumns(b));
+
+/**
+ * Loads and saves one table's column layout for the signed-in user. The table opens in the last layout this browser saw for the person (or the defaults on a first visit)
+ * and the server confirms it: a layout is never lost by a slow or failed request, and a failed load is tried again when the window gets focus or the network returns.
+ */
 export function useTableColumnPreferences(tableKey: string, defaults: CustomizableColumn[]) {
+  const { user } = useAuth();
+  const userId = user?.id;
   const defaultsRef = useRef(defaults);
   defaultsRef.current = defaults;
-  const [columns, setColumns] = useState<CustomizableColumn[]>(() => mergeSavedColumns(defaults, []));
+  const [columns, setColumns] = useState<CustomizableColumn[]>(() => mergeSavedColumns(defaults, readCache(userId, tableKey) ?? []));
   const columnsRef = useRef(columns);
   columnsRef.current = columns;
   const [loaded, setLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  // Counts the saves and resets made here: an answer to a load that started before one of them must not undo it.
+  const changes = useRef(0);
+  // The same count as state: the table moves its columns to the new place when a layout is applied or reset (and not when the server confirms the layout it opened with).
+  const [changeCount, setChangeCount] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    // The first request can fail while the session is still settling (for example right after sign-in).
-    // Retry before falling back, so a saved layout is not silently replaced by the defaults.
-    const load = async (attempt: number): Promise<void> => {
+  const load = useCallback(async (): Promise<boolean> => {
+    const started = changes.current;
+    for (let attempt = 1; attempt <= LOAD_ATTEMPTS; attempt += 1) {
       try {
         const saved = await tablePreferencesApi.get(tableKey);
-        if (cancelled) return;
-        setColumns(mergeSavedColumns(defaultsRef.current, saved));
+        if (changes.current !== started) return true;
+        writeCache(userId, tableKey, saved);
+        const next = mergeSavedColumns(defaultsRef.current, saved);
+        setColumns((current) => (sameLayout(current, next) ? current : next));
         setLoadFailed(false);
         setLoaded(true);
+        return true;
       } catch {
-        if (cancelled) return;
-        if (attempt < LOAD_ATTEMPTS) {
-          await new Promise((resolve) => window.setTimeout(resolve, 800 * attempt));
-          if (!cancelled) return load(attempt + 1);
-          return;
-        }
-        setColumns(mergeSavedColumns(defaultsRef.current, []));
-        setLoadFailed(true);
-        setLoaded(true);
+        // The first request can fail while the session is still settling (for example right after sign-in): wait and ask again.
+        if (attempt < LOAD_ATTEMPTS) await new Promise((resolve) => window.setTimeout(resolve, 800 * attempt));
       }
-    };
+    }
+    // Keep what is on screen (the copy of the browser, or the defaults): a layout is never replaced because the server did not answer.
+    setLoadFailed(true);
+    setLoaded(true);
+    return false;
+  }, [tableKey, userId]);
+
+  useEffect(() => {
+    const cached = readCache(userId, tableKey);
+    const next = mergeSavedColumns(defaultsRef.current, cached ?? []);
+    setColumns((current) => (sameLayout(current, next) ? current : next));
     setLoaded(false);
-    void load(1);
+    void load();
+  }, [tableKey, userId, load]);
+
+  // A load that failed is tried again when the person comes back to the window or the network returns.
+  useEffect(() => {
+    if (!loadFailed) return;
+    const retry = () => void load();
+    window.addEventListener("focus", retry);
+    window.addEventListener("online", retry);
     return () => {
-      cancelled = true;
+      window.removeEventListener("focus", retry);
+      window.removeEventListener("online", retry);
     };
-  }, [tableKey]);
+  }, [loadFailed, load]);
 
   // Returns false when the server did not accept the layout, and restores what was on screen before.
   const saveColumns = useCallback(
     async (next: CustomizableColumn[]): Promise<boolean> => {
       const previous = columnsRef.current;
       const merged = mergeSavedColumns(defaultsRef.current, toSavedColumns(next));
+      changes.current += 1;
+      setChangeCount((n) => n + 1);
       setColumns(merged);
       try {
-        await tablePreferencesApi.save(tableKey, toSavedColumns(merged));
+        const payload = toSavedColumns(merged);
+        await tablePreferencesApi.save(tableKey, payload);
+        writeCache(userId, tableKey, payload);
         return true;
       } catch {
         setColumns(previous);
         return false;
       }
     },
-    [tableKey],
+    [tableKey, userId],
   );
 
   const resetColumns = useCallback(async (): Promise<boolean> => {
     const previous = columnsRef.current;
+    changes.current += 1;
+    setChangeCount((n) => n + 1);
     setColumns(mergeSavedColumns(defaultsRef.current, []));
     try {
       await tablePreferencesApi.reset(tableKey);
+      writeCache(userId, tableKey, null);
       return true;
     } catch {
       setColumns(previous);
       return false;
     }
-  }, [tableKey]);
+  }, [tableKey, userId]);
 
-  return { columns, saveColumns, resetColumns, loaded, loadFailed };
+  return { columns, saveColumns, resetColumns, loaded, loadFailed, changes: changeCount };
 }
 
 /**

@@ -1,6 +1,7 @@
 package com.eqms.controller.training;
 
 import com.eqms.auth.CurrentUserService;
+import com.eqms.service.training.TrainingAttendanceListService;
 import com.eqms.service.training.TrainingCheckInService;
 import com.eqms.service.training.TrainingExamPackService;
 import com.eqms.service.training.TrainingPaperService;
@@ -22,9 +23,11 @@ public class TrainingPaperController {
     private final TrainingRollCallService rollCalls;
     private final TrainingExamPackService exams;
     private final TrainingCheckInService checkIns;
+    private final TrainingAttendanceListService attendanceLists;
     private final CurrentUserService users;
 
-    public TrainingPaperController(TrainingPaperService paper, TrainingRollCallService rollCalls, TrainingExamPackService exams, TrainingCheckInService checkIns, CurrentUserService users) {
+    public TrainingPaperController(TrainingPaperService paper, TrainingRollCallService rollCalls, TrainingExamPackService exams, TrainingCheckInService checkIns, TrainingAttendanceListService attendanceLists, CurrentUserService users) {
+        this.attendanceLists = attendanceLists;
         this.checkIns = checkIns;
         this.exams = exams;
         this.paper = paper;
@@ -34,6 +37,14 @@ public class TrainingPaperController {
 
     @GetMapping("/activities/{id}/paper-packs")
     public ResponseEntity<?> packs(@PathVariable UUID id) { return ResponseEntity.ok(paper.packs(users.requireCurrentUser(), id)); }
+
+    /** The attendance list of the activity in the form APD.0117, filled in the Word template that Training Administration enabled; as Word (default) or PDF. */
+    @GetMapping("/activities/{id}/attendance-list")
+    public ResponseEntity<byte[]> attendanceList(@PathVariable UUID id, @RequestParam(defaultValue = "docx") String format) {
+        Map<String, Object> file = attendanceLists.export(users.requireCurrentUser(), id, format);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) file.get("contentType"))).cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
+    }
 
     @PostMapping("/sessions/{id}/delivery-mode")
     public ResponseEntity<?> mode(@PathVariable UUID id, @RequestBody ModeRequest request) { return ResponseEntity.ok(paper.setDeliveryMode(users.requireCurrentUser(), id, request.mode(), request.reason())); }

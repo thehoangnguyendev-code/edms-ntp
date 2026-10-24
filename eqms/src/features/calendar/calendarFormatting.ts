@@ -15,6 +15,7 @@ export const inclusiveEnd = (end: string, allDay: boolean): string => {
   date.setUTCDate(date.getUTCDate() - 1);
   return `${date.toISOString().slice(0, 10)}T00:00:00`;
 };
-export const dayLabel = (date: string): string => new Intl.DateTimeFormat('en', {
-  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
-}).format(new Date(`${date}T00:00:00Z`));
+export const dayLabel = (date: string): string => {
+  const weekday = new Intl.DateTimeFormat('en', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
+  return `${weekday}, ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}`;
+};

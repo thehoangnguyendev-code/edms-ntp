@@ -24,12 +24,13 @@ import { reportError } from "@/services/api/reportTemplates";
 import { reportNameFormatsApi, type ReportNameFormatListItem } from "@/services/api/reportNameFormats";
 import { pickerDateToIso } from "../shared/ReportListToolbar";
 import { ExpandedReportNameFormatRow } from "./ExpandedReportNameFormatRow";
+import { displayDateTime } from "@/utils/format";
 
 type StatusFilter = "All" | "Active" | "Inactive";
 /** What the server calls each status filter. */
 const SERVER_STATUS: Record<StatusFilter, "ALL" | "ENABLED" | "DISABLED"> = { All: "ALL", Active: "ENABLED", Inactive: "DISABLED" };
 const formatPath = (id: string, view = false) => `/settings/report-name-formats/${id}${view ? "?mode=view" : ""}`;
-const when = (value?: string) => (value ? new Date(value).toLocaleString() : "-");
+const when = (value?: string) => (value ? displayDateTime(value) : "-");
 
 /**
  * List/filter table for Report Name Formats, built like the Document Name Formats table: filters above, the table in its own card, a row that expands

@@ -16,7 +16,7 @@ import { day } from "./trainingLabels";
  * The log of the copies of a requirement or a job assignment (SOP.0003 5.3.2 and 5.3.10): which departments were sent a copy, by whom and when, and who received it.
  * The log records the fact; each row is kept as it was written.
  */
-export function TrainingCopyBlock({ type, objectId, title = "Copies sent to departments" }: { type: TrainingCopyType; objectId: string; title?: string }) {
+export function TrainingCopyBlock({ type, objectId, title = "Copies Sent To Departments" }: { type: TrainingCopyType; objectId: string; title?: string }) {
   const { showToast } = useToast();
   const [log, setLog] = useState<TrainingCopyLog>();
   const [sending, setSending] = useState(false);
@@ -43,7 +43,7 @@ export function TrainingCopyBlock({ type, objectId, title = "Copies sent to depa
     { id: "sent", header: "Sent", cell: (r) => <div><div>{r.sentByName}</div><div className="text-xs text-slate-500">{day(r.sentAt)}</div></div> },
     { id: "received", header: "Received", cell: (r) => (r.receivedAt ? <div><div>{r.receivedByName}</div><div className="text-xs text-slate-500">{day(r.receivedAt)}</div></div> : <span className="text-amber-700">Not yet</span>) },
     { id: "note", header: "Note", cell: (r) => <div className="max-w-64 whitespace-normal text-xs text-slate-600">{r.note ?? "—"}</div> },
-    { id: "action", header: "", cell: (r) => (r.canReceive ? <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => void receive(r)}>Confirm received</Button> : null) },
+    { id: "action", header: "Action", cell: (r) => (r.canReceive ? <Button size="sm" disabled={busy} onClick={() => void receive(r)}>Confirm received</Button> : null) },
   ];
   if (!log) return null;
   if (log.rows.length === 0 && !log.canSend) return null;
@@ -76,7 +76,7 @@ function SendDialog({ type, objectId, sentTo, onClose, onSent }: { type: Trainin
     }
   };
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => void send()} title="Send a copy" description="Record that a copy was sent to the departments concerned. Each department confirms when it receives it." confirmText="Record sending" isLoading={busy} confirmDisabled={chosen.size === 0} size="md">
+    <FormModal isOpen onClose={onClose} onConfirm={() => void send()} title="Send a Copy" description="Record that a copy was sent to the departments concerned. Each department confirms when it receives it." confirmText="Record sending" isLoading={busy} confirmDisabled={chosen.size === 0} size="md">
       <div className="grid gap-4">
         <FormField label="Departments" required>
           <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">

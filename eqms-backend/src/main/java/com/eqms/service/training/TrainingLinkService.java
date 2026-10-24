@@ -40,7 +40,11 @@ public class TrainingLinkService {
     public Map<String, Object> forRevision(UserAccount actor, UUID revisionId) {
         DocumentRevisionRecord revision = revisions.findById(revisionId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!documentAuthorization.canViewRevision(actor, revision)) throw new SecurityException(TrainingAccess.DENIED);
-        List<Map<String, Object>> rows = jdbc.queryForList("select * from training_activities where revision_id=? and parent_activity_id is null and status<>'CANCELLED'", revisionId);
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+            select a.* from training_activities a where a.parent_activity_id is null and a.status <> 'CANCELLED'
+               and (a.revision_id = ? or a.id = (select r.training_activity_id from document_revisions r where r.id = ?))
+             order by (a.revision_id = ?) desc limit 1
+            """, revisionId, revisionId, revisionId);
         Map<String, Object> result = describe(actor, rows.isEmpty() ? null : rows.getFirst(), revision.getTrainingMode(), revision.getTrainingOrigin());
         // A historical revision has no activity: the number typed from its paper record is all there is to show.
         if (rows.isEmpty() && "LEGACY_IMPORT".equals(revision.getTrainingOrigin()) && revision.getTrainingNumber() != null) {
@@ -73,11 +77,18 @@ public class TrainingLinkService {
         result.put("activityId", activity.get("id"));
         result.put("trainingNumber", activity.get("training_number"));
         result.put("status", activity.get("status"));
+        result.put("statusLabel", jdbc.queryForList("select label from training_activity_statuses where code = ?", String.class, activity.get("status")).stream().findFirst().orElse(null));
         result.put("kind", activity.get("kind"));
         result.put("trainingPeriodDays", activity.get("training_period_days"));
         result.put("approvedOn", activity.get("approved_on"));
         result.put("dueDate", activity.get("due_date"));
-        result.put("completedOn", activity.get("completed_on"));
+        // Once the attendance list is sent to QA the revision may be completed; the day of the training is then the completion day (the results come later).
+        Object completedOn = activity.get("completed_on");
+        if (completedOn == null && activity.get("attendance_sent_at") != null) {
+            completedOn = jdbc.queryForObject("select max(held_on) from training_sessions where activity_id = ? and status = 'PLANNED'", java.sql.Date.class, activity.get("id"));
+        }
+        result.put("completedOn", completedOn);
+        result.put("attendanceSentOn", activity.get("attendance_sent_at") == null ? null : activity.get("attendance_sent_at").toString().substring(0, 10));
         return result;
     }
 }

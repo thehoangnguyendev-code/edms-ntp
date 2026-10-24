@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.dto.user.SystemConfigurationRequest;
 import com.eqms.dto.user.SystemConfigurationResponse;
 import com.eqms.dto.user.SecurityConfigurationRequest;
@@ -158,6 +159,15 @@ public class SystemConfigurationService {
                 .replace(previewId.toString(), "{Revision ID}");
     }
 
+    /** The date and time format is one for the whole system: whatever the request holds, the stored configuration carries the display format. */
+    private static JsonNode withDisplayFormat(JsonNode general) {
+        if (general == null || !general.isObject()) return general;
+        com.fasterxml.jackson.databind.node.ObjectNode copy = general.deepCopy();
+        copy.put("dateTimeFormat", DateTimeFormatUtils.DISPLAY_FORMAT_CODE);
+        copy.put("timeZone", DateTimeFormatUtils.ZONE_ID);
+        return copy;
+    }
+
     @Transactional
     @CacheEvict(cacheNames = {"public-branding", "public-localization", "public-navigation-labels"}, allEntries = true)
     public SystemConfigurationResponse updateConfiguration(SystemConfigurationRequest request) {
@@ -177,6 +187,7 @@ public class SystemConfigurationService {
         validateToastPosition(nextGeneral);
         validateSystemHeaderTitle(nextGeneral);
         PwaBrandingService.validate(nextGeneral);
+        nextGeneral = withDisplayFormat(nextGeneral);
         config.setGeneralConfig(nextGeneral);
         config.setSecurityConfig(defaultIfNull(request.security(), config.getSecurityConfig()));
         if (request.documents() != null) {
@@ -446,8 +457,8 @@ public class SystemConfigurationService {
         JsonNode locale = general == null ? null : general.get("locale");
         return new com.eqms.dto.configuration.PublicLocalizationResponse(
                 locale == null ? null : textValue(locale, "language"),
-                textValue(general, "dateTimeFormat"),
-                textValue(general, "timeZone"),
+                DateTimeFormatUtils.DISPLAY_FORMAT_CODE,
+                DateTimeFormatUtils.ZONE_ID,
                 locale == null ? null : textValue(locale, "numberFormat")
         );
     }
@@ -1154,7 +1165,7 @@ public class SystemConfigurationService {
               "adminEmail": "admin@example.com",
               "maintenanceMode": false,
               "dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
-              "timeZone": "UTC+7",
+              "timeZone": "Asia/Ho_Chi_Minh",
               "companyInfo": {
                 "companyName": "ACME Corporation",
                 "companyAddress": "123 Business Street, Tech City, TC 12345",

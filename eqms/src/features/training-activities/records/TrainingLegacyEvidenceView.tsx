@@ -24,7 +24,7 @@ import { TrainingFileDropzone } from "../shared/TrainingFileDropzone";
 import { day, trainingBreadcrumbs, TRAINING_PAGES, statusChange } from "../shared/trainingLabels";
 import { resettingDates, useDateRange, useDepartmentOptions } from "../shared/useListFilters";
 
-const STATE_LABEL: Record<string, string> = { MISSING: "No evidence yet", SUBMITTED: "Waiting for verification", VERIFIED: "Verified" };
+const STATE_LABEL: Record<string, string> = { MISSING: "No evidence yet", SUBMITTED: "Pending Verification", VERIFIED: "Verified" };
 const STATE_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", SUBMITTED: "amber", VERIFIED: "emerald" };
 const stateOf = (r: TrainingLegacyRow) => r.evidenceStatus ?? "MISSING";
 
@@ -189,9 +189,9 @@ export function TrainingLegacyEvidenceView() {
           </div>
         )}
       </FormModal>
-      <ESignatureModal isOpen={!!sign} onClose={() => setSign(undefined)} onConfirm={async (d: { signatureToken: string }) => verify(d.signatureToken)} actionTitle="Verify the training evidence" changes={statusChange("Submitted", "Verified")}
+      <ESignatureModal isOpen={!!sign} onClose={() => setSign(undefined)} onConfirm={async (d: { signatureToken: string }) => verify(d.signatureToken)} actionTitle="Verify the Training Evidence" changes={statusChange("Submitted", "Verified")}
         meaningDisplayName="Legacy Training Evidence Verified" meaningCode="TRAINING_LEGACY_VERIFIED" targetDetails={{ code: sign?.documentNumber ?? "", title: sign?.documentName ?? "", revision: sign?.revisionNumber ?? "" }} />
-      <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title="Reject the evidence" confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
+      <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title="Reject the Evidence" confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
         <FormField label="Reason" required><Textarea rows={3} value={rejecting?.reason ?? ""} onChange={(e) => rejecting && setRejecting({ ...rejecting, reason: e.target.value })} /></FormField>
       </FormModal>
     </div>

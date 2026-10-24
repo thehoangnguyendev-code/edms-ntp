@@ -37,7 +37,7 @@ export const MaintenanceNoticeHost: React.FC = () => {
       onClose={maintenance.closeNotice}
       onConfirm={() => void logout()}
       type="warning"
-      title="System maintenance"
+      title="System Maintenance"
       confirmText="Sign out now"
       cancelText="Close"
       showCancel

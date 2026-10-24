@@ -360,7 +360,7 @@ public class TrainingMatrixService {
         jdbc.update("update training_matrix_versions set status='PENDING_APPROVAL', prepared_by=?, submitted_at=now(), prepare_signature_id=?, content_sha256=?, reject_reason=null, version=version+1, updated_at=now() where id=?",
                 actor.getId(), signature, contentHash(versionId), versionId);
         audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_SUBMITTED", "DRAFT", "PENDING_APPROVAL", "Sent for approval to " + approverName + " (" + rows + " rows)",
-                List.of(new AuditTrailChangeResponse("Status", "Draft", "Waiting for approval"),
+                List.of(new AuditTrailChangeResponse("Status", "Draft", "Pending Approval"),
                         new AuditTrailChangeResponse("Prepared by", null, actor.getFullName()),
                         new AuditTrailChangeResponse("Designated approver", null, approverName),
                         new AuditTrailChangeResponse("What changed in this version", null, v.get("change_reason") == null ? null : String.valueOf(v.get("change_reason")))),
@@ -382,7 +382,7 @@ public class TrainingMatrixService {
         jdbc.update("update training_matrix_versions set status='EFFECTIVE', approved_by=?, approved_at=now(), effective_at=now(), approve_signature_id=?, version=version+1, updated_at=now() where id=?",
                 actor.getId(), signature, versionId);
         jdbc.update("update training_matrices set current_version_id=? where id=?", versionId, v.get("matrix_id"));
-        List<AuditTrailChangeResponse> approved = new ArrayList<>(List.of(new AuditTrailChangeResponse("Status", "Waiting for approval", "Effective"),
+        List<AuditTrailChangeResponse> approved = new ArrayList<>(List.of(new AuditTrailChangeResponse("Status", "Pending Approval", "Effective"),
                 new AuditTrailChangeResponse("Approved by", null, actor.getFullName())));
         for (Integer old : replaced) approved.add(new AuditTrailChangeResponse("Version " + old + " status", "Effective", "Obsolete"));
         audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_APPROVED", "PENDING_APPROVAL", "EFFECTIVE",

@@ -1,5 +1,6 @@
 package com.eqms.service.training;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.UserAccount;
 import com.eqms.service.AuditTrailService;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -77,7 +78,7 @@ public class TrainingPrintService {
         String position = jdbc.queryForObject("select name from positions where id = ?", String.class, positionId);
         String department = jdbc.queryForList("select d.name from departments d where d.id = coalesce(?, d.id) limit 1", String.class, departmentId).stream().findFirst().orElse("");
         List<String> head = List.of("Position: " + position + (departmentId == null ? "" : "    Department: " + department) + "    Matrix version " + first.get("matrixVersionNo"),
-                "Printed " + LocalDateTime.now().withNano(0) + " by " + actor.getFullName() + (gapsOnly ? "    Only people with a gap" : "") + (status == null || status.isBlank() ? "" : "    State: " + STATE.get(status)));
+                "Printed " + DateTimeFormatUtils.formatDateTime(java.time.Instant.now()) + " by " + actor.getFullName() + (gapsOnly ? "    Only people with a gap" : "") + (status == null || status.isBlank() ? "" : "    State: " + STATE.get(status)));
         UUID id = positionId;
         audit.logAs(actor, "TRAINING_COMPLETION", String.valueOf(position), id, "TRAINING_COMPLETION_PRINTED", null, null, body.size() + " person(s)");
         return file("Training matrix completion", head, List.of("No.", "Employee", "Open requirements", "Completed"), body, List.of(), 3, "training-matrix-completion-" + position.replaceAll("[^A-Za-z0-9]+", "-"), id);
@@ -122,10 +123,10 @@ public class TrainingPrintService {
         List<String> heads = List.of("No.", "Month", "Training topic", "Training code", "Execution date", "Sign by QA", "Comment from QA");
         List<String[]> body = new ArrayList<>();
         for (Map<String, Object> l : (List<Map<String, Object>>) r.get("lines")) {
-            body.add(new String[]{String.valueOf(l.get("lineNo")), String.valueOf(l.get("plannedMonth")).substring(0, 7),
+            body.add(new String[]{String.valueOf(l.get("lineNo")), DateTimeFormatUtils.displayMonth(l.get("plannedMonth")),
                     (l.get("code") == null ? "" : l.get("code") + " - ") + l.get("title"), l.get("trainingNumber") == null ? "" : String.valueOf(l.get("trainingNumber")),
-                    l.get("executedOn") == null ? "" : String.valueOf(l.get("executedOn")),
-                    l.get("qaSignedByName") == null ? "" : l.get("qaSignedByName") + (l.get("qaSignedAt") == null ? "" : ", " + String.valueOf(l.get("qaSignedAt")).substring(0, 10)),
+                    l.get("executedOn") == null ? "" : DateTimeFormatUtils.display(l.get("executedOn")),
+                    l.get("qaSignedByName") == null ? "" : l.get("qaSignedByName") + (l.get("qaSignedAt") == null ? "" : ", " + DateTimeFormatUtils.display(l.get("qaSignedAt"))),
                     l.get("qaComment") == null ? "" : String.valueOf(l.get("qaComment"))});
         }
         List<String> head = List.of("Training Requirement " + r.get("requestNo") + "    Year: " + r.get("year"), "Type: " + ("SOP_PERIODIC".equals(r.get("kind")) ? "Periodic training SOP" : "Annual training") + "    Department: " + r.get("departmentName") + "    Due by: " + nvl(r.get("dueBy")));
@@ -136,7 +137,7 @@ public class TrainingPrintService {
 
     private static List<String> signers(List<Map<String, Object>> approvers, String label) {
         List<String> out = new ArrayList<>();
-        for (Map<String, Object> a : approvers) if ("DONE".equals(a.get("status"))) out.add(label + ": " + a.get("assigneeName") + " (" + String.valueOf(a.get("completedAt")).replace('T', ' ') + ")");
+        for (Map<String, Object> a : approvers) if ("DONE".equals(a.get("status"))) out.add(label + ": " + a.get("assigneeName") + " (" + DateTimeFormatUtils.display(a.get("completedAt")) + ")");
         return out;
     }
 
@@ -176,7 +177,7 @@ public class TrainingPrintService {
                         y -= line;
                     }
                     page++;
-                    text(s, font, 7, margin, margin - 12, "Page " + page + "    Printed " + LocalDateTime.now().withNano(0) + "    Record " + id);
+                    text(s, font, 7, margin, margin - 12, "Page " + page + "    Printed " + DateTimeFormatUtils.formatDateTime(java.time.Instant.now()) + "    Record " + id);
                     if (index >= body.size()) {
                         y = Math.min(y - 8, margin + 60);
                         for (String sg : signers) { text(s, font, 9, margin, y, sg + " (electronic signature)"); y -= line; }

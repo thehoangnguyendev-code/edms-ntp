@@ -31,70 +31,15 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { IconCalendarTime } from "@tabler/icons-react";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+import { displayDateTime } from "@/utils/format";
 
 const defaultSettings: ElectronicSignatureSettings = {
-  signatureTimestampFormat: "dd-MMM-uuuu HH:mm:ss",
+  signatureTimestampFormat: "dd/MM/uuuu HH:mm:ss",
   signatureTimezone: "Asia/Ho_Chi_Minh",
   meanings: [],
 };
 
-const TIMESTAMP_FORMAT_OPTIONS = [
-  { value: "dd-MMM-uuuu HH:mm:ss", label: "17-Jul-2026 15:30:45" },
-  { value: "dd/MM/uuuu HH:mm:ss", label: "17/07/2026 15:30:45" },
-  { value: "uuuu-MM-dd HH:mm:ss", label: "2026-07-17 15:30:45" },
-  { value: "MM/dd/uuuu hh:mm:ss a", label: "07/17/2026 03:30:45 PM" },
-];
-
-const FALLBACK_TIMEZONES = [
-  "UTC",
-  "Asia/Ho_Chi_Minh",
-  "Asia/Singapore",
-  "Asia/Tokyo",
-  "Europe/London",
-];
-
-/** "GMT+7" style offset of an IANA zone right now, from the browser's own Intl data (no network call). */
-const timezoneOffsetLabel = (zone: string): string => {
-  try {
-    const part = new Intl.DateTimeFormat("en-US", {
-      timeZone: zone,
-      timeZoneName: "shortOffset",
-    })
-      .formatToParts(new Date())
-      .find((p) => p.type === "timeZoneName");
-    return part?.value?.replace("GMT", "UTC") ?? "";
-  } catch {
-    return "";
-  }
-};
-
-/**
- * Every IANA timezone the browser knows (Intl.supportedValuesOf -- a built-in standard API, so the list
- * is complete and needs no request or hand-maintained table). The backend accepts any of them (java
- * ZoneId), and the current value is always included so an existing setting never disappears.
- */
-const buildTimezoneOptions = (current?: string) => {
-  let zones: string[] = FALLBACK_TIMEZONES;
-  try {
-    const supported = (
-      Intl as unknown as { supportedValuesOf?: (key: string) => string[] }
-    ).supportedValuesOf?.("timeZone");
-    if (supported && supported.length > 0) zones = supported;
-  } catch {
-    // older browsers: keep the short fallback list
-  }
-  const all = new Set<string>(["UTC", ...zones]);
-  if (current) all.add(current);
-  return Array.from(all)
-    .sort((a, b) => a.localeCompare(b))
-    .map((zone) => {
-      const offset = timezoneOffsetLabel(zone);
-      return {
-        value: zone,
-        label: offset && zone !== "UTC" ? `${zone} (${offset})` : zone,
-      };
-    });
-};
+const TIMESTAMP_FORMAT_OPTIONS = [{ value: "dd/MM/uuuu HH:mm:ss", label: "17/07/2026 15:30:45 (dd/MM/yyyy HH:mm:ss)" }];
 
 export const ElectronicSignatureSettingsView: React.FC = () => {
   const { navigateTo } = useNavigateWithLoading();
@@ -120,11 +65,6 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
     ElectronicSignatureMeaning[] | null
   >(null);
   const [meaningSearchLoading, setMeaningSearchLoading] = useState(false);
-
-  const timezoneOptions = useMemo(
-    () => buildTimezoneOptions(settings.signatureTimezone),
-    [settings.signatureTimezone],
-  );
 
   const breadcrumbItems = useMemo(
     () => electronicSignatureSettingsBreadcrumbs(navigateTo),
@@ -422,12 +362,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
                 >
                   Timezone
                 </label>
-                <Select
-                  value={settings.signatureTimezone}
-                  onChange={(value) => update("signatureTimezone", value)}
-                  options={timezoneOptions}
-                  searchPlaceholder="Search timezone..."
-                />
+<p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700">Asia/Ho_Chi_Minh (UTC+7), the zone of the site</p>
               </div>
             </div>
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs sm:text-sm leading-5 text-amber-900">
@@ -439,9 +374,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
             {settings.timestampFormatEffectiveFrom && (
               <p className="mt-3 text-xs text-slate-500">
                 Current configuration effective from:{" "}
-                {new Date(
-                  settings.timestampFormatEffectiveFrom,
-                ).toLocaleString()}
+                {displayDateTime(settings.timestampFormatEffectiveFrom)}
               </p>
             )}
           </FormSection>
@@ -612,7 +545,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
           void save();
         }}
         type="warning"
-        title="Apply new signature timestamp configuration?"
+        title="Apply New Signature Timestamp Configuration?"
         description={
           <div className="space-y-3">
             <p>

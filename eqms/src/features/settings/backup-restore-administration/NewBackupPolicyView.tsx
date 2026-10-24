@@ -287,7 +287,7 @@ export const NewBackupPolicyView: React.FC = () => {
         onClose={() => setConfirming(false)}
         onConfirm={submit}
         type="confirm"
-        title="Propose this policy version?"
+        title="Propose This Policy Version?"
         description={
           <p className="text-sm text-slate-600">
             The version is saved as a draft and waits for another person to approve it with an electronic signature. The running policy does not change. This action will be recorded in the Audit Trail.

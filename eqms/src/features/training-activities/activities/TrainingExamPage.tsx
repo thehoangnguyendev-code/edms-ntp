@@ -10,6 +10,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { trainingError, trainingExamApi, type TrainingExamAttemptView, type TrainingExamMine, type TrainingExamSummary } from "@/services/api/trainingActivities";
 import { trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
+import { useTrainingBack } from "../shared/useTrainingBack";
 
 const isOpen = (a: TrainingExamMine["attempt"]): a is TrainingExamAttemptView => !!a && "questions" in a;
 
@@ -17,6 +18,7 @@ const isOpen = (a: TrainingExamMine["attempt"]): a is TrainingExamAttemptView =>
 export function TrainingExamPage() {
   const { participantId = "" } = useParams();
   const navigate = useNavigate();
+  const goBack = useTrainingBack("/training-management/my-training");
   const { showToast } = useToast();
   const [mine, setMine] = useState<TrainingExamMine>();
   const [error, setError] = useState("");
@@ -71,7 +73,7 @@ export function TrainingExamPage() {
 
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
-      <PageHeader title={title} breadcrumbItems={crumbs} actions={<Button size="sm" variant="outline" onClick={() => navigate("/training-management/my-training")}>Back</Button>} />
+      <PageHeader title={title} breadcrumbItems={crumbs} actions={<Button size="sm" variant="outline" onClick={goBack}>Back</Button>} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!mine && !error && <SectionLoading text="Loading…" />}
 
@@ -128,7 +130,7 @@ export function TrainingExamPage() {
             ))}
           </ol>
           <div className="flex justify-end"><Button onClick={() => setSigning(true)} disabled={busy}>Finish and sign</Button></div>
-          <ESignatureModal isOpen={signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => submit(d.signatureToken)} actionTitle="Sign the completed test" changes={statusChange("In progress", "Submitted", "Test attempt")}
+          <ESignatureModal isOpen={signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => submit(d.signatureToken)} actionTitle="Sign the Completed Test" changes={statusChange("In progress", "Submitted", "Test attempt")}
             meaningDisplayName="Assessment Signed" meaningCode="TRAINING_ASSESSMENT_SIGNED" targetDetails={{ code: `Attempt ${attempt.attemptNo}`, title: "Training test", revision: "" }} />
         </>
       )}

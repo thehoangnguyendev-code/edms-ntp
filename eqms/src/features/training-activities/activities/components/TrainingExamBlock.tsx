@@ -88,7 +88,7 @@ function ExamEditor({ activityId, exam, onClose, onSaved }: { activityId: string
     }
   };
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => void save()} title="Write the test" description="Mark the right answers. After the content is reviewed and approved the questions cannot be changed." confirmText="Save the test" isLoading={busy} confirmDisabled={!ok} size="xl">
+    <FormModal isOpen onClose={onClose} onConfirm={() => void save()} title="Write the Test" description="Mark the right answers. After the content is reviewed and approved the questions cannot be changed." confirmText="Save the test" isLoading={busy} confirmDisabled={!ok} size="xl">
       <div className="space-y-4">
         <FormField label="Time limit in minutes (leave empty for none)"><Input type="number" min={1} max={480} value={minutes} onChange={(e) => setMinutes(e.target.value)} /></FormField>
         {items.map((d, i) => (

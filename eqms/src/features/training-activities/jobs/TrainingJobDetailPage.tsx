@@ -18,11 +18,14 @@ import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { trainingError, trainingJobsApi, type TrainingEligibilityItem, type TrainingJobDetail, type TrainingJobDuty, type TrainingPerson } from "@/services/api/trainingActivities";
 import { day, trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
-import { TrainingCopiesPanel } from "../shared/TrainingCopiesPanel";
+import { TrainingPersonRelatedCard } from "../shared/TrainingPersonRelatedCard";
+import { TrainingCopyBlock } from "../shared/TrainingCopyBlock";
+import { SignatureFields, type SignatureRecord } from "@/features/documents/shared/components/SignatureFields";
+import { useTrainingBack } from "../shared/useTrainingBack";
 
 const JOB_STEPS = [
   { status: "DRAFT", label: "Draft" },
-  { status: "PENDING_RECEIVER", label: "Waiting for the employee" },
+  { status: "PENDING_RECEIVER", label: "Pending Employee Acceptance" },
   { status: "EFFECTIVE", label: "Effective" },
 ];
 
@@ -33,6 +36,7 @@ interface SignRequest { title: string; code: string; name: string; changes: Retu
 export function TrainingJobDetailPage() {
   const { jobId = "" } = useParams();
   const navigate = useNavigate();
+  const goBack = useTrainingBack("/training-management/job-assignments");
   const { showToast } = useToast();
   const [job, setJob] = useState<TrainingJobDetail>();
   const [error, setError] = useState("");
@@ -85,6 +89,13 @@ export function TrainingJobDetailPage() {
   const body = () => ({ ...form, duties, version: job.version });
   const tabs: TabItem[] = [{ id: "overview", label: "General Information" }, { id: "duties", label: "Duties", count: duties.length }, { id: "matrix", label: "Matrix Check" }, { id: "approvals", label: "Signatures" }, { id: "audit", label: "Audit Trail" }];
   const eligibility = job.eligibility;
+  // The Signatures tab reads like the one of a document: "<Action> By" and "<Action> On (Date - Time)", read-only. The exception is shown only when one was asked for.
+  const signed = (meaning: string) => (job.signatures ?? []).filter((s) => s.meaning === meaning).at(-1);
+  const signatureRecords: SignatureRecord[] = [
+    { code: "TRAINING_JOB_ASSIGNED", by: "Assigned By", on: "Assigned On (Date - Time)" },
+    ...(job.exceptionReason || signed("TRAINING_JOB_EXCEPTION_APPROVED") ? [{ code: "TRAINING_JOB_EXCEPTION_APPROVED", by: "Exception Approved By", on: "Exception Approved On (Date - Time)" }] : []),
+    { code: "TRAINING_JOB_ACCEPTED", by: "Accepted By", on: "Accepted On (Date - Time)" },
+  ].map((f) => ({ actionBy: f.by, actionByName: signed(f.code)?.fullName ?? "", actionOn: f.on, actionOnValue: signed(f.code)?.signedAt ?? "" }));
   const itemColumns: DataTableColumn<TrainingEligibilityItem>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => i + 1 },
     { id: "title", header: "Required training", cell: (i) => <div className="max-w-80 whitespace-normal">{i.code ? `${i.code} — ` : ""}{i.title}</div> },
@@ -98,15 +109,15 @@ export function TrainingJobDetailPage() {
     <>
       {editable && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={!dirty} onClick={() => void run(() => trainingJobsApi.update(job.id, body()), "Draft saved")}>Save draft</Button>}
       {caps.requestException && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog("exception")}>Request exception</Button>}
-      {caps.approveException && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Complete approval of the exception", code: "TRAINING_JOB_EXCEPTION_APPROVED", name: "Job Assignment Exception Approved", changes: statusChange("Exception requested", "Exception approved", "Exception"), run: (t) => trainingJobsApi.approveException(job.id, t) })}>Complete Approval</Button>}
-      {caps.submit && <Button size="sm" variant="default" className="whitespace-nowrap" disabled={dirty} onClick={() => setSign({ title: "Assign job", code: "TRAINING_JOB_ASSIGNED", name: "Job Assigned", changes: statusChange("Draft", "Waiting for the employee"), run: (t) => trainingJobsApi.submit(job.id, job.version, t) })}>Sign and send</Button>}
-      {caps.accept && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Accept job assignment", code: "TRAINING_JOB_ACCEPTED", name: "Job Accepted", changes: statusChange("Waiting for the employee", "Effective"), run: (t) => trainingJobsApi.accept(job.id, job.version, t) })}>Accept</Button>}
+      {caps.approveException && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Complete Approval of the Exception", code: "TRAINING_JOB_EXCEPTION_APPROVED", name: "Job Assignment Exception Approved", changes: statusChange("Exception requested", "Exception approved", "Exception"), run: (t) => trainingJobsApi.approveException(job.id, t) })}>Complete Approval</Button>}
+      {caps.submit && <Button size="sm" variant="default" className="whitespace-nowrap" disabled={dirty} onClick={() => setSign({ title: "Assign Job", code: "TRAINING_JOB_ASSIGNED", name: "Job Assigned", changes: statusChange("Draft", "Pending Employee Acceptance"), run: (t) => trainingJobsApi.submit(job.id, job.version, t) })}>Sign and send</Button>}
+      {caps.accept && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Accept Job Assignment", code: "TRAINING_JOB_ACCEPTED", name: "Job Accepted", changes: statusChange("Pending Employee Acceptance", "Effective"), run: (t) => trainingJobsApi.accept(job.id, job.version, t) })}>Accept</Button>}
       {caps.cancel && <Button size="sm" variant="destructive" className="whitespace-nowrap" onClick={() => setDialog("cancel")}>Cancel</Button>}
     </>
   );
   const cancelled = job.status === "CANCELLED";
   const superseded = job.status === "SUPERSEDED";
-  const steps = cancelled ? ["Draft", "Waiting for the employee", "Effective", "Cancelled"] : superseded ? ["Draft", "Waiting for the employee", "Effective", "Replaced"] : JOB_STEPS.map((x) => x.label);
+  const steps = cancelled ? ["Draft", "Pending Employee Acceptance", "Effective", "Cancelled"] : superseded ? ["Draft", "Pending Employee Acceptance", "Effective", "Replaced"] : JOB_STEPS.map((x) => x.label);
   const stepIndex = cancelled || superseded ? 3 : Math.max(0, JOB_STEPS.findIndex((x) => x.status === job.status));
 
   return (
@@ -114,7 +125,7 @@ export function TrainingJobDetailPage() {
       <TrainingDetailLayout
         title={title}
         breadcrumbItems={crumbs}
-        onBack={() => navigate("/training-management/job-assignments")}
+        onBack={goBack}
         steps={steps}
         currentStepIndex={stepIndex}
         terminalProgressStep="Draft"
@@ -123,7 +134,12 @@ export function TrainingJobDetailPage() {
         onTab={setTab}
         tabLayoutId="training-job-detail-tab"
         footer={footer}
-        afterFooter={tab === "overview" && job.status === "EFFECTIVE" ? <TrainingCopiesPanel type="job-assignment" objectId={job.id} /> : undefined}
+        afterFooter={
+          <TrainingPersonRelatedCard
+            personId={job.personUserId}
+            extraTabs={job.status === "EFFECTIVE" ? [{ id: "copies", label: "Copies Sent To Departments", node: <TrainingCopyBlock type="job-assignment" objectId={job.id} title="" /> }] : []}
+          />
+        }
       >
         {tab === "overview" && (
           <div className="space-y-6">
@@ -174,6 +190,11 @@ export function TrainingJobDetailPage() {
 
         {tab === "matrix" && (
           <div className="space-y-4">
+            {(eligibility?.openSuspensions ?? 0) > 0 && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                The work of this person is suspended after a failed assessment ({eligibility?.openSuspensions}). It is a flag only: the assignment is not blocked. See Training Compliance, Work suspensions.
+              </p>
+            )}
             {eligibility ? (
               <TabBlock title="Training required by the matrix" action={eligibility.matrixMissing ? <Badge color="amber">No effective matrix</Badge> : eligibility.complete ? <Badge color="emerald">Complete</Badge> : <Badge color="red">{eligibility.missingCount} not trained</Badge>}>
                 {eligibility.matrixMissing ? (
@@ -186,27 +207,13 @@ export function TrainingJobDetailPage() {
             {job.exceptionReason && (
               <ReadonlyGrid>
                 <ReadonlyField label="Exception reason" value={job.exceptionReason} wide />
-                <ReadonlyField label="Exception status" value={job.exceptionApprovedBy ? "Approved" : `Waiting for ${job.approvers.filter((a) => a.status === "PENDING").map((a) => a.assigneeName).join(", ") || "an approver"}`} wide />
+                <ReadonlyField label="Exception status" value={job.exceptionApprovedBy ? "Approved" : `Pending with ${job.approvers.filter((a) => a.status === "PENDING").map((a) => a.assigneeName).join(", ") || "an approver"}`} wide />
               </ReadonlyGrid>
             )}
           </div>
         )}
 
-        {tab === "approvals" && (
-          <TabBlock title="Signatures">
-            <DataTable
-              rows={job.approvers}
-              getRowKey={(a) => a.id}
-              columns={[
-                { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => i + 1 },
-                { id: "who", header: "Full Name", cell: (a) => <TrainingPersonName fullName={a.assigneeName} avatar={a.avatar} /> },
-                { id: "status", header: "Status", cell: (a) => a.status.toLowerCase() },
-                { id: "at", header: "Date", cell: (a) => when(a.completedAt ?? a.assignedAt) },
-              ] as DataTableColumn<(typeof job.approvers)[number]>[]}
-              emptyState={<p className="p-4 text-sm text-slate-500">No signature requested yet.</p>}
-            />
-          </TabBlock>
-        )}
+        {tab === "approvals" && <SignatureFields records={signatureRecords} />}
 
         {tab === "audit" && <AuditTrailTab entityId={job.id} entityType="TRAINING_JOB_ASSIGNMENT" />}
       </TrainingDetailLayout>
@@ -230,7 +237,7 @@ export function TrainingJobDetailPage() {
 function ReasonDialog({ open, busy, onClose, onSave }: { open: boolean; busy: boolean; onClose: () => void; onSave: (reason: string) => void }) {
   const [reason, setReason] = useState("");
   return (
-    <FormModal isOpen={open} onClose={onClose} onConfirm={() => onSave(reason.trim())} title="Cancel job assignment" description="The reason stays in the record." confirmText="Cancel assignment" confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
+    <FormModal isOpen={open} onClose={onClose} onConfirm={() => onSave(reason.trim())} title="Cancel Job Assignment" description="The reason stays in the record." confirmText="Cancel assignment" confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
       <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
     </FormModal>
   );
@@ -249,7 +256,7 @@ function ExceptionDialog({ jobId, busy, onClose, onSave }: { jobId: string; busy
   }, [jobId]);
   useEffect(() => { void search(""); }, [search]);
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => onSave(reason.trim(), id)} title="Request an exception" description="The person goes ahead before the training is complete only if the person you choose approves, with a signature." confirmText="Request" isLoading={busy} confirmDisabled={!reason.trim() || !id} size="md">
+    <FormModal isOpen onClose={onClose} onConfirm={() => onSave(reason.trim(), id)} title="Request an Exception" description="The person goes ahead before the training is complete only if the person you choose approves, with a signature." confirmText="Request" isLoading={busy} confirmDisabled={!reason.trim() || !id} size="md">
       <div className="grid gap-4">
         <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
         {loaded && people.length === 0 ? (

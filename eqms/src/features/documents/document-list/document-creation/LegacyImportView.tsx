@@ -385,7 +385,7 @@ const LegacyImportProgressModal: React.FC<{
     <FormModal
       isOpen={isOpen}
       onClose={() => undefined}
-      title="Legacy Import processing"
+      title="Legacy Import Processing"
       showFooter={false}
       size="md"
       className="max-w-md"

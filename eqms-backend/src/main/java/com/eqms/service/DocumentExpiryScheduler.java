@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.DocumentRecord;
 import com.eqms.repository.DocumentRecordRepository;
 import org.slf4j.Logger;
@@ -23,7 +24,7 @@ public class DocumentExpiryScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentExpiryScheduler.class);
     private static final String LOCK_NAME = "document-expiry";
-    private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
 
     private final DistributedSchedulerLockService schedulerLockService;
     private final DocumentExpiryProcessingService processingService;

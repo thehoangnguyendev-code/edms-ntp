@@ -47,6 +47,19 @@ public class TrainingPersonnelReviewController {
     @PostMapping("/{id}/items/{item}/training")
     public ResponseEntity<?> createTraining(@PathVariable UUID id, @PathVariable String item) { return ResponseEntity.ok(reviews.createActivity(users.requireCurrentUser(), id, item)); }
 
+    @GetMapping("/plan")
+    public ResponseEntity<?> plan(@RequestParam UUID personId, @RequestParam(required = false) String kind, @RequestParam(required = false) String departmentTo) {
+        return ResponseEntity.ok(reviews.plan(users.requireCurrentUser(), personId, kind, departmentTo));
+    }
+
+    @GetMapping("/eligible-closers")
+    public ResponseEntity<?> eligibleClosers(@RequestParam UUID personId, @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(reviews.eligibleClosers(users.requireCurrentUser(), personId, search, page, limit));
+    }
+
+    @PutMapping("/{id}/closer")
+    public ResponseEntity<?> changeCloser(@PathVariable UUID id, @RequestBody ChangeCloserRequest request) { return ResponseEntity.ok(reviews.changeCloser(users.requireCurrentUser(), id, request)); }
+
     @PostMapping("/{id}/close")
     public ResponseEntity<?> close(@PathVariable UUID id, @RequestBody CloseRequest request) { return ResponseEntity.ok(reviews.close(users.requireCurrentUser(), id, request)); }
 

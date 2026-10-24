@@ -12,6 +12,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupRestorePage } from "../components/BackupRestorePage";
 import { statusLabel } from "../types";
 import { formatBytes, formatDateTime } from "../format";
+import { displayTime } from "@/utils/format";
 
 const OK = "#10b981";
 const WARN = "#f59e0b";
@@ -380,7 +381,7 @@ export const BackupOverviewView: React.FC = () => {
   return (
     <BackupRestorePage title="Backup Status Overview" preview={false}>
       <p className="text-xs text-slate-500">
-        Refreshes every 30 seconds{updatedAt ? ` · updated ${updatedAt.toLocaleTimeString()}` : ""}
+        Refreshes every 30 seconds{updatedAt ? ` · updated ${displayTime(updatedAt)}` : ""}
       </p>
       {error && <WarningBanner variant="warning" title="Showing the last values read" description={error} />}
 

@@ -485,7 +485,7 @@ export const TimeLimitedUserListView: React.FC = () => {
         isOpen={cancelModal.isOpen}
         onClose={() => setCancelModal({ isOpen: false, grantId: "", userName: "" })}
         onConfirm={confirmCancel}
-        actionTitle={`Cancel time-limited access: ${cancelModal.userName}`}
+        actionTitle={`Cancel Time-Limited Access: ${cancelModal.userName}`}
         meaningDisplayName="Time-Limited User Grant Cancellation"
         meaningCode="TIME_LIMITED_USER_GRANT"
       />

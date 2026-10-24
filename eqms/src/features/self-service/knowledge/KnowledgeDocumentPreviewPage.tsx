@@ -6,6 +6,7 @@ import { DocumentPdfViewer } from "@/features/documents/shared/components/Docume
 import { documentApi } from "@/services/api/documents";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/images/logo_nobg.png";
+import { displayDateTime } from "@/utils/format";
 
 const buildWatermarkDataUri = (lines: string[]) => {
   const escape = (value: string) =>
@@ -37,7 +38,7 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
 
   const watermarkUrl = useMemo(() => {
     const who = user?.fullName || user?.username || "Unknown user";
-    const stamp = openedAt.toLocaleString();
+    const stamp = displayDateTime(openedAt);
     return buildWatermarkDataUri([who, stamp]);
   }, [user?.fullName, user?.username, openedAt]);
 

@@ -44,13 +44,14 @@ public class TrainingRollCallService {
     @Transactional
     public Map<String, Object> rollCall(UserAccount actor, UUID sessionId, Request request) {
         access.require(actor, "training.activity.conduct");
+        activities.startSession(actor, sessionId);
         Map<String, Object> session = jdbc.queryForList("select s.*, a.organizer_department_id from training_sessions s join training_activities a on a.id = s.activity_id where s.id = ?", sessionId)
                 .stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         UUID activityId = (UUID) session.get("activity_id");
         access.requireScope(actor, (UUID) session.get("organizer_department_id"));
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!"IN_PROGRESS".equals(activity.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ROLL_CALL_STATUS");
-        if (!"HELD".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
+        if (!TrainingSessionState.started(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
         if (request == null || request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
         List<UUID> present = request.present() == null ? List.of() : request.present();
         List<Absent> absent = request.absent() == null ? List.of() : request.absent();

@@ -10,24 +10,22 @@ import { trainingError, trainingPaperApi, type TrainingActivityDetail, type Trai
 import { Textarea } from "../../shared/TrainingFields";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import { saveBlob } from "../../shared/trainingLabels";
+import { displayDateTime } from "@/utils/format";
 
 export const DELIVERY_LABEL: Record<string, string> = { ELECTRONIC: "Electronic", PAPER: "Paper", MIXED: "Mixed" };
 const DELIVERY_OPTIONS = Object.entries(DELIVERY_LABEL).map(([value, label]) => ({ value, label }));
 
 type Ask = { kind: "mode"; session: TrainingSession; mode: string } | { kind: "print"; session: TrainingSession } | { kind: "exam"; session: TrainingSession };
 
-/**
- * Training held on paper (PLAN-TR-001 17.7): how each session is delivered, and the controlled print of its attendance and assessment sheet. The first print
- * needs no reason; a reprint, or a change of delivery after a print, needs one. The server decides and records; this block only asks.
- */
-export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: { activity: TrainingActivityDetail; canPrint: boolean; canMode: boolean; onChanged: () => void }) {
+/** The state and the actions of the paper printing of one activity, shared by the Paper block and the checklist of the Prepare step. */
+export function useTrainingPaper(activity: TrainingActivityDetail, onChanged: () => void) {
   const { showToast } = useToast();
   const [packs, setPacks] = useState<TrainingPaperPack[]>([]);
   const [ask, setAsk] = useState<Ask>();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(() => { trainingPaperApi.packs(activity.id).then(setPacks).catch(() => setPacks([])); }, [activity.id]);
+  const load = useCallback(() => { if (!activity.id) return; trainingPaperApi.packs(activity.id).then(setPacks).catch(() => setPacks([])); }, [activity.id]);
   useEffect(load, [load]);
   useEntityChanged(["TRAINING"], load);
 
@@ -78,6 +76,30 @@ export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: {
     }
   };
 
+  const dialog = ask && (
+      <FormModal
+        isOpen
+        onClose={() => { setAsk(undefined); setReason(""); }}
+        onConfirm={() => (ask.kind === "print" ? print(ask.session, reason.trim()) : ask.kind === "exam" ? printExam(ask.session, reason.trim()) : changeMode(ask.session, ask.mode, reason.trim()))}
+        title={ask.kind === "print" ? `Reprint the paper pack of session ${ask.session.sessionNo}` : ask.kind === "exam" ? `Reprint the exam copies of session ${ask.session.sessionNo}` : `Change the delivery of session ${ask.session.sessionNo}`}
+        description={ask.kind !== "mode" ? "Another copy is numbered and recorded. Say why it is needed." : "A pack was already printed for this session. The reason stays in the Audit Trail."}
+        confirmText={ask.kind !== "mode" ? "Print" : "Change"}
+        isLoading={busy}
+        confirmDisabled={!reason.trim()}
+        size="md"
+      >
+        <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+      </FormModal>
+  );
+  return { packs, printed, printedExam, busy, ask: setAsk, print, printExam, changeMode, dialog };
+}
+
+/**
+ * Training held on paper (PLAN-TR-001 17.7): how each session is delivered, and the controlled print of its attendance and assessment sheet. The first print
+ * needs no reason; a reprint, or a change of delivery after a print, needs one. The server decides and records; this block only asks.
+ */
+export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: { activity: TrainingActivityDetail; canPrint: boolean; canMode: boolean; onChanged: () => void }) {
+  const { packs, printed, printedExam, busy, ask: setAsk, print, printExam, changeMode, dialog } = useTrainingPaper(activity, onChanged);
   const sessions = activity.sessions.filter((s) => s.status !== "CANCELLED");
   if (sessions.length === 0) return null;
   const columns: DataTableColumn<TrainingSession>[] = [
@@ -94,12 +116,12 @@ export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: {
     { id: "examCopies", header: "Exam prints", cell: (s) => printedExam(s.id) },
     {
       id: "action",
-      header: "",
-      cell: (s) => canPrint && (s.deliveryMode ?? "ELECTRONIC") !== "ELECTRONIC" && ["PLANNED", "HELD"].includes(s.status)
+      header: "Action",
+      cell: (s) => canPrint && (s.deliveryMode ?? "ELECTRONIC") !== "ELECTRONIC" && s.status === "PLANNED"
         ? (
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => (printed(s.id) > 0 ? setAsk({ kind: "print", session: s }) : void print(s))}>{printed(s.id) > 0 ? "Reprint pack" : "Print paper pack"}</Button>
-            {s.assessmentMethod === "TEST" && <Button size="sm" variant="outline" disabled={busy} onClick={() => (printedExam(s.id) > 0 ? setAsk({ kind: "exam", session: s }) : void printExam(s))}>{printedExam(s.id) > 0 ? "Reprint exam" : "Print exam copies"}</Button>}
+            <Button size="sm" disabled={busy} onClick={() => (printed(s.id) > 0 ? setAsk({ kind: "print", session: s }) : void print(s))}>{printed(s.id) > 0 ? "Reprint pack" : "Print paper pack"}</Button>
+            {s.assessmentMethod === "TEST" && activity.contentRules?.assessmentFormSatisfied !== false && <Button size="sm" disabled={busy} onClick={() => (printedExam(s.id) > 0 ? setAsk({ kind: "exam", session: s }) : void printExam(s))}>{printedExam(s.id) > 0 ? "Reprint exam" : "Print exam copies"}</Button>}
           </div>
         )
         : null,
@@ -111,7 +133,7 @@ export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: {
     { id: "pages", header: "Pages", cell: (p) => p.pageCount },
     { id: "people", header: "Trainees", cell: (p) => p.peopleCount },
     { id: "by", header: "Printed by", cell: (p) => p.printedByName },
-    { id: "at", header: "Printed at", cell: (p) => new Date(p.printedAt).toLocaleString() },
+    { id: "at", header: "Printed at", cell: (p) => displayDateTime(p.printedAt) },
     { id: "reason", header: "Reason", cell: (p) => <div className="max-w-64 whitespace-normal">{p.reason ?? "—"}</div> },
   ];
 
@@ -126,21 +148,7 @@ export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: {
           <DataTable rows={packs} getRowKey={(p) => p.id} columns={packColumns} />
         </TabBlock>
       )}
-      {ask && (
-        <FormModal
-          isOpen
-          onClose={() => { setAsk(undefined); setReason(""); }}
-          onConfirm={() => (ask.kind === "print" ? print(ask.session, reason.trim()) : ask.kind === "exam" ? printExam(ask.session, reason.trim()) : changeMode(ask.session, ask.mode, reason.trim()))}
-          title={ask.kind === "print" ? `Reprint the paper pack of session ${ask.session.sessionNo}` : ask.kind === "exam" ? `Reprint the exam copies of session ${ask.session.sessionNo}` : `Change the delivery of session ${ask.session.sessionNo}`}
-          description={ask.kind !== "mode" ? "Another copy is numbered and recorded. Say why it is needed." : "A pack was already printed for this session. The reason stays in the Audit Trail."}
-          confirmText={ask.kind !== "mode" ? "Print" : "Change"}
-          isLoading={busy}
-          confirmDisabled={!reason.trim()}
-          size="md"
-        >
-          <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
-        </FormModal>
-      )}
+      {dialog}
     </div>
   );
 }

@@ -75,7 +75,7 @@ public class SystemInfoService {
                 orUnknown(System.getProperty("os.name")),
                 orUnknown(System.getProperty("os.arch")),
                 runtime.availableProcessors(),
-                ZoneId.systemDefault().getId(),
+                DateTimeFormatUtils.ZONE.getId(),
                 DateTimeFormatUtils.formatDateTime(Instant.ofEpochMilli(runtimeMx.getStartTime())),
                 runtimeMx.getUptime(),
                 heapUsed,

@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.calendar.*;
 import com.eqms.entity.*;
@@ -45,9 +46,7 @@ public class CalendarService {
     }
 
     private ZoneId zone() {
-        String value = configuration.getPublicLocalization().timeZone();
-        try { return value == null || value.isBlank() ? ZoneId.systemDefault() : ZoneId.of(value); }
-        catch (DateTimeException ignored) { return ZoneId.systemDefault(); }
+        return DateTimeFormatUtils.ZONE;
     }
 
     @Transactional(readOnly = true)

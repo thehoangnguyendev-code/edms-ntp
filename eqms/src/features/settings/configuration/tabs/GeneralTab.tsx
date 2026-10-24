@@ -66,54 +66,12 @@ const BrandImagePreview: React.FC<{
 
 
 export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onValidationChange }) => {
-  const [timeZones, setTimeZones] = useState<Array<{ label: string; value: string }>>([]);
   const logoInputRef = React.useRef<HTMLInputElement>(null);
   const collapsedSidebarLogoInputRef = React.useRef<HTMLInputElement>(null);
   const faviconInputRef = React.useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
   const locale = config.locale || {} as any;
-
-  // Fetch time zones using Intl API
-  useEffect(() => {
-    try {
-      // Get all supported time zones from browser
-      const zones = Intl.supportedValuesOf('timeZone');
-
-      // Format time zones with offset information
-      const formatted = zones.map((zone) => {
-        const formatter = new Intl.DateTimeFormat('en-US', {
-          timeZone: zone,
-          timeZoneName: 'shortOffset',
-        });
-
-        // Get current time to calculate offset
-        const parts = formatter.formatToParts(new Date());
-        const offset = parts.find((part) => part.type === 'timeZoneName')?.value || '';
-
-        return {
-          label: `${zone.replace(/_/g, ' ')} ${offset}`,
-          value: zone,
-        };
-      });
-
-      // Sort by zone name
-      formatted.sort((a, b) => a.value.localeCompare(b.value));
-
-      setTimeZones(formatted);
-    } catch (error) {
-      console.error('Failed to load time zones:', error);
-      // Fallback to basic options
-      setTimeZones([
-        { label: 'UTC', value: 'UTC' },
-        { label: 'Asia/Bangkok (UTC+7)', value: 'Asia/Bangkok' },
-        { label: 'Asia/Ho_Chi_Minh (UTC+7)', value: 'Asia/Ho_Chi_Minh' },
-        { label: 'America/New_York (EST)', value: 'America/New_York' },
-        { label: 'America/Los_Angeles (PST)', value: 'America/Los_Angeles' },
-        { label: 'Europe/London (GMT)', value: 'Europe/London' },
-      ]);
-    }
-  }, []);
 
   const handleChange = (key: keyof GeneralConfig, value: any) => {
     if (key === 'systemSidebarCollapsedLogo') {
@@ -381,31 +339,16 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Date & Time</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                label="Date & Time Format"
-                value={config.dateTimeFormat}
-                onChange={(val) => handleChange('dateTimeFormat',val)}
-                options={[
-                  { label: 'DD/MM/YYYY HH:mm:ss',value: 'DD/MM/YYYY HH:mm:ss' },
-                  { label: 'DD/MM/YYYY HH:mm',value: 'DD/MM/YYYY HH:mm' },
-                  { label: 'MM/DD/YYYY HH:mm:ss',value: 'MM/DD/YYYY HH:mm:ss' },
-                  { label: 'MM/DD/YYYY HH:mm',value: 'MM/DD/YYYY HH:mm' },
-                  { label: 'YYYY-MM-DD HH:mm:ss',value: 'YYYY-MM-DD HH:mm:ss' },
-                  { label: 'YYYY-MM-DD HH:mm',value: 'YYYY-MM-DD HH:mm' },
-                  { label: 'DD-MMM-YYYY HH:mm:ss',value: 'DD-MMM-YYYY HH:mm:ss' },
-                  { label: 'DD-MMM-YYYY HH:mm',value: 'DD-MMM-YYYY HH:mm' },
-                  { label: 'MMMM DD, YYYY HH:mm:ss',value: 'MMMM DD, YYYY HH:mm:ss' },
-                  { label: 'MMMM DD, YYYY HH:mm',value: 'MMMM DD, YYYY HH:mm' },
-                ]}
-              />
-              <Select
-                label="Time Zone"
-                value={config.timeZone}
-                onChange={(val) => handleChange('timeZone',val)}
-                options={timeZones}
-                enableSearch
-                placeholder="Select time zone..."
-              />
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Date & Time Format</p>
+                <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700">DD/MM/YYYY HH:mm:ss</p>
+                <p className="mt-1 text-xs text-slate-500">One format for the whole system: dates are dd/MM/yyyy and dates with a time are dd/MM/yyyy HH:mm:ss. It is not a setting.</p>
+              </div>
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Time Zone</p>
+                <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700">Asia/Ho_Chi_Minh (UTC+7)</p>
+                <p className="mt-1 text-xs text-slate-500">The zone of the site, for every screen, document and record. It is not a setting.</p>
+              </div>
             </div>
           </div>
           <div className="border-t border-slate-100 pt-4">

@@ -22,7 +22,7 @@ import { trainingActivitiesApi, trainingError, trainingExportsApi, type Training
 import { day, when, statusChange } from "../../shared/trainingLabels";
 import { resettingDates, useDateRange, useDepartmentNameOptions } from "../../shared/useListFilters";
 
-const STATUS_LABEL: Record<string, string> = { PENDING_APPROVAL: "Waiting for approval", APPROVED: "Approved", REJECTED: "Rejected" };
+const STATUS_LABEL: Record<string, string> = { PENDING_APPROVAL: "Pending Approval", APPROVED: "Approved", REJECTED: "Rejected" };
 const STATUS_COLOR: Record<string, "amber" | "emerald" | "red"> = { PENDING_APPROVAL: "amber", APPROVED: "emerald", REJECTED: "red" };
 
 /** Exports of the personal training record as a PDF (APD.0014): prepared with a signature, approved by a person designated with a signature, then kept unchanged. */
@@ -169,7 +169,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
           </div>
         )}
       </PortalDropdownMenu>
-      <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title="Prepare an export" description="You sign as the person who prepared it. The person you choose approves with a signature, and the PDF is generated at that moment."
+      <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title="Prepare an Export" description="You sign as the person who prepared it. The person you choose approves with a signature, and the PDF is generated at that moment."
         confirmText="Continue to signature" confirmDisabled={!personId || !reason.trim() || !approverId} size="md">
         <div className="grid gap-4">
           <FormField label="Employee" required><Select value={personId} onChange={(v) => { setPersonId(v); setApproverId(""); }} options={people} onSearch={searchPeople} placeholder="Search by name" /></FormField>
@@ -179,11 +179,11 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
           </FormField>
         </div>
       </FormModal>
-      <ESignatureModal isOpen={signNew} onClose={() => setSignNew(false)} onConfirm={async (d: { signatureToken: string }) => create(d.signatureToken)} actionTitle="Prepare training record export" changes={statusChange("New", "Waiting for approval")}
+      <ESignatureModal isOpen={signNew} onClose={() => setSignNew(false)} onConfirm={async (d: { signatureToken: string }) => create(d.signatureToken)} actionTitle="Prepare Training Record Export" changes={statusChange("New", "Pending Approval")}
         meaningDisplayName="Training Record Prepared" meaningCode="TRAINING_RECORD_PREPARED" targetDetails={{ code: "APD.0014", title: "Personal training record", revision: "" }} />
-      <ESignatureModal isOpen={!!signApprove} onClose={() => setSignApprove(undefined)} onConfirm={async (d: { signatureToken: string }) => approve(d.signatureToken)} actionTitle="Complete approval of the training record export" changes={statusChange("Waiting for approval", "Approved")}
+      <ESignatureModal isOpen={!!signApprove} onClose={() => setSignApprove(undefined)} onConfirm={async (d: { signatureToken: string }) => approve(d.signatureToken)} actionTitle="Complete Approval of the Training Record Export" changes={statusChange("Pending Approval", "Approved")}
         meaningDisplayName="Training Record Approved" meaningCode="TRAINING_RECORD_APPROVED" targetDetails={{ code: signApprove?.fullName ?? "", title: "Personal training record", revision: "" }} />
-      <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title="Reject export" confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
+      <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title="Reject Export" confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
         <FormField label="Reason" required><Textarea rows={3} value={rejecting?.reason ?? ""} onChange={(e) => rejecting && setRejecting({ ...rejecting, reason: e.target.value })} /></FormField>
       </FormModal>
     </div>

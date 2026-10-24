@@ -41,6 +41,13 @@ public class TrainingStore {
     public Optional<Map<String, Object>> byRevision(UUID revisionId) {
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "select * from training_activities where revision_id=? and parent_activity_id is null and status <> 'CANCELLED'", revisionId);
+        if (rows.isEmpty()) {
+            // A revision of a related document shares the Training Number (and the activity) of the document it goes with: the link is on the revision.
+            rows = jdbc.queryForList("""
+                select a.* from training_activities a join document_revisions r on r.training_activity_id = a.id
+                 where r.id = ? and a.parent_activity_id is null and a.status <> 'CANCELLED'
+                """, revisionId);
+        }
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
@@ -65,6 +72,11 @@ public class TrainingStore {
     /** One Audit Trail entry about an activity; the entity id is never empty (the Audit Trail refuses an entry without it). */
     public void auditActivity(UserAccount actor, Map<String, Object> activity, String action, String from, String to, String comment) {
         audit.logAs(actor, OBJECT_ACTIVITY, String.valueOf(activity.get("training_number")), (UUID) activity.get("id"), action, from, to, comment);
+    }
+
+    /** The same, with the field-level changes the Audit Trail shows (before and after). */
+    public void auditActivity(UserAccount actor, Map<String, Object> activity, String action, String from, String to, String comment, java.util.List<com.eqms.dto.audittrail.AuditTrailChangeResponse> changes) {
+        audit.logAs(actor, OBJECT_ACTIVITY, String.valueOf(activity.get("training_number")), (UUID) activity.get("id"), action, from, to, comment, changes);
     }
 
     public void setStatus(UUID id, String status) {

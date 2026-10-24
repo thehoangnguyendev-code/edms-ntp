@@ -1,47 +1,52 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
-import { FormField } from "@/components/ui/form/ResponsiveForm";
-import { FormModal } from "@/components/ui/modal/FormModal";
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Select } from "@/components/ui/select/Select";
 import { useToast } from "@/components/ui/toast/Toast";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
-import { trainingActivitiesApi, trainingError, trainingPreparationApi, type TrainingPreparationRow, type TrainingPreparationSession, type TrainingPrepItem } from "@/services/api/trainingActivities";
-import { Textarea } from "../../shared/TrainingFields";
+import { trainingError, trainingPreparationApi, type TrainingActivityDetail, type TrainingPreparationSession, type TrainingPrepItem } from "@/services/api/trainingActivities";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
+import { DELIVERY_LABEL, useTrainingPaper } from "./TrainingPaperBlock";
 
 const ITEM_LABEL: Record<TrainingPrepItem, { label: string; hint: string }> = {
-  VENUE: { label: "Venue", hint: "The room or place is ready (HR and Administration)." },
-  EQUIPMENT: { label: "Equipment", hint: "The machines, tools and instruments for a practical session." },
-  MATERIALS: { label: "Materials", hint: "The documents, slides, tests and forms are ready to use." },
-  NOTICE: { label: "Notice", hint: "The trainees and the trainer know the time, the place and the content." },
+  VENUE: { label: "Training room", hint: "The room or place is booked and ready for the session." },
+  EQUIPMENT: { label: "Equipment for practice", hint: "The machines, tools and instruments of a practical session, if any." },
+  MATERIALS: { label: "Training Materials", hint: "The documents, slides and forms are ready to teach with." },
+  NOTICE: { label: "Notice to trainees and trainer", hint: "They know the date, the time, the place and the content." },
 };
-const STATUS_LABEL = { PENDING: "Pending", DONE: "Done", NOT_NEEDED: "Not needed" } as const;
-const STATUS_COLOR = { PENDING: "amber", DONE: "emerald", NOT_NEEDED: "slate" } as const;
-const STATUS_OPTIONS = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }));
+const DELIVERY_OPTIONS = Object.entries(DELIVERY_LABEL).map(([value, label]) => ({ value, label }));
+const NO_ACTIVITY = { id: "", sessions: [] } as unknown as TrainingActivityDetail;
 
-type Row = TrainingPreparationRow & { sessionId: string; sessionNo: number };
+/** One line of the checklist: an item of the server, or a paper print of the session (ticked by the print itself). */
+type Row = { key: string; label: string; hint: string; ready: boolean; notNeeded?: boolean; noStatus?: boolean; optional?: boolean; onTick?: (ready: boolean) => void; extra?: ReactNode };
 
 /**
- * What has to be ready before each session (SOP.0003 5.3.6). It warns; it never blocks a session. The organizer or the conductor sets the state and may give an item to
- * a person; that person is told and can report it done.
+ * What has to be ready before a session (SOP.0003 5.3.6): a checklist the organizer ticks. It warns; it never blocks a session. With `paper`, the delivery of the session and
+ * its paper prints (attendance pack, exam copies) belong to the same checklist: a print ticks its own line.
  */
-export function TrainingPreparationBlock({ activityId, canManage, userId }: { activityId: string; canManage: boolean; userId?: string }) {
+export function TrainingPreparationBlock({ activityId, sessionId, canManage, paper, onPending }: {
+  activityId: string;
+  sessionId?: string;
+  canManage: boolean;
+  paper?: { activity: TrainingActivityDetail; canPrint: boolean; onChanged: () => void };
+  /** How many lines still wait for the person who can tick them (0 when nothing holds the next step). */
+  onPending?: (pending: number) => void;
+}) {
   const { showToast } = useToast();
   const [sessions, setSessions] = useState<TrainingPreparationSession[]>([]);
-  const [editing, setEditing] = useState<Row>();
   const [busy, setBusy] = useState(false);
+  const printing = useTrainingPaper(paper?.activity ?? NO_ACTIVITY, paper?.onChanged ?? (() => undefined));
 
   const load = useCallback(() => { trainingPreparationApi.get(activityId).then(setSessions).catch(() => setSessions([])); }, [activityId]);
   useEffect(load, [load]);
   useEntityChanged(["TRAINING"], load);
 
-  const save = async (row: Row, body: { status: string; assignedTo?: string | null; note?: string | null }) => {
+  const tick = async (sid: string, itemCode: TrainingPrepItem, ready: boolean) => {
     setBusy(true);
     try {
-      setSessions(await trainingPreparationApi.update(row.sessionId, row.itemCode, body));
-      setEditing(undefined);
+      setSessions(await trainingPreparationApi.update(sid, itemCode, { status: ready ? "DONE" : "PENDING" }));
     } catch (e) {
       showToast({ type: "error", title: "The change was not saved", message: trainingError(e) });
     } finally {
@@ -49,53 +54,96 @@ export function TrainingPreparationBlock({ activityId, canManage, userId }: { ac
     }
   };
 
-  const open = sessions.reduce((sum, s) => sum + (s.sessionStatus === "PLANNED" ? s.open : 0), 0);
-  const rows: Row[] = sessions.flatMap((s) => s.items.map((item) => ({ ...item, sessionId: s.sessionId, sessionNo: s.sessionNo })));
+  const shown = sessionId ? sessions.filter((s) => s.sessionId === sessionId) : sessions;
+  const multi = !sessionId && shown.length > 1;
+  const rows: Row[] = shown.flatMap((s) => s.items.map((item) => ({
+    key: `${s.sessionId}|${item.itemCode}`,
+    label: `${multi ? `S${s.sessionNo}: ` : ""}${ITEM_LABEL[item.itemCode].label}`,
+    hint: ITEM_LABEL[item.itemCode].hint,
+    ready: item.status !== "PENDING",
+    notNeeded: item.status === "NOT_NEEDED",
+    onTick: canManage ? (ready: boolean) => void tick(s.sessionId, item.itemCode, ready) : undefined,
+  })));
+
+  const session = paper?.activity.sessions.find((s) => s.id === sessionId);
+  const mode = session?.deliveryMode ?? "ELECTRONIC";
+  if (paper && session) {
+    rows.push({
+      key: "delivery",
+      label: "Delivery of the session",
+      hint: "Electronic, on paper, or both.",
+      ready: false,
+      noStatus: true,
+      extra: canManage && !["COMPLETED", "CANCELLED"].includes(paper.activity.status)
+        ? <div className="mt-2 w-36"><Select value={mode} options={DELIVERY_OPTIONS} aria-label={`Delivery of session ${session.sessionNo}`}
+            onChange={(v) => { if (v === mode) return; if (printing.printed(session.id) > 0) printing.ask({ kind: "mode", session, mode: v }); else void printing.changeMode(session, v); }} /></div>
+        : <div className="mt-1 text-sm text-slate-700">{DELIVERY_LABEL[mode]}</div>,
+    });
+    const rules = paper.activity.contentRules;
+    if (rules && (rules.testRequired || rules.checklistRequired)) {
+      rows.push({
+        key: "assessment-form",
+        label: rules.testRequired ? "Assessment test" : "Assessment checklist",
+        hint: rules.testRequired ? "The test of the session is uploaded as a file or written in the system (tab Assessment)." : "The checklist form of the session is uploaded (tab Assessment).",
+        ready: (!rules.testRequired || rules.assessmentFormSatisfied || rules.onlineTest) && (!rules.checklistRequired || rules.assessmentFormSatisfied),
+      });
+    }
+  }
+  if (paper && session && mode !== "ELECTRONIC" && session.status === "PLANNED") {
+    rows.push({
+      key: "paper-pack",
+      label: "Attendance sheet (paper)",
+      hint: "Only if the session is held on paper: printed for the trainees to sign, with the Training Number on every page. The attendance can also be recorded in the system.",
+      optional: true,
+      ready: printing.printed(session.id) > 0,
+      extra: paper.canPrint
+        ? <Button size="sm" className="mt-2" disabled={printing.busy} onClick={() => (printing.printed(session.id) > 0 ? printing.ask({ kind: "print", session }) : void printing.print(session))}>{printing.printed(session.id) > 0 ? "Reprint attendance sheet" : "Print attendance sheet"}</Button>
+        : undefined,
+    });
+    if (session.assessmentMethod === "TEST" && paper.activity.contentRules?.assessmentFormSatisfied !== false) {
+      rows.push({
+        key: "exam-copies",
+        label: "Test copies for trainees",
+        hint: "Only if the test is taken on paper: one numbered copy of the test for each trainee.",
+        optional: true,
+        ready: printing.printedExam(session.id) > 0,
+        extra: paper.canPrint
+          ? <Button size="sm" className="mt-2" disabled={printing.busy} onClick={() => (printing.printedExam(session.id) > 0 ? printing.ask({ kind: "exam", session }) : void printing.printExam(session))}>{printing.printedExam(session.id) > 0 ? "Reprint test copies" : "Print test copies"}</Button>
+          : undefined,
+      });
+    }
+  }
+
   const columns: DataTableColumn<Row>[] = [
-    { id: "session", header: "Session", cell: (r) => `S${r.sessionNo}` },
-    { id: "item", header: "To prepare", cell: (r) => <div className="max-w-72 whitespace-normal"><div className="font-medium text-slate-900">{ITEM_LABEL[r.itemCode].label}</div><div className="text-xs text-slate-500">{ITEM_LABEL[r.itemCode].hint}</div></div> },
+    { id: "ready", header: "Ready", cell: (r) => (r.noStatus ? null : <Checkbox checked={r.ready} disabled={busy || !r.onTick} onChange={(checked) => r.onTick?.(checked)} />) },
+    {
+      id: "item",
+      header: "To prepare",
+      cell: (r) => (
+        <div className="max-w-96 whitespace-normal">
+          <div className="font-medium text-slate-900">{r.label}</div>
+          <div className="text-xs text-slate-500">{r.hint}</div>
+          {r.extra}
+        </div>
+      ),
+    },
     {
       id: "status",
-      header: "State",
-      cell: (r) => (canManage || r.assignedTo === userId
-        ? <div className="w-36"><Select value={r.status} options={STATUS_OPTIONS} aria-label={`State of ${ITEM_LABEL[r.itemCode].label}, session ${r.sessionNo}`} onChange={(v) => void save(r, { status: v, assignedTo: r.assignedTo ?? null, note: r.note ?? null })} /></div>
-        : <Badge color={STATUS_COLOR[r.status]}>{STATUS_LABEL[r.status]}</Badge>),
+      header: "Status",
+      cell: (r) => (r.noStatus ? null : r.notNeeded ? <Badge color="slate">Not needed</Badge> : r.ready ? <Badge color="emerald">Done</Badge> : r.optional ? <Badge color="slate">Optional</Badge> : <Badge color="amber">Pending</Badge>),
     },
-    { id: "who", header: "Given to", cell: (r) => r.assignedToName ?? "—" },
-    { id: "note", header: "Note", cell: (r) => <div className="max-w-64 whitespace-normal text-xs text-slate-600">{r.note ?? "—"}</div> },
-    { id: "actions", header: "", cell: (r) => (canManage ? <Button size="sm" variant="outline" onClick={() => setEditing(r)}>Assign / note</Button> : null) },
   ];
-  if (sessions.length === 0) return null;
+  // The server accepts a tick while the activity is open and the session is planned or held; only then can a line hold the next step.
+  const open = !!session && session.status === "PLANNED" && !["COMPLETED", "CANCELLED", "RESERVED"].includes(paper?.activity.status ?? "");
+  const pending = canManage && open ? rows.filter((r) => !r.noStatus && !r.optional && !r.ready && !r.notNeeded).length : 0;
+  useEffect(() => { onPending?.(pending); }, [pending, onPending]);
+  if (rows.length === 0) return null;
   return (
     <>
-      <TabBlock title="Preparation">
-        <p className="px-4 py-3 text-xs text-slate-500">Before a session: the venue, the equipment, the materials, and the notice to the trainees and the trainer. This list warns; it does not stop a session.</p>
-        {open > 0 && <p role="status" className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{open} item{open === 1 ? "" : "s"} still pending for sessions that have not been held.</p>}
-        <DataTable rows={rows} getRowKey={(r) => `${r.sessionId}|${r.itemCode}`} columns={columns} />
+      <TabBlock>
+        <DataTable rows={rows} getRowKey={(r) => r.key} columns={columns} />
       </TabBlock>
-      {editing && <AssignDialog row={editing} busy={busy} onClose={() => setEditing(undefined)} onSave={(body) => void save(editing, body)} />}
+      {printing.dialog}
     </>
-  );
-}
-
-function AssignDialog({ row, busy, onClose, onSave }: { row: Row; busy: boolean; onClose: () => void; onSave: (body: { status: string; assignedTo: string | null; note: string | null }) => void }) {
-  const [personId, setPersonId] = useState(row.assignedTo ?? "");
-  const [options, setOptions] = useState<{ label: string; value: string }[]>(row.assignedTo && row.assignedToName ? [{ label: row.assignedToName, value: row.assignedTo }] : []);
-  const [note, setNote] = useState(row.note ?? "");
-  const search = useCallback(async (query: string) => {
-    const list = await trainingActivitiesApi.people(query, 20);
-    const mapped = list.map((p) => ({ label: `${p.fullName}${p.position ? ` — ${p.position}` : ""}`, value: p.id }));
-    setOptions(mapped);
-    return mapped;
-  }, []);
-  useEffect(() => { void search(""); }, [search]);
-  return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => onSave({ status: row.status, assignedTo: personId || null, note: note.trim() || null })} title={`${ITEM_LABEL[row.itemCode].label}, session ${row.sessionNo}`}
-      description="Give it to a person, who is told and can report it done, and add a note if it helps." confirmText="Save" isLoading={busy} size="md">
-      <div className="grid gap-4">
-        <FormField label="Given to"><Select value={personId} onChange={setPersonId} options={options} onSearch={search} placeholder="Search by name" /></FormField>
-        <FormField label="Note"><Textarea rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></FormField>
-      </div>
-    </FormModal>
   );
 }

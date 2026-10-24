@@ -23,7 +23,7 @@ describe("ProposedParticipantsPicker", () => {
 
     expect(await screen.findByText("Anne Tran")).toBeTruthy();
     fireEvent.click(screen.getByLabelText(/Select all shown/));
-    expect(onChange).toHaveBeenLastCalledWith(["a", "b"]);
+    expect(onChange).toHaveBeenLastCalledWith(["a", "b"], expect.any(Array));
     expect(screen.getByText("2 selected")).toBeTruthy();
   });
 
@@ -34,7 +34,7 @@ describe("ProposedParticipantsPicker", () => {
     await screen.findByText("Anne Tran");
     expect(screen.getByText("2 selected")).toBeTruthy();
     fireEvent.click(screen.getByText("Anne Tran"));
-    expect(onChange).toHaveBeenLastCalledWith(["b"]);
+    expect(onChange).toHaveBeenLastCalledWith(["b"], expect.any(Array));
     expect(screen.getByText("1 selected")).toBeTruthy();
   });
 
@@ -44,7 +44,7 @@ describe("ProposedParticipantsPicker", () => {
 
     await screen.findByText("Anne Tran");
     fireEvent.click(screen.getByLabelText(/Select all shown/));
-    expect(onChange).toHaveBeenLastCalledWith([]);
+    expect(onChange).toHaveBeenLastCalledWith([], expect.any(Array));
   });
 
   it("searches on the server by name or employee ID when no group is chosen", async () => {

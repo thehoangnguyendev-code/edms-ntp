@@ -1,5 +1,6 @@
 ﻿import React from "react";
 import { Reply } from "lucide-react";
+import { displayDate } from "@/utils/format";
 
 interface EmailLivePreviewProps {
   subject: string;
@@ -18,10 +19,7 @@ export const EmailLivePreview: React.FC<EmailLivePreviewProps> = ({
   renderedHtml,
 }) => {
   const previewSubject = renderedSubject || subject || "No subject";
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long", year: "numeric", month: "long",
-    day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
+  const today = displayDate(new Date());
 
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">

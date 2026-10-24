@@ -25,6 +25,7 @@ import { normalizeControlledCopyStatusLabel } from "./status";
 import { ROUTES } from "@/app/routes.constants";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { displayDateTime } from "@/utils/format";
 
 const PAGE_SIZE = 20;
 
@@ -85,7 +86,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
 
   const formatDateTime = (value: string) => {
     try {
-      return new Date(value).toLocaleString("en-US");
+      return displayDateTime(value);
     } catch {
       return value;
     }

@@ -8,7 +8,7 @@ import { TrainingCopyBlock } from "./TrainingCopyBlock";
 export function TrainingCopiesPanel({ type, objectId }: { type: "job-assignment" | "requirement"; objectId: string }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <TabNav tabs={[{ id: "copies", label: "Copies sent to departments" }]} activeTab="copies" onChange={() => undefined} layoutId={`training-copies-${type}`} />
+      <TabNav tabs={[{ id: "copies", label: "Copies Sent To Departments" }]} activeTab="copies" onChange={() => undefined} layoutId={`training-copies-${type}`} />
       <div className="p-4 md:p-5">
         <TrainingCopyBlock type={type} objectId={objectId} title="" />
       </div>

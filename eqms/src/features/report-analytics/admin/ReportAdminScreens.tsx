@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { reportBreadcrumbs } from "../../report/shared/reportBreadcrumbs";
+import { displayDateTime } from "@/utils/format";
 
 /**
  * Frame of the Report Administration list screens: the header, an optional note, then the list in its own card, as the other report lists
@@ -191,7 +192,7 @@ export const ReportRetentionView: React.FC = () => {
     { id: "file", header: "File", sort: sortOf("fileName"), cell: (row) => <span className="break-all text-xs">{row.fileName}</span> },
     { id: "requester", header: "Requested by", sort: sortOf("requester"), cell: (row) => row.requester ?? "—" },
     { id: "heldBy", header: "Hold placed by", cell: (row) => row.heldBy ?? "—" },
-    { id: "heldAt", header: "Hold placed", sort: sortOf("heldAt"), cell: (row) => (row.heldAt ? new Date(row.heldAt).toLocaleString() : "—") },
+    { id: "heldAt", header: "Hold placed", sort: sortOf("heldAt"), cell: (row) => (row.heldAt ? displayDateTime(row.heldAt) : "—") },
     { id: "reason", header: "Reason", cell: (row) => <span className="block max-w-96 whitespace-normal">{row.reason ?? "—"}</span> },
   ];
   const { layout, control } = useCustomColumnLayout("reportLegalHolds", columns);
@@ -264,7 +265,7 @@ export const ReportDeliveryView: React.FC = () => {
     onSort: () => table.handleSort(key),
   });
   const columns: DataTableColumn<ReportDeliveryRow>[] = [
-    { id: "at", header: "When", sort: sortOf("createdAt"), cell: (row) => new Date(row.createdAt).toLocaleString() },
+    { id: "at", header: "When", sort: sortOf("createdAt"), cell: (row) => displayDateTime(row.createdAt) },
     { id: "schedule", header: "Schedule", sort: sortOf("scheduleName"), cell: (row) => <span className="font-medium text-slate-900">{row.scheduleName ?? "—"}</span> },
     { id: "recipient", header: "Recipient", sort: sortOf("recipientName"), cell: (row) => row.recipientName ?? "—" },
     { id: "channel", header: "Channel", sort: sortOf("channel"), cell: (row) => (row.channel === "EMAIL" ? "E-mail" : "In app") },

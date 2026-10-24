@@ -1135,9 +1135,6 @@ public class PublishingOpenXmlTemplateRenderService {
             transformed = PublishingPlaceholderSyntax.applyTransform(transformed, transform);
         }
         if (styleConfig != null) {
-            if (StringUtils.hasText(styleConfig.dateFormat())) {
-                transformed = formatDateValue(transformed, styleConfig.dateFormat());
-            }
             if (StringUtils.hasText(styleConfig.numberFormat())) {
                 transformed = formatNumberValue(transformed, styleConfig.numberFormat());
             }
@@ -1165,28 +1162,6 @@ public class PublishingOpenXmlTemplateRenderService {
             return previewFontSize;
         }
         return null;
-    }
-
-    private String formatDateValue(String value, String format) {
-        if (!StringUtils.hasText(value) || !StringUtils.hasText(format)) {
-            return value;
-        }
-        try {
-            java.time.LocalDate date = java.time.LocalDate.parse(value.trim(), java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-            return date.format(java.time.format.DateTimeFormatter.ofPattern(format, Locale.ENGLISH));
-        } catch (Exception ignored) {
-        }
-        try {
-            java.time.LocalDate date = java.time.LocalDate.parse(value.trim(), java.time.format.DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH));
-            return date.format(java.time.format.DateTimeFormatter.ofPattern(format, Locale.ENGLISH));
-        } catch (Exception ignored) {
-        }
-        try {
-            java.time.LocalDateTime dateTime = java.time.LocalDateTime.parse(value.trim(), java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-            return dateTime.format(java.time.format.DateTimeFormatter.ofPattern(format, Locale.ENGLISH));
-        } catch (Exception ignored) {
-        }
-        return value;
     }
 
     private String formatNumberValue(String value, String format) {

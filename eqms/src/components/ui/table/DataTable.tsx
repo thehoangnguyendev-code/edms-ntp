@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { EXPAND_CONTENT_MOTION, useExpandTransition } from "./expandMotion";
@@ -16,6 +16,7 @@ import {
   useTableColumnPreferences,
   type CustomizableColumn,
 } from "./useTableColumnPreferences";
+import { useColumnReorderMotion, type ColumnMotionHandle } from "./useColumnReorderMotion";
 
 export type DataTableSortDirection = "asc" | "desc";
 
@@ -55,6 +56,10 @@ export interface DataTableAction<T> {
 export interface DataTableColumnLayout<T> {
   columns: DataTableColumn<T>[];
   pinnedIds: string[];
+  /** Changes each time the person applies or resets a layout: the table then moves the columns to their new place. */
+  reorderToken?: number;
+  /** Lets the Custom Column control note where the columns are when a layout is applied. */
+  motion?: React.MutableRefObject<ColumnMotionHandle | null>;
 }
 
 export interface DataTableProps<T> {
@@ -85,7 +90,7 @@ export interface DataTableProps<T> {
    * `useCustomColumnLayout` when the control must sit on the screen's own filter row.
    */
   customizable?: { tableKey: string };
-  /** Layout from `useCustomColumnLayout`. When given, it replaces the order and pinning of `columns`. */
+  /** Layout from `useCustomColumnLayout`. When given, the table shows `columnLayout.columns` (the visible columns in the saved order) and pins `columnLayout.pinnedIds`; `columns` is then only the default set. */
   columnLayout?: DataTableColumnLayout<T>;
   /** Controls shown above the table inside its card. */
   toolbar?: React.ReactNode;
@@ -160,7 +165,8 @@ export function useCustomColumnLayout<T>(
     [columns],
   );
 
-  const { columns: saved, saveColumns, resetColumns } = useTableColumnPreferences(tableKey, defaults);
+  const { columns: saved, saveColumns, resetColumns, changes } = useTableColumnPreferences(tableKey, defaults);
+  const motion = useRef<ColumnMotionHandle | null>(null);
 
   // Mobile shows the default layout only: no saved order, hiding, or pinning.
   const active = isDesktop ? saved : mergeSavedColumns(defaults, []);
@@ -178,11 +184,13 @@ export function useCustomColumnLayout<T>(
       columns={active}
       fixedColumns={fixedActionLabel ? [{ id: "action", label: fixedActionLabel }] : []}
       onApply={async (next) => {
+        motion.current?.capture();
         if (!(await saveColumns(next))) {
           showToast({ type: "error", title: "Column layout not saved", message: "The server did not accept the change. Please try again." });
         }
       }}
       onReset={async () => {
+        motion.current?.capture();
         if (!(await resetColumns())) {
           showToast({ type: "error", title: "Column layout not reset", message: "The server did not accept the change. Please try again." });
         }
@@ -191,7 +199,7 @@ export function useCustomColumnLayout<T>(
     />
   ) : null;
 
-  return { layout: { columns: shown, pinnedIds }, control, isDesktop };
+  return { layout: { columns: shown, pinnedIds, reorderToken: changes, motion }, control, isDesktop };
 }
 
 /**
@@ -229,7 +237,7 @@ function CustomizableDataTable<T>({
 
 function DataTableBase<T>({
   rows,
-  columns,
+  columns: columnsProp,
   getRowKey,
   selection,
   action,
@@ -250,6 +258,9 @@ function DataTableBase<T>({
   expandedRow,
   columnLayout,
 }: DataTableProps<T>) {
+  // A Custom Column layout decides which columns are shown and in what order: the table never draws the default columns beside it,
+  // so a screen cannot show a column the user hid, or an order that the drawer does not list.
+  const columns = columnLayout ? columnLayout.columns : columnsProp;
   const visibleSelection = selection?.visible === true;
   const colSpan =
     columns.length + (visibleSelection ? 1 : 0) + (action ? 1 : 0);
@@ -269,6 +280,7 @@ function DataTableBase<T>({
     ownDragScroll.scrollerRef.current = node;
   };
   useStickyPinnedColumns(columnLayout ? scrollerEl : null, columnLayout?.pinnedIds ?? [], "data-table-col");
+  useColumnReorderMotion(columnLayout ? scrollerEl : null, columnLayout?.pinnedIds ?? [], columnLayout?.reorderToken, columnLayout?.motion);
 
   return (
     <div

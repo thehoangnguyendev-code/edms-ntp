@@ -225,7 +225,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
       <FormModal
         isOpen={target?.step === "form"}
         onClose={() => setTarget(undefined)}
-        title={`Change targets: ${target?.scenario.label ?? ""}`}
+        title={`Change Targets: ${target?.scenario.label ?? ""}`}
         description="The new targets take effect only after the electronic signature."
         confirmText="Continue to sign"
         confirmDisabled={!target || !target.reason.trim() || !(Number(target.rpo) > 0) || !(Number(target.rto) > 0)}
@@ -248,7 +248,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setTarget(undefined)}
         deferConfirm
         onConfirm={signedTarget}
-        actionTitle={`Approve targets for ${target?.scenario.label ?? ""}`}
+        actionTitle={`Approve Targets for ${target?.scenario.label ?? ""}`}
         meaningDisplayName="Disaster Recovery Target Change"
         meaningCode="BACKUP_DR_TARGET_CHANGE"
       />
@@ -256,7 +256,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
       <FormModal
         isOpen={!!verify}
         onClose={() => setVerify(undefined)}
-        title={`Record check: ${verify?.item.label ?? ""}`}
+        title={`Record Check: ${verify?.item.label ?? ""}`}
         description="Record the check a person has made. The date is the date of the check."
         confirmText="Record check"
         confirmDisabled={!verify || busy}
@@ -283,7 +283,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
       <FormModal
         isOpen={declare?.step === "form"}
         onClose={() => setDeclare(undefined)}
-        title="Change who may declare a disaster"
+        title="Change Who May Declare a Disaster"
         description="The person must be an active account. The change takes effect after the electronic signature."
         confirmText="Continue to sign"
         confirmDisabled={!declare || !declare.username.trim() || !declare.reason.trim()}
@@ -309,7 +309,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setDeclare(undefined)}
         deferConfirm
         onConfirm={signedAuthority}
-        actionTitle={`Change the declaration authority to ${declare?.username ?? ""}`}
+        actionTitle={`Change the Declaration Authority to ${declare?.username ?? ""}`}
         meaningDisplayName="Disaster Declaration Authority Change"
         meaningCode="BACKUP_DR_AUTHORITY_CHANGE"
       />

@@ -38,6 +38,10 @@ export interface TrainingActivitySummary {
   actions?: { edit: boolean; conduct: boolean; review: boolean; approve: boolean; confirm: boolean; completeTraining: boolean };
 }
 
+/** A session has no "held" state: it has started when it has the day it was conducted (its first action in the workspace). */
+export const sessionStarted = (s: { status: string; heldOn?: string | null }) => s.status === "PLANNED" && !!s.heldOn;
+/** Planned and nothing was done in it yet: it can still be changed, postponed or given a trainer exception. */
+export const sessionNotStarted = (s: { status: string; heldOn?: string | null }) => s.status === "PLANNED" && !s.heldOn;
 export interface TrainingTopic { id: string; topicText: string; documentNumber?: string | null; revisionNumber?: string | null }
 export interface TrainingSession {
   id: string;
@@ -54,7 +58,7 @@ export interface TrainingSession {
   locationType?: "ONSITE" | "ONLINE";
   onlinePlatform?: string | null;
   meetingLink?: string | null;
-  status: "PLANNED" | "HELD" | "POSTPONED" | "CANCELLED";
+  status: "PLANNED" | "POSTPONED" | "CANCELLED";
   postponeReason?: string | null;
   topics: TrainingTopic[];
   trainerQualification?: TrainerQualification;
@@ -86,6 +90,8 @@ export interface TrainingParticipant {
   signMode?: "ESIGN" | "PAPER_SCAN" | "ONLINE" | "NONE" | "TRAINER_ATTESTED" | "SELF";
   attempts?: number | null;
   lastPercent?: number | null;
+  lastScore?: number | null;
+  lastMax?: number | null;
 }
 export interface TrainingApproverRow {
   id: string;
@@ -100,6 +106,17 @@ export interface TrainingApproverRow {
 export interface TrainingCapabilities {
   edit: boolean; planSessions: boolean; adjustPlan: boolean; addParticipants: boolean; confirmList: boolean; designateApprovers: boolean; notify: boolean; hold: boolean; recordAttendance: boolean;
   recordAssessment: boolean; submitForConfirmation: boolean; confirmCompletion: boolean; cancel: boolean; addSupplementary: boolean;
+  /** Remarks stay open until the activity is completed; the session can be changed, content reopened and results returned only at the stages the server allows. */
+  editRemarks?: boolean;
+  editSession?: boolean;
+  reopenContent?: boolean;
+  setContentExemptions?: boolean;
+  completeTraining?: boolean;
+  /** The attendance list can be sent to QA: everyone is recorded and it was not sent yet. */
+  sendAttendanceList?: boolean;
+  /** Every result is in and the training is not finished: the trainer finishes it with a signature (the results go into the list APD.0117). */
+  finishTraining?: boolean;
+  returnForCorrection?: boolean;
   removeParticipants?: boolean;
   printPaper?: boolean;
   rollCall?: boolean;
@@ -112,7 +129,12 @@ export interface TrainingActivityDetail extends Omit<TrainingActivitySummary, "p
   version: number;
   /** People proposed when the document was prepared that are not yet on a list; they go on the list of the first session. */
   proposedParticipantCount?: number;
+  /** For a cancelled activity: the status it was cancelled from (null for an old one). */
+  cancelledFromStatus?: string | null;
   /** SOP.0003 5.3.6: where a new or revised document training stands against "the list goes to QA on the day of the training". Null when the rule does not apply. */
+  resultsToQa?: { state: "WAITING" | "DUE" | "DUE_TODAY" | "OVERDUE" | "SENT" | "SENT_LATE"; days: number; dueOn?: string | null; sentOn?: string | null } | null;
+  contentRules?: { materialsRequired: boolean; materialsSatisfied: boolean; materialsSource: "DOCUMENT" | "FILES" | "NONE"; testRequired: boolean; checklistRequired: boolean; assessmentFormSatisfied: boolean; onlineTest: boolean; inherited: boolean; missing: string[] } | null;
+  materialsExempt?: boolean; materialsExemptReason?: string | null; assessmentExempt?: boolean; assessmentExemptReason?: string | null;
   qaList?: { state: "WAITING" | "DUE" | "DUE_TODAY" | "OVERDUE" | "SENT" | "SENT_LATE"; dueOn?: string | null; sentOn?: string | null } | null;
   departmentName: string;
   organizerDepartmentId: string;
@@ -121,6 +143,15 @@ export interface TrainingActivityDetail extends Omit<TrainingActivitySummary, "p
   cancelReason?: string | null;
   completedOn?: string | null;
   approvedOn?: string | null;
+  /** When and by whom the attendance list was sent to QA (the revision can then be completed in Document Control). */
+  attendanceSentAt?: string | null;
+  attendanceSentByName?: string | null;
+  resultsFinishedAt?: string | null;
+  resultsFinishedByName?: string | null;
+  /** The pass mark in force (percent): the result of a score is worked out by the server with it. */
+  passPercent?: number;
+  /** The revisions that go with the Training Number: the document of the activity first, then the documents it lists as related. */
+  groupRevisions?: { revisionId: string; documentId: string; documentNumber: string; revisionNumber?: string | null; revisionName?: string | null; revisionStatus: string; isMain: boolean }[];
   listPreparedBy?: string | null;
   documentName?: string | null;
   parentActivityId?: string | null;
@@ -130,7 +161,7 @@ export interface TrainingActivityDetail extends Omit<TrainingActivitySummary, "p
   approvers: TrainingApproverRow[];
   capabilities: TrainingCapabilities;
 }
-export interface TrainingPerson { id: string; avatar?: string | null; fullName: string; employeeCode?: string | null; department?: string | null; position?: string | null; email?: string | null; businessUnit?: string | null }
+export interface TrainingPerson { id: string; avatar?: string | null; username?: string | null; fullName: string; employeeCode?: string | null; department?: string | null; position?: string | null; email?: string | null; businessUnit?: string | null }
 export interface TrainingGroup { name: string; total: number }
 export interface TrainingPage<T> { data: T[]; pagination: { page: number; limit: number; total: number; totalPages: number } }
 export interface TrainingMyApproval { id: string; stepCode: TrainingApprovalStep | "MATRIX_APPROVE" | "REQUIREMENT_REVIEW" | "REQUIREMENT_APPROVE"; objectType: string; objectId: string; activityId?: string | null; trainingNumber: string; trainingTitle: string; status: TrainingActivityStatus; assignedAt: string }
@@ -159,10 +190,17 @@ export const trainingActivitiesApi = {
     command(`/training/activities/${id}/approvers/${assignmentId}/reassign`, { assigneeUserId, reason }),
   confirmContent: (id: string, step: "CONTENT_REVIEW" | "CONTENT_APPROVE", signatureToken: string) =>
     command(`/training/activities/${id}/confirm-content`, { step, signatureToken }),
-  notify: (id: string, version: number) => command(`/training/activities/${id}/notify`, { version }),
-  submitForConfirmation: (id: string, version: number) => command(`/training/activities/${id}/submit-for-confirmation`, { version }),
+  notify: (id: string, version: number, signatureToken: string) => command(`/training/activities/${id}/notify`, { version, signatureToken }),
+  finishTraining: (id: string, version: number, signatureToken: string) => command(`/training/activities/${id}/finish-training`, { version, signatureToken }),
+  sendAttendanceList: (id: string, version: number, signatureToken: string) => command(`/training/activities/${id}/send-attendance-list`, { version, signatureToken }),
+  submitForConfirmation: (id: string, version: number, signatureToken: string) => command(`/training/activities/${id}/submit-for-confirmation`, { version, signatureToken }),
   confirmCompletion: (id: string, version: number, signatureToken: string) => command(`/training/activities/${id}/confirm-completion`, { version, signatureToken }),
-  cancel: (id: string, version: number, reason: string) => command(`/training/activities/${id}/cancel`, { version, reason }),
+  cancel: (id: string, version: number, reason: string, signatureToken?: string) => command(`/training/activities/${id}/cancel`, { version, reason, signatureToken }),
+  updateSession: async (sessionId: string, body: { trainerUserId?: string; externalTrainerName?: string; scheduledOn?: string; locationType: "ONSITE" | "ONLINE"; venue?: string; onlinePlatform?: string; meetingLink?: string; reason: string }) =>
+    (await apiClient.put<TrainingActivityDetail>(`/training/sessions/${sessionId}`, body)).data,
+  setContentExemptions: (id: string, body: { materialsExempt?: boolean; assessmentExempt?: boolean; reason?: string }) => command(`/training/activities/${id}/content-exemptions`, body),
+  reopenContent: (id: string, version: number, reason: string, signatureToken: string) => command(`/training/activities/${id}/reopen-content`, { version, reason, signatureToken }),
+  returnForCorrection: (id: string, version: number, reason: string, signatureToken: string) => command(`/training/activities/${id}/return-for-correction`, { version, reason, signatureToken }),
   supplementary: (id: string, participantIds: string[], reason: string) => command(`/training/activities/${id}/supplementary`, { participantIds, reason }),
   removeParticipant: async (participantId: string, reason: string) => (await apiClient.post<TrainingActivityDetail>(`/training/participants/${participantId}/remove`, { reason })).data,
   setPlannedAbsence: async (participantId: string, reason: string) => (await apiClient.post<TrainingActivityDetail>(`/training/participants/${participantId}/planned-absence`, { reason })).data,
@@ -172,7 +210,7 @@ export const trainingActivitiesApi = {
   requestTrainerException: async (sessionId: string, reason: string, approverUserId: string) => (await apiClient.post(`/training/sessions/${sessionId}/trainer-exception`, { reason, approverUserId })).data,
   approveTrainerException: async (exceptionId: string, signatureToken: string) => (await apiClient.post(`/training/trainer-exceptions/${exceptionId}/approve`, { signatureToken })).data,
   rejectTrainerException: async (exceptionId: string, reason: string) => (await apiClient.post(`/training/trainer-exceptions/${exceptionId}/reject`, { reason })).data,
-  holdSession: (sessionId: string, heldOn?: string) => command(`/training/sessions/${sessionId}/hold`, { heldOn }),
+  holdSession: (sessionId: string, signatureToken?: string, heldOn?: string) => command(`/training/sessions/${sessionId}/hold`, { heldOn, signatureToken }),
   postponeSession: (sessionId: string, newDate: string, reason: string) => command(`/training/sessions/${sessionId}/postpone`, { newDate, reason }),
   attendance: (participantId: string, state: "ATTENDED" | "ONLINE" | "ABSENT", absenceReason?: string) =>
     command(`/training/participants/${participantId}/attendance`, { state, absenceReason }),
@@ -203,7 +241,7 @@ export interface TrainingNumberLogRow {
 }
 export interface TrainingSettings {
   passPercent: number; documentTrainingDaysDefault: number; annualRequirementDueMonth: number; annualRequirementDueDay: number;
-  absenceRetrainMonths: number; retentionYearsAfterLeaving: number; integrationEnabled: boolean; version: number; updatedAt?: string;
+  absenceRetrainMonths: number; retentionYearsAfterLeaving: number; reviewReadyReminderDays: number; reviewOpenReminderDays: number; resultsDueDays: number; integrationEnabled: boolean; version: number; updatedAt?: string;
 }
 
 export const trainingRecordsApi = {
@@ -311,10 +349,22 @@ export const trainingCheckInApi = {
   status: async (sessionId: string) => (await apiClient.get<TrainingCheckInStatus>(`/training/sessions/${sessionId}/check-in`)).data,
   open: async (sessionId: string) => (await apiClient.post<TrainingCheckInStatus>(`/training/sessions/${sessionId}/check-in/open`)).data,
   close: async (sessionId: string) => (await apiClient.post<TrainingCheckInStatus>(`/training/sessions/${sessionId}/check-in/close`)).data,
-  checkIn: async (body: { code: string }) => (await apiClient.post<{ activityId: string; trainingNumber: string; sessionNo: number }>("/training/me/check-in", body)).data,
+  checkIn: async (body: { code: string; signatureToken: string }) => (await apiClient.post<{ activityId: string; trainingNumber: string; sessionNo: number }>("/training/me/check-in", body)).data,
 };
 
 export const trainingPaperApi = {
+  /** The attendance list of the activity in the form APD.0117, as Word or PDF. */
+  attendanceList: async (activityId: string, format: "docx" | "pdf") => {
+    try {
+      return (await apiClient.get<Blob>(`/training/activities/${activityId}/attendance-list`, { params: { format }, responseType: "blob" })).data;
+    } catch (e) {
+      const response = (e as { response?: { data?: unknown } }).response;
+      if (response?.data instanceof Blob) {
+        try { response.data = JSON.parse(await response.data.text()); } catch { /* keep the original error */ }
+      }
+      throw e;
+    }
+  },
   packs: async (activityId: string) => (await apiClient.get<TrainingPaperPack[]>(`/training/activities/${activityId}/paper-packs`)).data,
   printExam: async (sessionId: string, reason?: string) => {
     try {
@@ -372,7 +422,7 @@ export const trainingBatchExportsApi = {
 
 export interface TrainingPersonnelReviewSummary {
   id: string; reviewNo: number; personUserId: string; fullName: string; avatar?: string | null; employeeCode?: string | null; department?: string | null; kind: "NEW_HIRE" | "ABSENCE_RETURN" | "DEPT_TRANSFER" | "LOCATION_TRANSFER";
-  status: "OPEN" | "CLOSED" | "CANCELLED"; eventDate: string; createdAt: string; createdByName: string; openItems: number;
+  status: "OPEN" | "CLOSED" | "CANCELLED"; eventDate: string; createdAt: string; createdByName: string; openItems: number; closerName?: string | null;
 }
 export interface TrainingReviewItem {
   itemCode: string; label: string; hint: string; canLink: boolean; status: "PENDING" | "DONE" | "NOT_NEEDED"; activityId?: string | null; trainingNumber?: string | null; trainingTitle?: string | null;
@@ -383,14 +433,20 @@ export interface TrainingReviewItem {
 export interface TrainingPersonMatrixGaps { positionName?: string | null; required: number; missing: number; due: number; done: number; gaps: TrainingGap[] }
 export interface TrainingPersonnelReview extends TrainingPersonnelReviewSummary {
   absenceFrom?: string | null; absenceTo?: string | null; absenceOverSixMonths?: boolean; departmentFrom?: string | null; departmentTo?: string | null; note?: string | null; closedAt?: string | null; closedByName?: string | null;
-  cancelReason?: string | null; items: TrainingReviewItem[]; capabilities: { editItems: boolean; close: boolean; cancel: boolean };
+  cancelReason?: string | null; items: TrainingReviewItem[]; closerUserId?: string | null; closerName?: string | null; readyToClose?: boolean;
+  capabilities: { editItems: boolean; close: boolean; changeCloser?: boolean; cancel: boolean };
 }
+export interface TrainingReviewPlan { departmentFrom?: string | null; departmentTo?: string | null; closerUserId?: string | null; closerName?: string | null; absenceRetrainMonths: number; problem?: string | null }
 export const trainingReviewsApi = {
   list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingPersonnelReviewSummary>>("/training/personnel-reviews", { params })).data,
   get: async (id: string) => (await apiClient.get<TrainingPersonnelReview>(`/training/personnel-reviews/${id}`)).data,
   matrixGaps: async (id: string) => (await apiClient.get<TrainingPersonMatrixGaps>(`/training/personnel-reviews/${id}/matrix-gaps`)).data,
-  create: async (body: { personUserId: string; kind: string; eventDate: string; absenceFrom?: string; absenceTo?: string; departmentFrom?: string; departmentTo?: string; note?: string }) =>
+  create: async (body: { personUserId: string; kind: string; eventDate: string; absenceFrom?: string; absenceTo?: string; departmentTo?: string; note?: string }) =>
     (await apiClient.post<TrainingPersonnelReview>("/training/personnel-reviews", body)).data,
+  /** What the dialog that opens a review reads from the records: the department of the employee, the head who closes, the months of absence the SOP asks for, and what blocks the review. */
+  plan: async (params: { personId: string; kind?: string; departmentTo?: string }) => (await apiClient.get<TrainingReviewPlan>("/training/personnel-reviews/plan", { params })).data,
+  eligibleClosers: async (personId: string, search?: string) => (await apiClient.get<TrainingPage<TrainingPerson>>("/training/personnel-reviews/eligible-closers", { params: { personId, search, limit: 50 } })).data,
+  changeCloser: async (id: string, closerUserId: string, reason: string) => (await apiClient.put<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/closer`, { closerUserId, reason })).data,
   item: async (id: string, itemCode: string, body: { status: string; activityId?: string | null; note?: string | null }) => (await apiClient.put<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/items/${itemCode}`, body)).data,
   close: async (id: string, signatureToken: string) => (await apiClient.post<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/close`, { signatureToken })).data,
   cancel: async (id: string, reason: string) => (await apiClient.post<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/cancel`, { reason })).data,
@@ -435,6 +491,37 @@ export const trainingCopyApi = {
   mine: async (sortBy?: string, sortDirection?: "asc" | "desc") => (await apiClient.get<TrainingMyCopy[]>("/training/copy-distributions/mine", { params: { sortBy, sortDirection } })).data,
 };
 
+/** Work suspended after a failed assessment (D-12). */
+export interface TrainingSuspension {
+  id: string; personUserId: string; fullName: string; employeeCode?: string | null; avatar?: string | null; position?: string | null; activityId: string; trainingNumber: string;
+  topicText?: string | null; percent?: number | null; status: "OPEN" | "CLEARED"; raisedAt: string; clearedAt?: string | null; clearBasis?: "RETRAINED_PASSED" | "RESUMED_BY_HEAD" | null;
+  clearReason?: string | null; clearedByName?: string | null; clearTrainingNumber?: string | null; canResume: boolean;
+}
+/** How long the records of a person who has left are kept (SOP.0003 5.3.10). */
+export interface TrainingRetentionRow {
+  id: string; fullName: string; employeeCode?: string | null; avatar?: string | null; position?: string | null; terminationDate: string; retainedUntil: string; records: number; ended: boolean;
+}
+export interface TrainingImpactRow {
+  id: string; trainingNumber: string; trainingTitle: string; activityStatus: TrainingActivityStatus; documentId: string; documentNumber?: string | null; documentName?: string | null; revisionNumber?: string | null;
+  departmentName: string; createdAt: string; outcome?: "MATRIX_UPDATE_NEEDED" | "MATRIX_ALREADY_COVERS" | "NO_TRAINING_IMPACT" | null; assessedAt?: string | null; assessedByName?: string | null;
+  assessmentReason?: string | null; impactStatus: "PENDING" | "MATRIX_UPDATE_PENDING" | "DONE"; canAssess: boolean;
+}
+export interface TrainingImpactContext {
+  activityId: string; trainingNumber: string; documentNumber?: string | null; documentName?: string | null; revisionNumber?: string | null;
+  effectiveMatrix?: { id: string; versionNo: number } | null; inEffectiveMatrix: boolean; positionsInMatrix: string[]; positions: { id: string; name: string }[];
+  latest: { outcome: string; reason: string; positions: { id: string; name: string }[] | string; assessedAt: string; assessedByName: string }[];
+}
+export const trainingFollowUpApi = {
+  suspensions: async (params: Record<string, string | number | undefined>) => (await apiClient.get<TrainingPage<TrainingSuspension>>("/training/compliance/suspensions", { params })).data,
+  resume: async (id: string, reason: string, signatureToken: string) => (await apiClient.post(`/training/compliance/suspensions/${id}/resume`, { reason, signatureToken })).data,
+  retention: async (params: Record<string, string | number | undefined>) => (await apiClient.get<TrainingPage<TrainingRetentionRow> & { retentionYears: number }>("/training/compliance/retention", { params })).data,
+  documentTrainings: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingImpactRow>>("/training/document-trainings", { params })).data,
+  documentTrainingsSummary: async (departmentId?: string) => (await apiClient.get<{ pending: number; matrixUpdatePending: number }>("/training/document-trainings/summary", { params: { departmentId } })).data,
+  impactContext: async (activityId: string) => (await apiClient.get<TrainingImpactContext>(`/training/activities/${activityId}/impact-assessment`)).data,
+  assess: async (activityId: string, body: { outcome: string; reason: string; positionIds: string[]; signatureToken: string }) =>
+    (await apiClient.post<TrainingImpactContext>(`/training/activities/${activityId}/impact-assessment`, body)).data,
+};
+
 export const trainingComplianceApi = {
   summary: async (departmentId?: string) => (await apiClient.get<TrainingComplianceSummary>("/training/compliance/summary", { params: { departmentId } })).data,
   coverage: async (params: Record<string, string | number | undefined>) => (await apiClient.get<TrainingPage<TrainingGap>>("/training/compliance/coverage", { params })).data,
@@ -477,11 +564,11 @@ export interface MatrixCompletion { summary?: CompletionSummary; hasEffectiveMat
 export interface TrainingJobSummary { id: string; issueNo: number; caseType: "INITIAL" | "CHANGE"; status: "DRAFT" | "PENDING_RECEIVER" | "EFFECTIVE" | "SUPERSEDED" | "CANCELLED"; createdAt: string; effectiveAt?: string | null; fullName: string; avatar?: string | null; employeeCode?: string | null; positionName: string; departmentName: string }
 export interface TrainingJobDuty { sortOrder?: number; responsibility: string; description?: string | null }
 export interface TrainingEligibilityItem { title: string; code?: string | null; annualRequired: boolean; lastDone?: string | null }
-export interface TrainingEligibility { matrixMissing: boolean; matrixVersionId?: string | null; items: TrainingEligibilityItem[]; complete: boolean; missingCount?: number }
+export interface TrainingEligibility { openSuspensions?: number; matrixMissing: boolean; matrixVersionId?: string | null; items: TrainingEligibilityItem[]; complete: boolean; missingCount?: number }
 export interface TrainingJobDetail extends Omit<TrainingJobSummary, "fullName" | "employeeCode" | "positionName"> {
   personUserId: string; personName: string; positionId: string; positionName: string; previousPositionName?: string | null; directSuperiorTitle?: string | null; subordinateTitles?: string | null;
   substituteTitle?: string | null; changeReason?: string | null; jurisdiction?: string | null; exceptionReason?: string | null; exceptionApprovedBy?: string | null; assignorTitle?: string | null; cancelReason?: string | null;
-  version: number; duties: TrainingJobDuty[]; approvers: TrainingApproverRow[]; eligibility?: TrainingEligibility;
+  version: number; duties: TrainingJobDuty[]; approvers: TrainingApproverRow[]; signatures?: { meaning: string; fullName: string; signedAt: string }[]; eligibility?: TrainingEligibility;
   capabilities: { edit: boolean; requestException: boolean; approveException: boolean; submit: boolean; accept: boolean; cancel: boolean };
 }
 export interface TrainingJobSave { personUserId?: string; positionId?: string; directSuperiorTitle?: string; subordinateTitles?: string; substituteTitle?: string; changeReason?: string; jurisdiction?: string; duties: TrainingJobDuty[]; version?: number }
@@ -708,6 +795,14 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_REVIEW_ITEMS_PENDING: "Every item must be done or marked not needed before the review is closed.",
   TRAINING_REVIEW_INVALID: "Check the employee, the event and the date.",
   TRAINING_REVIEW_ABSENCE_INVALID: "Enter the period of absence, from a date up to a later date.",
+  TRAINING_REVIEW_DATE_FUTURE: "The date cannot be later than today: the event has already happened.",
+  TRAINING_REVIEW_RETURN_BEFORE_ABSENCE_END: "The return date cannot be before the last day of the absence.",
+  TRAINING_REVIEW_ABSENCE_TOO_SHORT: "SOP.0003 asks for a review only when the absence lasts longer than the months set in Training Properties.",
+  TRAINING_REVIEW_DEPARTMENT_REQUIRED: "Choose the new department.",
+  TRAINING_REVIEW_SAME_DEPARTMENT: "The new department is the department the employee already works in.",
+  TRAINING_REVIEW_DEPARTMENT_HEAD_MISSING: "The department has no head. Set the Department Head in Settings, Dictionaries, Departments.",
+  TRAINING_REVIEW_HEAD_IS_EMPLOYEE: "The head of the department is the employee: the review needs a person other than the employee to close it.",
+  TRAINING_REVIEW_HEAD_NOT_ALLOWED: "The head of the department has no right to close training reviews.",
   TRAINING_REVIEW_ACTIVITY_INVALID: "The employee is not on the list of that training.",
   TRAINING_REVIEW_KIND_INVALID: "Unknown event.",
   TRAINING_REVIEW_ITEM_LINKED: "A training is already linked to this item.",
@@ -722,13 +817,59 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_LIST_NOT_CONFIRMED: "Confirm the attendee list first.",
   TRAINING_CONTENT_NOT_REVIEWED: "The content must be reviewed first.",
   TRAINING_CONTENT_NOT_APPROVED: "The content and the test must be reviewed and approved first.",
+  TRAINING_MATERIALS_REQUIRED: "Add the Training Materials first: a file or a link (a training on a document uses the document). If none is needed, say so with a reason in the Training Materials tab.",
+  TRAINING_TEST_REQUIRED: "Add the test (APD.0009) in the Assessment tab first: a session is assessed by a test. If none is needed, say so with a reason.",
+  TRAINING_CHECKLIST_REQUIRED: "Add the checklist form (APD.0009) in the Assessment tab first: a session is assessed by a checklist. If none is needed, say so with a reason.",
+  TRAINING_SUSPENSION_NOT_OPEN: "This suspension is already cleared.",
+  TRAINING_IMPACT_OUTCOME_INVALID: "Choose the outcome of the assessment.",
+  TRAINING_IMPACT_POSITION_REQUIRED: "Choose the positions that must be trained on the document.",
+  TRAINING_IMPACT_POSITION_INVALID: "A position does not belong to the department.",
+  TRAINING_IMPACT_NOT_IN_MATRIX: "No effective matrix of the department contains this document yet.",
+  TRAINING_IMPACT_NOT_APPLICABLE: "This training activity is not for a new or revised document.",
+  TRAINING_ACTIVITY_FIELD_LOCKED: "The title, the due date and the training unit cannot be changed once the activity is notified. Only the remarks can.",
+  TRAINING_SESSION_STARTED: "This session has already been held. Its trainer, date and place can no longer be changed.",
+  TRAINING_SESSION_UNCHANGED: "Nothing was changed.",
+  TRAINING_TRAINER_EXCEPTION_OPEN: "A trainer exception was asked for this session. Deal with it before changing the trainer.",
   TRAINING_SESSION_REQUIRED: "Add at least one session.",
   TRAINING_TRAINER_REQUIRED: "Every session needs a trainer.",
   TRAINING_PARTICIPANT_REQUIRED: "Add at least one participant.",
   TRAINING_PARTICIPANT_NOT_ELIGIBLE: "This person cannot be added or cannot be chosen for this step.",
   TRAINING_PARTICIPANT_NOT_FINAL: "Every participant must be marked as attended or absent.",
   TRAINING_RESULT_PENDING: "Every participant who attended needs a result.",
-  TRAINING_SESSION_NOT_HELD: "Hold every session first.",
+  TRAINING_SESSION_NOT_HELD: "Start the training first: in the workspace, Prepare, Next (with your signature).",
+  TRAINING_PREPARATION_PENDING: "Tick every line of the Preparation checklist first.",
+  TRAINING_ATTENDANCE_ALREADY_SENT: "The attendance list was already sent to QA.",
+  TRAINING_ATTENDANCE_NOT_SENT: "Send the attendance list to QA first.",
+  TRAINING_NOT_FINISHED: "Finish the training first: the trainer signs once every result is in.",
+  TRAINING_ALREADY_FINISHED: "The training was already finished.",
+  TRAINING_ACTIVITY_CLOSED: "The training activity is closed: it cannot be changed.",
+  TRAINING_ASSESSMENT_METHOD_INVALID: "This session has no assessment that takes a score.",
+  TRAINING_ASSIGNMENT_NOT_FOUND: "The job assignment was not found.",
+  TRAINING_ATTENDANCE_INVALID: "Choose attended, online or absent.",
+  TRAINING_COMPARE_SAME_MATRIX: "Choose two different versions to compare.",
+  TRAINING_COPY_TYPE_INVALID: "This kind of record cannot be sent as a copy.",
+  TRAINING_DATE_INVALID: "The date is not valid. Use dd/MM/yyyy.",
+  TRAINING_DATE_RANGE_INVALID: "The first date must not be after the second date.",
+  TRAINING_DATE_REQUIRED: "Choose a date.",
+  TRAINING_DEPARTMENT_CODE_INVALID: "The department code is not valid.",
+  TRAINING_DEPARTMENT_NOT_FOUND: "The department was not found.",
+  TRAINING_EXTERNAL_TYPE_REQUIRED: "Choose the type of the external training.",
+  TRAINING_FILTER_INVALID: "The filter is not valid.",
+  TRAINING_GROUP_INVALID: "The group is not valid.",
+  TRAINING_KIND_INVALID: "Choose the type of the training.",
+  TRAINING_MATRIX_ROWS_REQUIRED: "Add at least one row to the training matrix.",
+  TRAINING_POSITION_REQUIRED: "Choose a position.",
+  TRAINING_PROPOSAL_INVALID: "The proposed people are not valid.",
+  TRAINING_PROPOSAL_NO_ACTIVITY: "The proposal belongs to no training activity.",
+  TRAINING_REASON_TOO_LONG: "The reason is too long (500 characters at most).",
+  TRAINING_REQUIREMENT_LINES_REQUIRED: "Add at least one line to the training requirement.",
+  TRAINING_SESSION_INVALID: "The session is not complete: check the method, the assessment, the place and the trainer.",
+  TRAINING_SORT_NOT_ALLOWED: "This column cannot be sorted.",
+  TRAINING_STATUS_INVALID: "The status is not valid.",
+  TRAINING_STEP_UNKNOWN: "The step is not known.",
+  TRAINING_SUPPLEMENTARY_OF_ROOT_ONLY: "A make-up training can be made only for the original training, not for another make-up.",
+  TRAINING_TABLE_NOT_ALLOWED: "This table cannot be exported.",
+  TRAINING_TRAINER_NOT_FOUND: "The trainer was not found or is not active.",
   TRAINING_DATE_IN_FUTURE: "The date cannot be in the future.",
   TRAINING_ASSESSMENT_SELF: "You cannot record the result of your own assessment.",
   TRAINING_SCORE_INVALID: "Enter a score between 0 and the maximum score.",
@@ -769,6 +910,9 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_SPECIMEN_INVALID_TRANSITION: "This action is not available in the current status.",
   TRAINING_MATERIAL_PURPOSE_EXISTS: "This file is already on record. Remove it first, with a reason, to add another.",
   TRAINING_PREVIEW_UNAVAILABLE: "This file cannot be previewed now. Download it instead.",
+  TRAINING_FORM_TEMPLATE_MISSING: "The template APD.0117 is not enabled. Upload it and enable it in Training Properties (form templates).",
+  TRAINING_FORM_TEMPLATE_STRUCTURE: "The enabled template APD.0117 does not have the parts of the form (header, general information, topics, list, confirmations). Upload the right file.",
+  TRAINING_FORMAT_INVALID: "Choose Word or PDF.",
   TRAINING_ASSESSMENT_NOT_ALLOWED: "This way of assessment does not go with the training method (SOP.0003 5.1.2).",
   TRAINING_PARTICIPANT_LOCKED: "This person can no longer be changed: the attendee list is confirmed, or attendance was recorded. Mark the person absent instead.",
   TRAINING_UNIT_REQUIRED: "Enter the training unit or the person who trains (up to 255 characters).",

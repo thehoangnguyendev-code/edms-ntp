@@ -34,12 +34,13 @@ import {
   type TemplatePage,
 } from "@/services/api/reportTemplates";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
+import { displayDateTime } from "@/utils/format";
 
 const LIFECYCLE_TEXT: Record<string, string> = { ACTIVE: "Active", INACTIVE: "Disabled", DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval" };
 const defaults = { status: "", sourceCode: "", format: "", orientation: "" };
 type Filters = typeof defaults;
 const date = (value?: string) =>
-  value ? new Date(value).toLocaleString() : "—";
+  value ? displayDateTime(value) : "—";
 
 export function ReportTemplateCatalog({ inAdministration = false }: { inAdministration?: boolean }) {
   const navigate = useNavigate();

@@ -31,10 +31,12 @@ import {
 } from "../shared/TrainingDetailLayout";
 import { TrainingMatrixGrid } from "./components/TrainingMatrixGrid";
 import { TrainingMatrixVersionsPanel } from "./TrainingMatrixVersionsPanel";
+import { trainingFollowUpApi } from "@/services/api/trainingActivities";
+import { useTrainingBack } from "../shared/useTrainingBack";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
-  PENDING_APPROVAL: "Waiting for approval",
+  PENDING_APPROVAL: "Pending Approval",
   EFFECTIVE: "Effective",
   OBSOLETE: "Obsolete",
 };
@@ -48,7 +50,7 @@ const NEXT_STEP: Record<string, string> = {
 
 const MATRIX_STEPS = [
   { status: "DRAFT", label: "Draft" },
-  { status: "PENDING_APPROVAL", label: "Waiting for approval" },
+  { status: "PENDING_APPROVAL", label: "Pending Approval" },
   { status: "EFFECTIVE", label: "Effective" },
 ];
 
@@ -71,6 +73,7 @@ export function TrainingMatrixVersionPage() {
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
   const { hasPermission } = usePermissions();
+  const goBack = useTrainingBack(hasPermission("training.scope.all") ? "/training-management/matrix" : "/training-management/my-training");
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = ["matrix", "general", "audit"].includes(searchParams.get("tab") ?? "") ? searchParams.get("tab")! : "matrix";
   const setTab = (id: string) => setSearchParams({ tab: id }, { replace: true });
@@ -145,6 +148,17 @@ export function TrainingMatrixVersionPage() {
       .catch(() => undefined);
     return () => { alive = false; };
   }, [versionId, matrixId, versionNo, status]);
+
+  // SOP.0003 5.3.1: documents issued or revised whose effect on the matrix is not assessed, or whose matrix update is not done yet.
+  const departmentOfVersion = version?.departmentId;
+  const [waiting, setWaiting] = useState(0);
+  useEffect(() => {
+    setWaiting(0);
+    if (!departmentOfVersion || !hasPermission("training.matrix.view")) return;
+    let alive = true;
+    trainingFollowUpApi.documentTrainingsSummary(departmentOfVersion).then((s) => { if (alive) setWaiting(s.pending + s.matrixUpdatePending); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, [departmentOfVersion, version?.version]);
 
   const title = "Training Matrix";
   const crumbs = trainingBreadcrumbs(navigate, "matrices", title);
@@ -239,8 +253,8 @@ export function TrainingMatrixVersionPage() {
           className="whitespace-nowrap"
           onClick={() =>
             setSign({
-              title: "Complete approval of the matrix",
-              changes: statusChange("Waiting for approval", "Effective"),
+              title: "Complete Approval of the Matrix",
+              changes: statusChange("Pending Approval", "Effective"),
               code: "TRAINING_MATRIX_APPROVED",
               name: "Training Matrix Approved",
               run: (t) =>
@@ -317,7 +331,7 @@ export function TrainingMatrixVersionPage() {
       <TrainingDetailLayout
         title={title}
         breadcrumbItems={crumbs}
-        onBack={() => navigate(hasPermission("training.scope.all") ? "/training-management/matrix" : "/training-management/my-training")}
+        onBack={goBack}
         steps={steps}
         currentStepIndex={stepIndex}
         terminalProgressStep="Effective"
@@ -337,6 +351,12 @@ export function TrainingMatrixVersionPage() {
         }
       >
         <p className="mb-3 text-sm text-slate-700">{NEXT_STEP[version.status]}</p>
+        {waiting > 0 && (
+          <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {waiting} new or revised document{waiting === 1 ? "" : "s"} of this department {waiting === 1 ? "waits" : "wait"} for the matrix to be assessed or updated.{" "}
+            <button type="button" className="font-medium underline" onClick={() => navigate("/training-management/document-trainings")}>Open Document Trainings</button>
+          </p>
+        )}
         {tab === "general" && (
           <div className="space-y-4">
             <ReadonlyGrid>
@@ -354,7 +374,7 @@ export function TrainingMatrixVersionPage() {
                 value={STATUS_LABEL[version.status]}
               />
               <ReadonlyField
-                label="Waiting for"
+                label="Pending With"
                 value={version.approvers
                   .filter((a) => a.status === "PENDING")
                   .map((a) => a.assigneeName)
@@ -521,8 +541,8 @@ export function TrainingMatrixVersionPage() {
           onSubmit={(approver) => {
             setDialog(undefined);
             setSign({
-              title: "Send matrix for approval",
-              changes: statusChange("Draft", "Waiting for approval"),
+              title: "Send Matrix for Approval",
+              changes: statusChange("Draft", "Pending Approval"),
               code: "TRAINING_MATRIX_PREPARED",
               name: "Training Matrix Prepared",
               run: (t) =>
@@ -551,7 +571,7 @@ export function TrainingMatrixVersionPage() {
       <FormModal
         isOpen={dialog === "upgrade"}
         onClose={() => setDialog(undefined)}
-        title="Start a new version"
+        title="Start a New Version"
         description="A copy of this version is opened as a draft. This version stays effective until the new one is approved."
         confirmText="Start"
         isLoading={busy}
@@ -626,7 +646,7 @@ function AddTopicDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Add a topic"
+      title="Add a Topic"
       description="Standard topics are kept in Training Administration. A SOP is added with Add SOP."
       confirmText="Add"
       confirmDisabled={!chosen}
@@ -763,7 +783,7 @@ function SubmitDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Send for approval"
+      title="Send for Approval"
       description="Choose who approves this version. Only people the system found eligible are listed: they hold the approval permission, are in this department, and are not you."
       confirmText="Continue to signature"
       isLoading={busy}
@@ -807,7 +827,7 @@ function RejectDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Reject this version"
+      title="Reject This Version"
       description="The version goes back to draft with your reason."
       confirmText="Reject"
       confirmVariant="destructive"

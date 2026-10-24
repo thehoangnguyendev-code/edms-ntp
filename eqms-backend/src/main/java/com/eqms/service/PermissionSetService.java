@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import org.springframework.security.access.AccessDeniedException;
 import com.eqms.dto.audittrail.AuditTrailChangeResponse;
@@ -549,12 +550,12 @@ public class PermissionSetService {
 
     private Instant parseDayStart(String value) {
         LocalDate date = parseFilterDate(value);
-        return date == null ? null : date.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return date == null ? null : date.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 
     private Instant parseDayEndExclusive(String value) {
         LocalDate date = parseFilterDate(value);
-        return date == null ? null : date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return date == null ? null : date.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 
     private LocalDate parseFilterDate(String value) {

@@ -28,7 +28,7 @@ public class TrainingNotificationAdminService {
     private static final Set<String> STATUSES = Set.of("SENT", "FAILED", "SKIPPED");
     private static final Set<String> CHANNELS = Set.of("IN_APP", "EMAIL");
     /** The events the reminder run produces; they are what a manual run is measured by. */
-    static final List<String> REMINDER_EVENTS = List.of("TRAINING_DUE_SOON", "TRAINING_OVERDUE", "TRAINING_STEP_WAITING", "TRAINING_QA_LIST_TODAY", "TRAINING_QA_LIST_LATE");
+    static final List<String> REMINDER_EVENTS = List.of("TRAINING_DUE_SOON", "TRAINING_OVERDUE", "TRAINING_STEP_WAITING", "TRAINING_QA_LIST_TODAY", "TRAINING_QA_LIST_LATE", "TRAINING_REQUIREMENT_DUE", "TRAINING_PERIODIC_REQUIREMENT_DUE", "TRAINING_IMPACT_WAITING", "TRAINING_REVIEW_CLOSE_DUE", "TRAINING_REVIEW_OPEN_DUE", "TRAINING_RESULTS_DUE_TODAY", "TRAINING_RESULTS_LATE", "TRAINING_QA_CONFIRM_WAITING");
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;

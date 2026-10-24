@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.DocumentRecord;
 
 import java.time.Instant;
@@ -28,6 +29,6 @@ public final class DocumentExpiryRules {
     }
 
     public static Instant expiryInstant(LocalDate validUntil) {
-        return validUntil.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return validUntil.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 }

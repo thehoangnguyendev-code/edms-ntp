@@ -18,6 +18,7 @@ import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { codeLabel, runStatusLabel } from "../shared/reportLabels";
 import { reportsApi, type ReportRunSummary } from "@/services/api/reports";
 import { reportError } from "@/services/api/reportTemplates";
+import { displayDateTime } from "@/utils/format";
 
 const STATUSES = ["QUEUED", "PROCESSING", "COMPLETED", "RETRY_SCHEDULED", "FAILED", "DEAD_LETTERED"];
 
@@ -171,13 +172,13 @@ export function ReportHistoryView() {
       id: "queued",
       header: "Queued",
       sort: { direction: table.sortConfig.key === "queuedAt" ? table.sortConfig.direction : undefined, onSort: () => table.handleSort("queuedAt") },
-      cell: (r) => new Date(r.queuedAt).toLocaleString(),
+      cell: (r) => displayDateTime(r.queuedAt),
     },
     {
       id: "completed",
       header: "Completed",
       sort: { direction: table.sortConfig.key === "completedAt" ? table.sortConfig.direction : undefined, onSort: () => table.handleSort("completedAt") },
-      cell: (r) => (r.completedAt ? new Date(r.completedAt).toLocaleString() : "—"),
+      cell: (r) => (r.completedAt ? displayDateTime(r.completedAt) : "—"),
     },
     { id: "progress", header: "Progress", cell: (r) => `${r.progress}%` },
     { id: "reason", header: "Reason", cell: (r) => codeLabel(r.reasonCode) },

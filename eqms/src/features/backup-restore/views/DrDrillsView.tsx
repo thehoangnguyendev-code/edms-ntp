@@ -218,7 +218,7 @@ export const DrDrillsView: React.FC = () => {
       <FormModal
         isOpen={!!form}
         onClose={() => setForm(undefined)}
-        title="Record a disaster recovery drill"
+        title="Record a Disaster Recovery Drill"
         description="Record a drill that has been carried out. Its targets are taken from the scenario."
         confirmText="Record drill"
         confirmDisabled={!valid || busy}

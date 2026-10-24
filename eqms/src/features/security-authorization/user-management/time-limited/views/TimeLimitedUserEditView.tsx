@@ -156,7 +156,7 @@ export const TimeLimitedUserEditView: React.FC = () => {
         isOpen={signOpen}
         onClose={() => setSignOpen(false)}
         onConfirm={confirmUpdate}
-        actionTitle={`Update time-limited access: ${grant.fullName}`}
+        actionTitle={`Update Time-Limited Access: ${grant.fullName}`}
         meaningDisplayName="Time-Limited User Grant Update"
         meaningCode="TIME_LIMITED_USER_GRANT"
       />

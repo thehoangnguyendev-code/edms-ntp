@@ -22,7 +22,7 @@ import { Input, Textarea } from "../../shared/TrainingFields";
 import { day, saveBlob, when, statusChange } from "../../shared/trainingLabels";
 import { resettingDates, useDateRange } from "../../shared/useListFilters";
 
-const STATUS_LABEL: Record<string, string> = { PENDING_APPROVAL: "Waiting for approval", APPROVED: "Approved", REJECTED: "Rejected" };
+const STATUS_LABEL: Record<string, string> = { PENDING_APPROVAL: "Pending Approval", APPROVED: "Approved", REJECTED: "Rejected" };
 const STATUS_COLOR: Record<string, "amber" | "emerald" | "red"> = { PENDING_APPROVAL: "amber", APPROVED: "emerald", REJECTED: "red" };
 
 /**
@@ -171,7 +171,7 @@ export function ExportsBatchesTab({ creating, setCreating }: { creating: boolean
           </div>
         )}
       </PortalDropdownMenu>
-      <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title="Prepare a batch export"
+      <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title="Prepare a Batch Export"
         description="You sign as the person who prepared it. The person you choose approves with a signature, and only then are the PDFs made. Nobody can change them afterwards."
         confirmText="Continue to signature" confirmDisabled={!departmentId || !yearOk || !reason.trim() || !approverId || !people || people.people === 0 || people.tooMany} size="md">
         <div className="grid gap-4">
@@ -188,11 +188,11 @@ export function ExportsBatchesTab({ creating, setCreating }: { creating: boolean
           </FormField>
         </div>
       </FormModal>
-      <ESignatureModal isOpen={signNew} onClose={() => setSignNew(false)} onConfirm={async (d: { signatureToken: string }) => create(d.signatureToken)} actionTitle="Prepare batch export of training records" changes={statusChange("New", "Waiting for approval")}
+      <ESignatureModal isOpen={signNew} onClose={() => setSignNew(false)} onConfirm={async (d: { signatureToken: string }) => create(d.signatureToken)} actionTitle="Prepare Batch Export of Training Records" changes={statusChange("New", "Pending Approval")}
         meaningDisplayName="Training Record Prepared" meaningCode="TRAINING_RECORD_PREPARED" targetDetails={{ code: "APD.0014", title: "Personal training records of a department", revision: "" }} />
-      <ESignatureModal isOpen={!!signApprove} onClose={() => setSignApprove(undefined)} onConfirm={async (d: { signatureToken: string }) => approve(d.signatureToken)} actionTitle="Complete approval of the batch export of training records" changes={statusChange("Waiting for approval", "Approved")}
+      <ESignatureModal isOpen={!!signApprove} onClose={() => setSignApprove(undefined)} onConfirm={async (d: { signatureToken: string }) => approve(d.signatureToken)} actionTitle="Complete Approval of the Batch Export of Training Records" changes={statusChange("Pending Approval", "Approved")}
         meaningDisplayName="Training Record Approved" meaningCode="TRAINING_RECORD_APPROVED" targetDetails={{ code: signApprove ? `${signApprove.departmentName} ${signApprove.year}` : "", title: "Personal training records of a department", revision: "" }} />
-      <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title="Reject batch" confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
+      <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title="Reject Batch" confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
         <FormField label="Reason" required><Textarea rows={3} value={rejecting?.reason ?? ""} onChange={(e) => rejecting && setRejecting({ ...rejecting, reason: e.target.value })} /></FormField>
       </FormModal>
     </div>

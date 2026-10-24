@@ -49,7 +49,7 @@ export function MyTrainingView({
   );
   const tabs: TabItem[] = [
     { id: "todo", label: "To Do", count: totals.todo },
-    { id: "sign", label: "Waiting for My Signature", count: totals.sign },
+    { id: "sign", label: "Pending My Signature", count: totals.sign },
     { id: "copies", label: "Copies Received" },
     { id: "records", label: "My Records" },
   ];

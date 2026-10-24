@@ -919,13 +919,13 @@ public class UserManagementService {
         if (from != null && !from.isBlank()) {
             LocalDate parsed = parseDate(from);
             if (parsed != null) {
-                predicates.add(cb.greaterThanOrEqualTo(path, parsed.atStartOfDay(java.time.ZoneOffset.UTC).toInstant()));
+                predicates.add(cb.greaterThanOrEqualTo(path, parsed.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant()));
             }
         }
         if (to != null && !to.isBlank()) {
             LocalDate parsed = parseDate(to);
             if (parsed != null) {
-                predicates.add(cb.lessThanOrEqualTo(path, parsed.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).minusNanos(1).toInstant()));
+                predicates.add(cb.lessThanOrEqualTo(path, parsed.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).minusNanos(1).toInstant()));
             }
         }
     }
@@ -1878,13 +1878,13 @@ public class UserManagementService {
             if (dateFrom != null && !dateFrom.isBlank()) {
                 LocalDate parsed = parseDate(dateFrom);
                 if (parsed != null) {
-                    predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), parsed.atStartOfDay(java.time.ZoneOffset.UTC).toInstant()));
+                    predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), parsed.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant()));
                 }
             }
             if (dateTo != null && !dateTo.isBlank()) {
                 LocalDate parsed = parseDate(dateTo);
                 if (parsed != null) {
-                    predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), parsed.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).minusNanos(1).toInstant()));
+                    predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), parsed.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).minusNanos(1).toInstant()));
                 }
             }
             if (suspendFrom != null && !suspendFrom.isBlank()) {

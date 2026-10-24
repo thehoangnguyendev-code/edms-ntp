@@ -21,6 +21,7 @@ import { useBackupJobs } from "../components/useBackupJobs";
 import { BACKUP_STATUS_COLOR, COMPONENT_LABEL, VERIFICATION_COLOR, statusLabel } from "../types";
 import { formatBytes, formatDateTime, formatDuration } from "../format";
 import { exportErrorMessage } from "@/features/settings/backup-restore-administration/mediaLabels";
+import { displayDate } from "@/utils/format";
 
 /** One label and its value, laid out like the rest of the detail screens: stacked on small screens, side by side on large. */
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -218,7 +219,7 @@ export const BackupDetailView: React.FC = () => {
                 {backup.verifiedAt && <span className="text-xs text-slate-500">{formatDateTime(backup.verifiedAt)}</span>}
               </span>
             </Field>
-            <Field label="Retained">{backup.retention === "PERMANENT" ? "Permanently" : backup.retentionUntil ? new Date(backup.retentionUntil).toLocaleDateString() : "—"}</Field>
+            <Field label="Retained">{backup.retention === "PERMANENT" ? "Permanently" : backup.retentionUntil ? displayDate(backup.retentionUntil) : "—"}</Field>
             <Field label="Legal hold">{backup.legalHold ? <Badge color="amber">On hold: will not be purged</Badge> : "No"}</Field>
           </div>
         </FormSection>

@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.UserAccount;
 import com.eqms.entity.DocumentRecord;
 import com.eqms.repository.DocumentRecordRepository;
@@ -265,7 +266,7 @@ public class ReportPlatformService {
         }
     }
     private CronExpression parseCron(String value) { try { return CronExpression.parse(value == null ? "" : value.trim()); } catch (Exception invalid) { throw new IllegalArgumentException("Invalid cron expression"); } }
-    private Instant nextOccurrence(CronExpression cron) { var next=cron.next(java.time.ZonedDateTime.now(java.time.ZoneId.systemDefault())); return next==null?null:next.toInstant(); }
+    private Instant nextOccurrence(CronExpression cron) { var next=cron.next(java.time.ZonedDateTime.now(DateTimeFormatUtils.ZONE)); return next==null?null:next.toInstant(); }
 
     @org.springframework.transaction.annotation.Transactional
     public UUID queueRun(UserAccount actor, RunRequest request, String idempotencyKey) {

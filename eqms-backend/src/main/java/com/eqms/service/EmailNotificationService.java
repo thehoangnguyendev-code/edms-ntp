@@ -659,6 +659,14 @@ public class EmailNotificationService {
     public boolean sendRenderedEmailWithTracking(
             String recipientEmail, String subject, String body, String eventCode, String eventDomain, Map<String, String> payload
     ) {
+        return sendRenderedEmailWithTracking(recipientEmail, subject, body, eventCode, eventDomain, payload, null, null);
+    }
+
+    /** The same tracked send, with one attachment. */
+    public boolean sendRenderedEmailWithTracking(
+            String recipientEmail, String subject, String body, String eventCode, String eventDomain, Map<String, String> payload,
+            String attachmentFileName, byte[] attachmentBytes
+    ) {
         if (!StringUtils.hasText(recipientEmail) || !StringUtils.hasText(subject) || !StringUtils.hasText(body)) {
             return false;
         }
@@ -670,7 +678,7 @@ public class EmailNotificationService {
         String recipientLabel = payload == null ? recipientEmail
                 : payload.getOrDefault("fullName", payload.getOrDefault("recipientName", recipientEmail));
         try {
-            boolean sent = sendRenderedEmailWithRetry(emailService, recipientEmail, subject, body);
+            boolean sent = sendRenderedEmailWithRetry(emailService, recipientEmail, subject, body, attachmentFileName, attachmentBytes);
             if (!sent) {
                 String reason = "Email provider rejected delivery or is not configured";
                 recordDeliveryFailure(recipientEmail, eventCode, eventDomain,
@@ -690,10 +698,14 @@ public class EmailNotificationService {
     }
 
     private boolean sendRenderedEmailWithRetry(EmailService emailService, String recipientEmail, String subject, String body) throws Exception {
+        return sendRenderedEmailWithRetry(emailService, recipientEmail, subject, body, null, null);
+    }
+
+    private boolean sendRenderedEmailWithRetry(EmailService emailService, String recipientEmail, String subject, String body, String attachmentFileName, byte[] attachmentBytes) throws Exception {
         Exception lastFailure = null;
         for (int attempt = 1; attempt <= 3; attempt++) {
             try {
-                if (emailService.sendRenderedEmail(recipientEmail, subject, body)) {
+                if (emailService.sendRenderedEmail(recipientEmail, subject, body, attachmentFileName, attachmentBytes)) {
                     return true;
                 }
             } catch (Exception ex) {
@@ -1151,7 +1163,7 @@ public class EmailNotificationService {
     /** Date-only (dd/MM/yyyy) rendering of an Instant, in the system zone. */
     private String formatInstantAsDate(Instant value) {
         return value == null ? "" : DateTimeFormatUtils.formatDate(
-                java.time.LocalDate.ofInstant(value, java.time.ZoneId.systemDefault()));
+                java.time.LocalDate.ofInstant(value, DateTimeFormatUtils.ZONE));
     }
 
     private String formatDateTime(Instant value) {

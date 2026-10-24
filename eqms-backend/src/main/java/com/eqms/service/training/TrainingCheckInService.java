@@ -1,6 +1,7 @@
 package com.eqms.service.training;
 
 import com.eqms.entity.UserAccount;
+import com.eqms.service.ElectronicSignatureService;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -24,16 +25,20 @@ public class TrainingCheckInService {
     static final int GRACE_SECONDS = 60;
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    public record CheckInRequest(String code) {}
+    public record CheckInRequest(String code, String signatureToken) {}
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
     private final TrainingStore store;
+    private final TrainingActivityService activities;
+    private final ElectronicSignatureService signatures;
 
-    public TrainingCheckInService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store) {
+    public TrainingCheckInService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingActivityService activities, ElectronicSignatureService signatures) {
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
+        this.activities = activities;
+        this.signatures = signatures;
     }
 
     private static String newCode() { return String.format("%06d", RANDOM.nextInt(1_000_000)); }
@@ -48,10 +53,12 @@ public class TrainingCheckInService {
 
     @Transactional
     public Map<String, Object> open(UserAccount actor, UUID sessionId) {
+        sessionForConductor(actor, sessionId);
+        activities.startSession(actor, sessionId);
         Map<String, Object> session = sessionForConductor(actor, sessionId);
         Map<String, Object> activity = store.activityForUpdate((UUID) session.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!"IN_PROGRESS".equals(activity.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CHECKIN_STATUS");
-        if (!"HELD".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
+        if (!TrainingSessionState.started(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
         jdbc.update("""
             insert into training_session_checkins(session_id, opened_by, code) values (?,?,?)
             on conflict (session_id) do update set opened_by = excluded.opened_by, opened_at = now(), closed_at = null, closed_by = null, code = excluded.code, previous_code = null, code_issued_at = now()
@@ -95,7 +102,7 @@ public class TrainingCheckInService {
         if (request == null || request.code() == null || !request.code().matches("\\d{6}")) throw new IllegalArgumentException("TRAINING_CHECKIN_CODE_INVALID");
         // Only sessions where this person is still invited can match, so a code of another room never shows that it exists.
         Map<String, Object> hit = jdbc.queryForList("""
-            select p.id as participant_id, p.session_id, p.activity_id, s.session_no, s.scheduled_on, s.status as session_status
+            select p.id as participant_id, p.session_id, p.activity_id, s.session_no, s.scheduled_on, s.status as session_status, s.held_on as session_held_on
             from training_participants p
             join training_sessions s on s.id = p.session_id
             join training_session_checkins c on c.session_id = p.session_id and c.closed_at is null
@@ -105,7 +112,7 @@ public class TrainingCheckInService {
             """, actor.getId(), request.code(), request.code(), GRACE_SECONDS).stream().findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("TRAINING_CHECKIN_CODE_INVALID"));
         Map<String, Object> activity = store.activityForUpdate((UUID) hit.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        if (!"IN_PROGRESS".equals(activity.get("status")) || !"HELD".equals(hit.get("session_status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CHECKIN_STATUS");
+        if (!"IN_PROGRESS".equals(activity.get("status")) || !"PLANNED".equals(hit.get("session_status")) || hit.get("session_held_on") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CHECKIN_STATUS");
         Object on = hit.get("scheduled_on");
         if (on != null && !LocalDate.now().equals(((java.sql.Date) on).toLocalDate())) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CHECKIN_NOT_TODAY");
         // The row is locked while it changes, so two taps on the same phone record once.
@@ -113,7 +120,11 @@ public class TrainingCheckInService {
         Integer still = jdbc.queryForObject("select count(*) from (select 1 from training_participants where id = ? and state = 'INVITED' for update) x", Integer.class, participantId);
         if (still == null || still == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CHECKIN_ALREADY");
         String result = "EXTERNAL".equals(activity.get("kind")) ? "PASSED" : "PENDING";
-        jdbc.update("update training_participants set state = 'ATTENDED', result = ?, sign_mode = 'SELF', attend_signature_id = null, version = version + 1 where id = ?", result, participantId);
+        // The trainee signs the attendance (SOP.0003 5.3.7: the signature of the trainee in the list): the person is signed in, and confirms with the password.
+        if (request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
+        UUID signature = signatures.createEntitySignature("TRAINING_ACTIVITY", (UUID) hit.get("activity_id"), String.valueOf(activity.get("training_number")), actor, request.signatureToken(),
+                "TRAINING_ATTENDED", "Trainee confirms attending session " + hit.get("session_no") + " by the check-in code", null, null, null).getId();
+        jdbc.update("update training_participants set state = 'ATTENDED', result = ?, sign_mode = 'SELF', attend_signature_id = ?, version = version + 1 where id = ?", result, signature, participantId);
         store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_SELF_CONFIRMED", "INVITED", "ATTENDED", "S" + hit.get("session_no"));
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("activityId", hit.get("activity_id"));

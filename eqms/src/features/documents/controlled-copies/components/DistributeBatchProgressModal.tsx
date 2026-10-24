@@ -35,7 +35,7 @@ export const DistributeBatchProgressModal: React.FC<DistributeBatchProgressModal
     <FormModal
       isOpen={isOpen}
       onClose={() => undefined}
-      title={`${actionLabel} processing`}
+      title={`${actionLabel} Processing`}
       showFooter={false}
       size="md"
       className="max-w-md"

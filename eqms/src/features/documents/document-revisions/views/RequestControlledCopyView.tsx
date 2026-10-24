@@ -20,7 +20,7 @@ import {
   normalizeUsagePurpose,
   type ControlledCopyUsagePurpose,
 } from "@/features/documents/controlled-copies/usagePurpose";
-import { toTitleCase } from "@/utils/format";
+import { displayDate, toTitleCase } from "@/utils/format";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { useNavigateWithLoading } from "@/hooks";
@@ -364,11 +364,7 @@ export const RequestControlledCopyView: React.FC = () => {
     if (!parsed) {
       return "-";
     }
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(parsed);
+    return displayDate(parsed);
   };
   const displayRevisionName = useMemo(() => {
     const explicit = String(

@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { useToast } from "@/components/ui/toast/Toast";
+import { PdfPreviewModal } from "@/features/documents/shared/components/PdfPreviewModal";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { uncontrolledCopyApi, type UncontrolledCopy } from "@/services/api/uncontrolledCopy";
 
@@ -64,6 +65,7 @@ export function useUncontrolledCopyActions(onChanged: () => void) {
   const { showToast } = useToast();
   const [pending, setPending] = useState<Pending | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ title: string; url: string } | null>(null);
 
   const runAction = useCallback(
     async (copy: UncontrolledCopy, action: UncontrolledCopyAction) => {
@@ -98,9 +100,11 @@ export function useUncontrolledCopyActions(onChanged: () => void) {
             ? await uncontrolledCopyApi.previewUncontrolledCopy(copy.id)
             : await uncontrolledCopyApi.downloadUncontrolledCopy(copy.id);
         if (mode === "preview") {
-          const url = URL.createObjectURL(file.blob);
-          window.open(url, "_blank", "noopener");
-          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+          // The file is shown in a window of the page, in the project PDF viewer (not in the viewer of the browser).
+          setPreview((previous) => {
+            if (previous) URL.revokeObjectURL(previous.url);
+            return { title: copy.uncontrolledCopyNumber, url: URL.createObjectURL(file.blob) };
+          });
         } else {
           saveBlob(file.blob, file.fileName);
           onChanged();
@@ -133,8 +137,13 @@ export function useUncontrolledCopyActions(onChanged: () => void) {
     onChanged();
   };
 
+  const closePreview = () => setPreview((previous) => {
+    if (previous) URL.revokeObjectURL(previous.url);
+    return null;
+  });
   const config = pending ? SIGNED_ACTIONS[pending.action] : null;
   const first = pending?.copies[0];
+  const previewModal = preview ? <PdfPreviewModal title={`Uncontrolled copy ${preview.title}`} fileUrl={preview.url} onClose={closePreview} /> : null;
   const signatureModal =
     pending && config && first ? (
       <ESignatureModal
@@ -153,5 +162,5 @@ export function useUncontrolledCopyActions(onChanged: () => void) {
       />
     ) : null;
 
-  return { runAction, distributeBatch, openFile, busyId, signatureModal };
+  return { runAction, distributeBatch, openFile, busyId, signatureModal: <>{signatureModal}{previewModal}</> };
 }

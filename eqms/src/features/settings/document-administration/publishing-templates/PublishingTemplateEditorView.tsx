@@ -67,6 +67,7 @@ import { Popover } from "@/components/ui/popover/Popover";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
 import { DEFAULT_BLACK_HEX } from "@/styles/tokens";
+import { displayDateTime } from "@/utils/format";
 
 type LayoutType = "PORTRAIT" | "LANDSCAPE";
 type ComponentType = "cover" | "header" | "footer";
@@ -143,15 +144,6 @@ const TRANSFORM_OPTIONS = [
 
 
 
-const DATE_FORMAT_OPTIONS = [
-  { value: "", label: "No date override" },
-  { value: "dd/MM/yyyy", label: "dd/MM/yyyy" },
-  { value: "dd-MMM-yyyy", label: "dd-MMM-yyyy" },
-  { value: "yyyy-MM-dd", label: "yyyy-MM-dd" },
-  { value: "MMM dd, yyyy", label: "MMM dd, yyyy" },
-  { value: "dd-MMM-yyyy HH:mm", label: "dd-MMM-yyyy HH:mm" },
-];
-
 const NUMBER_FORMAT_OPTIONS = [
   { value: "", label: "No number override" },
   { value: "000", label: "001" },
@@ -168,7 +160,6 @@ const DEFAULT_PLACEHOLDER_STYLE: PublishingPlaceholderStyleConfig = {
   underline: false,
   color: DEFAULT_BLACK_HEX,
   alignment: "",
-  dateFormat: "",
   numberFormat: "",
   preserveLineBreaks: true,
   maxLines: null,
@@ -206,7 +197,6 @@ const toStyleForm = (style?: PublishingPlaceholderStyleConfig | null): Publishin
   fontFamily: style?.fontFamily || "",
   color: style?.color || DEFAULT_BLACK_HEX,
   alignment: style?.alignment || "",
-  dateFormat: style?.dateFormat || "",
   numberFormat: style?.numberFormat || "",
   preserveLineBreaks: style?.preserveLineBreaks ?? true,
   visibility: style?.visibility || "BOTH",
@@ -1442,7 +1432,6 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 : null,
             color: styleForm.color || DEFAULT_BLACK_HEX,
             alignment: styleForm.alignment || null,
-            dateFormat: placeholderType === "DATE" ? styleForm.dateFormat || null : null,
             numberFormat: placeholderType === "NUMBER" ? styleForm.numberFormat || null : null,
             preserveLineBreaks: styleForm.preserveLineBreaks ?? true,
             maxLines:
@@ -1763,14 +1752,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     options={TRANSFORM_OPTIONS}
                     disabled={isSignaturePlaceholder}
                   />
-                  <Select
-                    label="Date format"
-                    value={styleForm.dateFormat || ""}
-                    onChange={(value) => setStyleForm((c) => ({ ...c, dateFormat: String(value || "") }))}
-                    options={DATE_FORMAT_OPTIONS}
-                    disabled={selectedPlaceholderType !== "DATE"}
-                  />
-                  <Select
+<Select
                     label="Number format"
                     value={styleForm.numberFormat || ""}
                     onChange={(value) => setStyleForm((c) => ({ ...c, numberFormat: String(value || "") }))}
@@ -2125,7 +2107,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                   <p className="mt-1 text-xs text-slate-500">
                                     Uploaded by {state.uploadedBy}
                                     {state.uploadedAt
-                                      ? ` - ${new Date(state.uploadedAt).toLocaleString()}`
+                                      ? ` - ${displayDateTime(state.uploadedAt)}`
                                       : ""}
                                   </p>
                                 )}

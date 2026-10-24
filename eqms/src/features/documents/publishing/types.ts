@@ -24,7 +24,6 @@ export interface PublishingPlaceholderStyleConfig {
   underline?: boolean | null;
   color?: string | null;
   alignment?: string | null;
-  dateFormat?: string | null;
   numberFormat?: string | null;
   preserveLineBreaks?: boolean | null;
   maxLines?: number | null;

@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.email.EmailTemplatePreviewResponse;
@@ -55,7 +56,7 @@ public class EmailTemplateService {
     private static final String ACTION_EMAIL_TEMPLATE_PUBLISHED = "EMAIL_TEMPLATE_PUBLISHED";
     private static final String ACTION_EMAIL_TEMPLATE_VERSION_RESTORED = "EMAIL_TEMPLATE_VERSION_RESTORED";
 
-    private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
     private static final DateTimeFormatter DMY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final EmailTemplateRepository repository;
@@ -552,7 +553,7 @@ public class EmailTemplateService {
         }
         String result = content;
         for (Map.Entry<String, String> entry : variables.entrySet()) {
-            String value = entry.getValue() != null ? entry.getValue() : "";
+            String value = entry.getValue() != null ? DateTimeFormatUtils.normalizeText(entry.getValue()) : "";
             result = result.replace("{{" + entry.getKey() + "}}", value);
             result = result.replace("{" + entry.getKey() + "}", value);
         }

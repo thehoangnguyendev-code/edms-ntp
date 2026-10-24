@@ -660,7 +660,7 @@ export const SegregationOfDutiesView: React.FC = () => {
         onConfirm={handleDocRulesReset}
         mode="discard"
         currentPageTitle="Document Revision Integrity Rules"
-        title="Discard unsaved changes?"
+        title="Discard Unsaved Changes?"
         primaryActionLabel="Discard changes"
         secondaryActionLabel="Keep editing"
         description={

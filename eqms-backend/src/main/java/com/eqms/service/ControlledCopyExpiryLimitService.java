@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.audittrail.AuditTrailChangeResponse;
 import com.eqms.dto.controlledcopypolicy.ControlledCopyExpiryLimitRequest;
@@ -319,7 +320,7 @@ public class ControlledCopyExpiryLimitService {
     }
 
     private Instant addDuration(ControlledCopyExpiryLimit limit, Instant anchor) {
-        ZonedDateTime now = anchor.atZone(ZoneOffset.UTC);
+        ZonedDateTime now = anchor.atZone(DateTimeFormatUtils.ZONE);
         int value = limit.getDurationValue();
         ZonedDateTime result = switch (limit.getDurationUnit() == null ? "DAYS" : limit.getDurationUnit()) {
             case "HOURS" -> now.plusHours(value);

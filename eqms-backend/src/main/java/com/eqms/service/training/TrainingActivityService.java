@@ -43,9 +43,10 @@ public class TrainingActivityService {
     private final UserAccountRepository users;
     private final TrainingNotifier notifier;
     private final TrainingTrainerService trainers;
+    private final TrainingSuspensionService suspensions;
 
     public TrainingActivityService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingNumberService numbers, TrainingSettingsService settings,
-                                   TrainingApprovalService approvals, ElectronicSignatureService signatures, UserAccountRepository users, TrainingNotifier notifier, TrainingTrainerService trainers) {
+                                   TrainingApprovalService approvals, ElectronicSignatureService signatures, UserAccountRepository users, TrainingNotifier notifier, TrainingTrainerService trainers, TrainingSuspensionService suspensions) {
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
@@ -56,6 +57,7 @@ public class TrainingActivityService {
         this.users = users;
         this.notifier = notifier;
         this.trainers = trainers;
+        this.suspensions = suspensions;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ requests
@@ -67,9 +69,11 @@ public class TrainingActivityService {
     public record ExternalPerson(String name, String org) {}
     public record ParticipantsRequest(UUID sessionId, List<UUID> personUserIds, String externalName, String externalOrg, List<ExternalPerson> externals, String reason) {}
     public record ReasonRequest(String reason) {}
+    public record ExemptionRequest(Boolean materialsExempt, Boolean assessmentExempt, String reason) {}
     public record CommandRequest(Integer version, String reason, String signatureToken) {}
-    public record HoldRequest(LocalDate heldOn) {}
+    public record HoldRequest(LocalDate heldOn, String signatureToken) {}
     public record PostponeRequest(LocalDate newDate, String reason) {}
+    public record SessionUpdateRequest(UUID trainerUserId, String externalTrainerName, LocalDate scheduledOn, String venue, String locationType, String onlinePlatform, String meetingLink, String reason) {}
     public record AttendanceRequest(String state, String absenceReason) {}
     public record CorrectionRequest(String state, String reason) {}
     public record AssessmentRequest(BigDecimal scoreObtained, BigDecimal scoreMax, String remarks) {}
@@ -163,7 +167,11 @@ public class TrainingActivityService {
         pageArgs.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
             select t.id, t.training_number, t.training_title, t.kind, t.kind_reason, t.status, t.due_date, t.document_number, t.revision_number, t.year, t.created_at,
-                   t.organizer_department_id, t.revision_id, (select r.status_code from document_revisions r where r.id = t.revision_id) as revision_status,
+                   t.organizer_department_id, t.revision_id,
+                   case when exists (select 1 from document_revisions r where r.training_activity_id = t.id and r.status_code = 'PENDING_TRAINING') then 'PENDING_TRAINING'
+                        else (select r.status_code from document_revisions r where r.id = t.revision_id) end as revision_status,
+                   (select r.id from document_revisions r where r.training_activity_id = t.id and r.status_code = 'PENDING_TRAINING' order by r.created_at limit 1) as pending_revision_id,
+                   t.attendance_sent_at,
                    d.name as department_name, (select count(*) from training_participants p where p.activity_id = t.id) as participant_count,
                    (select count(*) from training_participants p where p.activity_id = t.id and p.state in ('ATTENDED','ONLINE','READ_CONFIRMED')) as attended_count,
                    (select count(*) from training_participants p where p.activity_id = t.id and p.result = 'PASSED') as passed_count,
@@ -223,10 +231,14 @@ public class TrainingActivityService {
             actions.put("review", open && steps.contains("CONTENT_REVIEW"));
             actions.put("approve", open && (steps.contains("CONTENT_APPROVE") || steps.contains("TRAINER_EXCEPTION")));
             actions.put("confirm", closer && inScope && "PENDING_QA_CONFIRMATION".equals(status));
-            actions.put("completeTraining", "COMPLETED".equals(status) && row.get("revisionId") != null && "PENDING_TRAINING".equals(row.get("revisionStatus")));
+            actions.put("completeTraining", ("COMPLETED".equals(status) || row.get("attendanceSentAt") != null) && row.get("pendingRevisionId") != null);
+            // The link of the action goes to a revision of the group that waits for "Complete Training".
+            if (row.get("pendingRevisionId") != null) row.put("revisionId", row.get("pendingRevisionId"));
             row.put("actions", actions);
             row.remove("organizerDepartmentId");
             row.remove("revisionStatus");
+            row.remove("pendingRevisionId");
+            row.remove("attendanceSentAt");
         }
         return rows;
     }
@@ -265,15 +277,33 @@ public class TrainingActivityService {
                         else 'READY' end as exam_state,
                    (select max(attempt_no) from training_assessments a where a.participant_id = p.id) as attempts,
                    (select a.percent from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_percent,
+                   (select a.score_obtained from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_score,
+                   (select a.score_max from training_assessments a where a.participant_id = p.id order by attempt_no desc limit 1) as last_max,
                    (select au.avatar from app_users au where au.id = p.person_user_id) as avatar
               from training_participants p where p.activity_id=? order by p.full_name
             """, id)));
         out.put("confirmations", TrainingRows.camel(jdbc.queryForList("""
-            select c.id, c.kind, c.confirmed_at, c.remark, u.full_name as confirmed_by_name from training_activity_confirmations c join app_users u on u.id = c.confirmed_by
+            select c.id, c.kind, c.confirmed_at, c.remark, u.full_name as confirmed_by_name from training_active_confirmations c join app_users u on u.id = c.confirmed_by
              where c.activity_id=? order by c.confirmed_at
             """, id)));
         out.put("approvers", TrainingRows.camel(approvals.assignments("TRAINING_ACTIVITY", id)));
         out.put("qaList", qaList(activity));
+        // The pass mark is the one of Training Properties (the same setting the server uses to work out a result).
+        out.put("passPercent", settings.passPercent());
+        out.put("resultsFinishedAt", activity.get("results_finished_at") == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(activity.get("results_finished_at")));
+        out.put("resultsFinishedByName", activity.get("results_finished_by") == null ? null : jdbc.queryForList("select full_name from app_users where id = ?", String.class, activity.get("results_finished_by")).stream().findFirst().orElse(null));
+        out.put("contentRules", contentRules(activity).toMap());
+        out.put("attendanceSentAt", activity.get("attendance_sent_at") == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(activity.get("attendance_sent_at")));
+        out.put("attendanceSentByName", activity.get("attendance_sent_by") == null ? null : jdbc.queryForList("select full_name from app_users where id = ?", String.class, activity.get("attendance_sent_by")).stream().findFirst().orElse(null));
+        // The documents that go with this Training Number (one number for the SOP and the documents it lists as related) and the revisions that wait for "Complete Training".
+        out.put("groupRevisions", TrainingRows.camel(jdbc.queryForList("""
+            select r.id as revision_id, r.document_id, r.document_number, r.revision_number, r.revision_name, r.status_code as revision_status,
+                   (r.id = ?) as is_main
+              from document_revisions r where r.training_activity_id = ? and r.status_code not in ('CLOSED_CANCELLED','OBSOLETED') order by (r.id = ?) desc, r.document_number
+            """, activity.get("revision_id"), id, activity.get("revision_id"))));
+        out.put("resultsToQa", resultsToQa(activity));
+        // The status the activity was cancelled from, so that the stepper shows how far it had come (read from the event written at the cancellation).
+        out.put("cancelledFromStatus", "CANCELLED".equals(activity.get("status")) ? jdbc.queryForList("select payload->>'from' from training_events where activity_id=? and event_type='CANCELLED' order by occurred_at desc limit 1", String.class, id).stream().findFirst().orElse(null) : null);
         Integer proposed = jdbc.queryForObject("select count(*) from training_proposed_participants where activity_id=? and applied_at is null", Integer.class, id);
         out.put("proposedParticipantCount", proposed == null ? 0 : proposed);
         out.put("capabilities", capabilities(actor, activity));
@@ -391,6 +421,9 @@ public class TrainingActivityService {
         boolean organize = access.has(actor, "training.activity.organize") && access.inScope(actor, department);
         boolean conduct = access.has(actor, "training.activity.conduct", "training.activity.organize") && access.inScope(actor, department);
         boolean open = !Set.of("COMPLETED", "CANCELLED", "RESERVED").contains(status);
+        boolean sender = "IN_PROGRESS".equals(status) && isSender(actor, activity);
+        boolean listSent = activity.get("attendance_sent_at") != null;
+        boolean finished = activity.get("results_finished_at") != null;
         Map<String, Object> caps = new LinkedHashMap<>();
         caps.put("edit", organize && "PLANNED".equals(status));
         caps.put("planSessions", organize && Set.of("PLANNED", "NOTIFIED").contains(status));
@@ -412,11 +445,49 @@ public class TrainingActivityService {
         caps.put("transcribe", conduct && access.has(actor, "training.paper.transcribe") && "IN_PROGRESS".equals(status));
         caps.put("verifyTranscription", access.has(actor, "training.paper.verify") && access.inScope(actor, department) && "IN_PROGRESS".equals(status));
         caps.put("recordAssessment", access.has(actor, "training.assessment.record") && access.inScope(actor, department) && "IN_PROGRESS".equals(status));
-        caps.put("submitForConfirmation", organize && "IN_PROGRESS".equals(status));
+        caps.put("submitForConfirmation", sender && listSent && finished);
         caps.put("confirmCompletion", access.has(actor, "training.activity.close") && "PENDING_QA_CONFIRMATION".equals(status));
+        caps.put("editRemarks", organize && Set.of("PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION").contains(status));
+        caps.put("editSession", organize && Set.of("PLANNED", "NOTIFIED").contains(status));
+        // A training from a document is finished in Document Control: the revision waits for "Complete Training" once the activity is completed.
+        // The trainer sends the attendance list (the screen turns the button on when everyone is recorded), then, with every result in, finishes the training and sends the results to QA.
+        caps.put("sendAttendanceList", sender && !listSent);
+        caps.put("finishTraining", sender && listSent && !finished && allResultsIn((UUID) activity.get("id")));
+        // The revision is completed in Document Control once the attendance list is sent to QA (APD.0117), without waiting for the results.
+        caps.put("completeTraining", ("COMPLETED".equals(status) || activity.get("attendance_sent_at") != null)
+                && !jdbc.queryForList("select 1 from document_revisions where training_activity_id = ? and status_code = 'PENDING_TRAINING' limit 1", Integer.class, activity.get("id")).isEmpty());
+        caps.put("setContentExemptions", organize && Set.of("PLANNED", "NOTIFIED").contains(status) && !confirmed((UUID) activity.get("id"), "CONTENT_REVIEWED"));
+        caps.put("reopenContent", organize && Set.of("PLANNED", "NOTIFIED").contains(status) && (confirmed((UUID) activity.get("id"), "CONTENT_REVIEWED") || confirmed((UUID) activity.get("id"), "CONTENT_APPROVED")));
+        caps.put("returnForCorrection", "PENDING_QA_CONFIRMATION".equals(status) && access.has(actor, "training.activity.close") && access.inScope(actor, department));
         caps.put("cancel", organize && open);
         caps.put("addSupplementary", organize && Set.of("IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED").contains(status));
         return caps;
+    }
+
+    /**
+     * SOP.0003 5.3.7: the results of the assessment go to QA within the days set in Training Properties, counted in calendar days from the day the last session was held.
+     * Null before the training is notified and after it is cancelled. The state tells whether it is still waiting for a session, due, due today, overdue, or sent (on time or late).
+     */
+    private Map<String, Object> resultsToQa(Map<String, Object> activity) {
+        if (Set.of("RESERVED", "PLANNED", "CANCELLED").contains(String.valueOf(activity.get("status")))) return null;
+        UUID id = (UUID) activity.get("id");
+        java.sql.Date held = jdbc.queryForObject("select max(held_on) from training_sessions where activity_id = ? and status = 'PLANNED'", java.sql.Date.class, id);
+        java.sql.Timestamp sent = jdbc.queryForObject("select min(occurred_at) from training_events where activity_id = ? and event_type = 'PENDING_QA_CONFIRMATION'", java.sql.Timestamp.class, id);
+        int days = jdbc.queryForObject("select results_due_days from training_settings where id = 1", Integer.class);
+        LocalDate today = LocalDate.now(TrainingNumberService.ZONE);
+        LocalDate due = held == null ? null : held.toLocalDate().plusDays(days);
+        LocalDate sentOn = sent == null ? null : sent.toInstant().atZone(TrainingNumberService.ZONE).toLocalDate();
+        String state;
+        if (sentOn != null) state = due == null || !sentOn.isAfter(due) ? "SENT" : "SENT_LATE";
+        else if (due == null) state = "WAITING";
+        else if (today.isAfter(due)) state = "OVERDUE";
+        else state = today.equals(due) ? "DUE_TODAY" : "DUE";
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("state", state);
+        out.put("days", days);
+        out.put("dueOn", due == null ? null : due.toString());
+        out.put("sentOn", sentOn == null ? null : sentOn.toString());
+        return out;
     }
 
     /**
@@ -426,8 +497,9 @@ public class TrainingActivityService {
     private Map<String, Object> qaList(Map<String, Object> activity) {
         if (activity.get("document_id") == null || !Set.of("NEW_SOP", "SOP_VERSION").contains(String.valueOf(activity.get("kind_reason")))) return null;
         UUID id = (UUID) activity.get("id");
-        java.sql.Date held = jdbc.queryForObject("select max(held_on) from training_sessions where activity_id = ? and status = 'HELD'", java.sql.Date.class, id);
-        java.sql.Timestamp sent = jdbc.queryForObject("select min(occurred_at) from training_events where activity_id = ? and event_type = 'PENDING_QA_CONFIRMATION'", java.sql.Timestamp.class, id);
+        java.sql.Date held = jdbc.queryForObject("select max(held_on) from training_sessions where activity_id = ? and status = 'PLANNED'", java.sql.Date.class, id);
+        // The list for QA of SOP.0003 5.3.6 is the attendance list: its sending is the step "Send attendance list to QA".
+        java.sql.Timestamp sent = (java.sql.Timestamp) activity.get("attendance_sent_at");
         LocalDate today = LocalDate.now(TrainingNumberService.ZONE);
         LocalDate due = held == null ? null : held.toLocalDate();
         LocalDate sentOn = sent == null ? null : sent.toInstant().atZone(TrainingNumberService.ZONE).toLocalDate();
@@ -460,6 +532,7 @@ public class TrainingActivityService {
         if (isExternal(id)) {
             if (blankToNull((String) jdbc.queryForObject("select training_unit_name from training_activities where id=?", String.class, id)) == null) out.add("TRAINING_UNIT_REQUIRED");
         } else if (!confirmed(id, "CONTENT_REVIEWED") || !confirmed(id, "CONTENT_APPROVED")) out.add("TRAINING_CONTENT_NOT_APPROVED");
+        out.addAll(contentRules(store.activity(id).orElseThrow()).missing());
         return out;
     }
 
@@ -497,7 +570,15 @@ public class TrainingActivityService {
     public Map<String, Object> update(UserAccount actor, UUID id, UpdateRequest request) {
         Map<String, Object> activity = lockedForOrganizer(actor, id);
         requireVersion(activity, request == null ? null : request.version());
-        requireStatus(activity, "PLANNED");
+        // The remarks do not touch the training or its record, so they stay open until the activity is completed; the title, due date and training unit are fixed once it is notified.
+        requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION");
+        if (!"PLANNED".equals(activity.get("status"))) {
+            boolean sameTitle = request.trainingTitle() == null || request.trainingTitle().trim().equals(String.valueOf(activity.get("training_title")));
+            boolean sameDue = String.valueOf(request.dueDate() == null ? null : request.dueDate()).equals(String.valueOf(activity.get("due_date") == null ? null : activity.get("due_date").toString()));
+            boolean sameUnit = request.trainingUnitName() == null || blankToNull(request.trainingUnitName()) == null && activity.get("training_unit_name") == null || String.valueOf(blankToNull(request.trainingUnitName())).equals(String.valueOf(activity.get("training_unit_name")));
+            boolean sameVendor = request.vendorRef() == null || blankToNull(request.vendorRef()) == null && activity.get("vendor_ref") == null || String.valueOf(blankToNull(request.vendorRef())).equals(String.valueOf(activity.get("vendor_ref")));
+            if (!(sameTitle && sameDue && sameUnit && sameVendor)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_FIELD_LOCKED");
+        }
         String title = request.trainingTitle() == null ? String.valueOf(activity.get("training_title")) : request.trainingTitle().trim();
         if (title.isBlank() || title.length() > 255) throw new IllegalArgumentException("TRAINING_TITLE_REQUIRED");
         boolean external = "EXTERNAL".equals(activity.get("kind"));
@@ -546,22 +627,11 @@ public class TrainingActivityService {
         }
         // SOP.0003 5.1.2 names a way of assessment for each training method; the screen offers it as the default and lets the organizer choose another one. Only a known value is accepted.
         if (!externalActivity && !java.util.Set.of("TEST", "CHECKLIST", "OBSERVATION", "SELF_READING_CONFIRMATION").contains(request.assessmentMethod())) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
-        boolean online = "ONLINE".equals(request.locationType());
-        if (request.locationType() != null && !Set.of("ONSITE", "ONLINE").contains(request.locationType())) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
-        String venue = request.venue() == null || request.venue().isBlank() ? null : request.venue().trim();
-        String platform = request.onlinePlatform() == null || request.onlinePlatform().isBlank() ? null : request.onlinePlatform().trim();
-        String meeting = request.meetingLink() == null || request.meetingLink().isBlank() ? null : request.meetingLink().trim();
-        if (online) {
-            if (platform == null || platform.length() > 30 || meeting == null || meeting.length() > 1000) throw new IllegalArgumentException("TRAINING_LOCATION_INVALID");
-            java.net.URI uri;
-            try { uri = java.net.URI.create(meeting); } catch (IllegalArgumentException e) { throw new IllegalArgumentException("TRAINING_LOCATION_INVALID"); }
-            if (uri.getHost() == null || !"https".equalsIgnoreCase(uri.getScheme())) throw new IllegalArgumentException("TRAINING_LOCATION_INVALID");
-            venue = null;
-        } else {
-            if (venue == null) throw new IllegalArgumentException("TRAINING_LOCATION_INVALID");
-            platform = null;
-            meeting = null;
-        }
+        String[] place = location(request.locationType(), request.venue(), request.onlinePlatform(), request.meetingLink());
+        boolean online = "ONLINE".equals(place[0]);
+        String venue = place[1];
+        String platform = place[2];
+        String meeting = place[3];
         Integer next = jdbc.queryForObject("select coalesce(max(session_no),0)+1 from training_sessions where activity_id=?", Integer.class, id);
         UUID sessionId = UUID.randomUUID();
         jdbc.update("""
@@ -672,16 +742,77 @@ public class TrainingActivityService {
         Map<String, Object> activity = store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireStatus(activity, "PLANNED", "NOTIFIED");
         if ("CONTENT_APPROVE".equals(step) && !confirmed(id, "CONTENT_REVIEWED")) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_NOT_REVIEWED");
+        // The person who reviews the content signs what exists: the materials and the assessment form the rules ask for must be there first (PLAN-TR-002).
+        if ("CONTENT_REVIEW".equals(step)) requireContent(activity);
         if (confirmed(id, "CONTENT_REVIEWED") && "CONTENT_REVIEW".equals(step)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
         UUID assignment = approvals.requireCanSign(actor, TrainingApprovalService.activity(activity), step, keptApart(activity, step));
         UUID signature = sign(actor, activity, approvals.step(step).meaning(), request);
         approvals.complete(assignment, signature);
         confirmation(id, null, "CONTENT_REVIEW".equals(step) ? "CONTENT_REVIEWED" : "CONTENT_APPROVED", actor, signature, assignment, null);
         store.auditActivity(actor, activity, "TRAINING_" + step, null, null, "Content " + ("CONTENT_REVIEW".equals(step) ? "reviewed" : "approved"));
+        if ("CONTENT_REVIEW".equals(step)) {
+            // The person who approves was asked at the designation, but could not approve before the review: now it is the turn.
+            tell("TRAINING_STEP_READY", actor, jdbc.queryForList("select assignee_user_id from training_approval_assignments where object_type='TRAINING_ACTIVITY' and object_id=? and step_code='CONTENT_APPROVE' and status='PENDING'", UUID.class, id),
+                    "Training: the content is ready for your approval", actor.getFullName() + " reviewed the training content and test of " + label(activity) + ". It is your turn to approve it.", id);
+        } else {
+            tell("TRAINING_CONTENT_APPROVED", actor, organizersOf(activity), "Training: the content was approved",
+                    actor.getFullName() + " approved the training content and test of " + label(activity) + ". The participants can now be notified.", id);
+        }
         return get(actor, id);
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ the course of the activity
+
+    /** Training Materials and the Assessment form the activity needs, from the facts of the activity (see {@link TrainingContentRules}). */
+    private TrainingContentRules.Result contentRules(Map<String, Object> activity) {
+        UUID id = (UUID) activity.get("id");
+        Integer documentTopics = jdbc.queryForObject("""
+            select count(*) from training_session_topics t join training_sessions s on s.id = t.session_id
+             where s.activity_id = ? and s.status <> 'CANCELLED' and (t.document_id is not null or t.document_revision_id is not null)
+            """, Integer.class, id);
+        boolean documentLinked = activity.get("document_id") != null || (documentTopics != null && documentTopics > 0);
+        Integer content = jdbc.queryForObject("select count(*) from training_materials where activity_id = ? and purpose = 'CONTENT' and removed_at is null", Integer.class, id);
+        Integer forms = jdbc.queryForObject("select count(*) from training_materials where activity_id = ? and purpose = 'EXAM' and removed_at is null", Integer.class, id);
+        Integer questions = jdbc.queryForObject("select count(*) from training_exam_questions where activity_id = ?", Integer.class, id);
+        List<String> assessments = jdbc.queryForList("select assessment_method from training_sessions where activity_id = ? and status <> 'CANCELLED' and assessment_method is not null", String.class, id);
+        return TrainingContentRules.evaluate(new TrainingContentRules.Facts((String) activity.get("kind"), (String) activity.get("kind_reason"), activity.get("parent_activity_id") != null,
+                documentLinked, content == null ? 0 : content, forms == null ? 0 : forms, questions == null ? 0 : questions, assessments,
+                Boolean.TRUE.equals(activity.get("materials_exempt")), Boolean.TRUE.equals(activity.get("assessment_exempt"))));
+    }
+
+    private void requireContent(Map<String, Object> activity) {
+        List<String> missing = contentRules(activity).missing();
+        if (!missing.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, missing.getFirst());
+    }
+
+    /**
+     * The organizer exempts the activity from its Training Materials or from its Assessment form (for example a short briefing with no test), or takes the exemption back. An exemption
+     * needs a reason, which stays on the record and in the Audit Trail; it can be set only until the content is reviewed, because the reviewer signs the content as it is.
+     */
+    @Transactional
+    public Map<String, Object> setContentExemptions(UserAccount actor, UUID id, ExemptionRequest request) {
+        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        requireStatus(activity, "PLANNED", "NOTIFIED");
+        if (confirmed(id, "CONTENT_REVIEWED")) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
+        if (request == null || (request.materialsExempt() == null && request.assessmentExempt() == null)) throw new IllegalArgumentException("TRAINING_ACTIVITY_INVALID_TRANSITION");
+        boolean wasMaterials = Boolean.TRUE.equals(activity.get("materials_exempt"));
+        boolean wasAssessment = Boolean.TRUE.equals(activity.get("assessment_exempt"));
+        boolean materials = request.materialsExempt() == null ? wasMaterials : request.materialsExempt();
+        boolean assessment = request.assessmentExempt() == null ? wasAssessment : request.assessmentExempt();
+        String reason = blankToNull(request.reason());
+        boolean newlyExempt = (materials && !wasMaterials) || (assessment && !wasAssessment);
+        if (newlyExempt && reason == null) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        if (materials == wasMaterials && assessment == wasAssessment) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        jdbc.update("""
+            update training_activities set materials_exempt = ?, materials_exempt_reason = case when ? then coalesce(?, materials_exempt_reason) else null end,
+                   assessment_exempt = ?, assessment_exempt_reason = case when ? then coalesce(?, assessment_exempt_reason) else null end, version = version + 1, updated_at = now() where id = ?
+            """, materials, materials, materials && !wasMaterials ? reason : null, assessment, assessment, assessment && !wasAssessment ? reason : null, id);
+        List<String> changes = new ArrayList<>();
+        if (materials != wasMaterials) changes.add("Training Materials " + (materials ? "not required" : "required again"));
+        if (assessment != wasAssessment) changes.add("Assessment form " + (assessment ? "not required" : "required again"));
+        store.auditActivity(actor, activity, "TRAINING_CONTENT_EXEMPTION", null, null, String.join("; ", changes) + (reason == null ? "" : ". Reason: " + reason));
+        return get(actor, id);
+    }
 
     @Transactional
     public Map<String, Object> notifyActivity(UserAccount actor, UUID id, CommandRequest request) {
@@ -692,6 +823,8 @@ public class TrainingActivityService {
         boolean externalActivity = isExternal(id);
         if (externalActivity && blankToNull((String) activity.get("training_unit_name")) == null) throw new IllegalArgumentException("TRAINING_UNIT_REQUIRED");
         if (!externalActivity && (!confirmed(id, "CONTENT_REVIEWED") || !confirmed(id, "CONTENT_APPROVED"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_NOT_APPROVED");
+        // A session added after the review may need a test the content does not have: the activity does not go on until it is there (reopen the content to add it).
+        requireContent(activity);
         Integer sessions = jdbc.queryForObject("select count(*) from training_sessions where activity_id=? and status='PLANNED'", Integer.class, id);
         if (sessions == null || sessions == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_REQUIRED");
         Integer noTrainer = externalActivity ? 0 : jdbc.queryForObject("select count(*) from training_sessions where activity_id=? and status='PLANNED' and trainer_user_id is null and external_trainer_name is null", Integer.class, id);
@@ -699,12 +832,11 @@ public class TrainingActivityService {
         for (UUID sessionId : jdbc.queryForList("select id from training_sessions where activity_id=? and status='PLANNED'", UUID.class, id)) {
             if (!trainers.cleared(sessionId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TRAINER_NOT_QUALIFIED");
         }
+        sign(actor, activity, "TRAINING_ACTIVITY_NOTIFIED", request);
         jdbc.update("update training_participants set notified_at=now() where activity_id=?", id);
         transition(actor, activity, "NOTIFIED", "TRAINING_ACTIVITY_NOTIFIED", "Participants notified");
         for (UUID personId : jdbc.queryForList("select distinct person_user_id from training_participants where activity_id=? and person_user_id is not null", UUID.class, id)) {
-            users.findById(personId).ifPresent(person -> notifier.send("TRAINING_INVITED", person, actor, "Training: you are invited",
-                    "You are invited to the training " + activity.get("training_number") + ": " + activity.get("training_title") + (activity.get("due_date") == null ? "." : ". Due " + activity.get("due_date") + "."),
-                    "TRAINING_ACTIVITY", id, null));
+            users.findById(personId).ifPresent(person -> notifier.send("TRAINING_INVITED", person, actor, "Training: you are invited", invitation(activity, personId), "TRAINING_ACTIVITY", id, null));
         }
         return get(actor, id);
     }
@@ -715,13 +847,109 @@ public class TrainingActivityService {
         Map<String, Object> activity = store.activityForUpdate((UUID) session.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireConductor(actor, activity);
         requireStatus(activity, "NOTIFIED", "IN_PROGRESS");
-        if (!"PLANNED".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        if (!TrainingSessionState.notStarted(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
         LocalDate heldOn = request == null || request.heldOn() == null ? LocalDate.now(TrainingNumberService.ZONE) : request.heldOn();
         if (heldOn.isAfter(LocalDate.now(TrainingNumberService.ZONE))) throw new IllegalArgumentException("TRAINING_DATE_IN_FUTURE");
-        jdbc.update("update training_sessions set status='HELD', held_on=?, version=version+1 where id=?", heldOn, sessionId);
+        requirePrepared(sessionId, session, activity);
+        // The first session of a notified activity moves the activity to In progress: that change is signed. A later session of an activity already in progress needs no signature.
+        if ("NOTIFIED".equals(activity.get("status"))) sign(actor, activity, "TRAINING_SESSION_STARTED", new CommandRequest(null, null, request == null ? null : request.signatureToken()));
+        jdbc.update("update training_sessions set held_on=?, version=version+1 where id=?", heldOn, sessionId);
         if ("NOTIFIED".equals(activity.get("status"))) transition(actor, activity, "IN_PROGRESS", "TRAINING_SESSION_HELD", "First session held on " + heldOn);
         else store.auditActivity(actor, activity, "TRAINING_SESSION_HELD", null, null, "Session " + session.get("session_no") + " held on " + heldOn);
         return get(actor, (UUID) activity.get("id"));
+    }
+
+    /**
+     * The training of a session begins with its first action in the workspace (a check-in opened, an attendance, a roll-call, a transcription): the session is then held today and the
+     * activity goes in progress, with no button to press. Nothing happens when the session is not planned or the activity cannot go on; the action that follows then answers as before.
+     */
+    @Transactional
+    public void startSession(UserAccount actor, UUID sessionId) {
+        Map<String, Object> session = session(sessionId);
+        if (!TrainingSessionState.notStarted(session)) return;
+        Map<String, Object> activity = store.activityForUpdate((UUID) session.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        // Only a later session of an activity already in progress starts by itself; the first one is started on purpose, with a signature (Prepare, Next).
+        if (!"IN_PROGRESS".equals(activity.get("status"))) return;
+        holdSession(actor, sessionId, null);
+    }
+
+    /**
+     * The training of a session may start only when every line of its checklist is ready, the same lines the screen shows: the four lines of Preparation (Done or Not needed); the test or
+     * the checklist form of the assessment when the activity needs one (a file, or the test written in the system). The attendance is recorded in the system (check-in, roll-call or one by
+     * one, each with the e-signature of the person), so the paper sheet is an option of a session held on paper and never a condition. The screen shows the same lines; the server does not rely on it.
+     */
+    private void requirePrepared(UUID sessionId, Map<String, Object> session, Map<String, Object> activity) {
+        Integer pending = jdbc.queryForObject("""
+            select count(*) from unnest(?::text[]) as item(code)
+              left join training_session_preparation p on p.session_id = ? and p.item_code = item.code
+             where coalesce(p.status, 'PENDING') = 'PENDING'
+            """, Integer.class, TrainingPreparationService.ITEMS.toArray(new String[0]), sessionId);
+        boolean unprepared = pending != null && pending > 0;
+        TrainingContentRules.Result rules = contentRules(activity);
+        if (rules.testRequired() && !rules.assessmentFormSatisfied() && !rules.onlineTest()) unprepared = true;
+        if (rules.checklistRequired() && !rules.assessmentFormSatisfied()) unprepared = true;
+        if (unprepared) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PREPARATION_PENDING");
+    }
+
+    /** The list APD.0117 of the activity as PDF, made after the list was sent; the Word template and the document server are needed. A failure is not an error of the step: the e-mail then goes without the file. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TrainingAttendanceListService attendanceLists;
+
+    private byte[] attendanceListPdf(UserAccount actor, UUID id) {
+        if (attendanceLists == null) return null;
+        try {
+            return (byte[]) attendanceLists.export(actor, id, "pdf").get("bytes");
+        } catch (RuntimeException failure) {
+            return null;
+        }
+    }
+
+    /** The people who receive the attendance list: they hold the permission to receive it, in the scope of the department of the training. */
+    private List<UserAccount> attendanceReceivers(Map<String, Object> activity) {
+        List<UserAccount> out = new ArrayList<>();
+        for (UserAccount candidate : users.findAll()) {
+            if (candidate.getStatus() == UserStatus.Active && access.codes(candidate).contains("training.attendance.receive") && access.inScope(candidate, (UUID) activity.get("organizer_department_id"))) out.add(candidate);
+        }
+        return out;
+    }
+
+    /**
+     * Step of SOP.0003 5.3.6 and APD.0117: once everyone on the list is recorded (present, online or absent), the organizer sends the attendance list to QA with a signature. From then on the
+     * revision of the document can be completed in Document Control; the results of the assessment come later. The people who receive attendance lists are told.
+     */
+    @Transactional
+    public Map<String, Object> sendAttendanceList(UserAccount actor, UUID id, CommandRequest request) {
+        Map<String, Object> activity = lockedForSender(actor, id);
+        requireVersion(activity, request == null ? null : request.version());
+        requireStatus(activity, "IN_PROGRESS");
+        if (activity.get("attendance_sent_at") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_ALREADY_SENT");
+        Integer open = jdbc.queryForObject("select count(*) from training_sessions where activity_id=? and (status = 'POSTPONED' or (status = 'PLANNED' and held_on is null))", Integer.class, id);
+        if (open != null && open > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
+        Integer invited = jdbc.queryForObject("select count(*) from training_participants where activity_id=? and state='INVITED'", Integer.class, id);
+        if (invited != null && invited > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPANT_NOT_FINAL");
+        Map<String, Object> qa = qaList(activity);
+        boolean late = qa != null && "OVERDUE".equals(qa.get("state"));
+        UUID signature = sign(actor, activity, "TRAINING_ATTENDANCE_SENT", request);
+        jdbc.update("update training_activities set attendance_sent_at = now(), attendance_sent_by = ?, attendance_signature_id = ?, version = version + 1, updated_at = now() where id = ?", actor.getId(), signature, id);
+        // The signature of the trainer is also the confirmation of the attendance of every session that was held (APD.0117 item 5).
+        jdbc.update("update training_sessions set attendance_confirmed_at = now(), attendance_confirmed_by = ?, attendance_signature_id = ? where activity_id = ? and status = 'PLANNED' and held_on is not null", actor.getId(), signature, id);
+        store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "ATTENDANCE_LIST_SENT", Map.of("late", late), actor.getId());
+        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_LIST_SENT", null, "SENT", late ? "Attendance list sent to QA late: it was due on " + qa.get("dueOn") + " (SOP.0003 5.3.6)" : "Attendance list sent to QA");
+        // QA is told by e-mail with the list APD.0117 as a PDF: the people who hold the permission to receive it and the people who confirm the completion of this training.
+        java.util.Map<UUID, UserAccount> toTell = new java.util.LinkedHashMap<>();
+        for (UserAccount receiver : attendanceReceivers(activity)) toTell.put(receiver.getId(), receiver);
+        for (UserAccount confirmer : approvals.eligibleUsers("ACTIVITY_COMPLETE", (UUID) activity.get("organizer_department_id"), keptApart(activity, "ACTIVITY_COMPLETE"))) toTell.putIfAbsent(confirmer.getId(), confirmer);
+        byte[] pdf = toTell.isEmpty() ? null : attendanceListPdf(actor, id);
+        String fileName = String.valueOf(activity.get("training_number")).replace('/', '-') + "-APD.0117.pdf";
+        for (UserAccount receiver : toTell.values()) {
+            if (receiver.getId().equals(actor.getId())) continue;
+            notifier.send("TRAINING_ATTENDANCE_SENT", receiver, actor, "Training: attendance list received",
+                    actor.getFullName() + " sent the attendance list of " + label(activity) + " to QA. "
+                            + (pdf != null ? "The list (APD.0117) is attached to the e-mail as a PDF. " : "")
+                            + "The revision of the document can now be completed in Document Control (Complete Training).",
+                    "TRAINING_ACTIVITY", id, "attendance-sent:" + id + ":" + receiver.getId(), pdf == null ? null : fileName, pdf);
+        }
+        return get(actor, id);
     }
 
     @Transactional
@@ -732,24 +960,31 @@ public class TrainingActivityService {
         requireStatus(activity, "PLANNED", "NOTIFIED", "IN_PROGRESS");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (request.newDate() == null) throw new IllegalArgumentException("TRAINING_DATE_REQUIRED");
-        if (!"PLANNED".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        if (!TrainingSessionState.notStarted(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
         // The number is kept; the postponement is a recorded event with the reason and both dates (SOP, TR-04).
         jdbc.update("update training_sessions set scheduled_on=?, postpone_reason=?, version=version+1 where id=?", request.newDate(), request.reason().trim(), sessionId);
         store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "SESSION_POSTPONED",
                 Map.of("sessionNo", session.get("session_no"), "from", String.valueOf(session.get("scheduled_on")), "to", request.newDate().toString(), "reason", request.reason().trim()), actor.getId());
         store.auditActivity(actor, activity, "TRAINING_SESSION_POSTPONED", String.valueOf(session.get("scheduled_on")), request.newDate().toString(), request.reason().trim());
+        if (NOTIFIED_OR_LATER.contains(String.valueOf(activity.get("status")))) {
+            tell("TRAINING_POSTPONED", actor, jdbc.queryForList("select distinct person_user_id from training_participants where session_id = ? and person_user_id is not null", UUID.class, sessionId),
+                    "Training: the session was postponed", "Session " + session.get("session_no") + " of " + label(activity) + " moves from "
+                            + (session.get("scheduled_on") == null ? "the day not yet announced" : com.eqms.util.DateTimeFormatUtils.display(session.get("scheduled_on"))) + " to "
+                            + com.eqms.util.DateTimeFormatUtils.display(request.newDate()) + ". Reason: " + request.reason().trim(), (UUID) activity.get("id"));
+        }
         return get(actor, (UUID) activity.get("id"));
     }
 
     @Transactional
     public Map<String, Object> recordAttendance(UserAccount actor, UUID participantId, AttendanceRequest request) {
         Map<String, Object> participant = participant(participantId);
+        startSession(actor, (UUID) participant.get("session_id"));
         Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireConductor(actor, activity);
         requireStatus(activity, "IN_PROGRESS");
         if (request == null || request.state() == null || !Set.of("ATTENDED", "ONLINE", "ABSENT").contains(request.state())) throw new IllegalArgumentException("TRAINING_ATTENDANCE_INVALID");
         Map<String, Object> session = session((UUID) participant.get("session_id"));
-        if (!"HELD".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
+        if (!TrainingSessionState.started(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
         if (!"INVITED".equals(participant.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_ALREADY");
         if ("ABSENT".equals(request.state()) && (request.absenceReason() == null || request.absenceReason().isBlank())) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
@@ -801,6 +1036,8 @@ public class TrainingActivityService {
         access.require(actor, "training.assessment.record");
         access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
         requireStatus(activity, "IN_PROGRESS");
+        // Once the trainer has finished the training the results are written in the list and signed: they are not changed any more (a retraining is a supplementary training).
+        if (activity.get("results_finished_at") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ALREADY_FINISHED");
         if (participant.get("person_user_id") != null && participant.get("person_user_id").equals(actor.getId())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_SELF");
         String state = String.valueOf(participant.get("state"));
         if (!"ATTENDED".equals(state) && !"ONLINE".equals(state)) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
@@ -818,6 +1055,9 @@ public class TrainingActivityService {
             values (?,?,?,?,?,?,?,?,?,?,?)
             """, UUID.randomUUID(), participantId, attempt, session.get("assessment_method"), request.scoreObtained(), request.scoreMax(), percent, pass, result, actor.getId(), request.remarks());
         jdbc.update("update training_participants set result=?, version=version+1 where id=?", result, participantId);
+        // A failed assessment raises the "work suspended" flag; a pass (this attempt or the retraining) ends it.
+        if ("FAILED".equals(result)) suspensions.raise(actor, activity, participant, percent);
+        else suspensions.clearOnPass(actor, activity, participant);
         store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_RECORDED", null, result, participant.get("full_name") + ": " + percent + "% (pass mark " + pass + "%), attempt " + attempt);
         return get(actor, (UUID) activity.get("id"));
     }
@@ -831,7 +1071,7 @@ public class TrainingActivityService {
         Map<String, Object> activity = store.activityForUpdate((UUID) participant.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireStatus(activity, "NOTIFIED", "IN_PROGRESS");
         Map<String, Object> session = session((UUID) participant.get("session_id"));
-        if (!"SELF_READING".equals(session.get("method")) || !"PLANNED".equals(session.get("status")) && !"HELD".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        if (!"SELF_READING".equals(session.get("method")) || !"PLANNED".equals(session.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
         if (!"INVITED".equals(participant.get("state"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
         UUID signature = sign(actor, activity, "TRAINING_READ_CONFIRMED", request);
         jdbc.update("update training_participants set state='READ_CONFIRMED', sign_mode='ESIGN', attend_signature_id=?, read_confirmed_at=now(), version=version+1 where id=?", signature, participantId);
@@ -856,20 +1096,54 @@ public class TrainingActivityService {
         return get(actor, activityId);
     }
 
+    /**
+     * The trainer finishes the training with a signature once the attendance list is sent and every person who attended has a result. From then on the results are written in the column
+     * "Training result" of the list APD.0117, and the trainer may send the results to QA.
+     */
     @Transactional
-    public Map<String, Object> submitForConfirmation(UserAccount actor, UUID id, CommandRequest request) {
-        Map<String, Object> activity = lockedForOrganizer(actor, id);
+    public Map<String, Object> finishTraining(UserAccount actor, UUID id, CommandRequest request) {
+        Map<String, Object> activity = lockedForSender(actor, id);
         requireVersion(activity, request == null ? null : request.version());
         requireStatus(activity, "IN_PROGRESS");
-        Integer open = jdbc.queryForObject("select count(*) from training_sessions where activity_id=? and status in ('PLANNED','POSTPONED')", Integer.class, id);
-        if (open != null && open > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_NOT_HELD");
-        Integer invited = jdbc.queryForObject("select count(*) from training_participants where activity_id=? and state='INVITED'", Integer.class, id);
-        if (invited != null && invited > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPANT_NOT_FINAL");
-        Integer pending = jdbc.queryForObject("select count(*) from training_participants where activity_id=? and state in ('ATTENDED','ONLINE','READ_CONFIRMED') and result='PENDING'", Integer.class, id);
-        if (pending != null && pending > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_RESULT_PENDING");
+        if (activity.get("attendance_sent_at") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_NOT_SENT");
+        if (activity.get("results_finished_at") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ALREADY_FINISHED");
+        if (!allResultsIn(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_RESULT_PENDING");
+        UUID signature = sign(actor, activity, "TRAINING_RESULTS_FINISHED", request);
+        jdbc.update("update training_activities set results_finished_at = now(), results_finished_by = ?, results_signature_id = ?, version = version + 1, updated_at = now() where id = ?", actor.getId(), signature, id);
+        store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "TRAINING_FINISHED", Map.of(), actor.getId());
+        store.auditActivity(actor, activity, "TRAINING_FINISHED", null, "FINISHED", "The trainer finished the training; the results are written in the list APD.0117");
+        return get(actor, id);
+    }
+
+    @Transactional
+    public Map<String, Object> submitForConfirmation(UserAccount actor, UUID id, CommandRequest request) {
+        Map<String, Object> activity = lockedForSender(actor, id);
+        requireVersion(activity, request == null ? null : request.version());
+        requireStatus(activity, "IN_PROGRESS");
+        // The order: the attendance list is sent, the results are all in, the trainer finishes the training (the results go into APD.0117), and only then the results go to QA.
+        if (activity.get("attendance_sent_at") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ATTENDANCE_NOT_SENT");
+        if (!allResultsIn(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_RESULT_PENDING");
+        if (activity.get("results_finished_at") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_NOT_FINISHED");
         Map<String, Object> qa = qaList(activity);
         boolean late = qa != null && "OVERDUE".equals(qa.get("state"));
+        sign(actor, activity, "TRAINING_SUBMITTED_FOR_CONFIRMATION", request);
         transition(actor, activity, "PENDING_QA_CONFIRMATION", "TRAINING_SUBMITTED_FOR_CONFIRMATION", late ? "Results sent to QA late: the list was due on " + qa.get("dueOn") + " (SOP.0003 5.3.6)" : "Results sent to QA");
+        // QA is told at once, whatever the department that trained: the people who hold the right to confirm in the scope of all departments, or of the department of the training.
+        String stamp = String.valueOf(System.currentTimeMillis());
+        java.util.Map<UUID, UserAccount> toTell = new java.util.LinkedHashMap<>();
+        for (UserAccount confirmer : approvals.eligibleUsers("ACTIVITY_COMPLETE", (UUID) activity.get("organizer_department_id"), keptApart(activity, "ACTIVITY_COMPLETE"))) toTell.put(confirmer.getId(), confirmer);
+        for (UserAccount receiver : attendanceReceivers(activity)) toTell.putIfAbsent(receiver.getId(), receiver);
+        // The list APD.0117 with the results written in it goes with the e-mail.
+        byte[] pdf = toTell.isEmpty() ? null : attendanceListPdf(actor, id);
+        String fileName = String.valueOf(activity.get("training_number")).replace('/', '-') + "-APD.0117.pdf";
+        for (UserAccount confirmer : toTell.values()) {
+            if (confirmer.getId().equals(actor.getId())) continue;
+            notifier.send("TRAINING_SUBMITTED_TO_QA", confirmer, actor, "Training: results are waiting for QA",
+                    "The attendance list and the results of " + activity.get("training_number") + " (" + activity.get("training_title") + ") were sent to QA by " + actor.getFullName()
+                            + ". " + (pdf != null ? "The list (APD.0117) with the results is attached to the e-mail as a PDF. " : "")
+                            + "Please check them and confirm that the training is completed, with your signature.", "TRAINING_ACTIVITY", id, "qa-submitted:" + id + ":" + confirmer.getId() + ":" + stamp,
+                    pdf == null ? null : fileName, pdf);
+        }
         return get(actor, id);
     }
 
@@ -882,13 +1156,17 @@ public class TrainingActivityService {
         UUID assignment = approvals.requireCanSign(actor, TrainingApprovalService.activity(activity), "ACTIVITY_COMPLETE", keptApart(activity, "ACTIVITY_COMPLETE"));
         UUID signature = sign(actor, activity, "TRAINING_COMPLETED", request);
         approvals.complete(assignment, signature);
-        LocalDate completedOn = jdbc.queryForObject("select coalesce(max(held_on), current_date) from training_sessions where activity_id=? and status='HELD'", LocalDate.class, id);
+        LocalDate completedOn = jdbc.queryForObject("select coalesce(max(held_on), current_date) from training_sessions where activity_id=? and status='PLANNED'", LocalDate.class, id);
         jdbc.update("update training_activities set status='COMPLETED', confirmed_by=?, confirmed_at=now(), confirm_signature_id=?, completed_on=?, version=version+1, updated_at=now() where id=?",
                 actor.getId(), signature, completedOn, id);
         confirmation(id, null, "QA_COMPLETION", actor, signature, assignment, null);
         int records = writeRecords(activity, completedOn);
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "COMPLETED", Map.of("completedOn", String.valueOf(completedOn), "records", records), actor.getId());
         store.auditActivity(actor, activity, "TRAINING_ACTIVITY_COMPLETED", "PENDING_QA_CONFIRMATION", "COMPLETED", records + " personal training records written");
+        String on = com.eqms.util.DateTimeFormatUtils.display(completedOn);
+        tell("TRAINING_COMPLETED", actor, organizersOf(activity), "Training: completed", actor.getFullName() + " confirmed that the training " + label(activity) + " is completed on " + on + ".", id);
+        tell("TRAINING_RECORDED", actor, jdbc.queryForList("select distinct person_user_id from training_records where activity_id = ? and person_user_id is not null", UUID.class, id),
+                "Training: recorded in your training record", "The training " + label(activity) + " is confirmed as completed on " + on + " and is written in your personal training record.", id);
         return get(actor, id);
     }
 
@@ -896,7 +1174,7 @@ public class TrainingActivityService {
     private int writeRecords(Map<String, Object> activity, LocalDate completedOn) {
         List<Map<String, Object>> people = jdbc.queryForList("""
             select p.*, s.method as session_method, s.held_on, s.id as sid from training_participants p join training_sessions s on s.id = p.session_id
-             where p.activity_id=? and p.person_user_id is not null and p.result='PASSED' and s.status='HELD'
+             where p.activity_id=? and p.person_user_id is not null and p.result='PASSED' and s.status='PLANNED' and s.held_on is not null
             """, activity.get("id"));
         int count = 0;
         for (Map<String, Object> person : people) {
@@ -924,7 +1202,12 @@ public class TrainingActivityService {
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         Integer passed = jdbc.queryForObject("select count(*) from training_participants where activity_id=? and result='PASSED'", Integer.class, id);
         if (passed != null && passed > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_HAS_RESULTS");
+        // Every change of state is signed, the cancellation too (before the notice as well as after it).
+        sign(actor, activity, "TRAINING_ACTIVITY_CANCELLED", request);
         store.cancel(activity, request.reason().trim(), actor);
+        if (NOTIFIED_OR_LATER.contains(String.valueOf(activity.get("status")))) {
+            tell("TRAINING_CANCELLED", actor, listedPeople(id), "Training: cancelled", "The training " + label(activity) + " was cancelled by " + actor.getFullName() + ". Reason: " + request.reason().trim(), id);
+        }
         return get(actor, id);
     }
 
@@ -1008,6 +1291,31 @@ public class TrainingActivityService {
 
     private static String blankToNull(String value) { return value == null || value.isBlank() ? null : value.trim(); }
 
+    /**
+     * The person who sends the attendance list and the results to QA is the trainer (APD.0117 item 5): the trainer of a session of the activity. When a session has no trainer in the system
+     * (an outside trainer), the person who conducts the training in the department does it for that session.
+     */
+    private boolean isSender(UserAccount actor, Map<String, Object> activity) {
+        UUID id = (UUID) activity.get("id");
+        Integer asTrainer = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ? and status <> 'CANCELLED' and trainer_user_id = ?", Integer.class, id, actor.getId());
+        if (asTrainer != null && asTrainer > 0) return true;
+        Integer withoutTrainer = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ? and status <> 'CANCELLED' and trainer_user_id is null", Integer.class, id);
+        return withoutTrainer != null && withoutTrainer > 0
+                && access.has(actor, "training.activity.conduct", "training.activity.organize") && access.inScope(actor, (UUID) activity.get("organizer_department_id"));
+    }
+
+    private Map<String, Object> lockedForSender(UserAccount actor, UUID id) {
+        Map<String, Object> activity = store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        if (!isSender(actor, activity)) throw new SecurityException(TrainingAccess.DENIED);
+        return activity;
+    }
+
+    /** Everyone who attended has a result (a person who was absent has none). */
+    private boolean allResultsIn(UUID activityId) {
+        Integer pending = jdbc.queryForObject("select count(*) from training_participants where activity_id=? and state in ('ATTENDED','ONLINE','READ_CONFIRMED') and result='PENDING'", Integer.class, activityId);
+        return pending == null || pending == 0;
+    }
+
     private Map<String, Object> lockedForOrganizer(UserAccount actor, UUID id) {
         Map<String, Object> activity = store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         requireOrganizer(actor, activity);
@@ -1034,6 +1342,116 @@ public class TrainingActivityService {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
     }
 
+    /** Where the session is held, checked as the form asks: a venue on site, or a platform and an https link online. Returns type, venue, platform, link. */
+    private static String[] location(String locationType, String venueText, String platformText, String linkText) {
+        if (locationType != null && !Set.of("ONSITE", "ONLINE").contains(locationType)) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
+        boolean online = "ONLINE".equals(locationType);
+        String venue = blankToNull(venueText);
+        String platform = blankToNull(platformText);
+        String meeting = blankToNull(linkText);
+        if (online) {
+            if (platform == null || platform.length() > 30 || meeting == null || meeting.length() > 1000) throw new IllegalArgumentException("TRAINING_LOCATION_INVALID");
+            java.net.URI uri;
+            try { uri = java.net.URI.create(meeting); } catch (IllegalArgumentException e) { throw new IllegalArgumentException("TRAINING_LOCATION_INVALID"); }
+            if (uri.getHost() == null || !"https".equalsIgnoreCase(uri.getScheme())) throw new IllegalArgumentException("TRAINING_LOCATION_INVALID");
+            return new String[] {"ONLINE", null, platform, meeting};
+        }
+        if (venue == null) throw new IllegalArgumentException("TRAINING_LOCATION_INVALID");
+        return new String[] {"ONSITE", venue, null, null};
+    }
+
+    /**
+     * The trainer, the date and the place of a session can be changed until the training starts (the activity is Planned or Notified and the session has not been held); once
+     * the training is in progress they are fixed, because the attendance and the results rest on them. A reason is always written; the old and the new values are in the Audit Trail.
+     * A trainer exception that was asked for the old trainer must be dealt with first.
+     */
+    @Transactional
+    public Map<String, Object> updateSession(UserAccount actor, UUID sessionId, SessionUpdateRequest request) {
+        Map<String, Object> session = session(sessionId);
+        Map<String, Object> activity = lockedForOrganizer(actor, (UUID) session.get("activity_id"));
+        requireStatus(activity, "PLANNED", "NOTIFIED");
+        if (!TrainingSessionState.notStarted(session)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_STARTED");
+        if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        boolean externalActivity = "EXTERNAL".equals(activity.get("kind"));
+        if (externalActivity && request.trainerUserId() != null) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
+        if (request.trainerUserId() != null) {
+            UserAccount trainer = users.findById(request.trainerUserId()).orElseThrow(() -> new IllegalArgumentException("TRAINING_TRAINER_NOT_FOUND"));
+            if (trainer.getStatus() != UserStatus.Active) throw new IllegalArgumentException("TRAINING_TRAINER_NOT_FOUND");
+        }
+        String[] place = location(request.locationType() == null ? String.valueOf(session.get("location_type")) : request.locationType(), request.venue(), request.onlinePlatform(), request.meetingLink());
+        String externalTrainer = blankToNull(request.externalTrainerName());
+        UUID oldTrainer = (UUID) session.get("trainer_user_id");
+        boolean trainerChanged = !java.util.Objects.equals(oldTrainer, request.trainerUserId()) || !java.util.Objects.equals(blankToNull((String) session.get("external_trainer_name")), externalTrainer);
+        if (!externalActivity && request.trainerUserId() == null && externalTrainer == null) throw new IllegalArgumentException("TRAINING_TRAINER_REQUIRED");
+        if (trainerChanged) {
+            Integer open = jdbc.queryForObject("select count(*) from training_trainer_exceptions where session_id=? and status in ('PENDING','APPROVED')", Integer.class, sessionId);
+            if (open != null && open > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_TRAINER_EXCEPTION_OPEN");
+        }
+        List<com.eqms.dto.audittrail.AuditTrailChangeResponse> changes = new ArrayList<>();
+        java.util.function.BiConsumer<String, String[]> diff = (label, values) -> { if (!java.util.Objects.equals(values[0], values[1])) changes.add(new com.eqms.dto.audittrail.AuditTrailChangeResponse(label, values[0], values[1])); };
+        diff.accept("Trainer", new String[] {trainerName(oldTrainer, (String) session.get("external_trainer_name")), trainerName(request.trainerUserId(), externalTrainer)});
+        diff.accept("Scheduled date", new String[] {session.get("scheduled_on") == null ? null : session.get("scheduled_on").toString(), request.scheduledOn() == null ? null : request.scheduledOn().toString()});
+        diff.accept("Location type", new String[] {(String) session.get("location_type"), place[0]});
+        diff.accept("Venue", new String[] {(String) session.get("venue"), place[1]});
+        diff.accept("Online platform", new String[] {(String) session.get("online_platform"), place[2]});
+        diff.accept("Meeting link", new String[] {(String) session.get("meeting_link"), place[3]});
+        if (changes.isEmpty()) throw new IllegalArgumentException("TRAINING_SESSION_UNCHANGED");
+        jdbc.update("update training_sessions set trainer_user_id=?, external_trainer_name=?, scheduled_on=?, venue=?, location_type=?, online_platform=?, meeting_link=?, version=version+1 where id=?",
+                request.trainerUserId(), externalTrainer, request.scheduledOn(), place[1], place[0], place[2], place[3], sessionId);
+        store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), (UUID) activity.get("id"), "SESSION_CHANGED", Map.of("sessionNo", session.get("session_no"), "changes", changes.size()), actor.getId());
+        store.auditActivity(actor, activity, "TRAINING_SESSION_UPDATED", null, null,
+                "Session " + session.get("session_no") + " changed before the training: " + changes.size() + " change" + (changes.size() == 1 ? "" : "s") + ". Reason: " + request.reason().trim(), changes);
+        return get(actor, (UUID) activity.get("id"));
+    }
+
+    private String trainerName(UUID userId, String externalName) {
+        if (userId == null) return blankToNull(externalName);
+        return jdbc.queryForList("select full_name from app_users where id=?", String.class, userId).stream().findFirst().orElse(String.valueOf(userId));
+    }
+
+    /**
+     * Approved content can be reopened before the training starts (Planned or Notified) with a reason and a signature. The review and approval that were given stay on record
+     * but no longer count, the open steps are closed, and the activity goes back to Planned if it had been notified, so that the people are told again once the new content is approved.
+     */
+    @Transactional
+    public Map<String, Object> reopenContent(UserAccount actor, UUID id, CommandRequest request) {
+        Map<String, Object> activity = lockedForOrganizer(actor, id);
+        requireVersion(activity, request == null ? null : request.version());
+        requireStatus(activity, "PLANNED", "NOTIFIED");
+        if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        List<Map<String, Object>> given = jdbc.queryForList("select id, kind from training_active_confirmations where activity_id=? and kind in ('CONTENT_REVIEWED','CONTENT_APPROVED')", id);
+        if (given.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_NOT_APPROVED");
+        UUID signature = sign(actor, activity, "TRAINING_CONTENT_REOPENED", request);
+        for (Map<String, Object> c : given) {
+            jdbc.update("insert into training_confirmation_supersessions(confirmation_id, superseded_by, reason, signature_id) values (?,?,?,?)", c.get("id"), actor.getId(), request.reason().trim(), signature);
+        }
+        jdbc.update("update training_approval_assignments set status='CANCELLED', completed_at=now(), reason=? where object_type='TRAINING_ACTIVITY' and object_id=? and step_code in ('CONTENT_REVIEW','CONTENT_APPROVE') and status='PENDING'",
+                "Content reopened", id);
+        String kinds = String.join(" and ", given.stream().map(c -> "CONTENT_REVIEWED".equals(c.get("kind")) ? "review" : "approval").toList());
+        if ("NOTIFIED".equals(activity.get("status"))) transition(actor, activity, "PLANNED", "TRAINING_CONTENT_REOPENED", "Content reopened (" + kinds + " no longer count); notify again after the new approval. Reason: " + request.reason().trim());
+        else store.auditActivity(actor, activity, "TRAINING_CONTENT_REOPENED", null, null, "Content reopened (" + kinds + " no longer count). Reason: " + request.reason().trim());
+        store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "CONTENT_REOPENED", Map.of("reason", request.reason().trim()), actor.getId());
+        return get(actor, id);
+    }
+
+    /**
+     * QA returns the results to the organizer for correction instead of confirming them. Nothing has been written to a personal record yet (that happens only when QA confirms),
+     * so no record changes; the activity goes back to In progress, the organizer corrects and sends it again. Only the person designated for the confirmation may return it.
+     */
+    @Transactional
+    public Map<String, Object> returnForCorrection(UserAccount actor, UUID id, CommandRequest request) {
+        Map<String, Object> activity = store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        requireVersion(activity, request == null ? null : request.version());
+        requireStatus(activity, "PENDING_QA_CONFIRMATION");
+        approvals.requireCanSign(actor, TrainingApprovalService.activity(activity), "ACTIVITY_COMPLETE", keptApart(activity, "ACTIVITY_COMPLETE"));
+        if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        sign(actor, activity, "TRAINING_RETURNED_FOR_CORRECTION", request);
+        transition(actor, activity, "IN_PROGRESS", "TRAINING_RETURNED_FOR_CORRECTION", "QA returned the results for correction. Reason: " + request.reason().trim());
+        tell("TRAINING_RETURNED", actor, organizersOf(activity), "Training: QA returned the results", actor.getFullName() + " returned the results of " + label(activity)
+                + " for correction. Reason: \"" + request.reason().trim() + "\". Please correct them and send them to QA again.", id);
+        return get(actor, id);
+    }
+
     private void transition(UserAccount actor, Map<String, Object> activity, String to, String action, String comment) {
         UUID id = (UUID) activity.get("id");
         String from = String.valueOf(activity.get("status"));
@@ -1051,7 +1469,7 @@ public class TrainingActivityService {
     }
 
     private boolean confirmed(UUID activityId, String kind) {
-        Integer count = jdbc.queryForObject("select count(*) from training_activity_confirmations where activity_id=? and kind=?", Integer.class, activityId, kind);
+        Integer count = jdbc.queryForObject("select count(*) from training_active_confirmations where activity_id=? and kind=?", Integer.class, activityId, kind);
         return count != null && count > 0;
     }
 
@@ -1060,6 +1478,66 @@ public class TrainingActivityService {
                 UUID.randomUUID(), activityId, sessionId, kind, actor.getId(), signatureId, assignmentId, remark);
     }
 
+    // ------------------------------------------------------------------------------------------------------------------------------ notices
+
+    private static String label(Map<String, Object> activity) {
+        return activity.get("training_number") + " (" + activity.get("training_title") + ")";
+    }
+
+    /** The people who organize the activity: who opened it and who prepared its list. */
+    private Set<UUID> organizersOf(Map<String, Object> activity) {
+        Set<UUID> out = new java.util.LinkedHashSet<>();
+        if (activity.get("created_by") != null) out.add((UUID) activity.get("created_by"));
+        if (activity.get("list_prepared_by") != null) out.add((UUID) activity.get("list_prepared_by"));
+        return out;
+    }
+
+    /** A notice to some people about the activity. The person who did the action is never told of it. */
+    private void tell(String event, UserAccount actor, java.util.Collection<UUID> people, String title, String message, UUID activityId) {
+        for (UUID personId : people) {
+            if (actor != null && personId.equals(actor.getId())) continue;
+            users.findById(personId).ifPresent(person -> notifier.send(event, person, actor, title, message, "TRAINING_ACTIVITY", activityId, null));
+        }
+    }
+
+    private static String methodText(Object method) {
+        return switch (String.valueOf(method)) {
+            case "CLASSROOM" -> "classroom training";
+            case "SELF_READING" -> "self-reading";
+            case "HYBRID" -> "hybrid training (on site and online)";
+            case "PRACTICAL" -> "practical training";
+            default -> "training";
+        };
+    }
+
+    /** What the person is invited to: the Training Number and title, and for each of the sessions of the person the day, the place, the way and the trainer. */
+    private String invitation(Map<String, Object> activity, UUID personId) {
+        StringBuilder text = new StringBuilder("You are invited to the training " + label(activity) + ".");
+        for (Map<String, Object> s : jdbc.queryForList("""
+            select s.session_no, s.scheduled_on, s.venue, s.location_type, s.online_platform, s.method, coalesce(u.full_name, s.external_trainer_name) as trainer
+              from training_participants p join training_sessions s on s.id = p.session_id left join app_users u on u.id = s.trainer_user_id
+             where p.activity_id = ? and p.person_user_id = ? and s.status <> 'CANCELLED' order by s.session_no
+            """, activity.get("id"), personId)) {
+            text.append(" Session ").append(s.get("session_no")).append(": ");
+            text.append(s.get("scheduled_on") == null ? "day to be announced" : com.eqms.util.DateTimeFormatUtils.display(s.get("scheduled_on")));
+            String place = "ONLINE".equals(s.get("location_type")) ? (s.get("online_platform") == null ? "online" : "online, " + s.get("online_platform")) : (s.get("venue") == null ? null : String.valueOf(s.get("venue")));
+            if (place != null) text.append(", ").append(place);
+            if (s.get("method") != null) text.append(", ").append(methodText(s.get("method")));
+            if (s.get("trainer") != null) text.append(", trainer ").append(s.get("trainer"));
+            text.append(".");
+        }
+        if (activity.get("due_date") != null) text.append(" Due ").append(com.eqms.util.DateTimeFormatUtils.display(activity.get("due_date"))).append(".");
+        return text.toString();
+    }
+
+    /** The people to tell when a session is postponed or the activity is cancelled: everyone on the list who has not been marked absent. */
+    private List<UUID> listedPeople(UUID activityId) {
+        return jdbc.queryForList("select distinct person_user_id from training_participants where activity_id = ? and person_user_id is not null and notified_at is not null", UUID.class, activityId);
+    }
+
+    private static final Set<String> NOTIFIED_OR_LATER = Set.of("NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION");
+
+    /** The helpers of the signing rules. */
     private UUID sign(UserAccount actor, Map<String, Object> activity, String meaning, CommandRequest request) {
         if (request == null || request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
         return signatures.createEntitySignature("TRAINING_ACTIVITY", (UUID) activity.get("id"), String.valueOf(activity.get("training_number")), actor,
@@ -1078,7 +1556,7 @@ public class TrainingActivityService {
         UUID id = (UUID) activity.get("id");
         if ("CONTENT_REVIEW".equals(step) || "CONTENT_APPROVE".equals(step)) {
             if (activity.get("created_by") != null) apart.add((UUID) activity.get("created_by"));
-            if ("CONTENT_APPROVE".equals(step)) apart.addAll(jdbc.queryForList("select confirmed_by from training_activity_confirmations where activity_id=? and kind='CONTENT_REVIEWED'", UUID.class, id));
+            if ("CONTENT_APPROVE".equals(step)) apart.addAll(jdbc.queryForList("select confirmed_by from training_active_confirmations where activity_id=? and kind='CONTENT_REVIEWED'", UUID.class, id));
         } else if ("ACTIVITY_COMPLETE".equals(step)) {
             if (activity.get("list_prepared_by") != null) apart.add((UUID) activity.get("list_prepared_by"));
         }

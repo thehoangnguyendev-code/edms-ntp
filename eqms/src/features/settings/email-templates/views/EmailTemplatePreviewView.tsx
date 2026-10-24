@@ -16,6 +16,7 @@ import { emailTemplateApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { buildSampleVariables } from "../utils/emailTemplateVariables";
+import { displayDateTime } from "@/utils/format";
 
 export const EmailTemplatePreviewView: React.FC = () => {
   const { navigateTo, isNavigating } = useNavigateWithLoading();
@@ -366,8 +367,8 @@ export const EmailTemplatePreviewView: React.FC = () => {
                     </div>
                     <div className="text-xs text-slate-500 space-y-1">
                       <p>Created by: {version.createdBy || "System"}</p>
-                      <p>Created at: {version.createdAt ? new Date(version.createdAt).toLocaleString() : "N/A"}</p>
-                      {version.publishedAt && <p>Published at: {new Date(version.publishedAt).toLocaleString()}</p>}
+                      <p>Created at: {version.createdAt ? displayDateTime(version.createdAt) : "N/A"}</p>
+                      {version.publishedAt && <p>Published at: {displayDateTime(version.publishedAt)}</p>}
                     </div>
                     <div className="flex items-center gap-2">
                       {version.versionNumber !== previewTemplate.latestVersionNumber && (

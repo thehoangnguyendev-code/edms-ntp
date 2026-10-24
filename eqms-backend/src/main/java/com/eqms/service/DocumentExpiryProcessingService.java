@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.ControlledCopyRecord;
 import com.eqms.entity.DocumentRecord;
 import com.eqms.entity.UncontrolledCopyRecord;
@@ -36,7 +37,7 @@ public class DocumentExpiryProcessingService {
     static final String CONTROLLED_OBSOLETED = "OBSOLETED";
     static final String UNCONTROLLED_EXPIRED = "EXPIRED";
     private static final Set<String> UNCONTROLLED_VOIDABLE = Set.of("REQUESTED", "APPROVED", "GENERATED", "DISTRIBUTED");
-    private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
 
     private final JdbcTemplate jdbcTemplate;
     private final DocumentRecordRepository documentRepository;

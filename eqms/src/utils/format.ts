@@ -1,61 +1,28 @@
-import { readSystemLocalizationSettings } from '@/config/localization';
+import { SITE_TIME_ZONE, readSystemLocalizationSettings } from '@/config/localization';
 
 /**
- * Renders an hours/minutes(/seconds) triple honoring the current user's Regional Formats
- * Time Format preference (12-hour with AM/PM, or 24-hour) — display-only, reads from
- * localStorage via readLocalizationPreferences(), never touches the backend/DB.
+ * The display format of every date and time of the system, the same as the server writes (DateTimeFormatUtils): a date is dd/MM/yyyy and a date with a time is
+ * dd/MM/yyyy HH:mm:ss (24 hours, with seconds, one space between them). It is not a setting of the system or of a user. Everything a person reads goes through this file;
+ * ISO-8601 is only for what is sent to the server or read from it. `dateFormatGuard.test.ts` fails the build when other code formats a date for display.
  */
-function formatTimeSegment(hours: number, minutes: number, seconds?: number): string {
-  const { dateTimeFormat } = readSystemLocalizationSettings();
-  const mm = String(minutes).padStart(2, '0');
-  const ss = seconds === undefined ? null : String(seconds).padStart(2, '0');
+export const DISPLAY_DATE_PATTERN = 'dd/MM/yyyy';
+export const DISPLAY_DATETIME_PATTERN = 'dd/MM/yyyy HH:mm:ss';
 
-  const hh = String(hours).padStart(2, '0');
-  const includeSeconds = dateTimeFormat.includes('ss');
-  return includeSeconds && ss !== null ? `${hh}:${mm}:${ss}` : `${hh}:${mm}`;
+const two = (n: number) => String(n).padStart(2, '0');
+
+/** Time of day as HH:mm:ss (24 hours). */
+function formatTimeSegment(hours: number, minutes: number, seconds = 0): string {
+  return `${two(hours)}:${two(minutes)}:${two(seconds)}`;
 }
 
-/**
- * Renders a day/month/year triple honoring the current user's Regional Formats Date Format
- * preference (component order + separator) — display-only, same source as formatTimeSegment.
- */
+/** A day, month and year as dd/MM/yyyy. */
 function formatDateSegment(day: number, month: number, year: number): string {
-  const { dateTimeFormat, language } = readSystemLocalizationSettings();
-  const dd = String(day).padStart(2, '0');
-  const mm = String(month).padStart(2, '0');
-  const yyyy = String(year);
-
-  const dateFormat = dateTimeFormat.split(' ')[0];
-  const shortMonth = new Intl.DateTimeFormat(language || 'en', { month: 'short' }).format(new Date(2000, month - 1, 1));
-  const longMonth = new Intl.DateTimeFormat(language || 'en', { month: 'long' }).format(new Date(2000, month - 1, 1));
-  switch (dateFormat) {
-    case 'MM/DD/YYYY':
-      return `${mm}/${dd}/${yyyy}`;
-    case 'YYYY-MM-DD':
-      return `${yyyy}-${mm}-${dd}`;
-    case 'YYYY/MM/DD':
-      return `${yyyy}/${mm}/${dd}`;
-    case 'DD-MM-YYYY':
-      return `${dd}-${mm}-${yyyy}`;
-    case 'DD.MM.YYYY':
-      return `${dd}.${mm}.${yyyy}`;
-    case 'DD-MMM-YYYY':
-      return `${dd}-${shortMonth}-${yyyy}`;
-    case 'MMMM':
-      return `${longMonth} ${dd}, ${yyyy}`;
-    case 'DD/MM/YYYY':
-    default:
-      return `${dd}/${mm}/${yyyy}`;
-  }
+  return `${two(day)}/${two(month)}/${year}`;
 }
 
 function getSystemDateParts(date: Date) {
-  const { timeZone } = readSystemLocalizationSettings();
-  const normalizedTimeZone = timeZone === 'UTC+7' || timeZone === 'GMT+7'
-    ? 'Asia/Ho_Chi_Minh'
-    : timeZone || 'Asia/Ho_Chi_Minh';
   const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: normalizedTimeZone,
+    timeZone: SITE_TIME_ZONE,
     year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
   }).formatToParts(date);
   const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value || 0);
@@ -88,30 +55,11 @@ function parseAnyDate(input: string | Date): Date {
   return new Date(input);
 }
 
-export function formatDate(date: string | Date, format: 'short' | 'long' | 'full' = 'short'): string {
+export function formatDate(date: string | Date): string {
   const dateObj = typeof date === 'string' ? parseAnyDate(date) : date;
-
-  if (isNaN(dateObj.getTime())) {
-    return 'Invalid Date';
-  }
-
+  if (isNaN(dateObj.getTime())) return 'Invalid Date';
   const parts = getSystemDateParts(dateObj);
-  const year = parts.year;
-
-  if (format === 'short') {
-    return formatDateSegment(parts.day, parts.month, year);
-  }
-
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const monthLong = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-  if (format === 'long') {
-    return `${parts.day} ${monthNames[parts.month - 1]} ${year}`;
-  }
-
-  // full format
-  return `${weekdays[dateObj.getDay()]}, ${parts.day} ${monthLong[parts.month - 1]} ${year}`;
+  return formatDateSegment(parts.day, parts.month, parts.year);
 }
 
 /**
@@ -139,7 +87,7 @@ export function formatDateUS(dateString: string | Date): string {
 }
 
 /**
- * Format date and time as dd/MM/yyyy, HH:mm:ss
+ * Format date and time as dd/MM/yyyy HH:mm:ss
  * Returns "-" if invalid date
  */
 export function formatDateTime(dateString: string | Date): string {
@@ -150,7 +98,7 @@ export function formatDateTime(dateString: string | Date): string {
   const parts = getSystemDateParts(date);
   const datePart = formatDateSegment(parts.day, parts.month, parts.year);
   const timePart = formatTimeSegment(parts.hour, parts.minute, parts.second);
-  return `${datePart}, ${timePart}`;
+  return `${datePart} ${timePart}`;
 }
 
 /**
@@ -167,7 +115,7 @@ export function formatDateLong(dateInput: string | Date): string {
 }
 
 /**
- * Format date+time as dd/MM/yyyy, HH:mm:ss
+ * Format date+time as dd/MM/yyyy HH:mm:ss
  * Returns "-" if invalid
  */
 export function formatDateTimeLong(dateInput: string | Date): string {
@@ -178,7 +126,7 @@ export function formatDateTimeLong(dateInput: string | Date): string {
   const parts = getSystemDateParts(date);
   const datePart = formatDateSegment(parts.day, parts.month, parts.year);
   const timePart = formatTimeSegment(parts.hour, parts.minute, parts.second);
-  return `${datePart}, ${timePart}`;
+  return `${datePart} ${timePart}`;
 }
 
 /**
@@ -209,7 +157,7 @@ export function formatRelativeTime(dateString: string | Date): string {
 
 /**
  * Format date and time from separate date and time strings
- * (e.g., date="2026-01-15", time="14:30:00" => "15/01/2026, 14:30:00")
+ * (e.g., date="2026-01-15", time="14:30:00" => "15/01/2026 14:30:00")
  * Returns "-" if invalid
  */
 export function formatDateTimeParts(date: string, time: string): string {
@@ -219,12 +167,12 @@ export function formatDateTimeParts(date: string, time: string): string {
 
   const datePart = formatDateSegment(dateObj.getDate(), dateObj.getMonth() + 1, dateObj.getFullYear());
   const timePart = formatTimeSegment(Number(time.substring(0, 2)), Number(time.substring(3, 5)), time.length >= 8 ? Number(time.substring(6, 8)) : 0);
-  return `${datePart}, ${timePart}`;
+  return `${datePart} ${timePart}`;
 }
 
 /**
  * Format date and time from separate date and time strings
- * (e.g., date="2026-01-15", time="14:30:00" => "15/01/2026, 14:30:00")
+ * (e.g., date="2026-01-15", time="14:30:00" => "15/01/2026 14:30:00")
  * Returns "-" if invalid
  */
 export function formatDateTimePartsNumeric(date: string, time: string): string {
@@ -234,7 +182,7 @@ export function formatDateTimePartsNumeric(date: string, time: string): string {
 
   const datePart = formatDateSegment(dateObj.getDate(), dateObj.getMonth() + 1, dateObj.getFullYear());
   const timePart = formatTimeSegment(Number(time.substring(0, 2)), Number(time.substring(3, 5)), time.length >= 8 ? Number(time.substring(6, 8)) : 0);
-  return `${datePart}, ${timePart}`;
+  return `${datePart} ${timePart}`;
 }
 
 /**
@@ -332,4 +280,23 @@ export function getInitials(name: string): string {
     .join('')
     .toUpperCase()
     .slice(0, 2);
+}
+
+/** A date for a person: dd/MM/yyyy, or "-" when there is none or it is not a date. The one function new code uses for a date. */
+export function displayDate(value: string | Date | null | undefined): string {
+  return value ? formatDateLong(value) : '-';
+}
+
+/** A moment for a person: dd/MM/yyyy HH:mm:ss in the zone of the site, or "-". The one function new code uses for a date and time. */
+export function displayDateTime(value: string | Date | null | undefined): string {
+  return value ? formatDateTimeLong(value) : '-';
+}
+
+/** A time of day for a person: HH:mm:ss in the zone of the site, or "-". */
+export function displayTime(value: string | Date | null | undefined): string {
+  if (!value) return '-';
+  const date = parseAnyDate(value);
+  if (isNaN(date.getTime())) return '-';
+  const parts = getSystemDateParts(date);
+  return formatTimeSegment(parts.hour, parts.minute, parts.second);
 }

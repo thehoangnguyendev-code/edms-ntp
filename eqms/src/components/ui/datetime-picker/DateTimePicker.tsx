@@ -478,9 +478,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         today.getMonth() === month &&
         today.getFullYear() === year;
       const isFocusTarget = focusedDay === day;
-      const fullLabel = new Intl.DateTimeFormat('en-US', {
-        month: 'long', day: 'numeric', year: 'numeric',
-      }).format(new Date(year, month, day));
+      const fullLabel = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
 
       cells.push(
         <button

@@ -13,11 +13,15 @@ export interface TrainingLink {
   activityId?: string;
   trainingNumber: string | null;
   status?: TrainingActivityStatus;
+  /** The text of the status, as the server gives it. */
+  statusLabel?: string | null;
   kind?: string;
   trainingPeriodDays?: number | null;
   approvedOn?: string | null;
   dueDate?: string | null;
   completedOn?: string | null;
+  /** The day the attendance list was sent to QA: from then on the revision can be completed. */
+  attendanceSentOn?: string | null;
 }
 
 export type TrainingActivityStatus = "RESERVED" | "PLANNED" | "NOTIFIED" | "IN_PROGRESS" | "PENDING_QA_CONFIRMATION" | "COMPLETED" | "CANCELLED";

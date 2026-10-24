@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.NotificationDispatchQueue;
 import com.eqms.entity.NotificationEventDefinition;
 import com.eqms.entity.NotificationPolicy;
@@ -54,7 +55,7 @@ public class NotificationDispatcher {
     /** Fixed local time both DAILY_DIGEST and WEEKLY_DIGEST batch to -- simple and predictable;
      * not per-policy configurable in this phase. */
     private static final int DIGEST_HOUR_OF_DAY = 8;
-    private static final ZoneId ZONE = ZoneId.systemDefault();
+    private static final ZoneId ZONE = DateTimeFormatUtils.ZONE;
 
     private final NotificationEventDefinitionRepository eventRepository;
     private final NotificationPolicyRepository policyRepository;

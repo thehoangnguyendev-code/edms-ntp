@@ -1,3 +1,4 @@
+import { sessionStarted } from "@/services/api/trainingActivities";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button/Button";
@@ -22,7 +23,7 @@ export function TrainingCheckInBlock({
   activity: TrainingActivityDetail;
   onChanged: (next: TrainingActivityDetail) => void;
 }) {
-  const held = activity.sessions.filter((s) => s.status === "HELD");
+  const held = activity.sessions.filter(sessionStarted);
   const [sessionId, setSessionId] = useState(held[0]?.id ?? "");
   const [state, setState] = useState<TrainingCheckInStatus>();
   const [busy, setBusy] = useState(false);
@@ -30,14 +31,18 @@ export function TrainingCheckInBlock({
   const [now, setNow] = useState(() => Date.now());
   const { showToast } = useToast();
   const lastCount = useRef<number | undefined>(undefined);
+  // One place sets the status and the moment the code ends, and the clock is read again at once, so the countdown never shows the time of an older reading.
+  const apply = useCallback((next: TrainingCheckInStatus) => {
+    const at = Date.now();
+    setState(next);
+    setNow(at);
+    setDeadline(next.open && next.secondsLeft != null ? at + next.secondsLeft * 1000 : 0);
+  }, []);
   const refresh = useCallback(async () => {
     if (!sessionId) return;
     try {
       const next = await trainingCheckInApi.status(sessionId);
-      setState(next);
-      setDeadline(
-        next.secondsLeft != null ? Date.now() + next.secondsLeft * 1000 : 0,
-      );
+      apply(next);
       if (
         lastCount.current !== undefined &&
         lastCount.current !== next.checkedIn
@@ -47,7 +52,7 @@ export function TrainingCheckInBlock({
     } catch {
       /* the next poll tries again */
     }
-  }, [sessionId, activity.id, onChanged]);
+  }, [sessionId, activity.id, onChanged, apply]);
   useEffect(() => {
     lastCount.current = undefined;
     void refresh();
@@ -75,7 +80,7 @@ export function TrainingCheckInBlock({
   const act = async (fn: (id: string) => Promise<TrainingCheckInStatus>) => {
     setBusy(true);
     try {
-      setState(await fn(sessionId));
+      apply(await fn(sessionId));
       lastCount.current = undefined;
     } catch (e) {
       showToast({
@@ -108,8 +113,8 @@ export function TrainingCheckInBlock({
     <TabBlock title="Self check-in">
       <p className="px-4 py-3 text-xs text-slate-500">
         Open the check-in and show the code to the room. Each trainee enters it
-        on their own phone or computer and signs. Anyone without a device is
-        marked in the quick roll-call.
+        on their own phone or computer and signs with their password. Anyone
+        without a device is marked in the quick roll-call.
       </p>
       <div className="space-y-4 p-4">
         {held.length > 1 && (
@@ -131,8 +136,7 @@ export function TrainingCheckInBlock({
             <div className="rounded-xl border border-slate-200 bg-white p-3">
               <QRCodeSVG
                 value={url}
-                size={160}
-                includeMargin
+                size={208}
                 aria-label="Check-in QR code"
               />
             </div>
@@ -171,7 +175,8 @@ export function TrainingCheckInBlock({
         ) : (
           <div className="flex flex-wrap items-center gap-3">
             <Button
-              variant="outline-emerald"
+              variant="default"
+              size="sm"
               loading={busy}
               onClick={() => void act(trainingCheckInApi.open)}
             >

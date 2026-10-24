@@ -120,7 +120,7 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
       confirmText="Close"
       showCancel={false}
       size="2xl"
-      className="max-w-5xl"
+      className="max-w-5xl backdrop-blur-none"
       footerExtra={<Button size="sm" variant="outline" onClick={() => void save(showing.evidence)}>Download</Button>}
     >
       {showing.evidence.contentType === WORD ? (

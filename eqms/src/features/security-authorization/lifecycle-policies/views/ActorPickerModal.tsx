@@ -121,7 +121,7 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
     <FormModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Choose actor"
+      title="Choose Actor"
       description="Select an active user to evaluate. This does not perform an action as that user."
       size="2xl"
       showFooter={false}

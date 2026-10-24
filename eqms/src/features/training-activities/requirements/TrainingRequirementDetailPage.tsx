@@ -22,15 +22,17 @@ import { day, saveBlob, trainingBreadcrumbs, when, statusChange } from "../share
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
 import { TrainingCopiesPanel } from "../shared/TrainingCopiesPanel";
 import { REQUIREMENT_STATUS_LABEL } from "./TrainingRequirementListView";
+import { useTrainingBack } from "../shared/useTrainingBack";
 
 const LINE_LABEL: Record<string, string> = { PLANNED: "Planned", POSTPONED: "Postponed", IN_PROGRESS: "In progress", DONE: "Done", OVERDUE: "Overdue" };
 const LINE_COLOR: Record<string, "blue" | "amber" | "emerald" | "red"> = { PLANNED: "blue", POSTPONED: "amber", IN_PROGRESS: "amber", DONE: "emerald", OVERDUE: "red" };
-const monthText = (value: string) => new Date(`${value.slice(0, 7)}-01T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "long" });
+/** A month as MM/yyyy (the planned month of a line). */
+const monthText = (value: string) => `${value.slice(5, 7)}/${value.slice(0, 4)}`;
 
 const REQUIREMENT_STEPS = [
   { status: "DRAFT", label: "Draft" },
-  { status: "PENDING_REVIEW", label: "Waiting for review" },
-  { status: "PENDING_APPROVAL", label: "Waiting for approval" },
+  { status: "PENDING_REVIEW", label: "Pending Review" },
+  { status: "PENDING_APPROVAL", label: "Pending Approval" },
   { status: "APPROVED", label: "Approved" },
 ];
 
@@ -51,6 +53,7 @@ const limitCaps = (raw: TrainingRequirementDetail["capabilities"], mode: Require
 export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: RequirementMode }) {
   const { requirementId = "" } = useParams();
   const navigate = useNavigate();
+  const goBack = useTrainingBack("/training-management/requirements");
   const { showToast } = useToast();
   const [req, setReq] = useState<TrainingRequirementDetail>();
   const [lines, setLines] = useState<DraftLine[]>([]);
@@ -105,12 +108,12 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
       { id: "qa", header: "QA", cell: (l) => (l.qaSignedAt ? <div className="max-w-60 whitespace-normal">{l.qaSignedByName} ({day(l.qaSignedAt)}){l.qaComment ? `: ${l.qaComment}` : ""}</div> : "—") },
       {
         id: "actions",
-        header: "",
+        header: "Action",
         cell: (l) => (
           <div className="flex flex-wrap gap-2">
-            {caps.openActivity && (!l.activityId || l.activityStatus === "CANCELLED") && <Button size="sm" variant="outline-emerald" onClick={() => void run(() => trainingRequirementsApi.openActivity(l.id), "Training opened")}>Open training</Button>}
-            {caps.postpone && (!l.activityId || l.activityStatus === "CANCELLED") && l.lineStatus !== "DONE" && <Button size="sm" variant="outline" onClick={() => setDialog({ postpone: l.id })}>Postpone</Button>}
-            {caps.qaSign && l.activityStatus === "COMPLETED" && !l.qaSignedAt && <Button size="sm" variant="outline-emerald" onClick={() => { setQaComment(""); setDialog({ qa: l.id }); }}>QA sign</Button>}
+            {caps.openActivity && (!l.activityId || l.activityStatus === "CANCELLED") && <Button size="sm" onClick={() => void run(() => trainingRequirementsApi.openActivity(l.id), "Training opened")}>Open training</Button>}
+            {caps.postpone && (!l.activityId || l.activityStatus === "CANCELLED") && l.lineStatus !== "DONE" && <Button size="sm" onClick={() => setDialog({ postpone: l.id })}>Postpone</Button>}
+            {caps.qaSign && l.activityStatus === "COMPLETED" && !l.qaSignedAt && <Button size="sm" onClick={() => { setQaComment(""); setDialog({ qa: l.id }); }}>QA sign</Button>}
           </div>
         ),
       },
@@ -135,7 +138,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
       {caps.edit && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={!dirty} onClick={() => void run(() => trainingRequirementsApi.save(req.id, body()), "Draft saved")}>Save draft</Button>}
       {caps.submit && <Button size="sm" variant="default" className="whitespace-nowrap" disabled={dirty || lines.length === 0} onClick={() => setDialog("submit")}>Send for review</Button>}
       {caps.review && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setDialog("review")}>Review</Button>}
-      {caps.approve && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Complete approval of the requirement", code: "TRAINING_REQUIREMENT_APPROVED", name: "Training Requirement Approved", changes: statusChange("Waiting for approval", "Approved"), run: (t) => trainingRequirementsApi.approve(req.id, req.version, t) })}>Complete Approval</Button>}
+      {caps.approve && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Complete Approval of the Requirement", code: "TRAINING_REQUIREMENT_APPROVED", name: "Training Requirement Approved", changes: statusChange("Pending Approval", "Approved"), run: (t) => trainingRequirementsApi.approve(req.id, req.version, t) })}>Complete Approval</Button>}
       {req.status === "APPROVED" && (
         <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => void trainingRequirementsApi.print(req.id).then((b) => saveBlob(b, `${req.requestNo.replace(/\//g, "-")}.pdf`)).catch((e) => showToast({ type: "error", title: "The PDF could not be printed", message: trainingError(e) }))}>Print PDF</Button>
       )}
@@ -148,7 +151,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
       <TrainingDetailLayout
         title={title}
         breadcrumbItems={crumbs}
-        onBack={() => navigate("/training-management/requirements")}
+        onBack={goBack}
         steps={REQUIREMENT_STEPS.map((x) => x.label)}
         currentStepIndex={Math.max(0, REQUIREMENT_STEPS.findIndex((x) => x.status === req.status))}
         tabs={tabs}
@@ -170,7 +173,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
             <ReadonlyField label="Due By" value={day(req.dueBy)} />
             <ReadonlyField label="Reviewed By" value={req.reviewedByName} />
             <ReadonlyField label="Approved By" value={req.approvedByName} />
-            {pending && <ReadonlyField label="Waiting for" value={pending} wide />}
+            {pending && <ReadonlyField label="Pending With" value={pending} wide />}
             {req.rejectReason && req.status === "DRAFT" && <ReadonlyField label="Last rejection" value={req.rejectReason} wide />}
           </ReadonlyGrid>
         )}
@@ -202,15 +205,15 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
         <NextPersonDialog requirementId={req.id} step={dialog === "submit" ? "REQUIREMENT_REVIEW" : "REQUIREMENT_APPROVE"} busy={busy} onClose={() => setDialog(undefined)}
           onPick={(personId) => {
             setDialog(undefined);
-            if (dialog === "submit") setSign({ title: "Send requirement for review", code: "TRAINING_REQUIREMENT_PREPARED", name: "Training Requirement Prepared", changes: statusChange("Draft", "Waiting for review"), run: (t) => trainingRequirementsApi.submit(req.id, req.version, t, personId) });
-            else setSign({ title: "Review requirement", code: "TRAINING_REQUIREMENT_REVIEWED", name: "Training Requirement Reviewed", changes: statusChange("Waiting for review", "Waiting for approval"), run: (t) => trainingRequirementsApi.review(req.id, req.version, t, personId) });
+            if (dialog === "submit") setSign({ title: "Send Requirement for Review", code: "TRAINING_REQUIREMENT_PREPARED", name: "Training Requirement Prepared", changes: statusChange("Draft", "Pending Review"), run: (t) => trainingRequirementsApi.submit(req.id, req.version, t, personId) });
+            else setSign({ title: "Review Requirement", code: "TRAINING_REQUIREMENT_REVIEWED", name: "Training Requirement Reviewed", changes: statusChange("Pending Review", "Pending Approval"), run: (t) => trainingRequirementsApi.review(req.id, req.version, t, personId) });
           }} />
       )}
-      <ReasonDialog open={dialog === "reject"} title="Reject requirement" help="It goes back to draft with your reason." confirmText="Reject" destructive busy={busy} onClose={() => setDialog(undefined)} onSave={(reason) => run(() => trainingRequirementsApi.reject(req.id, req.version, reason), "Sent back to draft")} />
-      <ReasonDialog open={typeof dialog === "object" && "postpone" in dialog} title="Postpone to the next month" help="The old month and the reason stay on the line." confirmText="Postpone" busy={busy} onClose={() => setDialog(undefined)}
+      <ReasonDialog open={dialog === "reject"} title="Reject Requirement" help="It goes back to draft with your reason." confirmText="Reject" destructive busy={busy} onClose={() => setDialog(undefined)} onSave={(reason) => run(() => trainingRequirementsApi.reject(req.id, req.version, reason), "Sent back to draft")} />
+      <ReasonDialog open={typeof dialog === "object" && "postpone" in dialog} title="Postpone to the Next Month" help="The old month and the reason stay on the line." confirmText="Postpone" busy={busy} onClose={() => setDialog(undefined)}
         onSave={(reason) => run(() => trainingRequirementsApi.postpone((dialog as { postpone: string }).postpone, reason), "Line postponed")} />
-      <FormModal isOpen={typeof dialog === "object" && "qa" in dialog} onClose={() => setDialog(undefined)} title="QA signature for the line" description="The training of this line is completed. Your signature confirms it." confirmText="Continue to signature" size="md"
-        onConfirm={() => { const lineId = (dialog as { qa: string }).qa; setDialog(undefined); setSign({ title: "Sign the line", code: "TRAINING_COMPLETED", name: "Training Completed", changes: statusChange("Not signed by QA", "Signed by QA", "QA signature of the line"), run: (t) => trainingRequirementsApi.qaSign(lineId, t, qaComment.trim() || undefined) }); }}>
+      <FormModal isOpen={typeof dialog === "object" && "qa" in dialog} onClose={() => setDialog(undefined)} title="QA Signature for the Line" description="The training of this line is completed. Your signature confirms it." confirmText="Continue to signature" size="md"
+        onConfirm={() => { const lineId = (dialog as { qa: string }).qa; setDialog(undefined); setSign({ title: "Sign the Line", code: "TRAINING_COMPLETED", name: "Training Completed", changes: statusChange("Not signed by QA", "Signed by QA", "QA signature of the line"), run: (t) => trainingRequirementsApi.qaSign(lineId, t, qaComment.trim() || undefined) }); }}>
         <FormField label="Comment"><Textarea rows={3} value={qaComment} onChange={(e) => setQaComment(e.target.value)} /></FormField>
       </FormModal>
       <ESignatureModal isOpen={!!sign} onClose={() => setSign(undefined)} onConfirm={async (d: { signatureToken: string }) => { if (sign) { const ok = await run(() => sign.run(d.signatureToken), sign.title); if (ok) setSign(undefined); } }}
@@ -260,7 +263,7 @@ function AddTopicDialog({ year, lines, requirementId, departmentId, onClose, onA
   const chosen = topics.find((t) => t.id === id);
   const fromSuggestion = suggestions.filter((s) => !lines.some((l) => (s.topicId && l.topicId === s.topicId) || (s.documentId && l.documentId === s.documentId)));
   return (
-    <FormModal isOpen onClose={onClose} title="Add a topic" confirmText="Add" confirmDisabled={!chosen} size="md" onConfirm={() => chosen && onAdd({ plannedMonth: `${month}-01`, topicId: chosen.id, title: chosen.name, code: chosen.code })}>
+    <FormModal isOpen onClose={onClose} title="Add a Topic" confirmText="Add" confirmDisabled={!chosen} size="md" onConfirm={() => chosen && onAdd({ plannedMonth: `${month}-01`, topicId: chosen.id, title: chosen.name, code: chosen.code })}>
       <div className="grid gap-4">
         <FormField label="Month" required><Input type="month" value={month} min={`${year}-01`} max={`${year}-12`} onChange={(e) => setMonth(e.target.value)} /></FormField>
         <FormField label="Topic" required><Select value={id} onChange={setId} options={topics.map((t) => ({ label: `${t.code} — ${t.name}`, value: t.id }))} placeholder="Choose a topic" /></FormField>

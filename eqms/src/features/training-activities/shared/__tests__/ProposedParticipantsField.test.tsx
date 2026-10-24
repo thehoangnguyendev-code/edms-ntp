@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), replace: vi.fn(), people: vi.fn(), peopleGroups: vi.fn(), peopleInGroups: vi.fn() }));
@@ -13,11 +13,25 @@ beforeEach(() => { Object.values(api).forEach((f) => f.mockReset()); api.peopleG
 afterEach(cleanup);
 
 describe("ProposedParticipantsField", () => {
-  it("asks to save the document first when it has no id, and does not call the server", () => {
-    render(<ProposedParticipantsField documentId={null} />);
+  it("lets the people be chosen before the document is saved and keeps them for the form", () => {
+    const onPending = vi.fn();
+    render(<ProposedParticipantsField documentId={null} pending={[person]} onPendingChange={onPending} />);
 
-    expect(screen.getByText(/Save the document first/)).toBeTruthy();
+    expect(screen.getByText(/saved with the document/)).toBeTruthy();
+    expect(screen.getByText("Anne Tran")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Edit participants/ })).toBeTruthy();
     expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it("takes a person off the list the form keeps without asking the server", () => {
+    const onPending = vi.fn();
+    render(<ProposedParticipantsField documentId={null} pending={[person]} onPendingChange={onPending} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    fireEvent.click(screen.getByText("Remove"));
+
+    expect(onPending).toHaveBeenCalledWith([]);
+    expect(api.replace).not.toHaveBeenCalled();
   });
 
   it("says there is no training activity when the document has none yet", async () => {

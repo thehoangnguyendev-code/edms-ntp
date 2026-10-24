@@ -32,7 +32,7 @@ export const PublishBatchProgressModal: React.FC<PublishBatchProgressModalProps>
     <FormModal
       isOpen={isOpen}
       onClose={() => undefined}
-      title="Publish processing"
+      title="Publish Processing"
       showFooter={false}
       size="md"
       className="max-w-md"

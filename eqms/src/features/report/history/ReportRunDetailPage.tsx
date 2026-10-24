@@ -16,6 +16,7 @@ import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { codeLabel, runStatusLabel } from "../shared/reportLabels";
 import { reportsApi, type ReportArtifactSummary, type ReportRunDetail } from "@/services/api/reports";
 import { reportError } from "@/services/api/reportTemplates";
+import { displayDateTime } from "@/utils/format";
 
 const STATUS_COLOR: Record<string, "emerald" | "amber" | "red" | "slate" | "blue"> = {
   COMPLETED: "emerald",
@@ -41,7 +42,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-const when = (value?: string | null) => (value ? new Date(value).toLocaleString() : "—");
+const when = (value?: string | null) => (value ? displayDateTime(value) : "—");
 
 /** The full view of one report run (REPORT-RUN-DETAIL-2026-10-14): replaces the side drawer. Every field the server returns is shown. */
 export function ReportRunDetailPage() {
@@ -382,7 +383,7 @@ export function ReportRunDetailPage() {
         onClose={() => setHold(undefined)}
         deferConfirm
         onConfirm={(data) => void saveHold(data.signatureToken)}
-        actionTitle="Release legal hold"
+        actionTitle="Release Legal Hold"
         meaningDisplayName="Report Legal Hold Released"
         meaningCode="REPORT_LEGAL_HOLD_RELEASE"
       />

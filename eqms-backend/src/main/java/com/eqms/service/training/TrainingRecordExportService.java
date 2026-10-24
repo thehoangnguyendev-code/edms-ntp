@@ -1,5 +1,6 @@
 package com.eqms.service.training;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.UserAccount;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.AuditTrailService;
@@ -221,7 +222,7 @@ public class TrainingRecordExportService {
             for (Map<String, Object> r : records) {
                 body.add(new String[]{String.valueOf(r.get("record_no")), String.valueOf(r.get("training_number")), String.valueOf(r.get("topic_text")),
                         r.get("document_number") == null ? "" : r.get("document_number") + (r.get("document_revision") == null ? "" : " Rev " + r.get("document_revision")),
-                        String.valueOf(r.get("completed_on")), "READ".equals(r.get("result")) ? "Read" : "Passed", r.get("voided_at") == null ? "Valid" : "VOIDED"});
+                        DateTimeFormatUtils.display(r.get("completed_on")), "READ".equals(r.get("result")) ? "Read" : "Passed", r.get("voided_at") == null ? "Valid" : "VOIDED"});
             }
             int total = Math.max(1, (int) Math.ceil(Math.max(1, body.size()) / 30.0));
             int index = 0;
@@ -235,9 +236,9 @@ public class TrainingRecordExportService {
                     text(s, font, size, margin, y, "Employee: " + person.getFullName() + (person.getEmployeeCode() == null ? "" : " (" + person.getEmployeeCode() + ")")); y -= line;
                     text(s, font, size, margin, y, "Department: " + nvl(person.getDepartment())); y -= line;
                     text(s, font, size, margin, y, "Qualification: " + clip(font, qualification(person), size, width - 2 * margin - 80)); y -= line;
-                    text(s, font, size, margin, y, "Joined the company: " + (person.getStartDate() == null ? "" : person.getStartDate().toString())); y -= line;
+                    text(s, font, size, margin, y, "Joined the company: " + (person.getStartDate() == null ? "" : DateTimeFormatUtils.display(person.getStartDate()))); y -= line;
                     text(s, font, size, margin, y, "Reason for the export: " + clip(font, reason, size, width - 2 * margin - 120)); y -= line;
-                    text(s, font, size, margin, y, "Records listed: " + records.size() + "    Generated: " + at.toLocalDateTime().withNano(0)); y -= line + 6;
+                    text(s, font, size, margin, y, "Records listed: " + records.size() + "    Generated: " + DateTimeFormatUtils.formatDateTime(at.toInstant())); y -= line + 6;
                 }
                 for (int c = 0; c < heads.length; c++) text(s, strong, size, cols[c], y, heads[c]);
                 y -= line;
@@ -257,7 +258,7 @@ public class TrainingRecordExportService {
                     y = Math.min(y - 10, margin + 70);
                     text(s, strong, size, margin, y, "Signatures"); y -= line;
                     text(s, font, size, margin, y, "Prepared by: " + preparer.getFullName() + " (electronic signature, Training Record Prepared)"); y -= line;
-                    text(s, font, size, margin, y, "Approved by: " + approver.getFullName() + " (electronic signature, Training Record Approved) at " + at.toLocalDateTime().withNano(0)); y -= line;
+                    text(s, font, size, margin, y, "Approved by: " + approver.getFullName() + " (electronic signature, Training Record Approved) at " + DateTimeFormatUtils.formatDateTime(at.toInstant())); y -= line;
                     text(s, font, 7, margin, y, "Data fingerprint: " + dataHash(records)); y -= 10;
                 }
                 s.close();

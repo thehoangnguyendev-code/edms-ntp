@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.auth.LocalizationPreferenceResponse;
 import com.eqms.dto.auth.UpdateLocalizationPreferenceRequest;
@@ -35,8 +36,9 @@ public class UserLocalizationPreferenceService {
         preference.setUserId(user.getId());
         preference.setUseSystemDefaults(request.useSystemDefaults());
         preference.setLanguage(request.language());
-        preference.setDateTimeFormat(request.dateTimeFormat());
-        preference.setTimeZone(request.timeZone());
+        // The date and time format is the same for everybody: what the request carries is not kept.
+        preference.setDateTimeFormat(DateTimeFormatUtils.DISPLAY_FORMAT_CODE);
+        preference.setTimeZone(DateTimeFormatUtils.ZONE_ID);
         preference.setNumberFormat(request.numberFormat());
         preference.setFontFamily(request.fontFamily());
         preference.setUpdatedAt(Instant.now());
@@ -45,6 +47,6 @@ public class UserLocalizationPreferenceService {
 
     private LocalizationPreferenceResponse toResponse(UserLocalizationPreference value) {
         return new LocalizationPreferenceResponse(value.isUseSystemDefaults(), value.getLanguage(),
-                value.getDateTimeFormat(), value.getTimeZone(), value.getNumberFormat(), value.getFontFamily());
+                DateTimeFormatUtils.DISPLAY_FORMAT_CODE, DateTimeFormatUtils.ZONE_ID, value.getNumberFormat(), value.getFontFamily());
     }
 }

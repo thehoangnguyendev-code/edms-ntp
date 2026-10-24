@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -32,6 +33,26 @@ class ElectronicSignatureRendererServiceTest {
     }
 
     @Test
+    void anOldSignatureWithAStoredTextIsShownInTheDisplayFormatFromItsMoment() {
+        when(meaningRepository.findByCodeIgnoreCase("APPROVED")).thenReturn(Optional.empty());
+        ElectronicSignature old = new ElectronicSignature();
+        old.setId(UUID.randomUUID());
+        old.setFullName("Nguyen Van A");
+        old.setMeaning("APPROVED");
+        old.setStatus("SIGNED");
+        old.setSignedAt(Instant.parse("2026-08-11T06:11:40Z"));
+        old.setTimezone("Asia/Ho_Chi_Minh");
+        old.setTimestampDisplay("11-Aug-2026 13:11:40 (UTC+7)");
+
+        String block = renderer.renderTextBlock(old, setting("dd/MM/uuuu HH:mm:ss", "Asia/Ho_Chi_Minh"));
+
+        assertTrue(block.contains("11/08/2026 13:11:40 (UTC+7)"));
+        assertFalse(block.contains("11-Aug-2026"));
+        // the stored text is evidence and is not rewritten
+        assertEquals("11-Aug-2026 13:11:40 (UTC+7)", old.getTimestampDisplay());
+    }
+
+    @Test
     void preservesLegacySignatureDisplayWhenTheActiveConfigurationChanges() {
         when(meaningRepository.findByCodeIgnoreCase("APPROVED")).thenReturn(Optional.empty());
         ElectronicSignature legacy = new ElectronicSignature();
@@ -44,7 +65,8 @@ class ElectronicSignatureRendererServiceTest {
 
         String block = renderer.renderTextBlock(legacy, setting("uuuu-MM-dd HH:mm", "UTC"));
 
-        assertTrue(block.contains("17-Jul-2026 15:30 (UTC+7)"));
+        // A legacy record with no stored text is shown in the display format of the system, still with the zone written on it.
+        assertTrue(block.contains("17/07/2026 15:30:00 (UTC+7)"));
     }
 
     @Test

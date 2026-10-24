@@ -115,12 +115,12 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
   const actionRow = table.items.find((row) => row.id === menu.openId);
   const filters: ReportSelectFilter[] = mine
     ? [
-        { id: "method", label: "Method", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setMethod(v); table.setCurrentPage(1); } },
+        { id: "method", label: "Mode", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setMethod(v); table.setCurrentPage(1); } },
         { id: "result", label: "Result", value: result, options: [{ label: "All", value: "" }, { label: "Read and understood", value: "READ" }, { label: "Passed", value: "PASSED" }, { label: "Attended", value: "ATTENDED" }], onChange: (v) => { setResult(v); table.setCurrentPage(1); } },
         { id: "recordState", label: "Record", value: recordState, options: [{ label: "All", value: "" }, { label: "Valid", value: "VALID" }, { label: "Voided", value: "VOIDED" }], onChange: (v) => { setRecordState(v); table.setCurrentPage(1); } },
       ]
     : [
-        { id: "method", label: "Method", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setMethod(v); table.setCurrentPage(1); } },
+        { id: "method", label: "Mode", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setMethod(v); table.setCurrentPage(1); } },
         { id: "result", label: "Result", value: result, options: [{ label: "All", value: "" }, { label: "Read and understood", value: "READ" }, { label: "Passed", value: "PASSED" }, { label: "Attended", value: "ATTENDED" }], onChange: (v) => { setResult(v); table.setCurrentPage(1); } },
         { id: "department", label: "Department", value: departmentFilter, options: [{ label: "All", value: "" }, ...departments], onChange: (v) => { setDepartmentFilter(v); table.setCurrentPage(1); } },
         { id: "voided", label: "Voided records", value: voided, options: [{ label: "Hide voided", value: "" }, { label: "Show voided", value: "yes" }], onChange: (v) => { setVoided(v); table.setCurrentPage(1); } },
@@ -199,7 +199,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
         isOpen={voiding?.step === "reason"}
         onClose={() => setVoiding(undefined)}
         onConfirm={() => voiding && setVoiding({ ...voiding, step: "sign" })}
-        title="Void training record"
+        title="Void Training Record"
         description="The record is not deleted or changed: it stays in the list as voided with your reason and signature."
         confirmText="Continue to signature"
         confirmVariant="destructive"
@@ -214,7 +214,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
         isOpen={voiding?.step === "sign"}
         onClose={() => setVoiding(undefined)}
         onConfirm={async (data: { signatureToken: string }) => doVoid(data.signatureToken)}
-        actionTitle="Void training record"
+        actionTitle="Void Training Record"
         changes={statusChange("Valid", "Voided", "Training record")}
         meaningDisplayName="Training Record Voided"
         meaningCode="TRAINING_RECORD_VOIDED"

@@ -8,7 +8,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
-import { IconArrowRight, IconConfetti } from "@tabler/icons-react";
+import { IconConfetti } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
@@ -36,12 +36,6 @@ export interface WorkspaceRate {
   detail: string;
   tone: "emerald" | "blue";
 }
-export interface WorkspaceNext {
-  text: string;
-  action?: { label: string; onClick: () => void; loading?: boolean };
-  tone?: "go" | "wait" | "done";
-}
-
 const TONE: Record<WorkspaceStat["tone"], string> = {
   emerald: "text-emerald-600",
   blue: "text-blue-600",
@@ -129,7 +123,8 @@ export function TrainingSessionWorkspaceShell({
   steps,
   current,
   onStep,
-  next,
+  nextBlocked,
+  headerActions,
   children,
 }: {
   breadcrumbItems: React.ComponentProps<typeof PageHeader>["breadcrumbItems"];
@@ -146,7 +141,10 @@ export function TrainingSessionWorkspaceShell({
   steps: WorkspaceStep[];
   current: string;
   onStep: (id: string) => void;
-  next: WorkspaceNext | null;
+  /** Why the Next button of the step is off (the step has lines still to be ticked); nothing when it is on. */
+  nextBlocked?: string;
+  /** Buttons of the page, put beside Back in the header. */
+  headerActions?: ReactNode;
   children: ReactNode;
 }) {
   const index = Math.max(
@@ -178,9 +176,12 @@ export function TrainingSessionWorkspaceShell({
         title="Session Workspace"
         breadcrumbItems={breadcrumbItems}
         actions={
-          <Button size="sm" variant="outline-emerald" onClick={onBack}>
-            Back
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button size="sm" variant="outline-emerald" onClick={onBack}>
+              Back
+            </Button>
+            {headerActions}
+          </div>
         }
       />
 
@@ -293,66 +294,10 @@ export function TrainingSessionWorkspaceShell({
             <div className="font-semibold text-emerald-900">
               All five steps are done. Well done!
             </div>
-            <div className="text-slate-600">
-              {next?.text ?? "The session is complete."}
-            </div>
+            <div className="text-slate-600">The session is complete.</div>
           </div>
-          {next?.action && (
-            <Button
-              size="sm"
-              variant="default"
-              className="shrink-0 whitespace-nowrap"
-              loading={next.action.loading}
-              onClick={next.action.onClick}
-            >
-              {next.action.label}
-            </Button>
-          )}
         </motion.div>
       )}
-      {!allDone && next && (
-        <div
-          className={cn(
-            "flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 md:px-5",
-            next.tone === "done"
-              ? "border-emerald-200 bg-emerald-50"
-              : next.tone === "wait"
-                ? "border-slate-200 bg-slate-50"
-                : "border-amber-200 bg-amber-50",
-          )}
-          role="status"
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            <span
-              className={cn(
-                "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full",
-                next.tone === "done"
-                  ? "bg-emerald-600 text-white"
-                  : next.tone === "wait"
-                    ? "bg-slate-200 text-slate-600"
-                    : "bg-amber-500 text-white",
-              )}
-            >
-              <IconArrowRight className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 text-sm">
-              <span className="font-semibold text-slate-900">Next: </span>
-              <span className="text-slate-700">{next.text}</span>
-            </div>
-          </div>
-          {next.action && (
-            <Button
-              size="sm"
-              variant="default"
-              loading={next.action.loading}
-              onClick={next.action.onClick}
-            >
-              {next.action.label}
-            </Button>
-          )}
-        </div>
-      )}
-
       <FormSection
         title={`Step ${index + 1}: ${active.label}`}
         icon={<ActiveIcon className="h-4 w-4" />}
@@ -369,36 +314,34 @@ export function TrainingSessionWorkspaceShell({
             className="flex flex-col gap-6 p-4 md:p-5"
           >
             {children}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
-              <div>
-                {index > 0 && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onStep(steps[index - 1].id)}
-                  >
-                    Back: {steps[index - 1].label}
-                  </Button>
-                )}
-              </div>
-              <div className="text-xs text-slate-500">
-                The steps guide the work; nothing is blocked by their order.
-              </div>
-              <div>
-                {index < steps.length - 1 && (
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={() => onStep(steps[index + 1].id)}
-                  >
-                    Next: {steps[index + 1].label}
-                  </Button>
-                )}
-              </div>
-            </div>
           </motion.div>
         </AnimatePresence>
       </FormSection>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <div>
+          {index > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onStep(steps[index - 1].id)}
+            >
+              Back: {steps[index - 1].label}
+            </Button>
+          )}
+        </div>
+        <div>
+          {index < steps.length - 1 && (
+            <Button
+              size="sm"
+              variant="default"
+              disabled={!!nextBlocked}
+              onClick={() => onStep(steps[index + 1].id)}
+            >
+              Next: {steps[index + 1].label}
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

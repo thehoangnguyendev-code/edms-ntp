@@ -1,5 +1,6 @@
 package com.eqms.service.report;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.UserAccount;
 import com.eqms.entity.UserStatus;
 import com.eqms.repository.UserAccountRepository;
@@ -53,7 +54,7 @@ public class ReportScheduleAdministrationService {
         var snapshot=templates.snapshot(owner,value.definitionCode(),new ReportTemplateService.Criteria(null,value.fields(),filters,null,"asc"));
         ReportTemplateService.validatedTitle(value.parameters()==null?null:value.parameters().get("reportTitle"),snapshot.path("definition").path("displayName").asText());
         var formats=snapshot.path("definition").path("allowedFormats");if(!formats.toString().contains("\""+value.format()+"\""))throw new IllegalArgumentException("REPORT_FORMAT_NOT_ALLOWED");
-        var next=CronExpression.parse(value.cronExpression()).next(java.time.ZonedDateTime.now(java.time.ZoneId.systemDefault()));if(next==null)throw new IllegalArgumentException("REPORT_SCHEDULE_INVALID");
+        var next=CronExpression.parse(value.cronExpression()).next(java.time.ZonedDateTime.now(DateTimeFormatUtils.ZONE));if(next==null)throw new IllegalArgumentException("REPORT_SCHEDULE_INVALID");
         var recipients=value.recipientUserIds()==null?List.<UUID>of():value.recipientUserIds().stream().distinct().toList();if(recipients.size()>200)throw new IllegalArgumentException("REPORT_RECIPIENT_LIMIT");
         for(var recipient:recipients){if(recipient==null)throw new IllegalArgumentException("REPORT_RECIPIENT_INVALID");var user=users.findById(recipient).orElseThrow(()->new IllegalArgumentException("REPORT_RECIPIENT_INVALID"));if(user.getStatus()!=UserStatus.Active||(!permissions.hasPermission(user,"reports.artifact.download")&&!permissions.hasPermission(user,"report.module.export")))throw new SecurityException("REPORT_RECIPIENT_DENIED");}
         jdbc.update("update report_schedules set name=?,cron_expression=?,requested_format=?,parameters=cast(? as jsonb),selected_fields=cast(? as jsonb),next_run_at=?,version=version+1,updated_at=now() where id=?",value.name().trim(),value.cronExpression(),value.format(),json.writeValueAsString(value.parameters()==null?Map.of():value.parameters()),snapshot.path("fields").toString(),java.sql.Timestamp.from(next.toInstant()),id);

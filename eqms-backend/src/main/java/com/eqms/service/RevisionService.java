@@ -153,7 +153,7 @@ public class RevisionService {
     private static final Logger log = LoggerFactory.getLogger(RevisionService.class);
 
     private static final DateTimeFormatter DMY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
     private static final Path REVISION_STORAGE_ROOT = Paths.get(System.getProperty("user.dir"), "storage", "revisions");
     private static final List<String> IN_PROGRESS_REVISION_STATUS_CODES = List.of(
             "DRAFT",

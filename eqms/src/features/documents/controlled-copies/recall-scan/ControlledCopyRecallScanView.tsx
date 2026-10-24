@@ -912,7 +912,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         isOpen={confirming && !signing}
         onClose={() => setConfirming(false)}
         onConfirm={() => setSigning(true)}
-        title={`Recall ${batch?.readyItems ?? 0} controlled ${batch?.readyItems === 1 ? "copy" : "copies"}?`}
+        title={`Recall ${batch?.readyItems ?? 0} Controlled ${batch?.readyItems === 1 ? "Copy" : "Copies"}?`}
         description="You will sign once for every copy in this list. Each copy becomes Obsoleted (recalled) and its scan is filed under Records. This cannot be undone."
         confirmText="Continue to sign"
         confirmDisabled={!attested || !receivedDate || receivedDate > todayIso()}
@@ -952,7 +952,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         isOpen={confirmingDiscard}
         onClose={() => setConfirmingDiscard(false)}
         onConfirm={discard}
-        title="Discard this draft?"
+        title="Discard This Draft?"
         description="The uploaded scans are kept on record but no controlled copy is recalled."
         confirmText="Discard draft"
         confirmVariant="destructive"

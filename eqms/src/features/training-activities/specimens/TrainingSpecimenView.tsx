@@ -44,7 +44,7 @@ import {
 import { SpecimenImagePicker } from "../shared/SpecimenImagePicker";
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Waiting for confirmation",
+  PENDING: "Pending Confirmation",
   APPROVED: "Approved",
   SUPERSEDED: "Replaced",
   REJECTED: "Rejected",
@@ -420,7 +420,7 @@ export function TrainingSpecimenView() {
           setFile2(null);
         }}
         onConfirm={() => void upload()}
-        title="Upload a specimen signature"
+        title="Upload a Specimen Signature"
         description="A PNG, JPEG, WebP or BMP picture of up to 5 MB (not a GIF). The person you choose confirms it with a signature; it cannot be the employee or you."
         confirmText="Upload"
         isLoading={busy}
@@ -511,7 +511,7 @@ export function TrainingSpecimenView() {
         isOpen={!!rejecting}
         onClose={() => setRejecting(undefined)}
         onConfirm={() => void doReject()}
-        title="Reject specimen signature"
+        title="Reject Specimen Signature"
         confirmText="Reject"
         confirmVariant="destructive"
         isLoading={busy}
@@ -535,8 +535,8 @@ export function TrainingSpecimenView() {
         onConfirm={async (d: { signatureToken: string }) =>
           doConfirm(d.signatureToken)
         }
-        actionTitle="Confirm specimen signature"
-        changes={statusChange("Waiting for confirmation", "Approved")}
+        actionTitle="Confirm Specimen Signature"
+        changes={statusChange("Pending Confirmation", "Approved")}
         meaningDisplayName="Specimen Signature Approved"
         meaningCode="TRAINING_SPECIMEN_APPROVED"
         targetDetails={{

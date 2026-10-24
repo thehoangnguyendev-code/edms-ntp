@@ -1,5 +1,6 @@
 package com.eqms.controller;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.security.AuthorizationEvaluateRequest;
 import com.eqms.dto.security.AuthorizationRelationDefinitionResponse;
@@ -119,11 +120,11 @@ public class AuthorizationController {
             rows = rows.stream().filter(d -> d.isActive() == wantActive).toList();
         }
         if (StringUtils.hasText(updatedFrom)) {
-            java.time.Instant from = java.time.LocalDate.parse(updatedFrom).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+            java.time.Instant from = java.time.LocalDate.parse(updatedFrom).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
             rows = rows.stream().filter(d -> d.getUpdatedAt() != null && !d.getUpdatedAt().isBefore(from)).toList();
         }
         if (StringUtils.hasText(updatedTo)) {
-            java.time.Instant to = java.time.LocalDate.parse(updatedTo).plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+            java.time.Instant to = java.time.LocalDate.parse(updatedTo).plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
             rows = rows.stream().filter(d -> d.getUpdatedAt() != null && d.getUpdatedAt().isBefore(to)).toList();
         }
         if (StringUtils.hasText(search)) {

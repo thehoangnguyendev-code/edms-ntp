@@ -177,6 +177,11 @@ public class EmailService {
      * #sendTemplateEmail}.
      */
     public boolean sendRenderedEmail(String to, String subject, String htmlBody) throws Exception {
+        return sendRenderedEmail(to, subject, htmlBody, null, null);
+    }
+
+    /** A rendered mail with one attachment (the attendance list of a training as PDF, for example); with no attachment it is the plain mail. */
+    public boolean sendRenderedEmail(String to, String subject, String htmlBody, String attachmentFileName, byte[] attachmentBytes) throws Exception {
         SystemConfiguration config = systemConfigurationService.requireConfiguration();
         JsonNode notifications = config.getNotificationsConfig();
         if (notifications == null || !notifications.path("enableEmailNotifications").asBoolean(false)) {
@@ -200,6 +205,9 @@ public class EmailService {
         helper.setSubject(stripHeaderInjectionChars(subject));
         helper.setText(htmlBody, true);
         helper.setFrom(senderEmail, senderName);
+        if (attachmentBytes != null && attachmentBytes.length > 0 && StringUtils.hasText(attachmentFileName)) {
+            helper.addAttachment(attachmentFileName, new org.springframework.core.io.ByteArrayResource(attachmentBytes));
+        }
         mailSender.send(message);
 
         logger.info("Policy-driven email successfully sent to {}", to);

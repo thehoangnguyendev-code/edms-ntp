@@ -16,6 +16,7 @@ import { documentApi } from "@/services/api/documents";
 import { useControlledCopyPreviewAvailability } from "./useControlledCopyPreviewAvailability";
 import logo from "@/assets/images/logo_nobg.png";
 import { IconFiles } from "@tabler/icons-react";
+import { displayDateTime } from "@/utils/format";
 
 type PreviewManifest = {
   id: string;
@@ -233,7 +234,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
 
   const watermarkUrl = useMemo(() => {
     const who = manifest?.recipientName || "Controlled recipient";
-    const stamp = openedAt.toLocaleString();
+    const stamp = displayDateTime(openedAt);
     return buildWatermarkDataUri([who, stamp]);
   }, [manifest?.recipientName, openedAt]);
 
@@ -428,7 +429,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
               it. Contact Document Control if you need the current version.
             </p>
           </div>
-          <p className="text-2xs sm:text-xs text-slate-400">Updated {unavailable.at.toLocaleString()}</p>
+          <p className="text-2xs sm:text-xs text-slate-400">Updated {displayDateTime(unavailable.at)}</p>
         </div>
       </div>
     );
@@ -567,7 +568,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
               }`}
             >
               <Clock className="h-3.5 w-3.5" />
-              {isExpired ? "Expired" : "Expires"} {expiryDate.toLocaleString()}
+              {isExpired ? "Expired" : "Expires"} {displayDateTime(expiryDate)}
             </div>
           )}
           {downloadOnce && allowDownload && (

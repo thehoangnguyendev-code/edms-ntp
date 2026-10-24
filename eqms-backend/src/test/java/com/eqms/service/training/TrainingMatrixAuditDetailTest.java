@@ -97,7 +97,7 @@ class TrainingMatrixAuditDetailTest {
 
         List<AuditTrailChangeResponse> changes = captured("TRAINING_MATRIX_APPROVED", "PENDING_APPROVAL", "EFFECTIVE");
         assertThat(changes).extracting(AuditTrailChangeResponse::field).containsExactly("Status", "Approved by", "Version 2 status");
-        assertThat(changes.get(0).oldValue()).isEqualTo("Waiting for approval");
+        assertThat(changes.get(0).oldValue()).isEqualTo("Pending Approval");
         assertThat(changes.get(0).newValue()).isEqualTo("Effective");
         assertThat(changes.get(1).newValue()).isEqualTo("Approver Test");
         assertThat(changes.get(2).newValue()).isEqualTo("Obsolete");

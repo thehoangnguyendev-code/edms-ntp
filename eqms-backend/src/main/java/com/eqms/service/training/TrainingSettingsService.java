@@ -37,7 +37,8 @@ public class TrainingSettingsService {
 
     public record SettingsWrite(Integer version, Integer passPercent, Integer documentTrainingDaysDefault,
                                 Integer annualRequirementDueMonth, Integer annualRequirementDueDay, Integer absenceRetrainMonths,
-                                Integer retentionYearsAfterLeaving, Boolean integrationEnabled, String reason) {}
+                                Integer retentionYearsAfterLeaving, Integer reviewReadyReminderDays, Integer reviewOpenReminderDays,
+                                Integer resultsDueDays, Boolean integrationEnabled, String reason) {}
 
     // ---- values used by other services (no permission: they run for the person who triggered the work) ----
 
@@ -65,7 +66,7 @@ public class TrainingSettingsService {
     private Map<String, Object> read() {
         var row = jdbc.queryForMap("""
             select pass_percent, document_training_days_default, annual_requirement_due_month, annual_requirement_due_day,
-                   absence_retrain_months, retention_years_after_leaving, integration_enabled, version, updated_at
+                   absence_retrain_months, retention_years_after_leaving, review_ready_reminder_days, review_open_reminder_days, results_due_days, integration_enabled, version, updated_at
               from training_settings where id=1
             """);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -75,6 +76,9 @@ public class TrainingSettingsService {
         result.put("annualRequirementDueDay", row.get("annual_requirement_due_day"));
         result.put("absenceRetrainMonths", row.get("absence_retrain_months"));
         result.put("retentionYearsAfterLeaving", row.get("retention_years_after_leaving"));
+        result.put("reviewReadyReminderDays", row.get("review_ready_reminder_days"));
+        result.put("reviewOpenReminderDays", row.get("review_open_reminder_days"));
+        result.put("resultsDueDays", row.get("results_due_days"));
         result.put("integrationEnabled", row.get("integration_enabled"));
         result.put("version", row.get("version"));
         result.put("updatedAt", row.get("updated_at"));
@@ -95,8 +99,13 @@ public class TrainingSettingsService {
         int day = pick(request.annualRequirementDueDay(), current, "annual_requirement_due_day");
         int absence = pick(request.absenceRetrainMonths(), current, "absence_retrain_months");
         int retention = pick(request.retentionYearsAfterLeaving(), current, "retention_years_after_leaving");
+        int readyDays = pick(request.reviewReadyReminderDays(), current, "review_ready_reminder_days");
+        int openDays = pick(request.reviewOpenReminderDays(), current, "review_open_reminder_days");
+        int resultsDays = pick(request.resultsDueDays(), current, "results_due_days");
         boolean integration = request.integrationEnabled() == null ? Boolean.TRUE.equals(current.get("integration_enabled")) : request.integrationEnabled();
         if (pass < 1 || pass > 100 || days < 1 || days > 365 || absence < 1 || absence > 60) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
+        if (resultsDays < 1 || resultsDays > 60) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
+        if (readyDays < 1 || readyDays > 60 || openDays < 1 || openDays > 365) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         if (month < 1 || month > 12 || day < 1 || day > 31 || day > LocalDate.of(2025, month, 1).lengthOfMonth()) throw new IllegalArgumentException("TRAINING_SETTINGS_INVALID");
         // The SOP keeps training records for at least ten years after the employee leaves: a shorter time is refused.
         if (retention < 10) throw new IllegalArgumentException("TRAINING_RETENTION_TOO_SHORT");
@@ -108,14 +117,17 @@ public class TrainingSettingsService {
         change(changes, "Annual requirement due day", current.get("annual_requirement_due_day"), day);
         change(changes, "Months of absence before retraining", current.get("absence_retrain_months"), absence);
         change(changes, "Years to keep records after leaving", current.get("retention_years_after_leaving"), retention);
+        change(changes, "Days before a review that is ready to close is reminded", current.get("review_ready_reminder_days"), readyDays);
+        change(changes, "Days before a review with items to do is reminded", current.get("review_open_reminder_days"), openDays);
+        change(changes, "Days to send the results of a training to QA", current.get("results_due_days"), resultsDays);
         change(changes, "Link with Document Control", Boolean.TRUE.equals(current.get("integration_enabled")) ? "on" : "off", integration ? "on" : "off");
         if (changes.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SETTINGS_UNCHANGED");
 
         jdbc.update("""
             update training_settings set pass_percent=?, document_training_days_default=?, annual_requirement_due_month=?,
-              annual_requirement_due_day=?, absence_retrain_months=?, retention_years_after_leaving=?, integration_enabled=?, version=version+1,
-              updated_by=?, updated_at=now() where id=1
-            """, pass, days, month, day, absence, retention, integration, actor.getId());
+              annual_requirement_due_day=?, absence_retrain_months=?, retention_years_after_leaving=?, review_ready_reminder_days=?, review_open_reminder_days=?, results_due_days=?,
+              integration_enabled=?, version=version+1, updated_by=?, updated_at=now() where id=1
+            """, pass, days, month, day, absence, retention, readyDays, openDays, resultsDays, integration, actor.getId());
         audit.logAs(actor, "TRAINING_SETTINGS", "TRAINING_SETTINGS", AUDIT_ID, "TRAINING_SETTINGS_UPDATED", null, null, request.reason().trim() + " | " + String.join("; ", changes));
         return read();
     }

@@ -11,7 +11,6 @@ public record PublishingPlaceholderStyleConfig(
         Boolean underline,
         String color,
         String alignment,
-        String dateFormat,
         String numberFormat,
         Boolean preserveLineBreaks,
         Integer maxLines,

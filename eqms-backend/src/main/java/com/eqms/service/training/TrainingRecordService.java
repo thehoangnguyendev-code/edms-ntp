@@ -124,7 +124,7 @@ public class TrainingRecordService {
             select p.id as participant_id, a.id as activity_id, a.training_number, a.training_title, a.status, a.due_date, s.method, s.scheduled_on, p.state, p.result,
                    (select string_agg(t.topic_text, '; ') from training_session_topics t where t.session_id = s.id) as topics
               from training_participants p join training_activities a on a.id = p.activity_id join training_sessions s on s.id = p.session_id
-             where p.person_user_id = ? and a.status in ('NOTIFIED','IN_PROGRESS') and p.state = 'INVITED' and s.status in ('PLANNED','HELD')
+             where p.person_user_id = ? and a.status in ('NOTIFIED','IN_PROGRESS') and p.state = 'INVITED' and s.status = 'PLANNED'
              order by coalesce(a.due_date, s.scheduled_on) nulls last limit 100
             """, actor.getId()));
     }

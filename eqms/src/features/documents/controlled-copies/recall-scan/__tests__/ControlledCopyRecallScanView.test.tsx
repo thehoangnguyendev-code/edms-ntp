@@ -445,7 +445,7 @@ describe("Recall by Scan", () => {
     const todayText = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
     fireEvent.click(screen.getByText(todayText));
     fireEvent.click(await screen.findByRole("button", { name: "Previous month" }));
-    fireEvent.click(await screen.findByRole("button", { name: new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(target) }));
+    fireEvent.click(await screen.findByRole("button", { name: `01/${pad(target.getMonth() + 1)}/${target.getFullYear()}` }));
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Continue to sign" }));

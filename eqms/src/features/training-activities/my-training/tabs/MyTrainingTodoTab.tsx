@@ -29,7 +29,7 @@ export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => voi
     { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (t) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(t.examReady ? `/training-management/participations/${t.participantId}/test` : `/training-management/activities/${t.activityId}/participate`)}>{t.trainingNumber}</button> },
     { id: "title", header: "Training Title", sort: sorted("trainingTitle"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.trainingTitle}</div> },
     { id: "topics", header: "Topics", sort: sorted("topics"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.topics ?? "—"}</div> },
-    { id: "method", header: "Method", sort: sorted("method"), cell: (t) => METHOD_LABEL[t.method] ?? t.method },
+    { id: "method", header: "Mode", sort: sorted("method"), cell: (t) => METHOD_LABEL[t.method] ?? t.method },
     { id: "when", header: "Scheduled", sort: sorted("scheduledOn"), cell: (t) => day(t.scheduledOn) },
     { id: "due", header: "Due", sort: sorted("dueDate"), cell: (t) => day(t.dueDate) },
     { id: "todo", header: "To do", cell: (t) => (t.examReady ? <Badge color="blue">Take the test</Badge> : <Badge color="slate">Attend</Badge>) },
@@ -41,7 +41,7 @@ export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => voi
     searchPlaceholder="Search Training Number, Training Title or topic…" search={table.searchQuery}
     onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
     filters={[
-      { id: "method", label: "Method", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: change(setMethod) },
+      { id: "method", label: "Mode", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: change(setMethod) },
       { id: "status", label: "Status", value: status, options: [{ label: "All", value: "" }, ...["NOTIFIED", "IN_PROGRESS"].map((value) => ({ value, label: STATUS_LABEL[value] }))], onChange: change(setStatus) },
     ]}
     dates={[{ id: "scheduled", label: "Scheduled date", from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}

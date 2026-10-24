@@ -40,6 +40,12 @@ const FONT_STACKS: Record<ApplicationFontFamily, string> = {
   TIKTOK_SANS: "'TikTok Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif",
 };
 
+/** The only date and time format of the system (dd/MM/yyyy HH:mm:ss). It is not a setting: whatever is stored, this is what is used. */
+export const DISPLAY_DATE_TIME_FORMAT_CODE = 'DD/MM/YYYY HH:mm:ss';
+
+/** The zone of the site: the only time zone of the system. It is not a setting; it is the zone of the server and of every printed document. */
+export const SITE_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+
 export interface SystemLocalizationSettings {
   language: string;
   dateTimeFormat: string;
@@ -50,8 +56,8 @@ export interface SystemLocalizationSettings {
 
 export const DEFAULT_LOCALIZATION_SETTINGS: SystemLocalizationSettings = {
   language: 'en',
-  dateTimeFormat: 'DD/MM/YYYY HH:mm:ss',
-  timeZone: 'Asia/Ho_Chi_Minh',
+  dateTimeFormat: DISPLAY_DATE_TIME_FORMAT_CODE,
+  timeZone: SITE_TIME_ZONE,
   numberFormat: 'en-US',
   fontFamily: 'INTER',
 };
@@ -65,7 +71,7 @@ export const readSystemLocalizationSettings = (): SystemLocalizationSettings => 
   if (typeof window === 'undefined') return DEFAULT_LOCALIZATION_SETTINGS;
   try {
     const parsed = JSON.parse(window.localStorage.getItem(LOCALIZATION_STORAGE_KEY) || '{}') as Partial<SystemLocalizationSettings>;
-    return { ...DEFAULT_LOCALIZATION_SETTINGS, ...parsed, language: 'en', fontFamily: normalizeFontFamily(parsed.fontFamily) };
+    return { ...DEFAULT_LOCALIZATION_SETTINGS, ...parsed, dateTimeFormat: DISPLAY_DATE_TIME_FORMAT_CODE, timeZone: SITE_TIME_ZONE, language: 'en', fontFamily: normalizeFontFamily(parsed.fontFamily) };
   } catch {
     return DEFAULT_LOCALIZATION_SETTINGS;
   }

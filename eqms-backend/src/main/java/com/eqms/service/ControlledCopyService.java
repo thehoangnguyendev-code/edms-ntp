@@ -124,7 +124,7 @@ public class ControlledCopyService {
     private static final int PREVIEW_PASSWORD_BYTES = 18;
 
     private static final Logger log = LoggerFactory.getLogger(ControlledCopyService.class);
-    private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
     private static final DateTimeFormatter DMY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final long MAX_EVIDENCE_FILE_SIZE_BYTES = 10L * 1024L * 1024L;
     private static final int MAX_EVIDENCE_DIMENSION = 4096;

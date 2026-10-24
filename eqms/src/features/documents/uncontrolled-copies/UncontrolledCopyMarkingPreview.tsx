@@ -1,5 +1,6 @@
 import React from "react";
 import type { UncontrolledCopyPolicyMarking } from "@/services/api/uncontrolledCopyPolicy";
+import { displayDateTime } from "@/utils/format";
 
 export const MANDATORY_WATERMARK_TEXT = "UNCONTROLLED COPY — NOT VALID FOR PRODUCTION USE";
 
@@ -39,7 +40,7 @@ export const UncontrolledCopyMarkingPreview: React.FC<{
   copyNumberLabel?: string;
   mandatoryText?: string;
 }> = ({ marking, recipientLabel = "Recipient name", copyNumberLabel = "UC-DOC-001", mandatoryText = MANDATORY_WATERMARK_TEXT }) => {
-  const issuedAt = new Date().toLocaleString();
+  const issuedAt = displayDateTime(new Date());
   const titleText = (marking.watermarkText || "").trim() || mandatoryText;
   const watermarkLines = [
     titleText,

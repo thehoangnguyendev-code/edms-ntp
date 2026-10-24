@@ -4,6 +4,7 @@ import jsQR from "jsqr";
 import { Button } from "@/components/ui/button/Button";
 import { OtpInput } from "@/components/ui/otp-input/OtpInput";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { ESignatureModal } from "@/components/ui/esign-modal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { trainingCheckInApi, trainingError } from "@/services/api/trainingActivities";
 
@@ -103,7 +104,7 @@ function CameraScanner({ onCode, onError }: { onCode: (code: string) => void; on
 
 /**
  * A trainee confirms being in the room: the QR code is scanned with the camera of the device, or the six digits shown by the trainer are typed. Clear empties the code and closes the dialog;
- * Confirm records the attendance (the person is already signed in, so there is no second signature). The QR code carries the address of this screen with the code in it, so a scan with the
+ * Confirm asks the trainee to sign the attendance with the password (SOP.0003 5.3.7), then records it. The QR code carries the address of this screen with the code in it, so a scan with the
  * camera app of a phone opens it filled in as well.
  */
 export function CheckInDialog({ isOpen, initialCode = "", onClose, onDone }: { isOpen: boolean; initialCode?: string; onClose: () => void; onDone: (result: { activityId: string; trainingNumber: string }) => void }) {
@@ -112,6 +113,8 @@ export function CheckInDialog({ isOpen, initialCode = "", onClose, onDone }: { i
   const [camera, setCamera] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [busy, setBusy] = useState(false);
+  // The code the trainee is signing for: the signing window is open while it is set.
+  const [signing, setSigning] = useState("");
 
   useEffect(() => {
     if (isOpen) {
@@ -121,11 +124,12 @@ export function CheckInDialog({ isOpen, initialCode = "", onClose, onDone }: { i
     }
   }, [isOpen, initialCode]);
 
-  const confirm = useCallback(async (value: string) => {
+  const record = useCallback(async (value: string, signatureToken: string) => {
     setBusy(true);
     try {
-      const result = await trainingCheckInApi.checkIn({ code: value });
+      const result = await trainingCheckInApi.checkIn({ code: value, signatureToken });
       showToast({ type: "success", title: "Attendance recorded", message: result.trainingNumber });
+      setSigning("");
       onDone(result);
     } catch (e) {
       showToast({ type: "error", title: "Check-in failed", message: trainingError(e) });
@@ -133,17 +137,29 @@ export function CheckInDialog({ isOpen, initialCode = "", onClose, onDone }: { i
       setBusy(false);
     }
   }, [onDone, showToast]);
-  // A code read by the camera is confirmed at once: nothing else is left to type.
+  // The attendance is a signed record: the trainee signs before it is recorded.
+  const confirm = useCallback((value: string) => setSigning(value), []);
+  // A code read by the camera goes to the signature at once: nothing else is left to type.
   const scanned = useCallback((value: string) => {
     setCode(value);
     setCamera(false);
-    void confirm(value);
+    confirm(value);
   }, [confirm]);
-  const clear = () => { setCode(""); setCamera(false); setCameraError(""); onClose(); };
+  const clear = () => { setCode(""); setCamera(false); setCameraError(""); setSigning(""); onClose(); };
   if (!isOpen) return null;
 
   return (
-    <FormModal isOpen onClose={clear} onConfirm={() => void confirm(code)} title="Check in" description="Scan the QR code the trainer shows, or type the six-digit code." confirmText="Confirm" cancelText="Clear" confirmDisabled={code.length !== 6 || busy} isLoading={busy} size="md">
+    <>
+    <ESignatureModal
+      isOpen={!!signing}
+      onClose={() => setSigning("")}
+      onConfirm={async (data: { signatureToken: string }) => { await record(signing, data.signatureToken); }}
+      actionTitle="Confirm my attendance"
+      meaningDisplayName="Training Attended"
+      meaningCode="TRAINING_ATTENDED"
+      targetDetails={{ code: "Check-in", title: `Attendance with the code ${signing}`, revision: "" }}
+    />
+    <FormModal isOpen={!signing} onClose={clear} onConfirm={() => confirm(code)} title="Check In" description="Scan the QR code the trainer shows, or type the six-digit code." confirmText="Confirm" cancelText="Clear" confirmDisabled={code.length !== 6 || busy} isLoading={busy} size="md">
       <div className="space-y-4">
         {camera ? (
           <>
@@ -161,5 +177,6 @@ export function CheckInDialog({ isOpen, initialCode = "", onClose, onDone }: { i
         </div>
       </div>
     </FormModal>
+    </>
   );
 }

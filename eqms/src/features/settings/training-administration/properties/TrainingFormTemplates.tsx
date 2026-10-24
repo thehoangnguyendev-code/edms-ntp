@@ -288,13 +288,6 @@ export function TrainingFormTemplates({ canEdit, uploadOpen, onUploadClose }: { 
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">
-        The Word source of a form such as APD.0009. The person who prepares a
-        test starts from the enabled template and edits it in the browser. A
-        template is enabled with an electronic signature, and enabling one
-        disables the other of the same document number. The file never changes
-        after it is uploaded.
-      </p>
       <ReportListToolbar
         searchPlaceholder="Search document number, name or revision…"
         search={table.searchQuery}
@@ -420,7 +413,7 @@ export function TrainingFormTemplates({ canEdit, uploadOpen, onUploadClose }: { 
           isOpen
           onClose={onUploadClose}
           onConfirm={() => void upload()}
-          title="Upload a form template"
+          title="Upload a Form Template"
           description="The Word file is uploaded Disabled. It is used only after you enable it with your signature."
           confirmText="Upload"
           isLoading={busy}
@@ -533,7 +526,7 @@ export function TrainingFormTemplates({ canEdit, uploadOpen, onUploadClose }: { 
             setEnabling(undefined);
           }
         }}
-        actionTitle="Enable the template"
+        actionTitle="Enable the Template"
         meaningDisplayName="Form Template Enabled"
         meaningCode="TRAINING_FORM_TEMPLATE_ENABLED"
         targetDetails={{

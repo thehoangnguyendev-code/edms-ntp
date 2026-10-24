@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.auth.TokenService;
 import com.eqms.auth.UnauthorizedException;
@@ -159,11 +160,11 @@ public class TimeLimitedUserGrantService {
     }
 
     private Instant startOfDayUtc(LocalDate d) {
-        return d.atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+        return d.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 
     private Instant endOfDayUtc(LocalDate d) {
-        return d.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).minusNanos(1).toInstant();
+        return d.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).minusNanos(1).toInstant();
     }
 
     private java.util.Optional<LocalDate> parseLocalDate(String value) {

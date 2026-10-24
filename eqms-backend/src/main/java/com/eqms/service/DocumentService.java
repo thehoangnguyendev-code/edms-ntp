@@ -125,7 +125,7 @@ public class DocumentService {
     private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
     private static final DateTimeFormatter DMY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DMY_DATETIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-    private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
 
     // Field-injected (not added to the constructor below) -- same pattern already used elsewhere
     // in this codebase to add a dependency without churning a very large existing constructor.
@@ -3935,7 +3935,7 @@ public class DocumentService {
         if (parsed == null) {
             throw new IllegalArgumentException("Invalid obsolete date: " + value);
         }
-        return parsed.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return parsed.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 
     private Boolean parseBooleanFilter(String value) {

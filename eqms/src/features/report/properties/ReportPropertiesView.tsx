@@ -302,7 +302,7 @@ export const ReportPropertiesView: React.FC = () => {
         onClose={() => setShowSaveModal(false)}
         onConfirm={save}
         type="confirm"
-        title="Save report properties?"
+        title="Save Report Properties?"
         description={<p className="text-sm text-slate-600">You are about to save changes to Report Properties. This action will be recorded in the Audit Trail.</p>}
         confirmText="Save Changes"
         cancelText="Cancel"

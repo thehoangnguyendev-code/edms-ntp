@@ -321,11 +321,11 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
   const handleCompleteTraining = () => {
     if (!canCompleteTraining) return;
     if (integrated) {
-      if (trainingLink?.status !== "COMPLETED") {
+      if (trainingLink?.status !== "COMPLETED" && !trainingLink?.attendanceSentOn) {
         showToast({
           type: "error",
           title: "Training is not completed",
-          message: "Training " + (trainingLink?.trainingNumber ?? "") + " must be confirmed as completed in Training Management first.",
+          message: "Training " + (trainingLink?.trainingNumber ?? "") + " must have its attendance list sent to QA in Training Management first.",
           duration: 3000,
         });
         return;
@@ -352,6 +352,9 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     && Boolean(document?.status === "Pending Training")
     && revisionActionCapabilities.can("completeTraining");
   const canEditTrainingDates = document?.status === "Pending Training" && canCompleteTraining;
+  // A training run in Training Management is complete for the revision once its trainer has sent the attendance list to QA; until then the button stays off and says why.
+  const trainingNotDone = integrated && trainingLink?.status !== "COMPLETED" && !trainingLink?.attendanceSentOn;
+  const completeTitle = trainingNotDone ? `Training ${trainingLink?.trainingNumber ?? ""} is not done yet: its trainer has not sent the attendance list to QA.` : undefined;
 
   const handleESignConfirm = async (signature: {
     username: string;
@@ -516,7 +519,8 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
               onClick={handleCompleteTraining}
               variant="outline-emerald"
               size="sm"
-              disabled={isSubmitting}
+              disabled={isSubmitting || trainingNotDone}
+              title={completeTitle}
               className="whitespace-nowrap"
             >
               Complete Training
@@ -538,7 +542,8 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
                 onClick={handleCompleteTraining}
                 variant="outline-emerald"
                 size="sm"
-                disabled={isSubmitting}
+                disabled={isSubmitting || trainingNotDone}
+                title={completeTitle}
                 className="whitespace-nowrap"
               >
                 Complete Training
@@ -616,7 +621,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
           <TrainingInformationTab
             isReadOnly={!canEditTrainingDates || integrated}
             trainingNumber={integrated ? trainingLink?.trainingNumber : null}
-            trainingStatusLabel={integrated ? trainingLink?.status?.replace(/_/g, " ").toLowerCase() : null}
+            trainingStatusLabel={integrated ? trainingLink?.statusLabel : null}
             data={{
               trainingPlannedDate: integrated ? isoToDisplay(trainingLink?.approvedOn) : document?.trainingPlannedDate,
               trainingPeriodEndDate: integrated ? isoToDisplay(trainingLink?.dueDate) : document?.trainingPeriodEndDate,

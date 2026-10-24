@@ -84,12 +84,24 @@ export function TrainingActivityFilesTab({
   part,
   mode,
   external = false,
+  formKind = "TEST",
+  materialsNeeded = true,
+  formNeeded = true,
+  note = null,
 }: {
   activityId: string;
   participants: TrainingParticipant[];
   part: "materials" | "assessment";
   mode: ActivityMode;
   external?: boolean;
+  /** What the sessions ask of an assessment form: a test, a checklist, both or no file. */
+  formKind?: "TEST" | "CHECKLIST" | "BOTH" | "NONE";
+  /** False when the activity needs no material (exempted, or free by rule): the upload is not offered. */
+  materialsNeeded?: boolean;
+  /** False when the activity needs no assessment form: the slots of the test and of the answer key are not offered. */
+  formNeeded?: boolean;
+  /** Why the table has no line when nothing is needed (no test, no checklist, no material), with the reason of the organizer. */
+  note?: string | null;
 }) {
   const { showToast } = useToast();
   const [files, setFiles] = useState<TrainingActivityFiles>();
@@ -220,7 +232,7 @@ export function TrainingActivityFilesTab({
       <SectionLoading text="Loading files…" />
     );
 
-  const canAddMaterial = mode === "edit" && files.canUploadMaterial;
+  const canAddMaterial = mode === "edit" && files.canUploadMaterial && materialsNeeded;
   const canAddEvidence = mode === "conduct" && files.canUploadEvidence;
   const canReceive = mode === "conduct" && files.canReceive;
 
@@ -440,7 +452,7 @@ export function TrainingActivityFilesTab({
     return (
       <div className="space-y-2">
         <TrainingFileDropzone
-          label={isKey ? "Answer Key (Optional)" : "Exam Template"}
+          label={isKey ? "Answer Key (Optional)" : formKind === "CHECKLIST" ? "Checklist Form" : formKind === "BOTH" ? "Test or Checklist Form" : "Exam Template"}
           description={
             isKey
               ? "Upload the answer key for grading reference. Only visible to the organizers and to the people who review or approve the content."
@@ -579,14 +591,15 @@ export function TrainingActivityFilesTab({
               certificate or the attendance proof of the training unit below.
             </p>
           )}
-          {!external && (
+          {/* No test or checklist session and nothing uploaded: there is no form to show. The answer key is for a test. */}
+          {!external && ((formKind !== "NONE" && formNeeded) || !!slotOf("EXAM")) && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-slate-800">
                 Assessment Materials
               </h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
                 {assessmentZone("EXAM")}
-                {files.canSeeAnswerKey && assessmentZone("ANSWER_KEY")}
+                {files.canSeeAnswerKey && formKind !== "CHECKLIST" && assessmentZone("ANSWER_KEY")}
               </div>
             </div>
           )}
@@ -687,9 +700,8 @@ export function TrainingActivityFilesTab({
                 action={evidenceAction}
                 emptyState={
                   <p className="p-4 text-sm text-slate-500">
-                    No file yet. Sheets and tests signed by hand, or filled in a
-                    Word file, are uploaded here and checked against the paper
-                    by a second person.
+                    {note ??
+                      "No file yet. Sheets and tests signed by hand, or filled in a Word file, are uploaded here and checked against the paper by a second person."}
                   </p>
                 }
               />
@@ -791,8 +803,10 @@ export function TrainingActivityFilesTab({
               action={materialAction}
               emptyState={
                 <p className="p-4 text-sm text-slate-500">
-                  No material yet. A file (PDF, slides, video) or a link can be
-                  added until the content is reviewed.
+                  {note ??
+                    (materialsNeeded
+                      ? "No material yet. A file (PDF, slides, video) or a link can be added until the content is reviewed."
+                      : "No material is needed for this training.")}
                 </p>
               }
             />
@@ -897,7 +911,7 @@ export function TrainingActivityFilesTab({
       <FormModal
         isOpen={!!removing}
         onClose={() => setRemoving(undefined)}
-        title="Remove file"
+        title="Remove File"
         description="The file stays on record, marked as removed with your reason."
         confirmText="Remove"
         confirmVariant="destructive"

@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.dto.user.PageResponse;
 import com.eqms.dto.user.PaginationResponse;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -154,12 +155,12 @@ final class DictionaryQuerySupport {
 
     private static Instant parseDateStart(String value) {
         LocalDate date = parseDate(value);
-        return date == null ? null : date.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return date == null ? null : date.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant();
     }
 
     private static Instant parseDateEnd(String value) {
         LocalDate date = parseDate(value);
-        return date == null ? null : date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusNanos(1);
+        return date == null ? null : date.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant().minusNanos(1);
     }
 
     static LocalDate parseDate(String value) {

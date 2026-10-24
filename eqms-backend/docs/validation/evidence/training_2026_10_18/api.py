@@ -52,6 +52,21 @@ class Client:
                 return e.code, payload
             raise SystemExit(f'{method} {path} -> {e.code} {body}')
 
+def tick_all(client, session_id):
+    """Tick the four lines of the Preparation checklist of a session: the server starts the training only when they are done."""
+    for item in ('VENUE', 'EQUIPMENT', 'MATERIALS', 'NOTICE'):
+        client.call('PUT', f'/training/sessions/{session_id}/preparation/{item}', {'status': 'DONE'})
+
+
+def finish_for_qa(client, aid, token):
+    """The trainer's steps that come before 'Send results to QA': send the attendance list, then finish the training (each signed). Idempotent; a refusal is left for the caller's own check to show."""
+    for step, done in (('send-attendance-list', 'attendanceSentAt'), ('finish-training', 'resultsFinishedAt')):
+        a = client.call('GET', f'/training/activities/{aid}')
+        if a.get(done):
+            continue
+        client.call('POST', f'/training/activities/{aid}/{step}', {'version': a['version'], 'signatureToken': token()}, raw=True)
+
+
 if __name__ == '__main__':
     c = Client(sys.argv[1])
     print('token' if c.token else 'no token', list(c.user.keys())[:6])

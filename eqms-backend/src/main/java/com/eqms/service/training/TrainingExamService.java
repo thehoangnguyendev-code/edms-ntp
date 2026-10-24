@@ -46,14 +46,16 @@ public class TrainingExamService {
     private final TrainingSettingsService settings;
     private final ElectronicSignatureService signatures;
     private final ObjectMapper json;
+    private final TrainingSuspensionService suspensions;
 
-    public TrainingExamService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingSettingsService settings, ElectronicSignatureService signatures, ObjectMapper json) {
+    public TrainingExamService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingSettingsService settings, ElectronicSignatureService signatures, ObjectMapper json, TrainingSuspensionService suspensions) {
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
         this.settings = settings;
         this.signatures = signatures;
         this.json = json;
+        this.suspensions = suspensions;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ writing the questions
@@ -63,7 +65,7 @@ public class TrainingExamService {
     }
 
     private boolean confirmed(UUID activityId) {
-        Integer n = jdbc.queryForObject("select count(*) from training_activity_confirmations where activity_id = ? and kind in ('CONTENT_REVIEWED','CONTENT_APPROVED')", Integer.class, activityId);
+        Integer n = jdbc.queryForObject("select count(*) from training_active_confirmations where activity_id = ? and kind in ('CONTENT_REVIEWED','CONTENT_APPROVED')", Integer.class, activityId);
         return n != null && n > 0;
     }
 
@@ -157,7 +159,7 @@ public class TrainingExamService {
 
     private Map<String, Object> participantOf(UserAccount actor, UUID participantId) {
         Map<String, Object> p = jdbc.queryForList("""
-            select p.*, s.assessment_method, s.status as session_status, a.status as activity_status from training_participants p join training_sessions s on s.id = p.session_id
+            select p.*, s.assessment_method, s.status as session_status, s.held_on as session_held_on, a.status as activity_status from training_participants p join training_sessions s on s.id = p.session_id
               join training_activities a on a.id = p.activity_id where p.id = ?
             """, participantId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!actor.getId().equals(p.get("person_user_id"))) throw new SecurityException(TrainingAccess.DENIED);
@@ -183,7 +185,7 @@ public class TrainingExamService {
             }
             return view(open, activityId);
         }
-        if (!"IN_PROGRESS".equals(p.get("activity_status")) || !"HELD".equals(p.get("session_status")) || !"TEST".equals(p.get("assessment_method"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_AVAILABLE");
+        if (!"IN_PROGRESS".equals(p.get("activity_status")) || !("PLANNED".equals(p.get("session_status")) && p.get("session_held_on") != null) || !"TEST".equals(p.get("assessment_method"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_AVAILABLE");
         if (!Set.of("ATTENDED", "ONLINE").contains(String.valueOf(p.get("state"))) || !"PENDING".equals(p.get("result"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_AVAILABLE");
         if (count("select count(*) from training_exam_questions where activity_id = ?", activityId) == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_AVAILABLE");
         int attempts = count("select count(*) from training_exam_attempts where participant_id = ?", participantId);
@@ -241,7 +243,7 @@ public class TrainingExamService {
     }
 
     private boolean examReady(Map<String, Object> p) {
-        return "IN_PROGRESS".equals(p.get("activity_status")) && "HELD".equals(p.get("session_status")) && "TEST".equals(p.get("assessment_method")) && Set.of("ATTENDED", "ONLINE").contains(String.valueOf(p.get("state")))
+        return "IN_PROGRESS".equals(p.get("activity_status")) && "PLANNED".equals(p.get("session_status")) && p.get("session_held_on") != null && "TEST".equals(p.get("assessment_method")) && Set.of("ATTENDED", "ONLINE").contains(String.valueOf(p.get("state")))
                 && "PENDING".equals(p.get("result")) && count("select count(*) from training_exam_questions where activity_id = ?", p.get("activity_id")) > 0;
     }
 
@@ -296,6 +298,8 @@ public class TrainingExamService {
             values (?,?,?,'TEST',?,?,?,?,?,?,'ESIGN',?)
             """, assessmentId, participantId, no, got, max, percent, pass, result, actor.getId(), "Online test, attempt " + attempt.get("attempt_no") + ", graded by the system");
         jdbc.update("update training_participants set result = ?, version = version + 1 where id = ?", result, participantId);
+        if ("FAILED".equals(result)) suspensions.raise(actor, activity, p, percent);
+        else suspensions.clearOnPass(actor, activity, p);
         jdbc.update("update training_exam_attempts set status = 'SUBMITTED', submitted_at = now(), answers = cast(? as jsonb), score_obtained = ?, score_max = ?, percent = ?, assessment_id = ?, signature_id = ? where id = ?",
                 write(answers), got, max, percent, assessmentId, signature, attemptId);
         store.auditActivity(actor, activity, "TRAINING_EXAM_SUBMITTED", null, result, p.get("full_name") + ": " + percent + "% (pass mark " + pass + "%), attempt " + attempt.get("attempt_no"));

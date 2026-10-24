@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.dto.security.ControlledCopyActionCapabilitiesResponse;
 import com.eqms.dto.security.ControlledCopyActionCapabilityDecisionResponse;
 import com.eqms.dto.security.ControlledCopyAuthorizationContext;
@@ -564,7 +565,7 @@ public class ControlledCopyAuthorizationService {
      * local-midnight values as the end of that calendar day.
      */
     private Instant effectiveExpiryInstant(Instant expiry) {
-        ZoneId zone = ZoneId.systemDefault();
+        ZoneId zone = DateTimeFormatUtils.ZONE;
         ZonedDateTime local = expiry.atZone(zone);
         ZonedDateTime utc = expiry.atZone(ZoneId.of("UTC"));
         if (local.toLocalTime().equals(java.time.LocalTime.MIDNIGHT)) {

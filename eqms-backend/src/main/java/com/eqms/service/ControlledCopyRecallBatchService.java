@@ -1,5 +1,6 @@
 package com.eqms.service;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.auth.CurrentUserService;
 import com.eqms.dto.controlledcopyrecall.RecallBatchCommitRequest;
 import com.eqms.dto.controlledcopyrecall.RecallBatchResponse;
@@ -68,7 +69,7 @@ public class ControlledCopyRecallBatchService {
     private static final String SIGNATURE_MEANING = "CONTROLLED_COPY_RECALLED";
     private static final String STATUS_DISTRIBUTED = "DISTRIBUTED";
     private static final String STATUS_OBSOLETED = "OBSOLETED";
-    private static final ZoneId SYSTEM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId SYSTEM_ZONE = DateTimeFormatUtils.ZONE;
     private static final long CLOCK_SKEW_SECONDS = 120;
 
     private final ControlledCopyRecallBatchRepository batchRepository;

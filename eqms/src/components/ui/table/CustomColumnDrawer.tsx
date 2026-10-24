@@ -60,7 +60,8 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
 
   const ordered = normalizeColumnOrder(draft);
   const movable = ordered.filter((column) => !column.locked);
-  const lockedColumns = ordered.filter((column) => column.locked);
+  // The "Expand" toggle column of a table is part of its structure, not something a person arranges: it is never listed here (it stays in the table).
+  const lockedColumns = ordered.filter((column) => column.locked && column.id !== "expand");
   const pinnedCount = movable.filter((column) => column.pinned && column.visible).length;
   const searching = query.trim().length > 0;
   const needle = query.trim().toLowerCase();
@@ -92,20 +93,22 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
   };
 
   const apply = async () => {
+    // The drawer closes at once and the table changes under it, so the motion of the columns does not wait for the server to answer and is not played behind the drawer.
+    // If the server refuses, the table returns to what it was and the screen says so.
+    setOpen(false);
     setSaving(true);
     try {
       await onApply(normalizeColumnOrder(draft));
-      setOpen(false);
     } finally {
       setSaving(false);
     }
   };
 
   const reset = async () => {
+    setOpen(false);
     setSaving(true);
     try {
       await onReset();
-      setOpen(false);
     } finally {
       setSaving(false);
     }

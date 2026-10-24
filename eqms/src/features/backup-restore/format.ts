@@ -1,3 +1,4 @@
+import { displayDate, displayDateTime } from "@/utils/format";
 export const formatBytes = (bytes?: number | null) => {
   if (!bytes) return "—";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -6,8 +7,8 @@ export const formatBytes = (bytes?: number | null) => {
   return `${value >= 100 || index === 0 ? Math.round(value) : value.toFixed(1)} ${units[index]}`;
 };
 
-export const formatDateTime = (value?: string | null) => (value ? new Date(value).toLocaleString() : "—");
-export const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString() : "—");
+export const formatDateTime = (value?: string | null) => (value ? displayDateTime(value) : "—");
+export const formatDate = (value?: string | null) => (value ? displayDate(value) : "—");
 
 export const formatDuration = (seconds?: number | null) => {
   if (seconds === null || seconds === undefined) return "—";

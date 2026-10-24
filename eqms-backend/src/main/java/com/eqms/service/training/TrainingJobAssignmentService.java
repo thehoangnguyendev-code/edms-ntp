@@ -85,7 +85,7 @@ public class TrainingJobAssignmentService {
             where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(p.name) like ? escape '\\' or lower(coalesce(d.name,'')) like ? escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like);
         }
-        TrainingListFilter extra = new TrainingListFilter().equal("j.case_type", more.get("caseType")).equal("j.department_id", uuid(more.get("departmentId"))).equal("j.position_id", uuid(more.get("positionId")))
+        TrainingListFilter extra = new TrainingListFilter().equal("j.person_user_id", uuid(more.get("personId"))).equal("j.case_type", more.get("caseType")).equal("j.department_id", uuid(more.get("departmentId"))).equal("j.position_id", uuid(more.get("positionId")))
                 .timeRange("j.effective_at", more.get("effectiveFrom"), more.get("effectiveTo")).timeRange("j.created_at", more.get("createdFrom"), more.get("createdTo"));
         where.append(extra.and());
         args.addAll(extra.args());
@@ -121,6 +121,8 @@ public class TrainingJobAssignmentService {
         out.put("previousPositionName", j.get("previous_position_id") == null ? null : jdbc.queryForObject("select name from positions where id=?", String.class, j.get("previous_position_id")));
         out.put("duties", TrainingRows.camel(jdbc.queryForList("select sort_order, responsibility, description from training_job_assignment_duties where assignment_id=? order by sort_order", id)));
         out.put("approvers", TrainingRows.camel(approvals.assignments(TYPE, id)));
+        // Who signed and when, as the Signatures tab shows it (the signature itself is kept by the signature service; this only reads it).
+        out.put("signatures", TrainingRows.camel(jdbc.queryForList("select meaning, full_name, signed_at from electronic_signatures where entity_type=? and entity_id=? and status='SIGNED' order by signed_at", TYPE, id)));
         if ("DRAFT".equals(j.get("status"))) out.put("eligibility", eligibilityFor((UUID) j.get("person_user_id"), (UUID) j.get("position_id"), (UUID) j.get("department_id")));
         out.put("capabilities", capabilities(actor, j));
         return out;
@@ -154,6 +156,8 @@ public class TrainingJobAssignmentService {
     private Map<String, Object> eligibilityFor(UUID personId, UUID positionId, UUID department) {
         List<UUID> effective = jdbc.queryForList("select v.id from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'", UUID.class, department);
         Map<String, Object> out = new LinkedHashMap<>();
+        // D-12: work suspended after a failed assessment is only shown here; it does not block the assignment.
+        out.put("openSuspensions", jdbc.queryForObject("select count(*) from training_work_suspensions where person_user_id = ? and status = 'OPEN'", Integer.class, personId));
         out.put("matrixMissing", effective.isEmpty());
         if (effective.isEmpty()) {
             out.put("matrixVersionId", null);

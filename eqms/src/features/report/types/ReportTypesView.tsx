@@ -26,11 +26,12 @@ import { reportError } from "@/services/api/reportTemplates";
 import { reportTypesApi, type ReportTypeDetail, type ReportTypeListItem } from "@/services/api/reportTypes";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { ReportTypeColumnsPanel } from "./ReportTypeColumnsPanel";
+import { displayDateTime } from "@/utils/format";
 
 type StatusFilter = "All" | "Enabled" | "Disabled";
 const SERVER_STATUS: Record<StatusFilter, "ALL" | "ENABLED" | "DISABLED"> = { All: "ALL", Enabled: "ENABLED", Disabled: "DISABLED" };
 const typePath = (code: string) => `/settings/report-types/${encodeURIComponent(code)}`;
-const when = (value?: string) => (value ? new Date(value).toLocaleString() : "-");
+const when = (value?: string) => (value ? displayDateTime(value) : "-");
 
 /** The row that opens under a Report Type: its columns and filters, loaded from the server when it is opened. */
 const ExpandedReportTypeRow: React.FC<{ type: ReportTypeListItem; visibleColumnsLength: number }> = ({ type, visibleColumnsLength }) => {

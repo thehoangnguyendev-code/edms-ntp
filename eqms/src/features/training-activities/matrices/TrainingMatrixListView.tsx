@@ -38,7 +38,7 @@ import {
 
 const OPEN_LABEL: Record<string, string> = {
   DRAFT: "Draft",
-  PENDING_APPROVAL: "Waiting for approval",
+  PENDING_APPROVAL: "Pending Approval",
 };
 const STATE_OPTIONS = [
   { label: "All", value: "" },
@@ -232,7 +232,7 @@ export function TrainingMatrixListView() {
         isOpen={creating}
         onClose={() => setCreating(false)}
         onConfirm={() => void create()}
-        title="New training matrix"
+        title="New Training Matrix"
         description="Each department has one matrix. The first version is a draft that is edited, then sent for approval."
         confirmText="Create"
         isLoading={busy}

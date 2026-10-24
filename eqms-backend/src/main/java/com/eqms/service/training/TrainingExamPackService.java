@@ -1,5 +1,6 @@
 package com.eqms.service.training;
 
+import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.UserAccount;
 import com.eqms.service.FileStorageService;
 import org.apache.pdfbox.Loader;
@@ -62,7 +63,7 @@ public class TrainingExamPackService {
         access.requireScope(actor, (UUID) session.get("organizer_department_id"));
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!Set.of("NOTIFIED", "IN_PROGRESS").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_STATUS");
-        if (!Set.of("PLANNED", "HELD").contains(String.valueOf(session.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_SESSION_STATUS");
+        if (!"PLANNED".equals(String.valueOf(session.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_SESSION_STATUS");
         if ("ELECTRONIC".equals(session.get("delivery_mode"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_NOT_PAPER");
         if (!"TEST".equals(session.get("assessment_method"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_A_TEST");
 
@@ -170,7 +171,7 @@ public class TrainingExamPackService {
             y = line(s, font, strong, y, "Score / Điểm", "________ / ________");
             y = line(s, font, strong, y, "Result / Kết quả", "[ ] Passed / Đạt     [ ] Failed / Không đạt");
             y = line(s, font, strong, y, "Marked by / Người chấm", "____________________   Date: ____________");
-            text(s, font, 7, MARGIN, MARGIN + 6, "Training No. " + session.get("training_number") + "   Exam pack " + code + "   Copy " + copy + "   Printed " + LocalDateTime.now().withNano(0));
+            text(s, font, 7, MARGIN, MARGIN + 6, "Training No. " + session.get("training_number") + "   Exam pack " + code + "   Copy " + copy + "   Printed " + DateTimeFormatUtils.formatDateTime(java.time.Instant.now()));
             text(s, font, 7, MARGIN, MARGIN - 4, "Controlled print: the test pages follow, each with the Training Number and a signature line.");
         }
     }

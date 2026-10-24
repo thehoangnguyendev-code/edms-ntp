@@ -1,5 +1,6 @@
 package com.eqms.service.training;
 
+import com.eqms.util.DateTimeFormatUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -19,7 +20,7 @@ import java.util.regex.Pattern;
  */
 @Service
 public class TrainingNumberService {
-    public static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    public static final ZoneId ZONE = DateTimeFormatUtils.ZONE;
     private static final Pattern DEPARTMENT_CODE = Pattern.compile("[A-Z0-9]{1,40}");
 
     private final JdbcTemplate jdbc;

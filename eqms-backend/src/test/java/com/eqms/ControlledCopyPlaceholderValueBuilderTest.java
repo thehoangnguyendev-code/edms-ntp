@@ -99,9 +99,9 @@ class ControlledCopyPlaceholderValueBuilderTest {
 
     @Test
     void placeholderVisibility_followsTheContext() {
-        PublishingPlaceholderStyleConfig publishOnly = new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "PUBLISH");
-        PublishingPlaceholderStyleConfig copyOnly = new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, "CONTROLLED_COPY");
-        PublishingPlaceholderStyleConfig both = new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, null, true, null, null);
+        PublishingPlaceholderStyleConfig publishOnly = new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, true, null, "PUBLISH");
+        PublishingPlaceholderStyleConfig copyOnly = new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, true, null, "CONTROLLED_COPY");
+        PublishingPlaceholderStyleConfig both = new PublishingPlaceholderStyleConfig(List.of(), null, null, null, null, null, null, null, null, true, null, null);
 
         assertTrue(publishOnly.visibleIn(false));
         assertFalse(publishOnly.visibleIn(true));

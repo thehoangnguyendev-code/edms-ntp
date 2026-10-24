@@ -72,7 +72,7 @@ export const RestoreDecisionDialogs: React.FC<{
         onClose={onClose}
         deferConfirm
         onConfirm={signed("approve")}
-        actionTitle={`Approve restore ${decision?.request.restoreNumber ?? ""}`}
+        actionTitle={`Approve Restore ${decision?.request.restoreNumber ?? ""}`}
         meaningDisplayName="Backup Restore Approval"
         meaningCode="BACKUP_RESTORE_APPROVAL"
       />
@@ -87,7 +87,7 @@ export const RestoreDecisionDialogs: React.FC<{
         onClose={onClose}
         deferConfirm
         onConfirm={signed("reject")}
-        actionTitle={`Reject restore ${decision?.request.restoreNumber ?? ""}`}
+        actionTitle={`Reject Restore ${decision?.request.restoreNumber ?? ""}`}
         meaningDisplayName="Backup Restore Rejection"
         meaningCode="BACKUP_RESTORE_REJECTION"
       />

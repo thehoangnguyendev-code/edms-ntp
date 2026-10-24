@@ -24,6 +24,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { ReportLookup } from "./ReportLookup";
 import { RealtimeReportPreview } from "../shared/RealtimeReportPreview";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
+import { displayDateTime } from "@/utils/format";
 
 const stages = ["Criteria", "Preview", "Output"];
 function isoDate(value: string): string {
@@ -270,7 +271,7 @@ export function ReportTemplateRun({
           <div className="space-y-4">
             <p className="text-sm text-slate-500">
               {preview.pagination.total} matching records · Previewed{" "}
-              {new Date(preview.asOfAt).toLocaleString()}
+              {displayDateTime(preview.asOfAt)}
             </p>
             <div className="flex justify-end">{previewControl}</div>
             <DataTable
