@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select/Select";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
+import { PdfPreviewModal } from "@/features/documents/shared/components/PdfPreviewModal";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import {
   trainingAssessmentsApi,
@@ -113,6 +114,9 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
   const [reason, setReason] = useState("");
   const [signing, setSigning] = useState(false);
   const [totalText, setTotalText] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ url: string; key: boolean }>();
+  // The paper opened in the window is released with the window.
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview.url); }, [preview]);
 
   const apply = useCallback((d: TrainingAssessmentDetail) => {
     setDetail(d);
@@ -176,6 +180,19 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
     })),
   });
 
+  /** The paper drawn from what is in the editor now (saved or not), in the project PDF viewer; with the key it is the paper of the trainer. */
+  const openPreview = async (key: boolean) => {
+    setBusy(true);
+    try {
+      const { items: previewItems } = body();
+      const blob = await trainingAssessmentsApi.preview({ title: head.title.trim(), kind: head.kind, items: previewItems, key, code: detail?.code, versionNo: detail?.versionNo });
+      setPreview({ url: URL.createObjectURL(blob), key });
+    } catch (e) {
+      showToast({ type: "error", title: "The preview could not be made", message: trainingError(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
   const run = async (action: () => Promise<TrainingAssessmentDetail>, done: string) => {
     setBusy(true);
     try {
@@ -280,6 +297,7 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
   const stepIndex = detail ? (STEP_OF[detail.status] ?? 0) : 0;
   const footer = (
     <>
+      <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={!valid} title={!valid ? "Complete the title and every question or line to see the preview." : "See the paper as it is printed"} onClick={() => void openPreview(false)}>Preview</Button>
       {editable && (
         <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={!dirty || !valid}
           title={!valid ? "Every question or line needs its text and its answers; a question needs points above zero." : undefined}
@@ -318,7 +336,7 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
             )}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
               <div className="md:col-span-2">
-                <FormField label="Title" required><Input value={head.title} maxLength={255} disabled={!editable} placeholder="Kiểm tra đào tạo SOP.0006" onChange={(e) => { setHead({ ...head, title: e.target.value }); setDirty(true); }} /></FormField>
+                <FormField label="Title" required hint="Only to recognise the assessment in the library. It is not written in the form."><Input value={head.title} maxLength={255} disabled={!editable} placeholder="Kiểm tra đào tạo SOP.0006" onChange={(e) => { setHead({ ...head, title: e.target.value }); setDirty(true); }} /></FormField>
               </div>
               <FormField label="Type" required>
                 <Select
@@ -372,6 +390,15 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
         {tab === "audit" && detail && <AuditTrailTab entityId={detail.id} entityType="TRAINING_ASSESSMENT" />}
       </TrainingDetailLayout>
 
+      {preview && (
+        <PdfPreviewModal
+          title={preview.key ? "Preview: answer key" : "Preview: test paper"}
+          description={preview.key ? "For the trainer only: the right answers are marked. It is never handed out." : "The content in the enabled form APD.0009, as an activity gets it. The training topic is a sample line here; the name of each trainee, the Training Number and the date are on the cover page when it is printed for a session."}
+          fileUrl={preview.url}
+          onClose={() => setPreview(undefined)}
+          footerExtra={<Button size="sm" variant="outline" loading={busy} onClick={() => void openPreview(!preview.key)}>{preview.key ? "Show the test paper" : "Show the answer key"}</Button>}
+        />
+      )}
       <FormModal
         isOpen={!!asking}
         onClose={() => setAsking(undefined)}

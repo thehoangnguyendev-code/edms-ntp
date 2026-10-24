@@ -255,10 +255,9 @@ public class TrainingActivityService {
             chosen.put("title", activity.get("assessment_title"));
             chosen.put("kind", activity.get("assessment_kind"));
             chosen.put("maxScore", activity.get("assessment_max_score"));
-            Map<String, Object> frozen = jdbc.queryForList("select a.chosen_at, u.full_name, jsonb_array_length(a.snapshot -> 'items') as item_count from training_activity_assessments a join app_users u on u.id = a.chosen_by where a.activity_id = ?", id).stream().findFirst().orElse(Map.of());
-            chosen.put("chosenAt", frozen.get("chosen_at") == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(frozen.get("chosen_at")));
-            chosen.put("chosenByName", frozen.get("full_name"));
-            chosen.put("itemCount", frozen.get("item_count"));
+            chosen.put("chosenAt", activity.get("assessment_chosen_at") == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(activity.get("assessment_chosen_at")));
+            chosen.put("chosenByName", activity.get("assessment_chosen_by") == null ? null : jdbc.queryForList("select full_name from app_users where id = ?", String.class, activity.get("assessment_chosen_by")).stream().findFirst().orElse(null));
+            chosen.put("itemCount", jdbc.queryForObject("select count(*) from training_assessment_def_items where def_id = ?", Integer.class, activity.get("assessment_def_id")));
             out.put("assessment", chosen);
         }
         out.put("departmentName", jdbc.queryForObject("select name from departments where id=?", String.class, activity.get("organizer_department_id")));
@@ -792,7 +791,7 @@ public class TrainingActivityService {
         Integer questions = jdbc.queryForObject("select count(*) from training_exam_questions where activity_id = ?", Integer.class, id);
         List<String> assessments = jdbc.queryForList("select assessment_method from training_sessions where activity_id = ? and status <> 'CANCELLED' and assessment_method is not null", String.class, id);
         return TrainingContentRules.evaluate(new TrainingContentRules.Facts((String) activity.get("kind"), (String) activity.get("kind_reason"), activity.get("parent_activity_id") != null,
-                documentLinked, content == null ? 0 : content, (forms == null ? 0 : forms) + (activity.get("assessment_def_id") != null ? 1 : 0), questions == null ? 0 : questions, assessments,
+                documentLinked, content == null ? 0 : content, forms == null ? 0 : forms, questions == null ? 0 : questions, assessments,
                 Boolean.TRUE.equals(activity.get("materials_exempt")), Boolean.TRUE.equals(activity.get("assessment_exempt"))));
     }
 

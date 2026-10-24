@@ -56,13 +56,6 @@ public class TrainingPaperController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
     }
 
-    @PostMapping("/sessions/{id}/test-key")
-    public ResponseEntity<byte[]> printKey(@PathVariable UUID id) {
-        Map<String, Object> file = exams.printKey(users.requireCurrentUser(), id);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
-                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
-    }
-
     @PostMapping("/sessions/{id}/exam-pack")
     public ResponseEntity<byte[]> printExam(@PathVariable UUID id, @RequestBody(required = false) PrintRequest request) {
         Map<String, Object> file = exams.print(users.requireCurrentUser(), id, request == null ? null : request.reason());

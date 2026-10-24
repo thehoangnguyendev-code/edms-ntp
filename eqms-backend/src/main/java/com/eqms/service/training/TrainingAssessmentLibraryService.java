@@ -13,10 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -25,14 +22,16 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * The library of Training Assessments (APD.0009): tests and checklists designed once and chosen by training activities.
+ * The library of Training Assessments (APD.0009): tests and checklists designed once, so that a training activity can choose one instead of writing its own.
  * <ul>
  *   <li>Case 1 (QUESTIONS): single choice, multiple choice, true or false, essay. An essay is marked by hand on the paper.</li>
- *   <li>Case 2 (CHECKLIST): each line is ticked Correct or Incorrect; the key holds the expected one. The person passes only when every line is as expected.</li>
+ *   <li>Case 2 (CHECKLIST): each line is ticked Correct or Incorrect; the key holds the expected one. A checklist has no score; the person passes only when every line is as expected.</li>
  * </ul>
- * The person who designs (training.assessment.design) writes and changes a draft; the person who approves (training.assessment.approve), who is not the person who last changed it, signs, and
- * the version is then fixed. A change is a new version. An activity that chooses an approved version keeps its own frozen copy (with the SHA-256), so a later version never changes a test
- * that was already printed. The key is seen only by the people who design or approve, and by the people who organize and conduct the training that uses it.
+ * The title of an assessment only identifies it in the library; it is never written in the form. Choosing one in the tab Assessment of an activity writes its content into the Word form APD.0009
+ * that is enabled in Training Properties (Assessment Forms): the exam file and the answer key of the activity, which the organizer can still open and change in the editor. Taking the choice off
+ * removes those two files from the activity (they stay on record). The person who designs (training.assessment.design) writes a draft and sends it for approval; the person who approves
+ * (training.assessment.approve), who is not the person who made, changed or sent it, signs it into Effective. A change is a new version. The key is seen only by the people who design or approve,
+ * and by the people who organize the activity.
  */
 @Service
 public class TrainingAssessmentLibraryService {
@@ -55,8 +54,12 @@ public class TrainingAssessmentLibraryService {
     private final ElectronicSignatureService signatures;
     private final AuditTrailService audit;
     private final ObjectMapper json;
+    private final TrainingFileService files;
+    private final com.eqms.service.OnlyOfficeDocumentEditService onlyOffice;
 
-    public TrainingAssessmentLibraryService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, AuditTrailService audit, ObjectMapper json) {
+    public TrainingAssessmentLibraryService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, AuditTrailService audit, ObjectMapper json, TrainingFileService files, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice) {
+        this.files = files;
+        this.onlyOffice = onlyOffice;
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
@@ -205,9 +208,33 @@ public class TrainingAssessmentLibraryService {
         return jdbc.queryForList("select * from training_assessment_defs where id = ? for update", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
     }
 
+    /** The enabled form APD.0009 (Training Properties, Assessment Forms): the file the content is written into. */
+    private byte[] enabledTemplate() {
+        Map<String, Object> t = jdbc.queryForList("select * from training_form_templates where code = 'APD.0009' and status = 'ENABLED' order by activated_at desc limit 1").stream().findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_FORM_TEMPLATE_MISSING"));
+        return files.readStored(String.valueOf(t.get("provider")), String.valueOf(t.get("stored_path")), String.valueOf(t.get("sha256")));
+    }
+
+    private byte[] toPdf(byte[] docx) {
+        java.nio.file.Path temp = null;
+        try {
+            temp = java.nio.file.Files.createTempFile("training-assessment-preview-", ".docx");
+            java.nio.file.Files.write(temp, docx);
+            return onlyOffice.convertLocalFileToPdf(temp, temp.getFileName().toString());
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "TRAINING_PREVIEW_UNAVAILABLE");
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
+        } finally {
+            if (temp != null) {
+                try { java.nio.file.Files.deleteIfExists(temp); } catch (java.io.IOException ignored) { /* a temporary file */ }
+            }
+        }
+    }
+
     /**
-     * The paper of an assessment as the trainees (or, with the key, the trainer) would get it, drawn from what the person has in the editor, saved or not. It is a view only: nothing is stored,
-     * and the page says it is not a controlled copy. Only the people who design or approve (the key is in it).
+     * The form as the activity would get it, made from what the person has in the editor (saved or not) and the enabled form APD.0009, as a PDF. The training topic is written as it is
+     * when the activity chooses it; here it is a sample line. It is a view only: nothing is stored. With {@code key} it is the trainer's copy with the answers.
      */
     @Transactional(readOnly = true)
     public byte[] preview(UserAccount actor, PreviewRequest request) {
@@ -215,14 +242,7 @@ public class TrainingAssessmentLibraryService {
         if (request == null || request.title() == null || request.title().isBlank()) throw new IllegalArgumentException("TRAINING_ASSESSMENT_TITLE_REQUIRED");
         if (request.kind() == null || !Set.of("QUESTIONS", "CHECKLIST").contains(request.kind())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         List<Map<String, Object>> items = normalize(request.kind(), request.items());
-        Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put("code", request.code() == null || request.code().isBlank() ? "(new)" : request.code().trim());
-        snapshot.put("version", request.versionNo() == null ? "-" : request.versionNo());
-        snapshot.put("title", request.title().trim());
-        snapshot.put("kind", request.kind());
-        snapshot.put("maxScore", "CHECKLIST".equals(request.kind()) ? null : total(items));
-        snapshot.put("items", items);
-        return TrainingAssessmentPaper.render(snapshot, request.key(), "PREVIEW - not a controlled copy" + (request.key() ? " - ANSWER KEY" : ""));
+        return toPdf(TrainingAssessmentForm.fill(enabledTemplate(), items, "CHECKLIST".equals(request.kind()), "(the topic of the training activity)", request.key()));
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ design
@@ -426,54 +446,66 @@ public class TrainingAssessmentLibraryService {
         return activity;
     }
 
-    /** The activity takes a frozen copy of an effective assessment; the copy and its SHA-256 are what the print and the audit refer to. */
+    /** The topic of the training as the activity says it: its sessions' topics (General Information and Sessions), else its title. */
+    private String topicOf(Map<String, Object> activity) {
+        List<String> topics = jdbc.queryForList("""
+            select distinct coalesce(nullif(trim(st.topic_text), ''), st.document_number) from training_session_topics st join training_sessions s on s.id = st.session_id
+             where s.activity_id = ? and s.status <> 'CANCELLED'
+            """, String.class, activity.get("id")).stream().filter(t -> t != null && !t.isBlank()).sorted().toList();
+        return topics.isEmpty() ? String.valueOf(activity.get("training_title")) : String.join("; ", topics);
+    }
+
+    private static String safe(String value) {
+        return value.replaceAll("[^A-Za-z0-9._ -]", "-");
+    }
+
+    /** A file of the activity for a purpose; the one that was there stays on record, marked as replaced. */
+    private void putMaterial(UserAccount actor, UUID activityId, String purpose, String name, byte[] bytes, String why) {
+        UUID id = UUID.randomUUID();
+        TrainingFileService.StoredFile stored = files.storeBytes(bytes, name, "training/materials/" + activityId + "/" + id, Set.of("docx"));
+        jdbc.update("insert into training_materials(id, activity_id, title, purpose, original_name, provider, stored_path, content_type, size_bytes, sha256, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?)",
+                id, activityId, stored.name(), purpose, stored.name(), stored.provider(), stored.path(), stored.contentType(), stored.size(), stored.sha256(), actor.getId());
+        jdbc.update("update training_materials set removed_at = now(), removed_by = ?, remove_reason = ? where activity_id = ? and purpose = ? and removed_at is null and id <> ?", actor.getId(), why, activityId, purpose, id);
+    }
+
+    /**
+     * The activity takes an effective assessment of the library: its content is written into the enabled form APD.0009 (the topic from the activity, the questions or the checklist), once as the
+     * exam file and once, with the key, as the answer key. Both are Word files in the tab Assessment, which the organizer can open and change in the editor like any other.
+     */
     @Transactional
     public void choose(UserAccount actor, UUID activityId, ChooseRequest request) {
         Map<String, Object> activity = lockedForContent(actor, activityId);
         if (request == null || request.assessmentId() == null) throw new IllegalArgumentException("TRAINING_ASSESSMENT_REQUIRED");
         Map<String, Object> def = row(request.assessmentId());
         if (!"EFFECTIVE".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_APPROVED");
-        String wanted = "CHECKLIST".equals(def.get("kind")) ? "CHECKLIST" : "TEST";
-        Integer matching = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ? and status <> 'CANCELLED' and assessment_method = ?", Integer.class, activityId, wanted);
+        boolean checklist = "CHECKLIST".equals(def.get("kind"));
+        Integer matching = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ? and status <> 'CANCELLED' and assessment_method = ?", Integer.class, activityId, checklist ? "CHECKLIST" : "TEST");
         if (matching == null || matching == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_KIND_MISMATCH");
         List<Map<String, Object>> items = items((UUID) def.get("id"));
-        Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put("assessmentId", def.get("id").toString());
-        snapshot.put("code", def.get("code"));
-        snapshot.put("version", def.get("version_no"));
-        snapshot.put("title", def.get("title"));
-        snapshot.put("kind", def.get("kind"));
-        snapshot.put("maxScore", "CHECKLIST".equals(def.get("kind")) ? null : total(items));
-        snapshot.put("items", items);
-        String text;
-        try {
-            text = json.writeValueAsString(snapshot);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("TRAINING_ASSESSMENT_INVALID", e);
-        }
-        String sha = sha256(text);
+        byte[] template = enabledTemplate();
+        String topic = topicOf(activity);
+        byte[] exam = TrainingAssessmentForm.fill(template, items, checklist, topic, false);
+        byte[] key = TrainingAssessmentForm.fill(template, items, checklist, topic, true);
+        String label = def.get("code") + " v" + def.get("version_no");
+        String number = safe(String.valueOf(activity.get("training_number")));
+        putMaterial(actor, activityId, "EXAM", "APD.0009 - " + number + ".docx", exam, "Replaced by the assessment " + label + " of the library");
+        putMaterial(actor, activityId, "ANSWER_KEY", "Answer key - " + number + ".docx", key, "Replaced by the assessment " + label + " of the library");
         String before = activity.get("assessment_def_code") == null ? null : activity.get("assessment_def_code") + " v" + activity.get("assessment_def_version");
-        jdbc.update("update training_activities set assessment_def_id = ?, assessment_def_code = ?, assessment_def_version = ?, assessment_title = ?, assessment_kind = ?, assessment_max_score = ?, version = version + 1, updated_at = now() where id = ?",
-                def.get("id"), def.get("code"), def.get("version_no"), def.get("title"), def.get("kind"), "CHECKLIST".equals(def.get("kind")) ? null : total(items), activityId);
-        jdbc.update("delete from training_activity_assessments where activity_id = ?", activityId);
-        jdbc.update("insert into training_activity_assessments(activity_id, assessment_def_id, snapshot, snapshot_sha256, chosen_by) values (?,?,?::jsonb,?,?)", activityId, def.get("id"), text, sha, actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_CHOSEN", before, def.get("code") + " v" + def.get("version_no"), def.get("title") + ", " + items.size() + " item(s)" + ("CHECKLIST".equals(def.get("kind")) ? "" : ", total " + total(items) + " point(s)") + ", snapshot SHA-256 " + sha);
+        jdbc.update("update training_activities set assessment_def_id = ?, assessment_def_code = ?, assessment_def_version = ?, assessment_title = ?, assessment_kind = ?, assessment_max_score = ?, assessment_chosen_by = ?, assessment_chosen_at = now(), version = version + 1, updated_at = now() where id = ?",
+                def.get("id"), def.get("code"), def.get("version_no"), def.get("title"), def.get("kind"), checklist ? null : total(items), actor.getId(), activityId);
+        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_CHOSEN", before, label, def.get("title") + ": " + items.size() + " item(s)" + (checklist ? ", no score" : ", total " + total(items) + " point(s)")
+                + ", written into the form APD.0009 as the exam file and the answer key");
     }
 
+    /** Takes the choice off: the two files that were made from the assessment are marked removed (they stay on record); the organizer may then write or upload another. */
     @Transactional
     public void clear(UserAccount actor, UUID activityId) {
         Map<String, Object> activity = lockedForContent(actor, activityId);
         if (activity.get("assessment_def_id") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_CHOSEN");
-        jdbc.update("update training_activities set assessment_def_id = null, assessment_def_code = null, assessment_def_version = null, assessment_title = null, assessment_kind = null, assessment_max_score = null, version = version + 1, updated_at = now() where id = ?", activityId);
-        jdbc.update("delete from training_activity_assessments where activity_id = ?", activityId);
-        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_REMOVED", activity.get("assessment_def_code") + " v" + activity.get("assessment_def_version"), null, null);
-    }
-
-    static String sha256(String text) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
-        } catch (java.security.NoSuchAlgorithmException impossible) {
-            throw new IllegalStateException(impossible);
-        }
+        String label = activity.get("assessment_def_code") + " v" + activity.get("assessment_def_version");
+        jdbc.update("update training_materials set removed_at = now(), removed_by = ?, remove_reason = ? where activity_id = ? and purpose in ('EXAM', 'ANSWER_KEY') and removed_at is null",
+                actor.getId(), "The assessment " + label + " of the library was taken off", activityId);
+        jdbc.update("update training_activities set assessment_def_id = null, assessment_def_code = null, assessment_def_version = null, assessment_title = null, assessment_kind = null, assessment_max_score = null, assessment_chosen_by = null, assessment_chosen_at = null, version = version + 1, updated_at = now() where id = ?", activityId);
+        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_REMOVED", label, null, "The exam file and the answer key made from it were removed from the activity");
     }
 }

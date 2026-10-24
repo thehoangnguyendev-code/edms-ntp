@@ -87,12 +87,26 @@ code, data, text = attempt(admin, 'PUT', f'/training/activities/{act_id}/assessm
 check('2.3 a replaced version cannot be chosen (TRAINING_ASSESSMENT_NOT_APPROVED)', code == 409 and 'TRAINING_ASSESSMENT_NOT_APPROVED' in text, (code, text))
 code, data, text = attempt(admin, 'PUT', f'/training/activities/{act_id}/assessment', {'assessmentId': v2['id']})
 check('2.4 the effective version is chosen', code == 200 and data['assessment']['code'] == a['code'] and data['assessment']['version'] == 2, (code, text))
+mats = admin.call('GET', f'/training/activities/{act_id}/files')['materials']
+exam_files = [m for m in mats if m['purpose'] == 'EXAM' and not m.get('removedAt')]
+key_files = [m for m in mats if m['purpose'] == 'ANSWER_KEY' and not m.get('removedAt')]
+check('2.4b the content is written into the form APD.0009: one exam file and one answer key (Word files of the activity)', len(exam_files) == 1 and len(key_files) == 1 and exam_files[0]['originalName'].endswith('.docx') and key_files[0]['originalName'].endswith('.docx'), mats)
+status, exam_bytes = admin.call('GET', f"/training/materials/{exam_files[0]['id']}/download", raw=True)
+status2, key_bytes = admin.call('GET', f"/training/materials/{key_files[0]['id']}/download", raw=True)
+import zipfile, io as _io, re as _re
+def docx_text(b):
+    return _re.sub(r'<[^>]+>', ' ', zipfile.ZipFile(_io.BytesIO(b)).read('word/document.xml').decode('utf8'))
+exam_text, key_text = docx_text(exam_bytes), docx_text(key_bytes)
+check('2.4c the form has the topic of the activity and the questions, not the title of the library', 'E2E-TEST topic' in exam_text and 'E2E-TEST Tần suất vệ sinh?' in exam_text and 'Kiểm tra đào tạo SOP' not in exam_text and 'E2E-KEY-SECRET' not in exam_text, exam_text[:300])
+check('2.4d the answer key has the right boxes ticked and the model answer', 'E2E-KEY-SECRET' in key_text and chr(0x2612) in key_text, key_text[:300])
 check('2.5 the test is no longer missing', get(act_id)['contentRules']['missing'] == [] or 'TRAINING_TEST_REQUIRED' not in get(act_id)['contentRules']['missing'], get(act_id)['contentRules'])
 detail_text = str(get(act_id))
 check('2.6 the detail of the activity never carries the key or the model answer', 'E2E-KEY-SECRET' not in detail_text and 'snapshot' not in detail_text.lower(), 'leak')
 check('2.7 the total score is that of the assessment', float(get(act_id)['assessment']['maxScore']) == 10 and get(act_id)['assessment']['itemCount'] == 4)
 code, data, text = attempt(admin, 'POST', f'/training/activities/{act_id}/assessment/remove')
 check('2.8 it can be taken off before the content is reviewed', code == 200 and not data.get('assessment'), (code, text))
+left = [m for m in admin.call('GET', f'/training/activities/{act_id}/files')['materials'] if m['purpose'] in ('EXAM', 'ANSWER_KEY') and not m.get('removedAt')]
+check('2.8b taking it off removes the two files it made (they stay on record)', left == [], left)
 admin.call('PUT', f'/training/activities/{act_id}/assessment', {'assessmentId': v2['id']})
 admin.call('POST', f'/training/activities/{act_id}/confirm-list', {'signatureToken': sign(admin), 'reason': 'E2E-TEST'})
 admin.call('PUT', f'/training/activities/{act_id}/approvers', {'step': 'CONTENT_REVIEW', 'assigneeUserId': qa.user['id']})
@@ -107,7 +121,7 @@ code, payload = admin.call('POST', f'/training/sessions/{sid}/exam-pack', {}, ra
 check('2.10 before the training is notified the copies are not printed (TRAINING_PAPER_STATUS)', code == 409, code)
 admin.call('POST', f'/training/activities/{act_id}/notify', {'version': get(act_id)['version'], 'signatureToken': sign(admin)})
 code, payload = admin.call('POST', f'/training/sessions/{sid}/exam-pack', {}, raw=True)
-check('2.11 notified, not yet In progress: the test copies are printed (a PDF)', code == 200 and payload[:4] == b'%PDF', code)
+check('2.11 notified, not yet In progress: the test copies are printed (a PDF made from the exam file)', code == 200 and payload[:4] == b'%PDF', code)
 check('2.12 the print is numbered and recorded', len([p for p in admin.call('GET', f'/training/activities/{act_id}/paper-packs') if p['packKind'] == 'EXAM']) == 1)
 try:
     import io
@@ -118,10 +132,8 @@ try:
     check('2.13 each copy carries the name of its trainee and the questions, and no key', all(n in pdf_text for n in names) and 'E2E-TEST Tần suất vệ sinh?' in pdf_text and 'E2E-KEY-SECRET' not in pdf_text and 'ANSWER KEY' not in pdf_text, names)
 except ImportError:
     print('SKIP  2.13 (pypdf is not installed: the text of the copies was not read)')
-code, key = admin.call('POST', f'/training/sessions/{sid}/test-key', {}, raw=True)
-check('2.14 the answer key is printed for the trainer (a PDF)', code == 200 and key[:4] == b'%PDF', code)
-code, data = trainee.call('POST', f'/training/sessions/{sid}/test-key', {}, raw=True)
-check('2.15 a trainee cannot print the key', code in (401, 403), code)
+code, data = trainee.call('GET', f"/training/materials/{key_files[0]['id']}/download", raw=True)
+check('2.14 a trainee cannot download the answer key', code in (401, 403), code)
 
 print(chr(10) + '== 3. a checklist is passed only when every line is correct')
 code, c, text = attempt(designer, 'POST', '/training/assessments', {'title': 'E2E-TEST Checklist', 'kind': 'CHECKLIST', 'items': [

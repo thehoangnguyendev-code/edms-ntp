@@ -3,11 +3,16 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({ get: vi.fn(), create: vi.fn(), update: vi.fn(), submit: vi.fn(), returnToDraft: vi.fn(), approve: vi.fn(), newVersion: vi.fn(), remove: vi.fn(), list: vi.fn(), approved: vi.fn() }));
+const api = vi.hoisted(() => ({ get: vi.fn(), create: vi.fn(), update: vi.fn(), submit: vi.fn(), returnToDraft: vi.fn(), approve: vi.fn(), newVersion: vi.fn(), remove: vi.fn(), list: vi.fn(), approved: vi.fn(), preview: vi.fn() }));
 vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingAssessmentsApi: api }));
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
 vi.mock("@/components/ui/toast/Toast", () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock("@/features/documents/shared/components/AuditTrailTab", () => ({ AuditTrailTab: () => <div>audit</div> }));
+vi.mock("@/features/documents/shared/components/PdfPreviewModal", () => ({
+  PdfPreviewModal: ({ title, description, fileUrl, footerExtra, onClose }: { title: string; description?: string; fileUrl: string; footerExtra?: React.ReactNode; onClose: () => void }) => (
+    <div role="dialog" aria-label={title}><p>{description}</p><span data-testid="pdf">{fileUrl}</span>{footerExtra}<button onClick={onClose}>Close preview</button></div>
+  ),
+}));
 vi.mock("@/components/ui/esign-modal/ESignatureModal", () => ({
   ESignatureModal: ({ isOpen, onConfirm }: { isOpen: boolean; onConfirm: (d: { signatureToken: string }) => void }) => (isOpen ? <button onClick={() => onConfirm({ signatureToken: "tok" })}>SIGN</button> : null),
 }));
@@ -41,6 +46,8 @@ beforeEach(() => {
   window.matchMedia = window.matchMedia ?? ((query: string) => ({ matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false }) as MediaQueryList);
   (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   Object.values(api).forEach((f) => f.mockReset());
+  URL.createObjectURL = vi.fn((blob: Blob) => `blob:preview-${(blob as Blob & { tag?: string }).tag ?? "x"}`);
+  URL.revokeObjectURL = vi.fn();
 });
 afterEach(cleanup);
 
@@ -230,5 +237,46 @@ describe("the flow of the assessment", () => {
     expect((screen.getByLabelText("Answer A") as HTMLInputElement).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: /Add a question/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Move answer/ })).toBeNull();
+  });
+  it("Preview shows the paper from what is in the editor, and the answer key on request", async () => {
+    api.get.mockResolvedValue(detail());
+    api.preview.mockImplementation(async (b: { key: boolean }) => Object.assign(new Blob(["%PDF"]), { tag: b.key ? "key" : "paper" }));
+    renderPage("/training-management/assessments/d1");
+    // an unsaved change is part of the preview
+    fireEvent.change(await screen.findByPlaceholderText("Kiểm tra đào tạo SOP.0006"), { target: { value: "Đổi tên chưa lưu" } });
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(await screen.findByRole("dialog", { name: "Preview: test paper" })).toBeTruthy();
+    expect(api.preview).toHaveBeenCalledWith({
+      title: "Đổi tên chưa lưu", kind: "QUESTIONS", key: false, code: "TAS-0001", versionNo: 1,
+      items: [{ kind: "SINGLE", prompt: "Câu 1", options: [{ text: "Một" }, { text: "Hai" }], correct: ["A"], points: 2, modelAnswer: undefined }],
+    });
+    expect(screen.getByTestId("pdf").textContent).toBe("blob:preview-paper");
+    fireEvent.click(screen.getByRole("button", { name: "Show the answer key" }));
+    expect(await screen.findByRole("dialog", { name: "Preview: answer key" })).toBeTruthy();
+    expect(api.preview).toHaveBeenLastCalledWith(expect.objectContaining({ key: true }));
+    expect(screen.getByTestId("pdf").textContent).toBe("blob:preview-key");
+    expect(screen.getByRole("button", { name: "Show the test paper" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /Preview/ })).toBeNull());
+  });
+
+  it("Preview is not offered while a question is not complete, and a refusal of the server opens nothing", async () => {
+    renderPage("/training-management/assessments/new", true);
+    const preview = (await screen.findByRole("button", { name: "Preview" })) as HTMLButtonElement;
+    expect(preview.disabled).toBe(true);
+    expect(preview.title).toMatch(/Complete the title and every question/);
+    cleanup();
+    api.get.mockResolvedValue(detail());
+    api.preview.mockRejectedValue({ response: { data: { message: "TRAINING_ASSESSMENT_ITEM_INVALID" } } });
+    renderPage("/training-management/assessments/d1");
+    fireEvent.click(await screen.findByRole("button", { name: "Preview" }));
+    await waitFor(() => expect(api.preview).toHaveBeenCalled());
+    expect(screen.queryByRole("dialog", { name: /Preview/ })).toBeNull();
+  });
+
+  it("Preview is also there for an effective version, which is read only", async () => {
+    api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, newVersion: true }));
+    renderPage("/training-management/assessments/d1");
+    expect(await screen.findByRole("button", { name: "Preview" })).toBeTruthy();
   });
 });

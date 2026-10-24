@@ -381,18 +381,6 @@ export const trainingPaperApi = {
       throw e;
     }
   },
-  /** The answer key of the assessment the activity chose (PDF), for the trainer who marks the papers. */
-  printKey: async (sessionId: string) => {
-    try {
-      return (await apiClient.post<Blob>(`/training/sessions/${sessionId}/test-key`, {}, { responseType: "blob" })).data;
-    } catch (e) {
-      const response = (e as { response?: { data?: unknown } }).response;
-      if (response?.data instanceof Blob) {
-        try { response.data = JSON.parse(await response.data.text()); } catch { /* keep the original error */ }
-      }
-      throw e;
-    }
-  },
   rollCall: async (sessionId: string, body: { present: string[]; absent: { participantId: string; reason: string }[]; signatureToken: string }) => (await apiClient.post<TrainingActivityDetail>(`/training/sessions/${sessionId}/roll-call`, body)).data,
   setMode: async (sessionId: string, mode: string, reason?: string) => (await apiClient.post(`/training/sessions/${sessionId}/delivery-mode`, { mode, reason })).data,
   print: async (sessionId: string, reason?: string) => {
@@ -437,6 +425,18 @@ export const trainingAssessmentsApi = {
   remove: async (id: string, reason: string) => (await apiClient.post(`/training/assessments/${id}/delete`, { reason })).data,
   submit: async (id: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/submit`)).data,
   returnToDraft: async (id: string, reason: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/return`, { reason })).data,
+  /** The paper as the trainees (or, with `key`, the trainer) would get it, drawn from what is in the editor, saved or not. A PDF; nothing is stored. */
+  preview: async (body: { title: string; kind: AssessmentKind; items: TrainingAssessmentSave["items"]; key: boolean; code?: string; versionNo?: number }) => {
+    try {
+      return (await apiClient.post<Blob>("/training/assessments/preview", body, { responseType: "blob" })).data;
+    } catch (e) {
+      const response = (e as { response?: { data?: unknown } }).response;
+      if (response?.data instanceof Blob) {
+        try { response.data = JSON.parse(await response.data.text()); } catch { /* keep the original error */ }
+      }
+      throw e;
+    }
+  },
   approve: async (id: string, signatureToken: string, reason?: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/approve`, { signatureToken, reason })).data,
   newVersion: async (id: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/new-version`)).data,
   choose: async (activityId: string, assessmentId: string) => (await apiClient.put<TrainingActivityDetail>(`/training/activities/${activityId}/assessment`, { assessmentId })).data,

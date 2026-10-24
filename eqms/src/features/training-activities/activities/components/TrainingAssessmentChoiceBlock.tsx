@@ -69,10 +69,10 @@ export function TrainingAssessmentChoiceBlock({ activity, editable, onChanged }:
               <Badge color="slate">{ASSESSMENT_KIND_LABEL[chosen.kind] ?? chosen.kind}</Badge>
             </div>
             <div className="text-slate-600">{chosen.itemCount} {chosen.kind === "CHECKLIST" ? "line(s), no score" : `question(s), total ${chosen.maxScore} point(s)`}. Chosen by {chosen.chosenByName ?? "—"}{chosen.chosenAt ? `, ${when(chosen.chosenAt)}` : ""}.</div>
-            <div className="text-xs text-slate-500">Frozen copy: a later version of the assessment does not change it. The trainer prints the test copies and the answer key from the Sessions tab once the training is notified.</div>
+            <div className="text-xs text-slate-500">Its content was written into the form APD.0009 as the exam file and the answer key below (training topic from this activity). You can open them in the editor and change them; a later version of the assessment in the library does not change them. Remove takes both files off.</div>
           </div>
         ) : (
-          <p className="p-4 text-sm text-slate-500">No assessment chosen. Choose an effective test or checklist from the library, or upload the file below.</p>
+          <p className="p-4 text-sm text-slate-500">Optional. Choose an effective test or checklist from the library to fill the form APD.0009 for this activity, or open the form below and write the test yourself.</p>
         )}
       </TabBlock>
       <FormModal
@@ -80,7 +80,7 @@ export function TrainingAssessmentChoiceBlock({ activity, editable, onChanged }:
         onClose={() => setChoosing(false)}
         onConfirm={() => void run(() => trainingAssessmentsApi.choose(activity.id, picked), "Assessment chosen")}
         title="Choose an Assessment"
-        description="Only effective assessments are listed. The activity keeps its own copy of the version you choose."
+        description="Only effective assessments are listed. Its content is written into the enabled form APD.0009 as the exam file and the answer key of this activity; the title of the assessment is not written in the form."
         confirmText="Choose"
         isLoading={busy}
         confirmDisabled={!picked}

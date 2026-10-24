@@ -44,10 +44,8 @@ public class TrainingExamPackService {
     private final TrainingStore store;
     private final FileStorageService files;
     private final com.eqms.service.OnlyOfficeDocumentEditService onlyOffice;
-    private final com.fasterxml.jackson.databind.ObjectMapper json;
 
-    public TrainingExamPackService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, FileStorageService files, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice, com.fasterxml.jackson.databind.ObjectMapper json) {
-        this.json = json;
+    public TrainingExamPackService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, FileStorageService files, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice) {
         this.onlyOffice = onlyOffice;
         this.jdbc = jdbc;
         this.access = access;
@@ -67,34 +65,24 @@ public class TrainingExamPackService {
         if (!Set.of("NOTIFIED", "IN_PROGRESS").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_STATUS");
         if (!"PLANNED".equals(String.valueOf(session.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_SESSION_STATUS");
         if ("ELECTRONIC".equals(session.get("delivery_mode"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_NOT_PAPER");
-        // The assessment chosen from the library (Training Assessments, APD.0009) is drawn from the frozen copy of the activity; otherwise the approved file of the activity is stamped as it is.
-        Map<String, Object> library = jdbc.queryForList("select snapshot::text as snapshot, snapshot_sha256 from training_activity_assessments where activity_id = ?", activityId).stream().findFirst().orElse(null);
-        String method = String.valueOf(session.get("assessment_method"));
-        if (!"TEST".equals(method) && !(library != null && "CHECKLIST".equals(method))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_A_TEST");
+        if (!java.util.Set.of("TEST", "CHECKLIST").contains(String.valueOf(session.get("assessment_method")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_A_TEST");
 
-        Map<String, Object> exam = null;
+        // The exam is the file of the activity: written in the editor, uploaded, or made from an assessment of the library (a Word file like the others).
+        Map<String, Object> exam = jdbc.queryForList("select * from training_materials where activity_id = ? and purpose = 'EXAM' and removed_at is null and link_url is null order by created_at desc limit 1", activityId)
+                .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_MISSING"));
+        boolean word = String.valueOf(exam.get("original_name")).toLowerCase(java.util.Locale.ROOT).endsWith(".docx");
+        if (!word && !"application/pdf".equalsIgnoreCase(String.valueOf(exam.get("content_type")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_PDF");
         byte[] examBytes;
+        try {
+            examBytes = files.readReportArtifact(String.valueOf(exam.get("provider")), String.valueOf(exam.get("stored_path")));
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
+        }
+        if (!sha256(examBytes).equals(exam.get("sha256"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_FILE_INTEGRITY_FAILED");
         String convertedSha = null;
-        String examNote;
-        if (library != null) {
-            examBytes = TrainingAssessmentPaper.render(snapshotOf(library), false, snapshotLabel(library, activity));
-            examNote = "assessment from the library, snapshot SHA-256 " + library.get("snapshot_sha256");
-        } else {
-            exam = jdbc.queryForList("select * from training_materials where activity_id = ? and purpose = 'EXAM' and removed_at is null and link_url is null order by created_at desc limit 1", activityId)
-                    .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_MISSING"));
-            boolean word = String.valueOf(exam.get("original_name")).toLowerCase(java.util.Locale.ROOT).endsWith(".docx");
-            if (!word && !"application/pdf".equalsIgnoreCase(String.valueOf(exam.get("content_type")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_PDF");
-            try {
-                examBytes = files.readReportArtifact(String.valueOf(exam.get("provider")), String.valueOf(exam.get("stored_path")));
-            } catch (IOException e) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
-            }
-            if (!sha256(examBytes).equals(exam.get("sha256"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_FILE_INTEGRITY_FAILED");
-            if (word) {
-                examBytes = toPdf(examBytes, String.valueOf(exam.get("original_name")));
-                convertedSha = sha256(examBytes);
-            }
-            examNote = "exam file SHA-256 " + exam.get("sha256") + (convertedSha == null ? "" : ", converted to PDF SHA-256 " + convertedSha);
+        if (word) {
+            examBytes = toPdf(examBytes, String.valueOf(exam.get("original_name")));
+            convertedSha = sha256(examBytes);
         }
 
         Integer printed = jdbc.queryForObject("select count(*) from training_paper_packs where session_id = ? and pack_kind = 'EXAM'", Integer.class, sessionId);
@@ -155,45 +143,9 @@ public class TrainingExamPackService {
         String sha = sha256(bytes);
         jdbc.update("insert into training_paper_packs(id, activity_id, session_id, pack_code, copy_no, page_count, people_count, sha256, reason, printed_by, pack_kind) values (?,?,?,?,?,?,?,?,?,?,'EXAM')",
                 UUID.randomUUID(), activityId, sessionId, code, copy, pages, trainees.size(), sha, copy > 1 ? why : null, actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_EXAM_PACK_PRINTED", null, code, "Copy " + copy + ", " + pages + " page(s), " + trainees.size() + " trainee(s), " + examNote + ", printed SHA-256 " + sha
+        store.auditActivity(actor, activity, "TRAINING_EXAM_PACK_PRINTED", null, code, "Copy " + copy + ", " + pages + " page(s), " + trainees.size() + " trainee(s), exam file SHA-256 " + exam.get("sha256") + (convertedSha == null ? "" : ", converted to PDF SHA-256 " + convertedSha) + ", printed SHA-256 " + sha
                 + (copy > 1 ? ". Reason: " + why : ""));
         return Map.of("bytes", bytes, "name", code.replace('/', '-') + ".pdf");
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> snapshotOf(Map<String, Object> library) {
-        try {
-            return json.readValue(String.valueOf(library.get("snapshot")), Map.class);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new IllegalStateException("TRAINING_ASSESSMENT_INVALID", e);
-        }
-    }
-
-    private String snapshotLabel(Map<String, Object> library, Map<String, Object> activity) {
-        Map<String, Object> s = snapshotOf(library);
-        return "Training No. " + activity.get("training_number") + "   Assessment " + s.get("code") + " v" + s.get("version");
-    }
-
-    /**
-     * The answer key of the assessment the activity chose, for the trainer who marks the papers (never handed out). Printed from the same frozen copy as the papers; each print is written to the
-     * Audit Trail. For the people who organize and conduct the training and the trainer of the session.
-     */
-    @Transactional
-    public Map<String, Object> printKey(UserAccount actor, UUID sessionId) {
-        access.require(actor, "training.paper.print");
-        Map<String, Object> session = jdbc.queryForList("""
-            select s.*, a.training_number, a.organizer_department_id from training_sessions s join training_activities a on a.id = s.activity_id where s.id = ?
-            """, sessionId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        UUID activityId = (UUID) session.get("activity_id");
-        access.requireScope(actor, (UUID) session.get("organizer_department_id"));
-        boolean trainer = actor.getId().equals(session.get("trainer_user_id"));
-        if (!trainer && !access.has(actor, "training.activity.organize", "training.activity.conduct")) throw new SecurityException(TrainingAccess.DENIED);
-        Map<String, Object> activity = store.activity(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        Map<String, Object> library = jdbc.queryForList("select snapshot::text as snapshot, snapshot_sha256 from training_activity_assessments where activity_id = ?", activityId).stream().findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_CHOSEN"));
-        byte[] bytes = TrainingAssessmentPaper.render(snapshotOf(library), true, snapshotLabel(library, activity) + "   ANSWER KEY");
-        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_KEY_PRINTED", null, "S" + session.get("session_no"), "Answer key of the assessment, snapshot SHA-256 " + library.get("snapshot_sha256") + ", printed SHA-256 " + sha256(bytes));
-        return Map.of("bytes", bytes, "name", String.valueOf(activity.get("training_number")).replace('/', '-') + "-S" + session.get("session_no") + "-answer-key.pdf");
     }
 
     /** The cover page of one trainee (APD.0009): who, what, when, with the boxes the trainer fills in by hand. */

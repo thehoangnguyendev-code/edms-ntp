@@ -2063,7 +2063,7 @@ export function TrainingActivityDetailPage({
           )}
           {(tab === "materials" || tab === "assessment") && (
             <TrainingActivityFilesTab
-              key={tab}
+              key={`${tab}-${activity.assessment?.assessmentId ?? ""}-${activity.assessment?.chosenAt ?? ""}`}
               part={tab}
               formKind={assessmentFormKind(activity)}
               materialsNeeded={activity.contentRules?.materialsRequired ?? true}
