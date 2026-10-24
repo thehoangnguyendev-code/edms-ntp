@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { ChevronDown, Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
@@ -364,7 +365,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
           "flex w-full items-center justify-between rounded-lg border bg-white px-3 text-sm transition-colors focus:outline-none",
           "h-9",
           disabled
-            ? "bg-slate-100 text-slate-600 cursor-default border-slate-200"
+            ? CONTROL_STATE_CLASSES.readonlyContainer
             : isOpen
               ? "border-emerald-500 ring-1 ring-emerald-500"
               : "border-slate-200 hover:border-slate-300 focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:border-emerald-500",

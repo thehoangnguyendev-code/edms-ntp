@@ -717,8 +717,8 @@ export function ReportTemplateEditor() {
                         onChange={(event) => change({ displayName: event.target.value })}
                         placeholder="Enter template name"
                         className={cn(
-                          "h-9 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 read-only:focus:ring-0",
-                          !!nameFormat && CONTROL_STATE_CLASSES.readonly,
+                          "h-9 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500",
+                          !!nameFormat && CONTROL_STATE_CLASSES.readonlyField,
                         )}
                       />
                     </div>

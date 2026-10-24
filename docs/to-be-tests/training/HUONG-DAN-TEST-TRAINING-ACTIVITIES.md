@@ -104,6 +104,15 @@ Sau khi In progress hoặc đã gửi: bấm **Supplementary training**, chọn 
 
 ---
 
+## Phần D. Thư viện bài kiểm tra (Training Assessments, APD.0009)
+
+Cần hai tài khoản được Security gán `training.assessment.design` (người soạn) và `training.assessment.approve` (người duyệt, khác người soạn). Hiện chưa tài khoản nào giữ hai quyền này.
+
+1. **Soạn.** Menu Training Programme > **Training Assessments** > **New Assessment**. Chọn **Test (questions)** hoặc **Checklist** (không đổi được sau khi tạo). Nhập tên (ví dụ "Kiểm tra đào tạo SOP.0006"), số tài liệu. Tab **Questions**: câu một đáp án, nhiều đáp án, đúng/sai, tự luận (có đáp án mẫu cho trainer); mỗi câu có điểm. Tab **Checklist Lines**: mỗi dòng chọn đáp án chuẩn Correct (Đúng) hoặc Incorrect (Không đúng). **Create draft** chỉ bấm được khi mọi câu đủ: có nội dung, đủ đáp án và đáp án đúng, điểm > 0.
+2. **Duyệt.** Người soạn không thấy nút Approve (và được báo lý do). Người duyệt khác bấm **Approve**, ký. **Kỳ vọng:** Approved; bản đã duyệt không sửa được; muốn đổi bấm **New Version** (bản nháp mới, cùng mã); duyệt bản mới thì bản cũ thành Replaced.
+3. **Dùng trong activity.** Activity > tab **Assessment** > **Choose Assessment** (chỉ bản Approved, đúng loại với phương pháp đánh giá của session, và chỉ trước khi nội dung được review). **Kỳ vọng:** hiện tên, mã và phiên bản, số câu, tổng điểm; mục "cần có bài test" không còn báo thiếu. Sau khi review xong không đổi được.
+4. **In trước khi đào tạo.** Sau khi notify (chưa In progress), session giao bằng giấy: tab **Sessions** hoặc Prepare trong workspace, **Print test copies**. **Kỳ vọng:** file PDF mỗi học viên một bản, đã có sẵn tên, mã nhân viên, bộ phận, Training Number, buổi, ngày; câu hỏi có ô tick (tự luận có dòng kẻ) hoặc bảng checklist hai cột Đúng / Không đúng; không có đáp án. **Print answer key** (trainer): bản có đáp án và đáp án mẫu. In lại phải có lý do.
+5. **Chấm.** Trainer chấm trên giấy, ở Step 5 nhập điểm từng người. Ô Maximum score tự điền bằng tổng điểm của bài. Bài Test: đạt theo pass mark của Training Properties. **Checklist: chỉ đạt khi đúng hết mọi dòng.**
 ## B. Đào tạo từ SOP (Document Control)
 
 ### B1. Tạo tài liệu (ORG hoặc tác giả)

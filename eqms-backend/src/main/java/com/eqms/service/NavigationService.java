@@ -126,6 +126,9 @@ public class NavigationService {
             if (hasPermission(normalizedPermissions, "training.matrix.view")) {
                 planning.add(new NavigationItemResponse("training-matrices", "Training Matrices", null, "/training-management/matrices", false, null));
             }
+            if (hasPermission(normalizedPermissions, "training.assessment.design") || hasPermission(normalizedPermissions, "training.assessment.approve")) {
+                planning.add(new NavigationItemResponse("training-assessments", "Training Assessments", null, "/training-management/assessments", false, null));
+            }
             if (!planning.isEmpty()) {
                 trainingChildren.add(new NavigationItemResponse("training-planning", "Training Programme", null, null, false, planning));
             }

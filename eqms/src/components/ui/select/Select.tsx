@@ -4,6 +4,7 @@ import { ChevronDown, Check, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
 import { InlineLoading } from '../loading/Loading';
+import { CONTROL_STATE_CLASSES } from '../controlState';
 
 export interface SelectOption {
   label: string;
@@ -362,7 +363,7 @@ export const Select: React.FC<SelectProps> = ({
           "flex w-full items-center justify-between rounded-lg border bg-white px-3 py-2.5 text-sm transition-colors focus:outline-none",
           "h-9 min-h-[36px]",
           disabled
-            ? "bg-slate-100 text-slate-600 cursor-default border-slate-200"
+            ? CONTROL_STATE_CLASSES.readonlyField
             : isOpen
               ? "border-emerald-500 ring-1 ring-emerald-500"
               : "border-slate-200 hover:border-slate-300 focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:border-emerald-500",
@@ -371,7 +372,7 @@ export const Select: React.FC<SelectProps> = ({
       >
         <span className={cn(
           "min-w-0 flex-1 truncate text-left",
-          selectedOption ? (disabled ? "text-slate-600 font-medium" : "text-slate-700 font-medium") : "text-slate-400",
+          selectedOption ? (disabled ? "text-slate-600" : "text-slate-700 font-medium") : "text-slate-400",
         )}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { IconCalendarWeek } from '@tabler/icons-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -1058,7 +1059,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           'flex items-center justify-between gap-2 w-full px-3 py-2 h-9 rounded-lg text-sm transition-colors focus:outline-none',
           'border bg-white',
           disabled
-            ? 'bg-slate-100 cursor-default border-slate-200'
+            ? CONTROL_STATE_CLASSES.readonlyField
             : isOpen
               ? 'ring-1 ring-emerald-500 border-emerald-500'
               : 'border-slate-200 hover:border-slate-300 focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:border-emerald-500'

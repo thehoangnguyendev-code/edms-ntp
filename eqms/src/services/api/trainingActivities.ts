@@ -116,6 +116,8 @@ export interface TrainingCapabilities {
   sendAttendanceList?: boolean;
   /** Every result is in and the training is not finished: the trainer finishes it with a signature (the results go into the list APD.0117). */
   finishTraining?: boolean;
+  /** The assessment of the library can be chosen or taken off (until the content is reviewed). */
+  chooseAssessment?: boolean;
   returnForCorrection?: boolean;
   removeParticipants?: boolean;
   printPaper?: boolean;
@@ -150,6 +152,8 @@ export interface TrainingActivityDetail extends Omit<TrainingActivitySummary, "p
   resultsFinishedByName?: string | null;
   /** The pass mark in force (percent): the result of a score is worked out by the server with it. */
   passPercent?: number;
+  /** The assessment of the library the activity uses (a frozen copy; never the key). */
+  assessment?: { assessmentId: string; code: string; version: number; title: string; kind: AssessmentKind; maxScore: number | null; chosenAt?: string | null; chosenByName?: string | null; itemCount: number } | null;
   /** The revisions that go with the Training Number: the document of the activity first, then the documents it lists as related. */
   groupRevisions?: { revisionId: string; documentId: string; documentNumber: string; revisionNumber?: string | null; revisionName?: string | null; revisionStatus: string; isMain: boolean }[];
   listPreparedBy?: string | null;
@@ -377,6 +381,18 @@ export const trainingPaperApi = {
       throw e;
     }
   },
+  /** The answer key of the assessment the activity chose (PDF), for the trainer who marks the papers. */
+  printKey: async (sessionId: string) => {
+    try {
+      return (await apiClient.post<Blob>(`/training/sessions/${sessionId}/test-key`, {}, { responseType: "blob" })).data;
+    } catch (e) {
+      const response = (e as { response?: { data?: unknown } }).response;
+      if (response?.data instanceof Blob) {
+        try { response.data = JSON.parse(await response.data.text()); } catch { /* keep the original error */ }
+      }
+      throw e;
+    }
+  },
   rollCall: async (sessionId: string, body: { present: string[]; absent: { participantId: string; reason: string }[]; signatureToken: string }) => (await apiClient.post<TrainingActivityDetail>(`/training/sessions/${sessionId}/roll-call`, body)).data,
   setMode: async (sessionId: string, mode: string, reason?: string) => (await apiClient.post(`/training/sessions/${sessionId}/delivery-mode`, { mode, reason })).data,
   print: async (sessionId: string, reason?: string) => {
@@ -391,6 +407,40 @@ export const trainingPaperApi = {
       throw e;
     }
   },
+};
+
+/** The library of Training Assessments (APD.0009): tests (case 1) and checklists (case 2), designed once, approved with a signature, chosen by an activity. */
+export type AssessmentKind = "QUESTIONS" | "CHECKLIST";
+export type AssessmentItemKind = "SINGLE" | "MULTI" | "TRUE_FALSE" | "ESSAY" | "CHECK";
+export interface TrainingAssessmentSummary {
+  id: string; code: string; versionNo: number; title: string; kind: AssessmentKind; status: "DRAFT" | "PENDING_APPROVAL" | "EFFECTIVE" | "SUPERSEDED";
+  itemCount: number; /** null for a checklist: it has no score. */ maxScore: number | null; updatedAt: string; updatedByName: string; approvedAt?: string | null; approvedByName?: string | null;
+}
+export interface TrainingAssessmentItem { no: number; kind: AssessmentItemKind; prompt: string; options: { id: string; text: string }[]; correct: string[]; points: number; modelAnswer?: string | null }
+export interface TrainingAssessmentDetail extends TrainingAssessmentSummary {
+  version: number; createdByName?: string | null; submittedByName?: string | null; usedByActivities: number; items: TrainingAssessmentItem[];
+  capabilities: { edit: boolean; delete: boolean; submit: boolean; returnToDraft: boolean; approve: boolean; newVersion: boolean };
+  /** Why Approve is not offered to a person who holds the permission (no item yet, or the person last changed the draft). */
+  approveBlocker?: string | null;
+}
+export interface TrainingAssessmentSave {
+  version?: number; title: string; kind: AssessmentKind;
+  items: { kind: AssessmentItemKind; prompt: string; options: { text: string }[]; correct: string[]; points: number; modelAnswer?: string }[];
+}
+export interface TrainingAssessmentChoice { id: string; code: string; versionNo: number; title: string; kind: AssessmentKind; itemCount: number; maxScore: number | null }
+export const trainingAssessmentsApi = {
+  list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingAssessmentSummary>>("/training/assessments", { params })).data,
+  approved: async (search?: string, kind?: AssessmentKind) => (await apiClient.get<{ data: TrainingAssessmentChoice[] }>("/training/assessments/approved", { params: { search, kind } })).data.data,
+  get: async (id: string) => (await apiClient.get<TrainingAssessmentDetail>(`/training/assessments/${id}`)).data,
+  create: async (body: TrainingAssessmentSave) => (await apiClient.post<TrainingAssessmentDetail>("/training/assessments", body)).data,
+  update: async (id: string, body: TrainingAssessmentSave) => (await apiClient.put<TrainingAssessmentDetail>(`/training/assessments/${id}`, body)).data,
+  remove: async (id: string, reason: string) => (await apiClient.post(`/training/assessments/${id}/delete`, { reason })).data,
+  submit: async (id: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/submit`)).data,
+  returnToDraft: async (id: string, reason: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/return`, { reason })).data,
+  approve: async (id: string, signatureToken: string, reason?: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/approve`, { signatureToken, reason })).data,
+  newVersion: async (id: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/new-version`)).data,
+  choose: async (activityId: string, assessmentId: string) => (await apiClient.put<TrainingActivityDetail>(`/training/activities/${activityId}/assessment`, { assessmentId })).data,
+  unchoose: async (activityId: string) => (await apiClient.post<TrainingActivityDetail>(`/training/activities/${activityId}/assessment/remove`)).data,
 };
 
 export interface TrainingTranscriptionLine { participantId: string; fullName: string; state: "ATTENDED" | "ABSENT"; absenceReason?: string | null; scoreObtained?: number | null; scoreMax?: number | null; remarks?: string | null }
@@ -839,6 +889,18 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_SESSION_NOT_HELD: "Start the training first: in the workspace, Prepare, Next (with your signature).",
   TRAINING_PREPARATION_PENDING: "Tick every line of the Preparation checklist first.",
   TRAINING_ATTENDANCE_ALREADY_SENT: "The attendance list was already sent to QA.",
+  TRAINING_ASSESSMENT_TITLE_REQUIRED: "Give the assessment a title.",
+  TRAINING_ASSESSMENT_ITEMS_REQUIRED: "Add at least one question or line.",
+  TRAINING_ASSESSMENT_ITEM_INVALID: "A question or line is not complete: it needs a text, at least two answers with the right one marked, and points above zero.",
+  TRAINING_ASSESSMENT_TOO_LARGE: "An assessment has at most 200 questions or lines.",
+  TRAINING_ASSESSMENT_NOT_DRAFT: "Only a draft can be changed, submitted or deleted. Make a new version of an effective assessment.",
+  TRAINING_ASSESSMENT_NOT_PENDING: "This assessment is not waiting for approval.",
+  TRAINING_ASSESSMENT_NOT_APPROVED: "Only an effective assessment can be used or given a new version.",
+  TRAINING_ASSESSMENT_VERSION_CHANGED: "Someone else changed this draft. Reload it and try again.",
+  TRAINING_ASSESSMENT_DRAFT_EXISTS: "A new version of this assessment is already a draft.",
+  TRAINING_ASSESSMENT_REQUIRED: "Choose an assessment.",
+  TRAINING_ASSESSMENT_KIND_MISMATCH: "No session of this activity is assessed in this way: a test needs a session assessed by a Test, a checklist one assessed by a Checklist.",
+  TRAINING_ASSESSMENT_NOT_CHOSEN: "This activity has not chosen an assessment from the library.",
   TRAINING_ATTENDANCE_NOT_SENT: "Send the attendance list to QA first.",
   TRAINING_NOT_FINISHED: "Finish the training first: the trainer signs once every result is in.",
   TRAINING_ALREADY_FINISHED: "The training was already finished.",

@@ -3,6 +3,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
+// These tests exercise navigation and server requests, not animation timing.
+// Wait-mode exit animations otherwise depend on RAF scheduling under suite load.
+vi.mock("framer-motion", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("framer-motion")>();
+  return {
+    ...actual,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    useReducedMotion: () => true,
+  };
+});
+
 const stableToast = { showToast: vi.fn() };
 vi.mock("@/components/ui/toast", () => ({ useToast: () => stableToast }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermissionAlias: () => true }) }));

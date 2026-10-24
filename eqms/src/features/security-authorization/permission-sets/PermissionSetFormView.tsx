@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Info, KeyRound, ListChecks } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -165,7 +166,7 @@ export const PermissionSetFormView: React.FC = () => {
               <label className={labelClass}>Code</label>
               <input
                 className={
-                  inputClass + (isEdit ? " bg-slate-50 text-slate-500 cursor-not-allowed" : null)
+                  isEdit ? CONTROL_STATE_CLASSES.readonlyField : inputClass
                 }
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}

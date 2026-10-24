@@ -418,8 +418,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             placeholder="Enter document name"
             readOnly={isObsoleted || isLocked}
             className={cn(
-              "w-full h-9 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 read-only:focus:ring-0",
-              (isObsoleted || isLocked) && CONTROL_STATE_CLASSES.readonly,
+              "w-full h-9 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500",
+              (isObsoleted || isLocked) && CONTROL_STATE_CLASSES.readonlyField,
             )}
           />
         </div>
@@ -439,8 +439,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             placeholder="Enter title in local language..."
             readOnly={isObsoleted || isLocked}
             className={cn(
-              "w-full h-9 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 read-only:focus:ring-0",
-              (isObsoleted || isLocked) && CONTROL_STATE_CLASSES.readonly,
+              "w-full h-9 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500",
+              (isObsoleted || isLocked) && CONTROL_STATE_CLASSES.readonlyField,
             )}
           />
         </div>
@@ -555,8 +555,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             placeholder="Enter review cycle in months"
             readOnly={isObsoleted || isLocked}
             className={cn(
-              "w-full h-9 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 read-only:focus:ring-0",
-              (isObsoleted || isLocked) && CONTROL_STATE_CLASSES.readonly,
+              "w-full h-9 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500",
+              (isObsoleted || isLocked) && CONTROL_STATE_CLASSES.readonlyField,
             )}
           />
         </div>
@@ -588,8 +588,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             placeholder="Enter notification days before review"
             readOnly={isObsoleted || isLocked}
             className={cn(
-              "w-full h-9 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 read-only:focus:ring-0",
-              (isObsoleted || isLocked) && CONTROL_STATE_CLASSES.readonly,
+              "w-full h-9 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500",
+              (isObsoleted || isLocked) && CONTROL_STATE_CLASSES.readonlyField,
             )}
           />
         </div>
@@ -681,7 +681,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             className={
               isObsoleted || isLocked
                 ? CONTROL_STATE_CLASSES.readonlyTextarea
-                : "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none read-only:focus:ring-0 bg-white"
+                : "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none bg-white"
             }
           />
         </div>

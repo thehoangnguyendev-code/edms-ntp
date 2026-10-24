@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { FormSection } from '@/components/ui/form/FormSection';
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { IntegrationConfig } from '../types';
 import { useEffect } from 'react';
 import { Select } from '@/components/ui/select/Select';
@@ -565,7 +566,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
                     type="text"
                     value={config.storage.nasPath || buildNasUncPath(config.storage.nasHost, config.storage.nasShareName)}
                     readOnly
-                    className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg bg-slate-100 text-slate-600"
+                    className={CONTROL_STATE_CLASSES.readonlyField}
                     placeholder="\\\\ProjectT7\\ShareT7"
                   />
                   <p className="mt-1 text-xs text-slate-500">

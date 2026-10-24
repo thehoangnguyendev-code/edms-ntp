@@ -1,5 +1,6 @@
 import React, { useId } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { cn } from '../utils';
 
 /**
@@ -127,9 +128,11 @@ export const Input: React.FC<InputProps> = ({
           : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500',
         'focus:outline-none focus:ring-1',
         'placeholder:text-slate-400 placeholder:text-sm',
-        'disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-600 disabled:border-slate-200',
-        'read-only:bg-slate-100 read-only:cursor-default read-only:text-slate-600 read-only:border-slate-200',
-        className
+        !props.readOnly && 'disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-600 disabled:border-slate-200',
+        className,
+        props.readOnly && CONTROL_STATE_CLASSES.readonlyField,
+        !fullWidth && 'w-auto',
+        error && 'border-red-300 focus:border-red-500 focus:ring-red-500'
       )}
       {...props}
     />
@@ -163,9 +166,11 @@ export const Textarea: React.FC<TextareaProps> = ({
           : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500',
         'focus:outline-none focus:ring-1',
         'placeholder:text-slate-400 placeholder:text-sm',
-        'disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-600 disabled:border-slate-200',
-        'read-only:bg-slate-100 read-only:cursor-default read-only:text-slate-600 read-only:border-slate-200',
-        className
+        !props.readOnly && 'disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-600 disabled:border-slate-200',
+        className,
+        props.readOnly && CONTROL_STATE_CLASSES.readonlyTextarea,
+        !fullWidth && 'w-auto',
+        error && 'border-red-300 focus:border-red-500 focus:ring-red-500'
       )}
       {...props}
     />

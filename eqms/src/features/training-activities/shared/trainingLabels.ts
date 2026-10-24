@@ -88,7 +88,7 @@ export const statusChange = (from: string, to: string, action = "Update Status")
 
 export const day = (value?: string | null) => (value ? displayDate(`${value.slice(0, 10)}T00:00:00`) : "—");
 
-export type TrainingPageKey = "myTraining" | "activities" | "matrices" | "requirements" | "jobs" | "reviews" | "specimen" | "records" | "compliance" | "documentTrainings" | "numberLog" | "exports" | "legacy";
+export type TrainingPageKey = "myTraining" | "activities" | "assessments" | "matrices" | "requirements" | "jobs" | "reviews" | "specimen" | "records" | "compliance" | "documentTrainings" | "numberLog" | "exports" | "legacy";
 
 /**
  * The name of every page of Training Management, exactly as the menu calls it, and the menu group it sits in. Page titles and breadcrumbs take their text from
@@ -98,6 +98,7 @@ export const TRAINING_PAGES: Record<TrainingPageKey, { title: string; group?: st
   myTraining: { title: "My Training", path: "/training-management/my-training" },
   requirements: { title: "Training Requirements", group: "Training Programme", path: "/training-management/requirements" },
   activities: { title: "Training Activities", group: "Training Programme", path: "/training-management/activities" },
+  assessments: { title: "Training Assessments", group: "Training Programme", path: "/training-management/assessments" },
   matrices: { title: "Training Matrix", group: "Training Programme", path: "/training-management/matrix" },
   documentTrainings: { title: "Document Trainings", group: "Training Programme", path: "/training-management/document-trainings" },
   jobs: { title: "Job Assignments", group: "Personnel Qualification", path: "/training-management/job-assignments" },

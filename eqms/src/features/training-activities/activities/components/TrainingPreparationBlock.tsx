@@ -100,15 +100,22 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
         ? <Button size="sm" className="mt-2" disabled={printing.busy} onClick={() => (printing.printed(session.id) > 0 ? printing.ask({ kind: "print", session }) : void printing.print(session))}>{printing.printed(session.id) > 0 ? "Reprint attendance sheet" : "Print attendance sheet"}</Button>
         : undefined,
     });
-    if (session.assessmentMethod === "TEST" && paper.activity.contentRules?.assessmentFormSatisfied !== false) {
+    if ((session.assessmentMethod === "TEST" || (!!paper.activity.assessment && session.assessmentMethod === "CHECKLIST")) && paper.activity.contentRules?.assessmentFormSatisfied !== false) {
       rows.push({
         key: "exam-copies",
         label: "Test copies for trainees",
-        hint: "Only if the test is taken on paper: one numbered copy of the test for each trainee.",
+        hint: paper.activity.assessment
+          ? `Only if the test is taken on paper: one numbered copy of "${paper.activity.assessment.title}" (${paper.activity.assessment.code} v${paper.activity.assessment.version}) for each trainee, with the name, the Training Number, the session and the date already written. Print and hand it out; the answer key is for the trainer.`
+          : "Only if the test is taken on paper: one numbered copy of the test for each trainee.",
         optional: true,
         ready: printing.printedExam(session.id) > 0,
         extra: paper.canPrint
-          ? <Button size="sm" className="mt-2" disabled={printing.busy} onClick={() => (printing.printedExam(session.id) > 0 ? printing.ask({ kind: "exam", session }) : void printing.printExam(session))}>{printing.printedExam(session.id) > 0 ? "Reprint test copies" : "Print test copies"}</Button>
+          ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" disabled={printing.busy} onClick={() => (printing.printedExam(session.id) > 0 ? printing.ask({ kind: "exam", session }) : void printing.printExam(session))}>{printing.printedExam(session.id) > 0 ? "Reprint test copies" : "Print test copies"}</Button>
+              {paper.activity.assessment && <Button size="sm" variant="outline-emerald" disabled={printing.busy} onClick={() => void printing.printKey(session)}>Print answer key</Button>}
+            </div>
+          )
           : undefined,
       });
     }

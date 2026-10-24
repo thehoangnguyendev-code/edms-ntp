@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { ChevronDown, Clock } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { cn } from '../utils';
@@ -228,7 +229,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
         className={cn(
           'flex h-9 w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 text-left text-sm transition-colors focus:outline-none',
           disabled
-            ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500'
+            ? CONTROL_STATE_CLASSES.readonlyField
             : isOpen
               ? 'border-emerald-500 ring-1 ring-emerald-500'
               : 'border-slate-200 hover:border-slate-300 focus-visible:border-emerald-500 focus-visible:ring-1 focus-visible:ring-emerald-500',
@@ -236,7 +237,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
       >
         <span className="flex min-w-0 items-center gap-2">
           <Clock className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-          <span className={cn('truncate tabular-nums', !value ? 'text-slate-400' : disabled ? 'text-slate-500' : 'text-slate-900')}>
+          <span className={cn('truncate tabular-nums', !value ? 'text-slate-400' : disabled ? 'text-slate-600' : 'text-slate-900')}>
             {value || placeholder}
           </span>
         </span>

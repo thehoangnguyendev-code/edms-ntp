@@ -1,4 +1,5 @@
 import React from "react";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { useNavigate } from "react-router-dom";
 import { Archive, CalendarClock, FileDigit, Palette } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -186,11 +187,11 @@ export const ReportPropertiesView: React.FC = () => {
                   />
                   <div className="min-w-0">
                     <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Next template number</label>
-                    <input type="text" readOnly value={nextNumber} className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg bg-slate-100 text-slate-600 cursor-default" />
+                    <input type="text" readOnly value={nextNumber} className={CONTROL_STATE_CLASSES.readonlyField} />
                   </div>
                   <div className="min-w-0">
                     <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">Last serial issued</label>
-                    <input type="text" readOnly value={properties.lastTemplateSerial} className="w-full h-9 px-3.5 text-sm border border-slate-200 rounded-lg bg-slate-100 text-slate-600 cursor-default" />
+                    <input type="text" readOnly value={properties.lastTemplateSerial} className={CONTROL_STATE_CLASSES.readonlyField} />
                   </div>
                 </div>
                 <p className="text-xs text-slate-500">

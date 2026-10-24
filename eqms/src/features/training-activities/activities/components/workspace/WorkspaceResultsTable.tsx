@@ -24,11 +24,13 @@ const SCAN_TYPES = ".pdf,.png,.jpg,.jpeg,.webp";
  * (the server does the same sum and keeps the figures), and the scan of the paper of that person in the same row, so a scan cannot be put under another person.
  * Nothing is saved by leaving a field: Enter saves the row, "Save all" saves every row with a new score, and every save is in the Audit Trail.
  */
-export function WorkspaceResultsTable({ activityId, people, passPercent, locked, canRecord, canRelease, onRelease, assessmentMethod, onActivity }: {
+export function WorkspaceResultsTable({ activityId, people, passPercent, defaultMax, locked, canRecord, canRelease, onRelease, assessmentMethod, onActivity }: {
   activityId: string;
   people: TrainingParticipant[];
   /** The pass mark of Training Properties, as the server sends it; nothing is shown as a result without it. */
   passPercent?: number;
+  /** The total score of the assessment of the library the activity uses: it fills the maximum score, which the trainer can still change. */
+  defaultMax?: number;
   /** The trainer has finished the training: the results are written in the list and are not changed. */
   locked: boolean;
   canRecord: boolean;
@@ -39,7 +41,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, locked,
   onActivity: (activity: TrainingActivityDetail) => void;
 }) {
   const { showToast } = useToast();
-  const [max, setMax] = useState(() => { const saved = people.find((p) => p.lastMax != null)?.lastMax; return saved != null ? String(saved) : ""; });
+  const [max, setMax] = useState(() => { const saved = people.find((p) => p.lastMax != null)?.lastMax; return saved != null ? String(saved) : defaultMax != null ? String(defaultMax) : ""; });
   const [scores, setScores] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [files, setFiles] = useState<TrainingActivityFiles>();
@@ -53,10 +55,13 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, locked,
   }, [activityId]);
   useEffect(loadFiles, [loadFiles]);
 
-  const maxNumber = Number(max);
-  const maxValid = max.trim() !== "" && Number.isFinite(maxNumber) && maxNumber > 0;
   const scoring = !!assessmentMethod && assessmentMethod !== "SELF_READING_CONFIRMATION";
-  const eligible = (p: TrainingParticipant) => canRecord && !locked && passPercent != null && scoring && (p.state === "ATTENDED" || p.state === "ONLINE") && p.result !== "PASSED";
+  // A checklist has no score (APD.0009 case 2): it is passed only when every line is as the key says, so the trainer picks Pass or Not passed (sent as 1 of 1 or 0 of 1).
+  // A test is scored, and passed with the pass mark of Training Properties.
+  const allLines = assessmentMethod === "CHECKLIST";
+  const maxNumber = allLines ? 1 : Number(max);
+  const maxValid = allLines || (max.trim() !== "" && Number.isFinite(maxNumber) && maxNumber > 0);
+  const eligible = (p: TrainingParticipant) => canRecord && !locked && (allLines || passPercent != null) && scoring && (p.state === "ATTENDED" || p.state === "ONLINE") && p.result !== "PASSED";
   const typed = (p: TrainingParticipant) => scores[p.id];
   const parsed = (p: TrainingParticipant) => {
     const raw = typed(p);
@@ -131,10 +136,25 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, locked,
     },
     {
       id: "score",
-      header: `Score${maxValid ? ` (of ${maxNumber})` : ""}`,
+      header: allLines ? "Checklist Result" : `Score${maxValid ? ` (of ${maxNumber})` : ""}`,
       cell: (p) => {
         if (p.result === "PASSED" || !eligible(p)) {
-          return p.lastScore != null ? `${p.lastScore} / ${p.lastMax}` : "—";
+          return allLines ? "—" : p.lastScore != null ? `${p.lastScore} / ${p.lastMax}` : "—";
+        }
+        if (allLines) {
+          return (
+            <select
+              aria-label={`Checklist result of ${p.fullName}`}
+              className="h-9 w-36 rounded-lg border border-slate-200 bg-white px-2 text-sm"
+              value={typed(p) ?? ""}
+              disabled={saving}
+              onChange={(e) => setScores((s) => ({ ...s, [p.id]: e.target.value }))}
+            >
+              <option value="">—</option>
+              <option value="1">Pass</option>
+              <option value="0">Not passed</option>
+            </select>
+          );
         }
         const bad = parsed(p) !== undefined && !valid(p);
         return (
@@ -163,15 +183,18 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, locked,
       id: "result",
       header: "Result",
       cell: (p) => {
+        if (eligible(p) && valid(p) && allLines) {
+          return <Badge color={parsed(p) === 1 ? "emerald" : "red"}>{parsed(p) === 1 ? "Pass" : "Not passed"} · not saved</Badge>;
+        }
         if (eligible(p) && valid(p)) {
           const percent = Math.round(((parsed(p) as number) * 10000) / maxNumber) / 100;
-          const pass = percent >= (passPercent ?? 0);
+          const pass = allLines ? (parsed(p) as number) >= maxNumber : percent >= (passPercent ?? 0);
           return <Badge color={pass ? "emerald" : "red"}>{pass ? "Pass" : "Not passed"} ({percent}%) · not saved</Badge>;
         }
         return (
           <Badge color={p.result === "PASSED" ? "emerald" : p.result === "FAILED" ? "red" : "slate"}>
             {p.result === "PASSED" ? "Pass" : p.result === "FAILED" ? "Not passed" : "Pending"}
-            {p.lastPercent != null ? ` (${p.lastPercent}%)` : ""}
+            {p.lastPercent != null && !allLines ? ` (${p.lastPercent}%)` : ""}
           </Badge>
         );
       },
@@ -225,14 +248,16 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, locked,
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
         <div className="flex flex-wrap items-end gap-4">
-          <label className="block text-xs font-medium text-slate-700 sm:text-sm">
-            Maximum score of the test
-            <div className="mt-1 w-36">
-              <Input type="number" min={1} step="any" value={max} aria-label="Maximum score of the test" onChange={(e) => setMax(e.target.value)} />
-            </div>
-          </label>
+          {!allLines && (
+            <label className="block text-xs font-medium text-slate-700 sm:text-sm">
+              Maximum score of the test
+              <div className="mt-1 w-36">
+                <Input type="number" min={1} step="any" value={max} aria-label="Maximum score of the test" onChange={(e) => setMax(e.target.value)} />
+              </div>
+            </label>
+          )}
           <div className="pb-2 text-xs text-slate-600 sm:text-sm">
-            Pass mark: <span className="font-semibold text-slate-900">{passPercent != null ? `${passPercent}%` : "—"}</span> · Results:{" "}
+            {allLines ? "Pass: every line correct" : "Pass mark"}: {!allLines && <span className="font-semibold text-slate-900">{passPercent != null ? `${passPercent}%` : "—"}</span>} · Results:{" "}
             <span className="font-semibold text-slate-900">{recorded} / {present.length}</span>
           </div>
         </div>

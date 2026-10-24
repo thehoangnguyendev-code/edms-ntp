@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { Info } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -150,7 +151,7 @@ export const KnowledgeComponentEditorView: React.FC = () => {
             ) : (
               <div>
                 <label className={labelClass}>Source Field</label>
-                <input className={inputClass} value={component?.sourceLabel ?? ""} disabled readOnly />
+                <input className={CONTROL_STATE_CLASSES.readonlyField} value={component?.sourceLabel ?? ""} disabled readOnly />
                 <p className="text-xs text-slate-500 mt-1.5">The source field of a component cannot be changed.</p>
               </div>
             )}

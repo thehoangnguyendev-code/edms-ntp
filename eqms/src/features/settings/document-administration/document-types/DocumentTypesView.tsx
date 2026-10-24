@@ -1,5 +1,6 @@
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import React, { useEffect, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
 import { AlertTriangle, Check, ChevronDown, ChevronUp, MoreVertical, Plus, Power, PowerOff, Search, X } from "lucide-react";
@@ -667,7 +668,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
             maxLength={20}
             className={cn(
               "w-full h-9 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500",
-              shortCodeLocked && "bg-slate-50 text-slate-500 cursor-not-allowed"
+              shortCodeLocked && CONTROL_STATE_CLASSES.readonlyField
             )}
             placeholder="e.g., SOP, POL"
             required

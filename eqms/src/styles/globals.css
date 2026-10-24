@@ -550,6 +550,14 @@ button[role="combobox"].text-base {
   font-size: 0.875rem !important; /* text-sm for mobile */
 }
 
+/* Same emerald-500 border/ring as CONTROL_STATE_CLASSES.readonlyField.
+   Disabled reference fields do not emit native focus; the UI-only indicator
+   marks the last one clicked, without changing its disabled/readOnly flags. */
+:is(input[readonly], textarea[readonly], select, button[role="combobox"], button[aria-haspopup="dialog"]):disabled[data-readonly-visual-focus="true"] {
+  border-color: #10b981;
+  box-shadow: 0 0 0 1px #10b981;
+}
+
 /* Opt-in helper: only apply where inherit font-size is explicitly needed */
 .font-size-inherit {
   font-size: inherit !important;

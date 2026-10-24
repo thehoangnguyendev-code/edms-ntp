@@ -62,6 +62,17 @@ export function useTrainingPaper(activity: TrainingActivityDetail, onChanged: ()
       setBusy(false);
     }
   };
+  /** The answer key of the assessment of the library, for the trainer who marks the papers. */
+  const printKey = async (session: TrainingSession) => {
+    setBusy(true);
+    try {
+      saveBlob(await trainingPaperApi.printKey(session.id), `${activity.trainingNumber}-S${session.sessionNo}-answer-key.pdf`);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
   const changeMode = async (session: TrainingSession, mode: string, why?: string) => {
     setBusy(true);
     try {
@@ -91,7 +102,7 @@ export function useTrainingPaper(activity: TrainingActivityDetail, onChanged: ()
         <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
       </FormModal>
   );
-  return { packs, printed, printedExam, busy, ask: setAsk, print, printExam, changeMode, dialog };
+  return { packs, printed, printedExam, busy, ask: setAsk, print, printExam, printKey, changeMode, dialog };
 }
 
 /**
@@ -99,7 +110,7 @@ export function useTrainingPaper(activity: TrainingActivityDetail, onChanged: ()
  * needs no reason; a reprint, or a change of delivery after a print, needs one. The server decides and records; this block only asks.
  */
 export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: { activity: TrainingActivityDetail; canPrint: boolean; canMode: boolean; onChanged: () => void }) {
-  const { packs, printed, printedExam, busy, ask: setAsk, print, printExam, changeMode, dialog } = useTrainingPaper(activity, onChanged);
+  const { packs, printed, printedExam, busy, ask: setAsk, print, printExam, printKey, changeMode, dialog } = useTrainingPaper(activity, onChanged);
   const sessions = activity.sessions.filter((s) => s.status !== "CANCELLED");
   if (sessions.length === 0) return null;
   const columns: DataTableColumn<TrainingSession>[] = [
@@ -121,7 +132,8 @@ export function TrainingPaperBlock({ activity, canPrint, canMode, onChanged }: {
         ? (
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={busy} onClick={() => (printed(s.id) > 0 ? setAsk({ kind: "print", session: s }) : void print(s))}>{printed(s.id) > 0 ? "Reprint pack" : "Print paper pack"}</Button>
-            {s.assessmentMethod === "TEST" && activity.contentRules?.assessmentFormSatisfied !== false && <Button size="sm" disabled={busy} onClick={() => (printedExam(s.id) > 0 ? setAsk({ kind: "exam", session: s }) : void printExam(s))}>{printedExam(s.id) > 0 ? "Reprint exam" : "Print exam copies"}</Button>}
+            {(s.assessmentMethod === "TEST" || (!!activity.assessment && s.assessmentMethod === "CHECKLIST")) && activity.contentRules?.assessmentFormSatisfied !== false && <Button size="sm" disabled={busy} onClick={() => (printedExam(s.id) > 0 ? setAsk({ kind: "exam", session: s }) : void printExam(s))}>{printedExam(s.id) > 0 ? "Reprint exam" : "Print exam copies"}</Button>}
+            {!!activity.assessment && (s.assessmentMethod === "TEST" || s.assessmentMethod === "CHECKLIST") && <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => void printKey(s)}>Print answer key</Button>}
           </div>
         )
         : null,

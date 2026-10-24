@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { ArrowLeft, Lock, TextInitial } from "lucide-react";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -185,7 +186,7 @@ export const DocumentComponentEditorView: React.FC = () => {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className={inputClass}
+                  className={isSystemDefined ? CONTROL_STATE_CLASSES.readonlyField : inputClass}
                   placeholder="e.g. Revision Tag"
                   disabled={isSaving || !canManage || isSystemDefined}
                   readOnly={isSystemDefined}
@@ -197,7 +198,7 @@ export const DocumentComponentEditorView: React.FC = () => {
                   type="text"
                   value={shortDescription}
                   onChange={(e) => setShortDescription(e.target.value)}
-                  className={inputClass}
+                  className={isSystemDefined ? CONTROL_STATE_CLASSES.readonlyField : inputClass}
                   placeholder="Shown next to the token in the Format builder"
                   disabled={isSaving || !canManage || isSystemDefined}
                   readOnly={isSystemDefined}
@@ -253,7 +254,7 @@ export const DocumentComponentEditorView: React.FC = () => {
               type="text"
               value={freeText}
               onChange={(e) => setFreeText(e.target.value)}
-              className={inputClass}
+              className={isSystemDefined ? CONTROL_STATE_CLASSES.readonlyField : inputClass}
               placeholder='Literal text this component inserts (e.g. "REV")'
               disabled={isSaving || !canManage || isSystemDefined}
               readOnly={isSystemDefined}

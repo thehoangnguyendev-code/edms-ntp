@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FormSection } from '@/components/ui/form/FormSection';
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { Server, Eye, EyeOff } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { Button } from '@/components/ui/button/Button';
@@ -145,7 +146,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
                   value={isStoredJwtSecretPreview ? 'Stored secret configured' : onlyOfficeConfig.jwtSecret || ''}
                   onChange={(e) => handleFieldChange('jwtSecret', e.target.value)}
                   readOnly={isStoredJwtSecretPreview}
-                  className="w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  className={isStoredJwtSecretPreview ? `${CONTROL_STATE_CLASSES.readonlyField} pr-10` : "w-full h-9 px-3.5 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"}
                   placeholder={isReplacingJwtSecret ? 'Enter a replacement secret' : 'Must match the onlyoffice-documentserver JWT_SECRET env var'}
                 />
                 <button

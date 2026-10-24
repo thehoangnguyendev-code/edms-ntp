@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './src/app/App';
 import { AppProviders } from './src/contexts';
 import { PwaBranding } from './src/components/branding/PwaBranding';
+import { ReadonlyFocusIndicator } from './src/components/ui/form/ReadonlyFocusIndicator';
 
 // Import Global Styles
 import './src/styles/globals.css';
@@ -36,6 +37,7 @@ root.render(
   <BrowserRouter>
     <AppProviders>
       <PwaBranding />
+      <ReadonlyFocusIndicator />
       <App />
     </AppProviders>
   </BrowserRouter>

@@ -89,6 +89,28 @@ describe("Results typed in the row of each person", () => {
     expect(score(2).value).toBe("8");
   });
 
+  it("fills the maximum score from the assessment of the library, and the trainer can still change it", async () => {
+    render(<WorkspaceResultsTable {...props([person(1)], { defaultMax: 12 })} />);
+    expect(maxField().value).toBe("12");
+    fireEvent.change(maxField(), { target: { value: "10" } });
+    expect(maxField().value).toBe("10");
+  });
+
+  it("a checklist has no score: no maximum, the trainer picks Pass or Not passed, and 1 of 1 or 0 of 1 is saved", async () => {
+    api.assessment.mockResolvedValue({ id: "a1" });
+    render(<WorkspaceResultsTable {...props([person(1), person(2)], { assessmentMethod: "CHECKLIST", passPercent: undefined })} />);
+    expect(await screen.findByText(/Pass: every line correct/)).toBeTruthy();
+    expect(screen.queryByLabelText("Maximum score of the test")).toBeNull();
+    expect(screen.queryByLabelText("Score of Trainee 1")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Checklist result of Trainee 1"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Checklist result of Trainee 2"), { target: { value: "0" } });
+    expect(screen.getByText(/Pass · not saved/)).toBeTruthy();
+    expect(screen.getByText(/Not passed · not saved/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Save all \(2\)/ }));
+    await waitFor(() => expect(api.assessment).toHaveBeenCalledTimes(2));
+    expect(api.assessment).toHaveBeenNthCalledWith(1, "p1", 1, 1);
+    expect(api.assessment).toHaveBeenNthCalledWith(2, "p2", 0, 1);
+  });
   it("takes no entry after the training is finished", async () => {
     render(<WorkspaceResultsTable {...props([person(1, { result: "PASSED", lastScore: 9, lastMax: 10, lastPercent: 90 })], { locked: true })} />);
     await waitFor(() => expect(files.list).toHaveBeenCalled());

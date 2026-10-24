@@ -17,7 +17,9 @@ describe('EffectiveByTypePanel', () => {
     render(<EffectiveByTypePanel />);
 
     expect(await screen.findByText('17 effective documents across 2 types')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Bar chart of effective documents by type: Standard Operating Procedure 12, Work Instruction 5' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Donut/ })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('tab', { name: /Bar/ }));
+    expect(await screen.findByRole('img', { name: 'Bar chart of effective documents by type: Standard Operating Procedure 12, Work Instruction 5' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Bar/ })).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -52,6 +54,8 @@ describe('EffectiveByTypePanel', () => {
     render(<EffectiveByTypePanel />);
     await screen.findByText('18 effective documents across 2 types');
 
+    fireEvent.click(screen.getByRole('tab', { name: /Bar/ }));
+    await screen.findByRole('img', { name: /^Bar chart of effective documents by type/ });
     fireEvent.click(screen.getByRole('tab', { name: /Donut/ }));
 
     expect(screen.getByRole('tab', { name: /Donut/ })).toHaveAttribute('aria-selected', 'true');
@@ -73,7 +77,12 @@ describe('EffectiveByTypePanel', () => {
     render(<EffectiveByTypePanel />);
     await screen.findByText('18 effective documents across 2 types');
     const chart = (kind: 'Bar' | 'Donut') => screen.queryByRole('img', { name: new RegExp(`^${kind} chart of effective documents by type`) });
-    expect(chart('Bar')).toBeInTheDocument();
+    expect(chart('Donut')).toBeInTheDocument();
+    expect(chart('Bar')).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Bar/ }));
+    await vi.waitFor(() => expect(chart('Bar')).toBeInTheDocument());
+    expect(chart('Donut')).toBeNull();
 
     fireEvent.click(screen.getByRole('tab', { name: /Donut/ }));
     await vi.waitFor(() => expect(chart('Donut')).toBeInTheDocument());
@@ -90,7 +99,8 @@ describe('EffectiveByTypePanel', () => {
     api.getEffectiveDocumentsByType.mockResolvedValue(many);
     render(<EffectiveByTypePanel />);
     await screen.findByText('55 effective documents across 10 types');
-    expect(screen.getByRole('img').getAttribute('aria-label')).toContain('Type 9 1');
+    fireEvent.click(screen.getByRole('tab', { name: /Bar/ }));
+    expect((await screen.findByRole('img', { name: /^Bar chart of effective documents by type/ })).getAttribute('aria-label')).toContain('Type 9 1');
 
     fireEvent.click(screen.getByRole('tab', { name: /Donut/ }));
     const panel = screen.getByRole('tabpanel');

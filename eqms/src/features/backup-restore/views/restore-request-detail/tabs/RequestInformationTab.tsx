@@ -8,7 +8,7 @@ import { ReadonlyField } from "../../../components/ReadonlyField";
 const TYPE_LABEL: Record<string, string> = { "R-FULL": "Full restore", "R-DB": "Database only", "R-OBJ": "Documents only", "R-ONE": "One record" };
 const TARGET_LABEL: Record<string, string> = { VALIDATION: "Validation environment", PRODUCTION: "Production (replaces live data)" };
 /** Text areas are fixed in size: a reason is read, not edited, and resizing it would change the layout of the page. */
-const TEXTAREA_CLASS = `${CONTROL_STATE_CLASSES.readonlyField} resize-none`;
+const TEXTAREA_CLASS = CONTROL_STATE_CLASSES.readonlyTextarea;
 
 /** The request itself: what is asked, by whom, and how it was decided. Read only; the decision is made from the page header. */
 export const RequestInformationTab: React.FC<{ request: RestoreRequestRecord }> = ({ request }) => {

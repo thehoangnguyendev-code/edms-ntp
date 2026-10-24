@@ -1,5 +1,6 @@
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
+import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import React, { useEffect, useRef, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -620,7 +621,7 @@ const TrainingTopicModal: React.FC<TrainingTopicModalProps> = ({ isOpen, onClose
             maxLength={40}
             className={cn(
               "w-full h-9 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500",
-              isEdit && "bg-slate-50 text-slate-500 cursor-not-allowed"
+              isEdit && CONTROL_STATE_CLASSES.readonlyField
             )}
             placeholder="e.g., GMP-BASICS"
             required

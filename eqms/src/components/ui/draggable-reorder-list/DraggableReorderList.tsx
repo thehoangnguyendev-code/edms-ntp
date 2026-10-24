@@ -6,7 +6,7 @@
  * - Controlled: the order is owned by the parent (`items`), so it stays in step with the parent's draft.
  * - `renderRow` lets each row carry its own controls (switch, pin). The grip is the only drag handle.
  * - `header` / `footer` hold rows that must never move (for example "No." and "Action").
- * - `removable` defaults to false; the original remove (X) button is not part of the column customizer.
+ * - enderItem replaces the label and the controls of a row with its own content (a whole form), and lignTop keeps the grip at the top of a tall row: used by the editors\n *   of Training Assessments, where each row is a question.\n * - emovable defaults to false; the original remove (X) button is not part of the column customizer.
  * - Colours use the EQMS slate palette instead of the shadcn theme tokens.
  * - Imports point at this project's `@/components/ui/utils`.
  */
@@ -30,6 +30,12 @@ interface DraggableReorderListProps<T extends ReorderItem> {
   onReorder: (items: T[]) => void;
   /** Extra content on the right of each row (switches, buttons). */
   renderRow?: (item: T) => React.ReactNode;
+  /** The whole content of a row, instead of its label and `renderRow` (for a row that is a form). The grip stays on the left. */
+  renderItem?: (item: T) => React.ReactNode;
+  /** Puts the grip at the top of the row instead of its middle (for a tall row): level with a first line that is 2.25rem high (a small button). */
+  alignTop?: boolean;
+  /** No border, shadow or padding around a row: the rows are told apart by the space between them. A row being dragged still lifts with a shadow. */
+  plain?: boolean;
   /** Rows above the list that never move, for example "No.". */
   header?: React.ReactNode;
   /** Rows below the list that never move, for example "Action". */
@@ -43,11 +49,17 @@ interface DraggableReorderListProps<T extends ReorderItem> {
 function Row<T extends ReorderItem>({
   item,
   renderRow,
+  renderItem,
+  alignTop,
+  plain,
   removable,
   onRemove,
 }: {
   item: T;
   renderRow?: (item: T) => React.ReactNode;
+  renderItem?: (item: T) => React.ReactNode;
+  alignTop?: boolean;
+  plain?: boolean;
   removable: boolean;
   onRemove?: (id: string) => void;
 }) {
@@ -63,17 +75,18 @@ function Row<T extends ReorderItem>({
         exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
         whileDrag={{ scale: 1.02, boxShadow: "0 16px 40px rgba(15,23,42,0.18)", zIndex: 50 }}
         transition={{ type: "spring", stiffness: 350, damping: 30 }}
-        className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md"
+        className={cn("flex gap-3 rounded-xl bg-white", plain ? "px-1 py-1" : "border border-slate-200 px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md", alignTop ? "items-start" : "items-center")}
       >
         <motion.div
           onPointerDown={(event) => dragControls.start(event)}
-          className="flex-shrink-0 cursor-grab touch-none text-slate-400 transition-colors hover:text-slate-600 active:cursor-grabbing"
+          className={cn("flex flex-shrink-0 cursor-grab touch-none items-center text-slate-400 transition-colors hover:text-slate-600 active:cursor-grabbing", alignTop && "h-9")}
           whileHover={{ scale: 1.1 }}
           aria-label={`Drag ${item.label}`}
         >
           <GripVertical className="h-4 w-4" />
         </motion.div>
 
+        {renderItem ? <div className="min-w-0 flex-1">{renderItem(item)}</div> : <>
         {item.icon && (
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
             {item.icon}
@@ -86,6 +99,7 @@ function Row<T extends ReorderItem>({
         </div>
 
         {renderRow?.(item)}
+        </>}
 
         {removable && (
           <button
@@ -107,6 +121,9 @@ export function DraggableReorderList<T extends ReorderItem>({
   items,
   onReorder,
   renderRow,
+  renderItem,
+  alignTop,
+  plain,
   header,
   footer,
   removable = false,
@@ -119,7 +136,7 @@ export function DraggableReorderList<T extends ReorderItem>({
       <Reorder.Group axis="y" values={items} onReorder={onReorder} className="flex flex-col gap-2" as="div">
         <AnimatePresence initial={false}>
           {items.map((item) => (
-            <Row key={item.id} item={item} renderRow={renderRow} removable={removable} onRemove={onRemove} />
+            <Row key={item.id} item={item} renderRow={renderRow} renderItem={renderItem} alignTop={alignTop} plain={plain} removable={removable} onRemove={onRemove} />
           ))}
         </AnimatePresence>
       </Reorder.Group>

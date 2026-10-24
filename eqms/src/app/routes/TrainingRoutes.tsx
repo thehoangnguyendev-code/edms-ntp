@@ -10,6 +10,8 @@ const TrainingSessionWorkspacePage = lazy(() => import('@/features/training-acti
 const TrainingMaterialPreviewPage = lazy(() => import('@/features/training-activities/activities/TrainingMaterialPreviewPage').then(m => ({ default: m.TrainingMaterialPreviewPage })));
 const TrainingActivityCreatePage = lazy(() => import('@/features/training-activities/activities/TrainingActivityCreatePage').then(m => ({ default: m.TrainingActivityCreatePage })));
 const TrainingActivityDetailPage = lazy(() => import('@/features/training-activities/activities/TrainingActivityDetailPage').then(m => ({ default: m.TrainingActivityDetailPage })));
+const TrainingAssessmentListView = lazy(() => import('@/features/training-activities/assessments/TrainingAssessmentListView').then(m => ({ default: m.TrainingAssessmentListView })));
+const TrainingAssessmentDetailPage = lazy(() => import('@/features/training-activities/assessments/TrainingAssessmentDetailPage').then(m => ({ default: m.TrainingAssessmentDetailPage })));
 const TrainingMatrixLandingPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixLandingPage').then(m => ({ default: m.TrainingMatrixLandingPage })));
 const TrainingMatrixVersionPage = lazy(() => import('@/features/training-activities/matrices/TrainingMatrixVersionPage').then(m => ({ default: m.TrainingMatrixVersionPage })));
 const DocumentTrainingsView = lazy(() => import('@/features/training-activities/matrices/DocumentTrainingsView').then(m => ({ default: m.DocumentTrainingsView })));
@@ -58,6 +60,9 @@ export function trainingRoutes() {
       <Route path="activities/:activityId/participate" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="participate" />)} />
       <Route path="participations/:participantId/test" element={guardedTrainingElement("training.self.view", <TrainingExamPage />)} />
       <Route path="check-in" element={guardedTrainingElement("training.self.view", <MyTrainingView openCheckIn />)} />
+      <Route path="assessments" element={<Suspense fallback={<LoadingFallback />}><TrainingAssessmentListView /></Suspense>} />
+      <Route path="assessments/new" element={<Suspense fallback={<LoadingFallback />}><TrainingAssessmentDetailPage isNew /></Suspense>} />
+      <Route path="assessments/:assessmentId" element={<Suspense fallback={<LoadingFallback />}><TrainingAssessmentDetailPage /></Suspense>} />
       <Route path="matrix" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixLandingPage />)} />
       <Route path="matrix/:versionId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixVersionPage />)} />
       <Route path="document-trainings" element={guardedTrainingElement("training.matrix.view", <DocumentTrainingsView />)} />

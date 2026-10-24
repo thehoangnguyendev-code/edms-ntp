@@ -115,12 +115,12 @@ function ExamEditor({ activityId, exam, onClose, onSaved }: { activityId: string
                     {d.options.length > 2 && <button type="button" aria-label={`Remove answer ${LETTERS[k]}`} className="text-slate-400 hover:text-red-600" onClick={() => set(i, { options: d.options.filter((_o, m) => m !== k), correct: d.correct.filter((x) => x !== LETTERS[k]).map((x) => (LETTERS.indexOf(x) > k ? LETTERS[LETTERS.indexOf(x) - 1] : x)) })}><IconTrash className="h-4 w-4" /></button>}
                   </div>
                 ))}
-                {d.options.length < (d.kind === "SINGLE" ? 6 : 8) && <Button size="sm" variant="outline" onClick={() => set(i, { options: [...d.options, ""] })}><IconPlus className="mr-1 h-4 w-4" />Add an answer</Button>}
+                {d.options.length < (d.kind === "SINGLE" ? 6 : 8) && <Button size="sm" variant="default" onClick={() => set(i, { options: [...d.options, ""] })}><IconPlus className="mr-1 h-4 w-4" />Add an answer</Button>}
               </div>
             )}
           </section>
         ))}
-        {items.length < 100 && <Button variant="outline-emerald" onClick={() => setItems([...items, blank()])}><IconPlus className="mr-1 h-4 w-4" />Add a question</Button>}
+        {items.length < 100 && <Button variant="default" onClick={() => setItems([...items, blank()])}><IconPlus className="mr-1 h-4 w-4" />Add a question</Button>}
       </div>
     </FormModal>
   );

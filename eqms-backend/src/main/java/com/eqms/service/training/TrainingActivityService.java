@@ -247,6 +247,20 @@ public class TrainingActivityService {
     public Map<String, Object> get(UserAccount actor, UUID id) {
         Map<String, Object> activity = visible(actor, id);
         Map<String, Object> out = TrainingRows.camel(activity);
+        if (activity.get("assessment_def_id") != null) {
+            Map<String, Object> chosen = new LinkedHashMap<>();
+            chosen.put("assessmentId", activity.get("assessment_def_id"));
+            chosen.put("code", activity.get("assessment_def_code"));
+            chosen.put("version", activity.get("assessment_def_version"));
+            chosen.put("title", activity.get("assessment_title"));
+            chosen.put("kind", activity.get("assessment_kind"));
+            chosen.put("maxScore", activity.get("assessment_max_score"));
+            Map<String, Object> frozen = jdbc.queryForList("select a.chosen_at, u.full_name, jsonb_array_length(a.snapshot -> 'items') as item_count from training_activity_assessments a join app_users u on u.id = a.chosen_by where a.activity_id = ?", id).stream().findFirst().orElse(Map.of());
+            chosen.put("chosenAt", frozen.get("chosen_at") == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(frozen.get("chosen_at")));
+            chosen.put("chosenByName", frozen.get("full_name"));
+            chosen.put("itemCount", frozen.get("item_count"));
+            out.put("assessment", chosen);
+        }
         out.put("departmentName", jdbc.queryForObject("select name from departments where id=?", String.class, activity.get("organizer_department_id")));
         // Who opened it (the General Information tab shows it, as the one of a document does).
         out.put("createdByName", activity.get("created_by") == null ? null : jdbc.queryForList("select full_name from app_users where id=?", String.class, activity.get("created_by")).stream().findFirst().orElse(null));
@@ -457,6 +471,8 @@ public class TrainingActivityService {
         caps.put("completeTraining", ("COMPLETED".equals(status) || activity.get("attendance_sent_at") != null)
                 && !jdbc.queryForList("select 1 from document_revisions where training_activity_id = ? and status_code = 'PENDING_TRAINING' limit 1", Integer.class, activity.get("id")).isEmpty());
         caps.put("setContentExemptions", organize && Set.of("PLANNED", "NOTIFIED").contains(status) && !confirmed((UUID) activity.get("id"), "CONTENT_REVIEWED"));
+        // The assessment of the library is chosen, like a file is uploaded, until the content is reviewed.
+        caps.put("chooseAssessment", organize && Set.of("PLANNED", "NOTIFIED").contains(status) && !"EXTERNAL".equals(activity.get("kind")) && !confirmed((UUID) activity.get("id"), "CONTENT_REVIEWED"));
         caps.put("reopenContent", organize && Set.of("PLANNED", "NOTIFIED").contains(status) && (confirmed((UUID) activity.get("id"), "CONTENT_REVIEWED") || confirmed((UUID) activity.get("id"), "CONTENT_APPROVED")));
         caps.put("returnForCorrection", "PENDING_QA_CONFIRMATION".equals(status) && access.has(actor, "training.activity.close") && access.inScope(actor, department));
         caps.put("cancel", organize && open);
@@ -776,7 +792,7 @@ public class TrainingActivityService {
         Integer questions = jdbc.queryForObject("select count(*) from training_exam_questions where activity_id = ?", Integer.class, id);
         List<String> assessments = jdbc.queryForList("select assessment_method from training_sessions where activity_id = ? and status <> 'CANCELLED' and assessment_method is not null", String.class, id);
         return TrainingContentRules.evaluate(new TrainingContentRules.Facts((String) activity.get("kind"), (String) activity.get("kind_reason"), activity.get("parent_activity_id") != null,
-                documentLinked, content == null ? 0 : content, forms == null ? 0 : forms, questions == null ? 0 : questions, assessments,
+                documentLinked, content == null ? 0 : content, (forms == null ? 0 : forms) + (activity.get("assessment_def_id") != null ? 1 : 0), questions == null ? 0 : questions, assessments,
                 Boolean.TRUE.equals(activity.get("materials_exempt")), Boolean.TRUE.equals(activity.get("assessment_exempt"))));
     }
 
@@ -1046,9 +1062,11 @@ public class TrainingActivityService {
         if (session.get("assessment_method") == null || "SELF_READING_CONFIRMATION".equals(session.get("assessment_method"))) throw new IllegalArgumentException("TRAINING_ASSESSMENT_METHOD_INVALID");
         if (request == null || request.scoreObtained() == null || request.scoreMax() == null || request.scoreMax().signum() <= 0
                 || request.scoreObtained().signum() < 0 || request.scoreObtained().compareTo(request.scoreMax()) > 0) throw new IllegalArgumentException("TRAINING_SCORE_INVALID");
-        int pass = settings.passPercent();
+        // A checklist (APD.0009 case 2) is passed only when every line is as expected; a test is passed with the pass mark of Training Properties.
+        boolean checklist = "CHECKLIST".equals(session.get("assessment_method"));
+        int pass = checklist ? 100 : settings.passPercent();
         BigDecimal percent = request.scoreObtained().multiply(BigDecimal.valueOf(100)).divide(request.scoreMax(), 2, RoundingMode.HALF_UP);
-        String result = percent.compareTo(BigDecimal.valueOf(pass)) >= 0 ? "PASSED" : "FAILED";
+        String result = (checklist ? request.scoreObtained().compareTo(request.scoreMax()) >= 0 : percent.compareTo(BigDecimal.valueOf(pass)) >= 0) ? "PASSED" : "FAILED";
         Integer attempt = jdbc.queryForObject("select coalesce(max(attempt_no),0)+1 from training_assessments where participant_id=?", Integer.class, participantId);
         jdbc.update("""
             insert into training_assessments(id, participant_id, attempt_no, method, score_obtained, score_max, percent, pass_percent_snapshot, result, assessed_by, remarks)

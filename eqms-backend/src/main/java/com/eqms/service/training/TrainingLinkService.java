@@ -6,6 +6,7 @@ import com.eqms.entity.UserAccount;
 import com.eqms.repository.DocumentRecordRepository;
 import com.eqms.repository.DocumentRevisionRepository;
 import com.eqms.service.DocumentAuthorizationService;
+import com.eqms.util.DateTimeFormatUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,7 +89,8 @@ public class TrainingLinkService {
             completedOn = jdbc.queryForObject("select max(held_on) from training_sessions where activity_id = ? and status = 'PLANNED'", java.sql.Date.class, activity.get("id"));
         }
         result.put("completedOn", completedOn);
-        result.put("attendanceSentOn", activity.get("attendance_sent_at") == null ? null : activity.get("attendance_sent_at").toString().substring(0, 10));
+        java.sql.Timestamp attendanceSentAt = (java.sql.Timestamp) activity.get("attendance_sent_at");
+        result.put("attendanceSentOn", attendanceSentAt == null ? null : attendanceSentAt.toInstant().atZone(DateTimeFormatUtils.ZONE).toLocalDate());
         return result;
     }
 }

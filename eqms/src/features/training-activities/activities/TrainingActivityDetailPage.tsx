@@ -56,6 +56,7 @@ import { WorkspaceAssessmentStep } from "./components/workspace/WorkspaceAssessm
 import { WorkspaceResultsStep } from "./components/workspace/WorkspaceResultsStep";
 import { WorkspaceResultsTable } from "./components/workspace/WorkspaceResultsTable";
 import { TrainingExamBlock } from "./components/TrainingExamBlock";
+import { TrainingAssessmentChoiceBlock } from "./components/TrainingAssessmentChoiceBlock";
 import { AttendanceListExport } from "./components/AttendanceListExport";
 import { TrainingPreparationBlock } from "./components/TrainingPreparationBlock";
 import { TrainingTranscriptionBlock } from "./components/TrainingTranscriptionBlock";
@@ -151,6 +152,7 @@ const MODE_CAPS: Record<ActivityMode, string[]> = {
     "confirmList",
     "designateApprovers",
     "setContentExemptions",
+    "chooseAssessment",
     "notify",
     "cancel",
   ],
@@ -1272,6 +1274,7 @@ export function TrainingActivityDetailPage({
               activityId={activity.id}
               people={wsPeople}
               passPercent={activity.passPercent}
+              defaultMax={activity.assessment?.maxScore}
               locked={!!activity.resultsFinishedAt}
               canRecord={Boolean(caps?.recordAssessment)}
               canRelease={Boolean(caps?.recordAttendance)}
@@ -2048,6 +2051,9 @@ export function TrainingActivityDetailPage({
               canExempt={Boolean(caps?.setContentExemptions)}
               onExempt={(body) => run(() => trainingActivitiesApi.setContentExemptions(activity.id, body), "Saved")}
             />
+          )}
+          {tab === "assessment" && !external && (
+            <TrainingAssessmentChoiceBlock activity={activity} editable={mode === "edit" && Boolean(caps?.chooseAssessment)} onChanged={setActivity} />
           )}
           {tab === "assessment" && !external && (
             <TrainingExamBlock

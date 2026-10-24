@@ -170,7 +170,7 @@ export function PersonnelReviewDetailPage() {
               </>
             )}
             <ReadonlyField label="Description" wide>
-              <textarea rows={3} readOnly value={review.note ?? ""} placeholder="—" className={`${CONTROL_STATE_CLASSES.readonlyField} h-auto resize-none`} />
+              <textarea rows={3} readOnly value={review.note ?? ""} placeholder="—" className={CONTROL_STATE_CLASSES.readonlyTextarea} />
             </ReadonlyField>
             {review.closedByName && <ReadonlyField label="Closed by" value={`${review.closedByName} (${day(review.closedAt)})`} />}
             {review.cancelReason && <ReadonlyField label="Cancelled because" value={review.cancelReason} wide />}
