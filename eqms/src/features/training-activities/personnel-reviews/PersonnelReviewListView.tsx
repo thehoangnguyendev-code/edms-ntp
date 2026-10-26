@@ -11,7 +11,7 @@ import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { FullPageLoading, SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import type { PortalDropdownMenuProps } from "@/components/ui/dropdown/PortalDropdownMenu";
-import { IconCircleOff, IconInfoCircle, IconPlus } from "@tabler/icons-react";
+import { IconCircleOff, IconInfoCircle, IconPlus, IconX } from "@tabler/icons-react";
 import { MoreVertical } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -40,10 +40,10 @@ const RowMenu: React.FC<RowMenuProps> = ({ onView, onCancel, canCancel, isOpen, 
     <PortalDropdownMenu isOpen={isOpen} onClose={onClose} position={position}>
       <div className="py-1">
         <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { onView(); onClose(); }}>
-          View Detail
+          View Details
         </DropdownMenuItem>
         {canCancel && (
-          <DropdownMenuItem icon={<IconCircleOff className="h-4 w-4" />} onClick={() => { onCancel(); onClose(); }}>
+          <DropdownMenuItem icon={<IconX className="h-4 w-4" />} onClick={() => { onCancel(); onClose(); }}>
             Cancel Review
           </DropdownMenuItem>
         )}

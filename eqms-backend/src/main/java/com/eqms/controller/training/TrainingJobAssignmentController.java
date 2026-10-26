@@ -29,8 +29,17 @@ public class TrainingJobAssignmentController {
         return ResponseEntity.ok(jobs.list(users.requireCurrentUser(), search, status, sortBy, sortDirection, page, limit, filters));
     }
 
+    /** The work position of a person for Training, to show it in the profile (read only); an empty answer when there is none. */
+    @GetMapping("/work-position/{personId}")
+    public ResponseEntity<?> workPosition(@PathVariable UUID personId) {
+        Map<String, Object> position = jobs.workPositionOf(users.requireCurrentUser(), personId);
+        return ResponseEntity.ok(position == null ? Map.of() : position);
+    }
+
     @GetMapping("/eligibility")
-    public ResponseEntity<?> eligibility(@RequestParam UUID person, @RequestParam UUID position) { return ResponseEntity.ok(jobs.eligibility(users.requireCurrentUser(), person, position)); }
+    public ResponseEntity<?> eligibility(@RequestParam UUID person, @RequestParam UUID position, @RequestParam(required = false) java.util.List<UUID> topicIds, @RequestParam(required = false) java.util.List<UUID> documentIds) {
+        return ResponseEntity.ok(jobs.eligibility(users.requireCurrentUser(), person, position, topicIds, documentIds));
+    }
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody SaveRequest request) { return ResponseEntity.ok(jobs.create(users.requireCurrentUser(), request)); }

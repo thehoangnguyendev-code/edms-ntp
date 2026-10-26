@@ -35,6 +35,7 @@ import static com.eqms.service.training.TrainingWordForms.appendBlock;
 import static com.eqms.service.training.TrainingWordForms.appendLine;
 import static com.eqms.service.training.TrainingWordForms.cellsText;
 import static com.eqms.service.training.TrainingWordForms.fillRows;
+import static com.eqms.service.training.TrainingWordForms.fillRowsBilingual;
 import static com.eqms.service.training.TrainingWordForms.find;
 import static com.eqms.service.training.TrainingWordForms.findAll;
 import static com.eqms.service.training.TrainingWordForms.findParagraph;
@@ -438,6 +439,18 @@ public class TrainingFormExportService {
         return jobAssignment(actor, id, format, false, null);
     }
 
+    @SuppressWarnings("unchecked")
+    private static String roleLines(Object roles, String fallback) {
+        if (!(roles instanceof List<?> list) || list.isEmpty()) return fallback;
+        List<String> lines = new ArrayList<>();
+        for (Object o : list) {
+            Map<String, Object> role = (Map<String, Object>) o;
+            String dept = String.valueOf(role.get("department") == null ? "" : role.get("department"));
+            lines.add(role.get("name") + (dept.isBlank() ? "" : " (" + dept + ")"));
+        }
+        return String.join("\n", lines);
+    }
+
     /** The paper print of the job assignment, to be signed by hand: the data is written, the signatures are not; the copy is numbered and recorded, and a reprint needs a reason. */
     @Transactional
     public Map<String, Object> jobAssignmentPaper(UserAccount actor, UUID id, String format, String reason) {
@@ -464,7 +477,7 @@ public class TrainingFormExportService {
         }
         final String control = controlText;
         Map<String, Object> person = jdbc.queryForList("select full_name, employee_code from app_users where id = ?", j.get("personUserId")).stream().findFirst().orElseThrow();
-        boolean change = "CHANGE".equals(j.get("caseType"));
+        boolean change = "CHANGE".equals(j.get("caseType")) || "ADDITIONAL".equals(j.get("caseType"));
         String previousDepartment = j.get("previousDepartmentId") == null ? "" : jdbc.queryForList("select name from departments where id = ?", String.class, j.get("previousDepartmentId")).stream().findFirst().orElse("");
         Map<String, Object> matrix = j.get("matrixVersionId") == null ? Map.of() : jdbc.queryForList("""
             select m.code, v.version_no from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where v.id = ?
@@ -496,9 +509,10 @@ public class TrainingFormExportService {
                 }
             } else {
                 XWPFTable changed = find(doc, "Reason for change");
-                setValueOf(changed, "Current position", text(j.get("previousPositionName")) + (previousDepartment.isEmpty() ? "" : " (" + previousDepartment + ")"));
+                // every Job Role the person held before and every one they hold after, one to a line (APD.0024); an older assignment without the list gives the one it replaces
+                setValueOf(changed, "Current position", roleLines(j.get("rolesBefore"), text(j.get("previousPositionName")) + (previousDepartment.isEmpty() ? "" : " (" + previousDepartment + ")")));
                 setValueOf(changed, "Reason for change", text(j.get("changeReason")));
-                setValueOf(changed, "New position", text(j.get("positionName")) + " (" + text(j.get("departmentName")) + ")");
+                setValueOf(changed, "New position", roleLines(j.get("rolesAfter"), text(j.get("positionName")) + " (" + text(j.get("departmentName")) + ")"));
                 setValueOf(changed, "direct superior", text(j.get("directSuperiorTitle")));
                 setValueOf(changed, "subordinates", text(j.get("subordinateTitles")));
                 setValueOf(changed, "Substitute", text(j.get("substituteTitle")));
@@ -510,9 +524,11 @@ public class TrainingFormExportService {
                 setParagraph(line1, text(j.get("jurisdiction")));
                 if (at + 2 < doc.getBodyElements().size() && doc.getBodyElements().get(at + 2) instanceof XWPFParagraph line2 && line2.getText().isBlank()) doc.removeBodyElement(at + 2);
             }
-            List<List<String>> duties = new ArrayList<>();
-            for (Map<String, Object> d : (List<Map<String, Object>>) j.get("duties")) duties.add(List.of(text(d.get("responsibility")), text(d.get("description"))));
-            fillRows(find(doc, "Job description"), duties);
+            // part 4: the Vietnamese text, then the English one in italic under it, a cell with several lines is several paragraphs
+            List<String[]> duties = new ArrayList<>();
+            for (Map<String, Object> d : (List<Map<String, Object>>) j.get("duties"))
+                duties.add(new String[]{text(d.get("responsibility")), text(d.get("responsibilityEn")), text(d.get("description")), text(d.get("descriptionEn"))});
+            fillRowsBilingual(find(doc, "Job description"), 1, duties);
             XWPFTable signers = find(doc, "Receiver");
             keepTogether(signers);
             if (!paper) {
@@ -544,7 +560,7 @@ public class TrainingFormExportService {
         List<Map<String, Object>> versions = jdbc.queryForList("""
             select s.id, s.version_no, s.effective_date, s.status, cu.full_name as confirmed_by_name, s.confirmed_signature_id, (s.stored_path_2 is not null) as has_second
               from training_specimen_signatures s left join app_users cu on cu.id = s.confirmed_by
-             where s.person_user_id = ? and s.status in ('APPROVED', 'SUPERSEDED') order by s.version_no
+             where s.person_user_id = ? and (s.status = 'APPROVED' or (s.status = 'OBSOLETED' and s.effective_date is not null)) order by s.version_no
             """, personId);
         if (versions.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PRINT_NOT_APPROVED");
         // the images are read through the service of the specimens: the same permissions and the same entry in the Audit Trail as when they are opened on the screen

@@ -21,6 +21,8 @@ interface Props {
   tabLayoutId: string;
   /** Command buttons that sit after Back in the footer row. */
   footer?: ReactNode;
+  /** Buttons that sit beside Back at the top of the page, for the commands that are used often (they are also in the footer row when the page puts them there). */
+  headerExtra?: ReactNode;
   /** Show the same Back and command buttons beside the title too, so they can be used without scrolling to the foot of the page. */
   repeatFooterInHeader?: boolean;
   /** A second card of tabs below the Back and command buttons, as in Document Details (the copies sent, for example). */
@@ -29,7 +31,7 @@ interface Props {
 }
 
 /** The frame of every Training detail screen; it repeats the frame of Document Details (stepper, tab card, footer row). */
-export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, currentStepIndex, terminalProgressStep, skippedSteps, tabs, activeTab, onTab, tabLayoutId, footer, repeatFooterInHeader = false, afterFooter, children }: Props) {
+export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, currentStepIndex, terminalProgressStep, skippedSteps, tabs, activeTab, onTab, tabLayoutId, footer, headerExtra, repeatFooterInHeader = false, afterFooter, children }: Props) {
   return (
     <div className="w-full space-y-4 md:space-y-6">
       <div className="flex flex-col gap-4">
@@ -39,6 +41,7 @@ export function TrainingDetailLayout({ title, breadcrumbItems, onBack, steps, cu
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={onBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">Back</Button>
+              {headerExtra}
               {repeatFooterInHeader && footer}
             </div>
           }

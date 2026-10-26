@@ -36,14 +36,15 @@ public class TrainingComplianceService {
             left join training_topics t on t.id = r.topic_id left join documents d on d.id = r.document_id),
         people as (
           select tp.person_user_id as pid, u.full_name, u.employee_code, tp.position_id, p.name as position_name
-            from training_person_positions tp join app_users u on u.id = tp.person_user_id join positions p on p.id = tp.position_id
+            from training_person_positions tp join app_users u on u.id = tp.person_user_id join training_job_roles p on p.id = tp.position_id
            where tp.valid_to is null and u.status = 'Active'),
         gaps as (
-          select pe.pid, pe.full_name, pe.employee_code, pe.position_name, req.title, req.code, req.annual_required,
+          select distinct on (pe.pid, req.row_id) pe.pid, pe.full_name, pe.employee_code, pe.position_name, req.title, req.code, req.annual_required,
                  (select max(r.completed_on) from training_records r left join training_record_voids v on v.record_id = r.id
                    where r.person_user_id = pe.pid and v.id is null
                      and ((req.dnum is not null and r.document_number = req.dnum) or (req.tname is not null and lower(r.topic_text) = lower(req.tname)))) as last_done
-            from people pe join req on req.position_id = pe.position_id)
+            from people pe join req on req.position_id = pe.position_id
+           order by pe.pid, req.row_id, pe.position_name)
         select *, case when last_done is null then 'MISSING'
                        when annual_required and last_done < current_date - interval '1 year' then 'DUE'
                        else 'OK' end as status

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { MoreVertical } from "lucide-react";
-import { IconBan, IconExternalLink, IconFileSearch } from "@tabler/icons-react";
+import { IconBan, IconExternalLink, IconFileSearch, IconListTree } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { TrainingScannedTestsModal } from "../../shared/TrainingScannedTestsModal";
 import { Avatar } from "@/components/ui/avatar";
@@ -179,16 +179,16 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
         {actionRow && (
           <div className="py-1">
             <DropdownMenuItem icon={<IconFileSearch className="h-4 w-4" />} onClick={() => { setScans(actionRow); menu.close(); }}>
-              View scanned tests
+              View Scanned Tests
             </DropdownMenuItem>
             {canOpenActivity && (
-              <DropdownMenuItem icon={<IconExternalLink className="h-4 w-4" />} onClick={() => { navigate(`/training-management/activities/${actionRow.activityId}`); menu.close(); }}>
-                View training activity
+              <DropdownMenuItem icon={<IconListTree className="h-4 w-4" />} onClick={() => { navigate(`/training-management/activities/${actionRow.activityId}`); menu.close(); }}>
+                View Training Activity
               </DropdownMenuItem>
             )}
             {canVoid && !actionRow.voidedAt && (
               <DropdownMenuItem icon={<IconBan className="h-4 w-4" />} onClick={() => { setVoiding({ record: actionRow, reason: "", step: "reason" }); menu.close(); }}>
-                Void record
+                Void Record
               </DropdownMenuItem>
             )}
           </div>

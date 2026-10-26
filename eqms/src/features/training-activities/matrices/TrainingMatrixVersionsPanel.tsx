@@ -17,7 +17,7 @@ import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/sh
 import { trainingError, trainingMatrixApi, type TrainingMatrixRow, type TrainingMatrixVersionRef } from "@/services/api/trainingActivities";
 import { day } from "../shared/trainingLabels";
 
-const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval", EFFECTIVE: "Effective", OBSOLETE: "Obsolete" };
+const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval", EFFECTIVE: "Effective", OBSOLETED: "Obsoleted" };
 const STATUS_OPTIONS = [{ label: "All", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))];
 const rowName = (r: TrainingMatrixRow) => (r.topicId ? `${r.topicCode} — ${r.topicName}` : `${r.documentNumber} — ${r.documentName}`);
 type Diff = Awaited<ReturnType<typeof trainingMatrixApi.compare>>;
@@ -58,7 +58,7 @@ export function TrainingMatrixVersionsPanel({ matrixId, currentVersionId }: { ma
         </button>
       ),
     },
-    { id: "status", header: "Status", sort: sorted("status"), cell: (v) => <Badge color={v.status === "EFFECTIVE" ? "emerald" : v.status === "OBSOLETE" ? "slate" : "amber"}>{STATUS_LABEL[v.status]}</Badge> },
+    { id: "status", header: "Status", sort: sorted("status"), cell: (v) => <Badge color={v.status === "EFFECTIVE" ? "emerald" : v.status === "OBSOLETED" ? "slate" : "amber"}>{STATUS_LABEL[v.status]}</Badge> },
     { id: "reason", header: "What changed", sort: sorted("changeReason"), cell: (v) => <div className="max-w-80 whitespace-normal">{v.changeReason || "—"}</div> },
     { id: "prepared", header: "Prepared by", sort: sorted("preparedBy"), cell: (v) => v.preparedByName ?? "—" },
     { id: "approved", header: "Approved by", sort: sorted("approvedBy"), cell: (v) => v.approvedByName ?? "—" },
@@ -77,7 +77,7 @@ export function TrainingMatrixVersionsPanel({ matrixId, currentVersionId }: { ma
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">An approved version is never changed. Each change is a new version that is prepared, then approved with an electronic signature. The effective version tells who must be trained on what; obsolete versions stay as history. Use Compare with previous to see what a version changed.</p>
+      <p className="text-xs text-slate-500">An approved version is never changed. Each change is a new version that is prepared, then approved with an electronic signature. The effective version tells who must be trained on what; obsoleted versions stay as history. Use Compare with previous to see what a version changed.</p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
         searchPlaceholder="Search version, change or person…" search={table.searchQuery}
@@ -98,7 +98,7 @@ export function TrainingMatrixVersionsPanel({ matrixId, currentVersionId }: { ma
         {actionRow && (
           <div className="py-1">
             <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { open(actionRow); menu.close(); }}>View Details</DropdownMenuItem>
-            {actionRow.previousId && ["EFFECTIVE", "OBSOLETE"].includes(actionRow.status) && (
+            {actionRow.previousId && ["EFFECTIVE", "OBSOLETED"].includes(actionRow.status) && (
               <DropdownMenuItem icon={<IconGitCompare className="h-4 w-4" />} onClick={() => { void compare(actionRow); menu.close(); }}>Compare with previous</DropdownMenuItem>
             )}
           </div>
@@ -121,7 +121,7 @@ function CompareModal({ diff, onClose }: { diff: Diff; onClose: () => void }) {
         </p>
         <section>
           <h4 className="font-semibold text-slate-900">Added in version {diff.to}</h4>
-          <p className="mb-2 text-xs text-slate-500">Topics or documents that were not in version {diff.from}. The positions are the ones that must be trained.</p>
+          <p className="mb-2 text-xs text-slate-500">Topics or documents that were not in version {diff.from}. The Job Roles are the ones that must be trained.</p>
           {diff.added.length === 0 ? none : <ul className="space-y-2">{diff.added.map((r, i) => <li key={i} className="rounded-lg border border-slate-200 p-3"><div className="font-medium">{rowName(r)}</div><div className="text-xs text-slate-600">For: {list(r.positionIds)}{r.annualRequired ? " · every year" : ""}</div></li>)}</ul>}
         </section>
         <section>
@@ -130,14 +130,14 @@ function CompareModal({ diff, onClose }: { diff: Diff; onClose: () => void }) {
           {diff.removed.length === 0 ? none : <ul className="space-y-2">{diff.removed.map((r, i) => <li key={i} className="rounded-lg border border-slate-200 p-3"><div className="font-medium">{rowName(r)}</div><div className="text-xs text-slate-600">Was for: {list(r.positionIds)}{r.annualRequired ? " · every year" : ""}</div></li>)}</ul>}
         </section>
         <section>
-          <h4 className="font-semibold text-slate-900">Same topic, different positions or yearly rule</h4>
+          <h4 className="font-semibold text-slate-900">Same topic, different Job Roles or yearly rule</h4>
           <p className="mb-2 text-xs text-slate-500">The topic or document is in both versions, but who must be trained, or the yearly repeat, is not the same.</p>
           {diff.changed.length === 0 ? none : (
             <ul className="space-y-2">
               {diff.changed.map((r, i) => (
                 <li key={i} className="rounded-lg border border-slate-200 p-3">
                   <div className="font-medium">{rowName(r)}</div>
-                  <div className="text-xs text-slate-600">Positions: {list(r.previousPositionIds)} → {list(r.positionIds)}</div>
+                  <div className="text-xs text-slate-600">Job Roles: {list(r.previousPositionIds)} → {list(r.positionIds)}</div>
                   {r.previousAnnualRequired !== r.annualRequired && <div className="text-xs text-slate-600">Every year: {r.previousAnnualRequired ? "yes" : "no"} → {r.annualRequired ? "yes" : "no"}</div>}
                 </li>
               ))}

@@ -46,11 +46,13 @@ public class TrainingFileService {
     private final FileStorageService files;
     private final ClamAvScanService virusScan;
     private final com.eqms.service.OnlyOfficeDocumentEditService onlyOffice;
+    private final TrainingPreviewMarking marking;
 
-    public TrainingFileService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, AuditTrailService audit, FileStorageService files, ClamAvScanService virusScan, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice) {
+    public TrainingFileService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, AuditTrailService audit, FileStorageService files, ClamAvScanService virusScan, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice, TrainingPreviewMarking marking) {
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
+        this.marking = marking;
         this.audit = audit;
         this.files = files;
         this.virusScan = virusScan;
@@ -203,7 +205,10 @@ public class TrainingFileService {
     public Map<String, Object> previewMaterial(UserAccount actor, UUID id) {
         Map<String, Object> m = viewable(actor, id);
         if (!String.valueOf(m.get("original_name")).toLowerCase(Locale.ROOT).endsWith(".pdf")) throw new IllegalArgumentException("TRAINING_PREVIEW_UNAVAILABLE");
-        return read(actor, (Map<String, Object>) m.get("_activity"), m, "TRAINING_MATERIAL_PREVIEWED");
+        // a view: it carries the watermark of the preview settings (the file that is downloaded does not)
+        Map<String, Object> file = new java.util.HashMap<>(read(actor, (Map<String, Object>) m.get("_activity"), m, "TRAINING_MATERIAL_PREVIEWED"));
+        if (file.get("bytes") instanceof byte[] bytes) file.put("bytes", marking.mark(bytes, actor));
+        return file;
     }
 
     /** The read-only OnlyOffice viewer config of a Word file. The file is served to the document server by a token that names it, after its SHA-256 is checked. */

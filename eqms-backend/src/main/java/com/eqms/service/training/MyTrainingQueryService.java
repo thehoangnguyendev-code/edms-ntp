@@ -87,7 +87,7 @@ public class MyTrainingQueryService {
         union all
         select 'job-' || j.id, 'RECEIVER_ACCEPT', 'TRAINING_JOB_ASSIGNMENT', j.id, 'JA #' || j.issue_no,
                'Job assignment: ' || pos.name, j.status, j.created_at, null::uuid
-          from training_job_assignments j join positions pos on pos.id = j.position_id
+          from training_job_assignments j join training_job_roles pos on pos.id = j.position_id
          where j.person_user_id = ? and j.status = 'PENDING_RECEIVER'
         """;
 

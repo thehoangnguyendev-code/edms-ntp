@@ -177,5 +177,12 @@ Việc gỡ tài liệu liên quan, tài liệu liên quan đã thông báo đà
 | F13 | Settings → Training Administration → Training Vendors: Approve Vendor (tên, mã tham chiếu, hiệu lực), ký điện tử | Đơn vị hiện trong danh sách trạng thái Active; trùng tên đang Active (kể cả khác hoa/thường) bị từ chối; hiệu lực trong quá khứ bị từ chối |
 | F14 | Tạo hoạt động đào tạo ngoài (External) với đơn vị chưa có trong danh mục | Hoạt động vẫn tạo được; màn hình có thông báo vàng "not on the register of approved training providers (SOP.0025)" |
 | F15 | Tạo đào tạo ngoài với đơn vị đã duyệt | Không có thông báo; sau khi Make Inactive (có lý do và chữ ký) thì thông báo quay lại |
+| F16 | Settings → Training Administration → Job Roles: New Job Role (mã, tên, bộ phận, Position, mô tả, quyền hạn) | Job Role xuất hiện trong danh sách Active; mã trùng hoặc tên trùng trong cùng bộ phận bị từ chối; người không có quyền Training Administration không thấy menu |
+| F17 | Mở một phiên bản ma trận Draft của bộ phận đó | Mỗi cột là một Job Role (không còn cột Position); tick các chủ đề cho Job Role, lưu, gửi duyệt như thường |
+| F18 | Job Assignments → New Job Assignment cho một nhân viên chưa giữ Job Role nào | Chỉ chọn Employee và Job Role; bản nháp là Initial; quyền hạn lấy sẵn từ Job Role |
+| F19 | Hoàn tất bản đó (ký người giao, nhân viên chấp nhận), rồi tạo bản giao việc thứ hai cho cùng người | Form hỏi "Is added to the ones held" hay "Replaces one held"; chọn Additional thì sau khi ký người đó giữ **cả hai** Job Role; chọn Replaces thì phải nhập lý do, Job Role cũ thành Obsoleted |
+| F20 | Settings → Training Administration → Person Job Roles | Chỉ đọc: mỗi người một dòng với các Job Role họ giữ và nguồn; không còn ô "Set position" |
+| F21 | Job Assignments, mở menu hành động của từng dòng | View Details luôn có; Continue Draft chỉ ở bản nháp của người có quyền; Review and Accept chỉ ở bản chờ ký của chính nhân viên đó. Tương tự ở Training Assessments (Continue Draft, Review and Approve) |
+| F22 | Vào Job Roles, cố Deactivate một Job Role mà có người đang giữ | Bị từ chối (đang có người giữ); Job Role không ai giữ thì tắt được và không còn trong danh sách chọn |
 
 **Chưa kiểm chứng (cần bạn nhìn):** file Word mở trong Microsoft Word (ô đánh dấu, dòng đầu bản in, chữ ký không bị tách trang), các nút mới trên trình duyệt.

@@ -56,6 +56,11 @@ public class TrainingFormTemplateService {
     /** The list of the Training Properties screen: searched, filtered by status, sorted and paged here. */
     @Transactional(readOnly = true)
     public Map<String, Object> page(UserAccount actor, String search, String status, String sortBy, String sortDirection, int page, int limit) {
+        return page(actor, search, status, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> page(UserAccount actor, String search, String status, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.admin.manage");
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
@@ -65,6 +70,16 @@ public class TrainingFormTemplateService {
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         if (status != null && Set.of("ENABLED", "DISABLED").contains(status)) { where.append(" and t.status = ?"); args.add(status); }
+        TrainingListFilter extra = new TrainingListFilter().equal("t.code", more.get("code"))
+                .contains(more.get("uploadedBy"), "u.full_name").contains(more.get("enabledBy"), "a.full_name").contains(more.get("disabledBy"), "d.full_name")
+                .timeRange("t.uploaded_at", more.get("uploadedFrom"), more.get("uploadedTo")).timeRange("t.activated_at", more.get("enabledFrom"), more.get("enabledTo"))
+                .timeRange("t.disabled_at", more.get("disabledFrom"), more.get("disabledTo"));
+        if ("YES".equals(more.get("everEnabled"))) extra.raw("t.activated_at is not null");
+        else if ("NO".equals(more.get("everEnabled"))) extra.raw("t.activated_at is null");
+        if ("NEWER_REVISION".equals(more.get("disableKind"))) extra.raw("t.status = 'DISABLED' and t.disable_reason = 'Another revision of the document was enabled'");
+        else if ("MANUAL".equals(more.get("disableKind"))) extra.raw("t.status = 'DISABLED' and coalesce(t.disable_reason,'') <> 'Another revision of the document was enabled'");
+        where.append(extra.and());
+        args.addAll(extra.args());
         String from = " from training_form_templates t join app_users u on u.id = t.uploaded_by left join app_users a on a.id = t.activated_by left join app_users d on d.id = t.disabled_by";
         Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
@@ -73,8 +88,8 @@ public class TrainingFormTemplateService {
         List<Map<String, Object>> rows = jdbc.queryForList("""
             select t.id, t.code, t.title, t.version_label, t.original_name, t.size_bytes, t.sha256, t.remark, t.status, t.uploaded_at, u.full_name as uploaded_by_name,
                    t.activated_at as enabled_at, a.full_name as enabled_by_name, t.disabled_at, d.full_name as disabled_by_name, t.disable_reason
-            """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("code", "t.code", "title", "t.title", "version", "t.version_label", "status", "t.status",
-                "uploadedBy", "u.full_name", "uploadedAt", "t.uploaded_at", "enabledAt", "t.activated_at"), "t.code, t.uploaded_at desc") + " limit ? offset ?", args.toArray());
+            """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.ofEntries(Map.entry("code", "t.code"), Map.entry("title", "t.title"), Map.entry("version", "t.version_label"), Map.entry("status", "t.status"),
+                Map.entry("uploadedBy", "u.full_name"), Map.entry("uploadedAt", "t.uploaded_at"), Map.entry("enabledAt", "t.activated_at"), Map.entry("enabledBy", "a.full_name"), Map.entry("disabledBy", "d.full_name"), Map.entry("disabledAt", "t.disabled_at"), Map.entry("disableReason", "t.disable_reason")), "t.code, t.uploaded_at desc") + " limit ? offset ?", args.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;

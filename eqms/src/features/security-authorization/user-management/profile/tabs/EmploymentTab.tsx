@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { trainingWorkPositionApi } from "@/services/api/trainingActivities";
 import { EditableField, InfoField } from "../components/ProfileSectionCard";
 import { formatDate } from "@/utils/format";
 import type { User } from "../../types";
@@ -30,6 +31,15 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
   yearsOfService,
   onDraftChange,
 }) => {
+  // The work position of the person for Training (the matrix and the job assignment): read only, and not the same as the Position above, which is the title of the person.
+  const [workPosition, setWorkPosition] = useState<{ positionName?: string; source?: string }>({});
+  useEffect(() => {
+    let live = true;
+    setWorkPosition({});
+    if (user.id) trainingWorkPositionApi.of(String(user.id)).then((p) => { if (live) setWorkPosition(p); }).catch(() => { if (live) setWorkPosition({}); });
+    return () => { live = false; };
+  }, [user.id]);
+
   const filteredPositionOptions = React.useMemo(() => {
     const base = [{ label: "Select Position", value: "" }];
     if (!draft.businessUnit || !draft.department) return base;
@@ -69,6 +79,9 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
           onChange={onDraftChange}
           error={fieldErrors.position}
         />
+        {workPosition.positionName && (
+          <InfoField label="Job Roles (Training)" value={workPosition.positionName} />
+        )}
         <EditableField
           label="Direct Manager" value={user.managerName} draftValue={draft.managerName}
           isEditing={isEditing}

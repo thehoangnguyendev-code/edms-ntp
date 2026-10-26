@@ -144,6 +144,11 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
       zoom: {
         defaultZoomLevel,
       },
+      // Smoother scrolling. By default the viewer draws only the tiles that are on the screen, so a scroll shows blank or blurred tiles until they are drawn: one more ring of tiles around the
+      // screen is drawn ahead, more pages are kept, and the sharp tiles are redrawn sooner after the scroll stops.
+      tiling: { extraRings: 1 },
+      scroll: { defaultBufferSize: 6 },
+      viewport: { scrollEndDelay: 150 },
       permissions: {
         enforceDocumentPermissions: true,
         overrides: {

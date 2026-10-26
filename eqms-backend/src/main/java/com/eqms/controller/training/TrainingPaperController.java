@@ -42,8 +42,8 @@ public class TrainingPaperController {
 
     /** The attendance list of the activity in the form APD.0117, filled in the Word template that Training Administration enabled; as Word (default) or PDF. */
     @GetMapping("/activities/{id}/attendance-list")
-    public ResponseEntity<byte[]> attendanceList(@PathVariable UUID id, @RequestParam(defaultValue = "docx") String format) {
-        Map<String, Object> file = attendanceLists.export(users.requireCurrentUser(), id, format);
+    public ResponseEntity<byte[]> attendanceList(@PathVariable UUID id, @RequestParam(defaultValue = "docx") String format, @RequestParam(defaultValue = "false") boolean preview) {
+        Map<String, Object> file = attendanceLists.export(users.requireCurrentUser(), id, format, preview);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) file.get("contentType"))).cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
     }

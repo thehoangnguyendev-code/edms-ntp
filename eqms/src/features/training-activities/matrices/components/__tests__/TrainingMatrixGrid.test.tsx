@@ -16,11 +16,11 @@ describe("TrainingMatrixGrid (APD.0011 layout)", () => {
   it("shows No, SOP No, title, the positions under Work position, and Annual Yes/No, in groups", () => {
     render(<TrainingMatrixGrid rows={rows} positions={positions} editing={false} onToggle={vi.fn()} onAnnual={vi.fn()} onRemove={vi.fn()} />);
 
-    expect(screen.getByText("Work position")).toBeTruthy();
+    expect(screen.getByText("Job Role")).toBeTruthy();
     expect(screen.getByText("SOP No")).toBeTruthy();
     expect(screen.getByText("Subject / SOP title")).toBeTruthy();
     expect(screen.getByText("General training of the whole factory")).toBeTruthy();
-    expect(screen.getByText("SOP for each position")).toBeTruthy();
+    expect(screen.getByText("SOP for each Job Role")).toBeTruthy();
     expect(screen.getByText("GMP overview")).toBeTruthy();
     expect(screen.getByText("Yes")).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Operator" })).toBeTruthy();
@@ -29,10 +29,10 @@ describe("TrainingMatrixGrid (APD.0011 layout)", () => {
   it("shows only the rows of the chosen position and collapses a group", () => {
     render(<TrainingMatrixGrid rows={rows} positions={positions} editing={false} onToggle={vi.fn()} onAnnual={vi.fn()} onRemove={vi.fn()} />);
 
-    fireEvent.change(screen.getByLabelText("Show only the rows of a position"), { target: { value: "p2" } });
+    fireEvent.change(screen.getByLabelText("Show only the rows of a Job Role"), { target: { value: "p2" } });
     expect(screen.queryByText("GMP overview")).toBeNull();
     expect(screen.getByText("Training")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Collapse SOP for each position" }));
+    fireEvent.click(screen.getByRole("button", { name: "Collapse SOP for each Job Role" }));
     expect(screen.queryByText("Training")).toBeNull();
   });
 
@@ -59,7 +59,7 @@ describe("TrainingMatrixGrid (APD.0011 layout)", () => {
     expect(onToggle).toHaveBeenCalledWith(0, "p2");
     fireEvent.click(screen.getByRole("switch", { name: "Annual training required: Training" }));
     expect(onAnnual).toHaveBeenCalledWith(1, true);
-    const footer = screen.getByText("Rows required of the position").closest("tr") as HTMLElement;
+    const footer = screen.getByText("Rows required of the Job Role").closest("tr") as HTMLElement;
     expect(within(footer).getAllByText("2").length).toBeGreaterThan(0);
     expect(screen.getByRole("checkbox", { name: "GMP GMP overview — Operator" }).getAttribute("aria-checked")).toBe("true");
   });

@@ -378,7 +378,7 @@ public class NavigationService {
             if (hasPermission(normalizedPermissions, "training.admin.manage")) {
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-topics", "Training Topics", null, "/settings/administration/training/topics", false, null));
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-vendors", "Training Vendors", null, "/settings/administration/training/vendors", false, null));
-                trainingAdminChildren.add(new NavigationItemResponse("training-admin-person-positions", "Person Positions", null, "/settings/administration/training/person-positions", false, null));
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-job-roles", "Job Roles", null, "/settings/administration/training/job-roles", false, null));
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-notifications", "Training Notifications", null, "/settings/administration/training/notifications", false, null));
             }
             if (!trainingAdminChildren.isEmpty()) {

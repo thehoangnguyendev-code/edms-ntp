@@ -173,7 +173,8 @@ export const FormModal: React.FC<FormModalProps> = ({
               duration: 0.3
             }}
             className={cn(
-              'bg-white/95 backdrop-blur-md rounded-xl w-full border border-slate-200 overflow-hidden flex flex-col relative z-10',
+              // a solid panel: a blur behind a panel that holds a PDF or OnlyOffice viewer makes the browser blur again at every frame of a scroll, and the scroll stutters
+              'bg-white rounded-xl w-full border border-slate-200 overflow-hidden flex flex-col relative z-10',
               sizeToClass[size],
               className
             )}

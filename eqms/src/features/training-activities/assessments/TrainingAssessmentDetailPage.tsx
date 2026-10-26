@@ -15,7 +15,7 @@ import { Select } from "@/components/ui/select/Select";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
-import { PdfPreviewModal } from "@/features/documents/shared/components/PdfPreviewModal";
+import { AssessmentPreviewModal } from "./AssessmentPreviewModal";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import {
   trainingAssessmentsApi,
@@ -30,6 +30,7 @@ import { Input, Textarea } from "../shared/TrainingFields";
 import { statusChange, trainingBreadcrumbs, when } from "../shared/trainingLabels";
 import { ReadonlyField, ReadonlyGrid, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
 import { useTrainingBack } from "../shared/useTrainingBack";
+import { AssessmentRevisionsCard } from "./AssessmentRevisionsCard";
 import { ASSESSMENT_KIND_LABEL, ASSESSMENT_STATUS_LABEL } from "./TrainingAssessmentListView";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -94,8 +95,8 @@ export function distributePoints(items: Draft[], total: number): string[] | null
   return diff === 0 ? alloc.map((c) => String(c / 100)) : null;
 }
 
-const STEPS = ["Draft", "Pending Approval", "Effective"];
-const STEP_OF: Record<string, number> = { DRAFT: 0, PENDING_APPROVAL: 1, EFFECTIVE: 2, SUPERSEDED: 3 };
+const STEPS = ["Draft", "Pending Approval", "Effective", "Obsoleted"];
+const STEP_OF: Record<string, number> = { DRAFT: 0, PENDING_APPROVAL: 1, EFFECTIVE: 2, OBSOLETED: 3 };
 
 /** One Training Assessment of the library (APD.0009): a test of questions or a checklist. A draft is written here and sent for approval; another person signs it into Effective; a change is a new version. */
 export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolean }) {
@@ -106,7 +107,7 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
   const [detail, setDetail] = useState<TrainingAssessmentDetail>();
   const [error, setError] = useState("");
   const [tab, setTab] = useState("overview");
-  const [head, setHead] = useState<{ title: string; kind: AssessmentKind; duration: string }>({ title: "", kind: "QUESTIONS", duration: "" });
+  const [head, setHead] = useState<{ name: string; kind: AssessmentKind; duration: string }>({ name: "", kind: "QUESTIONS", duration: "" });
   const [items, setItems] = useState<Draft[]>([blank("QUESTIONS")]);
   const [dirty, setDirty] = useState(isNew);
   const [busy, setBusy] = useState(false);
@@ -114,13 +115,13 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
   const [reason, setReason] = useState("");
   const [signing, setSigning] = useState(false);
   const [totalText, setTotalText] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ url: string; key: boolean }>();
-  // The paper opened in the window is released with the window.
-  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview.url); }, [preview]);
+  // The preview has a state of its own: it is only the drawing of a paper by the document server and must not make the other buttons look busy.
+  const [previewing, setPreviewing] = useState(false);
+  const [preview, setPreview] = useState<{ url: string }>();
 
   const apply = useCallback((d: TrainingAssessmentDetail) => {
     setDetail(d);
-    setHead({ title: d.title, kind: d.kind, duration: d.durationMinutes ? String(d.durationMinutes) : "" });
+    setHead({ name: d.name, kind: d.kind, duration: d.durationMinutes ? String(d.durationMinutes) : "" });
     setItems(d.items.map((i) => ({ id: newKey(), kind: i.kind, prompt: i.prompt, options: i.kind === "TRUE_FALSE" ? [] : opts(i.options.map((o) => o.text)), correct: i.correct, points: String(i.points), modelAnswer: i.modelAnswer ?? "" })));
     setDirty(false);
     setTotalText(null);
@@ -166,10 +167,10 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
     setDirty(true);
   };
   const durationValid = head.duration.trim() === "" || (Number.isInteger(Number(head.duration)) && Number(head.duration) >= 1 && Number(head.duration) <= 480);
-  const valid = head.title.trim().length > 0 && items.length > 0 && items.every(itemValid) && durationValid;
+  const valid = head.name.trim().length > 0 && items.length > 0 && items.every(itemValid) && durationValid;
   const body = (): TrainingAssessmentSave => ({
     version: detail?.version,
-    title: head.title.trim(),
+    name: head.name.trim(),
     kind: head.kind,
     durationMinutes: head.duration.trim() ? Number(head.duration) : undefined,
     items: items.map((d) => ({
@@ -182,24 +183,27 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
     })),
   });
 
-  /** The paper drawn from what is in the editor now (saved or not), in the project PDF viewer; with the key it is the paper of the trainer. */
-  const openPreview = async (key: boolean) => {
-    setBusy(true);
+  /** The paper drawn from what is in the editor now (saved or not), in the project PDF viewer; with the key it is the paper of the trainer. Nothing is stored. */
+  const makePaper = async (paper: "test" | "key" | "both") => {
+    const { items: previewItems, durationMinutes } = body();
+    const blob = await trainingAssessmentsApi.preview({ name: head.name.trim(), kind: head.kind, durationMinutes, items: previewItems, key: paper === "key", sideBySide: paper === "both" || undefined, code: detail?.code, revisionNumber: detail?.revisionNumber });
+    return URL.createObjectURL(blob);
+  };
+  const openPreview = async () => {
+    setPreviewing(true);
     try {
-      const { items: previewItems, durationMinutes } = body();
-      const blob = await trainingAssessmentsApi.preview({ title: head.title.trim(), kind: head.kind, durationMinutes, items: previewItems, key, code: detail?.code, versionNo: detail?.versionNo });
-      setPreview({ url: URL.createObjectURL(blob), key });
+      setPreview({ url: await makePaper("test") });
     } catch (e) {
       showToast({ type: "error", title: "The preview could not be made", message: trainingError(e) });
     } finally {
-      setBusy(false);
+      setPreviewing(false);
     }
   };
   const run = async (action: () => Promise<TrainingAssessmentDetail>, done: string) => {
     setBusy(true);
     try {
       const next = await action();
-      showToast({ type: "success", title: done, message: `${next.code} v${next.versionNo}` });
+      showToast({ type: "success", title: done, message: `${next.code} ${next.revisionNumber}` });
       if (isNew) navigate(`/training-management/assessments/${next.id}`, { replace: true });
       else apply(next);
       return true;
@@ -294,12 +298,19 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
   );
 
   const tabs: TabItem[] = [{ id: "overview", label: "General Information" }, { id: "items", label: checklist ? "Checklist Lines" : "Questions", count: items.length }, ...(isNew ? [] : [{ id: "audit", label: "Audit Trail" }])];
-  const superseded = detail?.status === "SUPERSEDED";
-  const steps = superseded ? [...STEPS, "Replaced"] : STEPS;
+  const obsoleted = detail?.status === "OBSOLETED";
+  const steps = STEPS;
   const stepIndex = detail ? (STEP_OF[detail.status] ?? 0) : 0;
+  const previewButton = (
+    <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={previewing} disabled={!valid || busy} title={!valid ? "Complete the assessment name and every question or line to see the preview." : "See the paper as it is printed"} onClick={() => void openPreview()}>Preview</Button>
+  );
+  const newVersionButton = caps?.newVersion ? (
+    <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={previewing} onClick={() => void run(() => trainingAssessmentsApi.newVersion(detail!.id), "New version created")}>New Version</Button>
+  ) : null;
+  const headerExtra = (<>{previewButton}{newVersionButton}</>);
   const footer = (
     <>
-      <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={!valid} title={!valid ? "Complete the title and every question or line to see the preview." : "See the paper as it is printed"} onClick={() => void openPreview(false)}>Preview</Button>
+      {previewButton}
       {editable && (
         <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} disabled={!dirty || !valid}
           title={!valid ? "Every question or line needs its text and its answers; a question needs points above zero." : undefined}
@@ -310,14 +321,15 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
       {caps?.submit && <Button size="sm" className="whitespace-nowrap" loading={busy} disabled={dirty} title={dirty ? "Save the draft first." : undefined} onClick={() => void run(() => trainingAssessmentsApi.submit(detail!.id), "Sent for approval")}>Submit for Approval</Button>}
       {caps?.approve && <Button size="sm" className="whitespace-nowrap" onClick={() => setSigning(true)}>Approve</Button>}
       {caps?.returnToDraft && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => { setReason(""); setAsking("return"); }}>Return to Draft</Button>}
-      {caps?.newVersion && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" loading={busy} onClick={() => void run(() => trainingAssessmentsApi.newVersion(detail!.id), "New version created")}>New Version</Button>}
+      {newVersionButton}
       {caps?.delete && <Button size="sm" variant="destructive" className="whitespace-nowrap" onClick={() => { setReason(""); setAsking("delete"); }}>Delete Draft</Button>}
     </>
   );
 
   return (
     <>
-      <TrainingDetailLayout title={title} breadcrumbItems={crumbs} onBack={goBack} steps={steps} currentStepIndex={stepIndex} terminalProgressStep="Draft" tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-assessment-detail-tab" footer={footer}>
+      <TrainingDetailLayout title={title} breadcrumbItems={crumbs} onBack={goBack} steps={steps} currentStepIndex={stepIndex} terminalProgressStep={obsoleted ? "Effective" : "Draft"} tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-assessment-detail-tab" footer={footer} headerExtra={headerExtra}
+        afterFooter={tab === "overview" && !isNew && detail ? <AssessmentRevisionsCard assessmentId={detail.id} signature={`${detail.status}:${detail.revisionNumber}:${detail.updatedAt}`} /> : undefined}>
         {tab === "overview" && (
           <div className="space-y-6">
             {!isNew && detail?.approveBlocker && (
@@ -326,7 +338,8 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
             {!isNew && detail && (
             <ReadonlyGrid>
                 <>
-                  <ReadonlyField label="Code" value={`${detail.code} v${detail.versionNo}`} />
+                  <ReadonlyField label="Assessment Number" value={detail.code} />
+                  <ReadonlyField label="Assessment Revision" value={detail.revisionNumber} />
                   <ReadonlyField label="Status" value={ASSESSMENT_STATUS_LABEL[detail.status] ?? detail.status} />
                   <ReadonlyField label="Created By" value={detail.createdByName} />
                   <ReadonlyField label="Last Changed By" value={`${detail.updatedByName}, ${when(detail.updatedAt)}`} />
@@ -338,7 +351,7 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
             )}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
               <div className="md:col-span-2">
-                <FormField label="Title" required hint="Only to recognise the assessment in the library. It is not written in the form."><Input value={head.title} maxLength={255} disabled={!editable} placeholder="Kiểm tra đào tạo SOP.0006" onChange={(e) => { setHead({ ...head, title: e.target.value }); setDirty(true); }} /></FormField>
+                <FormField label="Assessment Name" required hint="Only to recognise the assessment in the library. It is not written in the form."><Input value={head.name} maxLength={255} disabled={!editable} placeholder="Kiểm tra đào tạo SOP.0006" onChange={(e) => { setHead({ ...head, name: e.target.value }); setDirty(true); }} /></FormField>
               </div>
               <FormField label="Type" required>
                 <Select
@@ -396,12 +409,12 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
       </TrainingDetailLayout>
 
       {preview && (
-        <PdfPreviewModal
-          title={preview.key ? "Preview: answer key" : "Preview: test paper"}
-          description={preview.key ? "For the trainer only: the right answers are marked. It is never handed out." : "The content in the enabled form APD.0009, as an activity gets it. The training topic is a sample line here; the name of each trainee, the Training Number and the date are on the cover page when it is printed for a session."}
-          fileUrl={preview.url}
+        <AssessmentPreviewModal
+          title={`Preview: ${head.name.trim() || "Training Assessment"}`}
+          description={checklist ? "The checklist in the enabled form APD.0009, as an activity gets it; the answer key is for the trainer only and is never handed out." : "The test in the enabled form APD.0009, as an activity gets it; the answer key is for the trainer only and is never handed out. The training topic is a sample line here; the name of each trainee, the Training Number and the date are written when it is printed for a session."}
+          firstUrl={preview.url}
+          load={(paper) => makePaper(paper)}
           onClose={() => setPreview(undefined)}
-          footerExtra={<Button size="sm" variant="outline" loading={busy} onClick={() => void openPreview(!preview.key)}>{preview.key ? "Show the test paper" : "Show the answer key"}</Button>}
         />
       )}
       <FormModal
@@ -429,7 +442,7 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
         changes={statusChange("Pending Approval", "Effective", "Training assessment")}
         meaningDisplayName="Training Assessment Approved"
         meaningCode="TRAINING_ASSESSMENT_APPROVED"
-        targetDetails={{ code: detail ? `${detail.code} v${detail.versionNo}` : "", title: head.title, revision: "" }}
+        targetDetails={{ code: detail?.code ?? "", title: head.name, revision: detail?.revisionNumber ?? "" }}
       />
     </>
   );

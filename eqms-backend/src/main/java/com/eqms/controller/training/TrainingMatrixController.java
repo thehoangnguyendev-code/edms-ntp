@@ -19,7 +19,6 @@ import java.util.UUID;
 @RequestMapping("/training")
 public class TrainingMatrixController {
     public record CreateMatrixRequest(UUID departmentId) {}
-    public record PersonPositionRequest(UUID personUserId, UUID positionId) {}
 
     private final TrainingMatrixService matrices;
     private final CurrentUserService users;
@@ -123,6 +122,4 @@ public class TrainingMatrixController {
         return ResponseEntity.ok(matrices.personPositions(users.requireCurrentUser(), search, unmatchedOnly, department, positionId, mapped, suggested, sortBy, sortDirection, page, limit));
     }
 
-    @PutMapping("/person-positions")
-    public ResponseEntity<?> setPersonPosition(@RequestBody PersonPositionRequest request) { return ResponseEntity.ok(matrices.setPersonPosition(users.requireCurrentUser(), request.personUserId(), request.positionId())); }
 }

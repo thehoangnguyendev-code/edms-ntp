@@ -350,7 +350,7 @@ Tên bảng là đề xuất; số migration cấp sau khi kiểm tra đầu mig
 | Danh mục | `training_positions` | Danh mục vị trí công việc (bộ phận, tên, bật tắt); thay cho cột `position` dạng chữ |
 | | `training_topics` | Chủ đề đào tạo chuẩn (chung toàn nhà máy, chung theo bộ phận) |
 | | `training_settings` (một dòng) | Ngưỡng đạt (70), hạn 10 ngày, hạn 7 ngày làm việc, hạn năm sau 31/12, năm bắt đầu; có phiên bản và Audit |
-| Ma trận | `training_matrices`, `training_matrix_versions` | Ma trận theo bộ phận; phiên bản Draft, Pending, Effective, Obsolete; chữ ký |
+| Ma trận | `training_matrices`, `training_matrix_versions` | Ma trận theo bộ phận; phiên bản Draft, Pending, Effective, Obsoleted; chữ ký |
 | | `training_matrix_rows`, `training_matrix_cells` | Dòng (chủ đề hoặc SOP), ô (vị trí × dòng), cờ "Annual training required" |
 | Yêu cầu | `training_requirements`, `training_requirement_lines` | Phiếu APD.0118 (năm, số, loại) và dòng (tháng, chủ đề, liên kết hoạt động) |
 | Hoạt động | `training_activities` | Mã đào tạo, loại (Initial, Periodic, Unplanned, Retraining, External), đơn vị tổ chức, trạng thái (Reserved, Open, In Progress, Assessment, Completed, Cancelled), hạn; **liên kết tùy chọn tới revision của tài liệu** (khóa revision, số revision, checksum; duy nhất cho hoạt động chưa hủy của một revision) |

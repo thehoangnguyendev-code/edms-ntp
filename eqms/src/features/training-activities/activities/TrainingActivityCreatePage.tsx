@@ -192,7 +192,7 @@ export function TrainingActivityCreatePage() {
             <input
               type="text"
               readOnly
-              value="Issued when you save"
+              value="Auto-generated after Save"
               className={CONTROL_STATE_CLASSES.readonlyField}
             />
           </ReadonlyField>

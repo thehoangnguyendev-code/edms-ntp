@@ -69,7 +69,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
   return (
   <div className="p-4 md:p-5 space-y-4">
     <FormSection
-      title="OnlyOffice preview"
+      title="OnlyOffice Preview"
       icon={<img src={onlyOfficeLogo} alt="OnlyOffice" className="h-4 w-4 object-contain" />}
     >
       <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -93,7 +93,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
     </FormSection>
 
     <FormSection
-      title="PDF preview"
+      title="PDF Preview"
       icon={<img src={EmbedPDF} alt="EmbedPDF" className="h-4 w-4 object-contain" />}
     >
       <div className="space-y-4">

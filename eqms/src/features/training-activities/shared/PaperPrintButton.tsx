@@ -11,7 +11,7 @@ import { saveBlob } from "./trainingLabels";
  * The paper print of a form that is signed by hand: the server numbers the copy and records it. The first print needs no reason; when the server says that a reason is needed (a reprint), the
  * person is asked for it and the print is made again with it.
  */
-export function PaperPrintButton({ load, fileName, label = "Print for signing" }: { load: (format: TrainingFormFormat, reason?: string) => Promise<Blob>; fileName: (format: TrainingFormFormat) => string; label?: string }) {
+export function PaperPrintButton({ load, fileName, label = "Print for Signing" }: { load: (format: TrainingFormFormat, reason?: string) => Promise<Blob>; fileName: (format: TrainingFormFormat) => string; label?: string }) {
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(false);

@@ -13,10 +13,10 @@ import { ComplianceRetentionTab } from "./tabs/ComplianceRetentionTab";
 
 const TABS: TabItem[] = [
   { id: "summary", label: "Summary" },
-  { id: "completion", label: "Matrix completion" },
-  { id: "gaps", label: "Gap list" },
-  { id: "suspensions", label: "Work suspensions" },
-  { id: "retention", label: "Record retention" },
+  { id: "completion", label: "Matrix Completion" },
+  { id: "gaps", label: "Gap List" },
+  { id: "suspensions", label: "Work Suspensions" },
+  { id: "retention", label: "Record Retention" },
 ];
 
 /** Who is trained on what the effective matrix requires, for one department. The department chosen is shared by the three tabs. */

@@ -61,7 +61,7 @@ describe("PersonnelReviewListView", () => {
     expect(screen.getByText("Ready to close")).toBeTruthy();
   });
 
-  it("opens a review from the name and from View Detail in the Action menu", async () => {
+  it("opens a review from the name and from View Details in the Action menu", async () => {
     renderList();
 
     fireEvent.click(await screen.findByRole("button", { name: /Anne Tran/ }));
@@ -112,7 +112,7 @@ describe("PersonnelReviewListView", () => {
     await screen.findByText("Anne Tran");
 
     fireEvent.click(screen.getByRole("button", { name: "More actions" }));
-    await screen.findByText("View Detail");
+    await screen.findByText("View Details");
     expect(screen.queryByText("Cancel Review")).toBeNull();
   });
 });

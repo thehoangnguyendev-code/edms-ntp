@@ -78,7 +78,7 @@ const BackupAlertsView = lazy(() => import('@/features/settings').then(m => ({ d
 const TrainingNotificationsView = lazy(() => import('@/features/settings/training-administration/notifications/TrainingNotificationsView').then(m => ({ default: m.TrainingNotificationsView })));
 const TrainingVendorsView = lazy(() => import('@/features/settings/training-administration/vendors/TrainingVendorsView').then(m => ({ default: m.TrainingVendorsView })));
 const TrainingTopicsView = lazy(() => import('@/features/settings/training-administration/topics/TrainingTopicsView').then(m => ({ default: m.TrainingTopicsView })));
-const TrainingPersonPositionsView = lazy(() => import('@/features/settings/training-administration/positions/TrainingPersonPositionsView').then(m => ({ default: m.TrainingPersonPositionsView })));
+const TrainingJobRolesView = lazy(() => import('@/features/settings/training-administration/job-roles/TrainingJobRolesView').then(m => ({ default: m.TrainingJobRolesView })));
 const TrainingPropertiesView = lazy(() => import('@/features/settings').then(m => ({ default: m.TrainingPropertiesView })));
 
 const ProfileViewWrapper = ({ navigate }: { navigate: NavigateFunction }) => {
@@ -239,7 +239,7 @@ export function settingsRoutes(navigate: NavigateFunction) {
         <Route path="properties" element={<ProtectedRoute requiredPermissions={["training.admin.properties.view", "training.settings.view"]}><Suspense fallback={<LoadingFallback />}><TrainingPropertiesView /></Suspense></ProtectedRoute>} />
         <Route path="topics" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingTopicsView /></Suspense></ProtectedRoute>} />
         <Route path="vendors" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingVendorsView /></Suspense></ProtectedRoute>} />
-        <Route path="person-positions" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingPersonPositionsView /></Suspense></ProtectedRoute>} />
+        <Route path="job-roles" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingJobRolesView /></Suspense></ProtectedRoute>} />
         <Route path="notifications" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingNotificationsView /></Suspense></ProtectedRoute>} />
       </Route>
 

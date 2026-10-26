@@ -70,7 +70,7 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
           loadingContent={<SectionLoading text="Loading…" />}
           columns={columns}
           columnLayout={layout}
-          emptyState={<TableEmptyState title="Nothing to show" description="Positions must be set for people and the department needs an effective matrix." />}
+          emptyState={<TableEmptyState title="Nothing to show" description="People must hold a Job Role (job assignment) and the department needs an effective matrix." />}
           pagination={
             table.totalItems > 0 ? (
               <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />

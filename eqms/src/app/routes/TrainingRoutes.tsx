@@ -23,6 +23,7 @@ const TrainingJobDetailPage = lazy(() => import('@/features/training-activities/
 const PersonnelReviewListView = lazy(() => import('@/features/training-activities/personnel-reviews/PersonnelReviewListView').then(m => ({ default: m.PersonnelReviewListView })));
 const PersonnelReviewDetailPage = lazy(() => import('@/features/training-activities/personnel-reviews/PersonnelReviewDetailPage').then(m => ({ default: m.PersonnelReviewDetailPage })));
 const TrainingExamPage = lazy(() => import('@/features/training-activities/activities/TrainingExamPage').then(m => ({ default: m.TrainingExamPage })));
+const TrainingSpecimenDetailPage = lazy(() => import('@/features/training-activities/specimens/TrainingSpecimenDetailPage').then(m => ({ default: m.TrainingSpecimenDetailPage })));
 const TrainingSpecimenView = lazy(() => import('@/features/training-activities/specimens/TrainingSpecimenView').then(m => ({ default: m.TrainingSpecimenView })));
 const TrainingRecordExportsView = lazy(() => import('@/features/training-activities/records/TrainingRecordExportsView').then(m => ({ default: m.TrainingRecordExportsView })));
 const TrainingRequirementListView = lazy(() => import('@/features/training-activities/requirements/TrainingRequirementListView').then(m => ({ default: m.TrainingRequirementListView })));
@@ -72,6 +73,7 @@ export function trainingRoutes() {
       <Route path="personnel-reviews" element={guardedTrainingElement("training.job_assignment.view", <PersonnelReviewListView />)} />
       <Route path="personnel-reviews/:reviewId" element={<Suspense fallback={<LoadingFallback />}><PersonnelReviewDetailPage /></Suspense>} />
       <Route path="specimen-signatures" element={<Suspense fallback={<LoadingFallback />}><TrainingSpecimenView /></Suspense>} />
+      <Route path="specimen-signatures/:specimenId" element={<Suspense fallback={<LoadingFallback />}><TrainingSpecimenDetailPage /></Suspense>} />
       <Route path="record-exports" element={guardedTrainingElement("training.record.export", <TrainingRecordExportsView />)} />
       <Route path="requirements" element={guardedTrainingElement("training.requirement.view", <TrainingRequirementListView />)} />
       <Route path="requirements/:requirementId" element={<Suspense fallback={<LoadingFallback />}><TrainingRequirementDetailPage /></Suspense>} />

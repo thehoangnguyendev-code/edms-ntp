@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MoreVertical } from "lucide-react";
 import {
   IconCircleCheck,
@@ -27,6 +27,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { resettingDates, useDateRange } from "@/features/training-activities/shared/useListFilters";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import {
   ReportListToolbar,
@@ -62,9 +63,28 @@ export function TrainingFormTemplates({ canEdit, uploadOpen, onUploadClose }: { 
     "training.admin.templates.status",
     "",
   );
+  const [code, setCode] = usePersistedState("training.admin.templates.code", "");
+  const [uploadedBy, setUploadedBy] = usePersistedState("training.admin.templates.uploadedBy", "");
+  const [enabledBy, setEnabledBy] = usePersistedState("training.admin.templates.enabledBy", "");
+  const [disabledBy, setDisabledBy] = usePersistedState("training.admin.templates.disabledBy", "");
+  const [everEnabled, setEverEnabled] = usePersistedState("training.admin.templates.everEnabled", "");
+  const [disableKind, setDisableKind] = usePersistedState("training.admin.templates.disableKind", "");
+  const uploadedRange = useDateRange("training.admin.templates.uploaded", "Uploaded Date Range");
+  const enabledRange = useDateRange("training.admin.templates.enabledRange", "Enabled Date Range");
+  const disabledRange = useDateRange("training.admin.templates.disabledRange", "Disabled Date Range");
+  // The choices of the document number and of the people come from the templates themselves (the screen holds a few dozen at most).
+  const [known, setKnown] = useState<TrainingFormTemplate[]>([]);
+  useEffect(() => { trainingFormTemplatesApi.page({ limit: 100, page: 1 }).then((p) => setKnown(p.data)).catch(() => setKnown([])); }, []);
+  const choices = (pick: (t: TrainingFormTemplate) => string | null | undefined) =>
+    [...new Set(known.map(pick).filter((v): v is string => Boolean(v)))].sort().map((v) => ({ label: v, value: v }));
   const extraParams = useMemo(
-    () => ({ status: status || undefined }),
-    [status],
+    () => ({
+      status: status || undefined, code: code || undefined, uploadedBy: uploadedBy || undefined, enabledBy: enabledBy || undefined, disabledBy: disabledBy || undefined,
+      everEnabled: everEnabled || undefined, disableKind: disableKind || undefined,
+      ...uploadedRange.params("uploadedFrom", "uploadedTo"), ...enabledRange.params("enabledFrom", "enabledTo"), ...disabledRange.params("disabledFrom", "disabledTo"),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }),
+    [status, code, uploadedBy, enabledBy, disabledBy, everEnabled, disableKind, uploadedRange.from, uploadedRange.to, enabledRange.from, enabledRange.to, disabledRange.from, disabledRange.to],
   );
   const table = useServerTable<TrainingFormTemplate>({
     fetcher: trainingFormTemplatesApi.page,
@@ -206,47 +226,13 @@ export function TrainingFormTemplates({ canEdit, uploadOpen, onUploadClose }: { 
         </div>
       ),
     },
-    {
-      id: "uploaded",
-      header: "Uploaded By",
-      sort: sorted("uploadedBy"),
-      cell: (t) => (
-        <div>
-          {t.uploadedByName}
-          <div className="text-xs text-slate-500">{when(t.uploadedAt)}</div>
-        </div>
-      ),
-    },
-    {
-      id: "enabled",
-      header: "Enabled By",
-      sort: sorted("enabledAt"),
-      cell: (t) =>
-        t.enabledAt ? (
-          <div>
-            {t.enabledByName}
-            <div className="text-xs text-slate-500">{when(t.enabledAt)}</div>
-          </div>
-        ) : (
-          "—"
-        ),
-    },
-    {
-      id: "disabled",
-      header: "Disabled By",
-      cell: (t) =>
-        t.disabledAt ? (
-          <div className="max-w-60 whitespace-normal">
-            {t.disabledByName}
-            <div className="text-xs text-slate-500">{when(t.disabledAt)}</div>
-            {t.disableReason ? (
-              <div className="text-xs text-slate-500">{t.disableReason}</div>
-            ) : null}
-          </div>
-        ) : (
-          "—"
-        ),
-    },
+    { id: "uploaded", header: "Uploaded By", sort: sorted("uploadedBy"), cell: (t) => t.uploadedByName },
+    { id: "uploadedAt", header: "Uploaded On", sort: sorted("uploadedAt"), cell: (t) => when(t.uploadedAt) },
+    { id: "enabled", header: "Enabled By", sort: sorted("enabledBy"), cell: (t) => t.enabledByName ?? "—" },
+    { id: "enabledAt", header: "Enabled On", sort: sorted("enabledAt"), cell: (t) => (t.enabledAt ? when(t.enabledAt) : "—") },
+    { id: "disabled", header: "Disabled By", sort: sorted("disabledBy"), cell: (t) => t.disabledByName ?? "—" },
+    { id: "disabledAt", header: "Disabled On", sort: sorted("disabledAt"), cell: (t) => (t.disabledAt ? when(t.disabledAt) : "—") },
+    { id: "disableReason", header: "Disable Reason", sort: sorted("disableReason"), cell: (t) => <div className="max-w-60 whitespace-normal">{t.disableReason ?? "—"}</div> },
   ];
   const action = {
     cell: (t: TrainingFormTemplate) => (
@@ -284,6 +270,12 @@ export function TrainingFormTemplates({ canEdit, uploadOpen, onUploadClose }: { 
         table.setCurrentPage(1);
       },
     },
+    { id: "code", label: "Document Number", value: code, options: [{ label: "All documents", value: "" }, ...choices((t) => t.code)], onChange: (v) => { setCode(v); table.setCurrentPage(1); } },
+    { id: "everEnabled", label: "Ever Enabled", value: everEnabled, options: [{ label: "All", value: "" }, { label: "Yes", value: "YES" }, { label: "Never enabled", value: "NO" }], onChange: (v) => { setEverEnabled(v); table.setCurrentPage(1); } },
+    { id: "disableKind", label: "Disabled Because", value: disableKind, options: [{ label: "All", value: "" }, { label: "Another revision was enabled", value: "NEWER_REVISION" }, { label: "Disabled by a person", value: "MANUAL" }], onChange: (v) => { setDisableKind(v); table.setCurrentPage(1); } },
+    { id: "uploadedBy", label: "Uploaded By", value: uploadedBy, options: [{ label: "Anyone", value: "" }, ...choices((t) => t.uploadedByName)], onChange: (v) => { setUploadedBy(v); table.setCurrentPage(1); } },
+    { id: "enabledBy", label: "Enabled By", value: enabledBy, options: [{ label: "Anyone", value: "" }, ...choices((t) => t.enabledByName)], onChange: (v) => { setEnabledBy(v); table.setCurrentPage(1); } },
+    { id: "disabledBy", label: "Disabled By", value: disabledBy, options: [{ label: "Anyone", value: "" }, ...choices((t) => t.disabledByName)], onChange: (v) => { setDisabledBy(v); table.setCurrentPage(1); } },
   ];
 
   return (
@@ -296,10 +288,12 @@ export function TrainingFormTemplates({ canEdit, uploadOpen, onUploadClose }: { 
           table.setCurrentPage(1);
         }}
         filters={filters}
-        dates={[]}
-        hasActiveFilters={Boolean(status || table.searchQuery)}
+        dates={resettingDates([uploadedRange.filter, enabledRange.filter, disabledRange.filter], () => table.setCurrentPage(1))}
+        hasActiveFilters={Boolean(status || code || uploadedBy || enabledBy || disabledBy || everEnabled || disableKind || uploadedRange.isSet || enabledRange.isSet || disabledRange.isSet || table.searchQuery)}
         onClear={() => {
           setStatus("");
+          setCode(""); setUploadedBy(""); setEnabledBy(""); setDisabledBy(""); setEverEnabled(""); setDisableKind("");
+          uploadedRange.clear(); enabledRange.clear(); disabledRange.clear();
           table.setSearchQuery("");
           table.setCurrentPage(1);
         }}

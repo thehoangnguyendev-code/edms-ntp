@@ -66,7 +66,7 @@ public class TrainingMatrixCompletionService {
             select p.id, p.code, p.name, count(distinct r.id) as row_count,
                    (select count(*) from training_person_positions tp join app_users u on u.id = tp.person_user_id where tp.position_id = p.id and tp.valid_to is null and u.status = 'Active') as people_count
               from training_matrices m join training_matrix_versions v on v.matrix_id = m.id and v.status = 'EFFECTIVE'
-              join training_matrix_rows r on r.version_id = v.id join training_matrix_cells c on c.row_id = r.id join positions p on p.id = c.position_id
+              join training_matrix_rows r on r.version_id = v.id join training_matrix_cells c on c.row_id = r.id join training_job_roles p on p.id = c.position_id
              where m.department_id = ? group by p.id, p.code, p.name order by p.name
             """, department));
     }
@@ -269,7 +269,7 @@ public class TrainingMatrixCompletionService {
              where r.id = ? and exists (select 1 from training_matrix_cells c join training_person_positions tp on tp.position_id = c.position_id and tp.person_user_id = ? and tp.valid_to is null where c.row_id = r.id)
             """, department, rowId, personId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         Map<String, Object> person = jdbc.queryForList("""
-            select u.id, u.full_name, u.employee_code, u.department, (select string_agg(p.name, ', ') from training_person_positions tp join positions p on p.id = tp.position_id where tp.person_user_id = u.id and tp.valid_to is null) as positions
+            select u.id, u.full_name, u.employee_code, u.department, (select string_agg(p.name, ', ') from training_person_positions tp join training_job_roles p on p.id = tp.position_id where tp.person_user_id = u.id and tp.valid_to is null) as positions
               from app_users u where u.id = ?
             """, personId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         String match = "((?::text is not null and rec.document_number = ?) or (?::text is not null and lower(rec.topic_text) = lower(?)))";

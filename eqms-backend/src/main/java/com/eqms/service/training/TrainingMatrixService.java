@@ -131,7 +131,7 @@ public class TrainingMatrixService {
             where.append(" and (('version ' || v.version_no) like ? escape '\\' or lower(coalesce(v.change_reason,'')) like ? escape '\\' or lower(coalesce(pu.full_name,'')) like ? escape '\\' or lower(coalesce(au.full_name,'')) like ? escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like);
         }
-        if (status != null && Set.of("DRAFT", "PENDING_APPROVAL", "EFFECTIVE", "OBSOLETE").contains(status)) {
+        if (status != null && Set.of("DRAFT", "PENDING_APPROVAL", "EFFECTIVE", "OBSOLETED").contains(status)) {
             where.append(" and v.status = ?");
             args.add(status);
         }
@@ -205,7 +205,7 @@ public class TrainingMatrixService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> positions(UUID departmentId) {
-        return TrainingRows.camel(jdbc.queryForList("select id, code, name from positions where is_active and department_id=? order by name", departmentId));
+        return TrainingRows.camel(jdbc.queryForList("select id, code, name from training_job_roles where is_active and department_id=? order by name", departmentId));
     }
 
     @Transactional(readOnly = true)
@@ -283,7 +283,7 @@ public class TrainingMatrixService {
         requireStatus(v, "DRAFT");
         requireVersion(v, request == null ? null : request.version());
         if (request.rows() == null) throw new IllegalArgumentException("TRAINING_MATRIX_ROWS_REQUIRED");
-        Set<UUID> allowed = new LinkedHashSet<>(jdbc.queryForList("select id from positions where is_active and department_id=?", UUID.class, department));
+        Set<UUID> allowed = new LinkedHashSet<>(jdbc.queryForList("select id from training_job_roles where is_active and department_id=?", UUID.class, department));
         Map<String, String> before = rowSnapshot(versionId);
         String reasonBefore = String.valueOf(v.get("change_reason") == null ? "" : v.get("change_reason"));
         jdbc.update("delete from training_matrix_cells where row_id in (select id from training_matrix_rows where version_id=?)", versionId);
@@ -378,13 +378,13 @@ public class TrainingMatrixService {
         UUID signature = sign(actor, v, "TRAINING_MATRIX_APPROVED", request.signatureToken());
         approvals.complete(assignment, signature);
         List<Integer> replaced = jdbc.queryForList("select version_no from training_matrix_versions where matrix_id=? and status='EFFECTIVE'", Integer.class, v.get("matrix_id"));
-        jdbc.update("update training_matrix_versions set status='OBSOLETE', version=version+1, updated_at=now() where matrix_id=? and status='EFFECTIVE'", v.get("matrix_id"));
+        jdbc.update("update training_matrix_versions set status='OBSOLETED', version=version+1, updated_at=now() where matrix_id=? and status='EFFECTIVE'", v.get("matrix_id"));
         jdbc.update("update training_matrix_versions set status='EFFECTIVE', approved_by=?, approved_at=now(), effective_at=now(), approve_signature_id=?, version=version+1, updated_at=now() where id=?",
                 actor.getId(), signature, versionId);
         jdbc.update("update training_matrices set current_version_id=? where id=?", versionId, v.get("matrix_id"));
         List<AuditTrailChangeResponse> approved = new ArrayList<>(List.of(new AuditTrailChangeResponse("Status", "Pending Approval", "Effective"),
                 new AuditTrailChangeResponse("Approved by", null, actor.getFullName())));
-        for (Integer old : replaced) approved.add(new AuditTrailChangeResponse("Version " + old + " status", "Effective", "Obsolete"));
+        for (Integer old : replaced) approved.add(new AuditTrailChangeResponse("Version " + old + " status", "Effective", "Obsoleted"));
         audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_APPROVED", "PENDING_APPROVAL", "EFFECTIVE",
                 "Version " + v.get("version_no") + " is now effective" + (replaced.isEmpty() ? "" : "; it replaces version " + replaced.getFirst()), approved, signature);
         tellPreparer(v, actor, "TRAINING_MATRIX_APPROVED", "Training: matrix approved", label(v) + " was approved by " + actor.getFullName() + " and is now effective.");
@@ -481,33 +481,39 @@ public class TrainingMatrixService {
         return TrainingRows.camel(jdbc.queryForList("select id, code, name, scope, department_id, active, version from training_topics where id=?", topicId).getFirst());
     }
 
-    /** The positions of a person (the user table keeps only text). The report of people without a position is for the person who maps them by hand. */
+    /**
+     * The Job Roles that people hold for Training (read only). A role comes from a job assignment signed by both people (APD.0024), or, for people who were there before the system, from the
+     * mapping that Training Administration made once; there is no way to give a role here any more. A person can hold several.
+     */
     @Transactional(readOnly = true)
     public Map<String, Object> personPositions(UserAccount actor, String search, boolean unmatchedOnly, String department, UUID positionId, String mapped, String suggested, String sortBy, String sortDirection, int page, int limit) {
-        access.require(actor, "training.admin.manage");
+        access.require(actor, "training.admin.manage", "training.job_assignment.view", "training.job_assignment.manage", "training.matrix.view", "training.matrix.manage");
+        String roles = "(select string_agg(r.name, ', ' order by r.name) from training_person_positions tp join training_job_roles r on r.id = tp.position_id where tp.person_user_id = u.id and tp.valid_to is null)";
         StringBuilder where = new StringBuilder(" where u.status = 'Active'");
         List<Object> args = new ArrayList<>();
+        // a person who is not allowed on all departments sees the people of their own department only
+        if (!access.allDepartments(actor)) {
+            if (actor.getDepartment() == null || actor.getDepartment().isBlank()) where.append(" and false");
+            else { where.append(" and lower(trim(u.department)) = lower(trim(?))"); args.add(actor.getDepartment()); }
+        }
         if (search != null && !search.isBlank()) {
-            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(coalesce(u.department,'')) like ? escape '\\' or lower(coalesce(u.position,'')) like ? escape '\\' or lower(coalesce(p.name,'')) like ? escape '\\')");
+            where.append(" and (lower(u.full_name) like ? escape '\' or lower(coalesce(u.employee_code,'')) like ? escape '\' or lower(coalesce(u.department,'')) like ? escape '\' or lower(coalesce(u.position,'')) like ? escape '\' or lower(coalesce(" + roles + ",'')) like ? escape '\')");
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
-        if (unmatchedOnly || "NO".equalsIgnoreCase(mapped)) where.append(" and tp.id is null");
-        if ("YES".equalsIgnoreCase(mapped)) where.append(" and tp.id is not null");
+        String has = " exists (select 1 from training_person_positions tp where tp.person_user_id = u.id and tp.valid_to is null)";
+        if (unmatchedOnly || "NO".equalsIgnoreCase(mapped)) where.append(" and not").append(has);
+        if ("YES".equalsIgnoreCase(mapped)) where.append(" and").append(has);
         if (department != null && !department.isBlank()) { where.append(" and lower(trim(u.department)) = lower(trim(?))"); args.add(department); }
-        if (positionId != null) { where.append(" and tp.position_id = ?"); args.add(positionId); }
-        // Without a position yet, but the text of the user table matches the name of a position of the training: the one a person only has to confirm.
-        String suggestion = " exists (select 1 from positions pp where lower(trim(pp.name)) = lower(trim(u.position)))";
-        if ("YES".equalsIgnoreCase(suggested)) where.append(" and tp.id is null and").append(suggestion);
-        if ("NO".equalsIgnoreCase(suggested)) where.append(" and tp.id is null and not").append(suggestion);
-        String from = " from app_users u left join training_person_positions tp on tp.person_user_id = u.id and tp.valid_to is null left join positions p on p.id = tp.position_id ";
+        if (positionId != null) { where.append(" and exists (select 1 from training_person_positions tp where tp.person_user_id = u.id and tp.valid_to is null and tp.position_id = ?)"); args.add(positionId); }
+        String from = " from app_users u ";
         Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         args.add(safeLimit); args.add((safePage - 1) * safeLimit);
-        List<Map<String, Object>> rows = jdbc.queryForList("""
-            select u.id as person_id, u.full_name, u.avatar, u.employee_code, u.department, u.position as position_text, p.id as position_id, p.name as position_name,
-                   (select pp.id from positions pp where lower(trim(pp.name)) = lower(trim(u.position)) limit 1) as suggested_position_id
-            """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("fullName", "u.full_name", "employeeCode", "u.employee_code", "department", "u.department", "positionText", "u.position", "positionName", "p.name"), "u.full_name") + " limit ? offset ?", args.toArray());
+        List<Map<String, Object>> rows = jdbc.queryForList("select u.id as person_id, u.full_name, u.avatar, u.employee_code, u.department, u.position as position_text, " + roles + " as job_role_names, "
+                + "(select count(*) from training_person_positions tp where tp.person_user_id = u.id and tp.valid_to is null) as job_role_count, "
+                + "(select string_agg(distinct tp.source, ', ') from training_person_positions tp where tp.person_user_id = u.id and tp.valid_to is null) as sources"
+                + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("fullName", "u.full_name", "employeeCode", "u.employee_code", "department", "u.department", "positionText", "u.position", "jobRoleNames", roles), "u.full_name") + " limit ? offset ?", args.toArray());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;
@@ -515,23 +521,11 @@ public class TrainingMatrixService {
         return result;
     }
 
+    /** Every active Job Role (with its department), for the filters. */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> allPositions(UserAccount actor) {
         access.require(actor, "training.admin.manage", "training.matrix.view", "training.matrix.manage");
-        return TrainingRows.camel(jdbc.queryForList("select p.id, p.code, p.name, p.department_id, d.name as department_name from positions p left join departments d on d.id = p.department_id where p.is_active order by p.name"));
-    }
-
-    @Transactional
-    public Map<String, Object> setPersonPosition(UserAccount actor, UUID personId, UUID positionId) {
-        access.require(actor, "training.admin.manage");
-        UserAccount person = users.findById(personId).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE"));
-        if (person.getStatus() != UserStatus.Active) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
-        List<Map<String, Object>> position = jdbc.queryForList("select id, name, department_id from positions where id=? and is_active", positionId);
-        if (position.isEmpty()) throw new IllegalArgumentException("TRAINING_POSITION_INVALID");
-        jdbc.update("update training_person_positions set valid_to=current_date where person_user_id=? and valid_to is null", personId);
-        jdbc.update("insert into training_person_positions(id, person_user_id, position_id, department_id, source, created_by) values (?,?,?,?, 'ADMIN', ?)", UUID.randomUUID(), personId, positionId, position.getFirst().get("department_id"), actor.getId());
-        audit.logAs(actor, "TRAINING_PERSON_POSITION", person.getFullName(), personId, "TRAINING_PERSON_POSITION_SET", null, String.valueOf(position.getFirst().get("name")), "Position mapped by hand");
-        return Map.of("personId", personId, "positionId", positionId, "positionName", position.getFirst().get("name"));
+        return TrainingRows.camel(jdbc.queryForList("select p.id, p.code, p.name, p.department_id, d.name as department_name from training_job_roles p left join departments d on d.id = p.department_id where p.is_active order by p.name"));
     }
 
     // ----------------------------------------------------------------------------------------------------------------------------- helpers
@@ -559,7 +553,7 @@ public class TrainingMatrixService {
                 select r.id, r.annual_required, coalesce(t.code || ' ' || t.name, d.document_number || ' ' || d.document_name) as title
                 from training_matrix_rows r left join training_topics t on t.id = r.topic_id left join documents d on d.id = r.document_id
                 where r.version_id=? order by r.row_no""", versionId)) {
-            List<String> positions = jdbc.queryForList("select p.name from training_matrix_cells c join positions p on p.id = c.position_id where c.row_id=? order by p.name", String.class, r.get("id"));
+            List<String> positions = jdbc.queryForList("select p.name from training_matrix_cells c join training_job_roles p on p.id = c.position_id where c.row_id=? order by p.name", String.class, r.get("id"));
             out.put(String.valueOf(r.get("title")), (positions.isEmpty() ? "no position" : String.join(", ", positions)) + (Boolean.TRUE.equals(r.get("annual_required")) ? " | every year" : ""));
         }
         return out;

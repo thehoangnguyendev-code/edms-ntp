@@ -8,7 +8,7 @@ import { STATE_STYLE } from "./CompletionHeatmap";
 const GROUPS: { id: CompletionColumn["group"]; title: string }[] = [
   { id: "FACTORY_GENERAL", title: "General training of the whole factory" },
   { id: "DEPARTMENT_GENERAL", title: "General training of the department" },
-  { id: "SOP", title: "SOP for each position" },
+  { id: "SOP", title: "SOP for each Job Role" },
 ];
 /** Order of the segments of a bar: done first, then what is under way, then what is missing. */
 const BAR_ORDER: CompletionState[] = ["QUALIFIED", "IN_PROGRESS", "UPDATE_NEEDED", "DUE", "REQUIRED"];
@@ -181,19 +181,19 @@ function OpenSummary({ facts }: { facts: RowFacts }) {
   );
 }
 
-/** Totals of the position, from the server: the people, those ready for a work assignment, those with a gap, and the rows everyone has finished. */
+/** Totals of the Job Role, from the server: the people, those ready for a work assignment, those with a gap, and the rows everyone has finished. */
 export function CompletionSummaryStrip({ summary, columns }: { summary?: CompletionSummary; columns: CompletionColumn[] }) {
   if (!summary) return null;
   const facts = columns.map((c) => factsOf(c, summary));
   const rowsDone = facts.filter((f) => f.required > 0 && f.openTotal === 0).length;
   const tiles = [
-    { label: "People in the position", value: summary.people, tone: "text-slate-900" },
+    { label: "People in the Job Role", value: summary.people, tone: "text-slate-900" },
     { label: "Ready for a work assignment", value: `${summary.ready} / ${summary.people}`, tone: "text-emerald-700", hint: "Trained on every row of the matrix" },
     { label: "People with a gap", value: summary.withGap, tone: summary.withGap > 0 ? "text-red-700" : "text-slate-900", hint: "Required, update needed or annual due" },
     { label: "Rows everyone has finished", value: `${rowsDone} / ${facts.length}`, tone: "text-slate-900" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Totals of the position">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Totals of the Job Role">
       {tiles.map((t) => (
         <div key={t.label} className="rounded-xl border border-slate-200 bg-white p-3.5">
           <div className="text-xs font-medium text-slate-500">{t.label}</div>

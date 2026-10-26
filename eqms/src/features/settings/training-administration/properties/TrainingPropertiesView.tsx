@@ -1,7 +1,7 @@
 import React from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Archive, BellRing, CalendarClock, GraduationCap, Link2, Send, Timer } from "lucide-react";
+import { Archive, BellRing, CalendarClock, GraduationCap, Link2, NotebookPen, Send, Timer } from "lucide-react";
 import { IconPlus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -166,7 +166,7 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ passPercent: v })}
           />
         </FormSection>
-        <FormSection title="Results to QA" icon={<Send className="h-4 w-4" />} className="h-full">
+        <FormSection title="Results to QA" icon={<NotebookPen className="h-4 w-4" />} className="h-full">
           <NumberField
             label="Days to send the results to QA"
             hint="Counted in calendar days from the day the training was held (SOP.0003 5.3.7). The organizer is reminded on the last day, then every week while the results are late."

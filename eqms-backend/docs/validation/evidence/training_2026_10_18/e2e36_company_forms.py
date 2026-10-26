@@ -105,9 +105,9 @@ if st == 200:
     print('   pages', pages(p, 'FRM0044'))
 
 step('5. APD.0024 the job assignment')
-jobs = admin.call('GET', '/training/job-assignments?limit=20')['data']
-job = next(j for j in jobs if j['status'] == 'EFFECTIVE')
-job = admin.call('GET', f"/training/job-assignments/{job['id']}")
+jobs = admin.call('GET', '/training/job-assignments?limit=100')['data']
+# an effective assignment of a person who has a specimen signature in force, so that step 6 has something to write
+job = next(j for j in (admin.call('GET', f"/training/job-assignments/{x['id']}") for x in jobs if x['status'] == 'EFFECTIVE') if admin.call('GET', f"/training/specimen-signatures/person/{j['personUserId']}/current"))
 st, w = get(admin, f"/training/job-assignments/{job['id']}/export?format=docx", 'APD0024.docx')
 check('5.1 Word of the job assignment', st == 200 and w[:2] == b'PK', (st, w[:200]))
 if st == 200:

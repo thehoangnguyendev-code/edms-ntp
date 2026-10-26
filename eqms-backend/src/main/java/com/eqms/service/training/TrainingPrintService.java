@@ -26,7 +26,7 @@ import java.util.UUID;
 
 /**
  * Prints the matrix completion grid as a PDF (the forms of the company are written by TrainingFormExportService). Nothing is stored: the file is built from
- * data that no longer changes (an Effective or Obsolete matrix version, an Approved requirement), carries the signers and a SHA-256 fingerprint of the data,
+ * data that no longer changes (an Effective or Obsoleted matrix version, an Approved requirement), carries the signers and a SHA-256 fingerprint of the data,
  * and every print is recorded in the Audit Trail. The same access rules as for opening the record apply.
  */
 @Service
@@ -75,7 +75,7 @@ public class TrainingPrintService {
             Map<String, Object> pg = (Map<String, Object>) r.get("pagination");
             if (page >= ((Number) pg.get("totalPages")).intValue()) break;
         }
-        String position = jdbc.queryForObject("select name from positions where id = ?", String.class, positionId);
+        String position = jdbc.queryForObject("select name from training_job_roles where id = ?", String.class, positionId);
         String department = jdbc.queryForList("select d.name from departments d where d.id = coalesce(?, d.id) limit 1", String.class, departmentId).stream().findFirst().orElse("");
         List<String> head = List.of("Position: " + position + (departmentId == null ? "" : "    Department: " + department) + "    Matrix version " + first.get("matrixVersionNo"),
                 "Printed " + DateTimeFormatUtils.formatDateTime(java.time.Instant.now()) + " by " + actor.getFullName() + (gapsOnly ? "    Only people with a gap" : "") + (status == null || status.isBlank() ? "" : "    State: " + STATE.get(status)));

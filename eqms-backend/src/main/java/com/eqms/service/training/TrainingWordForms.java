@@ -14,6 +14,7 @@ import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlObject;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHdrFtr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTc;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
@@ -103,6 +104,56 @@ final class TrainingWordForms {
         for (int i = cell.getParagraphs().size() - 1; i > 0; i--) cell.removeParagraph(i);
         XWPFParagraph paragraph = cell.getParagraphs().isEmpty() ? cell.addParagraph() : cell.getParagraphs().get(0);
         setParagraph(paragraph, value);
+    }
+
+    /** The lines of a text typed in a box: one line, one paragraph; empty lines are left out. */
+    static List<String> linesOf(String text) {
+        List<String> out = new ArrayList<>();
+        if (text == null) return out;
+        for (String line : text.split("\\R")) if (!line.isBlank()) out.add(line.strip());
+        return out;
+    }
+
+    /**
+     * A cell with the text in two languages (APD.0024, part 4): the lines of the first text as they are, then the lines of the second one in italic, each line a paragraph of its own with the
+     * look (spacing, alignment) of the first paragraph of the cell.
+     */
+    static void setBilingual(XWPFTableCell cell, String normal, String italic) {
+        for (int i = cell.getParagraphs().size() - 1; i > 0; i--) cell.removeParagraph(i);
+        XWPFParagraph first = cell.getParagraphs().isEmpty() ? cell.addParagraph() : cell.getParagraphs().get(0);
+        List<String> main = linesOf(normal), second = linesOf(italic);
+        boolean used = false;
+        for (int k = 0; k < main.size() + second.size(); k++) {
+            boolean slanted = k >= main.size();
+            String line = slanted ? second.get(k - main.size()) : main.get(k);
+            XWPFParagraph p = used ? cell.addParagraph() : first;
+            if (used && first.getCTP().isSetPPr()) p.getCTP().setPPr((CTPPr) first.getCTP().getPPr().copy());
+            if (used) {
+                XWPFRun run = p.createRun();
+                run.setText(line, 0);
+                filled(run);
+            } else {
+                setParagraph(p, line);
+            }
+            p.getRuns().get(p.getRuns().size() - 1).setItalic(slanted);
+            used = true;
+        }
+        if (!used) setParagraph(first, "");
+    }
+
+    /** The rows of a two-column table with the text of each cell in two languages: {first column, its second language, second column, its second language}. */
+    static void fillRowsBilingual(XWPFTable table, int headingRows, List<String[]> lines) {
+        CTTbl ct = table.getCTTbl();
+        if (ct.sizeOfTrArray() <= headingRows) throw structure();
+        CTRow model = (CTRow) ct.getTrArray(headingRows).copy();
+        int original = ct.sizeOfTrArray();
+        for (String[] line : lines) {
+            ct.addNewTr().set(model.copy());
+            XWPFTableRow row = new XWPFTableRow(ct.getTrArray(ct.sizeOfTrArray() - 1), table);
+            setBilingual(row.getCell(0), line[0], line[1]);
+            setBilingual(row.getCell(1), line[2], line[3]);
+        }
+        for (int i = original - 1; i >= headingRows; i--) ct.removeTr(i);
     }
 
     /** The rows of a table are not split over two pages (a block of signatures stays in one piece) and stay with the row that follows. */

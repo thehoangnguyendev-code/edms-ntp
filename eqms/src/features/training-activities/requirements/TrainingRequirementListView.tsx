@@ -7,11 +7,14 @@ import {
   IconCheck,
   IconChecklist,
   IconChecks,
+  IconFileTypeDocx,
+  IconFileTypePdf,
   IconFlagSpark,
   IconInfoCircle,
   IconPencilMinus,
   IconPlus,
   IconPrinter,
+  IconStar,
 } from "@tabler/icons-react";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
@@ -342,7 +345,7 @@ export function TrainingRequirementListView() {
               },
               {
                 show: actionRow.actions?.track,
-                icon: <IconFlagSpark className="h-4 w-4" />,
+                icon: <IconStar className="h-4 w-4" />,
                 label: "Follow Training Requirement",
                 run: () =>
                   navigate(
@@ -351,13 +354,13 @@ export function TrainingRequirementListView() {
               },
               {
                 show: actionRow.actions?.print,
-                icon: <IconPrinter className="h-4 w-4" />,
+                icon: <IconFileTypeDocx className="h-4 w-4" />,
                 label: "Download Word",
                 run: () => void download(actionRow, "docx"),
               },
               {
                 show: actionRow.actions?.print,
-                icon: <IconPrinter className="h-4 w-4" />,
+                icon: <IconFileTypePdf className="h-4 w-4" />,
                 label: "Download PDF",
                 run: () => void download(actionRow, "pdf"),
               },

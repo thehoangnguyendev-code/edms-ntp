@@ -45,10 +45,10 @@ public class TrainingFollowUpController {
     }
 
     @GetMapping("/document-trainings")
-    public ResponseEntity<?> documentTrainings(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(required = false) String search,
+    public ResponseEntity<?> documentTrainings(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(required = false) String activityStatus, @RequestParam(required = false) String search,
                                                @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                                @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(impacts.list(users.requireCurrentUser(), departmentId, status, search, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(impacts.list(users.requireCurrentUser(), departmentId, status, activityStatus, search, sortBy, sortDirection, page, limit));
     }
 
     @GetMapping("/document-trainings/summary")

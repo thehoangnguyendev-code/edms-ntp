@@ -254,7 +254,8 @@ public class TrainingActivityService {
             chosen.put("assessmentId", activity.get("assessment_def_id"));
             chosen.put("code", activity.get("assessment_def_code"));
             chosen.put("version", activity.get("assessment_def_version"));
-            chosen.put("title", activity.get("assessment_title"));
+            chosen.put("name", activity.get("assessment_name"));
+            chosen.put("revision", activity.get("assessment_def_revision"));
             chosen.put("kind", activity.get("assessment_kind"));
             chosen.put("maxScore", activity.get("assessment_max_score"));
             chosen.put("chosenAt", activity.get("assessment_chosen_at") == null ? null : com.eqms.util.DateTimeFormatUtils.formatDateTime(activity.get("assessment_chosen_at")));
@@ -359,7 +360,7 @@ public class TrainingActivityService {
                 join training_matrix_cells c on c.row_id = r.id
                 join training_person_positions pp on pp.position_id = c.position_id and pp.valid_to is null
                 join app_users u on u.id = pp.person_user_id and u.status = 'Active'
-                join positions p on p.id = pp.position_id
+                join training_job_roles p on p.id = pp.position_id
                where tp.session_id = ? and ((r.document_id is not null and r.document_id = tp.document_id) or (t.id is not null and lower(t.name) = lower(tp.topic_text)))
                  and not exists (select 1 from training_participants x where x.session_id = ? and x.person_user_id = u.id)
               """ + scope + """

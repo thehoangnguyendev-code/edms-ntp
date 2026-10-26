@@ -33,7 +33,7 @@ import java.util.UUID;
  * template is the Word file that Training Administration uploaded and enabled with a signature (Training Properties, form templates, code APD.0011); a new version of the form is used as
  * soon as it is enabled. The notes that describe the form, the note on management positions and the history of revisions are not part of the form and are not written to the file. The table
  * is made again for the positions of the department: one column for each position, an X where the position must be trained, and the annual requirement. A matrix that is not Effective or
- * Obsolete is not exported. Every export is written to the Audit Trail with the version of the form and the SHA-256 of the template.
+ * Obsoleted is not exported. Every export is written to the Audit Trail with the version of the form and the SHA-256 of the template.
  */
 @Service
 public class TrainingMatrixFormService {
@@ -69,7 +69,7 @@ public class TrainingMatrixFormService {
         if (format == null || !List.of("docx", "pdf").contains(format.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("TRAINING_FORMAT_INVALID");
         Map<String, Object> v = matrices.version(actor, versionId);
         String status = String.valueOf(v.get("status"));
-        if (!"EFFECTIVE".equals(status) && !"OBSOLETE".equals(status)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PRINT_NOT_APPROVED");
+        if (!"EFFECTIVE".equals(status) && !"OBSOLETED".equals(status)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PRINT_NOT_APPROVED");
         Map<String, Object> data = new java.util.HashMap<>(v);
         List<List<String>> signatureBlocks = new ArrayList<>();
         for (Map<String, Object> a : (List<Map<String, Object>>) v.get("approvers")) {
@@ -126,7 +126,7 @@ public class TrainingMatrixFormService {
             XWPFParagraph version = doc.insertNewParagraph(cursor);
             XWPFRun run = version.createRun();
             run.setFontFamily("Times New Roman");
-            run.setText("Mã ma trận/ Matrix code: " + v.get("matrixCode") + "    Phiên bản/ Version: " + v.get("versionNo") + " (" + ("EFFECTIVE".equals(v.get("status")) ? "Effective" : "Obsolete") + ")");
+            run.setText("Mã ma trận/ Matrix code: " + v.get("matrixCode") + "    Phiên bản/ Version: " + v.get("versionNo") + " (" + ("EFFECTIVE".equals(v.get("status")) ? "Effective" : "Obsoleted") + ")");
             List<List<String>> signatureBlocks = (List<List<String>>) v.get("signatureBlocks");
             if (signatureBlocks != null) {
                 // the electronic signatures of the approval, as the configuration of Electronic Signature writes them, in the size it gives, under the table

@@ -1277,7 +1277,7 @@ export function TrainingActivityDetailPage({
               activityId={activity.id}
               people={wsPeople}
               passPercent={activity.passPercent}
-              defaultMax={activity.assessment?.maxScore}
+              defaultMax={activity.assessment?.maxScore ?? undefined}
               locked={!!activity.resultsFinishedAt}
               canRecord={Boolean(caps?.recordAssessment)}
               canRelease={Boolean(caps?.recordAttendance)}

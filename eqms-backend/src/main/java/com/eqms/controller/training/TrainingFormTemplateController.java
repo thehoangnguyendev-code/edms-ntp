@@ -24,8 +24,9 @@ public class TrainingFormTemplateController {
 
     @GetMapping
     public ResponseEntity<?> page(@RequestParam(required = false) String search, @RequestParam(required = false) String status, @RequestParam(required = false) String sortBy,
-                                  @RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(templates.page(users.requireCurrentUser(), search, status, sortBy, sortDirection, page, limit));
+                                  @RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit,
+                                  @RequestParam Map<String, String> filters) {
+        return ResponseEntity.ok(templates.page(users.requireCurrentUser(), search, status, sortBy, sortDirection, page, limit, filters));
     }
 
     @GetMapping("/current")

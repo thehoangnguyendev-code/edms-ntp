@@ -25,8 +25,15 @@ public class TrainingAssessmentLibraryController {
     @GetMapping("/assessments")
     public ResponseEntity<?> page(@RequestParam(required = false) String search, @RequestParam(required = false) String status, @RequestParam(required = false) String kind,
                                   @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(defaultValue = "1") int page,
-                                  @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(library.page(users.requireCurrentUser(), search, status, kind, sortBy, sortDirection, page, limit));
+                                  @RequestParam(defaultValue = "10") int limit, @RequestParam java.util.Map<String, String> filters) {
+        return ResponseEntity.ok(library.page(users.requireCurrentUser(), search, status, kind, sortBy, sortDirection, page, limit, filters));
+    }
+
+    /** The revisions of the assessment, as the revisions of a document are listed on its detail. */
+    @GetMapping("/assessments/{id}/revisions")
+    public ResponseEntity<?> revisions(@PathVariable UUID id, @RequestParam(required = false) String search, @RequestParam(required = false) String sortBy,
+                                       @RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(library.revisions(users.requireCurrentUser(), id, search, sortBy, sortDirection, page, limit));
     }
 
     @GetMapping("/assessments/approved")

@@ -25,19 +25,19 @@ Q = [
 ]
 
 print('== 1. design, approval, versions')
-code, a, text = attempt(designer, 'POST', '/training/assessments', {'title': 'E2E-TEST Kiểm tra đào tạo SOP', 'kind': 'QUESTIONS', 'items': Q})
+code, a, text = attempt(designer, 'POST', '/training/assessments', {'name': 'E2E-TEST Kiểm tra đào tạo SOP', 'kind': 'QUESTIONS', 'items': Q})
 check('1.1 the designer creates a draft with the four kinds of question', code == 200 and a['status'] == 'DRAFT' and len(a['items']) == 4 and float(a['maxScore']) == 10, (code, text))
 aid = a['id']
 check('1.2 the draft has a code and version 1; the designer may edit and delete it, not approve it', a['code'].startswith('TAS-') and a['versionNo'] == 1 and a['capabilities']['edit'] and a['capabilities']['delete'] and a['capabilities']['submit'] and not a['capabilities']['approve'], a['capabilities'])
-code, data, text = attempt(designer, 'POST', '/training/assessments', {'title': '', 'kind': 'QUESTIONS', 'items': Q})
+code, data, text = attempt(designer, 'POST', '/training/assessments', {'name': '', 'kind': 'QUESTIONS', 'items': Q})
 check('1.3 a title is needed', code == 400 and 'TRAINING_ASSESSMENT_TITLE_REQUIRED' in text, (code, text))
 bad = [dict(Q[0], correct=[])]
-code, data, text = attempt(designer, 'POST', '/training/assessments', {'title': 'E2E-TEST bad', 'kind': 'QUESTIONS', 'items': bad})
+code, data, text = attempt(designer, 'POST', '/training/assessments', {'name': 'E2E-TEST bad', 'kind': 'QUESTIONS', 'items': bad})
 check('1.4 a single choice with no right answer is refused', code == 400 and 'TRAINING_ASSESSMENT_ITEM_INVALID' in text, (code, text))
-code, data, text = attempt(designer, 'PUT', f'/training/assessments/{aid}', {'version': a['version'] + 5, 'title': a['title'], 'kind': 'QUESTIONS', 'items': Q})
+code, data, text = attempt(designer, 'PUT', f'/training/assessments/{aid}', {'version': a['version'] + 5, 'name': a['name'], 'kind': 'QUESTIONS', 'items': Q})
 check('1.5 an old version of the draft is refused (TRAINING_ASSESSMENT_VERSION_CHANGED)', code == 409 and 'TRAINING_ASSESSMENT_VERSION_CHANGED' in text, (code, text))
-code, a, text = attempt(designer, 'PUT', f'/training/assessments/{aid}', {'version': a['version'], 'title': 'E2E-TEST Kiểm tra đào tạo SOP v1', 'kind': 'QUESTIONS', 'items': Q})
-check('1.6 the draft is saved', code == 200 and a['title'].endswith('v1'), (code, text))
+code, a, text = attempt(designer, 'PUT', f'/training/assessments/{aid}', {'version': a['version'], 'name': 'E2E-TEST Kiểm tra đào tạo SOP v1', 'kind': 'QUESTIONS', 'items': Q})
+check('1.6 the draft is saved', code == 200 and a['name'].endswith('v1'), (code, text))
 code, data, text = attempt(designer, 'POST', f'/training/assessments/{aid}/approve', {'signatureToken': sign(designer)})
 code, data, text = attempt(designer, 'POST', f'/training/assessments/{aid}/approve', {'signatureToken': sign(designer)})
 check('1.6b a draft cannot be approved before it is submitted (TRAINING_ASSESSMENT_NOT_PENDING)', code == 409 and 'TRAINING_ASSESSMENT_NOT_PENDING' in text, (code, text))
@@ -54,7 +54,7 @@ check('1.8c the approver returns it to Draft with a reason', code == 200 and a['
 code, a, text = attempt(designer, 'POST', f'/training/assessments/{aid}/submit')
 code, a, text = attempt(approver, 'POST', f'/training/assessments/{aid}/approve', {'signatureToken': sign(approver)})
 check('1.9 another person approves with a signature: Effective', code == 200 and a['status'] == 'EFFECTIVE' and a['approvedByName'], (code, text))
-code, data, text = attempt(designer, 'PUT', f'/training/assessments/{aid}', {'version': a['version'], 'title': 'changed', 'kind': 'QUESTIONS', 'items': Q})
+code, data, text = attempt(designer, 'PUT', f'/training/assessments/{aid}', {'version': a['version'], 'name': 'changed', 'kind': 'QUESTIONS', 'items': Q})
 check('1.10 an effective version cannot be changed (TRAINING_ASSESSMENT_NOT_DRAFT)', code == 409 and 'TRAINING_ASSESSMENT_NOT_DRAFT' in text, (code, text))
 code, v2, text = attempt(designer, 'POST', f'/training/assessments/{aid}/new-version')
 check('1.11 a change is a new version of the same code', code == 200 and v2['versionNo'] == 2 and v2['code'] == a['code'] and v2['status'] == 'DRAFT', (code, text))
@@ -64,7 +64,7 @@ attempt(designer, 'POST', f"/training/assessments/{v2['id']}/submit")
 code, data, text = attempt(approver, 'POST', f"/training/assessments/{v2['id']}/approve", {'signatureToken': sign(approver)})
 check('1.13 the version 2 is approved by another person than the one who made it', code == 200 and data['status'] == 'EFFECTIVE', (code, text))
 old = designer.call('GET', f'/training/assessments/{aid}')
-check('1.14 version 1 is then replaced', old['status'] == 'SUPERSEDED', old['status'])
+check('1.14 version 1 is then obsoleted', old['status'] == 'OBSOLETED', old['status'])
 listed = [x['id'] for x in designer.call('GET', '/training/assessments/approved?search=E2E-TEST')['data']]
 check('1.15 only the effective version is offered to an activity', v2['id'] in listed and aid not in listed, listed)
 outsider = Client('trainee.test1')   # a trainee: no permission of the library and not an organizer or a reviewer of the content
@@ -133,10 +133,10 @@ code, data = outsider.call('GET', f"/training/materials/{key_files[0]['id']}/dow
 check('2.14 a trainee cannot download the answer key', code in (401, 403), code)
 
 print(chr(10) + '== 3. a checklist is passed only when every line is correct')
-code, c, text = attempt(designer, 'POST', '/training/assessments', {'title': 'E2E-TEST Checklist', 'kind': 'CHECKLIST', 'items': [
+code, c, text = attempt(designer, 'POST', '/training/assessments', {'name': 'E2E-TEST Checklist', 'kind': 'CHECKLIST', 'items': [
     {'kind': 'CHECK', 'prompt': 'E2E-TEST line 1', 'options': [], 'correct': ['CORRECT'], 'points': 1}, {'kind': 'CHECK', 'prompt': 'E2E-TEST line 2', 'options': [], 'correct': ['INCORRECT'], 'points': 1}]})
 check('3.1 a checklist is created, and has no score', code == 200 and c['kind'] == 'CHECKLIST' and c['maxScore'] is None, (code, text))
-code, data, text = attempt(designer, 'POST', '/training/assessments', {'title': 'E2E-TEST bad checklist', 'kind': 'CHECKLIST', 'items': [dict(Q[0])]})
+code, data, text = attempt(designer, 'POST', '/training/assessments', {'name': 'E2E-TEST bad checklist', 'kind': 'CHECKLIST', 'items': [dict(Q[0])]})
 check('3.2 a question is refused in a checklist', code == 400, (code, text))
 attempt(designer, 'POST', f"/training/assessments/{c['id']}/submit")
 code, c, text = attempt(approver, 'POST', f"/training/assessments/{c['id']}/approve", {'signatureToken': sign(approver)})

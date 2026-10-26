@@ -27,7 +27,7 @@ import java.util.UUID;
  *   <li>Case 1 (QUESTIONS): single choice, multiple choice, true or false, essay. An essay is marked by hand on the paper.</li>
  *   <li>Case 2 (CHECKLIST): each line is ticked Correct or Incorrect; the key holds the expected one. A checklist has no score; the person passes only when every line is as expected.</li>
  * </ul>
- * The title of an assessment only identifies it in the library; it is never written in the form. Choosing one in the tab Assessment of an activity writes its content into the Word form APD.0009
+ * The name of an assessment only identifies it in the library; it is never written in the form. Choosing one in the tab Assessment of an activity writes its content into the Word form APD.0009
  * that is enabled in Training Properties (Assessment Forms): the exam file and the answer key of the activity, which the organizer can still open and change in the editor. Taking the choice off
  * removes those two files from the activity (they stay on record). The person who designs (training.assessment.design) writes a draft and sends it for approval; the person who approves
  * (training.assessment.approve), who is not the person who made, changed or sent it, signs it into Effective. A change is a new version. The key is seen only by the people who design or approve,
@@ -41,12 +41,12 @@ public class TrainingAssessmentLibraryService {
 
     public record OptionDto(String text) {}
     public record ItemDto(String kind, String prompt, List<OptionDto> options, List<String> correct, BigDecimal points, String modelAnswer) {}
-    public record SaveRequest(Integer version, String title, String kind, Integer durationMinutes, List<ItemDto> items) {}
+    public record SaveRequest(Integer version, String name, String kind, Integer durationMinutes, List<ItemDto> items) {}
     public record ApproveRequest(String signatureToken, String reason) {}
     public record ReasonRequest(String reason) {}
     public record ChooseRequest(UUID assessmentId) {}
     /** What the editor shows now, saved or not: the paper is drawn from it. {@code key} draws the paper of the trainer, with the answers. */
-    public record PreviewRequest(String title, String kind, Integer durationMinutes, List<ItemDto> items, boolean key, String code, Integer versionNo) {}
+    public record PreviewRequest(String name, String kind, Integer durationMinutes, List<ItemDto> items, boolean key, String code, String revisionNumber, Boolean sideBySide) {}
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -56,10 +56,12 @@ public class TrainingAssessmentLibraryService {
     private final ObjectMapper json;
     private final TrainingFileService files;
     private final com.eqms.service.OnlyOfficeDocumentEditService onlyOffice;
+    private final TrainingPreviewMarking marking;
 
-    public TrainingAssessmentLibraryService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, AuditTrailService audit, ObjectMapper json, TrainingFileService files, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice) {
+    public TrainingAssessmentLibraryService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, AuditTrailService audit, ObjectMapper json, TrainingFileService files, com.eqms.service.OnlyOfficeDocumentEditService onlyOffice, TrainingPreviewMarking marking) {
         this.files = files;
         this.onlyOffice = onlyOffice;
+        this.marking = marking;
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
@@ -81,15 +83,25 @@ public class TrainingAssessmentLibraryService {
     /** The list: searched, filtered, sorted and paged here. Only the people who design or approve see it (it holds the keys). */
     @Transactional(readOnly = true)
     public Map<String, Object> page(UserAccount actor, String search, String status, String kind, String sortBy, String sortDirection, int page, int limit) {
+        return page(actor, search, status, kind, sortBy, sortDirection, page, limit, Map.of());
+    }
+
+    /** {@code more}: updatedBy (a name), updatedFrom and updatedTo (the Last Changed date range, yyyy-MM-dd, both days included), revision (an exact revision number). */
+    @Transactional(readOnly = true)
+    public Map<String, Object> page(UserAccount actor, String search, String status, String kind, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
         access.require(actor, "training.assessment.design", "training.assessment.approve");
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (lower(d.code) like ? escape '\\' or lower(d.title) like ? escape '\\')");
-            args.add(like); args.add(like);
+            where.append(" and (lower(d.code) like ? escape '\\' or lower(d.name) like ? escape '\\' or d.revision_number like ? escape '\\')");
+            args.add(like); args.add(like); args.add(like);
         }
-        if (status != null && Set.of("DRAFT", "PENDING_APPROVAL", "EFFECTIVE", "SUPERSEDED").contains(status)) { where.append(" and d.status = ?"); args.add(status); }
+        TrainingListFilter extra = new TrainingListFilter().contains(more.get("updatedBy"), "u.full_name").equal("d.revision_number", more.get("revision"))
+                .timeRange("d.updated_at", more.get("updatedFrom"), more.get("updatedTo"));
+        where.append(extra.and());
+        args.addAll(extra.args());
+        if (status != null && Set.of("DRAFT", "PENDING_APPROVAL", "EFFECTIVE", "OBSOLETED").contains(status)) { where.append(" and d.status = ?"); args.add(status); }
         if (kind != null && Set.of("QUESTIONS", "CHECKLIST").contains(kind)) { where.append(" and d.kind = ?"); args.add(kind); }
         String from = " from training_assessment_defs d join app_users u on u.id = d.updated_by left join app_users a on a.id = d.approved_by";
         Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
@@ -97,10 +109,19 @@ public class TrainingAssessmentLibraryService {
         args.add(safeLimit);
         args.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select d.id, d.code, d.version_no, d.title, d.kind, d.status, d.updated_at, u.full_name as updated_by_name, d.approved_at, a.full_name as approved_by_name,
+            select d.id, d.code, d.version_no, d.revision_number, d.name, d.kind, d.status, d.created_at, d.updated_at, u.full_name as updated_by_name, d.approved_at, a.full_name as approved_by_name,
                    (select count(*) from training_assessment_def_items i where i.def_id = d.id) as item_count,
                    case when d.kind = 'CHECKLIST' then null else (select coalesce(sum(i.points), 0) from training_assessment_def_items i where i.def_id = d.id) end as max_score
-            """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("code", "d.code", "title", "d.title", "kind", "d.kind", "status", "d.status", "updatedAt", "d.updated_at", "versionNo", "d.version_no", "itemCount", "item_count", "maxScore", "max_score"), "d.updated_at desc") + " limit ? offset ?", args.toArray());
+            """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("code", "d.code", "name", "d.name", "kind", "d.kind", "status", "d.status", "updatedAt", "d.updated_at", "updatedBy", "u.full_name", "revision", "d.version_no", "versionNo", "d.version_no", "itemCount", "item_count", "maxScore", "max_score"), "d.updated_at desc") + " limit ? offset ?", args.toArray());
+        // what the menu of a row may offer, decided here
+        boolean design = designer(actor), approve = approver(actor);
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> actions = new LinkedHashMap<>();
+            actions.put("view", true);
+            actions.put("continueDraft", design && "DRAFT".equals(row.get("status")));
+            actions.put("review", approve && "PENDING_APPROVAL".equals(row.get("status")));
+            row.put("actions", actions);
+        }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;
@@ -116,16 +137,65 @@ public class TrainingAssessmentLibraryService {
         StringBuilder where = new StringBuilder(" where d.status = 'EFFECTIVE'");
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (lower(d.code) like ? escape '\\' or lower(d.title) like ? escape '\\')");
+            where.append(" and (lower(d.code) like ? escape '\\' or lower(d.name) like ? escape '\\')");
             args.add(like); args.add(like);
         }
         if (kind != null && Set.of("QUESTIONS", "CHECKLIST").contains(kind)) { where.append(" and d.kind = ?"); args.add(kind); }
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select d.id, d.code, d.version_no, d.title, d.kind, d.approved_at,
+            select d.id, d.code, d.version_no, d.revision_number, d.name, d.kind, d.approved_at,
                    (select count(*) from training_assessment_def_items i where i.def_id = d.id) as item_count,
                    case when d.kind = 'CHECKLIST' then null else (select coalesce(sum(i.points), 0) from training_assessment_def_items i where i.def_id = d.id) end as max_score
-              from training_assessment_defs d""" + where + " order by d.title, d.code limit 50", args.toArray());
+              from training_assessment_defs d""" + where + " order by d.name, d.code limit 50", args.toArray());
         return Map.of("data", TrainingRows.camel(rows));
+    }
+
+    /**
+     * The revisions of the assessment of {@code id} (every revision of the same Assessment Number), searched, sorted and paged here, as the revisions of a document are in Document Control.
+     * {@code current} marks the one the person is looking at.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> revisions(UserAccount actor, UUID id, String search, String sortBy, String sortDirection, int page, int limit) {
+        access.require(actor, "training.assessment.design", "training.assessment.approve");
+        Map<String, Object> def = row(id);
+        List<Object> args = new ArrayList<>();
+        args.add(def.get("code"));
+        StringBuilder where = new StringBuilder(" where d.code = ?");
+        if (search != null && !search.isBlank()) {
+            String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
+            where.append(" and (d.revision_number like ? escape '\\' or lower(d.name) like ? escape '\\' or lower(u.full_name) like ? escape '\\')");
+            args.add(like); args.add(like); args.add(like);
+        }
+        String from = " from training_assessment_defs d join app_users u on u.id = d.created_by";
+        Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
+        int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
+        args.add(safeLimit);
+        args.add((safePage - 1) * safeLimit);
+        List<Map<String, Object>> rows = jdbc.queryForList("select d.id, d.revision_number, d.name, d.status, d.created_at, u.full_name as created_by_name, d.approved_at"
+                + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("revisionNumber", "d.version_no", "created", "d.created_at", "openedBy", "u.full_name", "name", "d.name", "status", "d.status"), "d.version_no desc") + " limit ? offset ?", args.toArray());
+        List<Map<String, Object>> data = TrainingRows.camel(rows);
+        for (Map<String, Object> row : data) row.put("current", id.equals(row.get("id")));
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("data", data);
+        long count = total == null ? 0 : total;
+        result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
+        return result;
+    }
+
+    /** The revision numbers, as a document's: a draft is (effective major).0.(patch + 1) and approving it makes the next major; 0.0.1 becomes 1.0.0 and 1.0.1 becomes 2.0.0. */
+    static String approvedRevision(String draftRevision) {
+        return (major(draftRevision) + 1) + ".0.0";
+    }
+
+    static String nextDraftRevision(String effectiveRevision) {
+        return major(effectiveRevision) + ".0.1";
+    }
+
+    private static int major(String revision) {
+        try {
+            return Integer.parseInt(String.valueOf(revision).split("\\.")[0]);
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("TRAINING_ASSESSMENT_REVISION_INVALID");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -240,11 +310,20 @@ public class TrainingAssessmentLibraryService {
     @Transactional(readOnly = true)
     public byte[] preview(UserAccount actor, PreviewRequest request) {
         access.require(actor, "training.assessment.design", "training.assessment.approve");
-        if (request == null || request.title() == null || request.title().isBlank()) throw new IllegalArgumentException("TRAINING_ASSESSMENT_TITLE_REQUIRED");
+        if (request == null || request.name() == null || request.name().isBlank()) throw new IllegalArgumentException("TRAINING_ASSESSMENT_TITLE_REQUIRED");
         if (request.kind() == null || !Set.of("QUESTIONS", "CHECKLIST").contains(request.kind())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         List<Map<String, Object>> items = normalize(request.kind(), request.items());
         if (request.durationMinutes() != null && (request.durationMinutes() < 1 || request.durationMinutes() > 480)) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
-        return toPdf(TrainingAssessmentForm.build(enabledTemplate(), new TrainingAssessmentForm.Content(items, "CHECKLIST".equals(request.kind()), request.key(), List.of(), null, null, request.durationMinutes())));
+        boolean checklist = "CHECKLIST".equals(request.kind());
+        byte[] template = enabledTemplate();
+        // a view: it carries the watermark of the preview settings
+        if (Boolean.TRUE.equals(request.sideBySide())) {
+            // the test paper and the paper with the answer key in one file, page beside page: the viewer scrolls and zooms them together
+            byte[] paper = toPdf(TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, false, List.of(), null, null, request.durationMinutes())));
+            byte[] key = toPdf(TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, true, List.of(), null, null, request.durationMinutes())));
+            return marking.mark(TrainingPdfSideBySide.join(paper, key), actor);
+        }
+        return marking.mark(toPdf(TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, request.key(), List.of(), null, null, request.durationMinutes()))), actor);
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ design
@@ -309,7 +388,7 @@ public class TrainingAssessmentLibraryService {
     }
 
     private void checkHeader(SaveRequest request) {
-        if (request == null || request.title() == null || request.title().isBlank() || request.title().length() > 255) throw new IllegalArgumentException("TRAINING_ASSESSMENT_TITLE_REQUIRED");
+        if (request == null || request.name() == null || request.name().isBlank() || request.name().length() > 255) throw new IllegalArgumentException("TRAINING_ASSESSMENT_TITLE_REQUIRED");
         if (request.durationMinutes() != null && (request.durationMinutes() < 1 || request.durationMinutes() > 480)) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         if (request.kind() == null || !Set.of("QUESTIONS", "CHECKLIST").contains(request.kind())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
     }
@@ -333,10 +412,10 @@ public class TrainingAssessmentLibraryService {
         UUID id = UUID.randomUUID();
         Long seq = jdbc.queryForObject("select nextval('training_assessment_code_seq')", Long.class);
         String code = String.format("TAS-%04d", seq == null ? 0 : seq);
-        jdbc.update("insert into training_assessment_defs(id, code, version_no, title, kind, duration_minutes, created_by, updated_by) values (?,?,1,?,?,?,?,?)",
-                id, code, request.title().trim(), request.kind(), request.durationMinutes(), actor.getId(), actor.getId());
+        jdbc.update("insert into training_assessment_defs(id, code, version_no, revision_number, name, kind, duration_minutes, created_by, updated_by) values (?,?,1,'0.0.1',?,?,?,?,?)",
+                id, code, request.name().trim(), request.kind(), request.durationMinutes(), actor.getId(), actor.getId());
         writeItems(id, items);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_CREATED", null, "DRAFT", code + " v1: " + request.title().trim() + " (" + items.size() + " item(s))");
+        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_CREATED", null, "DRAFT", code + " 0.0.1: " + request.name().trim() + " (" + items.size() + " item(s))");
         return detail(actor, row(id));
     }
 
@@ -349,11 +428,11 @@ public class TrainingAssessmentLibraryService {
         checkHeader(request);
         if (!request.kind().equals(def.get("kind"))) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         List<Map<String, Object>> items = normalize(request.kind(), request.items());
-        jdbc.update("update training_assessment_defs set title = ?, duration_minutes = ?, updated_by = ?, updated_at = now(), version = version + 1 where id = ?",
-                request.title().trim(), request.durationMinutes(), actor.getId(), id);
+        jdbc.update("update training_assessment_defs set name = ?, duration_minutes = ?, updated_by = ?, updated_at = now(), version = version + 1 where id = ?",
+                request.name().trim(), request.durationMinutes(), actor.getId(), id);
         jdbc.update("delete from training_assessment_def_items where def_id = ?", id);
         writeItems(id, items);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_UPDATED", "DRAFT", "DRAFT", def.get("code") + " v" + def.get("version_no") + ": " + items.size() + " item(s), total " + total(items) + " point(s)");
+        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_UPDATED", "DRAFT", "DRAFT", def.get("code") + " " + def.get("revision_number") + ": " + items.size() + " item(s), total " + total(items) + " point(s)");
         return detail(actor, row(id));
     }
 
@@ -365,7 +444,7 @@ public class TrainingAssessmentLibraryService {
         if (!"DRAFT".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_DRAFT");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("delete from training_assessment_defs where id = ?", id);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_DELETED", "DRAFT", null, def.get("code") + " v" + def.get("version_no") + ": " + request.reason().trim());
+        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_DELETED", "DRAFT", null, def.get("code") + " " + def.get("revision_number") + ": " + request.reason().trim());
         return Map.of("deleted", true);
     }
 
@@ -378,7 +457,7 @@ public class TrainingAssessmentLibraryService {
         Integer count = jdbc.queryForObject("select count(*) from training_assessment_def_items where def_id = ?", Integer.class, id);
         if (count == null || count == 0) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEMS_REQUIRED");
         jdbc.update("update training_assessment_defs set status = 'PENDING_APPROVAL', submitted_by = ?, submitted_at = now(), version = version + 1 where id = ?", actor.getId(), id);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_SUBMITTED", "DRAFT", "PENDING_APPROVAL", def.get("code") + " v" + def.get("version_no") + ": " + def.get("title"));
+        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_SUBMITTED", "DRAFT", "PENDING_APPROVAL", def.get("code") + " " + def.get("revision_number") + ": " + def.get("name"));
         return detail(actor, row(id));
     }
 
@@ -390,7 +469,7 @@ public class TrainingAssessmentLibraryService {
         if (!"PENDING_APPROVAL".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_PENDING");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_assessment_defs set status = 'DRAFT', submitted_by = null, submitted_at = null, version = version + 1 where id = ?", id);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_RETURNED", "PENDING_APPROVAL", "DRAFT", def.get("code") + " v" + def.get("version_no") + ": " + request.reason().trim());
+        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_RETURNED", "PENDING_APPROVAL", "DRAFT", def.get("code") + " " + def.get("revision_number") + ": " + request.reason().trim());
         return detail(actor, row(id));
     }
 
@@ -402,12 +481,13 @@ public class TrainingAssessmentLibraryService {
         if (!"PENDING_APPROVAL".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_PENDING");
         if (actor.getId().equals(def.get("created_by")) || actor.getId().equals(def.get("updated_by")) || actor.getId().equals(def.get("submitted_by"))) throw new IllegalArgumentException(TrainingApprovalService.SEGREGATION);
         if (request == null || request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
-        String label = def.get("code") + " v" + def.get("version_no");
+        String approvedRevision = approvedRevision(String.valueOf(def.get("revision_number")));
+        String label = def.get("code") + " " + approvedRevision;
         String reason = request.reason() == null || request.reason().isBlank() ? "Training Management: assessment approved" : request.reason().trim();
         UUID signature = signatures.createEntitySignature(TYPE, id, label, actor, request.signatureToken(), "TRAINING_ASSESSMENT_APPROVED", reason, null, null, null).getId();
-        jdbc.update("update training_assessment_defs set status = 'SUPERSEDED' where code = ? and status = 'EFFECTIVE'", def.get("code"));
-        jdbc.update("update training_assessment_defs set status = 'EFFECTIVE', approved_by = ?, approved_at = now(), approval_signature_id = ?, version = version + 1 where id = ?", actor.getId(), signature, id);
-        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_APPROVED", "PENDING_APPROVAL", "EFFECTIVE", label + ": " + def.get("title"));
+        jdbc.update("update training_assessment_defs set status = 'OBSOLETED' where code = ? and status = 'EFFECTIVE'", def.get("code"));
+        jdbc.update("update training_assessment_defs set status = 'EFFECTIVE', revision_number = ?, approved_by = ?, approved_at = now(), approval_signature_id = ?, version = version + 1 where id = ?", approvedRevision, actor.getId(), signature, id);
+        audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_APPROVED", "PENDING_APPROVAL", "EFFECTIVE", label + ": " + def.get("name"));
         return detail(actor, row(id));
     }
 
@@ -421,13 +501,13 @@ public class TrainingAssessmentLibraryService {
         if (drafts != null && drafts > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_DRAFT_EXISTS");
         Integer next = jdbc.queryForObject("select max(version_no) + 1 from training_assessment_defs where code = ?", Integer.class, def.get("code"));
         UUID created = UUID.randomUUID();
-        jdbc.update("insert into training_assessment_defs(id, code, version_no, title, kind, duration_minutes, created_by, updated_by) values (?,?,?,?,?,?,?,?)",
-                created, def.get("code"), next, def.get("title"), def.get("kind"), def.get("duration_minutes"), actor.getId(), actor.getId());
+        jdbc.update("insert into training_assessment_defs(id, code, version_no, revision_number, name, kind, duration_minutes, created_by, updated_by) values (?,?,?,?,?,?,?,?,?)",
+                created, def.get("code"), next, nextDraftRevision(String.valueOf(def.get("revision_number"))), def.get("name"), def.get("kind"), def.get("duration_minutes"), actor.getId(), actor.getId());
         jdbc.update("""
             insert into training_assessment_def_items(id, def_id, item_no, kind, prompt, options, correct, points, model_answer)
             select gen_random_uuid(), ?, item_no, kind, prompt, options, correct, points, model_answer from training_assessment_def_items where def_id = ?
             """, created, id);
-        audit.logAs(actor, TYPE, TYPE, created, "TRAINING_ASSESSMENT_NEW_VERSION", "EFFECTIVE", "DRAFT", def.get("code") + " v" + next + " from v" + def.get("version_no"));
+        audit.logAs(actor, TYPE, TYPE, created, "TRAINING_ASSESSMENT_NEW_VERSION", "EFFECTIVE", "DRAFT", def.get("code") + " " + nextDraftRevision(String.valueOf(def.get("revision_number"))) + " from " + def.get("revision_number"));
         return detail(actor, row(created));
     }
 
@@ -504,14 +584,14 @@ public class TrainingAssessmentLibraryService {
         String type = trainingTypeOf(activity);
         byte[] exam = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, false, topics, number, type, minutes));
         byte[] key = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, true, topics, number, type, minutes));
-        String label = def.get("code") + " v" + def.get("version_no");
+        String label = def.get("code") + " " + def.get("revision_number");
         String fileNumber = safe(number);
         putMaterial(actor, activityId, "EXAM", "APD.0009 - " + fileNumber + ".docx", exam, "Replaced by the assessment " + label + " of the library");
         putMaterial(actor, activityId, "ANSWER_KEY", "Answer key - " + fileNumber + ".docx", key, "Replaced by the assessment " + label + " of the library");
-        String before = activity.get("assessment_def_code") == null ? null : activity.get("assessment_def_code") + " v" + activity.get("assessment_def_version");
-        jdbc.update("update training_activities set assessment_def_id = ?, assessment_def_code = ?, assessment_def_version = ?, assessment_title = ?, assessment_kind = ?, assessment_max_score = ?, assessment_chosen_by = ?, assessment_chosen_at = now(), version = version + 1, updated_at = now() where id = ?",
-                def.get("id"), def.get("code"), def.get("version_no"), def.get("title"), def.get("kind"), checklist ? null : total(items), actor.getId(), activityId);
-        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_CHOSEN", before, label, def.get("title") + ": " + items.size() + " item(s)" + (checklist ? ", no score" : ", total " + total(items) + " point(s)")
+        String before = activity.get("assessment_def_code") == null ? null : activity.get("assessment_def_code") + " " + activity.get("assessment_def_revision");
+        jdbc.update("update training_activities set assessment_def_id = ?, assessment_def_code = ?, assessment_def_version = ?, assessment_def_revision = ?, assessment_name = ?, assessment_kind = ?, assessment_max_score = ?, assessment_chosen_by = ?, assessment_chosen_at = now(), version = version + 1, updated_at = now() where id = ?",
+                def.get("id"), def.get("code"), def.get("version_no"), def.get("revision_number"), def.get("name"), def.get("kind"), checklist ? null : total(items), actor.getId(), activityId);
+        store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_CHOSEN", before, label, def.get("name") + ": " + items.size() + " item(s)" + (checklist ? ", no score" : ", total " + total(items) + " point(s)")
                 + ", written into the form APD.0009 as the exam file and the answer key");
     }
 
@@ -520,10 +600,10 @@ public class TrainingAssessmentLibraryService {
     public void clear(UserAccount actor, UUID activityId) {
         Map<String, Object> activity = lockedForContent(actor, activityId);
         if (activity.get("assessment_def_id") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_CHOSEN");
-        String label = activity.get("assessment_def_code") + " v" + activity.get("assessment_def_version");
+        String label = activity.get("assessment_def_code") + " " + activity.get("assessment_def_revision");
         jdbc.update("update training_materials set removed_at = now(), removed_by = ?, remove_reason = ? where activity_id = ? and purpose in ('EXAM', 'ANSWER_KEY') and removed_at is null",
                 actor.getId(), "The assessment " + label + " of the library was taken off", activityId);
-        jdbc.update("update training_activities set assessment_def_id = null, assessment_def_code = null, assessment_def_version = null, assessment_title = null, assessment_kind = null, assessment_max_score = null, assessment_chosen_by = null, assessment_chosen_at = null, version = version + 1, updated_at = now() where id = ?", activityId);
+        jdbc.update("update training_activities set assessment_def_id = null, assessment_def_code = null, assessment_def_version = null, assessment_def_revision = null, assessment_name = null, assessment_kind = null, assessment_max_score = null, assessment_chosen_by = null, assessment_chosen_at = null, version = version + 1, updated_at = now() where id = ?", activityId);
         store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_REMOVED", label, null, "The exam file and the answer key made from it were removed from the activity");
     }
 }

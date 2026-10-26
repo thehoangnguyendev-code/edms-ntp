@@ -2,16 +2,17 @@ import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { resettingDates, useDateRange, useDepartmentNameOptions } from "../shared/useListFilters";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
-import { IconEye, IconPlus, IconCheck, IconBan, IconPhotoShare, IconX } from "@tabler/icons-react";
+import { IconEye, IconPlus, IconCheck, IconBan, IconPhotoShare, IconX, IconInfoCircle, IconFileDownload, IconFileTypeDocx, IconFileTypePdf } from "@tabler/icons-react";
+import { useSpecimenActions } from "./useSpecimenActions";
+import { SPECIMEN_STATUS_COLOR as STATUS_COLOR, SPECIMEN_STATUS_LABEL as STATUS_LABEL } from "./specimenLabels";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { Textarea } from "../shared/TrainingFields";
-import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { Select } from "@/components/ui/select/Select";
 import {
   DataTable,
@@ -33,34 +34,21 @@ import {
 import {
   trainingActivitiesApi,
   trainingError,
-  trainingFormsApi,
   trainingSpecimenApi,
-  type TrainingFormFormat,
   type TrainingPerson,
   type TrainingSpecimen,
 } from "@/services/api/trainingActivities";
 import {
   day,
   trainingBreadcrumbs,
-  TRAINING_PAGES, saveBlob, statusChange } from "../shared/trainingLabels";
+  TRAINING_PAGES } from "../shared/trainingLabels";
 import { SpecimenImagePicker } from "../shared/SpecimenImagePicker";
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Pending Confirmation",
-  APPROVED: "Approved",
-  SUPERSEDED: "Replaced",
-  REJECTED: "Rejected",
-};
-const STATUS_COLOR: Record<string, "amber" | "emerald" | "slate" | "red"> = {
-  PENDING: "amber",
-  APPROVED: "emerald",
-  SUPERSEDED: "slate",
-  REJECTED: "red",
-};
 
 /** Specimen signatures. The image is never in the list: it is opened on request, with a check each time, and the opening is recorded in the Audit Trail. */
 export function TrainingSpecimenView() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("training.signature.manage");
@@ -80,9 +68,6 @@ export function TrainingSpecimenView() {
   const [confirmerId, setConfirmerId] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const [viewing, setViewing] = useState<{ title: string; urls: string[] }>();
-  const [rejecting, setRejecting] = useState<{ id: string; reason: string }>();
-  const [sign, setSign] = useState<TrainingSpecimen>();
 
   const fetcher = useCallback(
     (params: Record<string, string | number | boolean | undefined>) =>
@@ -122,13 +107,14 @@ export function TrainingSpecimenView() {
       .then((p) => setConfirmers(p.data))
       .catch(() => setConfirmers([]));
   }, [uploading, forPerson, canManage, searchPeople]);
-  useEffect(
-    () => () => {
-      if (viewing) viewing.urls.forEach((u) => URL.revokeObjectURL(u));
-    },
-    [viewing],
-  );
-
+  // "Upload Again" from the detail page of a rejected signature opens the upload for that person
+  useEffect(() => {
+    const again = searchParams.get("uploadAgain");
+    if (!again) return;
+    setForPerson(again);
+    setUploading(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
   const upload = async () => {
     if (!file || !file2) return;
     setBusy(true);
@@ -162,72 +148,7 @@ export function TrainingSpecimenView() {
       setBusy(false);
     }
   };
-  /** The specimen signatures of the person in the form FRM.0007, as Word or PDF. */
-  const downloadForm = async (s: TrainingSpecimen, format: TrainingFormFormat) => {
-    try {
-      saveBlob(await trainingFormsApi.specimen(s.personUserId, format), `FRM.0007-${s.employeeCode ?? s.fullName}.${format}`);
-    } catch (e) {
-      showToast({ type: "error", title: "The form was not exported", message: trainingError(e) });
-    }
-  };
-
-  const view = async (s: TrainingSpecimen) => {
-    try {
-      const blobs = [
-        await trainingSpecimenApi.image(s.id, 1),
-        ...(s.hasSecond ? [await trainingSpecimenApi.image(s.id, 2)] : []),
-      ];
-      setViewing({
-        title: `${s.fullName}, version ${s.versionNo}`,
-        urls: blobs.map((b) => URL.createObjectURL(b)),
-      });
-    } catch (e) {
-      showToast({
-        type: "error",
-        title: "The image could not be opened",
-        message: trainingError(e),
-      });
-    }
-  };
-  const doConfirm = async (token: string) => {
-    if (!sign) return;
-    setBusy(true);
-    try {
-      await trainingSpecimenApi.confirm(sign.id, token);
-      showToast({
-        type: "success",
-        title: "Specimen signature approved",
-        message: sign.fullName,
-      });
-      setSign(undefined);
-      table.reload();
-    } catch (e) {
-      showToast({
-        type: "error",
-        title: "The confirmation failed",
-        message: trainingError(e),
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-  const doReject = async () => {
-    if (!rejecting) return;
-    setBusy(true);
-    try {
-      await trainingSpecimenApi.reject(rejecting.id, rejecting.reason.trim());
-      setRejecting(undefined);
-      table.reload();
-    } catch (e) {
-      showToast({
-        type: "error",
-        title: "The rejection failed",
-        message: trainingError(e),
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
+  const actions = useSpecimenActions(() => table.reload());
 
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
@@ -245,7 +166,7 @@ export function TrainingSpecimenView() {
       header: "Department", sort: sorted("department"),
       cell: (r) => r.department ?? "—",
     },
-    { id: "version", header: "Version", sort: sorted("version"), cell: (r) => r.versionNo },
+    { id: "version", header: "Version", sort: sorted("version"), cell: (r) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/specimen-signatures/${r.id}`)}>{r.versionNo}</button> },
     {
       id: "status",
       header: "Status", sort: sorted("status"),
@@ -382,38 +303,63 @@ export function TrainingSpecimenView() {
         isOpen={!!row}
         onClose={menu.close}
         position={menu.position}
-        minWidth={200}
+        minWidth="min(220px, 90vw)"
       >
         {row && (
-          <div className="py-1">
+          <div className="whitespace-nowrap py-1">
+            <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { navigate(`/training-management/specimen-signatures/${row.id}`); menu.close(); }}>
+              View Details
+            </DropdownMenuItem>
             {row.capabilities.viewImage && (
               <DropdownMenuItem
                 icon={<IconPhotoShare className="h-4 w-4" />}
                 onClick={() => {
-                  void view(row);
+                  void actions.view(row);
                   menu.close();
                 }}
               >
                 View Image
               </DropdownMenuItem>
             )}
-            {(row.status === "APPROVED" || row.status === "SUPERSEDED") && row.capabilities.viewImage && (["docx", "pdf"] as const).map((format) => (
+            {(row.status === "APPROVED" || (row.status === "OBSOLETED" && !!row.effectiveDate)) && row.capabilities.viewImage && (
+              <>
+                <DropdownMenuItem
+                  icon={<IconFileTypeDocx className="h-4 w-4" />}
+                  onClick={() => {
+                    void actions.downloadForm(row, "docx");
+                    menu.close();
+                  }}
+                >
+                  Download Word (FRM.0007)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  icon={<IconFileTypePdf className="h-4 w-4" />}
+                  onClick={() => {
+                    void actions.downloadForm(row, "pdf");
+                    menu.close();
+                  }}
+                >
+                  Download PDF (FRM.0007)
+                </DropdownMenuItem>
+              </>
+            )}
+            {row.capabilities.reupload && (
               <DropdownMenuItem
-                key={format}
-                icon={<IconPhotoShare className="h-4 w-4" />}
+                icon={<IconPlus className="h-4 w-4" />}
                 onClick={() => {
-                  void downloadForm(row, format);
+                  setForPerson(row.personUserId);
+                  setUploading(true);
                   menu.close();
                 }}
               >
-                {format === "docx" ? "Download Word (FRM.0007)" : "Download PDF (FRM.0007)"}
+                Upload Again
               </DropdownMenuItem>
-            ))}
+            )}
             {row.capabilities.confirm && (
               <DropdownMenuItem
                 icon={<IconCheck className="h-4 w-4" />}
                 onClick={() => {
-                  setSign(row);
+                  actions.askConfirm(row);
                   menu.close();
                 }}
               >
@@ -424,7 +370,7 @@ export function TrainingSpecimenView() {
               <DropdownMenuItem
                 icon={<IconX className="h-4 w-4" />}
                 onClick={() => {
-                  setRejecting({ id: row.id, reason: "" });
+                  actions.askReject(row);
                   menu.close();
                 }}
               >
@@ -456,7 +402,7 @@ export function TrainingSpecimenView() {
               <Select
                 value={forPerson}
                 onChange={setForPerson}
-                options={[{ label: "Myself", value: "" }, ...people]}
+                options={[{ label: "Myself", value: "" }, ...people, ...(forPerson && !people.some((x) => x.value === forPerson) ? [{ label: "Selected employee", value: forPerson }] : [])]}
                 onSearch={searchPeople}
                 placeholder="Search by name"
               />
@@ -494,80 +440,7 @@ export function TrainingSpecimenView() {
           </FormField>
         </div>
       </FormModal>
-      <FormModal
-        isOpen={!!viewing}
-        onClose={() => setViewing(undefined)}
-        onConfirm={() => setViewing(undefined)}
-        title={viewing?.title}
-        showCancel={false}
-        confirmText="Close"
-        size="md"
-      >
-        {viewing && (
-          <div className="grid gap-4">
-            {viewing.urls.map((url, i) => (
-              <figure key={url} className="space-y-1">
-                <figcaption className="text-xs font-medium text-slate-600">
-                  {i === 0 ? "1st signature" : "2nd signature"}
-                </figcaption>
-                <img
-                  src={url}
-                  alt={
-                    i === 0
-                      ? "1st specimen signature"
-                      : "2nd specimen signature"
-                  }
-                  className="mx-auto max-h-48 max-w-full rounded border border-slate-200 bg-white"
-                />
-              </figure>
-            ))}
-            {viewing.urls.length === 1 && (
-              <p className="text-xs text-slate-500">
-                This version was made before the form asked for two signatures,
-                so it has the 1st only.
-              </p>
-            )}
-          </div>
-        )}
-      </FormModal>
-      <FormModal
-        isOpen={!!rejecting}
-        onClose={() => setRejecting(undefined)}
-        onConfirm={() => void doReject()}
-        title="Reject Specimen Signature"
-        confirmText="Reject"
-        confirmVariant="destructive"
-        isLoading={busy}
-        confirmDisabled={!rejecting?.reason.trim()}
-        size="md"
-      >
-        <FormField label="Reason" required>
-          <Textarea
-            rows={3}
-            value={rejecting?.reason ?? ""}
-            onChange={(e) =>
-              rejecting &&
-              setRejecting({ ...rejecting, reason: e.target.value })
-            }
-          />
-        </FormField>
-      </FormModal>
-      <ESignatureModal
-        isOpen={!!sign}
-        onClose={() => setSign(undefined)}
-        onConfirm={async (d: { signatureToken: string }) =>
-          doConfirm(d.signatureToken)
-        }
-        actionTitle="Confirm Specimen Signature"
-        changes={statusChange("Pending Confirmation", "Approved")}
-        meaningDisplayName="Specimen Signature Approved"
-        meaningCode="TRAINING_SPECIMEN_APPROVED"
-        targetDetails={{
-          code: sign?.fullName ?? "",
-          title: "Specimen signature",
-          revision: String(sign?.versionNo ?? ""),
-        }}
-      />
+      {actions.modals}
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day } from "../../shared/trai
 
 const STATE_LABEL: Record<CompletionState, string> = { NOT_REQUIRED: "Not required", REQUIRED: "Required", IN_PROGRESS: "In progress", QUALIFIED: "Qualified", UPDATE_NEEDED: "Update needed", DUE: "Annual training due" };
 const STATE_COLOR: Record<CompletionState, "slate" | "red" | "blue" | "emerald" | "amber" | "orange"> = { NOT_REQUIRED: "slate", REQUIRED: "red", IN_PROGRESS: "blue", QUALIFIED: "emerald", UPDATE_NEEDED: "amber", DUE: "orange" };
-const GROUP_LABEL = { FACTORY_GENERAL: "General training of the whole factory", DEPARTMENT_GENERAL: "General training of the department", SOP: "SOP of the position" } as const;
+const GROUP_LABEL = { FACTORY_GENERAL: "General training of the whole factory", DEPARTMENT_GENERAL: "General training of the department", SOP: "SOP of the Job Role" } as const;
 const RESULT_LABEL: Record<string, string> = { PASSED: "Passed", READ: "Read and understood", ATTENDED: "Attended" };
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
@@ -56,7 +56,7 @@ export function CompletionCellDrawer({ departmentId, personId, rowId, onClose }:
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Fact label="Name">{detail.person.fullName}{detail.person.employeeCode ? ` (${detail.person.employeeCode})` : ""}</Fact>
               <Fact label="Department">{detail.person.department ?? "—"}</Fact>
-              <Fact label="Position">{detail.person.positions ?? "—"}</Fact>
+              <Fact label="Job Roles">{detail.person.positions ?? "—"}</Fact>
             </dl>
           </section>
 

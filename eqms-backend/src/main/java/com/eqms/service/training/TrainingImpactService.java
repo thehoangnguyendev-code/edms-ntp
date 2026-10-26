@@ -71,6 +71,12 @@ public class TrainingImpactService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> list(UserAccount actor, UUID departmentId, String status, String search, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, departmentId, status, null, search, sortBy, sortDirection, page, limit);
+    }
+
+    /** {@code activityStatus} is the Training Status: the status of the training activity of the line (a machine value of the activity lifecycle). An unknown value is refused. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> list(UserAccount actor, UUID departmentId, String status, String activityStatus, String search, String sortBy, String sortDirection, int page, int limit) {
         UUID department = department(actor, departmentId);
         List<Object> args = new ArrayList<>();
         args.add(department);
@@ -79,6 +85,11 @@ public class TrainingImpactService {
             if (!List.of("PENDING", "MATRIX_UPDATE_PENDING", "DONE", "OPEN").contains(status)) throw new IllegalArgumentException("TRAINING_STATUS_INVALID");
             if ("OPEN".equals(status)) where.append(" and x.impact_status <> 'DONE'");
             else { where.append(" and x.impact_status = ?"); args.add(status); }
+        }
+        if (activityStatus != null && !activityStatus.isBlank()) {
+            if (!List.of("RESERVED", "PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED").contains(activityStatus)) throw new IllegalArgumentException("TRAINING_STATUS_INVALID");
+            where.append(" and x.activity_status = ?");
+            args.add(activityStatus);
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
@@ -148,13 +159,13 @@ public class TrainingImpactService {
         List<Map<String, Object>> matrix = jdbc.queryForList("select v.id, v.version_no from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'", department);
         out.put("effectiveMatrix", matrix.isEmpty() ? null : TrainingRows.camel(matrix.getFirst()));
         List<String> inMatrix = matrix.isEmpty() || activity.get("document_id") == null ? List.of() : jdbc.queryForList("""
-            select p.name from training_matrix_rows r join training_matrix_cells c on c.row_id = r.id join positions p on p.id = c.position_id
+            select p.name from training_matrix_rows r join training_matrix_cells c on c.row_id = r.id join training_job_roles p on p.id = c.position_id
              where r.version_id = ? and r.document_id = ? order by p.name
             """, String.class, matrix.getFirst().get("id"), activity.get("document_id"));
         boolean rowExists = !matrix.isEmpty() && activity.get("document_id") != null && Boolean.TRUE.equals(jdbc.queryForObject("select exists (select 1 from training_matrix_rows r where r.version_id = ? and r.document_id = ?)", Boolean.class, matrix.getFirst().get("id"), activity.get("document_id")));
         out.put("inEffectiveMatrix", rowExists);
         out.put("positionsInMatrix", inMatrix);
-        out.put("positions", TrainingRows.camel(jdbc.queryForList("select id, name from positions where is_active and department_id = ? order by name", department)));
+        out.put("positions", TrainingRows.camel(jdbc.queryForList("select id, name from training_job_roles where is_active and department_id = ? order by name", department)));
         out.put("latest", TrainingRows.camel(jdbc.queryForList("select i.outcome, i.reason, i.positions, i.assessed_at, u.full_name as assessed_by_name from training_impact_assessments i join app_users u on u.id = i.assessed_by where i.activity_id = ? order by i.assessed_at desc limit 5", activityId)));
         return out;
     }
@@ -172,7 +183,7 @@ public class TrainingImpactService {
         Set<UUID> wanted = new LinkedHashSet<>(request.positionIds() == null ? List.<UUID>of() : request.positionIds());
         List<Map<String, Object>> chosen = new ArrayList<>();
         for (UUID positionId : wanted) {
-            List<Map<String, Object>> found = jdbc.queryForList("select id, name from positions where id = ? and is_active and department_id = ?", positionId, department);
+            List<Map<String, Object>> found = jdbc.queryForList("select id, name from training_job_roles where id = ? and is_active and department_id = ?", positionId, department);
             if (found.isEmpty()) throw new IllegalArgumentException("TRAINING_IMPACT_POSITION_INVALID");
             chosen.add(Map.of("id", String.valueOf(positionId), "name", String.valueOf(found.getFirst().get("name"))));
         }

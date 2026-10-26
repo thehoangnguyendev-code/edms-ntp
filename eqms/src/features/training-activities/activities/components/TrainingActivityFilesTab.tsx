@@ -6,6 +6,7 @@ import {
   IconDownload,
   IconExternalLink,
   IconEye,
+  IconPhotoShare,
   IconRosetteDiscountCheck,
   IconTrash,
 } from "@tabler/icons-react";
@@ -41,6 +42,7 @@ import {
 } from "@/services/api/trainingActivities";
 import { day, when } from "../../shared/trainingLabels";
 import { TrainingFileDropzone } from "../../shared/TrainingFileDropzone";
+import { SpecimenViewModal } from "../../shared/SpecimenViewModal";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import type { ActivityMode } from "../TrainingActivityDetailPage";
 import { TrainingAssessmentEditorFrame } from "./TrainingAssessmentEditorFrame";
@@ -125,6 +127,8 @@ export function TrainingActivityFilesTab({
   const [templates, setTemplates] = useState<TrainingFormTemplateRef[]>([]);
   const [editing, setEditing] = useState<AssessmentEditOpen>();
   const [packs, setPacks] = useState<TrainingPaperPack[]>([]);
+  // the specimen signature of the person of a scan, opened beside it for the check against the paper
+  const [specimenOf, setSpecimenOf] = useState<{ personId: string; name: string }>();
 
   const load = useCallback(() => {
     trainingFilesApi
@@ -908,6 +912,18 @@ export function TrainingActivityFilesTab({
             >
               Download
             </DropdownMenuItem>
+            {openEvidence.participantId && participants.find((p) => p.id === openEvidence.participantId)?.personUserId && (
+              <DropdownMenuItem
+                icon={<IconPhotoShare className="h-4 w-4" />}
+                onClick={() => {
+                  menu.close();
+                  const person = participants.find((p) => p.id === openEvidence.participantId);
+                  if (person?.personUserId) setSpecimenOf({ personId: person.personUserId, name: person.fullName });
+                }}
+              >
+                View Specimen Signature
+              </DropdownMenuItem>
+            )}
             {canReceive && !openEvidence.receivedAt && (
               <DropdownMenuItem
                 icon={<IconRosetteDiscountCheck className="h-4 w-4" />}
@@ -926,6 +942,7 @@ export function TrainingActivityFilesTab({
         )}
       </PortalDropdownMenu>
 
+      {specimenOf && <SpecimenViewModal personId={specimenOf.personId} personName={specimenOf.name} onClose={() => setSpecimenOf(undefined)} />}
       <FormModal
         isOpen={!!removing}
         onClose={() => setRemoving(undefined)}

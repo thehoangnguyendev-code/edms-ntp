@@ -49,13 +49,15 @@ public class TrainingAttendanceListService {
     private final TrainingStore store;
     private final TrainingFormTemplates templates;
     private final TrainingSignatureBlocks blocks;
+    private final TrainingPreviewMarking marking;
 
-    public TrainingAttendanceListService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingFormTemplates templates, TrainingSignatureBlocks blocks) {
+    public TrainingAttendanceListService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingFormTemplates templates, TrainingSignatureBlocks blocks, TrainingPreviewMarking marking) {
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
         this.templates = templates;
         this.blocks = blocks;
+        this.marking = marking;
     }
 
     /** What is written in the form, read from the activity. */
@@ -66,6 +68,12 @@ public class TrainingAttendanceListService {
     // A refusal (no template, no document server) writes nothing, and a caller inside another transaction (the e-mail of the attendance list) must not be rolled back by it.
     @Transactional(noRollbackFor = RuntimeException.class)
     public Map<String, Object> export(UserAccount actor, UUID activityId, String format) {
+        return export(actor, activityId, format, false);
+    }
+
+    /** {@code preview}: the PDF is for the viewer of the screen and carries the watermark of the preview settings; the file that is downloaded or printed never does. */
+    @Transactional(noRollbackFor = RuntimeException.class)
+    public Map<String, Object> export(UserAccount actor, UUID activityId, String format, boolean preview) {
         access.require(actor, "training.activity.view", "training.activity.organize", "training.activity.conduct");
         Map<String, Object> activity = store.activity(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
@@ -83,7 +91,11 @@ public class TrainingAttendanceListService {
         }
         store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_LIST_EXPORTED", null, TEMPLATE_CODE + " " + template.versionLabel(),
                 ("pdf".equalsIgnoreCase(format) ? "PDF" : "Word") + ", template SHA-256 " + template.sha256());
-        return templates.file(docx, format, String.valueOf(activity.get("training_number")).replace('/', '-') + "-" + TEMPLATE_CODE);
+        Map<String, Object> file = templates.file(docx, format, String.valueOf(activity.get("training_number")).replace('/', '-') + "-" + TEMPLATE_CODE);
+        if (!preview || !"pdf".equalsIgnoreCase(format)) return file;
+        Map<String, Object> marked = new HashMap<>(file);
+        marked.put("bytes", marking.mark((byte[]) file.get("bytes"), actor));
+        return marked;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ the data

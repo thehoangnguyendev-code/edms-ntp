@@ -828,3 +828,16 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* A field the browser has filled in (saved login) keeps the font of the page. Without this, Chrome shows the filled value in its own font until the field is clicked. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  letter-spacing: inherit !important;
+  -webkit-text-fill-color: currentColor;
+}

@@ -64,7 +64,7 @@ class TrainingImpactServiceTest {
         ElectronicSignature signature = mock(ElectronicSignature.class);
         when(signature.getId()).thenReturn(UUID.randomUUID());
         when(signatures.createEntitySignature(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(signature);
-        when(jdbc.queryForList(contains("from positions where id = ? and is_active and department_id = ?"), any(Object[].class))).thenReturn(List.of(Map.of("id", positionId, "name", "QA Specialist")));
+        when(jdbc.queryForList(contains("from training_job_roles where id = ? and is_active and department_id = ?"), any(Object[].class))).thenReturn(List.of(Map.of("id", positionId, "name", "QA Specialist")));
         service = spy(new TrainingImpactService(jdbc, access, store, signatures));
         doReturn(Map.of()).when(service).context(any(), any());
     }
@@ -88,7 +88,7 @@ class TrainingImpactServiceTest {
 
     @Test
     void aPositionOfAnotherDepartmentIsRefused() {
-        when(jdbc.queryForList(contains("from positions where id = ? and is_active and department_id = ?"), any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForList(contains("from training_job_roles where id = ? and is_active and department_id = ?"), any(Object[].class))).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.assess(actor, activityId, request("MATRIX_UPDATE_NEEDED", "New SOP", List.of(positionId), "t"))).hasMessage("TRAINING_IMPACT_POSITION_INVALID");
     }

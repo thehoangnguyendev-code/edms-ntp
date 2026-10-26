@@ -1,8 +1,15 @@
 import { TrainingPersonName } from "../shared/TrainingPersonName";
+import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
+import { PersonJobRolesPanel } from "./PersonJobRolesPanel";
+import { RadioGroup } from "@/components/ui/radio";
+import { Input } from "../shared/TrainingFields";
+import { RequiredTrainingsField, pickedIds, type PickedTraining } from "./RequiredTrainingsField";
 import {
+  IconChecks,
   IconEye,
   IconInfoCircle,
-  } from "@tabler/icons-react";
+  IconPencilMinus,
+} from "@tabler/icons-react";
 import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
@@ -30,9 +37,11 @@ import {
   type ReportSelectFilter,
 } from "@/features/report/shared/ReportListToolbar";
 import {
+  type TrainingEligibility,
   trainingActivitiesApi,
   trainingError,
   trainingJobsApi,
+  trainingWorkPositionApi,
   trainingMatrixApi,
   type TrainingJobSummary,
   type TrainingPosition,
@@ -49,12 +58,11 @@ import {
 } from "../shared/useListFilters";
 
 /** The one item of the Action menu: what is waiting on this job assignment. Every other status just opens it. */
-const ROW_ACTION_LABEL: Record<string, string> = { DRAFT: "Continue Draft", PENDING_RECEIVER: "Review and Accept" };
 export const JOB_STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
   PENDING_RECEIVER: "Pending Employee Acceptance",
   EFFECTIVE: "Effective",
-  SUPERSEDED: "Replaced",
+  OBSOLETED: "Obsoleted",
   CANCELLED: "Cancelled",
 };
 export const JOB_STATUS_COLOR: Record<
@@ -64,13 +72,19 @@ export const JOB_STATUS_COLOR: Record<
   DRAFT: "blue",
   PENDING_RECEIVER: "amber",
   EFFECTIVE: "emerald",
-  SUPERSEDED: "slate",
+  OBSOLETED: "slate",
   CANCELLED: "red",
 };
 
 /** Job assignments (APD.0024): the position a person is given, after the training the matrix requires for it. */
+const TABS: TabItem[] = [
+  { id: "assignments", label: "Job Assignments" },
+  { id: "roles", label: "Job Roles Held" },
+];
+
 export function TrainingJobListView() {
   const navigate = useNavigate();
+  const [tab, setTab] = useState("assignments");
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("training.job_assignment.manage");
@@ -101,6 +115,24 @@ export function TrainingJobListView() {
   const [positions, setPositions] = useState<TrainingPosition[]>([]);
   const [personId, setPersonId] = useState("");
   const [positionId, setPositionId] = useState("");
+  // The Job Roles that the person holds through a signed job assignment: a later Job Role replaces one of them or is added to them.
+  const [held, setHeld] = useState<
+    { jobRoleId: string; positionName: string }[]
+  >([]);
+  const [mode, setMode] = useState<"CHANGE" | "ADDITIONAL">("ADDITIONAL");
+  const [replaces, setReplaces] = useState("");
+  const [changeReason, setChangeReason] = useState("");
+  const [required, setRequired] = useState<PickedTraining[]>([]);
+  // The check is made at once: what the matrix requires for the Job Role and what is ticked, against the training records of the person.
+  const [check, setCheck] = useState<TrainingEligibility>();
+  useEffect(() => {
+    setCheck(undefined);
+    if (!creating || !personId || !positionId) return;
+    let live = true;
+    const ids = pickedIds(required);
+    trainingJobsApi.eligibility(personId, positionId, ids.topicIds, ids.documentIds).then((c) => { if (live) setCheck(c); }).catch(() => { if (live) setCheck(undefined); });
+    return () => { live = false; };
+  }, [creating, personId, positionId, required]);
   const [people, setPeople] = useState<{ label: string; value: string }[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -122,6 +154,24 @@ export function TrainingJobListView() {
   useEffect(() => {
     if (creating) void searchPeople("");
   }, [creating, searchPeople]);
+  useEffect(() => {
+    setHeld([]);
+    setReplaces("");
+    if (!personId) return;
+    let live = true;
+    trainingWorkPositionApi
+      .of(personId)
+      .then((w) => {
+        if (live)
+          setHeld((w.roles ?? []).filter((r) => r.source === "JOB_ASSIGNMENT"));
+      })
+      .catch(() => {
+        if (live) setHeld([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [personId]);
 
   const fetcher = useCallback(
     (params: Record<string, string | number | boolean | undefined>) =>
@@ -197,7 +247,7 @@ export function TrainingJobListView() {
     },
     {
       id: "position",
-      header: "Position",
+      header: "Job Role",
       sort: sorted("position"),
       cell: (r) => r.positionName,
     },
@@ -242,14 +292,38 @@ export function TrainingJobListView() {
       cell: (r) => day(r.createdAt),
     },
   ];
-  // The last column opens the job assignment at the step that is waiting: the draft to finish, or the assignment the employee must accept. The people, records and
-  // signatures that belong to the same person are in the card under the buttons of the job assignment itself.
+  // One item for each thing the row leads to; the server says which ones the person may use. The people, records and signatures that belong to the same person are in the
+  // card under the buttons of the job assignment itself.
+  const openJob = (id: string) =>
+    navigate(`/training-management/job-assignments/${id}`);
   const rowMenu = useTrainingRowMenu(table.items, (r) => [
-    {
-      label: ROW_ACTION_LABEL[r.status] ?? "View Details",
-      icon: <IconInfoCircle className="h-4 w-4" />,
-      onClick: () => navigate(`/training-management/job-assignments/${r.id}`),
-    },
+    ...(r.actions.view
+      ? [
+          {
+            label: "View Details",
+            icon: <IconInfoCircle className="h-4 w-4" />,
+            onClick: () => openJob(r.id),
+          },
+        ]
+      : []),
+    ...(r.actions.continueDraft
+      ? [
+          {
+            label: "Continue Draft",
+            icon: <IconPencilMinus className="h-4 w-4" />,
+            onClick: () => openJob(r.id),
+          },
+        ]
+      : []),
+    ...(r.actions.review
+      ? [
+          {
+            label: "Review and Accept",
+            icon: <IconChecks className="h-4 w-4" />,
+            onClick: () => openJob(r.id),
+          },
+        ]
+      : []),
   ]);
   const { layout, control } = useCustomColumnLayout(
     "training.job.assignments",
@@ -299,7 +373,7 @@ export function TrainingJobListView() {
     },
     {
       id: "position",
-      label: "Position",
+      label: "Job Role",
       value: positionFilter,
       options: [
         { label: "All", value: "" },
@@ -319,6 +393,16 @@ export function TrainingJobListView() {
         personUserId: personId,
         positionId,
         duties: [],
+        requiredTopicIds: pickedIds(required).topicIds,
+        requiredDocumentIds: pickedIds(required).documentIds,
+        ...(held.length > 0
+          ? {
+              mode,
+              replacesPositionId:
+                mode === "CHANGE" ? replaces || held[0].jobRoleId : undefined,
+              changeReason: mode === "CHANGE" ? changeReason.trim() : undefined,
+            }
+          : {}),
       });
       showToast({
         type: "success",
@@ -344,7 +428,7 @@ export function TrainingJobListView() {
         title={TRAINING_PAGES.jobs.title}
         breadcrumbItems={trainingBreadcrumbs(navigate, "jobs")}
         actions={
-          canManage ? (
+          canManage && tab === "assignments" ? (
             <Button size="sm" onClick={() => setCreating(true)}>
               <IconPlus className="mr-2 h-4 w-4" />
               New Job Assignment
@@ -352,6 +436,12 @@ export function TrainingJobListView() {
           ) : undefined
         }
       />
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <TabNav tabs={TABS} activeTab={tab} onChange={setTab} variant="underline" ariaLabel="Job assignments" tabIdPrefix="jobs-tab" panelIdPrefix="jobs-panel" />
+      </div>
+      {tab === "roles" && <PersonJobRolesPanel />}
+      {tab === "assignments" && (
+        <>
       {error && (
         <p role="alert" className="text-sm text-red-700">
           {error}
@@ -400,7 +490,7 @@ export function TrainingJobListView() {
           emptyState={
             <TableEmptyState
               title="No Job Assignments"
-              description="Assignments of people to positions appear here."
+              description="Assignments of Job Roles to people appear here."
             />
           }
           pagination={
@@ -418,6 +508,8 @@ export function TrainingJobListView() {
         />
       </ReportListToolbar>
       {rowMenu.node}
+        </>
+      )}
       <FormModal
         isOpen={creating}
         onClose={() => setCreating(false)}
@@ -426,7 +518,11 @@ export function TrainingJobListView() {
         description="A draft is created. The matrix training of the person is checked before it can be sent."
         confirmText="Create draft"
         isLoading={busy}
-        confirmDisabled={!personId || !positionId}
+        confirmDisabled={
+          !personId ||
+          !positionId ||
+          (held.length > 0 && !changeReason.trim())
+        }
         size="md"
       >
         <div className="grid gap-4">
@@ -439,19 +535,77 @@ export function TrainingJobListView() {
               placeholder="Search by name"
             />
           </FormField>
-          <FormField label="Position" required>
+          <FormField label="Job Role" required>
             <Select
               value={positionId}
               onChange={setPositionId}
               options={positions
-                .filter((p) => p.departmentId)
+                .filter(
+                  (p) =>
+                    p.departmentId && !held.some((h) => h.jobRoleId === p.id),
+                )
                 .map((p) => ({
                   label: `${p.name} (${p.departmentName})`,
                   value: p.id,
                 }))}
-              placeholder="Choose a position"
+              placeholder="Choose a Job Role"
             />
           </FormField>
+          <FormField label="Other trainings required" hint="Besides the matrix of the Job Role: tick the topics or SOPs the person must have completed first.">
+            <RequiredTrainingsField value={required} onChange={setRequired} />
+          </FormField>
+          {check && (
+            <div role="status" className={`rounded-lg border px-3 py-2 text-sm ${check.matrixMissing || (check.missingCount ?? 0) > 0 ? "border-amber-200 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}>
+              {check.matrixMissing ? "The department has no effective matrix: an exception is needed to go ahead." : (check.missingCount ?? 0) === 0 ? `Training check: complete (${check.items.length} required).` : (
+                <>
+                  <p className="font-medium">Not trained yet ({check.missingCount} of {check.items.length}). The assignment cannot be signed until they are done, or an exception is approved:</p>
+                  <ul className="mt-1 list-disc pl-5">{check.items.filter((i) => !i.lastDone).map((i) => <li key={`${i.code}|${i.title}`}>{i.code ? `${i.code} — ` : ""}{i.title}{i.source === "CHOSEN" ? " (ticked)" : ""}</li>)}</ul>
+                </>
+              )}
+            </div>
+          )}
+          {held.length > 0 && (
+            <>
+              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                This person holds: {held.map((h) => h.positionName).join(", ")}.
+              </p>
+              <FormField label="This Job Role" required>
+                <RadioGroup
+                  name="job-mode"
+                  layout="horizontal"
+                  value={mode}
+                  onChange={(v) => setMode(v as "CHANGE" | "ADDITIONAL")}
+                  options={[
+                    { label: "Is added to the ones held", value: "ADDITIONAL" },
+                    { label: "Replaces one held", value: "CHANGE" },
+                  ]}
+                />
+              </FormField>
+              {mode === "CHANGE" && (
+                <>
+                  {held.length > 1 && (
+                    <FormField label="Job Role to replace" required>
+                      <Select
+                        value={replaces || held[0].jobRoleId}
+                        onChange={setReplaces}
+                        options={held.map((h) => ({
+                          label: h.positionName,
+                          value: h.jobRoleId,
+                        }))}
+                      />
+                    </FormField>
+                  )}
+                  <FormField label="Reason for the change" required>
+                    <Input
+                      value={changeReason}
+                      maxLength={500}
+                      onChange={(e) => setChangeReason(e.target.value)}
+                    />
+                  </FormField>
+                </>
+              )}
+            </>
+          )}
         </div>
       </FormModal>
     </div>

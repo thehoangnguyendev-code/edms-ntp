@@ -39,14 +39,14 @@ const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
   PENDING_APPROVAL: "Pending Approval",
   EFFECTIVE: "Effective",
-  OBSOLETE: "Obsolete",
+  OBSOLETED: "Obsoleted",
 };
 
 const NEXT_STEP: Record<string, string> = {
   DRAFT: "This version is a draft. Edit the matrix, save it, then submit it for approval with an electronic signature.",
   PENDING_APPROVAL: "This version is waiting for the approver. It cannot be changed until it is approved or sent back.",
   EFFECTIVE: "This version is in use: it tells who must be trained on what. To change the matrix, start a new version.",
-  OBSOLETE: "This version was replaced by a newer one and stays as history. It cannot be changed.",
+  OBSOLETED: "This version was replaced by a newer one and stays as history. It cannot be changed.",
 };
 
 const MATRIX_STEPS = [
@@ -63,7 +63,7 @@ type Dialog =
   | "upgrade"
   | undefined;
 
-/** One version of a department matrix: rows are topics or documents, columns are positions. A version is edited only as a draft; after approval it never changes. */
+/** One version of a department matrix: rows are topics or documents, columns are Job Roles. A version is edited only as a draft; after approval it never changes. */
 export function TrainingMatrixVersionPage() {
   const { versionId = "" } = useParams();
   const navigate = useNavigate();
@@ -276,7 +276,7 @@ export function TrainingMatrixVersionPage() {
           Reject
         </Button>
       )}
-      {(version.status === "EFFECTIVE" || version.status === "OBSOLETE") && (
+      {(version.status === "EFFECTIVE" || version.status === "OBSOLETED") && (
         <FormDownloadButtons
           label="The matrix"
           load={(format) => trainingMatrixApi.exportForm(version.id, format)}
@@ -295,10 +295,8 @@ export function TrainingMatrixVersionPage() {
       )}
     </>
   );
-  const obsolete = version.status === "OBSOLETE";
-  const steps = obsolete
-    ? [...MATRIX_STEPS.map((x) => x.label).slice(0, 3), "Obsolete"]
-    : MATRIX_STEPS.slice(0, 3).map((x) => x.label);
+  const obsolete = version.status === "OBSOLETED";
+  const steps = [...MATRIX_STEPS.map((x) => x.label), "Obsoleted"];
   const stepIndex = obsolete
     ? 3
     : Math.max(
@@ -416,7 +414,7 @@ export function TrainingMatrixVersionPage() {
                 {hasPermission("training.admin.manage") && (
                   <>
                     <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.TOPICS)}>Manage topics</Button>
-                    <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.PERSON_POSITIONS)}>Assign positions</Button>
+                    <Button size="sm" variant="outline-emerald" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.JOB_ROLES)}>Manage Job Roles</Button>
                   </>
                 )}
               {editing ? (
@@ -441,8 +439,8 @@ export function TrainingMatrixVersionPage() {
             </div>
             {positions.length === 0 ? (
               <p className="p-4 text-sm text-amber-700">
-                This department has no position yet. Positions are managed in
-                the dictionaries.
+                This department has no Job Role yet. A Training Administrator creates them under
+                Training Administration, Job Roles.
               </p>
             ) : rows.length === 0 ? (
               <p className="p-4 text-sm text-slate-500">No row yet.</p>

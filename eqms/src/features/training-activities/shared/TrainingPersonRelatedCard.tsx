@@ -19,7 +19,7 @@ import { METHOD_LABEL, day, when } from "./trainingLabels";
 type Kind = string;
 /** A tab of the screen itself (the copies sent to departments of a job assignment) that sits first in the same card. */
 export interface ExtraRelatedTab { id: string; label: string; node: ReactNode }
-const SPECIMEN_LABEL: Record<string, string> = { PENDING: "Pending Confirmation", APPROVED: "Approved", SUPERSEDED: "Replaced", REJECTED: "Rejected" };
+const SPECIMEN_LABEL: Record<string, string> = { PENDING_CONFIRMATION: "Pending Confirmation", APPROVED: "Approved", OBSOLETED: "Obsoleted" };
 const RESULT_LABEL: Record<string, string> = { PASSED: "Passed", READ: "Read and understood", ATTENDED: "Attended" };
 
 /** A small server table of what the training module holds about one person: 10 rows a page, newest first. `current` is the kind of the screen the card sits on. */

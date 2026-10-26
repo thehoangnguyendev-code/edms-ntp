@@ -30,7 +30,7 @@ export function TrainingAssessmentChoiceBlock({ activity, editable, onChanged }:
     const list = await trainingAssessmentsApi.approved(query || undefined, kinds.length === 1 ? kinds[0] : undefined);
     const usable = list.filter((a) => kinds.includes(a.kind));
     setOptions(usable);
-    return usable.map((a) => ({ value: a.id, label: `${a.title} (${a.code} v${a.versionNo})` }));
+    return usable.map((a) => ({ value: a.id, label: `${a.name} (${a.code} ${a.revisionNumber})` }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kinds.join("|")]);
   useEffect(() => { if (choosing) void search(""); }, [choosing, search]);
@@ -64,8 +64,8 @@ export function TrainingAssessmentChoiceBlock({ activity, editable, onChanged }:
         {chosen ? (
           <div className="space-y-1 p-4 text-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-slate-900">{chosen.title}</span>
-              <Badge color="emerald">{chosen.code} v{chosen.version}</Badge>
+              <span className="font-medium text-slate-900">{chosen.name}</span>
+              <Badge color="emerald">{chosen.code} {chosen.revision}</Badge>
               <Badge color="slate">{ASSESSMENT_KIND_LABEL[chosen.kind] ?? chosen.kind}</Badge>
             </div>
             <div className="text-slate-600">{chosen.itemCount} {chosen.kind === "CHECKLIST" ? "line(s), no score" : `question(s), total ${chosen.maxScore} point(s)`}. Chosen by {chosen.chosenByName ?? "—"}{chosen.chosenAt ? `, ${when(chosen.chosenAt)}` : ""}.</div>
@@ -87,7 +87,7 @@ export function TrainingAssessmentChoiceBlock({ activity, editable, onChanged }:
         size="md"
       >
         <FormField label="Assessment" required>
-          <Select value={picked} onChange={setPicked} options={options.map((o) => ({ value: o.id, label: `${o.title} (${o.code} v${o.versionNo})` }))} onSearch={search} placeholder="Search by title or code" />
+          <Select value={picked} onChange={setPicked} options={options.map((o) => ({ value: o.id, label: `${o.name} (${o.code} ${o.revisionNumber})` }))} onSearch={search} placeholder="Search by assessment name or number" />
         </FormField>
         {pick && <p className="mt-3 text-xs text-slate-600">{ASSESSMENT_KIND_LABEL[pick.kind]} · {pick.itemCount} item(s){pick.kind === "CHECKLIST" ? "" : ` · total ${pick.maxScore} point(s)`}</p>}
         {choosing && options.length === 0 && <p className="mt-3 text-sm text-amber-700">No effective assessment of the right type was found. It is written and approved in Training Programme, Training Assessments.</p>}

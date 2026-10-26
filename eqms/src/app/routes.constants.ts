@@ -225,7 +225,7 @@ export const ROUTES = {
       PROPERTIES: '/settings/administration/training/properties',
       TOPICS: '/settings/administration/training/topics',
       VENDORS: '/settings/administration/training/vendors',
-      PERSON_POSITIONS: '/settings/administration/training/person-positions',
+      JOB_ROLES: '/settings/administration/training/job-roles',
       NOTIFICATIONS: '/settings/administration/training/notifications',
     },
   },

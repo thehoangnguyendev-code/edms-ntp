@@ -25,7 +25,8 @@ export function AttendanceListExport({ activityId, trainingNumber }: { activityI
     setBusy("load");
     setError("");
     try {
-      const blob = await trainingPaperApi.attendanceList(activityId, "pdf");
+      // the PDF of the window is a view: it carries the watermark of the preview settings; the file that is downloaded does not
+      const blob = await trainingPaperApi.attendanceList(activityId, "pdf", true);
       setUrl((previous) => {
         if (previous) URL.revokeObjectURL(previous);
         return URL.createObjectURL(blob);

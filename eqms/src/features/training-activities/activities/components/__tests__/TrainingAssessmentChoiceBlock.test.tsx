@@ -19,7 +19,7 @@ import type { TrainingActivityDetail } from "@/services/api/trainingActivities";
 
 const activity = (over: Record<string, unknown> = {}, methods: string[] = ["TEST"]) =>
   ({ id: "a1", sessions: methods.map((m, i) => ({ id: `s${i}`, status: "PLANNED", assessmentMethod: m })), ...over }) as unknown as TrainingActivityDetail;
-const CHOSEN = { assessmentId: "d1", code: "TAS-0001", version: 2, title: "Kiểm tra SOP.0006", kind: "QUESTIONS", maxScore: 10, chosenAt: "2026-10-24T08:00:00Z", chosenByName: "Organizer", itemCount: 4 };
+const CHOSEN = { assessmentId: "d1", code: "TAS-0001", revision: "2.0.0", name: "Kiểm tra SOP.0006", kind: "QUESTIONS", maxScore: 10, chosenAt: "2026-10-24T08:00:00Z", chosenByName: "Organizer", itemCount: 4 };
 
 beforeEach(() => Object.values(api).forEach((f) => f.mockReset()));
 afterEach(cleanup);
@@ -40,8 +40,8 @@ describe("Assessment from the library, in the tab Assessment of an activity", ()
 
   it("lists only the effective assessments of the right type, and writes the choice into the form", async () => {
     api.approved.mockResolvedValue([
-      { id: "d1", code: "TAS-0001", versionNo: 2, title: "Kiểm tra SOP.0006", kind: "QUESTIONS", itemCount: 4, maxScore: 10 },
-      { id: "d2", code: "TAS-0002", versionNo: 1, title: "Checklist vệ sinh", kind: "CHECKLIST", itemCount: 6, maxScore: null },
+      { id: "d1", code: "TAS-0001", revisionNumber: "2.0.0", name: "Kiểm tra SOP.0006", kind: "QUESTIONS", itemCount: 4, maxScore: 10 },
+      { id: "d2", code: "TAS-0002", revisionNumber: "1.0.0", name: "Checklist vệ sinh", kind: "CHECKLIST", itemCount: 6, maxScore: null },
     ]);
     const next = activity({ assessment: CHOSEN });
     api.choose.mockResolvedValue(next);
@@ -51,7 +51,7 @@ describe("Assessment from the library, in the tab Assessment of an activity", ()
     // the session is assessed by a test: the checklist is not offered
     const select = (await screen.findByLabelText("Assessment")) as HTMLSelectElement;
     await waitFor(() => expect(select.options.length).toBe(2));
-    expect(Array.from(select.options).map((o) => o.text)).toEqual(["-", "Kiểm tra SOP.0006 (TAS-0001 v2)"]);
+    expect(Array.from(select.options).map((o) => o.text)).toEqual(["-", "Kiểm tra SOP.0006 (TAS-0001 2.0.0)"]);
     expect(screen.getByText(/the title of the assessment is not written in the form/)).toBeTruthy();
     expect((screen.getByRole("button", { name: "Choose" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(select, { target: { value: "d1" } });
@@ -62,18 +62,18 @@ describe("Assessment from the library, in the tab Assessment of an activity", ()
 
   it("a checklist session is offered the checklists, and both kinds when the activity has both", async () => {
     api.approved.mockResolvedValue([
-      { id: "d1", code: "TAS-0001", versionNo: 2, title: "Test", kind: "QUESTIONS", itemCount: 4, maxScore: 10 },
-      { id: "d2", code: "TAS-0002", versionNo: 1, title: "Checklist", kind: "CHECKLIST", itemCount: 6, maxScore: null },
+      { id: "d1", code: "TAS-0001", revisionNumber: "2.0.0", name: "Test", kind: "QUESTIONS", itemCount: 4, maxScore: 10 },
+      { id: "d2", code: "TAS-0002", revisionNumber: "1.0.0", name: "Checklist", kind: "CHECKLIST", itemCount: 6, maxScore: null },
     ]);
     render(<TrainingAssessmentChoiceBlock activity={activity({}, ["CHECKLIST"])} editable onChanged={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Choose Assessment" }));
     const select = (await screen.findByLabelText("Assessment")) as HTMLSelectElement;
     await waitFor(() => expect(select.options.length).toBe(2));
-    expect(Array.from(select.options).map((o) => o.text)).toEqual(["-", "Checklist (TAS-0002 v1)"]);
+    expect(Array.from(select.options).map((o) => o.text)).toEqual(["-", "Checklist (TAS-0002 1.0.0)"]);
     cleanup();
     api.approved.mockResolvedValue([
-      { id: "d1", code: "TAS-0001", versionNo: 2, title: "Test", kind: "QUESTIONS", itemCount: 4, maxScore: 10 },
-      { id: "d2", code: "TAS-0002", versionNo: 1, title: "Checklist", kind: "CHECKLIST", itemCount: 6, maxScore: null },
+      { id: "d1", code: "TAS-0001", revisionNumber: "2.0.0", name: "Test", kind: "QUESTIONS", itemCount: 4, maxScore: 10 },
+      { id: "d2", code: "TAS-0002", revisionNumber: "1.0.0", name: "Checklist", kind: "CHECKLIST", itemCount: 6, maxScore: null },
     ]);
     render(<TrainingAssessmentChoiceBlock activity={activity({}, ["TEST", "CHECKLIST"])} editable onChanged={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Choose Assessment" }));
@@ -86,7 +86,7 @@ describe("Assessment from the library, in the tab Assessment of an activity", ()
     const onChanged = vi.fn();
     render(<TrainingAssessmentChoiceBlock activity={activity({ assessment: CHOSEN })} editable onChanged={onChanged} />);
     expect(screen.getByText("Kiểm tra SOP.0006")).toBeTruthy();
-    expect(screen.getByText("TAS-0001 v2")).toBeTruthy();
+    expect(screen.getByText("TAS-0001 2.0.0")).toBeTruthy();
     expect(screen.getByText(/4 question\(s\), total 10 point\(s\)/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(api.unchoose).toHaveBeenCalledWith("a1"));

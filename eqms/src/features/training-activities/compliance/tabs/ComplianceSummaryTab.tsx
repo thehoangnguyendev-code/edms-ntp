@@ -107,14 +107,14 @@ export function ComplianceSummaryTab({ departmentId, departments, onDepartment }
         <>
           <CoverageCard summary={summary} />
           <Group title="People">
-            <Tile icon={<IconUsers className="h-5 w-5" />} label="People with a position" value={summary.people} hint="Counted against the effective matrix" />
+            <Tile icon={<IconUsers className="h-5 w-5" />} label="People with a Job Role" value={summary.people} hint="Counted against the effective matrix" />
             <Tile icon={<IconClipboardCheck className="h-5 w-5" />} label="Open training reviews" value={summary.openReviews ?? 0} tone={(summary.openReviews ?? 0) > 0 ? "amber" : "slate"} hint="New employees, returns after absence and transfers still being worked through" />
             <Tile
               icon={<IconUserOff className="h-5 w-5" />}
-              label="People without a position"
+              label="People without a Job Role"
               value={summary.peopleWithoutPosition}
               tone={summary.peopleWithoutPosition > 0 ? "amber" : "slate"}
-              hint={summary.peopleWithoutPosition > 0 ? "Set their position so their requirements can be measured" : "Everyone has a position"}
+              hint={summary.peopleWithoutPosition > 0 ? "Give them a Job Role (job assignment) so their requirements can be measured" : "Everyone has a Job Role"}
             />
           </Group>
           <Group title="Trainings">
