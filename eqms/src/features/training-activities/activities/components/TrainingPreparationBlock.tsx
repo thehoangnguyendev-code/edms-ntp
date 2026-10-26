@@ -104,11 +104,16 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
       rows.push({
         key: "exam-copies",
         label: "Test copies for trainees",
-        hint: "Only if the test is taken on paper: one numbered copy of the exam file for each trainee, with a cover page that already has the name, the Training Number, the session and the date. Print it before the training starts and hand it out.",
+        hint: "Only if the test is taken on paper: one file for each trainee (in a ZIP), the form APD.0009 with the topic, the Training Number, the trainee\'s name, ID code and department and the date already written. Download and print it before the training starts, and hand it out.",
         optional: true,
         ready: printing.printedExam(session.id) > 0,
         extra: paper.canPrint
-          ? <Button size="sm" className="mt-2" disabled={printing.busy} onClick={() => (printing.printedExam(session.id) > 0 ? printing.ask({ kind: "exam", session }) : void printing.printExam(session))}>{printing.printedExam(session.id) > 0 ? "Reprint test copies" : "Print test copies"}</Button>
+          ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" disabled={printing.busy} onClick={() => (printing.printedExam(session.id) > 0 ? printing.ask({ kind: "exam", session, format: "pdf" }) : void printing.printExam(session))}>{printing.printedExam(session.id) > 0 ? "Reprint test copies" : "Download test copies"}</Button>
+              <Button size="sm" variant="outline-emerald" disabled={printing.busy} onClick={() => (printing.printedExam(session.id) > 0 ? printing.ask({ kind: "exam", session, format: "docx" }) : void printing.printExam(session, undefined, "docx"))}>Download as Word</Button>
+            </div>
+          )
           : undefined,
       });
     }

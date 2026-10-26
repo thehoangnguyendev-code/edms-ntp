@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Prints an approved training matrix version (APD.0011) and an approved training requirement (APD.0118) as a PDF. Nothing is stored: the file is built from
+ * Prints the matrix completion grid as a PDF (the forms of the company are written by TrainingFormExportService). Nothing is stored: the file is built from
  * data that no longer changes (an Effective or Obsolete matrix version, an Approved requirement), carries the signers and a SHA-256 fingerprint of the data,
  * and every print is recorded in the Audit Trail. The same access rules as for opening the record apply.
  */
@@ -82,63 +82,6 @@ public class TrainingPrintService {
         UUID id = positionId;
         audit.logAs(actor, "TRAINING_COMPLETION", String.valueOf(position), id, "TRAINING_COMPLETION_PRINTED", null, null, body.size() + " person(s)");
         return file("Training matrix completion", head, List.of("No.", "Employee", "Open requirements", "Completed"), body, List.of(), 3, "training-matrix-completion-" + position.replaceAll("[^A-Za-z0-9]+", "-"), id);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Transactional
-    public Map<String, Object> matrixVersion(UserAccount actor, UUID versionId) {
-        Map<String, Object> v = matrices.version(actor, versionId);
-        String status = String.valueOf(v.get("status"));
-        if (!"EFFECTIVE".equals(status) && !"OBSOLETE".equals(status)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PRINT_NOT_APPROVED");
-        List<Map<String, Object>> positions = (List<Map<String, Object>>) v.get("positions");
-        List<Map<String, Object>> rows = (List<Map<String, Object>>) v.get("rows");
-        List<String> heads = new ArrayList<>(List.of("No.", "Group", "Topic or SOP", "Annual"));
-        positions.forEach(p -> heads.add(String.valueOf(p.get("name"))));
-        List<String[]> body = new ArrayList<>();
-        int n = 0;
-        for (Map<String, Object> r : rows) {
-            List<String> cells = new ArrayList<>();
-            cells.add(String.valueOf(++n));
-            cells.add(switch (String.valueOf(r.get("rowGroup"))) { case "FACTORY_GENERAL" -> "General (factory)"; case "DEPARTMENT_GENERAL" -> "General (department)"; default -> "SOP"; });
-            cells.add(r.get("topicId") != null ? r.get("topicCode") + " - " + r.get("topicName") : r.get("documentNumber") + " - " + r.get("documentName"));
-            cells.add(Boolean.TRUE.equals(r.get("annualRequired")) ? "Yes" : "");
-            List<?> ids = (List<?>) r.get("positionIds");
-            for (Map<String, Object> p : positions) cells.add(ids.contains(p.get("id")) ? "X" : "");
-            body.add(cells.toArray(String[]::new));
-        }
-        List<String> head = List.of(
-                "Training Matrix " + v.get("matrixCode") + " - version " + v.get("versionNo") + " (" + ("EFFECTIVE".equals(status) ? "Effective" : "Obsolete") + ")",
-                "Department: " + v.get("departmentName"),
-                v.get("changeReason") == null ? "" : "What changed: " + v.get("changeReason"));
-        List<String> signers = signers((List<Map<String, Object>>) v.get("approvers"), "Approved by");
-        audit.logAs(actor, "TRAINING_MATRIX", v.get("matrixCode") + " v" + v.get("versionNo"), versionId, "TRAINING_MATRIX_PRINTED", null, null, "PDF printed");
-        return file("Training Matrix (APD.0011)", head, heads, body, signers, 4, v.get("matrixCode") + "-v" + v.get("versionNo"), versionId);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Transactional
-    public Map<String, Object> requirement(UserAccount actor, UUID id) {
-        Map<String, Object> r = requirements.get(actor, id);
-        if (!"APPROVED".equals(r.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PRINT_NOT_APPROVED");
-        List<String> heads = List.of("No.", "Month", "Training topic", "Training code", "Execution date", "Sign by QA", "Comment from QA");
-        List<String[]> body = new ArrayList<>();
-        for (Map<String, Object> l : (List<Map<String, Object>>) r.get("lines")) {
-            body.add(new String[]{String.valueOf(l.get("lineNo")), DateTimeFormatUtils.displayMonth(l.get("plannedMonth")),
-                    (l.get("code") == null ? "" : l.get("code") + " - ") + l.get("title"), l.get("trainingNumber") == null ? "" : String.valueOf(l.get("trainingNumber")),
-                    l.get("executedOn") == null ? "" : DateTimeFormatUtils.display(l.get("executedOn")),
-                    l.get("qaSignedByName") == null ? "" : l.get("qaSignedByName") + (l.get("qaSignedAt") == null ? "" : ", " + DateTimeFormatUtils.display(l.get("qaSignedAt"))),
-                    l.get("qaComment") == null ? "" : String.valueOf(l.get("qaComment"))});
-        }
-        List<String> head = List.of("Training Requirement " + r.get("requestNo") + "    Year: " + r.get("year"), "Type: " + ("SOP_PERIODIC".equals(r.get("kind")) ? "Periodic training SOP" : "Annual training") + "    Department: " + r.get("departmentName") + "    Due by: " + nvl(r.get("dueBy")));
-        List<String> signers = List.of("Prepared by (Training coordinator): " + nvl(r.get("preparedByName")), "Reviewed by (QA manager): " + nvl(r.get("reviewedByName")), "Approved by (QM): " + nvl(r.get("approvedByName")));
-        audit.logAs(actor, "TRAINING_REQUIREMENT", String.valueOf(r.get("requestNo")), id, "TRAINING_REQUIREMENT_PRINTED", null, null, "PDF printed");
-        return file("Training Requirement (APD.0118)", head, heads, body, signers, 3, String.valueOf(r.get("requestNo")).replace('/', '-'), id);
-    }
-
-    private static List<String> signers(List<Map<String, Object>> approvers, String label) {
-        List<String> out = new ArrayList<>();
-        for (Map<String, Object> a : approvers) if ("DONE".equals(a.get("status"))) out.add(label + ": " + a.get("assigneeName") + " (" + DateTimeFormatUtils.display(a.get("completedAt")) + ")");
-        return out;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ PDF

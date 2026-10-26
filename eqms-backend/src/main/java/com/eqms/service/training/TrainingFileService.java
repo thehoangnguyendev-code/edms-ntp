@@ -72,9 +72,10 @@ public class TrainingFileService {
               from training_materials m join app_users u on u.id = m.uploaded_by where m.activity_id=? """ + (manager ? " " : " and m.removed_at is null ") + (answerKeyViewer ? " " : " and m.purpose <> 'ANSWER_KEY' ") + " order by m.created_at", activityId)));
         out.put("canSeeAnswerKey", answerKeyViewer);
         out.put("evidence", manager || access.has(actor, "training.activity.view") ? TrainingRows.camel(jdbc.queryForList("""
-            select e.id, e.kind, e.original_name, e.content_type, e.size_bytes, e.sha256, e.remark, e.form_used, e.uploaded_at, e.received_at, e.participant_id, p.full_name as participant_name,
+            select e.id, e.kind, e.original_name, e.content_type, e.size_bytes, e.sha256, e.remark, e.form_used, e.uploaded_at, e.received_at, e.participant_id, p.full_name as participant_name, e.pack_id, k.pack_code,
                    u.full_name as uploaded_by_name, r.full_name as received_by_name
               from training_paper_evidence e join app_users u on u.id = e.uploaded_by left join app_users r on r.id = e.received_by left join training_participants p on p.id = e.participant_id
+              left join training_paper_packs k on k.id = e.pack_id
              where e.activity_id=? order by e.uploaded_at
             """, activityId)) : List.of());
         out.put("canUploadMaterial", manager && Set.of("PLANNED", "NOTIFIED").contains(String.valueOf(activity.get("status"))) && !contentReviewed(activityId));
@@ -234,7 +235,7 @@ public class TrainingFileService {
     // ----------------------------------------------------------------------------------------------------------------------------- paper evidence
 
     @Transactional
-    public Map<String, Object> uploadEvidence(UserAccount actor, UUID activityId, MultipartFile file, String kind, UUID participantId, String remark, String formUsed) {
+    public Map<String, Object> uploadEvidence(UserAccount actor, UUID activityId, MultipartFile file, String kind, UUID participantId, String remark, String formUsed, UUID packId) {
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         if (!conductor(actor, activity)) throw new SecurityException(TrainingAccess.DENIED);
         if (!Set.of("NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
@@ -243,15 +244,19 @@ public class TrainingFileService {
             Integer belongs = jdbc.queryForObject("select count(*) from training_participants where id=? and activity_id=?", Integer.class, participantId, activityId);
             if (belongs == null || belongs == 0) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
         }
+        if (packId != null) {
+            Integer ofActivity = jdbc.queryForObject("select count(*) from training_paper_packs where id=? and activity_id=?", Integer.class, packId, activityId);
+            if (ofActivity == null || ofActivity == 0) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        }
         if (formUsed != null && formUsed.trim().length() > 80) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         Checked checked = check(file);
         if ("mp4".equals(checked.extension())) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         UUID id = UUID.randomUUID();
         FileStorageService.StorageWriteResult stored = write("training/paper-evidence/" + activityId + "/" + id + "." + checked.extension(), checked);
-        jdbc.update("insert into training_paper_evidence(id, activity_id, participant_id, kind, original_name, provider, stored_path, content_type, size_bytes, sha256, remark, form_used, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        jdbc.update("insert into training_paper_evidence(id, activity_id, participant_id, kind, original_name, provider, stored_path, content_type, size_bytes, sha256, remark, form_used, uploaded_by, pack_id) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 id, activityId, participantId, kind, checked.name(), stored.provider(), stored.storedPath(), checked.contentType(), checked.bytes().length, checked.sha256(),
-                remark == null || remark.isBlank() ? null : remark.trim(), formUsed == null || formUsed.isBlank() ? null : formUsed.trim(), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + (formUsed == null || formUsed.isBlank() ? "" : " [form " + formUsed.trim() + "]") + " (SHA-256 " + checked.sha256().substring(0, 12) + ")");
+                remark == null || remark.isBlank() ? null : remark.trim(), formUsed == null || formUsed.isBlank() ? null : formUsed.trim(), actor.getId(), packId);
+        store.auditActivity(actor, activity, "TRAINING_PAPER_EVIDENCE_UPLOADED", null, null, kind + ": " + checked.name() + (formUsed == null || formUsed.isBlank() ? "" : " [form " + formUsed.trim() + "]") + (packId == null ? "" : " [copy " + jdbc.queryForObject("select pack_code from training_paper_packs where id=?", String.class, packId) + "]") + " (SHA-256 " + checked.sha256().substring(0, 12) + ")");
         return list(actor, activityId);
     }
 

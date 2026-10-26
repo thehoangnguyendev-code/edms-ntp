@@ -18,6 +18,8 @@ import java.util.UUID;
 public class TrainingPaperController {
     public record ModeRequest(String mode, String reason) {}
     public record PrintRequest(String reason) {}
+    /** The test copies: one file for each trainee in a ZIP, as PDF (the default) or as Word. */
+    public record ExamPrintRequest(String reason, String format) {}
 
     private final TrainingPaperService paper;
     private final TrainingRollCallService rollCalls;
@@ -46,6 +48,12 @@ public class TrainingPaperController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
     }
 
+    public record CopyStatusRequest(String status, String reason) {}
+
+    /** Where a numbered paper copy is: returned and filed, lost, or voided. */
+    @PostMapping("/paper-packs/{id}/status")
+    public ResponseEntity<?> copyStatus(@PathVariable UUID id, @RequestBody CopyStatusRequest request) { return ResponseEntity.ok(paper.markPack(users.requireCurrentUser(), id, request.status(), request.reason())); }
+
     @PostMapping("/sessions/{id}/delivery-mode")
     public ResponseEntity<?> mode(@PathVariable UUID id, @RequestBody ModeRequest request) { return ResponseEntity.ok(paper.setDeliveryMode(users.requireCurrentUser(), id, request.mode(), request.reason())); }
 
@@ -57,9 +65,9 @@ public class TrainingPaperController {
     }
 
     @PostMapping("/sessions/{id}/exam-pack")
-    public ResponseEntity<byte[]> printExam(@PathVariable UUID id, @RequestBody(required = false) PrintRequest request) {
-        Map<String, Object> file = exams.print(users.requireCurrentUser(), id, request == null ? null : request.reason());
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
+    public ResponseEntity<byte[]> printExam(@PathVariable UUID id, @RequestBody(required = false) ExamPrintRequest request) {
+        Map<String, Object> file = exams.print(users.requireCurrentUser(), id, request == null ? null : request.reason(), request == null ? null : request.format());
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) file.get("contentType"))).cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
     }
 

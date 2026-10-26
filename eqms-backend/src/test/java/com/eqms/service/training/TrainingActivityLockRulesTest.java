@@ -58,7 +58,7 @@ class TrainingActivityLockRulesTest {
         ElectronicSignature signature = mock(ElectronicSignature.class);
         when(signature.getId()).thenReturn(UUID.randomUUID());
         when(signatures.createEntitySignature(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(signature);
-        service = spy(new TrainingActivityService(jdbc, access, store, null, null, approvals, signatures, users, notifier, null, suspensions));
+        service = spy(new TrainingActivityService(jdbc, access, store, null, null, approvals, signatures, users, notifier, null, suspensions, null));
         doReturn(Map.of()).when(service).get(any(), any());
     }
 

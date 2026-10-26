@@ -39,7 +39,9 @@ import {
 } from "@/features/report/shared/ReportListToolbar";
 import {
   trainingError,
+  trainingFormsApi,
   trainingRequirementsApi,
+  type TrainingFormFormat,
   type TrainingRequirementSummary,
 } from "@/services/api/trainingActivities";
 import {
@@ -169,14 +171,14 @@ export function TrainingRequirementListView() {
     action,
   );
   const actionRow = table.items.find((row) => row.id === menu.openId);
-  const print = (r: TrainingRequirementSummary) =>
-    trainingRequirementsApi
-      .print(r.id)
-      .then((b) => saveBlob(b, `${r.requestNo.replace(/\//g, "-")}.pdf`))
+  const download = (r: TrainingRequirementSummary, format: TrainingFormFormat) =>
+    trainingFormsApi
+      .requirement(r.id, format)
+      .then((b) => saveBlob(b, `${r.requestNo.replace(/\//g, "-")}-APD.0118.${format}`))
       .catch((e) =>
         showToast({
           type: "error",
-          title: "The PDF could not be printed",
+          title: "The requirement was not exported",
           message: trainingError(e),
         }),
       );
@@ -350,8 +352,14 @@ export function TrainingRequirementListView() {
               {
                 show: actionRow.actions?.print,
                 icon: <IconPrinter className="h-4 w-4" />,
-                label: "Print PDF",
-                run: () => void print(actionRow),
+                label: "Download Word",
+                run: () => void download(actionRow, "docx"),
+              },
+              {
+                show: actionRow.actions?.print,
+                icon: <IconPrinter className="h-4 w-4" />,
+                label: "Download PDF",
+                run: () => void download(actionRow, "pdf"),
               },
             ]
               .filter((item) => item.show)

@@ -1,14 +1,20 @@
 package com.eqms.service.training;
 
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFFooter;
+import org.apache.poi.xwpf.usermodel.XWPFHeader;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,19 +25,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The content of an assessment written into the enabled form APD.0009; the template here has the same text as the one enabled on DEV ("Training topic" and two model questions). */
+/** The content of an assessment written into the real form APD.0009.02 of the company (src/test/resources/forms), as the form is laid out. */
 class TrainingAssessmentFormTest {
 
-    private static byte[] template(String... paragraphs) throws IOException {
-        try (XWPFDocument doc = new XWPFDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            for (String text : paragraphs) doc.createParagraph().createRun().setText(text);
-            doc.write(out);
-            return out.toByteArray();
+    private static byte[] template() throws IOException {
+        try (InputStream in = TrainingAssessmentFormTest.class.getResourceAsStream("/forms/APD.0009.02.docx")) {
+            return in.readAllBytes();
         }
-    }
-
-    private static byte[] devTemplate() throws IOException {
-        return template("TRAINING ASSESSMENT", "Training topic: ........", "1. Question one ........", "2. Question two ........", "Signature of the trainer");
     }
 
     private static Map<String, Object> item(int no, String kind, String prompt, List<Map<String, Object>> options, List<String> correct, Object points, String model) {
@@ -48,96 +48,264 @@ class TrainingAssessmentFormTest {
 
     private static List<Map<String, Object>> questions() {
         List<Map<String, Object>> items = new ArrayList<>();
-        items.add(item(1, "SINGLE", "Tần suất vệ sinh?", List.of(Map.of("id", "A", "text", "Mỗi ca"), Map.of("id", "B", "text", "Mỗi tuần")), List.of("A"), 2, null));
-        items.add(item(2, "ESSAY", "Mô tả xử lý tràn hóa chất.", List.of(), List.of(), 5, "Cách ly, hấp thụ"));
+        items.add(item(1, "SINGLE", "Hệ thống được phân loại thành mấy nhóm?", List.of(Map.of("id", "A", "text", "4 nhóm"), Map.of("id", "B", "text", "3 nhóm")), List.of("B"), 2, null));
+        items.add(item(2, "MULTI", "Chọn các thử nghiệm của thẩm định lắp đặt", List.of(Map.of("id", "A", "text", "Kiểm tra chứng chỉ vật liệu"), Map.of("id", "B", "text", "Kiểm tra vận hành"), Map.of("id", "C", "text", "Kiểm tra panel")), List.of("A", "C"), 2, null));
+        items.add(item(3, "ESSAY", "Liệt kê các bước thẩm định nồi hấp.", List.of(), List.of(), 6, "URS, IQ, OQ, PQ, báo cáo"));
         return items;
     }
 
-    private static List<String> lines(byte[] docx) throws IOException {
+    private static List<Map<String, Object>> checklist() {
+        return List.of(item(1, "CHECK", "Đeo găng tay trước khi lấy mẫu", List.of(), List.of("CORRECT"), 1, null), item(2, "CHECK", "Bỏ qua bước ghi nhật ký", List.of(), List.of("INCORRECT"), 1, null));
+    }
+
+    private static TrainingAssessmentForm.Content content(List<Map<String, Object>> items, boolean checklist, boolean key) {
+        return new TrainingAssessmentForm.Content(items, checklist, key, List.of("SOP.0009 Thẩm định thiết bị và hệ thống (Phiên bản 2.0.0)/ Qualification of equipment and system (Version 2.0.0)", "SOP.0011 Hiệu chuẩn"), "TRN/QA/26-001", "INITIAL", 45);
+    }
+
+    private static List<String> bodyLines(byte[] docx) throws IOException {
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(docx))) {
             List<String> out = new ArrayList<>();
-            for (XWPFParagraph p : doc.getParagraphs()) out.add(p.getText());
+            for (var e : doc.getBodyElements()) {
+                if (e instanceof XWPFParagraph p) out.add(p.getText());
+                else if (e instanceof XWPFTable t) for (XWPFTableRow r : t.getRows()) for (XWPFTableCell c : r.getTableCells()) for (XWPFParagraph p : c.getParagraphs()) out.add(p.getText());
+            }
             return out;
         }
     }
 
-    @Test
-    void theTopicAndTheQuestionsReplaceTheModelLinesOfTheForm() throws IOException {
-        List<String> out = lines(TrainingAssessmentForm.fill(devTemplate(), questions(), false, "SOP.0006 Vệ sinh", false));
-        assertEquals("TRAINING ASSESSMENT", out.getFirst());
-        assertEquals("Training topic: SOP.0006 Vệ sinh", out.get(1));
-        assertTrue(out.contains("1. Tần suất vệ sinh?  (2 points)"));
-        assertTrue(out.contains("☐ A. Mỗi ca"));
-        assertTrue(out.contains("☐ B. Mỗi tuần"));
-        assertTrue(out.contains("2. Mô tả xử lý tràn hóa chất.  (5 points)"));
-        assertTrue(out.contains("Total / Tổng: 7 points"));
-        // the model lines are gone and what follows them stays
-        assertFalse(out.stream().anyMatch((l) -> l.contains("Question one") || l.contains("Question two")));
-        assertEquals("Signature of the trainer", out.getLast());
+    private static String all(byte[] docx) throws IOException {
+        return String.join("\n", bodyLines(docx));
     }
 
-    @Test
-    void theTitleOfTheAssessmentIsNotInTheForm() throws IOException {
-        // the title is not given to the form at all: only the topic, the content and the key go in
-        String all = String.join("\n", lines(TrainingAssessmentForm.fill(devTemplate(), questions(), false, "SOP.0006", false)));
-        assertFalse(all.contains("TAS-"));
-    }
-
-    @Test
-    void theTraineesCopyHasNoKeyAndTheTrainersCopyHasIt() throws IOException {
-        String trainee = String.join("\n", lines(TrainingAssessmentForm.fill(devTemplate(), questions(), false, "T", false)));
-        assertFalse(trainee.contains("☒"));
-        assertFalse(trainee.contains("Model answer"));
-        assertTrue(trainee.contains("_____"));
-        String trainer = String.join("\n", lines(TrainingAssessmentForm.fill(devTemplate(), questions(), false, "T", true)));
-        assertTrue(trainer.contains("☒ A. Mỗi ca"));
-        assertTrue(trainer.contains("☐ B. Mỗi tuần"));
-        assertTrue(trainer.contains("Model answer / Đáp án mẫu: Cách ly, hấp thụ"));
-        assertFalse(trainer.contains("_____"));
-    }
-
-    @Test
-    void aChecklistIsATableWithCorrectAndIncorrectColumnsAndNoScore() throws IOException {
-        List<Map<String, Object>> lines = List.of(
-                item(1, "CHECK", "Khu vực sạch", List.of(), List.of("CORRECT"), 1, null), item(2, "CHECK", "Nhật ký đầy đủ", List.of(), List.of("INCORRECT"), 1, null));
-        byte[] trainee = TrainingAssessmentForm.fill(devTemplate(), lines, true, "T", false);
-        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(trainee))) {
-            assertEquals(1, doc.getTables().size());
-            XWPFTable t = doc.getTables().getFirst();
-            assertEquals(3, t.getRows().size());
-            assertEquals(List.of("No.", "Content / Nội dung", "Correct / Đúng", "Incorrect / Không đúng"), t.getRow(0).getTableCells().stream().map(c -> c.getText()).toList());
-            assertEquals(List.of("1", "Khu vực sạch", "☐", "☐"), t.getRow(1).getTableCells().stream().map(c -> c.getText()).toList());
-            String all = String.join("\n", doc.getParagraphs().stream().map(XWPFParagraph::getText).toList());
-            assertFalse(all.contains("Total"), "a checklist has no score");
-            assertFalse(all.contains("point"));
-        }
-        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(TrainingAssessmentForm.fill(devTemplate(), lines, true, "T", true)))) {
-            XWPFTable t = doc.getTables().getFirst();
-            assertEquals(List.of("2", "Nhật ký đầy đủ", "☐", "☒"), t.getRow(2).getTableCells().stream().map(c -> c.getText()).toList());
-            assertEquals(List.of("1", "Khu vực sạch", "☒", "☐"), t.getRow(1).getTableCells().stream().map(c -> c.getText()).toList());
+    private static int ticked(byte[] docx) throws IOException {
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(docx))) {
+            int n = 0;
+            for (XWPFTable t : doc.getTables()) for (XWPFTableRow r : t.getRows()) for (XWPFTableCell c : r.getTableCells()) for (XWPFParagraph p : c.getParagraphs()) for (XWPFRun run : p.getRuns())
+                for (var sym : run.getCTR().getSymArray()) if (sym.getChar() != null && sym.getChar().length == 2 && (sym.getChar()[1] & 0xFF) == 0xFD) n++;
+            return n;
         }
     }
 
     @Test
-    void theMarksOfATemplateAreFilledWhereTheyAre() throws IOException {
-        byte[] marked = template("Form APD.0009", "Topic of the training: {{TRAINING_TOPIC}}", "{{QUESTIONS}}", "End of the form");
-        List<String> out = lines(TrainingAssessmentForm.fill(marked, questions(), false, "SOP.0006", false));
-        assertEquals("Topic of the training: SOP.0006", out.get(1));
-        assertTrue(out.contains("1. Tần suất vệ sinh?  (2 points)"));
-        assertFalse(out.stream().anyMatch(l -> l.contains("{{")));
-        assertEquals("End of the form", out.getLast());
+    void theFactsOfTheTrainingAreWrittenInTheTableOfTheForm() throws IOException {
+        byte[] out = TrainingAssessmentForm.build(template(), content(questions(), false, false));
+        String text = all(out);
+        assertTrue(text.contains("SOP.0009 Thẩm định thiết bị và hệ thống (Phiên bản 2.0.0)/ Qualification of equipment and system (Version 2.0.0)"));
+        assertTrue(text.contains("SOP.0011 Hiệu chuẩn"));
+        assertTrue(text.contains("Training number: TRN/QA/26-001"));
+        assertTrue(text.contains("Test duration 45 phút/ minutes"), "the duration goes where the dots were");
+        // the third line of dots of the topics was not needed
+        assertEquals(0, bodyLines(out).stream().filter(l -> l.trim().matches("…{20,}")).count(), "a line to write on is a tab with a dotted leader, not a run of dots that can wrap");
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
+            long lines = doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetTabs() && p.getCTP().getPPr().getTabs().getTabArray(0).getLeader() != null).count();
+            assertEquals(8, lines, "the eight lines of the essay question");
+        }
+        // the fields of the trainee stay as dots until the copy is made for a person
+        assertTrue(text.contains("Name of trainee: …"));
+        assertTrue(text.contains("ID code:…") || text.contains("ID code: …"));
     }
 
     @Test
-    void aTemplateWithNoMarkAndNoModelLineIsRefusedAndNeverGuessedAt() throws IOException {
-        ResponseStatusException e = assertThrows(ResponseStatusException.class, () -> TrainingAssessmentForm.fill(template("A form", "Training topic: ...", "No numbered line here"), questions(), false, "T", false));
-        assertEquals("TRAINING_FORM_TEMPLATE_STRUCTURE", e.getReason());
+    void theTypeOfTheTrainingIsTickedAndOnlyThatOne() throws IOException {
+        assertEquals(1, ticked(TrainingAssessmentForm.build(template(), content(questions(), false, false))));
+        for (String type : List.of("INITIAL", "RETRAINING", "PERIODIC", "UNPLANNED")) {
+            byte[] out = TrainingAssessmentForm.build(template(), new TrainingAssessmentForm.Content(questions(), false, false, List.of("T"), "TRN/1", type, null));
+            assertEquals(1, ticked(out), type);
+        }
+        assertEquals(0, ticked(TrainingAssessmentForm.build(template(), new TrainingAssessmentForm.Content(questions(), false, false, List.of("T"), "TRN/1", null, null))));
     }
 
     @Test
-    void aTemplateWithoutATopicLineStillGetsTheContent() throws IOException {
-        List<String> out = lines(TrainingAssessmentForm.fill(template("Form", "1. model ........"), questions(), false, "T", false));
-        assertTrue(out.contains("1. Tần suất vệ sinh?  (2 points)"));
-        assertFalse(out.stream().anyMatch(l -> l.contains("model")));
+    void theInstructionsAndTheHistoryOfTheTemplateAreTakenOut() throws IOException {
+        String text = all(TrainingAssessmentForm.build(template(), content(questions(), false, false)));
+        for (String gone : List.of("Đầu trang/", "Chân trang", "Sử dụng một trong hai mẫu", "TH1:", "TH2:", "Xây dựng dựa trên nội dung đào tạo cụ thể", "LỊCH SỬ SỬA ĐỔI", "Description of change", "Contents of the steps", "- Nội dung")) {
+            assertFalse(text.contains(gone), gone);
+        }
+        assertTrue(text.contains("Test content"));
+        assertTrue(text.contains("Chữ ký học viên/Signature of trainee"));
+    }
+
+    @Test
+    void theQuestionsAreInTwoPartsAndNumberedThrough() throws IOException {
+        byte[] out = TrainingAssessmentForm.build(template(), content(questions(), false, false));
+        String text = all(out);
+        assertTrue(text.contains("Phần I: Câu hỏi trắc nghiệm / Part I: Multiple-choice questions"));
+        assertTrue(text.contains("Câu 1: Hệ thống được phân loại thành mấy nhóm?  (2 điểm/ points)"));
+        assertTrue(text.contains("A. 4 nhóm"));
+        assertTrue(text.contains("Chọn tất cả các đáp án đúng/ Choose all the right answers"));
+        assertTrue(text.contains("Phần II: Câu hỏi tự luận / Part II: Essay questions"));
+        assertTrue(text.contains("Câu 3: Liệt kê các bước thẩm định nồi hấp.  (6 điểm/ points)"));
+        assertTrue(text.matches("(?s).*Bài làm gồm 3 câu hỏi\\s*/\\s*there are 3 questions.*"));
+        assertFalse(text.contains("URS, IQ"), "the trainee's copy has no model answer");
+        assertEquals(0, new XWPFDocument(new ByteArrayInputStream(out)).getTables().stream().filter(t -> t.getRows().size() > 0 && tableOf(t).contains("Contents of the steps")).count());
+        assertTrue(text.indexOf("Phần I") < text.indexOf("Phần II") && text.indexOf("Phần II") < text.indexOf("Bài làm gồm"));
+    }
+
+    private static String tableOf(XWPFTable t) {
+        StringBuilder sb = new StringBuilder();
+        for (XWPFTableRow r : t.getRows()) for (XWPFTableCell c : r.getTableCells()) sb.append(c.getText());
+        return sb.toString();
+    }
+
+    @Test
+    void theKeyHasTheRightAnswersMarkedAndTheModelAnswerAndIsHeadedAsSuch() throws IOException {
+        String text = all(TrainingAssessmentForm.build(template(), content(questions(), false, true)));
+        assertTrue(text.contains("ANSWER KEY"));
+        assertTrue(text.contains("Đáp án mẫu/ Model answer: URS, IQ, OQ, PQ, báo cáo"));
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(TrainingAssessmentForm.build(template(), content(questions(), false, true))))) {
+            int marks = 0;
+            for (XWPFParagraph p : doc.getParagraphs()) for (XWPFRun r : p.getRuns()) for (var sym : r.getCTR().getSymArray()) if ("Wingdings".equals(sym.getFont())) marks++;
+            assertEquals(3, marks, "B for question 1, A and C for question 2");
+        }
+        assertFalse(all(TrainingAssessmentForm.build(template(), content(questions(), false, false))).contains("ANSWER KEY"));
+    }
+
+    @Test
+    void aChecklistFillsTheTableOfTheFormWithOneRowForEachLine() throws IOException {
+        byte[] out = TrainingAssessmentForm.build(template(), content(checklist(), true, false));
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
+            XWPFTable t = doc.getTables().stream().filter(x -> tableOf(x).contains("Contents of the steps")).findFirst().orElseThrow();
+            assertEquals(2 + 2, t.getRows().size(), "the two heading rows and one row for each line");
+            assertEquals("1", t.getRow(2).getCell(0).getText());
+            assertEquals("Đeo găng tay trước khi lấy mẫu", t.getRow(2).getCell(1).getText());
+            assertEquals("", t.getRow(2).getCell(2).getText(), "the trainee ticks the column");
+            assertEquals("Bỏ qua bước ghi nhật ký", t.getRow(3).getCell(1).getText());
+        }
+        String text = all(out);
+        assertFalse(text.contains("Phần I"));
+        assertTrue(text.matches("(?s).*Bài làm gồm 2 câu hỏi\\s*/\\s*there are 2 questions.*"));
+        assertFalse(text.contains("point"), "a checklist has no score");
+        assertFalse(text.contains("điểm/"), "a checklist has no score");
+    }
+
+    @Test
+    void theKeyOfAChecklistTicksTheExpectedColumn() throws IOException {
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(TrainingAssessmentForm.build(template(), content(checklist(), true, true))))) {
+            XWPFTable t = doc.getTables().stream().filter(x -> tableOf(x).contains("Contents of the steps")).findFirst().orElseThrow();
+            assertEquals(1, t.getRow(2).getCell(2).getParagraphs().getFirst().getRuns().stream().mapToInt(r -> r.getCTR().sizeOfSymArray()).sum());
+            assertEquals(0, t.getRow(2).getCell(3).getParagraphs().getFirst().getRuns().stream().mapToInt(r -> r.getCTR().sizeOfSymArray()).sum());
+            assertEquals(0, t.getRow(3).getCell(2).getParagraphs().getFirst().getRuns().stream().mapToInt(r -> r.getCTR().sizeOfSymArray()).sum());
+            assertEquals(1, t.getRow(3).getCell(3).getParagraphs().getFirst().getRuns().stream().mapToInt(r -> r.getCTR().sizeOfSymArray()).sum());
+        }
+    }
+
+    @Test
+    void theHeaderHasTheLogoTheTitleAndThePageNumbersAndTheFooterTheTrainingNumberAndTheSignature() throws IOException {
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(TrainingAssessmentForm.build(template(), content(questions(), false, false))))) {
+            assertEquals(1, doc.getHeaderList().size());
+            XWPFHeader header = doc.getHeaderList().getFirst();
+            String xml = header._getHdrFtr().xmlText();
+            assertTrue(xml.contains("TRAINING ASSESSMENT"));
+            assertTrue(xml.contains("PAGE") && xml.contains("NUMPAGES"), "the page numbers are fields");
+            assertEquals(1, header.getAllPictures().size(), "the logo is in the header");
+            assertEquals(2, doc.getFooterList().size(), "the footer of the pages and the empty footer of the last page");
+            String f = doc.getFooterList().stream().map(x -> x._getHdrFtr().xmlText()).filter(x -> x.contains("Sign:")).findFirst().orElseThrow();
+            assertFalse(f.contains("Training number") || f.contains("Trainee:"), "the footer has no line of the training number and the trainee");
+            assertTrue(f.contains("Sign:") && f.contains("Date:"));
+            assertTrue(f.contains("Document template complies"));
+            assertEquals(1, doc.getFooterList().stream().filter(x -> x._getHdrFtr().xmlText().contains("Sign:")).count(), "only one footer has the signature");
+            // the header table is no longer in the body
+            assertFalse(all(TrainingAssessmentForm.build(template(), content(questions(), false, false))).contains("Page:"));
+        }
+    }
+
+    @Test
+    void theLastPageHasTheEndOfTheTestAtTheBottomAndNoFooter() throws IOException {
+        byte[] out = TrainingAssessmentForm.build(template(), content(questions(), false, false));
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
+            // the first section ends with a paragraph that carries the section; the last section is the end of the test
+            long breaks = doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetSectPr()).count();
+            assertEquals(1, breaks);
+            var last = doc.getDocument().getBody().getSectPr();
+            var first = doc.getParagraphs().stream().filter(p -> p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetSectPr()).findFirst().orElseThrow().getCTP().getPPr().getSectPr();
+            assertEquals(1, first.sizeOfFooterReferenceArray());
+            assertEquals(1, last.sizeOfFooterReferenceArray());
+            assertFalse(first.getFooterReferenceArray(0).getId().equals(last.getFooterReferenceArray(0).getId()), "another footer for the last page");
+            // the end of the test is in a table on that page, with its text at the bottom
+            XWPFTable end = doc.getTables().getLast();
+            assertTrue(tableOf(end).contains("Bài làm gồm 3 câu hỏi") || tableOf(end).replaceAll("\\s+", " ").contains("Bài làm gồm 3 câu hỏi"));
+            assertTrue(tableOf(end).contains("Chữ ký học viên"));
+            assertEquals(XWPFTableCell.XWPFVertAlign.BOTTOM, end.getRow(0).getCell(0).getVerticalAlignment());
+            // and nowhere else
+            assertEquals(1, doc.getBodyElements().stream().filter(e -> e instanceof XWPFParagraph p && p.getText().contains("Chữ ký học viên")).count() + doc.getTables().stream().filter(t -> tableOf(t).contains("Chữ ký học viên")).count());
+        }
+        // the header is the same on both sections: the last one has none of its own
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out))) {
+            assertEquals(1, doc.getHeaderList().size());
+        }
+    }
+
+    @Test
+    void theBoxWithACrossIsASymbolOfWingdingsForWordAndAUnicodeCharacterForAPdf() throws IOException {
+        byte[] exam = TrainingAssessmentForm.build(template(), content(questions(), false, false));
+        assertEquals(1, ticked(exam));
+        assertEquals(1, ticked(TrainingAssessmentForm.personalize(exam, new TrainingAssessmentForm.Trainee("A", "B", "C", "01/01/2026"))), "the copy for Word keeps the symbol");
+        byte[] pdfCopy = TrainingAssessmentForm.personalize(exam, new TrainingAssessmentForm.Trainee("A", "B", "C", "01/01/2026"), true);
+        assertEquals(0, ticked(pdfCopy), "the document server does not draw the symbol");
+        assertTrue(all(pdfCopy).contains("\u2612"), "a box with a cross as a character");
+    }
+
+    @Test
+    void oneQuestionPointIsNotWrittenInThePlural() throws IOException {
+        List<Map<String, Object>> one = List.of(item(1, "SINGLE", "Q", List.of(Map.of("id", "A", "text", "a"), Map.of("id", "B", "text", "b")), List.of("A"), 1, null));
+        String text = all(TrainingAssessmentForm.build(template(), content(one, false, false)));
+        assertTrue(text.contains("(1 điểm/ point)"));
+        assertFalse(text.contains("(1 điểm/ points)"));
+    }
+
+    @Test
+    void theTitleOfTheLibraryAssessmentIsNeverInTheForm() throws IOException {
+        // the title is not an input of the form at all
+        assertFalse(all(TrainingAssessmentForm.build(template(), content(questions(), false, false))).contains("TAS-"));
+    }
+
+    @Test
+    void forOneTraineeTheNameTheCodeTheDepartmentTheDateAndTheFooterAreFilled() throws IOException {
+        byte[] exam = TrainingAssessmentForm.build(template(), content(questions(), false, false));
+        byte[] copy = TrainingAssessmentForm.personalize(exam, new TrainingAssessmentForm.Trainee("Nguyễn Văn An", "NV-0012", "Quality Assurance", "24/10/2026"));
+        String text = all(copy);
+        assertTrue(text.contains("Name of trainee: Nguyễn Văn An"));
+        assertTrue(text.contains("ID code:Nguyễn") == false);
+        assertTrue(text.contains("NV-0012"));
+        assertTrue(text.contains("Department:Quality Assurance") || text.contains("Department: Quality Assurance") || text.contains("Quality Assurance"));
+        assertTrue(text.contains("Date: 24/10/2026"));
+        // what was known for the whole activity is still there, and the test duration is not taken for the date
+        assertTrue(text.contains("Test duration 45 phút/ minutes"));
+        // the copy of another trainee does not carry the first one
+        String second = all(TrainingAssessmentForm.personalize(exam, new TrainingAssessmentForm.Trainee("Trần Thị Bình", "NV-0013", "Production", "24/10/2026")));
+        assertTrue(second.contains("Name of trainee: Trần Thị Bình"));
+        assertFalse(second.contains("Nguyễn Văn An"));
+    }
+
+    @Test
+    void aFieldThatIsAlreadyFilledIsLeftAndAFileWithoutTheFieldsIsNotBroken() throws IOException {
+        byte[] exam = TrainingAssessmentForm.build(template(), content(questions(), false, false));
+        byte[] once = TrainingAssessmentForm.personalize(exam, new TrainingAssessmentForm.Trainee("Nguyễn Văn An", "NV-0012", "QA", "24/10/2026"));
+        String again = all(TrainingAssessmentForm.personalize(once, new TrainingAssessmentForm.Trainee("Người Khác", "NV-9999", "XX", "01/01/2030")));
+        assertTrue(again.contains("Nguyễn Văn An"));
+        assertFalse(again.contains("Người Khác"));
+        // a plain Word file that is not the form: nothing is found, nothing is written, nothing breaks
+        try (XWPFDocument plain = new XWPFDocument(); ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
+            plain.createParagraph().createRun().setText("Just a file");
+            plain.write(bytes);
+            assertTrue(all(TrainingAssessmentForm.personalize(bytes.toByteArray(), new TrainingAssessmentForm.Trainee("A", "B", "C", "D"))).contains("Just a file"));
+        }
+    }
+
+    @Test
+    void aFileThatIsNotTheFormIsRefusedAndNeverGuessedAt() throws IOException {
+        try (XWPFDocument plain = new XWPFDocument(); ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
+            plain.createParagraph().createRun().setText("1. Question one ........");
+            plain.write(bytes);
+            ResponseStatusException e = assertThrows(ResponseStatusException.class, () -> TrainingAssessmentForm.build(bytes.toByteArray(), content(questions(), false, false)));
+            assertEquals("TRAINING_FORM_TEMPLATE_STRUCTURE", e.getReason());
+        }
+    }
+
+    @Test
+    void moreTopicsThanLinesGetMoreLines() throws IOException {
+        List<String> topics = List.of("Chủ đề 1", "Chủ đề 2", "Chủ đề 3", "Chủ đề 4", "Chủ đề 5");
+        String text = all(TrainingAssessmentForm.build(template(), new TrainingAssessmentForm.Content(questions(), false, false, topics, "TRN/1", "INITIAL", null)));
+        for (String t : topics) assertTrue(text.contains(t), t);
     }
 }

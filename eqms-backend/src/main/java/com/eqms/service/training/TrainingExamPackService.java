@@ -4,7 +4,6 @@ import com.eqms.util.DateTimeFormatUtils;
 import com.eqms.entity.UserAccount;
 import com.eqms.service.FileStorageService;
 import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -28,10 +27,11 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * The paper test of a session (SOP.0003 5.3.7, APD.0009, TR-52): one copy for each trainee, made from the approved exam, with the Training Number and a place for the trainee's
- * signature in the footer of every page, and a cover page with the trainee's details. The approved file is never changed: the footer is added to a copy made at print time. A PDF exam
- * is stamped as it is; a Word exam is first turned into a PDF by the document server at print time (the Word file stays the approved one, and the Audit Trail records both fingerprints).
- * Every print is numbered and recorded; a print after the first needs a reason.
+ * The paper test of a session (SOP.0003 5.3.7, APD.0009, TR-52): one file for each trainee, made from the exam file of the activity, which is the form APD.0009 with the content of the test.
+ * For each trainee the form gets the fields that belong to that person: the name, the ID code, the department and the date (and the trainee in the footer, with the Training Number and the
+ * place for the signature that the form has on every page). The exam file of the activity is never changed. The files come in one ZIP, as PDF (made by the document server, ready to print)
+ * or as Word (to change before printing). An exam that is a PDF is stamped with the Training Number, the trainee and a signature line on every page. Every print is numbered and recorded;
+ * a print after the first needs a reason. The trainer prints the copies before the training starts (from Notified).
  */
 @Service
 public class TrainingExamPackService {
@@ -54,8 +54,10 @@ public class TrainingExamPackService {
     }
 
     @Transactional
-    public Map<String, Object> print(UserAccount actor, UUID sessionId, String reason) {
+    public Map<String, Object> print(UserAccount actor, UUID sessionId, String reason, String format) {
         access.require(actor, "training.paper.print");
+        boolean wordOut = "docx".equalsIgnoreCase(format);
+        if (format != null && !format.isBlank() && !wordOut && !"pdf".equalsIgnoreCase(format)) throw new IllegalArgumentException("TRAINING_FORMAT_INVALID");
         Map<String, Object> session = jdbc.queryForList("""
             select s.*, a.training_number, a.training_title, a.organizer_department_id, a.kind, a.kind_reason from training_sessions s join training_activities a on a.id = s.activity_id where s.id = ?
             """, sessionId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
@@ -65,13 +67,14 @@ public class TrainingExamPackService {
         if (!Set.of("NOTIFIED", "IN_PROGRESS").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_STATUS");
         if (!"PLANNED".equals(String.valueOf(session.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_SESSION_STATUS");
         if ("ELECTRONIC".equals(session.get("delivery_mode"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_NOT_PAPER");
-        if (!java.util.Set.of("TEST", "CHECKLIST").contains(String.valueOf(session.get("assessment_method")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_A_TEST");
+        if (!Set.of("TEST", "CHECKLIST").contains(String.valueOf(session.get("assessment_method")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_A_TEST");
 
         // The exam is the file of the activity: written in the editor, uploaded, or made from an assessment of the library (a Word file like the others).
         Map<String, Object> exam = jdbc.queryForList("select * from training_materials where activity_id = ? and purpose = 'EXAM' and removed_at is null and link_url is null order by created_at desc limit 1", activityId)
                 .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_MISSING"));
         boolean word = String.valueOf(exam.get("original_name")).toLowerCase(java.util.Locale.ROOT).endsWith(".docx");
         if (!word && !"application/pdf".equalsIgnoreCase(String.valueOf(exam.get("content_type")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_PDF");
+        if (wordOut && !word) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_WORD");
         byte[] examBytes;
         try {
             examBytes = files.readReportArtifact(String.valueOf(exam.get("provider")), String.valueOf(exam.get("stored_path")));
@@ -79,11 +82,6 @@ public class TrainingExamPackService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRAINING_FILE_UNAVAILABLE");
         }
         if (!sha256(examBytes).equals(exam.get("sha256"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_FILE_INTEGRITY_FAILED");
-        String convertedSha = null;
-        if (word) {
-            examBytes = toPdf(examBytes, String.valueOf(exam.get("original_name")));
-            convertedSha = sha256(examBytes);
-        }
 
         Integer printed = jdbc.queryForObject("select count(*) from training_paper_packs where session_id = ? and pack_kind = 'EXAM'", Integer.class, sessionId);
         int copy = (printed == null ? 0 : printed) + 1;
@@ -96,95 +94,87 @@ public class TrainingExamPackService {
             """, sessionId);
         if (trainees.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PARTICIPANT_REQUIRED");
         if (trainees.size() > MAX_TRAINEES) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "TRAINING_PAPER_TOO_LARGE");
-        List<String> topics = jdbc.queryForList("select topic_text from training_session_topics where session_id = ? order by topic_text", String.class, sessionId);
 
         String code = session.get("training_number") + "/S" + session.get("session_no") + "/E" + copy;
+        Object day = session.get("held_on") != null ? session.get("held_on") : session.get("scheduled_on");
+        String date = day == null ? null : DateTimeFormatUtils.display(day);
+        String prefix = String.valueOf(session.get("training_number")).replace('/', '-') + "-S" + session.get("session_no");
         byte[] bytes;
-        int pages;
-        List<PDDocument> sources = new ArrayList<>();
-        try (PDDocument out = new PDDocument(); var regular = getClass().getResourceAsStream("/fonts/Tinos-Regular.ttf"); var bold = getClass().getResourceAsStream("/fonts/Tinos-Bold.ttf");
-             var regular2 = getClass().getResourceAsStream("/fonts/Tinos-Regular.ttf"); var buffer = new ByteArrayOutputStream()) {
-            if (regular == null || bold == null || regular2 == null) throw new IllegalStateException("FONT_UNAVAILABLE");
-            PDType0Font font = PDType0Font.load(out, regular), strong = PDType0Font.load(out, bold);
-            byte[] fontBytes = regular2.readAllBytes();
-            PDFMergerUtility merger = new PDFMergerUtility();
+        int pages = 0;
+        List<String> names = new ArrayList<>();
+        try (ByteArrayOutputStream buffer = new ByteArrayOutputStream(); java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(buffer)) {
+            int index = 0;
             int total = 0;
             for (Map<String, Object> t : trainees) {
-                cover(out, font, strong, session, topics, t, code, copy);
-                PDDocument src = Loader.loadPDF(examBytes);
-                sources.add(src);
-                int n = src.getNumberOfPages();
-                total += n + 1;
-                if (total > MAX_PAGES) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "TRAINING_PAPER_TOO_LARGE");
-                PDType0Font stamp = PDType0Font.load(src, new java.io.ByteArrayInputStream(fontBytes));
-                for (int i = 0; i < n; i++) {
-                    PDPage page = src.getPage(i);
-                    PDRectangle box = page.getCropBox();
-                    try (PDPageContentStream s = new PDPageContentStream(src, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
-                        float y = box.getLowerLeftY() + 14;
-                        float x = box.getLowerLeftX() + MARGIN;
-                        s.setNonStrokingColor(0f, 0f, 0f);
-                        s.beginText(); s.setFont(stamp, 8); s.newLineAtOffset(x, y);
-                        s.showText(clean("Training No. " + session.get("training_number") + "  S" + session.get("session_no") + "   Trainee: " + t.get("full_name") + (t.get("employee_code") == null ? "" : " (" + t.get("employee_code") + ")")
-                                + "   Signature: ________________   Page " + (i + 1) + " / " + n));
-                        s.endText();
-                    }
+                index++;
+                String who = t.get("employee_code") == null || String.valueOf(t.get("employee_code")).isBlank() ? String.valueOf(index) : String.valueOf(t.get("employee_code"));
+                byte[] file;
+                String extension;
+                if (word) {
+                    byte[] copyDocx = TrainingAssessmentForm.personalize(examBytes, new TrainingAssessmentForm.Trainee(String.valueOf(t.get("full_name")),
+                            t.get("employee_code") == null ? null : String.valueOf(t.get("employee_code")), t.get("department") == null ? null : String.valueOf(t.get("department")), date), !wordOut);
+                    file = wordOut ? copyDocx : toPdf(copyDocx, prefix + "-" + who + ".docx");
+                    extension = wordOut ? ".docx" : ".pdf";
+                } else {
+                    file = stamp(examBytes, session, t);
+                    extension = ".pdf";
                 }
-                merger.appendDocument(out, src);
+                if (".pdf".equals(extension)) {
+                    try (PDDocument d = Loader.loadPDF(file)) {
+                        pages += d.getNumberOfPages();
+                        total += d.getNumberOfPages();
+                    }
+                    if (total > MAX_PAGES) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "TRAINING_PAPER_TOO_LARGE");
+                }
+                String name = prefix + "-" + safe(who) + "-" + safe(String.valueOf(t.get("full_name"))) + extension;
+                names.add(name);
+                zip.putNextEntry(new java.util.zip.ZipEntry(name));
+                zip.write(file);
+                zip.closeEntry();
             }
-            out.save(buffer);
+            zip.finish();
             bytes = buffer.toByteArray();
-            pages = out.getNumberOfPages();
         } catch (IOException e) {
             throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
-        } finally {
-            for (PDDocument d : sources) { try { d.close(); } catch (IOException ignored) { /* the print is already made or failed */ } }
         }
+        if (pages < 1) pages = trainees.size();
         String sha = sha256(bytes);
         jdbc.update("insert into training_paper_packs(id, activity_id, session_id, pack_code, copy_no, page_count, people_count, sha256, reason, printed_by, pack_kind) values (?,?,?,?,?,?,?,?,?,?,'EXAM')",
                 UUID.randomUUID(), activityId, sessionId, code, copy, pages, trainees.size(), sha, copy > 1 ? why : null, actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_EXAM_PACK_PRINTED", null, code, "Copy " + copy + ", " + pages + " page(s), " + trainees.size() + " trainee(s), exam file SHA-256 " + exam.get("sha256") + (convertedSha == null ? "" : ", converted to PDF SHA-256 " + convertedSha) + ", printed SHA-256 " + sha
-                + (copy > 1 ? ". Reason: " + why : ""));
-        return Map.of("bytes", bytes, "name", code.replace('/', '-') + ".pdf");
+        store.auditActivity(actor, activity, "TRAINING_EXAM_PACK_PRINTED", null, code, "Copy " + copy + ", " + trainees.size() + " file(s) as " + (wordOut ? "Word" : "PDF") + ": " + String.join(", ", names) + ". Exam file SHA-256 " + exam.get("sha256")
+                + ", ZIP SHA-256 " + sha + (copy > 1 ? ". Reason: " + why : ""));
+        return Map.of("bytes", bytes, "name", code.replace('/', '-') + ".zip", "contentType", "application/zip");
     }
 
-    /** The cover page of one trainee (APD.0009): who, what, when, with the boxes the trainer fills in by hand. */
-    private void cover(PDDocument out, PDType0Font font, PDType0Font strong, Map<String, Object> session, List<String> topics, Map<String, Object> t, String code, int copy) throws IOException {
-        PDPage page = new PDPage(PDRectangle.A4);
-        out.addPage(page);
-        float height = page.getMediaBox().getHeight();
-        try (PDPageContentStream s = new PDPageContentStream(out, page)) {
-            float y = height - MARGIN - 6;
-            text(s, strong, 14, MARGIN, y, "TRAINING ASSESSMENT / Đánh giá đào tạo"); y -= 26;
-            y = line(s, font, strong, y, "Training Number / Mã đào tạo", String.valueOf(session.get("training_number")));
-            y = line(s, font, strong, y, "Training Title / Nội dung", String.valueOf(session.get("training_title")));
-            for (String topic : topics) y = line(s, font, strong, y, "Topic / Chuyên đề", topic);
-            y = line(s, font, strong, y, "Session / Buổi", "S" + session.get("session_no") + "  " + (session.get("held_on") != null ? session.get("held_on") : session.get("scheduled_on") == null ? "" : session.get("scheduled_on")));
-            y -= 8;
-            y = line(s, font, strong, y, "Full name / Họ và tên", String.valueOf(t.get("full_name")));
-            y = line(s, font, strong, y, "Employee code / Mã NV", t.get("employee_code") == null ? "" : String.valueOf(t.get("employee_code")));
-            y = line(s, font, strong, y, "Department / Đơn vị", t.get("department") == null ? "" : String.valueOf(t.get("department")));
-            y = line(s, font, strong, y, "Type of training / Loại đào tạo", "[ ] Initial   [ ] Retraining   [ ] Update   [ ] Other");
-            y = line(s, font, strong, y, "Date / Ngày", "____ / ____ / ________");
-            y = line(s, font, strong, y, "Time taken / Thời gian làm bài", "________ minutes");
-            y -= 14;
-            text(s, strong, 10, MARGIN, y, "Result / Kết quả"); y -= 16;
-            y = line(s, font, strong, y, "Score / Điểm", "________ / ________");
-            y = line(s, font, strong, y, "Result / Kết quả", "[ ] Passed / Đạt     [ ] Failed / Không đạt");
-            y = line(s, font, strong, y, "Marked by / Người chấm", "____________________   Date: ____________");
-            text(s, font, 7, MARGIN, MARGIN + 6, "Training No. " + session.get("training_number") + "   Exam pack " + code + "   Copy " + copy + "   Printed " + DateTimeFormatUtils.formatDateTime(java.time.Instant.now()));
-            text(s, font, 7, MARGIN, MARGIN - 4, "Controlled print: the test pages follow, each with the Training Number and a signature line.");
+    private static String safe(String value) {
+        String cleaned = value.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "-").trim();
+        return cleaned.isEmpty() ? "-" : cleaned;
+    }
+
+    /** An exam that is a PDF has no fields to fill: each page gets the Training Number, the trainee and a signature line. */
+    private byte[] stamp(byte[] pdf, Map<String, Object> session, Map<String, Object> t) {
+        try (PDDocument src = Loader.loadPDF(pdf); var font = getClass().getResourceAsStream("/fonts/Tinos-Regular.ttf"); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            if (font == null) throw new IllegalStateException("FONT_UNAVAILABLE");
+            PDType0Font stamp = PDType0Font.load(src, font);
+            int n = src.getNumberOfPages();
+            for (int i = 0; i < n; i++) {
+                PDPage page = src.getPage(i);
+                PDRectangle box = page.getCropBox();
+                try (PDPageContentStream s = new PDPageContentStream(src, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
+                    s.setNonStrokingColor(0f, 0f, 0f);
+                    s.beginText();
+                    s.setFont(stamp, 8);
+                    s.newLineAtOffset(box.getLowerLeftX() + MARGIN, box.getLowerLeftY() + 14);
+                    s.showText(clean("Training No. " + session.get("training_number") + "  S" + session.get("session_no") + "   Trainee: " + t.get("full_name") + (t.get("employee_code") == null ? "" : " (" + t.get("employee_code") + ")")
+                            + "   Signature: ________________   Page " + (i + 1) + " / " + n));
+                    s.endText();
+                }
+            }
+            src.save(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
         }
-    }
-
-    private static float line(PDPageContentStream s, PDType0Font font, PDType0Font strong, float y, String label, String value) throws IOException {
-        text(s, strong, 10, MARGIN, y, label + ":");
-        text(s, font, 10, MARGIN + 190, y, value);
-        return y - 17;
-    }
-
-    private static void text(PDPageContentStream s, PDType0Font font, float size, float x, float y, String value) throws IOException {
-        s.beginText(); s.setFont(font, size); s.newLineAtOffset(x, y); s.showText(clean(value)); s.endText();
     }
 
     private static String clean(String value) {

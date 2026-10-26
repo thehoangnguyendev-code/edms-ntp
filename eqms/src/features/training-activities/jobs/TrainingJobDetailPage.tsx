@@ -13,9 +13,11 @@ import { Select } from "@/components/ui/select/Select";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
+import { FormDownloadButtons } from "../shared/FormDownloadButtons";
+import { PaperPrintButton } from "../shared/PaperPrintButton";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
-import { trainingError, trainingJobsApi, type TrainingEligibilityItem, type TrainingJobDetail, type TrainingJobDuty, type TrainingPerson } from "@/services/api/trainingActivities";
+import { trainingError, trainingFormsApi, trainingJobsApi, type TrainingEligibilityItem, type TrainingJobDetail, type TrainingJobDuty, type TrainingPerson } from "@/services/api/trainingActivities";
 import { day, trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
 import { TrainingPersonRelatedCard } from "../shared/TrainingPersonRelatedCard";
@@ -112,6 +114,8 @@ export function TrainingJobDetailPage() {
       {caps.approveException && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Complete Approval of the Exception", code: "TRAINING_JOB_EXCEPTION_APPROVED", name: "Job Assignment Exception Approved", changes: statusChange("Exception requested", "Exception approved", "Exception"), run: (t) => trainingJobsApi.approveException(job.id, t) })}>Complete Approval</Button>}
       {caps.submit && <Button size="sm" variant="default" className="whitespace-nowrap" disabled={dirty} onClick={() => setSign({ title: "Assign Job", code: "TRAINING_JOB_ASSIGNED", name: "Job Assigned", changes: statusChange("Draft", "Pending Employee Acceptance"), run: (t) => trainingJobsApi.submit(job.id, job.version, t) })}>Sign and send</Button>}
       {caps.accept && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Accept Job Assignment", code: "TRAINING_JOB_ACCEPTED", name: "Job Accepted", changes: statusChange("Pending Employee Acceptance", "Effective"), run: (t) => trainingJobsApi.accept(job.id, job.version, t) })}>Accept</Button>}
+      {caps.cancel && <PaperPrintButton load={(format, reason) => trainingFormsApi.jobAssignmentPaper(job.id, format, reason)} fileName={(format) => `APD.0024-${job.personName}-${job.issueNo}-paper.${format}`} />}
+      {job.status !== "CANCELLED" && <FormDownloadButtons label="The job assignment" load={(format) => trainingFormsApi.jobAssignment(job.id, format)} fileName={(format) => `APD.0024-${job.personName}-${job.issueNo}.${format}`} />}
       {caps.cancel && <Button size="sm" variant="destructive" className="whitespace-nowrap" onClick={() => setDialog("cancel")}>Cancel</Button>}
     </>
   );

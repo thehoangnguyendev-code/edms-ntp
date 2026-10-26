@@ -1,7 +1,7 @@
 package com.eqms.controller.training;
 
 import com.eqms.auth.CurrentUserService;
-import com.eqms.service.training.TrainingPrintService;
+import com.eqms.service.training.TrainingMatrixFormService;
 import com.eqms.service.training.TrainingMatrixService;
 import com.eqms.service.training.TrainingMatrixService.*;
 import org.springframework.http.CacheControl;
@@ -23,10 +23,10 @@ public class TrainingMatrixController {
 
     private final TrainingMatrixService matrices;
     private final CurrentUserService users;
-    private final TrainingPrintService prints;
+    private final TrainingMatrixFormService forms;
 
-    public TrainingMatrixController(TrainingMatrixService matrices, CurrentUserService users, TrainingPrintService prints) {
-        this.prints = prints;
+    public TrainingMatrixController(TrainingMatrixService matrices, CurrentUserService users, TrainingMatrixFormService forms) {
+        this.forms = forms;
         this.matrices = matrices;
         this.users = users;
     }
@@ -79,11 +79,11 @@ public class TrainingMatrixController {
     @PostMapping("/matrix-versions/{id}/reject")
     public ResponseEntity<?> reject(@PathVariable UUID id, @RequestBody RejectRequest request) { return ResponseEntity.ok(matrices.reject(users.requireCurrentUser(), id, request)); }
 
-    @GetMapping("/matrix-versions/{id}/print")
-    public ResponseEntity<byte[]> print(@PathVariable UUID id) { return pdf(prints.matrixVersion(users.requireCurrentUser(), id)); }
-
-    private static ResponseEntity<byte[]> pdf(Map<String, Object> file) {
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
+    /** The matrix version in the form APD.0011, filled in the Word template that Training Administration enabled; as Word (default) or PDF. */
+    @GetMapping("/matrix-versions/{id}/export")
+    public ResponseEntity<byte[]> export(@PathVariable UUID id, @RequestParam(defaultValue = "docx") String format) {
+        Map<String, Object> file = forms.export(users.requireCurrentUser(), id, format);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) file.get("contentType"))).cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
     }
 

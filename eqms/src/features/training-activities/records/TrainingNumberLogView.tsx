@@ -11,7 +11,8 @@ import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { dictionaryApi } from "@/services/api/dictionary";
-import { trainingError, trainingRecordsApi, type TrainingNumberLogRow } from "@/services/api/trainingActivities";
+import { trainingError, trainingFormsApi, trainingRecordsApi, type TrainingNumberLogRow } from "@/services/api/trainingActivities";
+import { FormDownloadButtons } from "../shared/FormDownloadButtons";
 import { KIND_LABEL, KIND_REASON_LABEL, STATUS_COLOR, STATUS_LABEL, day, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
 import { resettingDates, useDateRange } from "../shared/useListFilters";
 
@@ -87,7 +88,17 @@ export function TrainingNumberLogView() {
 
   return (
     <div className="flex h-full w-full min-w-0 flex-1 flex-col gap-4 md:gap-6">
-      <PageHeader title={TRAINING_PAGES.numberLog.title} breadcrumbItems={trainingBreadcrumbs(navigate, "numberLog")} />
+      <PageHeader
+        title={TRAINING_PAGES.numberLog.title}
+        breadcrumbItems={trainingBreadcrumbs(navigate, "numberLog")}
+        actions={(
+          <FormDownloadButtons
+            label="The log"
+            load={(format) => trainingFormsApi.numberLog(departmentId || undefined, Number(year), format)}
+            fileName={(format) => `FRM.0044-${year}.${format}`}
+          />
+        )}
+      />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
         searchPlaceholder="Search Training Number, topic or SOP…"

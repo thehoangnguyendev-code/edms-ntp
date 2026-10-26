@@ -61,8 +61,8 @@ public class TrainingFileController {
 
     @PostMapping(value = "/activities/{id}/paper-evidence", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadEvidence(@PathVariable UUID id, @RequestPart("file") MultipartFile file, @RequestParam String kind,
-                                            @RequestParam(required = false) UUID participantId, @RequestParam(required = false) String remark, @RequestParam(required = false) String formUsed) {
-        return ResponseEntity.ok(fileService.uploadEvidence(users.requireCurrentUser(), id, file, kind, participantId, remark, formUsed));
+                                            @RequestParam(required = false) UUID participantId, @RequestParam(required = false) String remark, @RequestParam(required = false) String formUsed, @RequestParam(required = false) UUID packId) {
+        return ResponseEntity.ok(fileService.uploadEvidence(users.requireCurrentUser(), id, file, kind, participantId, remark, formUsed, packId));
     }
 
     /** Opens the exam template or the answer key of an activity in the editor: the answer holds the editor configuration signed for the document server. */

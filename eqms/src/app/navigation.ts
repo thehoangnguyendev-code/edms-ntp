@@ -840,6 +840,12 @@ const SYSTEM_MODULES: NavItem[] = [
             allowedPermissions: ["training.admin.manage"],
           },
           {
+            id: "training-admin-vendors",
+            label: "Training Vendors",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.VENDORS,
+            allowedPermissions: ["training.admin.manage"],
+          },
+          {
             id: "training-admin-person-positions",
             label: "Person Positions",
             path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.PERSON_POSITIONS,

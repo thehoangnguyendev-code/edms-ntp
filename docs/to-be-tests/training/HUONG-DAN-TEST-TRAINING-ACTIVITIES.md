@@ -104,15 +104,17 @@ Sau khi In progress hoặc đã gửi: bấm **Supplementary training**, chọn 
 
 ---
 
-## Phần D. Thư viện bài kiểm tra (Training Assessments, APD.0009)
+## Phần D. Thư viện bài kiểm tra (Training Assessments) và form APD.0009
 
-Cần hai tài khoản được Security gán `training.assessment.design` (người soạn) và `training.assessment.approve` (người duyệt, khác người soạn). Hiện chưa tài khoản nào giữ hai quyền này.
+Form mẫu là file **APD.0009.02 Training assessment.docx** đã tải lên và bật ở Settings > Training Properties > **Assessment Forms** (mã APD.0009, bản "2.0.0 (APD.0009.02)"). Người soạn và người duyệt cần quyền `training.assessment.design` và `training.assessment.approve` (trên DEV hai quyền này nằm trong set "Report Author and Administrator (DEV test)": admin, approver.test1, user.a.test).
 
-1. **Soạn.** Menu Training Programme > **Training Assessments** > **New Assessment**. Chọn **Test (questions)** hoặc **Checklist** (không đổi được sau khi tạo). Nhập tên (ví dụ "Kiểm tra đào tạo SOP.0006"), số tài liệu. Tab **Questions**: câu một đáp án, nhiều đáp án, đúng/sai, tự luận (có đáp án mẫu cho trainer); mỗi câu có điểm. Tab **Checklist Lines**: mỗi dòng chọn đáp án chuẩn Correct (Đúng) hoặc Incorrect (Không đúng). **Create draft** chỉ bấm được khi mọi câu đủ: có nội dung, đủ đáp án và đáp án đúng, điểm > 0.
-2. **Duyệt.** Người soạn không thấy nút Approve (và được báo lý do). Người duyệt khác bấm **Approve**, ký. **Kỳ vọng:** Approved; bản đã duyệt không sửa được; muốn đổi bấm **New Version** (bản nháp mới, cùng mã); duyệt bản mới thì bản cũ thành Replaced.
-3. **Dùng trong activity.** Activity > tab **Assessment** > **Choose Assessment** (chỉ bản Approved, đúng loại với phương pháp đánh giá của session, và chỉ trước khi nội dung được review). **Kỳ vọng:** hiện tên, mã và phiên bản, số câu, tổng điểm; mục "cần có bài test" không còn báo thiếu. Sau khi review xong không đổi được.
-4. **In trước khi đào tạo.** Sau khi notify (chưa In progress), session giao bằng giấy: tab **Sessions** hoặc Prepare trong workspace, **Print test copies**. **Kỳ vọng:** file PDF mỗi học viên một bản, đã có sẵn tên, mã nhân viên, bộ phận, Training Number, buổi, ngày; câu hỏi có ô tick (tự luận có dòng kẻ) hoặc bảng checklist hai cột Đúng / Không đúng; không có đáp án. **Print answer key** (trainer): bản có đáp án và đáp án mẫu. In lại phải có lý do.
-5. **Chấm.** Trainer chấm trên giấy, ở Step 5 nhập điểm từng người. Ô Maximum score tự điền bằng tổng điểm của bài. Bài Test: đạt theo pass mark của Training Properties. **Checklist: chỉ đạt khi đúng hết mọi dòng.**
+1. **Soạn.** Menu Training Programme > **Training Assessments** > **New Assessment**. **Title** chỉ để nhận biết trong thư viện, **không ghi vào form**. **Type**: "Essay or multiple-choice test (APD.0009) (SOP default)" hoặc "Checklist test (APD.0009)" (không đổi được sau khi tạo). **Test duration (minutes)** sẽ được ghi vào ô "Thời gian làm bài". Test: Total Score sửa được (chia lại điểm cho các câu); Checklist không có điểm. Kéo thả để đổi thứ tự câu và đáp án. **Preview** xem form đúng như activity sẽ nhận (PDF), có nút xem bản đáp án.
+2. **Duyệt.** Người soạn bấm **Submit for Approval** (Pending Approval). Người khác bấm **Approve** và ký (hoặc **Return to Draft** kèm lý do): **Effective**. Bản Effective không sửa được; muốn đổi bấm **New Version**.
+3. **Dùng trong activity (tuỳ chọn).** Activity > tab **Assessment** > **Choose Assessment** (chỉ bản Effective, đúng loại với session, trước khi review nội dung). Hệ thống điền vào form APD.0009 đang bật và tạo hai file Word trong tab Assessment: **exam file** (bài cho học viên) và **answer key**. Có thể mở file bằng OnlyOffice để sửa tiếp. Nếu không muốn dùng thư viện: mở file mẫu và tự soạn như trước. **Remove** bỏ hai file đó.
+4. **Điền sẵn trong form (khi chọn):** Training topic (các chủ đề của session), Số đào tạo (Training number), Loại đào tạo (ô ☒: lần đầu / đào tạo lại / định kỳ / đột xuất), Thời gian làm bài; câu hỏi chia **Phần I** (trắc nghiệm) và **Phần II** (tự luận, có dòng kẻ) hoặc bảng checklist Đúng / Không đúng; "Bài làm gồm N câu hỏi". Header (logo, tên form, Page n/N) và footer (số đào tạo, học viên, Sign/Date) trên mọi trang.
+5. **Tải bài cho từng học viên, trước khi vào In progress.** Sau **Notify**, session giao bằng giấy: tab Sessions hoặc Prepare trong workspace: **Download test copies** (ZIP, mỗi học viên một file PDF) hoặc **Download as Word** (ZIP file Word để sửa trước khi in). Mỗi file đã có **họ tên, mã nhân viên, bộ phận, ngày** của học viên đó và học viên ở footer. In lại phải có lý do.
+6. **Chấm.** Trainer chấm trên giấy, ở Step 5 nhập điểm từng người. Ô Maximum score tự điền bằng tổng điểm của bài. Bài Test: đạt theo pass mark của Training Properties. **Checklist: chọn Pass / Not passed cho từng người; chỉ đạt khi đúng hết mọi dòng.**
+7. **Giảng viên nội bộ:** theo SOP.0003 5.3.4 giảng viên phải có hồ sơ đào tạo GMP và được đào tạo SOP. Chưa có thì ở tab Sessions bấm **Request Exception** (chọn người duyệt), người duyệt ký **Complete Approve** rồi mới Notify được.
 ## B. Đào tạo từ SOP (Document Control)
 
 ### B1. Tạo tài liệu (ORG hoặc tác giả)
@@ -152,3 +154,28 @@ Mỗi activity có tab **Audit Trail** (ghi mọi bước, lý do, người ký)
 
 ## E. Điều chưa kiểm chứng bằng tay
 Việc gỡ tài liệu liên quan, tài liệu liên quan đã thông báo đào tạo riêng, nhắc việc theo lịch 06:30, thông báo cho người giữ quyền `training.attendance.receive`: chưa chạy thật trên DEV.
+
+## Phần F. Biểu mẫu của công ty (Word/PDF), chữ ký điện tử trong biểu mẫu và bản in giấy (bổ sung 2026-10-25)
+
+**Điều kiện:** các mẫu APD.0009, APD.0011, APD.0014, APD.0024, APD.0108, APD.0117, APD.0118, FRM.0007 và FRM.0044 đã được nạp và kích hoạt ở Training Properties (có chữ ký). Thiếu mẫu thì màn hình báo "template is not enabled".
+
+| # | Việc cần thử | Kết quả mong đợi |
+|---|---|---|
+| F1 | Mở một phiên bản ma trận đã Effective, bấm Download Word và Download PDF | File đúng mẫu APD.0011: tên bộ phận, mỗi vị trí một cột, dấu X, cột Annual Yes/No; không có ghi chú của mẫu và bảng lịch sử sửa đổi. Phiên bản nháp không tải được |
+| F2 | Yêu cầu đào tạo đã duyệt: Download Word/PDF (danh sách hoặc trang chi tiết) | File đúng mẫu APD.0118, có logo, Year, Request No, ô loại đào tạo được đánh dấu, khối chữ ký điện tử của người chuẩn bị, rà soát, phê duyệt |
+| F3 | Training Number Register: Download Word/PDF | File đúng mẫu FRM.0044 theo bộ phận và năm |
+| F4 | Bản giao việc: Download Word/PDF | File đúng mẫu APD.0024, ô "Bổ nhiệm lần đầu" hoặc "Thay đổi vị trí" được đánh dấu, hai khối chữ ký |
+| F5 | Chữ ký mẫu (hàng của người đã duyệt): Download Word (FRM.0007) | Hai ảnh chữ ký, ngày, người xác nhận kèm khối chữ ký điện tử |
+| F6 | Hoạt động có buổi Tự đọc: Download Word/PDF của danh sách tự đọc | File đúng mẫu APD.0108 |
+| F7 | Mọi biểu mẫu trên | Phần điền là Times New Roman 12; khối chữ ký điện tử cỡ 8,5 pt, bắt đầu từ đỉnh ô; cột hẹp ("Sign by QA" của APD.0118) chỉ có tên, thời gian, "(PL n)" và khối đầy đủ ở phụ lục cuối |
+| F8 | Bản giao việc nháp: bấm "Print for signing" | File có dòng đầu "Controlled print: APD.0024/…/P1", dữ liệu đã điền, chưa có chữ ký. In lần 2 phải nhập lý do và ra bản P2 |
+| F9 | Hoạt động có buổi Tự đọc (đã Notified): "Print self-reading list for signing" | Tương tự E8; mã bản …/L1; bản có trong bảng Printed packs |
+| F10 | Tab Paper, bảng Printed packs: bấm Returned / Lost / Void trên một bản | Trạng thái và người ghi hiện ra; Lost và Void bắt buộc có lý do; bản đã đóng không đổi lại được |
+| F11 | Tab Files: tải bản scan và chọn "Paper copy it is the scan of" | Bảng scan có cột Paper copy; bảng Printed packs có cột Scans; bản Returned chưa có scan hiện "None yet" |
+| F12 | QA xác nhận hoàn tất một hoạt động còn bản Issued | Vẫn xác nhận được; bảng Printed packs đã cảnh báo; Audit Trail ghi số bản còn mở |
+
+| F13 | Settings → Training Administration → Training Vendors: Approve Vendor (tên, mã tham chiếu, hiệu lực), ký điện tử | Đơn vị hiện trong danh sách trạng thái Active; trùng tên đang Active (kể cả khác hoa/thường) bị từ chối; hiệu lực trong quá khứ bị từ chối |
+| F14 | Tạo hoạt động đào tạo ngoài (External) với đơn vị chưa có trong danh mục | Hoạt động vẫn tạo được; màn hình có thông báo vàng "not on the register of approved training providers (SOP.0025)" |
+| F15 | Tạo đào tạo ngoài với đơn vị đã duyệt | Không có thông báo; sau khi Make Inactive (có lý do và chữ ký) thì thông báo quay lại |
+
+**Chưa kiểm chứng (cần bạn nhìn):** file Word mở trong Microsoft Word (ô đánh dấu, dòng đầu bản in, chữ ký không bị tách trang), các nút mới trên trình duyệt.

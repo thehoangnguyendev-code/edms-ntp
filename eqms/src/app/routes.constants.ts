@@ -224,6 +224,7 @@ export const ROUTES = {
     TRAINING_ADMINISTRATION: {
       PROPERTIES: '/settings/administration/training/properties',
       TOPICS: '/settings/administration/training/topics',
+      VENDORS: '/settings/administration/training/vendors',
       PERSON_POSITIONS: '/settings/administration/training/person-positions',
       NOTIFICATIONS: '/settings/administration/training/notifications',
     },

@@ -129,6 +129,8 @@ export interface TrainingCapabilities {
 }
 export interface TrainingActivityDetail extends Omit<TrainingActivitySummary, "participantCount"> {
   version: number;
+  /** SOP.0025: an external training whose unit is not on the register of approved vendors (a warning, not a block). */
+  vendorWarning?: "VENDOR_NOT_NAMED" | "VENDOR_NOT_APPROVED" | "VENDOR_APPROVAL_ENDED" | null;
   /** People proposed when the document was prepared that are not yet on a list; they go on the list of the first session. */
   proposedParticipantCount?: number;
   /** For a cancelled activity: the status it was cancelled from (null for an old one). */
@@ -322,7 +324,8 @@ export const trainingMatrixApi = {
   versions: (id: string) => async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingMatrixVersionRef>>(`/training/matrices/${id}/versions`, { params })).data,
   upgrade: async (id: string) => (await apiClient.post<TrainingMatrixVersion>(`/training/matrices/${id}/upgrade`)).data,
   version: async (id: string) => (await apiClient.get<TrainingMatrixVersion>(`/training/matrix-versions/${id}`)).data,
-  print: async (versionId: string) => (await apiClient.get<Blob>(`/training/matrix-versions/${versionId}/print`, { responseType: "blob" })).data,
+  /** The matrix version in the form APD.0011, filled in the Word template that Training Administration enabled, as Word or PDF. */
+  exportForm: (versionId: string, format: TrainingFormFormat) => trainingForm(`/training/matrix-versions/${versionId}/export`, format),
   save: async (id: string, body: { version: number; changeReason?: string; rows: { group: string; topicId?: string | null; documentId?: string | null; annualRequired: boolean; note?: string | null; positionIds: string[] }[] }) =>
     (await apiClient.put<TrainingMatrixVersion>(`/training/matrix-versions/${id}`, body)).data,
   eligibleApprovers: async (id: string, search?: string) => (await apiClient.get<TrainingPage<TrainingPerson>>(`/training/matrix-versions/${id}/eligible-approvers`, { params: { search, limit: 50 } })).data,
@@ -347,13 +350,68 @@ export interface TrainingComplianceSummary {
   peopleWithoutPosition: number; overdueActivities: number; dueSoonActivities: number; openReviews?: number;
 }
 export interface TrainingGap { pid: string; fullName: string; avatar?: string | null; employeeCode?: string | null; positionName?: string | null; title: string; code?: string | null; annualRequired: boolean; lastDone?: string | null; status: "MISSING" | "DUE" | "OK" }
-export interface TrainingPaperPack { id: string; sessionId: string; sessionNo: number; packKind: "ATTENDANCE" | "EXAM"; packCode: string; copyNo: number; pageCount: number; peopleCount: number; sha256: string; reason?: string | null; printedAt: string; printedByName: string }
+export interface TrainingPaperPack { id: string; sessionId: string; sessionNo: number; packKind: "ATTENDANCE" | "EXAM" | "SELFREAD"; packCode: string; copyNo: number; pageCount: number; peopleCount: number; sha256: string; reason?: string | null; printedAt: string; printedByName: string; scanCount: number; status: "ISSUED" | "RETURNED" | "LOST" | "VOIDED"; statusAt?: string | null; statusReason?: string | null; statusByName?: string | null }
 export interface TrainingCheckInStatus { open: boolean; code?: string; secondsLeft?: number; invited: number; checkedIn: number }
 export const trainingCheckInApi = {
   status: async (sessionId: string) => (await apiClient.get<TrainingCheckInStatus>(`/training/sessions/${sessionId}/check-in`)).data,
   open: async (sessionId: string) => (await apiClient.post<TrainingCheckInStatus>(`/training/sessions/${sessionId}/check-in/open`)).data,
   close: async (sessionId: string) => (await apiClient.post<TrainingCheckInStatus>(`/training/sessions/${sessionId}/check-in/close`)).data,
   checkIn: async (body: { code: string; signatureToken: string }) => (await apiClient.post<{ activityId: string; trainingNumber: string; sessionNo: number }>("/training/me/check-in", body)).data,
+};
+
+/** The forms of Training written in the Word template of the company (APD.0118, APD.0108, FRM.0044, APD.0024, FRM.0007), as Word or PDF. */
+export type TrainingFormFormat = "docx" | "pdf";
+async function trainingForm(path: string, format: TrainingFormFormat, params: Record<string, string | number | undefined> = {}) {
+  try {
+    return (await apiClient.get<Blob>(path, { params: { ...params, format }, responseType: "blob" })).data;
+  } catch (e) {
+    const response = (e as { response?: { data?: unknown } }).response;
+    if (response?.data instanceof Blob) {
+      try { response.data = JSON.parse(await response.data.text()); } catch { /* keep the original error */ }
+    }
+    throw e;
+  }
+}
+async function trainingPaperForm(path: string, format: TrainingFormFormat, reason?: string) {
+  try {
+    return (await apiClient.post<Blob>(path, { format, reason }, { responseType: "blob" })).data;
+  } catch (e) {
+    const response = (e as { response?: { data?: unknown } }).response;
+    if (response?.data instanceof Blob) {
+      try { response.data = JSON.parse(await response.data.text()); } catch { /* keep the original error */ }
+    }
+    throw e;
+  }
+}
+export interface TrainingVendor {
+  id: string; name: string; reference?: string | null; validUntil?: string | null; createdAt: string; createdByName: string;
+  approvedAt?: string | null; approvedByName?: string | null;
+  /** The state as the server works it out: Draft, Active, Approval ended (the validity has passed) or Inactive. */
+  status: "DRAFT" | "ACTIVE" | "EXPIRED" | "INACTIVE"; statusLabel: string;
+  deactivatedAt?: string | null; deactivatedByName?: string | null; deactivateReason?: string | null;
+  /** What the person may do with the row, decided by the server. */
+  actions: { view: boolean; edit: boolean; approve: boolean; deactivate: boolean; activate: boolean };
+}
+/** The register of approved training vendors (SOP.0025): every filter, sort, page, state and action is the work of the server. */
+export const trainingVendorsApi = {
+  list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingVendor>>("/training/vendors", { params })).data,
+  get: async (id: string) => (await apiClient.get<TrainingVendor>(`/training/vendors/${id}`)).data,
+  approvers: async () => (await apiClient.get<{ label: string; value: string }[]>("/training/vendors/approvers")).data,
+  create: async (body: { name: string; reference?: string; validUntil?: string }) => (await apiClient.post<TrainingVendor>("/training/vendors", body)).data,
+  update: async (id: string, body: { name: string; reference?: string; validUntil?: string }) => (await apiClient.put<TrainingVendor>(`/training/vendors/${id}`, body)).data,
+  approve: async (id: string, signatureToken: string) => (await apiClient.post<TrainingVendor>(`/training/vendors/${id}/approve`, { signatureToken })).data,
+  deactivate: async (id: string, reason: string, signatureToken: string) => (await apiClient.post<TrainingVendor>(`/training/vendors/${id}/deactivate`, { reason, signatureToken })).data,
+  activate: async (id: string, reason: string, signatureToken: string, validUntil?: string) => (await apiClient.post<TrainingVendor>(`/training/vendors/${id}/activate`, { reason, signatureToken, validUntil })).data,
+};
+export const trainingFormsApi = {
+  /** The paper prints to be signed by hand: a numbered copy; a reprint needs a reason. */
+  selfReadingPaper: (sessionId: string, format: TrainingFormFormat, reason?: string) => trainingPaperForm(`/training/sessions/${sessionId}/self-reading-list/paper`, format, reason),
+  jobAssignmentPaper: (id: string, format: TrainingFormFormat, reason?: string) => trainingPaperForm(`/training/job-assignments/${id}/paper`, format, reason),
+  requirement: (id: string, format: TrainingFormFormat) => trainingForm(`/training/requirements/${id}/export`, format),
+  selfReading: (sessionId: string, format: TrainingFormFormat) => trainingForm(`/training/sessions/${sessionId}/self-reading-list`, format),
+  numberLog: (departmentId: string | undefined, year: number | undefined, format: TrainingFormFormat) => trainingForm("/training/number-log/export", format, { departmentId, year }),
+  jobAssignment: (id: string, format: TrainingFormFormat) => trainingForm(`/training/job-assignments/${id}/export`, format),
+  specimen: (personId: string, format: TrainingFormFormat) => trainingForm(`/training/specimen-signatures/person/${personId}/export`, format),
 };
 
 export const trainingPaperApi = {
@@ -369,10 +427,13 @@ export const trainingPaperApi = {
       throw e;
     }
   },
+  /** Where a numbered paper copy is: returned and filed, lost, or voided (Lost and Voided need a reason). */
+  markCopy: async (packId: string, status: "RETURNED" | "LOST" | "VOIDED", reason?: string) => (await apiClient.post<TrainingPaperPack>(`/training/paper-packs/${packId}/status`, { status, reason })).data,
   packs: async (activityId: string) => (await apiClient.get<TrainingPaperPack[]>(`/training/activities/${activityId}/paper-packs`)).data,
-  printExam: async (sessionId: string, reason?: string) => {
+  /** The test copies of a session: one file for each trainee in a ZIP, as PDF (ready to print) or as Word. */
+  printExam: async (sessionId: string, reason?: string, format: "pdf" | "docx" = "pdf") => {
     try {
-      return (await apiClient.post<Blob>(`/training/sessions/${sessionId}/exam-pack`, { reason }, { responseType: "blob" })).data;
+      return (await apiClient.post<Blob>(`/training/sessions/${sessionId}/exam-pack`, { reason, format }, { responseType: "blob" })).data;
     } catch (e) {
       const response = (e as { response?: { data?: unknown } }).response;
       if (response?.data instanceof Blob) {
@@ -406,13 +467,13 @@ export interface TrainingAssessmentSummary {
 }
 export interface TrainingAssessmentItem { no: number; kind: AssessmentItemKind; prompt: string; options: { id: string; text: string }[]; correct: string[]; points: number; modelAnswer?: string | null }
 export interface TrainingAssessmentDetail extends TrainingAssessmentSummary {
-  version: number; createdByName?: string | null; submittedByName?: string | null; usedByActivities: number; items: TrainingAssessmentItem[];
+  version: number; durationMinutes?: number | null; createdByName?: string | null; submittedByName?: string | null; usedByActivities: number; items: TrainingAssessmentItem[];
   capabilities: { edit: boolean; delete: boolean; submit: boolean; returnToDraft: boolean; approve: boolean; newVersion: boolean };
   /** Why Approve is not offered to a person who holds the permission (no item yet, or the person last changed the draft). */
   approveBlocker?: string | null;
 }
 export interface TrainingAssessmentSave {
-  version?: number; title: string; kind: AssessmentKind;
+  version?: number; title: string; kind: AssessmentKind; durationMinutes?: number;
   items: { kind: AssessmentItemKind; prompt: string; options: { text: string }[]; correct: string[]; points: number; modelAnswer?: string }[];
 }
 export interface TrainingAssessmentChoice { id: string; code: string; versionNo: number; title: string; kind: AssessmentKind; itemCount: number; maxScore: number | null }
@@ -426,7 +487,7 @@ export const trainingAssessmentsApi = {
   submit: async (id: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/submit`)).data,
   returnToDraft: async (id: string, reason: string) => (await apiClient.post<TrainingAssessmentDetail>(`/training/assessments/${id}/return`, { reason })).data,
   /** The paper as the trainees (or, with `key`, the trainer) would get it, drawn from what is in the editor, saved or not. A PDF; nothing is stored. */
-  preview: async (body: { title: string; kind: AssessmentKind; items: TrainingAssessmentSave["items"]; key: boolean; code?: string; versionNo?: number }) => {
+  preview: async (body: { title: string; kind: AssessmentKind; items: TrainingAssessmentSave["items"]; durationMinutes?: number; key: boolean; code?: string; versionNo?: number }) => {
     try {
       return (await apiClient.post<Blob>("/training/assessments/preview", body, { responseType: "blob" })).data;
     } catch (e) {
@@ -687,7 +748,6 @@ export interface TrainingSuggestion { topicId?: string | null; documentId?: stri
 export const trainingRequirementsApi = {
   list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingRequirementSummary>>("/training/requirements", { params })).data,
   get: async (id: string) => (await apiClient.get<TrainingRequirementDetail>(`/training/requirements/${id}`)).data,
-  print: async (id: string) => (await apiClient.get<Blob>(`/training/requirements/${id}/print`, { responseType: "blob" })).data,
   create: async (body: { year: number; kind: string; departmentId?: string; dueBy?: string }) => (await apiClient.post<TrainingRequirementDetail>("/training/requirements", body)).data,
   suggestions: async (year: number, departmentId?: string) => (await apiClient.get<{ data: TrainingSuggestion[] }>("/training/requirements/suggestions", { params: { year, departmentId } })).data.data,
   save: async (id: string, body: { version: number; dueBy?: string; lines: { plannedMonth: string; topicId?: string | null; documentId?: string | null }[] }) => (await apiClient.put<TrainingRequirementDetail>(`/training/requirements/${id}`, body)).data,
@@ -727,7 +787,7 @@ export const trainingFormTemplatesApi = {
 
 export interface TrainingPaperEvidence {
   id: string; kind: "ATTENDANCE_SHEET" | "ASSESSMENT" | "OTHER"; originalName: string; sizeBytes: number; sha256: string; remark?: string | null; formUsed?: string | null; uploadedAt: string; receivedAt?: string | null;
-  participantId?: string | null; participantName?: string | null; uploadedByName: string; receivedByName?: string | null; contentType?: string; wholeSession?: boolean;
+  participantId?: string | null; participantName?: string | null; packId?: string | null; packCode?: string | null; uploadedByName: string; receivedByName?: string | null; contentType?: string; wholeSession?: boolean;
 }
 export interface TrainingPersonEvidence extends TrainingPage<TrainingPaperEvidence> { trainingNumber: string; trainingTitle: string }
 export interface TrainingActivityFiles { materials: TrainingMaterial[]; evidence: TrainingPaperEvidence[]; canUploadMaterial: boolean; canSeeAnswerKey: boolean; canUploadEvidence: boolean; canReceive: boolean }
@@ -743,10 +803,10 @@ export const trainingFilesApi = {
   viewConfig: async (id: string) => (await apiClient.get<Record<string, unknown>>(`/training/materials/${id}/view-config`, { params: { logoUrl: `${getBrowserReachableApiBaseUrl()}/branding/logo` } })).data,
   previewMaterial: async (id: string) => (await apiClient.get<Blob>(`/training/materials/${id}/preview`, { responseType: "blob" })).data,
   downloadMaterial: async (id: string) => (await apiClient.get<Blob>(`/training/materials/${id}/download`, { responseType: "blob" })).data,
-  uploadEvidence: async (activityId: string, file: File, kind: string, participantId?: string, remark?: string, onProgress?: (percent: number) => void, formUsed?: string) => {
+  uploadEvidence: async (activityId: string, file: File, kind: string, participantId?: string, remark?: string, onProgress?: (percent: number) => void, formUsed?: string, packId?: string) => {
     const form = new FormData();
     form.append("file", file);
-    return (await apiClient.post<TrainingActivityFiles>(`/training/activities/${activityId}/paper-evidence`, form, { params: { kind, participantId, remark, formUsed }, headers: { "Content-Type": "multipart/form-data" }, onUploadProgress: (e) => { if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100)); } })).data;
+    return (await apiClient.post<TrainingActivityFiles>(`/training/activities/${activityId}/paper-evidence`, form, { params: { kind, participantId, remark, formUsed, packId }, headers: { "Content-Type": "multipart/form-data" }, onUploadProgress: (e) => { if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100)); } })).data;
   },
   openEditor: async (activityId: string, body: AssessmentEditOpen) => (await apiClient.post<AssessmentEditOpened>(`/training/activities/${activityId}/assessment-editor`, body)).data,
   receiveEvidence: async (id: string) => (await apiClient.post<TrainingActivityFiles>(`/training/paper-evidence/${id}/receive`)).data,
@@ -889,6 +949,7 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_SESSION_NOT_HELD: "Start the training first: in the workspace, Prepare, Next (with your signature).",
   TRAINING_PREPARATION_PENDING: "Tick every line of the Preparation checklist first.",
   TRAINING_ATTENDANCE_ALREADY_SENT: "The attendance list was already sent to QA.",
+  TRAINING_EXAM_NOT_WORD: "The exam of this activity is a PDF file: only the PDF copies can be made.",
   TRAINING_ASSESSMENT_TITLE_REQUIRED: "Give the assessment a title.",
   TRAINING_ASSESSMENT_ITEMS_REQUIRED: "Add at least one question or line.",
   TRAINING_ASSESSMENT_ITEM_INVALID: "A question or line is not complete: it needs a text, at least two answers with the right one marked, and points above zero.",
@@ -972,7 +1033,16 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_SPECIMEN_INVALID_TRANSITION: "This action is not available in the current status.",
   TRAINING_MATERIAL_PURPOSE_EXISTS: "This file is already on record. Remove it first, with a reason, to add another.",
   TRAINING_PREVIEW_UNAVAILABLE: "This file cannot be previewed now. Download it instead.",
-  TRAINING_FORM_TEMPLATE_MISSING: "The template APD.0117 is not enabled. Upload it and enable it in Training Properties (form templates).",
+  TRAINING_VENDOR_EXISTS: "A vendor with this name is already in the register as a draft or as active.",
+  TRAINING_VENDOR_NOT_DRAFT: "Only a draft can be changed or approved.",
+  TRAINING_VENDOR_NOT_ACTIVE: "Only an active vendor can be made inactive.",
+  TRAINING_VENDOR_NOT_INACTIVE: "Only an inactive vendor can be activated again.",
+  TRAINING_VENDOR_NAME_REQUIRED: "The name of the vendor is required.",
+  TRAINING_VENDOR_REFERENCE_TOO_LONG: "The approval reference is too long.",
+  TRAINING_VENDOR_VALIDITY_PAST: "The approval cannot be valid until a day that has passed.",
+  TRAINING_PAPER_COPY_CLOSED: "This copy was already returned, lost or voided. It does not change again.",
+  TRAINING_PAPER_STATUS_INVALID: "The state of the copy is not valid.",
+  TRAINING_FORM_TEMPLATE_MISSING: "The template of the form (APD.0117 for the attendance list, APD.0011 for the matrix) is not enabled. Upload it and enable it in Training Properties (form templates).",
   TRAINING_FORM_TEMPLATE_STRUCTURE: "The enabled template APD.0117 does not have the parts of the form (header, general information, topics, list, confirmations). Upload the right file.",
   TRAINING_FORMAT_INVALID: "Choose Word or PDF.",
   TRAINING_ASSESSMENT_NOT_ALLOWED: "This way of assessment does not go with the training method (SOP.0003 5.1.2).",

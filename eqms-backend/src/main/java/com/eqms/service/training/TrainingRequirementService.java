@@ -127,7 +127,7 @@ public class TrainingRequirementService {
             out.put(column.replace("_by", "ByName").replaceAll("_(\\w)", "$1"), r.get(column) == null ? null : jdbc.queryForObject("select full_name from app_users where id=?", String.class, r.get(column)));
         }
         out.put("lines", TrainingRows.camel(jdbc.queryForList("""
-            select l.id, l.line_no, l.planned_month, l.topic_id, l.document_id, l.activity_id, l.postponed_from, l.postpone_reason, l.qa_comment, l.qa_signed_at,
+            select l.id, l.line_no, l.planned_month, l.topic_id, l.document_id, l.activity_id, l.postponed_from, l.postpone_reason, l.qa_comment, l.qa_signed_at, l.qa_signature_id,
                    coalesce(t.name, d.document_name) as title, coalesce(t.code, d.document_number) as code,
                    a.training_number, a.status as activity_status, a.completed_on as executed_on, qu.full_name as qa_signed_by_name,
                    case when a.status = 'COMPLETED' then 'DONE'

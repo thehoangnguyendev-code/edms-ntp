@@ -58,6 +58,8 @@ import { WorkspaceResultsTable } from "./components/workspace/WorkspaceResultsTa
 import { TrainingExamBlock } from "./components/TrainingExamBlock";
 import { TrainingAssessmentChoiceBlock } from "./components/TrainingAssessmentChoiceBlock";
 import { AttendanceListExport } from "./components/AttendanceListExport";
+import { FormDownloadButtons } from "../shared/FormDownloadButtons";
+import { PaperPrintButton } from "../shared/PaperPrintButton";
 import { TrainingPreparationBlock } from "./components/TrainingPreparationBlock";
 import { TrainingTranscriptionBlock } from "./components/TrainingTranscriptionBlock";
 import {
@@ -81,6 +83,7 @@ import {
   trainingExamApi,
   trainingCodeText,
   trainingError,
+  trainingFormsApi,
   type TrainingActivityDetail,
   type TrainingApprovalStep,
   type TrainingCapabilities,
@@ -927,14 +930,14 @@ export function TrainingActivityDetailPage({
             `The attendance list was due to QA on ${day(qa.dueOn)} and has not been sent. Send it now; the delay is recorded.`}
         </p>
       )}
-      {external && !activity.vendorRef?.trim() && (
+      {external && activity.vendorWarning && (
         <p
           role="status"
           className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
         >
-          Check that the training unit is on the approved vendor list (SOP.0025)
-          and enter its reference in "Vendor reference". The system does not
-          hold the vendor list.
+          {activity.vendorWarning === "VENDOR_NOT_NAMED" && "Name the training unit: it must be on the register of approved training vendors (SOP.0025)."}
+          {activity.vendorWarning === "VENDOR_NOT_APPROVED" && `The training unit "${activity.trainingUnitName ?? ""}" is not on the register of approved training vendors (SOP.0025). Approve it in Training Administration, Training Vendors, or check the name. The training is not blocked.`}
+          {activity.vendorWarning === "VENDOR_APPROVAL_ENDED" && `The approval of the training unit "${activity.trainingUnitName ?? ""}" has ended (SOP.0025). Renew it in Training Administration, Training Vendors. The training is not blocked.`}
         </p>
       )}
     </div>
@@ -1594,6 +1597,22 @@ export function TrainingActivityDetailPage({
           headerActions={(
             <>
               <AttendanceListExport activityId={activity.id} trainingNumber={activity.trainingNumber} />
+              {activity.sessions.filter((x) => x.method === "SELF_READING").map((x) => (
+                <PaperPrintButton
+                  key={`paper-${x.id}`}
+                  label="Print self-reading list for signing"
+                  load={(format, reason) => trainingFormsApi.selfReadingPaper(x.id, format, reason)}
+                  fileName={(format) => `${activity.trainingNumber.replace(/\//g, "-")}-S${x.sessionNo}-APD.0108-paper.${format}`}
+                />
+              ))}
+              {activity.sessions.filter((x) => x.method === "SELF_READING").map((x) => (
+                <FormDownloadButtons
+                  key={x.id}
+                  label="The self-reading list"
+                  load={(format) => trainingFormsApi.selfReading(x.id, format)}
+                  fileName={(format) => `${activity.trainingNumber.replace(/\//g, "-")}-S${x.sessionNo}-APD.0108.${format}`}
+                />
+              ))}
               {caps?.sendAttendanceList && (
                 <Button
                   size="sm"

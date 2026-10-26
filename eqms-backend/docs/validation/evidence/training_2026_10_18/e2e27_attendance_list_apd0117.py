@@ -23,7 +23,7 @@ def download(c, aid, fmt):
 
 def words(docx):
     z = zipfile.ZipFile(io.BytesIO(docx))
-    xml = z.read('word/document.xml').decode('utf-8')
+    xml = ''.join(z.read(n).decode('utf-8') for n in z.namelist() if re.match(r'word/(document|header\d*|footer\d*)\.xml$', n))
     paragraphs = [''.join(re.findall(r'<w:t[^>]*>([^<]*)</w:t>', p)) for p in re.findall(r'<w:p[ >].*?</w:p>', xml, flags=re.S)]
     return xml, [p for p in paragraphs if p.strip()]
 
@@ -84,7 +84,7 @@ admin.call('POST', f'/training/activities/{aid}/notify', {'version': get(aid)['v
 code, body = download(admin, aid, 'docx')
 xml, paras = words(body)
 text = ' | '.join(paras)
-check('3.1 once the list is confirmed the preparer is written with the date (dd/MM/yyyy HH:mm:ss)', 'Nguyen The Hoang' in text and re.search(r'Signed electronically \d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}', text), text[-700:])
+check('3.1 once the list is confirmed the preparer is written with the date (dd/MM/yyyy HH:mm:ss)', 'Nguyen The Hoang' in text and re.search(r'Electronically Signed \| \d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}', text), text[-700:])
 for sid in (sid1, sid2):
     tick_all(admin, sid)
 admin.call('POST', f'/training/sessions/{sid1}/hold', {'signatureToken': sign(admin)})
@@ -99,7 +99,7 @@ xml, paras = words(body)
 text = ' | '.join(paras)
 open(os.path.join(HERE, 'exports', 'APD0117-after-training.docx'), 'wb').write(body)
 check('3.2 the attendance is written: present, absent, online', 'Có mặt / Present' in text and 'Vắng mặt / Absent' in text and 'Trực tuyến / Online' in text, text[:1200])
-check('3.3 the results are written: failed in SS01, passed in SS02', 'Không đạt / Failed' in text and 'Đạt / Passed' in text, text[:1200])
+check('3.3 the results are not written before the trainer has finished the training (they are, after it: e2e32)', 'Không đạt / Failed' not in text and 'Đạt / Passed' not in text, text[:1200])
 check('3.4 the dates of the sessions are dd/MM/yyyy', re.search(r'\d{2}/\d{2}/\d{4}', text) and not re.search(r'\d{4}-\d{2}-\d{2}', text), text[:600])
 
 print(chr(10) + '== 4. the make-up for the person who failed shows in the column of the re-training result')

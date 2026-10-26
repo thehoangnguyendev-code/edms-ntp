@@ -58,10 +58,32 @@ public class TrainingPaperService {
         UUID department = jdbc.queryForObject("select organizer_department_id from training_activities where id = ?", UUID.class, activityId);
         access.requireScope(actor, department);
         return TrainingRows.camel(jdbc.queryForList("""
-            select p.id, p.session_id, s.session_no, p.pack_kind, p.pack_code, p.copy_no, p.page_count, p.people_count, p.sha256, p.reason, p.printed_at, u.full_name as printed_by_name
-              from training_paper_packs p join training_sessions s on s.id = p.session_id join app_users u on u.id = p.printed_by
+            select p.id, p.session_id, s.session_no, p.pack_kind, p.pack_code, p.copy_no, p.page_count, p.people_count, p.sha256, p.reason, p.printed_at, u.full_name as printed_by_name,
+                   (select count(*) from training_paper_evidence v where v.pack_id = p.id) as scan_count, coalesce(e.status, 'ISSUED') as status, e.at as status_at, e.reason as status_reason, su.full_name as status_by_name
+              from training_paper_packs p join training_sessions s on s.id = p.session_id join app_users u on u.id = p.printed_by left join training_paper_pack_events e on e.pack_id = p.id left join app_users su on su.id = e.by_user
              where p.activity_id = ? order by s.session_no, p.copy_no
             """, activityId));
+    }
+
+    /**
+     * Where a numbered copy is (hybrid operation): Issued, then Returned (the signed paper came back and is filed with the record), or Lost, or Voided (not used, destroyed). A copy that is not
+     * Issued any more does not change again; Lost and Voided need a reason. Every change is in the Audit Trail with the code of the pack.
+     */
+    @Transactional
+    public Map<String, Object> markPack(UserAccount actor, UUID packId, String status, String reason) {
+        access.require(actor, "training.paper.print");
+        if (status == null || !Set.of("RETURNED", "LOST", "VOIDED").contains(status)) throw new IllegalArgumentException("TRAINING_PAPER_STATUS_INVALID");
+        Map<String, Object> pack = jdbc.queryForList("select p.*, a.organizer_department_id from training_paper_packs p join training_activities a on a.id = p.activity_id where p.id = ? for update of p", packId)
+                .stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        access.requireScope(actor, (UUID) pack.get("organizer_department_id"));
+        if (jdbc.queryForObject("select count(*) from training_paper_pack_events where pack_id = ?", Integer.class, packId) > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PAPER_COPY_CLOSED");
+        String why = reason == null ? "" : reason.trim();
+        if (!"RETURNED".equals(status) && why.isEmpty()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
+        if (why.length() > 1000) throw new IllegalArgumentException("TRAINING_REASON_TOO_LONG");
+        jdbc.update("insert into training_paper_pack_events(id, pack_id, status, reason, by_user) values (?,?,?,?,?)", UUID.randomUUID(), packId, status, why.isEmpty() ? null : why, actor.getId());
+        Map<String, Object> activity = store.activity((UUID) pack.get("activity_id")).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        store.auditActivity(actor, activity, "TRAINING_PAPER_COPY_" + status, "ISSUED", status, pack.get("pack_code") + (why.isEmpty() ? "" : ". Reason: " + why));
+        return packs(actor, (UUID) pack.get("activity_id")).stream().filter(p -> packId.equals(p.get("id"))).findFirst().orElseThrow();
     }
 
     @Transactional

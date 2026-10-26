@@ -58,4 +58,36 @@ class TrainingNavigationTest {
     void trainingReviewsIsNotListedWithoutThatPermission() {
         assertThat(idsFor("training.module.view", "training.self.view")).doesNotContain("training-personnel-reviews");
     }
+
+    @Test
+    void documentTrainingsMatchesTheFrontendIdRouteAndProgrammeGroup() {
+        List<NavigationItemResponse> menu = navigation.getNavigation(Set.of("training.module.view", "training.matrix.view"));
+        NavigationItemResponse training = menu.stream().filter(item -> item.id().equals("training-management")).findFirst().orElseThrow();
+        NavigationItemResponse programme = training.children().stream().filter(item -> item.id().equals("training-planning")).findFirst().orElseThrow();
+        NavigationItemResponse documents = programme.children().stream().filter(item -> item.id().equals("training-document-trainings")).findFirst().orElseThrow();
+        assertThat(documents.label()).isEqualTo("Document Trainings");
+        assertThat(documents.path()).isEqualTo("/training-management/document-trainings");
+        assertThat(idsFor("training.module.view", "training.matrix.view")).contains("training-matrices");
+    }
+
+    @Test
+    void documentTrainingsIsNotListedWithoutMatrixView() {
+        assertThat(idsFor("training.module.view", "training.self.view")).doesNotContain("training-document-trainings");
+    }
+
+    @Test
+    void documentTrainingsStillRequiresTheModulePermission() {
+        assertThat(idsFor("training.matrix.view")).doesNotContain("training-document-trainings");
+    }
+
+    @Test
+    void documentTrainingsIsHiddenWhenTrainingFeatureIsDisabled() {
+        when(systemConfigurationService.isFeatureEnabled("feat-tms")).thenReturn(false);
+        assertThat(idsFor("training.module.view", "training.matrix.view")).doesNotContain("training-document-trainings");
+    }
+
+    @Test
+    void documentTrainingsIsListedForTheExistingWildcardGrant() {
+        assertThat(idsFor("*")).contains("training-document-trainings");
+    }
 }

@@ -33,14 +33,16 @@ import {
 import {
   trainingActivitiesApi,
   trainingError,
+  trainingFormsApi,
   trainingSpecimenApi,
+  type TrainingFormFormat,
   type TrainingPerson,
   type TrainingSpecimen,
 } from "@/services/api/trainingActivities";
 import {
   day,
   trainingBreadcrumbs,
-  TRAINING_PAGES, statusChange } from "../shared/trainingLabels";
+  TRAINING_PAGES, saveBlob, statusChange } from "../shared/trainingLabels";
 import { SpecimenImagePicker } from "../shared/SpecimenImagePicker";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -160,6 +162,15 @@ export function TrainingSpecimenView() {
       setBusy(false);
     }
   };
+  /** The specimen signatures of the person in the form FRM.0007, as Word or PDF. */
+  const downloadForm = async (s: TrainingSpecimen, format: TrainingFormFormat) => {
+    try {
+      saveBlob(await trainingFormsApi.specimen(s.personUserId, format), `FRM.0007-${s.employeeCode ?? s.fullName}.${format}`);
+    } catch (e) {
+      showToast({ type: "error", title: "The form was not exported", message: trainingError(e) });
+    }
+  };
+
   const view = async (s: TrainingSpecimen) => {
     try {
       const blobs = [
@@ -386,6 +397,18 @@ export function TrainingSpecimenView() {
                 View Image
               </DropdownMenuItem>
             )}
+            {(row.status === "APPROVED" || row.status === "SUPERSEDED") && row.capabilities.viewImage && (["docx", "pdf"] as const).map((format) => (
+              <DropdownMenuItem
+                key={format}
+                icon={<IconPhotoShare className="h-4 w-4" />}
+                onClick={() => {
+                  void downloadForm(row, format);
+                  menu.close();
+                }}
+              >
+                {format === "docx" ? "Download Word (FRM.0007)" : "Download PDF (FRM.0007)"}
+              </DropdownMenuItem>
+            ))}
             {row.capabilities.confirm && (
               <DropdownMenuItem
                 icon={<IconCheck className="h-4 w-4" />}

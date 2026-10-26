@@ -19,6 +19,10 @@ check('1.0 created', code == 200, (code, text))
 aid = a['id']
 a = admin.call('POST', f'/training/activities/{aid}/sessions', {'method': 'CLASSROOM', 'assessmentMethod': 'TEST', 'trainerUserId': trainer.user['id'], 'scheduledOn': TODAY, 'venue': 'Room 1', 'topics': [{'topicText': 'E2E-TEST topic'}]})
 sid = a['sessions'][0]['id']
+# an internal trainer with no training record on GMP or on the SOP needs an exception approved (SOP.0003 5.3.4)
+admin.call('POST', f'/training/sessions/{sid}/trainer-exception', {'reason': 'E2E-TEST the trainer of the unit', 'approverUserId': qa.user['id']})
+ex = [x for x in get(aid)['sessions'] if x['id'] == sid][0]['trainerQualification']['exception']
+qa.call('POST', f"/training/trainer-exceptions/{ex['id']}/approve", {'signatureToken': sign(qa)})
 a = admin.call('POST', f'/training/activities/{aid}/participants', {'sessionId': sid, 'personUserIds': [trainee.user['id'], other.user['id']], 'reason': 'E2E-TEST'})
 pid = {p['personUserId']: p['id'] for p in a['participants']}
 admin.call('POST', f'/training/activities/{aid}/confirm-list', {'signatureToken': sign(admin), 'reason': 'E2E-TEST'})

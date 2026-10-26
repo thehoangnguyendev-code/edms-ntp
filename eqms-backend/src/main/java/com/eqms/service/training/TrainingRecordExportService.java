@@ -6,11 +6,6 @@ import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.AuditTrailService;
 import com.eqms.service.ElectronicSignatureService;
 import com.eqms.service.FileStorageService;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -46,9 +41,11 @@ public class TrainingRecordExportService {
     private final AuditTrailService audit;
     private final UserAccountRepository users;
     private final FileStorageService files;
+    private final TrainingFormExportService forms;
+    private final TrainingFormTemplates templates;
 
     public TrainingRecordExportService(JdbcTemplate jdbc, TrainingAccess access, TrainingApprovalService approvals, ElectronicSignatureService signatures, AuditTrailService audit,
-                                       UserAccountRepository users, FileStorageService files) {
+                                       UserAccountRepository users, FileStorageService files, TrainingFormExportService forms, TrainingFormTemplates templates) {
         this.jdbc = jdbc;
         this.access = access;
         this.approvals = approvals;
@@ -56,6 +53,8 @@ public class TrainingRecordExportService {
         this.audit = audit;
         this.users = users;
         this.files = files;
+        this.forms = forms;
+        this.templates = templates;
     }
 
     public record CreateRequest(UUID personUserId, String reason, UUID approverUserId, String signatureToken) {}
@@ -149,12 +148,8 @@ public class TrainingRecordExportService {
             """, person);
         UserAccount preparer = users.findById((UUID) e.get("prepared_by")).orElseThrow();
         OffsetDateTime now = OffsetDateTime.now();
-        byte[] pdf;
-        try {
-            pdf = render(owner, records, preparer, actor, now, String.valueOf(e.get("reason")), id);
-        } catch (Exception ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "TRAINING_EXPORT_FAILED");
-        }
+        // the record is written in the form APD.0014 (the Word template that Training Administration enabled) and kept as the PDF made from it
+        byte[] pdf = templates.pdf(forms.personalRecord(owner, qualification(owner), records, (UUID) e.get("prepared_signature_id"), e.get("created_at"), signature, now));
         FileStorageService.StorageWriteResult stored;
         try {
             stored = files.storeReportArtifact("training/record-exports/" + person + "/" + id + ".pdf", new ByteArrayInputStream(pdf), "application/pdf");
@@ -197,104 +192,19 @@ public class TrainingRecordExportService {
         }
     }
 
-    /** The APD.0014 PDF of one person with the records completed up to the cut-off date. Used by the batch export; nothing is stored here. */
-    public byte[] renderPersonal(UserAccount person, UserAccount preparer, UserAccount approver, OffsetDateTime at, String reason, UUID id, java.time.LocalDate cutOff) throws Exception {
+    /** The APD.0014 file (Word) of one person with the records completed up to the cut-off date. Used by the batch export; nothing is stored here. */
+    public byte[] renderPersonal(UserAccount person, UUID preparedSignature, UUID approvedSignature, OffsetDateTime at, java.time.LocalDate cutOff) {
         List<Map<String, Object>> records = jdbc.queryForList("""
             select r.record_no, r.training_number, r.topic_text, r.document_number, r.document_revision, r.completed_on, r.result, r.content_sha256, v.voided_at, v.reason as void_reason
               from training_records r left join training_record_voids v on v.record_id = r.id where r.person_user_id = ? and r.completed_on <= ? order by r.completed_on, r.record_no
             """, person.getId(), java.sql.Date.valueOf(cutOff));
-        return render(person, records, preparer, approver, at, reason, id);
-    }
-
-    // ----------------------------------------------------------------------------------------------------------------------------- PDF
-
-    private byte[] render(UserAccount person, List<Map<String, Object>> records, UserAccount preparer, UserAccount approver, OffsetDateTime at, String reason, UUID id) throws Exception {
-        float width = PDRectangle.A4.getWidth(), height = PDRectangle.A4.getHeight(), margin = 36, size = 9, line = 13;
-        try (PDDocument pdf = new PDDocument(); var regular = getClass().getResourceAsStream("/fonts/Tinos-Regular.ttf"); var bold = getClass().getResourceAsStream("/fonts/Tinos-Bold.ttf"); var out = new ByteArrayOutputStream()) {
-            if (regular == null || bold == null) throw new IllegalStateException("FONT_UNAVAILABLE");
-            PDType0Font font = PDType0Font.load(pdf, regular), strong = PDType0Font.load(pdf, bold);
-            float[] cols = {margin, margin + 24, margin + 92, margin + 250, margin + 330, margin + 400, margin + 452};
-            String[] heads = {"No.", "Training No.", "Topic", "Document", "Completed", "Result", "Record"};
-            PDPageContentStream s = null;
-            float y = 0;
-            int page = 0;
-            List<String[]> body = new ArrayList<>();
-            for (Map<String, Object> r : records) {
-                body.add(new String[]{String.valueOf(r.get("record_no")), String.valueOf(r.get("training_number")), String.valueOf(r.get("topic_text")),
-                        r.get("document_number") == null ? "" : r.get("document_number") + (r.get("document_revision") == null ? "" : " Rev " + r.get("document_revision")),
-                        DateTimeFormatUtils.display(r.get("completed_on")), "READ".equals(r.get("result")) ? "Read" : "Passed", r.get("voided_at") == null ? "Valid" : "VOIDED"});
-            }
-            int total = Math.max(1, (int) Math.ceil(Math.max(1, body.size()) / 30.0));
-            int index = 0;
-            do {
-                PDPage p = new PDPage(PDRectangle.A4);
-                pdf.addPage(p);
-                s = new PDPageContentStream(pdf, p);
-                y = height - margin;
-                text(s, strong, 13, margin, y, "Personal Training Record (APD.0014)"); y -= 20;
-                if (page == 0) {
-                    text(s, font, size, margin, y, "Employee: " + person.getFullName() + (person.getEmployeeCode() == null ? "" : " (" + person.getEmployeeCode() + ")")); y -= line;
-                    text(s, font, size, margin, y, "Department: " + nvl(person.getDepartment())); y -= line;
-                    text(s, font, size, margin, y, "Qualification: " + clip(font, qualification(person), size, width - 2 * margin - 80)); y -= line;
-                    text(s, font, size, margin, y, "Joined the company: " + (person.getStartDate() == null ? "" : DateTimeFormatUtils.display(person.getStartDate()))); y -= line;
-                    text(s, font, size, margin, y, "Reason for the export: " + clip(font, reason, size, width - 2 * margin - 120)); y -= line;
-                    text(s, font, size, margin, y, "Records listed: " + records.size() + "    Generated: " + DateTimeFormatUtils.formatDateTime(at.toInstant())); y -= line + 6;
-                }
-                for (int c = 0; c < heads.length; c++) text(s, strong, size, cols[c], y, heads[c]);
-                y -= line;
-                int rowsOnPage = 0;
-                while (index < body.size() && rowsOnPage < 30 && y > margin + 90) {
-                    String[] row = body.get(index++);
-                    for (int c = 0; c < row.length; c++) {
-                        float max = (c + 1 < cols.length ? cols[c + 1] : width - margin) - cols[c] - 4;
-                        text(s, font, 8, cols[c], y, clip(font, row[c], 8, max));
-                    }
-                    y -= line;
-                    rowsOnPage++;
-                }
-                page++;
-                text(s, font, 8, margin, margin - 4, "Page " + page + " of " + Math.max(total, page) + "    Export " + id);
-                if (index >= body.size()) {
-                    y = Math.min(y - 10, margin + 70);
-                    text(s, strong, size, margin, y, "Signatures"); y -= line;
-                    text(s, font, size, margin, y, "Prepared by: " + preparer.getFullName() + " (electronic signature, Training Record Prepared)"); y -= line;
-                    text(s, font, size, margin, y, "Approved by: " + approver.getFullName() + " (electronic signature, Training Record Approved) at " + DateTimeFormatUtils.formatDateTime(at.toInstant())); y -= line;
-                    text(s, font, 7, margin, y, "Data fingerprint: " + dataHash(records)); y -= 10;
-                }
-                s.close();
-            } while (index < body.size());
-            pdf.save(out);
-            return out.toByteArray();
-        }
+        return forms.personalRecord(person, qualification(person), records, preparedSignature, at, approvedSignature, at);
     }
 
     /** The highest qualification the person has on record (APD.0014 v2.0.0): the latest degree with its field of study and institution. */
     private String qualification(UserAccount person) {
         return jdbc.queryForList("select degree, field_of_study, institution from user_educations where user_id = ? order by graduation_year desc nulls last, created_at desc limit 1", person.getId()).stream().findFirst()
                 .map(r -> nvl((String) r.get("degree")) + (r.get("field_of_study") == null ? "" : ", " + r.get("field_of_study")) + (r.get("institution") == null ? "" : " (" + r.get("institution") + ")")).orElse("");
-    }
-
-    private static void text(PDPageContentStream s, PDType0Font font, float size, float x, float y, String value) throws IOException {
-        s.beginText(); s.setFont(font, size); s.newLineAtOffset(x, y); s.showText(clean(value)); s.endText();
-    }
-
-    private static String clean(String value) {
-        StringBuilder sb = new StringBuilder();
-        for (int cp : (value == null ? "" : value).codePoints().toArray()) if (!Character.isISOControl(cp)) sb.appendCodePoint(cp);
-        return sb.toString();
-    }
-
-    private static String clip(PDType0Font font, String value, float size, float max) throws IOException {
-        String v = clean(value);
-        if (font.getStringWidth(v) / 1000 * size <= max) return v;
-        while (v.length() > 1 && font.getStringWidth(v + "…") / 1000 * size > max) v = v.substring(0, v.length() - 1);
-        return v + "…";
-    }
-
-    private static String dataHash(List<Map<String, Object>> records) {
-        StringBuilder sb = new StringBuilder();
-        for (Map<String, Object> r : records) sb.append(r.get("content_sha256")).append(r.get("voided_at") == null ? "" : "V").append('\n');
-        return sha256(sb.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     private static String nvl(String v) { return v == null ? "" : v; }

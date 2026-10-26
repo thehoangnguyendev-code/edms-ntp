@@ -21,11 +21,11 @@ export const STATUS_COLOR: Record<string, "emerald" | "amber" | "red" | "slate" 
   CANCELLED: "red",
 };
 export const KIND_LABEL: Record<string, string> = {
-  INITIAL: "Initial",
-  PERIODIC: "Periodic",
-  UNPLANNED: "Unplanned",
-  RETRAINING: "Supplementary training",
-  EXTERNAL: "External",
+  INITIAL: "Initial Training",
+  PERIODIC: "Periodic Training",
+  UNPLANNED: "Unplanned Training",
+  RETRAINING: "Supplementary Training",
+  EXTERNAL: "External Training",
 };
 /** SOP.0003 5.1.2: the two kinds of external training. */
 export const EXTERNAL_TYPE_LABEL: Record<string, string> = { ACTIVE: "Active external training", PASSIVE: "Passive external training" };

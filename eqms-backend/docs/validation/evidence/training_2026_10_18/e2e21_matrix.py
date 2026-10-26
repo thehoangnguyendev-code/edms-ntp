@@ -144,7 +144,7 @@ def run_variant(spec):
             check(f'{name}: self-reading verified: passed', got['result'] == 'PASSED', got)
         else:
             obtained = 9 if spec.get('outcome', 'pass') == 'pass' else 5
-            want = 'PASSED' if obtained >= 7 else 'FAILED'
+            want = ('PASSED' if obtained >= 10 else 'FAILED') if spec['assessment'] == 'CHECKLIST' else ('PASSED' if obtained >= 7 else 'FAILED')  # a checklist passes only when every line is passed (SOP.0003 5.3.7)
             code, data, text = attempt(admin, 'POST', f"/training/participants/{pid[trainee.user['id']]}/assessments", {'scoreObtained': 11, 'scoreMax': 10})
             check(f'{name}: a score above the maximum is refused', code == 400, (code, text))
             a = admin.call('POST', f"/training/participants/{pid[trainee.user['id']]}/assessments", {'scoreObtained': obtained, 'scoreMax': 10, 'remarks': 'E2E-TEST'})

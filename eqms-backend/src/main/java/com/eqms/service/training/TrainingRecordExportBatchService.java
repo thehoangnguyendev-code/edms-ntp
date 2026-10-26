@@ -200,10 +200,10 @@ public class TrainingRecordExportBatchService {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream(); ZipOutputStream z = new ZipOutputStream(out)) {
             int n = 0;
             for (UserAccount person : people) {
-                byte[] pdf = exports.renderPersonal(person, preparer, actor, now, String.valueOf(b.get("reason")), id, LocalDate.of(year, 12, 31));
-                String name = String.format("%03d-%s.pdf", ++n, safe(person.getEmployeeCode() == null ? person.getUsername() : person.getEmployeeCode()));
+                byte[] file = exports.renderPersonal(person, (UUID) b.get("prepared_signature_id"), signature, now, LocalDate.of(year, 12, 31));
+                String name = String.format("%03d-%s-APD.0014.docx", ++n, safe(person.getEmployeeCode() == null ? person.getUsername() : person.getEmployeeCode()));
                 z.putNextEntry(new ZipEntry(name));
-                z.write(pdf);
+                z.write(file);
                 z.closeEntry();
             }
             z.finish();

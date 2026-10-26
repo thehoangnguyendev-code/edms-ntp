@@ -16,9 +16,10 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
 import { documentApi } from "@/services/api/documents";
 import {
-  trainingError, trainingMatrixApi, trainingRequirementsApi, type TrainingPerson, type TrainingRequirementDetail, type TrainingRequirementLine, type TrainingSuggestion, type TrainingTopic,
+  trainingError, trainingFormsApi, trainingMatrixApi, trainingRequirementsApi, type TrainingPerson, type TrainingRequirementDetail, type TrainingRequirementLine, type TrainingSuggestion, type TrainingTopic,
 } from "@/services/api/trainingActivities";
-import { day, saveBlob, trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
+import { day, trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
+import { FormDownloadButtons } from "../shared/FormDownloadButtons";
 import { ReadonlyField, ReadonlyGrid, TabBlock, TrainingDetailLayout } from "../shared/TrainingDetailLayout";
 import { TrainingCopiesPanel } from "../shared/TrainingCopiesPanel";
 import { REQUIREMENT_STATUS_LABEL } from "./TrainingRequirementListView";
@@ -140,7 +141,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
       {caps.review && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setDialog("review")}>Review</Button>}
       {caps.approve && <Button size="sm" variant="default" className="whitespace-nowrap" onClick={() => setSign({ title: "Complete Approval of the Requirement", code: "TRAINING_REQUIREMENT_APPROVED", name: "Training Requirement Approved", changes: statusChange("Pending Approval", "Approved"), run: (t) => trainingRequirementsApi.approve(req.id, req.version, t) })}>Complete Approval</Button>}
       {req.status === "APPROVED" && (
-        <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => void trainingRequirementsApi.print(req.id).then((b) => saveBlob(b, `${req.requestNo.replace(/\//g, "-")}.pdf`)).catch((e) => showToast({ type: "error", title: "The PDF could not be printed", message: trainingError(e) }))}>Print PDF</Button>
+        <FormDownloadButtons label="The requirement" load={(format) => trainingFormsApi.requirement(req.id, format)} fileName={(format) => `${req.requestNo.replace(/\//g, "-")}-APD.0118.${format}`} />
       )}
       {caps.reject && <Button size="sm" variant="destructive" className="whitespace-nowrap" onClick={() => setDialog("reject")}>Reject</Button>}
     </>

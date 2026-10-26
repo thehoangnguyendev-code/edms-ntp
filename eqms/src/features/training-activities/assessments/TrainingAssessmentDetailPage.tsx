@@ -106,7 +106,7 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
   const [detail, setDetail] = useState<TrainingAssessmentDetail>();
   const [error, setError] = useState("");
   const [tab, setTab] = useState("overview");
-  const [head, setHead] = useState<{ title: string; kind: AssessmentKind }>({ title: "", kind: "QUESTIONS" });
+  const [head, setHead] = useState<{ title: string; kind: AssessmentKind; duration: string }>({ title: "", kind: "QUESTIONS", duration: "" });
   const [items, setItems] = useState<Draft[]>([blank("QUESTIONS")]);
   const [dirty, setDirty] = useState(isNew);
   const [busy, setBusy] = useState(false);
@@ -120,7 +120,7 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
 
   const apply = useCallback((d: TrainingAssessmentDetail) => {
     setDetail(d);
-    setHead({ title: d.title, kind: d.kind });
+    setHead({ title: d.title, kind: d.kind, duration: d.durationMinutes ? String(d.durationMinutes) : "" });
     setItems(d.items.map((i) => ({ id: newKey(), kind: i.kind, prompt: i.prompt, options: i.kind === "TRUE_FALSE" ? [] : opts(i.options.map((o) => o.text)), correct: i.correct, points: String(i.points), modelAnswer: i.modelAnswer ?? "" })));
     setDirty(false);
     setTotalText(null);
@@ -165,11 +165,13 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
     setItems(items.map((d, k) => ({ ...d, points: shared[k] })));
     setDirty(true);
   };
-  const valid = head.title.trim().length > 0 && items.length > 0 && items.every(itemValid);
+  const durationValid = head.duration.trim() === "" || (Number.isInteger(Number(head.duration)) && Number(head.duration) >= 1 && Number(head.duration) <= 480);
+  const valid = head.title.trim().length > 0 && items.length > 0 && items.every(itemValid) && durationValid;
   const body = (): TrainingAssessmentSave => ({
     version: detail?.version,
     title: head.title.trim(),
     kind: head.kind,
+    durationMinutes: head.duration.trim() ? Number(head.duration) : undefined,
     items: items.map((d) => ({
       kind: d.kind,
       prompt: d.prompt.trim(),
@@ -184,8 +186,8 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
   const openPreview = async (key: boolean) => {
     setBusy(true);
     try {
-      const { items: previewItems } = body();
-      const blob = await trainingAssessmentsApi.preview({ title: head.title.trim(), kind: head.kind, items: previewItems, key, code: detail?.code, versionNo: detail?.versionNo });
+      const { items: previewItems, durationMinutes } = body();
+      const blob = await trainingAssessmentsApi.preview({ title: head.title.trim(), kind: head.kind, durationMinutes, items: previewItems, key, code: detail?.code, versionNo: detail?.versionNo });
       setPreview({ url: URL.createObjectURL(blob), key });
     } catch (e) {
       showToast({ type: "error", title: "The preview could not be made", message: trainingError(e) });
@@ -346,6 +348,9 @@ export function TrainingAssessmentDetailPage({ isNew = false }: { isNew?: boolea
                   onChange={(v) => { setHead({ ...head, kind: v }); setItems([blank(v)]); setTotalText(null); setDirty(true); }}
                   options={Object.entries(ASSESSMENT_KIND_LABEL).map(([value, label]) => ({ value: value as AssessmentKind, label }))}
                 />
+              </FormField>
+              <FormField label="Test duration (minutes)" hint="Written in the form as the test duration. Leave empty to write it by hand.">
+                <Input type="number" min={1} max={480} step={1} value={head.duration} disabled={!editable} aria-label="Test duration" onChange={(e) => { setHead({ ...head, duration: e.target.value }); setDirty(true); }} />
               </FormField>
               {!checklist && (
                 <FormField label="Total Score">

@@ -8,7 +8,7 @@ admin = Client('admin'); approver = Client('approver.test1'); dco = Client('dco.
 st = json.load(open('exam_state.json')); aid = st['aid']; sid = st['sid']
 
 step('exam pack: refused without an exam, then with a PDF exam')
-code, out = admin.call('POST', f'/training/sessions/{sid}/exam-pack', {}, raw=True); print('print ->', code, out[:5], len(out)); assert code == 200 and out[:4] == b'%PDF'
+code, out = admin.call('POST', f'/training/sessions/{sid}/exam-pack', {}, raw=True); print('print ->', code, out[:5], len(out)); assert code == 200 and out[:2] == b'PK'  # a ZIP with one file for each trainee
 open('exam1.pdf', 'wb').write(out)
 code, b = admin.call('POST', f'/training/sessions/{sid}/exam-pack', {}, raw=True); print('reprint no reason ->', code); assert code == 400
 code, out2 = admin.call('POST', f'/training/sessions/{sid}/exam-pack', {'reason': 'Torn copy'}, raw=True); print('reprint with reason ->', code)

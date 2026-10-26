@@ -129,6 +129,9 @@ public class NavigationService {
             if (hasPermission(normalizedPermissions, "training.assessment.design") || hasPermission(normalizedPermissions, "training.assessment.approve")) {
                 planning.add(new NavigationItemResponse("training-assessments", "Training Assessments", null, "/training-management/assessments", false, null));
             }
+            if (hasPermission(normalizedPermissions, "training.matrix.view")) {
+                planning.add(new NavigationItemResponse("training-document-trainings", "Document Trainings", null, "/training-management/document-trainings", false, null));
+            }
             if (!planning.isEmpty()) {
                 trainingChildren.add(new NavigationItemResponse("training-planning", "Training Programme", null, null, false, planning));
             }
@@ -374,6 +377,7 @@ public class NavigationService {
             }
             if (hasPermission(normalizedPermissions, "training.admin.manage")) {
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-topics", "Training Topics", null, "/settings/administration/training/topics", false, null));
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-vendors", "Training Vendors", null, "/settings/administration/training/vendors", false, null));
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-person-positions", "Person Positions", null, "/settings/administration/training/person-positions", false, null));
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-notifications", "Training Notifications", null, "/settings/administration/training/notifications", false, null));
             }

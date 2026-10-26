@@ -41,12 +41,12 @@ public class TrainingAssessmentLibraryService {
 
     public record OptionDto(String text) {}
     public record ItemDto(String kind, String prompt, List<OptionDto> options, List<String> correct, BigDecimal points, String modelAnswer) {}
-    public record SaveRequest(Integer version, String title, String kind, List<ItemDto> items) {}
+    public record SaveRequest(Integer version, String title, String kind, Integer durationMinutes, List<ItemDto> items) {}
     public record ApproveRequest(String signatureToken, String reason) {}
     public record ReasonRequest(String reason) {}
     public record ChooseRequest(UUID assessmentId) {}
     /** What the editor shows now, saved or not: the paper is drawn from it. {@code key} draws the paper of the trainer, with the answers. */
-    public record PreviewRequest(String title, String kind, List<ItemDto> items, boolean key, String code, Integer versionNo) {}
+    public record PreviewRequest(String title, String kind, Integer durationMinutes, List<ItemDto> items, boolean key, String code, Integer versionNo) {}
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -144,6 +144,7 @@ public class TrainingAssessmentLibraryService {
         out.put("createdByName", name(def.get("created_by")));
         out.put("updatedByName", name(def.get("updated_by")));
         out.put("submittedByName", name(def.get("submitted_by")));
+        out.put("durationMinutes", def.get("duration_minutes"));
         out.put("approvedByName", name(def.get("approved_by")));
         Integer used = jdbc.queryForObject("select count(*) from training_activities where assessment_def_id = ?", Integer.class, id);
         out.put("usedByActivities", used == null ? 0 : used);
@@ -242,7 +243,8 @@ public class TrainingAssessmentLibraryService {
         if (request == null || request.title() == null || request.title().isBlank()) throw new IllegalArgumentException("TRAINING_ASSESSMENT_TITLE_REQUIRED");
         if (request.kind() == null || !Set.of("QUESTIONS", "CHECKLIST").contains(request.kind())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         List<Map<String, Object>> items = normalize(request.kind(), request.items());
-        return toPdf(TrainingAssessmentForm.fill(enabledTemplate(), items, "CHECKLIST".equals(request.kind()), "(the topic of the training activity)", request.key()));
+        if (request.durationMinutes() != null && (request.durationMinutes() < 1 || request.durationMinutes() > 480)) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
+        return toPdf(TrainingAssessmentForm.build(enabledTemplate(), new TrainingAssessmentForm.Content(items, "CHECKLIST".equals(request.kind()), request.key(), List.of(), null, null, request.durationMinutes())));
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ design
@@ -308,6 +310,7 @@ public class TrainingAssessmentLibraryService {
 
     private void checkHeader(SaveRequest request) {
         if (request == null || request.title() == null || request.title().isBlank() || request.title().length() > 255) throw new IllegalArgumentException("TRAINING_ASSESSMENT_TITLE_REQUIRED");
+        if (request.durationMinutes() != null && (request.durationMinutes() < 1 || request.durationMinutes() > 480)) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         if (request.kind() == null || !Set.of("QUESTIONS", "CHECKLIST").contains(request.kind())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
     }
 
@@ -330,8 +333,8 @@ public class TrainingAssessmentLibraryService {
         UUID id = UUID.randomUUID();
         Long seq = jdbc.queryForObject("select nextval('training_assessment_code_seq')", Long.class);
         String code = String.format("TAS-%04d", seq == null ? 0 : seq);
-        jdbc.update("insert into training_assessment_defs(id, code, version_no, title, kind, created_by, updated_by) values (?,?,1,?,?,?,?)",
-                id, code, request.title().trim(), request.kind(), actor.getId(), actor.getId());
+        jdbc.update("insert into training_assessment_defs(id, code, version_no, title, kind, duration_minutes, created_by, updated_by) values (?,?,1,?,?,?,?,?)",
+                id, code, request.title().trim(), request.kind(), request.durationMinutes(), actor.getId(), actor.getId());
         writeItems(id, items);
         audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_CREATED", null, "DRAFT", code + " v1: " + request.title().trim() + " (" + items.size() + " item(s))");
         return detail(actor, row(id));
@@ -346,8 +349,8 @@ public class TrainingAssessmentLibraryService {
         checkHeader(request);
         if (!request.kind().equals(def.get("kind"))) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         List<Map<String, Object>> items = normalize(request.kind(), request.items());
-        jdbc.update("update training_assessment_defs set title = ?, updated_by = ?, updated_at = now(), version = version + 1 where id = ?",
-                request.title().trim(), actor.getId(), id);
+        jdbc.update("update training_assessment_defs set title = ?, duration_minutes = ?, updated_by = ?, updated_at = now(), version = version + 1 where id = ?",
+                request.title().trim(), request.durationMinutes(), actor.getId(), id);
         jdbc.update("delete from training_assessment_def_items where def_id = ?", id);
         writeItems(id, items);
         audit.logAs(actor, TYPE, TYPE, id, "TRAINING_ASSESSMENT_UPDATED", "DRAFT", "DRAFT", def.get("code") + " v" + def.get("version_no") + ": " + items.size() + " item(s), total " + total(items) + " point(s)");
@@ -418,8 +421,8 @@ public class TrainingAssessmentLibraryService {
         if (drafts != null && drafts > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_DRAFT_EXISTS");
         Integer next = jdbc.queryForObject("select max(version_no) + 1 from training_assessment_defs where code = ?", Integer.class, def.get("code"));
         UUID created = UUID.randomUUID();
-        jdbc.update("insert into training_assessment_defs(id, code, version_no, title, kind, created_by, updated_by) values (?,?,?,?,?,?,?)",
-                created, def.get("code"), next, def.get("title"), def.get("kind"), actor.getId(), actor.getId());
+        jdbc.update("insert into training_assessment_defs(id, code, version_no, title, kind, duration_minutes, created_by, updated_by) values (?,?,?,?,?,?,?,?)",
+                created, def.get("code"), next, def.get("title"), def.get("kind"), def.get("duration_minutes"), actor.getId(), actor.getId());
         jdbc.update("""
             insert into training_assessment_def_items(id, def_id, item_no, kind, prompt, options, correct, points, model_answer)
             select gen_random_uuid(), ?, item_no, kind, prompt, options, correct, points, model_answer from training_assessment_def_items where def_id = ?
@@ -446,13 +449,24 @@ public class TrainingAssessmentLibraryService {
         return activity;
     }
 
-    /** The topic of the training as the activity says it: its sessions' topics (General Information and Sessions), else its title. */
-    private String topicOf(Map<String, Object> activity) {
+    /** The topics of the training as the activity says them: the topics of its sessions (General Information and Sessions), else its title. */
+    private List<String> topicsOf(Map<String, Object> activity) {
         List<String> topics = jdbc.queryForList("""
             select distinct coalesce(nullif(trim(st.topic_text), ''), st.document_number) from training_session_topics st join training_sessions s on s.id = st.session_id
              where s.activity_id = ? and s.status <> 'CANCELLED'
             """, String.class, activity.get("id")).stream().filter(t -> t != null && !t.isBlank()).sorted().toList();
-        return topics.isEmpty() ? String.valueOf(activity.get("training_title")) : String.join("; ", topics);
+        return topics.isEmpty() ? List.of(String.valueOf(activity.get("training_title"))) : topics;
+    }
+
+    /** Which box of "Training type" is ticked: a training that supplements another is a re-training; otherwise the kind of the activity. */
+    static String trainingTypeOf(Map<String, Object> activity) {
+        if (activity.get("parent_activity_id") != null) return "RETRAINING";
+        return switch (String.valueOf(activity.get("kind"))) {
+            case "INITIAL" -> "INITIAL";
+            case "PERIODIC" -> "PERIODIC";
+            case "UNPLANNED" -> "UNPLANNED";
+            default -> null;
+        };
     }
 
     private static String safe(String value) {
@@ -483,13 +497,17 @@ public class TrainingAssessmentLibraryService {
         if (matching == null || matching == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_KIND_MISMATCH");
         List<Map<String, Object>> items = items((UUID) def.get("id"));
         byte[] template = enabledTemplate();
-        String topic = topicOf(activity);
-        byte[] exam = TrainingAssessmentForm.fill(template, items, checklist, topic, false);
-        byte[] key = TrainingAssessmentForm.fill(template, items, checklist, topic, true);
+        // what is known for the whole activity is written in the form now; the fields of each trainee when the copies are printed
+        Integer minutes = (Integer) def.get("duration_minutes");
+        List<String> topics = topicsOf(activity);
+        String number = String.valueOf(activity.get("training_number"));
+        String type = trainingTypeOf(activity);
+        byte[] exam = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, false, topics, number, type, minutes));
+        byte[] key = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, true, topics, number, type, minutes));
         String label = def.get("code") + " v" + def.get("version_no");
-        String number = safe(String.valueOf(activity.get("training_number")));
-        putMaterial(actor, activityId, "EXAM", "APD.0009 - " + number + ".docx", exam, "Replaced by the assessment " + label + " of the library");
-        putMaterial(actor, activityId, "ANSWER_KEY", "Answer key - " + number + ".docx", key, "Replaced by the assessment " + label + " of the library");
+        String fileNumber = safe(number);
+        putMaterial(actor, activityId, "EXAM", "APD.0009 - " + fileNumber + ".docx", exam, "Replaced by the assessment " + label + " of the library");
+        putMaterial(actor, activityId, "ANSWER_KEY", "Answer key - " + fileNumber + ".docx", key, "Replaced by the assessment " + label + " of the library");
         String before = activity.get("assessment_def_code") == null ? null : activity.get("assessment_def_code") + " v" + activity.get("assessment_def_version");
         jdbc.update("update training_activities set assessment_def_id = ?, assessment_def_code = ?, assessment_def_version = ?, assessment_title = ?, assessment_kind = ?, assessment_max_score = ?, assessment_chosen_by = ?, assessment_chosen_at = now(), version = version + 1, updated_at = now() where id = ?",
                 def.get("id"), def.get("code"), def.get("version_no"), def.get("title"), def.get("kind"), checklist ? null : total(items), actor.getId(), activityId);

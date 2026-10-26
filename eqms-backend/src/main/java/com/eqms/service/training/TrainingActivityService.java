@@ -44,9 +44,10 @@ public class TrainingActivityService {
     private final TrainingNotifier notifier;
     private final TrainingTrainerService trainers;
     private final TrainingSuspensionService suspensions;
+    private final TrainingVendorService vendors;
 
     public TrainingActivityService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingNumberService numbers, TrainingSettingsService settings,
-                                   TrainingApprovalService approvals, ElectronicSignatureService signatures, UserAccountRepository users, TrainingNotifier notifier, TrainingTrainerService trainers, TrainingSuspensionService suspensions) {
+                                   TrainingApprovalService approvals, ElectronicSignatureService signatures, UserAccountRepository users, TrainingNotifier notifier, TrainingTrainerService trainers, TrainingSuspensionService suspensions, TrainingVendorService vendors) {
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
@@ -58,6 +59,7 @@ public class TrainingActivityService {
         this.notifier = notifier;
         this.trainers = trainers;
         this.suspensions = suspensions;
+        this.vendors = vendors;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ requests
@@ -260,6 +262,8 @@ public class TrainingActivityService {
             chosen.put("itemCount", jdbc.queryForObject("select count(*) from training_assessment_def_items where def_id = ?", Integer.class, activity.get("assessment_def_id")));
             out.put("assessment", chosen);
         }
+        // SOP.0025: an external training whose unit is not in the register of approved vendors gets a warning (it does not block)
+        if ("EXTERNAL".equals(activity.get("kind"))) out.put("vendorWarning", vendors.check((String) activity.get("training_unit_name")));
         out.put("departmentName", jdbc.queryForObject("select name from departments where id=?", String.class, activity.get("organizer_department_id")));
         // Who opened it (the General Information tab shows it, as the one of a document does).
         out.put("createdByName", activity.get("created_by") == null ? null : jdbc.queryForList("select full_name from app_users where id=?", String.class, activity.get("created_by")).stream().findFirst().orElse(null));
@@ -1179,7 +1183,10 @@ public class TrainingActivityService {
         confirmation(id, null, "QA_COMPLETION", actor, signature, assignment, null);
         int records = writeRecords(activity, completedOn);
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "COMPLETED", Map.of("completedOn", String.valueOf(completedOn), "records", records), actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_ACTIVITY_COMPLETED", "PENDING_QA_CONFIRMATION", "COMPLETED", records + " personal training records written");
+        // hybrid operation: a numbered paper copy that is still Issued does not stop the confirmation (a warning on the screen); that it was open is in the Audit Trail
+        Integer open = jdbc.queryForObject("select count(*) from training_paper_packs p where p.activity_id = ? and not exists (select 1 from training_paper_pack_events e where e.pack_id = p.id)", Integer.class, id);
+        store.auditActivity(actor, activity, "TRAINING_ACTIVITY_COMPLETED", "PENDING_QA_CONFIRMATION", "COMPLETED",
+                records + " personal training records written" + (open != null && open > 0 ? "; " + open + " numbered paper copy(ies) were still Issued" : ""));
         String on = com.eqms.util.DateTimeFormatUtils.display(completedOn);
         tell("TRAINING_COMPLETED", actor, organizersOf(activity), "Training: completed", actor.getFullName() + " confirmed that the training " + label(activity) + " is completed on " + on + ".", id);
         tell("TRAINING_RECORDED", actor, jdbc.queryForList("select distinct person_user_id from training_records where activity_id = ? and person_user_id is not null", UUID.class, id),

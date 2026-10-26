@@ -25,7 +25,9 @@ class TrainingAdministrationPermissionTest {
 
     @Test
     void v461Migration_backfilledTrainingAdminViewPermission_toEveryPermissionSetHoldingTrainingModuleView() {
-        List<UUID> trainingModuleViewSets = permissionSetsHolding("training.module.view");
+        // The DEV test roles of the trainer and the trainee are meant to show what they cannot do: they do not get the administration (owner's decision of 2026-10-26).
+        List<UUID> roles = devTestRoleSets();
+        List<UUID> trainingModuleViewSets = permissionSetsHolding("training.module.view").stream().filter(id -> !roles.contains(id)).toList();
         assertTrue(trainingModuleViewSets.size() > 0,
                 "Expected at least one Permission Set holding training.module.view in this dev DB");
 
@@ -55,6 +57,11 @@ class TrainingAdministrationPermissionTest {
                 "Every Permission Set holding training.admin.view must also hold " + subScreenCode
                         + " after the V462 backfill -- missing: "
                         + trainingAdminViewSets.stream().filter(id -> !subScreenSets.contains(id)).toList());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<UUID> devTestRoleSets() {
+        return entityManager.createNativeQuery("SELECT id FROM permission_sets WHERE name IN ('Training Trainer (DEV test)', 'Training Trainee (DEV test)')").getResultList();
     }
 
     @SuppressWarnings("unchecked")

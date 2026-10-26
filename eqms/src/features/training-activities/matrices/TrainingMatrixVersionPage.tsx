@@ -23,7 +23,7 @@ import {
   type TrainingPerson,
   type TrainingTopic,
 } from "@/services/api/trainingActivities";
-import { day, saveBlob, trainingBreadcrumbs, statusChange } from "../shared/trainingLabels";
+import { day, trainingBreadcrumbs, statusChange } from "../shared/trainingLabels";
 import {
   ReadonlyField,
   ReadonlyGrid,
@@ -33,6 +33,7 @@ import { TrainingMatrixGrid } from "./components/TrainingMatrixGrid";
 import { TrainingMatrixVersionsPanel } from "./TrainingMatrixVersionsPanel";
 import { trainingFollowUpApi } from "@/services/api/trainingActivities";
 import { useTrainingBack } from "../shared/useTrainingBack";
+import { FormDownloadButtons } from "../shared/FormDownloadButtons";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
@@ -276,27 +277,11 @@ export function TrainingMatrixVersionPage() {
         </Button>
       )}
       {(version.status === "EFFECTIVE" || version.status === "OBSOLETE") && (
-        <Button
-          size="sm"
-          variant="outline-emerald"
-          className="whitespace-nowrap"
-          onClick={() =>
-            void trainingMatrixApi
-              .print(version.id)
-              .then((b) =>
-                saveBlob(b, `${version.matrixCode}-v${version.versionNo}.pdf`),
-              )
-              .catch((e) =>
-                showToast({
-                  type: "error",
-                  title: "The PDF could not be printed",
-                  message: trainingError(e),
-                }),
-              )
-          }
-        >
-          Print PDF
-        </Button>
+        <FormDownloadButtons
+          label="The matrix"
+          load={(format) => trainingMatrixApi.exportForm(version.id, format)}
+          fileName={(format) => `${version.matrixCode}-v${version.versionNo}-APD.0011.${format}`}
+        />
       )}
       {caps.upgrade && (
         <Button

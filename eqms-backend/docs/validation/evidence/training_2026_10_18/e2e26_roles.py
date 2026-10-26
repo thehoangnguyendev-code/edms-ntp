@@ -50,7 +50,7 @@ code, data, text = attempt(trainer1, 'POST', f'/training/participants/{pid}/asse
 check('9 trainer.test1 scores (assessment.record)', code == 200, (code, text))
 finish_for_qa(trainer1, aid, lambda: sign(trainer1))
 code, data, text = attempt(trainer1, 'POST', f'/training/activities/{aid}/submit-for-confirmation', {'version': get(aid)['version'], 'signatureToken': sign(trainer1)})
-check('10 trainer.test1 cannot send the results to QA (that is for the organizer)', code == 403, (code, text))
+check('10 trainer.test1 sends the results to QA (the trainer drives the end of the training since 2026-10-24)', code == 200, (code, text))
 finish_for_qa(admin, aid, lambda: sign(admin))
 admin.call('POST', f'/training/activities/{aid}/submit-for-confirmation', {'version': get(aid)['version'], 'signatureToken': sign(admin)})
 code, data, text = attempt(trainer1, 'POST', f'/training/activities/{aid}/confirm-completion', {'version': get(aid)['version'], 'signatureToken': sign(trainer1)})

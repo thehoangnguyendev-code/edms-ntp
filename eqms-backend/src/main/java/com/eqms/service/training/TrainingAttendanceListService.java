@@ -1,7 +1,6 @@
 package com.eqms.service.training;
 
 import com.eqms.entity.UserAccount;
-import com.eqms.service.OnlyOfficeDocumentEditService;
 import com.eqms.util.DateTimeFormatUtils;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -14,6 +13,7 @@ import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlObject;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRow;
 import org.springframework.http.HttpStatus;
+import static com.eqms.service.training.TrainingWordForms.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,20 +47,20 @@ public class TrainingAttendanceListService {
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
     private final TrainingStore store;
-    private final TrainingFileService files;
-    private final OnlyOfficeDocumentEditService onlyOffice;
+    private final TrainingFormTemplates templates;
+    private final TrainingSignatureBlocks blocks;
 
-    public TrainingAttendanceListService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingFileService files, OnlyOfficeDocumentEditService onlyOffice) {
+    public TrainingAttendanceListService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingFormTemplates templates, TrainingSignatureBlocks blocks) {
         this.jdbc = jdbc;
         this.access = access;
         this.store = store;
-        this.files = files;
-        this.onlyOffice = onlyOffice;
+        this.templates = templates;
+        this.blocks = blocks;
     }
 
     /** What is written in the form, read from the activity. */
     private record Data(Map<String, Object> activity, String department, List<Map<String, Object>> sessions, Map<UUID, List<Map<String, Object>>> topics,
-                        Map<UUID, List<Map<String, Object>>> people, Map<UUID, String> retraining, String preparedBy, String preparedAt, String completedBy, String completedAt) {
+                        Map<UUID, List<Map<String, Object>>> people, Map<UUID, String> retraining, String preparedBy, UUID preparedSignature, String completedBy, UUID completedSignature) {
     }
 
     // A refusal (no template, no document server) writes nothing, and a caller inside another transaction (the e-mail of the attendance list) must not be rolled back by it.
@@ -73,38 +73,17 @@ public class TrainingAttendanceListService {
         if ("RESERVED".equals(activity.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_CLOSED");
         Integer sessions = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ? and status <> 'CANCELLED'", Integer.class, activityId);
         if (sessions == null || sessions == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SESSION_REQUIRED");
-        Map<String, Object> template = jdbc.queryForList("select * from training_form_templates where code = ? and status = 'ENABLED' order by activated_at desc limit 1", TEMPLATE_CODE).stream().findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_FORM_TEMPLATE_MISSING"));
-        byte[] source = files.readStored(String.valueOf(template.get("provider")), String.valueOf(template.get("stored_path")), String.valueOf(template.get("sha256")));
+        TrainingFormTemplates.Template template = templates.enabled(TEMPLATE_CODE);
+        byte[] source = template.bytes();
         byte[] docx;
         try {
             docx = fill(source, load(activity));
         } catch (IOException e) {
             throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
         }
-        boolean pdf = "pdf".equalsIgnoreCase(format);
-        byte[] bytes = pdf ? toPdf(docx) : docx;
-        String name = String.valueOf(activity.get("training_number")).replace('/', '-') + "-" + TEMPLATE_CODE + (pdf ? ".pdf" : ".docx");
-        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_LIST_EXPORTED", null, TEMPLATE_CODE + " " + template.get("version_label"),
-                (pdf ? "PDF" : "Word") + ", template SHA-256 " + template.get("sha256"));
-        return Map.of("bytes", bytes, "name", name, "contentType", pdf ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    }
-
-    private byte[] toPdf(byte[] docx) {
-        Path temp = null;
-        try {
-            temp = Files.createTempFile("training-apd0117-", ".docx");
-            Files.write(temp, docx);
-            return onlyOffice.convertLocalFileToPdf(temp, temp.getFileName().toString());
-        } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "TRAINING_PREVIEW_UNAVAILABLE");
-        } catch (IOException e) {
-            throw new IllegalStateException("TRAINING_PRINT_FAILED", e);
-        } finally {
-            if (temp != null) {
-                try { Files.deleteIfExists(temp); } catch (IOException ignored) { /* a temporary file */ }
-            }
-        }
+        store.auditActivity(actor, activity, "TRAINING_ATTENDANCE_LIST_EXPORTED", null, TEMPLATE_CODE + " " + template.versionLabel(),
+                ("pdf".equalsIgnoreCase(format) ? "PDF" : "Word") + ", template SHA-256 " + template.sha256());
+        return templates.file(docx, format, String.valueOf(activity.get("training_number")).replace('/', '-') + "-" + TEMPLATE_CODE);
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ the data
@@ -113,7 +92,7 @@ public class TrainingAttendanceListService {
         UUID id = (UUID) activity.get("id");
         String department = jdbc.queryForList("select name from departments where id = ?", String.class, activity.get("organizer_department_id")).stream().findFirst().orElse("");
         List<Map<String, Object>> sessions = jdbc.queryForList("""
-            select s.id, s.session_no, s.method, s.scheduled_on, s.held_on, s.attendance_confirmed_at,
+            select s.id, s.session_no, s.method, s.scheduled_on, s.held_on, s.attendance_confirmed_at, s.attendance_signature_id,
                    coalesce(u.full_name, s.external_trainer_name, case when a.kind = 'EXTERNAL' then a.training_unit_name end) as trainer
               from training_sessions s join training_activities a on a.id = s.activity_id left join app_users u on u.id = s.trainer_user_id
              where s.activity_id = ? and s.status <> 'CANCELLED' order by s.session_no
@@ -142,14 +121,14 @@ public class TrainingAttendanceListService {
             retraining.put((UUID) r.get("person_user_id"), result(String.valueOf(r.get("result")), String.valueOf(r.get("state"))));
         }
         Map<String, Object> prepared = jdbc.queryForList("""
-            select u.full_name, c.confirmed_at from training_active_confirmations c join app_users u on u.id = c.confirmed_by where c.activity_id = ? and c.kind = 'ATTENDEE_LIST_PREPARED'
+            select u.full_name, c.signature_id from training_active_confirmations c join app_users u on u.id = c.confirmed_by where c.activity_id = ? and c.kind = 'ATTENDEE_LIST_PREPARED'
              order by c.confirmed_at desc limit 1
             """, id).stream().findFirst().orElse(Map.of());
         Map<String, Object> completed = jdbc.queryForList("""
-            select u.full_name, c.confirmed_at from training_active_confirmations c join app_users u on u.id = c.confirmed_by where c.activity_id = ? and c.kind = 'QA_COMPLETION'
+            select u.full_name, c.signature_id from training_active_confirmations c join app_users u on u.id = c.confirmed_by where c.activity_id = ? and c.kind = 'QA_COMPLETION'
              order by c.confirmed_at desc limit 1
             """, id).stream().findFirst().orElse(Map.of());
-        return new Data(activity, department, sessions, topics, people, retraining, text(prepared.get("full_name")), signedAt(prepared.get("confirmed_at")), text(completed.get("full_name")), signedAt(completed.get("confirmed_at")));
+        return new Data(activity, department, sessions, topics, people, retraining, text(prepared.get("full_name")), (UUID) prepared.get("signature_id"), text(completed.get("full_name")), (UUID) completed.get("signature_id"));
     }
 
     private static String text(Object value) {
@@ -203,49 +182,6 @@ public class TrainingAttendanceListService {
 
     // ------------------------------------------------------------------------------------------------------------------------------ the form
 
-    private static String cellsText(XWPFTable table) {
-        StringBuilder all = new StringBuilder();
-        for (XWPFTableRow row : table.getRows()) for (XWPFTableCell cell : row.getTableCells()) all.append(cell.getText()).append('\n');
-        return all.toString();
-    }
-
-    private static XWPFTable find(XWPFDocument doc, String token) {
-        for (XWPFTable table : doc.getTables()) if (cellsText(table).contains(token)) return table;
-        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, STRUCTURE);
-    }
-
-    private static int indexOf(XWPFDocument doc, XWPFTable table) {
-        List<IBodyElement> elements = doc.getBodyElements();
-        for (int i = 0; i < elements.size(); i++) if (elements.get(i) instanceof XWPFTable t && t.getCTTbl() == table.getCTTbl()) return i;
-        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, STRUCTURE);
-    }
-
-    private static void setText(XWPFTableCell cell, String value) {
-        for (int i = cell.getParagraphs().size() - 1; i > 0; i--) cell.removeParagraph(i);
-        XWPFParagraph paragraph = cell.getParagraphs().isEmpty() ? cell.addParagraph() : cell.getParagraphs().get(0);
-        List<XWPFRun> runs = paragraph.getRuns();
-        if (runs.isEmpty()) {
-            paragraph.createRun().setText(value);
-            return;
-        }
-        runs.get(0).setText(value, 0);
-        for (int i = runs.size() - 1; i >= 1; i--) paragraph.removeRun(i);
-    }
-
-    /** Rows of a table filled from the second row, which is the model of a line; the empty model lines are removed. The rows are written in the XML of the table itself. */
-    private static void fillRows(XWPFTable table, List<List<String>> lines) {
-        org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl ct = table.getCTTbl();
-        if (ct.sizeOfTrArray() < 2) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, STRUCTURE);
-        CTRow model = (CTRow) ct.getTrArray(1).copy();
-        int original = ct.sizeOfTrArray();
-        for (List<String> line : lines) {
-            ct.addNewTr().set(model.copy());
-            XWPFTableRow row = new XWPFTableRow(ct.getTrArray(ct.sizeOfTrArray() - 1), table);
-            for (int c = 0; c < line.size() && c < row.getTableCells().size(); c++) setText(row.getCell(c), line.get(c));
-        }
-        for (int i = original - 1; i >= 1; i--) ct.removeTr(i);
-    }
-
     private byte[] fill(byte[] template, Data d) throws IOException {
         byte[] shaped = shape(template, d.sessions().size());
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(shaped)); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -296,14 +232,22 @@ public class TrainingAttendanceListService {
 
             XWPFTable preparer = find(doc, "Name of preparer");
             setText(preparer.getRow(1).getCell(0), d.preparedBy());
-            setText(preparer.getRow(1).getCell(1), d.preparedAt());
+            setText(preparer.getRow(1).getCell(1), "");
+            appendBlock(preparer.getRow(1).getCell(1), blocks.lines(d.preparedSignature()), blocks.fontPt());
             List<List<String>> trainerLines = new ArrayList<>();
-            for (Map<String, Object> s : d.sessions()) trainerLines.add(List.of(sessionLabel(s), text(s.get("trainer")), signedAt(s.get("attendance_confirmed_at"))));
-            fillRows(find(doc, "Trainier Name"), trainerLines);
+            for (Map<String, Object> s : d.sessions()) trainerLines.add(List.of(sessionLabel(s), text(s.get("trainer")), ""));
+            XWPFTable trainers = find(doc, "Trainier Name");
+            fillRows(trainers, trainerLines);
+            for (int i = 0; i < d.sessions().size() && i + 1 < trainers.getCTTbl().sizeOfTrArray(); i++) {
+                appendBlock(row(trainers, i + 1).getCell(2), blocks.lines((UUID) d.sessions().get(i).get("attendance_signature_id")), blocks.fontPt());
+            }
             XWPFTable completion = find(doc, "Confirmed by");
             if (completion.getRows().size() >= 2 && completion.getRow(1).getTableCells().size() >= 2) {
-                setText(completion.getRow(1).getCell(1), d.completedBy().isEmpty() ? "" : d.completedBy() + (d.completedAt().isEmpty() ? "" : " - " + d.completedAt()));
+                setText(completion.getRow(1).getCell(1), "");
+                appendBlock(completion.getRow(1).getCell(1), blocks.lines(d.completedSignature()), blocks.fontPt());
             }
+            moveToHeader(doc, header);
+            shareHeaderFooter(doc);
             doc.write(out);
             return out.toByteArray();
         }
@@ -313,22 +257,13 @@ public class TrainingAttendanceListService {
         return String.format("%02d", ((Number) s.get("session_no")).intValue());
     }
 
-    private static void setParagraph(XWPFParagraph paragraph, String value) {
-        List<XWPFRun> runs = paragraph.getRuns();
-        if (runs.isEmpty()) {
-            paragraph.createRun().setText(value);
-            return;
-        }
-        runs.get(0).setText(value, 0);
-        for (int i = runs.size() - 1; i >= 1; i--) paragraph.removeRun(i);
-    }
-
     /**
      * The first pass: the instructions that describe the form (the header, the footer, the notes and the history of revisions) are taken out, and the heading and the table of the list of
      * attendance are repeated for each session of the activity. The file is written and read again, so that the second pass sees the real elements.
      */
     private byte[] shape(byte[] template, int sessions) throws IOException {
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(template)); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            noteToFooter(doc);
             List<IBodyElement> elements = doc.getBodyElements();
             int headerTable = indexOf(doc, find(doc, "TRAINING ATTEN"));
             int first = -1;
@@ -354,18 +289,4 @@ public class TrainingAttendanceListService {
         }
     }
 
-    /** Copies the element after another element of the same body and returns the copy. */
-    private static XmlObject copyAfter(XmlObject element, XmlObject after) {
-        try (XmlCursor target = after.newCursor(); XmlCursor source = element.newCursor()) {
-            target.toEndToken();
-            target.toNextToken();
-            source.copyXml(target);
-        }
-        // the copy is now the element that follows
-        try (XmlCursor next = after.newCursor()) {
-            next.toEndToken();
-            next.toNextToken();
-            return next.getObject();
-        }
-    }
 }

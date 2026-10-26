@@ -30,7 +30,9 @@ import {
   trainingError,
   trainingFilesApi,
   trainingFormTemplatesApi,
+  trainingPaperApi,
   type AssessmentEditOpen,
+  type TrainingPaperPack,
   type TrainingFormTemplateRef,
   type TrainingActivityFiles,
   type TrainingMaterial,
@@ -72,6 +74,7 @@ const EMPTY_EVIDENCE = {
   participantId: "",
   remark: "",
   formUsed: "",
+  packId: "",
 };
 
 /**
@@ -121,12 +124,15 @@ export function TrainingActivityFilesTab({
   const [removing, setRemoving] = useState<{ id: string; reason: string }>();
   const [templates, setTemplates] = useState<TrainingFormTemplateRef[]>([]);
   const [editing, setEditing] = useState<AssessmentEditOpen>();
+  const [packs, setPacks] = useState<TrainingPaperPack[]>([]);
 
   const load = useCallback(() => {
     trainingFilesApi
       .list(activityId)
       .then(setFiles)
       .catch((e) => setError(trainingError(e)));
+    // the numbered paper copies of the activity: a scan can say which copy it is the scan of
+    trainingPaperApi.packs(activityId).then(setPacks).catch(() => setPacks([]));
   }, [activityId]);
   useEffect(load, [load]);
   useEntityChanged(["TRAINING"], load);
@@ -301,6 +307,7 @@ export function TrainingActivityFilesTab({
       cell: (e) => `${e.originalName} (${size(e.sizeBytes)})`,
     },
     { id: "form", header: "Form used", cell: (e) => e.formUsed ?? "—" },
+    { id: "copy", header: "Paper copy", cell: (e) => e.packCode ?? "—" },
     {
       id: "person",
       header: "For",
@@ -568,6 +575,7 @@ export function TrainingActivityFilesTab({
           e.remark.trim() || undefined,
           onProgress,
           e.formUsed.trim() || undefined,
+          e.packId || undefined,
         ),
       "File uploaded",
     );
@@ -648,6 +656,16 @@ export function TrainingActivityFilesTab({
                           label: p.fullName,
                           value: p.id,
                         })),
+                      ]}
+                    />
+                  </FormField>
+                  <FormField label="Paper copy it is the scan of (optional)">
+                    <Select
+                      value={evidence.packId}
+                      onChange={(v) => setEvidence({ ...evidence, packId: v })}
+                      options={[
+                        { label: "Not a numbered copy", value: "" },
+                        ...packs.map((p) => ({ label: `${p.packCode}${p.packKind === "EXAM" ? " (exam)" : ""}`, value: p.id })),
                       ]}
                     />
                   </FormField>

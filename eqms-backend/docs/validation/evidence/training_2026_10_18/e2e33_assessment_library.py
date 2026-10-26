@@ -26,7 +26,7 @@ Q = [
 
 print('== 1. design, approval, versions')
 code, a, text = attempt(designer, 'POST', '/training/assessments', {'title': 'E2E-TEST Kiểm tra đào tạo SOP', 'kind': 'QUESTIONS', 'items': Q})
-check('1.1 the designer creates a draft with the four kinds of question', code == 200 and a['status'] == 'DRAFT' and a['itemCount'] == 4 and float(a['maxScore']) == 10, (code, text))
+check('1.1 the designer creates a draft with the four kinds of question', code == 200 and a['status'] == 'DRAFT' and len(a['items']) == 4 and float(a['maxScore']) == 10, (code, text))
 aid = a['id']
 check('1.2 the draft has a code and version 1; the designer may edit and delete it, not approve it', a['code'].startswith('TAS-') and a['versionNo'] == 1 and a['capabilities']['edit'] and a['capabilities']['delete'] and a['capabilities']['submit'] and not a['capabilities']['approve'], a['capabilities'])
 code, data, text = attempt(designer, 'POST', '/training/assessments', {'title': '', 'kind': 'QUESTIONS', 'items': Q})
@@ -67,7 +67,8 @@ old = designer.call('GET', f'/training/assessments/{aid}')
 check('1.14 version 1 is then replaced', old['status'] == 'SUPERSEDED', old['status'])
 listed = [x['id'] for x in designer.call('GET', '/training/assessments/approved?search=E2E-TEST')['data']]
 check('1.15 only the effective version is offered to an activity', v2['id'] in listed and aid not in listed, listed)
-code, data, text = attempt(trainee, 'GET', '/training/assessments')
+outsider = Client('trainee.test1')   # a trainee: no permission of the library and not an organizer or a reviewer of the content
+code, data, text = attempt(outsider, 'GET', '/training/assessments')
 check('1.16 a person who neither designs nor approves cannot read the library (the key is in it)', code == 403, (code, text))
 code, d3, text = attempt(designer, 'POST', f"/training/assessments/{v2['id']}/new-version")
 code, data, text = attempt(designer, 'POST', f"/training/assessments/{d3['id']}/delete", {})
@@ -98,7 +99,7 @@ def docx_text(b):
     return _re.sub(r'<[^>]+>', ' ', zipfile.ZipFile(_io.BytesIO(b)).read('word/document.xml').decode('utf8'))
 exam_text, key_text = docx_text(exam_bytes), docx_text(key_bytes)
 check('2.4c the form has the topic of the activity and the questions, not the title of the library', 'E2E-TEST topic' in exam_text and 'E2E-TEST Tần suất vệ sinh?' in exam_text and 'Kiểm tra đào tạo SOP' not in exam_text and 'E2E-KEY-SECRET' not in exam_text, exam_text[:300])
-check('2.4d the answer key has the right boxes ticked and the model answer', 'E2E-KEY-SECRET' in key_text and chr(0x2612) in key_text, key_text[:300])
+check('2.4d the answer key has the right boxes ticked and the model answer', 'E2E-KEY-SECRET' in key_text and ('F0FD' in zipfile.ZipFile(_io.BytesIO(key_bytes)).read('word/document.xml').decode('utf8') or chr(0x2612) in key_text), key_text[:300])
 check('2.5 the test is no longer missing', get(act_id)['contentRules']['missing'] == [] or 'TRAINING_TEST_REQUIRED' not in get(act_id)['contentRules']['missing'], get(act_id)['contentRules'])
 detail_text = str(get(act_id))
 check('2.6 the detail of the activity never carries the key or the model answer', 'E2E-KEY-SECRET' not in detail_text and 'snapshot' not in detail_text.lower(), 'leak')
@@ -121,18 +122,14 @@ code, payload = admin.call('POST', f'/training/sessions/{sid}/exam-pack', {}, ra
 check('2.10 before the training is notified the copies are not printed (TRAINING_PAPER_STATUS)', code == 409, code)
 admin.call('POST', f'/training/activities/{act_id}/notify', {'version': get(act_id)['version'], 'signatureToken': sign(admin)})
 code, payload = admin.call('POST', f'/training/sessions/{sid}/exam-pack', {}, raw=True)
-check('2.11 notified, not yet In progress: the test copies are printed (a PDF made from the exam file)', code == 200 and payload[:4] == b'%PDF', code)
+check('2.11 notified, not yet In progress: the test copies are made (a ZIP with one PDF for each trainee, made from the exam file)', code == 200 and payload[:2] == b'PK' and len(zipfile.ZipFile(_io.BytesIO(payload)).namelist()) == 2, code)
 check('2.12 the print is numbered and recorded', len([p for p in admin.call('GET', f'/training/activities/{act_id}/paper-packs') if p['packKind'] == 'EXAM']) == 1)
-try:
-    import io
-    from pypdf import PdfReader
-    reader = PdfReader(io.BytesIO(payload))
-    pdf_text = ' '.join(p.extract_text() for p in reader.pages)
-    names = [p['fullName'] for p in get(act_id)['participants']]
-    check('2.13 each copy carries the name of its trainee and the questions, and no key', all(n in pdf_text for n in names) and 'E2E-TEST Tần suất vệ sinh?' in pdf_text and 'E2E-KEY-SECRET' not in pdf_text and 'ANSWER KEY' not in pdf_text, names)
-except ImportError:
-    print('SKIP  2.13 (pypdf is not installed: the text of the copies was not read)')
-code, data = trainee.call('GET', f"/training/materials/{key_files[0]['id']}/download", raw=True)
+code, payload = admin.call('POST', f'/training/sessions/{sid}/exam-pack', {'format': 'docx', 'reason': 'E2E-TEST Word copies'}, raw=True)
+names = zipfile.ZipFile(_io.BytesIO(payload)).namelist()
+words = [docx_text(zipfile.ZipFile(_io.BytesIO(payload)).read(n)) for n in names]
+people = {p['fullName']: p['employeeCode'] for p in get(act_id)['participants']}
+check('2.13 each Word copy has its trainee (name and ID code) and the questions, and no key', len(words) == 2 and all(sum(1 for n in people if n in w) == 1 for w in words) and all('E2E-TEST Tần suất vệ sinh?' in w and 'E2E-KEY-SECRET' not in w and 'ĐÁP ÁN' not in w for w in words), names)
+code, data = outsider.call('GET', f"/training/materials/{key_files[0]['id']}/download", raw=True)
 check('2.14 a trainee cannot download the answer key', code in (401, 403), code)
 
 print(chr(10) + '== 3. a checklist is passed only when every line is correct')
